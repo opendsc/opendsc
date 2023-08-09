@@ -26,8 +26,8 @@ flowchart TD
     B -->|Yes| C[Decrypt configuration]
     B -->|No| D[Create GPG encryption key]
     D --> E[Encrypt configuration file]
+    E --> C
     C --> F[Call DSC to apply configuration]
-    E --> F
 ```
 
 ### Push Model
