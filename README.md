@@ -22,7 +22,7 @@ The intent is to have a single configuration that is compiled elsewhere and lett
 
 ```mermaid
 flowchart TD
-    A[Service Starts] --> B{GPG key exists?}
+    A[LCM Starts] --> B{GPG key exists?}
     B -->|Yes| C[Decrypt configuration]
     B -->|No| D[Create GPG encryption key]
     D --> E[Encrypt configuration file]
