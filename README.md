@@ -18,6 +18,24 @@ A pull would have the LCM call the pull server to retrieve new configuration.
 Partial configurations are not in scope.
 The intent is to have a single configuration that is compiled elsewhere and letting the `dsc` executable perform the key validation.
 
+### Push Model
+
+```mermaid
+sequenceDiagram
+    Author->>LCM: Push configuration to device
+    LCM->>DSC: Apply configuration
+    LCM-->>Reporting: Send DSC report
+```
+
+### Pull Model
+
+```mermaid
+sequenceDiagram
+    LCM->>Pull: Pull configuration to device
+    LCM->>DSC: Apply configuration
+    LCM-->>Reporting: Send DSC report
+```
+
 ## Pull Server
 
 In DSCv1 pull server was used for the LCM to retrieve configuration and resources.
