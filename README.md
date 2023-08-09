@@ -18,6 +18,18 @@ A pull would have the LCM call the pull server to retrieve new configuration.
 Partial configurations are not in scope.
 The intent is to have a single configuration that is compiled elsewhere and letting the `dsc` executable perform the key validation.
 
+### Securing the configuration
+
+```mermaid
+flowchart TD
+    A[Service Starts] --> B{GPG key exists?}
+    B -->|Yes| C[Decrypt configuration]
+    B -->|No| D[Create GPG encryption key]
+    D --> E[Encrypt configuration file]
+    C --> F[Call DSC to apply configuration]
+    E --> F
+```
+
 ### Push Model
 
 ```mermaid
