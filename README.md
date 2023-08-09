@@ -32,7 +32,8 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     Author->>Pull: Publish configuration
-    LCM->>Pull: Pull configuration to device
+    LCM->>Pull: Request configuration
+    Pull->>LCM: Deploy configuration
     LCM->>DSC: Apply configuration
     LCM-->>Reporting: Send DSC report
 ```
