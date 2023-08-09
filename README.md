@@ -23,7 +23,7 @@ The intent is to have a single configuration that is compiled elsewhere and lett
 ```mermaid
 flowchart TD
     A[LCM Starts] --> B{GPG key exists?}
-    B -->|Yes| C[Configuration encrypted?]
+    B -->|Yes| C{Configuration encrypted?}
     B -->|No| D[Create GPG encryption key]
     D --> C
     C -->|Yes| E[Decrypt configuration]
