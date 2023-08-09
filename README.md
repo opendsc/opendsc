@@ -29,7 +29,7 @@ flowchart TD
     C -->|Yes| E[Decrypt configuration]
     C -->|No| F[Encrypt configuration file]
     F --> E
-    E --> F[Call DSC to apply configuration]
+    E --> G[Call DSC to apply configuration]
 ```
 
 ### Push Model
