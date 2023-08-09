@@ -22,7 +22,7 @@ The intent is to have a single configuration that is compiled elsewhere and lett
 
 ```mermaid
 sequenceDiagram
-    Author->>LCM: Push configuration to device
+    Author->>LCM: Deploy configuration
     LCM->>DSC: Apply configuration
     LCM-->>Reporting: Send DSC report
 ```
@@ -31,6 +31,7 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
+    Author->>Pull: Publish configuration
     LCM->>Pull: Pull configuration to device
     LCM->>DSC: Apply configuration
     LCM-->>Reporting: Send DSC report
