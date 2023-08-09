@@ -23,11 +23,13 @@ The intent is to have a single configuration that is compiled elsewhere and lett
 ```mermaid
 flowchart TD
     A[LCM Starts] --> B{GPG key exists?}
-    B -->|Yes| C[Decrypt configuration]
+    B -->|Yes| C[Configuration encrypted?]
     B -->|No| D[Create GPG encryption key]
-    D --> E[Encrypt configuration file]
-    E --> C
-    C --> F[Call DSC to apply configuration]
+    D --> C
+    C -->|Yes| E[Decrypt configuration]
+    C -->|No| F[Encrypt configuration file]
+    F --> E
+    E --> F[Call DSC to apply configuration]
 ```
 
 ### Push Model
