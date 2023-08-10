@@ -61,6 +61,18 @@ With DSCv3 having supporting multiple languages and different delivery mechanism
 
 The reporting server is used for the LCM to send status updates.
 
+```mermaid
+sequenceDiagram
+    LCM->>DSC: Apply configuration
+    DSC->>LCM: Retrieves status
+    LCM->>Reporting: Sends status
+    Reporting->>DB: Stores status
+    User->>Reporting: Requests status
+    Reporting->>DB: Requests stored status
+    DB->>Reporting: Retrieves stored status
+    Reporting->>User: Sends status
+```
+
 ## Configuration Server
 
 This does not have an equivalent in DSCv1, this would be an API and front-end website/application wih the capability to create, update, and deploy configuration to the pull server or pushing to the device.
