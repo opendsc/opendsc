@@ -75,7 +75,7 @@ Ansible uses an agent-less deployment strategy.
 OpenDSC could have a model where a deployment server handles the LCM responsibilities remotely.
 A con of this approach is scaling the deployment servers.
 
-## Securing the configuration
+## Securing configuration
 
 The following diagram is how the LCM would securely store the configuration file at rest.
 There is also the possibility of replacing GPG with CA certificates.
