@@ -69,6 +69,7 @@ sequenceDiagram
 ## Reporting Server
 
 The reporting server is used for the LCM to send status updates.
+
 Implementation should be a REST API and not have a user interface.
 The storage medium should allow for different database providers using the entity framework.
 LCM will have a token to authenticate to the reporting server.
