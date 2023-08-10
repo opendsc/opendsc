@@ -46,7 +46,9 @@ LCM will have a token to authenticate to the pull server.
 
 Open considerations:
 
+* Allow SMB pull servers?
 * How to handle token rotation?
+* Allow different configuration storage mediums: local, share, uri?
 
 ### Pull Model
 
