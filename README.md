@@ -10,6 +10,39 @@ This allows the other solutions to call DSC resources without competing directly
 
 While task-scheduler with PowerShell script can accomplish the needs for a basic and rudimentary LCM replacement, a full-featured LCM replacement can reduce the administrators technical debt maintaining and deploying configuration with reporting capabilities.
 
+## Development Phases
+
+### Phase 1
+
+Create proof of concept LCM with configuration file already on the node.
+
+Milestones:
+
+* Consume unencrypted configuration file and call DSC and capture status
+* Log status
+
+### Phase 2
+
+LCM as a service.
+
+Milestones:
+
+* LCM running as a service
+* Configuration file
+* Configuration mode: ApplyOnly, ApplyAndMonitor, ApplyAndAutoCorrect
+* Configuration mode time interval
+* Local API for a tool to call
+
+### Phase 3
+
+Create a proof of concept pull server.
+
+Milestones:
+
+* REST API
+* Token authentication
+* LCM pull configuration
+
 ## LCM - Local Configuration Manager
 
 The LCM is the agent on the device to start dsc configuration and report back on the success or failure.
