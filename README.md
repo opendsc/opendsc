@@ -51,7 +51,31 @@ sequenceDiagram
     LCM-->>Reporting: Send DSC report
 ```
 
-### Securing the configuration
+## Pull Server
+
+In DSCv1 pull server was used for the LCM to retrieve configuration and resources.
+
+With DSCv3 having supporting multiple languages and different delivery mechanisms to deploy resources, is not in scope to carry over that feature at this time.
+
+## Reporting Server
+
+The reporting server is used for the LCM to send status updates.
+
+## Configuration Server
+
+This does not have an equivalent in DSCv1, this would be an API and front-end website/application wih the capability to create, update, and deploy configuration to the pull server or pushing to the device.
+
+The configuration server should have the ability to create configuration based on role, location, environment, etc.
+Then the configuration would be merged at deployment time to the pull server or pushed to the device.
+
+## Agent-less Deployment Server
+
+There is an interesting capability that could be entertained.
+Ansible uses an agent-less deployment strategy.
+OpenDSC could have a model where a deployment server handles the LCM responsibilities remotely.
+A con of this approach is scaling the deployment servers.
+
+## Securing the configuration
 
 The following diagram is how the LCM would securely store the configuration file at rest.
 There is also the possibility of replacing GPG with CA certificates.
@@ -85,27 +109,3 @@ sequenceDiagram
     LCM->>DSC: Apply configuration
     LCM-->>Reporting: Send DSC report
 ```
-
-## Pull Server
-
-In DSCv1 pull server was used for the LCM to retrieve configuration and resources.
-
-With DSCv3 having supporting multiple languages and different delivery mechanisms to deploy resources, is not in scope to carry over that feature at this time.
-
-## Reporting Server
-
-The reporting server is used for the LCM to send status updates.
-
-## Configuration Server
-
-This does not have an equivalent in DSCv1, this would be an API and front-end website/application wih the capability to create, update, and deploy configuration to the pull server or pushing to the device.
-
-The configuration server should have the ability to create configuration based on role, location, environment, etc.
-Then the configuration would be merged at deployment time to the pull server or pushed to the device.
-
-## Agent-less Deployment Server
-
-There is an interesting capability that could be entertained.
-Ansible uses an agent-less deployment strategy.
-OpenDSC could have a model where a deployment server handles the LCM responsibilities remotely.
-A con of this approach is scaling the deployment servers.
