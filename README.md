@@ -69,12 +69,13 @@ In a pull server situation the following diagram illustrates bootstrapping and d
 
 ```mermaid
 sequenceDiagram
+    Author->>LCM: Configures LCM in pull mode
     LCM->>LCM: Generates GPG key
     LCM->>Pull: Sends LCM public key
     Pull->>LCM: Sends pull public key
     Author->>Pull: Generates configuration
     Pull->>Pull: Encrypts configuration with LCM public key
-    Pull->>Pull: Signs encryption with pull private key
+    Pull->>Pull: Signs encrypted configuration with pull private key
     LCM->>Pull: Requests configuration
     Pull->>LCM: Sends configuration
     LCM->>LCM: Verify configuration signature is from pull public key
