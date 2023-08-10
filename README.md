@@ -41,6 +41,13 @@ In DSCv1 pull server was used for the LCM to retrieve configuration and resource
 
 With DSCv3 having supporting multiple languages and different delivery mechanisms to deploy resources, is not in scope to carry over that feature at this time.
 
+Implementation should be a REST API and not have a user interface.
+LCM will have a token to authenticate to the pull server.
+
+Open considerations:
+
+* How to handle token rotation?
+
 ### Pull Model
 
 In this diagram the author creates the configuration.
@@ -62,6 +69,13 @@ sequenceDiagram
 ## Reporting Server
 
 The reporting server is used for the LCM to send status updates.
+Implementation should be a REST API and not have a user interface.
+The storage medium should allow for different database providers using the entity framework.
+LCM will have a token to authenticate to the reporting server.
+
+Open considerations:
+
+* How to handle token rotation?
 
 ```mermaid
 sequenceDiagram
@@ -89,12 +103,18 @@ Ansible uses an agent-less deployment strategy.
 OpenDSC could have a model where a deployment server handles the LCM responsibilities remotely.
 A con of this approach is scaling the deployment servers.
 
+Implementation should be a REST API and not have a user interface.
+
 ## Securing configuration
 
 ### Push mode
 
 The following diagram is how the LCM would securely store the configuration file at rest.
 There is also the possibility of replacing GPG with CA certificates.
+
+Open considerations:
+
+* Allow unencrypted configuration?
 
 ```mermaid
 flowchart TD
@@ -111,6 +131,10 @@ flowchart TD
 ### Pull mode
 
 In a pull server situation the following diagram illustrates bootstrapping and delivery process.
+
+Open considerations:
+
+* How to handle key rotation?
 
 ```mermaid
 sequenceDiagram
