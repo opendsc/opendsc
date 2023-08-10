@@ -102,6 +102,7 @@ In a pull server situation the following diagram illustrates bootstrapping and d
 sequenceDiagram
     Author->>LCM: Configures LCM in pull mode
     LCM->>LCM: Generates GPG key
+    Pull->>Pull: Generates GPG key
     LCM->>Pull: Sends LCM public key
     Pull->>LCM: Sends pull public key
     Author->>Pull: Generates configuration
