@@ -67,6 +67,7 @@ sequenceDiagram
     DSC->>LCM: Retrieves status
     LCM->>Reporting: Sends status
     Reporting->>DB: Stores status
+    create participant User
     User->>Reporting: Requests status
     Reporting->>DB: Requests stored status
     DB->>Reporting: Retrieves stored status
