@@ -102,3 +102,10 @@ This does not have an equivalent in DSCv1, this would be an API and front-end we
 
 The configuration server should have the ability to create configuration based on role, location, environment, etc.
 Then the configuration would be merged at deployment time to the pull server or pushed to the device.
+
+## Agent-less Deployment Server
+
+There is an interesting capability that could be entertained.
+Ansible uses an agent-less deployment strategy.
+OpenDSC could have a model where a deployment server handles the LCM responsibilities remotely.
+A con of this approach is scaling the deployment servers.
