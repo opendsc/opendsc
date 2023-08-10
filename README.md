@@ -1,9 +1,12 @@
 # OpenDSC
 
+OpenDsc is DSC's missing solution layer.
 This project is to recreate the Local Configuration Manager (LCM), pull server, and reporting capabilities for [DSCv3](https://github.com/PowerShell/DSC).
 
-DSCv3 is intended to be the tool layer rather than a platform i.e. Chef, Ansible and cloud based solutions like Azure Machine Configuration.
-OpenDsc an alternative to those other platforms.
+Microsoft's intention with DSCv3 not to compete with other solutions
+like Chef, Ansible and cloud based solutions like Azure Machine Configuration
+but, rather be the platform layer.
+This allows the other solutions to call DSC resources without competing directly.
 
 While task-scheduler with PowerShell script can accomplish the needs for a basic and rudimentary LCM replacement, a full-featured LCM replacement can reduce the administrators technical debt maintaining and deploying configuration with reporting capabilities.
 
