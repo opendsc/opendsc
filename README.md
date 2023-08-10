@@ -18,7 +18,40 @@ A pull would have the LCM call the pull server to retrieve new configuration.
 Partial configurations are not in scope.
 The intent is to have a single configuration that is compiled elsewhere and letting the `dsc` executable perform the key validation.
 
+### Push Model
+
+In this diagram the author creates the configuration on their device.
+Pushes the configuration to the remote device using whatever method they like SSH/RDP/PSRemoting.
+Then lands the configuration in the directory the LCM is looking for the configuration.
+
+```mermaid
+sequenceDiagram
+    Author->>LCM: Deploy configuration
+    LCM->>DSC: Apply configuration
+    LCM-->>Reporting: Send DSC report
+```
+
+### Pull Model
+
+In this diagram the author creates the configuration.
+Publishes it to the pull server.
+Then the LCM is configured to in pull mode.
+On a reoccurring basis the LCM requests if there is a new configuration.
+If there is a new configuration is pulled to the device to consume.
+
+```mermaid
+sequenceDiagram
+    Author->>Pull: Publish configuration
+    LCM->>Pull: Request configuration
+    Pull->>LCM: Deploy configuration
+    LCM->>DSC: Apply configuration
+    LCM-->>Reporting: Send DSC report
+```
+
 ### Securing the configuration
+
+The following diagram is how the LCM would securely store the configuration file at rest.
+There is also the possibility of replacing GPG with CA certificates.
 
 ```mermaid
 flowchart TD
@@ -32,22 +65,19 @@ flowchart TD
     E --> G[Call DSC to apply configuration]
 ```
 
-### Push Model
+In a pull server situation the following diagram illustrates bootstrapping and delivery process.
 
 ```mermaid
 sequenceDiagram
-    Author->>LCM: Deploy configuration
-    LCM->>DSC: Apply configuration
-    LCM-->>Reporting: Send DSC report
-```
-
-### Pull Model
-
-```mermaid
-sequenceDiagram
-    Author->>Pull: Publish configuration
-    LCM->>Pull: Request configuration
-    Pull->>LCM: Deploy configuration
+    LCM->>LCM: Generates GPG key
+    LCM->>Pull: Sends LCM public key
+    Pull->>LCM: Sends pull public key
+    Author->>Pull: Generates configuration
+    Pull->>Pull: Encrypts configuration with LCM public key
+    Pull->>Pull: Signs encryption with pull private key
+    LCM->>Pull: Requests configuration
+    Pull->>LCM: Sends configuration
+    LCM->>LCM: Verify configuration signature is from pull public key
     LCM->>DSC: Apply configuration
     LCM-->>Reporting: Send DSC report
 ```
