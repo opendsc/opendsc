@@ -77,6 +77,8 @@ A con of this approach is scaling the deployment servers.
 
 ## Securing configuration
 
+### Push mode
+
 The following diagram is how the LCM would securely store the configuration file at rest.
 There is also the possibility of replacing GPG with CA certificates.
 
@@ -91,6 +93,8 @@ flowchart TD
     F --> E
     E --> G[Call DSC to apply configuration]
 ```
+
+### Pull mode
 
 In a pull server situation the following diagram illustrates bootstrapping and delivery process.
 
