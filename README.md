@@ -31,7 +31,8 @@ Then lands the configuration in the directory the LCM is looking for the configu
 sequenceDiagram
     Author->>LCM: Deploy configuration
     LCM->>DSC: Apply configuration
-    LCM-->>Reporting: Send DSC report
+    DSC->>LCM: Retrieves status
+    LCM-->>Reporting: Send status
 ```
 
 ## Pull Server
@@ -54,7 +55,8 @@ sequenceDiagram
     LCM->>Pull: Request configuration
     Pull->>LCM: Deploy configuration
     LCM->>DSC: Apply configuration
-    LCM-->>Reporting: Send DSC report
+    DSC->>LCM: Retrieves status
+    LCM-->>Reporting: Send status
 ```
 
 ## Reporting Server
@@ -124,5 +126,6 @@ sequenceDiagram
     Pull->>LCM: Sends configuration
     LCM->>LCM: Verify configuration signature is from pull public key
     LCM->>DSC: Apply configuration
-    LCM-->>Reporting: Send DSC report
+    DSC->>LCM: Retrieves status
+    LCM-->>Reporting: Send status
 ```
