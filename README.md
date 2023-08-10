@@ -34,6 +34,12 @@ sequenceDiagram
     LCM-->>Reporting: Send DSC report
 ```
 
+## Pull Server
+
+In DSCv1 pull server was used for the LCM to retrieve configuration and resources.
+
+With DSCv3 having supporting multiple languages and different delivery mechanisms to deploy resources, is not in scope to carry over that feature at this time.
+
 ### Pull Model
 
 In this diagram the author creates the configuration.
@@ -50,12 +56,6 @@ sequenceDiagram
     LCM->>DSC: Apply configuration
     LCM-->>Reporting: Send DSC report
 ```
-
-## Pull Server
-
-In DSCv1 pull server was used for the LCM to retrieve configuration and resources.
-
-With DSCv3 having supporting multiple languages and different delivery mechanisms to deploy resources, is not in scope to carry over that feature at this time.
 
 ## Reporting Server
 
