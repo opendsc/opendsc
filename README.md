@@ -54,6 +54,13 @@ A pull would have the LCM call the pull server to retrieve new configuration.
 Partial configurations are not in scope.
 The intent is to have a single configuration that is compiled elsewhere and letting the `dsc` executable perform the key validation.
 
+Open considerations:
+
+* Deployment model: MSI, Linux package, zip, etc
+* Platform specific configuration scheme: Windows registry, Linux conf file
+* Service and local command to interact with service or require restart to pick up new service config?
+* If separate command communication what protocol? REST, named pipes, sockets?
+
 ### Push Model
 
 In this diagram the author creates the configuration on their device.
