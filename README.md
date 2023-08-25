@@ -134,7 +134,7 @@ sequenceDiagram
 
 ## Configuration Server
 
-This does not have an equivalent in DSCv1, this would be an API and front-end website/application wih the capability to create, update, and deploy configuration to the pull server or pushing to the device.
+This does not have an equivalent in DSCv1, this would be an API and front-end website/application with the capability to create, update, and deploy configuration to the pull server or pushing to the device.
 
 The configuration server should have the ability to create configuration based on role, location, environment, etc.
 Then the configuration would be merged at deployment time to the pull server or pushed to the device.
