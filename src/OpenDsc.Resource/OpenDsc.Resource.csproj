@@ -7,9 +7,25 @@
     <LangVersion>Latest</LangVersion>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+    <Authors>Thomas Nieto</Authors>
+    <Copyright>© 2025 Thomas Nieto. All rights reserved.</Copyright>
+    <Description>Microsoft DSC v3 resource core library.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://opendsc.dev</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/opendsc/opendsc.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="NuGet.Versioning" Version="6.14.0" />
-    <PackageReference Include="System.Text.Json" Version="9.0.5" />
+    <PackageReference Include="System.Text.Json" Version="9.0.6" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
   <PropertyGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0'))">

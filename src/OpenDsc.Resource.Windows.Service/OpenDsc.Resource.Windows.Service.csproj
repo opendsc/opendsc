@@ -18,8 +18,4 @@
     <PackageReference Include="System.ServiceProcess.ServiceController" Version="9.0.6" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Content Include="*.OpenDsc.Resource.json" CopyToOutputDirectory="PreserveNewest" />
-  </ItemGroup>
-
 </Project>

@@ -6,7 +6,24 @@
     <IncludeContentInPack>true</IncludeContentInPack>
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <ContentTargetFolders>content</ContentTargetFolders>
+    <NoWarn>NU5128</NoWarn>
   </PropertyGroup>
+
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+    <Authors>Thomas Nieto</Authors>
+    <Copyright>© 2025 Thomas Nieto. All rights reserved.</Copyright>
+    <Description>Microsoft DSC v3 project templates.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://opendsc.dev</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/opendsc/opendsc.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
   <ItemGroup>
     <Content Include="templates\**\*" Exclude="templates\**\bin\**;templates\**\obj\**" />
