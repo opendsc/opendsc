@@ -1,0 +1,42 @@
+{
+  "$schema": "https://aka.ms/dsc/schemas/v3/bundled/resource/manifest.json",
+  "type": "OpenDsc.Windows/Service",
+  "description": "Manage Windows Services",
+  "tags": [
+    "Windows"
+  ],
+  "version": "0.1.0",
+  "get": {
+    "executable": "windows-service",
+    "args": [
+      "config",
+      "get",
+      {
+        "jsonInputArg": "--input",
+        "mandatory": true
+      }
+    ]
+  },
+  "export": {
+    "executable": "windows-service",
+    "args": [
+      "config",
+      "export"
+    ]
+  },
+  "exitCodes": {
+    "0": "Success",
+    "1": "Invalid parameter",
+    "2": "Generic Failure",
+    "3": "Invalid JSON",
+    "4": "Failed to get services"
+  },
+  "schema": {
+    "command": {
+      "executable": "windows-service",
+      "args": [
+        "schema"
+      ]
+    }
+  }
+}
