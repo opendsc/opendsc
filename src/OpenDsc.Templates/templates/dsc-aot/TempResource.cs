@@ -1,5 +1,7 @@
 using System.Text.Json.Serialization;
 
+using OpenDsc.Resource;
+
 namespace Temp;
 
 public sealed class TempResource : AotDscResource<TempSchema>, IGettable<TempSchema>
