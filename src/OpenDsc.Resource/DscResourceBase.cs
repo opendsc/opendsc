@@ -78,7 +78,7 @@ public abstract class DscResourceBase<T> : IDscResource<T>
         }
     }
 
-    protected JsonSchemaExporterOptions ExporterOptions
+    public JsonSchemaExporterOptions ExporterOptions
     {
         get
         {

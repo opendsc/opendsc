@@ -19,7 +19,7 @@ namespace OpenDsc.Resource;
 #endif
 public abstract class DscResource<T> : DscResourceBase<T>
 {
-    protected JsonSerializerOptions SerializerOptions
+    public JsonSerializerOptions SerializerOptions
     {
         get
         {
