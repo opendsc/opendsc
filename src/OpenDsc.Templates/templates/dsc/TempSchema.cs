@@ -19,4 +19,3 @@ public sealed class TempSchema
     [JsonPropertyName("_inDesiredState")]
     public bool? InDesiredState { get; set; }
 }
-
