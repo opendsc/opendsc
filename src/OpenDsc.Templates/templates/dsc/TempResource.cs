@@ -1,5 +1,3 @@
-using System.Text.Json.Serialization;
-
 using OpenDsc.Resource;
 
 namespace Temp;
