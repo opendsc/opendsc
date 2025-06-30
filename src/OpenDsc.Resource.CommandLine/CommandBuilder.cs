@@ -331,6 +331,8 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
 #endif
     private static void ManifestHandler(IDscResource<TSchema> resource, JsonSerializerOptions options)
     {
+        options.Converters.Add(new ResourceConverter<TSchema>());
+
         var json = JsonSerializer.Serialize(resource, typeof(IDscResource<TSchema>), options);
         Console.WriteLine(json);
     }
