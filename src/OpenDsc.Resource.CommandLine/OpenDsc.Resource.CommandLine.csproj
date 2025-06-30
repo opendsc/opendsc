@@ -9,7 +9,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <Version>0.1.1</Version>
+    <Version>0.1.2</Version>
     <Authors>Thomas Nieto</Authors>
     <Copyright>© 2025 Thomas Nieto. All rights reserved.</Copyright>
     <Description>Microsoft DSC v3 resource command line and manifest generator.</Description>
