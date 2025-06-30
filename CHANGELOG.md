@@ -10,11 +10,18 @@ and this project adheres to [Semantic Versioning][semver].
 
 ## [Unreleased]
 
+## [0.1.1] - 2025-06-27
+
+### Fixed
+
+- Fix templates (#5)
+
 ## [0.1.0] - 2025-06-27
 
 ### Added
 
 - Initial release
 
-[Unreleased]: https://github.com/opendsc/opendsc/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/opendsc/opendsc/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/opendsc/opendsc/releases/tag/v0.1.1
 [0.1.0]: https://github.com/opendsc/opendsc/releases/tag/v0.1.0
