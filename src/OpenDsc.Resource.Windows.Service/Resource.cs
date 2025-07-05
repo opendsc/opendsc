@@ -15,7 +15,7 @@ public sealed class Resource : AotDscResource<Schema>, IGettable<Schema>, IExpor
     {
         Description = "Manage Windows services.";
         Tags = ["Windows"];
-        ExitCodes.Add(4, new() { Exception = typeof(Win32Exception), Description = "Failed to delete service." });
+        ExitCodes.Add(5, new() { Exception = typeof(Win32Exception), Description = "Failed to delete service." });
     }
 
     public Schema Get(Schema instance)
