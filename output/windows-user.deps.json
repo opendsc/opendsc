@@ -1,0 +1,318 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v9.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v9.0": {
+      "windows-user/0.1.0": {
+        "dependencies": {
+          "Microsoft.DotNet.ILCompiler": "9.0.0-rc.1.24431.7",
+          "Microsoft.NET.ILLink.Tasks": "9.0.0-rc.1.24431.7",
+          "OpenDsc.Resource.CommandLine": "0.1.2",
+          "System.DirectoryServices.AccountManagement": "9.0.6"
+        },
+        "runtime": {
+          "windows-user.dll": {}
+        }
+      },
+      "Microsoft.DotNet.ILCompiler/9.0.0-rc.1.24431.7": {},
+      "Microsoft.NET.ILLink.Tasks/9.0.0-rc.1.24431.7": {},
+      "NuGet.Versioning/6.14.0": {
+        "runtime": {
+          "lib/netstandard2.0/NuGet.Versioning.dll": {
+            "assemblyVersion": "6.14.0.116",
+            "fileVersion": "6.14.0.116"
+          }
+        }
+      },
+      "OpenDsc.Resource/0.1.2": {
+        "dependencies": {
+          "NuGet.Versioning": "6.14.0",
+          "System.Text.Json": "9.0.6"
+        },
+        "runtime": {
+          "lib/net9.0/OpenDsc.Resource.dll": {
+            "assemblyVersion": "0.1.2.0",
+            "fileVersion": "0.1.2.0"
+          }
+        }
+      },
+      "OpenDsc.Resource.CommandLine/0.1.2": {
+        "dependencies": {
+          "OpenDsc.Resource": "0.1.2",
+          "System.CommandLine": "2.0.0-beta4.22272.1"
+        },
+        "runtime": {
+          "lib/net9.0/OpenDsc.Resource.CommandLine.dll": {
+            "assemblyVersion": "0.1.2.0",
+            "fileVersion": "0.1.2.0"
+          }
+        }
+      },
+      "System.CommandLine/2.0.0-beta4.22272.1": {
+        "runtime": {
+          "lib/net6.0/System.CommandLine.dll": {
+            "assemblyVersion": "2.0.0.0",
+            "fileVersion": "2.0.22.27201"
+          }
+        },
+        "resources": {
+          "lib/net6.0/cs/System.CommandLine.resources.dll": {
+            "locale": "cs"
+          },
+          "lib/net6.0/de/System.CommandLine.resources.dll": {
+            "locale": "de"
+          },
+          "lib/net6.0/es/System.CommandLine.resources.dll": {
+            "locale": "es"
+          },
+          "lib/net6.0/fr/System.CommandLine.resources.dll": {
+            "locale": "fr"
+          },
+          "lib/net6.0/it/System.CommandLine.resources.dll": {
+            "locale": "it"
+          },
+          "lib/net6.0/ja/System.CommandLine.resources.dll": {
+            "locale": "ja"
+          },
+          "lib/net6.0/ko/System.CommandLine.resources.dll": {
+            "locale": "ko"
+          },
+          "lib/net6.0/pl/System.CommandLine.resources.dll": {
+            "locale": "pl"
+          },
+          "lib/net6.0/pt-BR/System.CommandLine.resources.dll": {
+            "locale": "pt-BR"
+          },
+          "lib/net6.0/ru/System.CommandLine.resources.dll": {
+            "locale": "ru"
+          },
+          "lib/net6.0/tr/System.CommandLine.resources.dll": {
+            "locale": "tr"
+          },
+          "lib/net6.0/zh-Hans/System.CommandLine.resources.dll": {
+            "locale": "zh-Hans"
+          },
+          "lib/net6.0/zh-Hant/System.CommandLine.resources.dll": {
+            "locale": "zh-Hant"
+          }
+        }
+      },
+      "System.Configuration.ConfigurationManager/9.0.6": {
+        "dependencies": {
+          "System.Diagnostics.EventLog": "9.0.6",
+          "System.Security.Cryptography.ProtectedData": "9.0.6"
+        },
+        "runtime": {
+          "lib/net9.0/System.Configuration.ConfigurationManager.dll": {
+            "assemblyVersion": "9.0.0.0",
+            "fileVersion": "9.0.625.26613"
+          }
+        }
+      },
+      "System.Diagnostics.EventLog/9.0.6": {
+        "runtime": {
+          "lib/net9.0/System.Diagnostics.EventLog.dll": {
+            "assemblyVersion": "9.0.0.0",
+            "fileVersion": "9.0.625.26613"
+          }
+        },
+        "runtimeTargets": {
+          "runtimes/win/lib/net9.0/System.Diagnostics.EventLog.Messages.dll": {
+            "rid": "win",
+            "assetType": "runtime",
+            "assemblyVersion": "9.0.0.0",
+            "fileVersion": "0.0.0.0"
+          },
+          "runtimes/win/lib/net9.0/System.Diagnostics.EventLog.dll": {
+            "rid": "win",
+            "assetType": "runtime",
+            "assemblyVersion": "9.0.0.0",
+            "fileVersion": "9.0.625.26613"
+          }
+        }
+      },
+      "System.DirectoryServices/9.0.6": {
+        "runtime": {
+          "lib/net9.0/System.DirectoryServices.dll": {
+            "assemblyVersion": "9.0.0.0",
+            "fileVersion": "9.0.625.26613"
+          }
+        },
+        "runtimeTargets": {
+          "runtimes/win/lib/net9.0/System.DirectoryServices.dll": {
+            "rid": "win",
+            "assetType": "runtime",
+            "assemblyVersion": "9.0.0.0",
+            "fileVersion": "9.0.625.26613"
+          }
+        }
+      },
+      "System.DirectoryServices.AccountManagement/9.0.6": {
+        "dependencies": {
+          "System.Configuration.ConfigurationManager": "9.0.6",
+          "System.DirectoryServices": "9.0.6",
+          "System.DirectoryServices.Protocols": "9.0.6"
+        },
+        "runtime": {
+          "lib/net9.0/System.DirectoryServices.AccountManagement.dll": {
+            "assemblyVersion": "9.0.0.6",
+            "fileVersion": "9.0.625.26613"
+          }
+        },
+        "runtimeTargets": {
+          "runtimes/win/lib/net9.0/System.DirectoryServices.AccountManagement.dll": {
+            "rid": "win",
+            "assetType": "runtime",
+            "assemblyVersion": "9.0.0.6",
+            "fileVersion": "9.0.625.26613"
+          }
+        }
+      },
+      "System.DirectoryServices.Protocols/9.0.6": {
+        "runtime": {
+          "lib/net9.0/System.DirectoryServices.Protocols.dll": {
+            "assemblyVersion": "9.0.0.6",
+            "fileVersion": "9.0.625.26613"
+          }
+        },
+        "runtimeTargets": {
+          "runtimes/linux/lib/net9.0/System.DirectoryServices.Protocols.dll": {
+            "rid": "linux",
+            "assetType": "runtime",
+            "assemblyVersion": "9.0.0.6",
+            "fileVersion": "9.0.625.26613"
+          },
+          "runtimes/osx/lib/net9.0/System.DirectoryServices.Protocols.dll": {
+            "rid": "osx",
+            "assetType": "runtime",
+            "assemblyVersion": "9.0.0.6",
+            "fileVersion": "9.0.625.26613"
+          },
+          "runtimes/win/lib/net9.0/System.DirectoryServices.Protocols.dll": {
+            "rid": "win",
+            "assetType": "runtime",
+            "assemblyVersion": "9.0.0.6",
+            "fileVersion": "9.0.625.26613"
+          }
+        }
+      },
+      "System.Security.Cryptography.ProtectedData/9.0.6": {
+        "runtime": {
+          "lib/net9.0/System.Security.Cryptography.ProtectedData.dll": {
+            "assemblyVersion": "9.0.0.0",
+            "fileVersion": "9.0.625.26613"
+          }
+        }
+      },
+      "System.Text.Json/9.0.6": {
+        "runtime": {
+          "lib/net9.0/System.Text.Json.dll": {
+            "assemblyVersion": "9.0.0.0",
+            "fileVersion": "9.0.625.26613"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "windows-user/0.1.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Microsoft.DotNet.ILCompiler/9.0.0-rc.1.24431.7": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-FN38PfBwjKY4D753sz6GDSnvtHU9UUPb9fNAcPwImOn2j8SyUFZMnVmMVwnYX4dlDB9XL98m4g6szsjIx5UWgg==",
+      "path": "microsoft.dotnet.ilcompiler/9.0.0-rc.1.24431.7",
+      "hashPath": "microsoft.dotnet.ilcompiler.9.0.0-rc.1.24431.7.nupkg.sha512"
+    },
+    "Microsoft.NET.ILLink.Tasks/9.0.0-rc.1.24431.7": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-B8jHIIszeUdDY+O4G1/xPOuhrriwsv9Z8/u3XSOAqc8Z0mQCeLBKg2oLGElDZeRF8wWXDGklAKY3f0IHopyXkQ==",
+      "path": "microsoft.net.illink.tasks/9.0.0-rc.1.24431.7",
+      "hashPath": "microsoft.net.illink.tasks.9.0.0-rc.1.24431.7.nupkg.sha512"
+    },
+    "NuGet.Versioning/6.14.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-4v4blkhCv8mpKtfx+z0G/X0daVCzdIaHSC51GkUspugi5JIMn2Bo8xm5PdZYF0U68gOBfz/+aPWMnpRd85Jbow==",
+      "path": "nuget.versioning/6.14.0",
+      "hashPath": "nuget.versioning.6.14.0.nupkg.sha512"
+    },
+    "OpenDsc.Resource/0.1.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-Eo5FOaV9Usq5Fw+di7Bx3bgWguVbv5JWY7FLY3Os/gNGgqDmy47AOIRUYNCIrI4rsUESefv+XDATf5GJTpNcew==",
+      "path": "opendsc.resource/0.1.2",
+      "hashPath": "opendsc.resource.0.1.2.nupkg.sha512"
+    },
+    "OpenDsc.Resource.CommandLine/0.1.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-GhodeJo85KTJ1qnOacfz24OZ5deZqxqkdc20k1OBP2AicjBCTmgD+jPpPtp0EWCqb1EC+RmVRl+W88WeudEftQ==",
+      "path": "opendsc.resource.commandline/0.1.2",
+      "hashPath": "opendsc.resource.commandline.0.1.2.nupkg.sha512"
+    },
+    "System.CommandLine/2.0.0-beta4.22272.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-1uqED/q2H0kKoLJ4+hI2iPSBSEdTuhfCYADeJrAqERmiGQ2NNacYKRNEQ+gFbU4glgVyK8rxI+ZOe1onEtr/Pg==",
+      "path": "system.commandline/2.0.0-beta4.22272.1",
+      "hashPath": "system.commandline.2.0.0-beta4.22272.1.nupkg.sha512"
+    },
+    "System.Configuration.ConfigurationManager/9.0.6": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-GQYhl3XCSGhxQvbRCjQiuGbJjm1tlq2lu98SGItjeingM7D+uKNnmKlK0MMuAU1asT7YtJ8uoT83WnGCuna9Qg==",
+      "path": "system.configuration.configurationmanager/9.0.6",
+      "hashPath": "system.configuration.configurationmanager.9.0.6.nupkg.sha512"
+    },
+    "System.Diagnostics.EventLog/9.0.6": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-lum+Dv+8S4gqN5H1C576UcQe0M2buoRjEUVs4TctXRSWjBH3ay3w2KyQrOo1yPdRs1I+xK69STz+4mjIisFI5w==",
+      "path": "system.diagnostics.eventlog/9.0.6",
+      "hashPath": "system.diagnostics.eventlog.9.0.6.nupkg.sha512"
+    },
+    "System.DirectoryServices/9.0.6": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-jb9CXtAkrgs7xnp7cv4JEWoOvhIIO1BDub7pBdg456RoFiIVFBaj46twJ6kOsq0QKJKxj4P2GMyBERLHr6OPPA==",
+      "path": "system.directoryservices/9.0.6",
+      "hashPath": "system.directoryservices.9.0.6.nupkg.sha512"
+    },
+    "System.DirectoryServices.AccountManagement/9.0.6": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-xxbRffj3vJLrG39HDPk10V2Ia805bIsof8a7I4guX/1kN+diC849HGS9FePMukzNjBcJWihtCZHf6bJiJnYrtw==",
+      "path": "system.directoryservices.accountmanagement/9.0.6",
+      "hashPath": "system.directoryservices.accountmanagement.9.0.6.nupkg.sha512"
+    },
+    "System.DirectoryServices.Protocols/9.0.6": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-6xlvg/xYleDEs/mG+lRDFqRs9pvep2Ejd2bSf+NdudLTETL0ggKKDxYeYrEQavMO70kryvTmA7fHuLG8Q0hFYw==",
+      "path": "system.directoryservices.protocols/9.0.6",
+      "hashPath": "system.directoryservices.protocols.9.0.6.nupkg.sha512"
+    },
+    "System.Security.Cryptography.ProtectedData/9.0.6": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-yErfw/3pZkJE/VKza/Cm5idTpIKOy/vsmVi59Ta5SruPVtubzxb8CtnE8tyUpzs5pr0Y28GUFfSVzAhCLN3F/Q==",
+      "path": "system.security.cryptography.protecteddata/9.0.6",
+      "hashPath": "system.security.cryptography.protecteddata.9.0.6.nupkg.sha512"
+    },
+    "System.Text.Json/9.0.6": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-h+ZtYTyTnTh5Ju6mHCKb3FPGx4ylJZgm9W7Y2psUnkhQRPMOIxX+TCN0ZgaR/+Yea+93XHWAaMzYTar1/EHIPg==",
+      "path": "system.text.json/9.0.6",
+      "hashPath": "system.text.json.9.0.6.nupkg.sha512"
+    }
+  }
+}
