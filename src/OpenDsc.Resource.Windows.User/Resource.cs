@@ -10,7 +10,7 @@ namespace OpenDsc.Resource.Windows.User;
 
 public sealed class Resource : AotDscResource<Schema>, IGettable<Schema>, ISettable<Schema>, IDeletable<Schema>, IExportable<Schema>
 {
-    public Resource(JsonSerializerContext context) : base("DSCUniversalResources.Windows/User", context)
+    public Resource(JsonSerializerContext context) : base("OpenDsc.Windows/User", context)
     {
         Description = "Manage users in computer management.";
         Tags = ["Windows"];
