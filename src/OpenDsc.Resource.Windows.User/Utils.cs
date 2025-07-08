@@ -9,39 +9,36 @@ namespace OpenDsc.Resource.Windows.User;
 
 internal static class Utils
 {
-    public static Schema GetUser(string userName)
+    public static Schema GetUser(string Username)
     {
-        try
-        {
-            using var context = new PrincipalContext(ContextType.Machine);
-            using var user = UserPrincipal.FindByIdentity(context, userName);
+        using var context = new PrincipalContext(ContextType.Machine);
+        using var user = UserPrincipal.FindByIdentity(context, Username);
 
-            return user == null
-                ? new Schema { userName = userName, exist = false }
-                : new Schema
-                {
-                    userName = userName,
-                    exist = true,
-                    fullName = user.DisplayName,
-                    description = user.Description,
-                    disabled = !user.Enabled,
-                    passwordNeverExpires = user.PasswordNeverExpires,
-                    passwordChangeNotAllowed = user.UserCannotChangePassword,
-                    passwordChangeRequired = IsPasswordChangeRequired(user)
-                };
-        }
-        catch (Exception ex)
-        {
-            throw new InvalidOperationException($"Failed to retrieve user '{userName}': {ex.Message}", ex);
-        }
+        return user == null
+            ? new Schema { Username = Username, Exist = false }
+            : new Schema
+            {
+                Username = user.SamAccountName,
+                FullName = user.DisplayName,
+                Description = user.Description,
+                Disabled = !user.Enabled,
+                PasswordNeverExpires = user.PasswordNeverExpires,
+                PasswordChangeNotAllowed = user.UserCannotChangePassword,
+                PasswordChangeRequired = IsPasswordChangeRequired(user)
+            };
     }
 
-    public static bool UserExists(string userName)
+    public static bool UserExists(string Username)
+    {
+        return UserExistsInternal(Username);
+    }
+
+    private static bool UserExistsInternal(string Username)
     {
         try
         {
             using var context = new PrincipalContext(ContextType.Machine);
-            using var user = UserPrincipal.FindByIdentity(context, userName);
+            using var user = UserPrincipal.FindByIdentity(context, Username);
             return user != null;
         }
         catch
@@ -57,39 +54,38 @@ internal static class Utils
             using var context = new PrincipalContext(ContextType.Machine);
             using var user = new UserPrincipal(context);
 
-            user.SamAccountName = Schema.userName;
-            user.Name = Schema.userName;
+            user.SamAccountName = Schema.Username;
+            user.Name = Schema.Username;
 
-            if (!string.IsNullOrEmpty(Schema.fullName))
-                user.DisplayName = Schema.fullName;
+            if (!string.IsNullOrEmpty(Schema.FullName))
+                user.DisplayName = Schema.FullName;
 
-            if (!string.IsNullOrEmpty(Schema.description))
-                user.Description = Schema.description;
+            if (!string.IsNullOrEmpty(Schema.Description))
+                user.Description = Schema.Description;
 
-            if (!string.IsNullOrEmpty(Schema.password))
-                user.SetPassword(Schema.password);
+            if (!string.IsNullOrEmpty(Schema.Password))
+                user.SetPassword(Schema.Password);
 
-            if (Schema.disabled.HasValue)
-                user.Enabled = !Schema.disabled.Value;
+            if (Schema.Disabled.HasValue)
+                user.Enabled = !Schema.Disabled.Value;
 
-            if (Schema.passwordNeverExpires.HasValue)
-                user.PasswordNeverExpires = Schema.passwordNeverExpires.Value;
+            if (Schema.PasswordNeverExpires.HasValue)
+                user.PasswordNeverExpires = Schema.PasswordNeverExpires.Value;
 
-            if (Schema.passwordChangeNotAllowed.HasValue)
-                user.UserCannotChangePassword = Schema.passwordChangeNotAllowed.Value;
+            if (Schema.PasswordChangeNotAllowed.HasValue)
+                user.UserCannotChangePassword = Schema.PasswordChangeNotAllowed.Value;
 
             user.Save();
 
             // Handle password change required after creation
-            if (Schema.passwordChangeRequired == true)
+            if (Schema.PasswordChangeRequired == true)
             {
                 user.ExpirePasswordNow();
             }
         }
         catch (Exception ex)
         {
-            Logger.WriteError($"Failed to create user '{Schema.userName}': {ex.Message}");
-            Environment.Exit(5);
+            Logger.WriteError($"Failed to create user '{Schema.Username}': {ex.Message}");
         }
     }
 
@@ -98,61 +94,59 @@ internal static class Utils
         try
         {
             using var context = new PrincipalContext(ContextType.Machine);
-            using var user = UserPrincipal.FindByIdentity(context, Schema.userName);
-
-            if (user == null)
-                throw new InvalidOperationException($"User '{Schema.userName}' not found");
+            using var user = UserPrincipal.FindByIdentity(context, Schema.Username);
 
             // Update properties only if they're specified
-            if (!string.IsNullOrEmpty(Schema.fullName))
-                user.DisplayName = Schema.fullName;
+            if (!string.IsNullOrEmpty(Schema.FullName))
+                user.DisplayName = Schema.FullName;
 
-            if (!string.IsNullOrEmpty(Schema.description))
-                user.Description = Schema.description;
+            if (!string.IsNullOrEmpty(Schema.Description))
+                user.Description = Schema.Description;
 
-            if (!string.IsNullOrEmpty(Schema.password))
-                user.SetPassword(Schema.password);
+            if (!string.IsNullOrEmpty(Schema.Password))
+                user.SetPassword(Schema.Password);
 
-            if (Schema.disabled.HasValue)
-                user.Enabled = !Schema.disabled.Value;
+            if (Schema.Disabled.HasValue)
+                user.Enabled = !Schema.Disabled.Value;
 
-            if (Schema.passwordNeverExpires.HasValue)
-                user.PasswordNeverExpires = Schema.passwordNeverExpires.Value;
+            if (Schema.PasswordNeverExpires.HasValue)
+                user.PasswordNeverExpires = Schema.PasswordNeverExpires.Value;
 
-            if (Schema.passwordChangeNotAllowed.HasValue)
-                user.UserCannotChangePassword = Schema.passwordChangeNotAllowed.Value;
+            if (Schema.PasswordChangeNotAllowed.HasValue)
+                user.UserCannotChangePassword = Schema.PasswordChangeNotAllowed.Value;
 
             user.Save();
 
             // Handle password change required
-            if (Schema.passwordChangeRequired == true)
+            if (Schema.PasswordChangeRequired == true)
             {
                 user.ExpirePasswordNow();
             }
         }
         catch (Exception ex)
         {
-            Logger.WriteError($"Failed to update user '{Schema.userName}': {ex.Message}");
-            Environment.Exit(5);
+            Logger.WriteError($"Failed to update user '{Schema.Username}': {ex.Message}");
         }
     }
 
-    public static void DeleteUser(string userName)
+    public static void DeleteUser(string Username)
     {
         try
         {
             using var context = new PrincipalContext(ContextType.Machine);
-            using var user = UserPrincipal.FindByIdentity(context, userName);
+            using var user = UserPrincipal.FindByIdentity(context, Username);
 
             if (user == null)
-                throw new InvalidOperationException($"User '{userName}' not found");
+            {
+                Logger.WriteError($"User '{Username}' not found");
+                return;
+            }
 
             user.Delete();
         }
         catch (Exception ex)
         {
-            Logger.WriteError($"Failed to delete user '{userName}': {ex.Message}");
-            Environment.Exit(6);
+            Logger.WriteError($"Failed to delete user '{Username}': {ex.Message}");
         }
     }
 
@@ -184,14 +178,13 @@ internal static class Utils
                 {
                     users.Add(new Schema
                     {
-                        userName = user.SamAccountName,
-                        exist = true,
-                        fullName = user.DisplayName,
-                        description = user.Description,
-                        disabled = !user.Enabled,
-                        passwordNeverExpires = user.PasswordNeverExpires,
-                        passwordChangeNotAllowed = user.UserCannotChangePassword,
-                        passwordChangeRequired = IsPasswordChangeRequired(user)
+                        Username = user.SamAccountName,
+                        FullName = user.DisplayName,
+                        Description = user.Description,
+                        Disabled = !user.Enabled,
+                        PasswordNeverExpires = user.PasswordNeverExpires,
+                        PasswordChangeNotAllowed = user.UserCannotChangePassword,
+                        PasswordChangeRequired = IsPasswordChangeRequired(user)
                     });
 
                     user.Dispose();
@@ -201,7 +194,6 @@ internal static class Utils
         catch (Exception ex)
         {
             Logger.WriteError($"Failed to retrieve all users: {ex.Message}");
-            Environment.Exit(7);
         }
 
         return users;

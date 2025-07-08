@@ -3,6 +3,7 @@
 // terms of the MIT license.
 
 using System.Text.Json.Serialization;
+using System.DirectoryServices.AccountManagement;
 using OpenDsc.Resource;
 
 namespace OpenDsc.Resource.Windows.User;
@@ -13,31 +14,29 @@ public sealed class Resource : AotDscResource<Schema>, IGettable<Schema>, ISetta
     {
         Description = "Manage users in computer management.";
         Tags = ["Windows"];
-        ExitCodes.Add(4, new() { Exception = typeof(FileNotFoundException), Description = "Failed to get user information" });
-        ExitCodes.Add(5, new() { Exception = typeof(InvalidOperationException), Description = "Failed to create or update user" });
-        ExitCodes.Add(6, new() { Exception = typeof(InvalidOperationException), Description = "Failed to delete user" });
-        ExitCodes.Add(7, new() { Exception = typeof(InvalidOperationException), Description = "Failed to export users" });
+        ExitCodes.Add(4, new() { Exception = typeof(MultipleMatchesException), Description = "The user could not be found" });
+        ExitCodes.Add(5, new() { Exception = typeof(InvalidOperationException), Description = "An error occurred while processing the user" });
     }
 
     public Schema Get(Schema instance)
     {
-        return Utils.GetUser(instance.userName);
+        return Utils.GetUser(instance.Username);
     }
 
     public SetResult<Schema> Set(Schema instance)
     {
         try
         {
-            bool userExists = Utils.UserExists(instance.userName);
+            bool userExists = Utils.UserExists(instance.Username);
 
             if (!userExists)
             {
-                Logger.WriteTrace($"Creating user '{instance.userName}'");
+                Logger.WriteTrace($"Creating user '{instance.Username}'");
                 Utils.CreateUser(instance);
             }
             else
             {
-                Logger.WriteTrace($"Updating user '{instance.userName}'");
+                Logger.WriteTrace($"Updating user '{instance.Username}'");
                 Utils.UpdateUser(instance);
             }
 
@@ -46,7 +45,7 @@ public sealed class Resource : AotDscResource<Schema>, IGettable<Schema>, ISetta
         }
         catch (Exception ex)
         {
-            throw new InvalidOperationException($"Failed to set user '{instance.userName}': {ex.Message}", ex);
+            throw new InvalidOperationException($"Failed to set user '{instance.Username}': {ex.Message}", ex);
         }
     }
 
@@ -54,15 +53,15 @@ public sealed class Resource : AotDscResource<Schema>, IGettable<Schema>, ISetta
     {
         try
         {
-            if (Utils.UserExists(instance.userName))
+            if (Utils.UserExists(instance.Username))
             {
-                Logger.WriteTrace($"Deleting user '{instance.userName}'");
-                Utils.DeleteUser(instance.userName);
+                Logger.WriteTrace($"Deleting user '{instance.Username}'");
+                Utils.DeleteUser(instance.Username);
             }
         }
         catch (Exception ex)
         {
-            throw new InvalidOperationException($"Failed to delete user '{instance.userName}': {ex.Message}", ex);
+            throw new InvalidOperationException($"Failed to delete user '{instance.Username}': {ex.Message}", ex);
         }
     }
 
