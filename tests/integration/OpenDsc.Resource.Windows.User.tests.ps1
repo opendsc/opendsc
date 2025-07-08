@@ -7,7 +7,7 @@ BeforeDiscovery {
 
     $global:outputDirectory = Join-Path $PSScriptRoot '..' '..' 'output'
     Write-Verbose "Output directory: $outputDirectory" -Verbose
-        
+
     # TODO: Install .NET SDK if not present
     $arguments = @(
         'build', $buildProject,
@@ -25,7 +25,7 @@ BeforeDiscovery {
 Describe 'OpenDsc.Resource.Windows.User resource tests' {
 
     BeforeAll {
-        $oldPath = $env:Path   
+        $oldPath = $env:Path
         $env:Path += [System.IO.Path]::PathSeparator + (Join-Path $PSScriptRoot '..' '..' 'output')
     }
 
@@ -35,7 +35,7 @@ Describe 'OpenDsc.Resource.Windows.User resource tests' {
 
     It 'Get works for administrator user' {
         $in = @{
-            userName = 'Administrator'
+            username = 'Administrator'
         } | ConvertTo-Json
 
         $out = windows-user config get --input $in | ConvertFrom-Json
@@ -46,7 +46,7 @@ Describe 'OpenDsc.Resource.Windows.User resource tests' {
 
     It 'Creates a new user' {
         $in = @{
-            userName                 = 'TestUser'
+            username                 = 'TestUser'
             fullName                 = 'Test User'
             description              = 'This is a test user.'
             password                 = 'P@ssw0rd!'
@@ -70,7 +70,7 @@ Describe 'OpenDsc.Resource.Windows.User resource tests' {
 
     It 'Should update the description' {
         $in = @{
-            userName    = 'TestUser'
+            username    = 'TestUser'
             description = 'Updated description for Test User.'
         } | ConvertTo-Json
 
@@ -83,7 +83,7 @@ Describe 'OpenDsc.Resource.Windows.User resource tests' {
 
     It 'Should delete a user' {
         $in = @{
-            userName = 'TestUser'
+            username = 'TestUser'
         } | ConvertTo-Json
 
         windows-user config delete --input $in
