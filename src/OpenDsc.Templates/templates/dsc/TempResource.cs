@@ -1,16 +1,16 @@
+using System.Text.Json;
+
 using OpenDsc.Resource;
 
 namespace Temp;
 
+[DscResource("InsertOwner/Temp", Description = "Insert description", Tags = ["tag1", "tag2"])]
+[ExitCode(0, Description = "Success")]
+[ExitCode(1, Description = "Invalid parameter")]
+[ExitCode(2, Exception = typeof(Exception), Description = "Generic error")]
+[ExitCode(3, Exception = typeof(JsonException), Description = "Invalid JSON")]
 public sealed class TempResource : DscResource<TempSchema>, IGettable<TempSchema>
 {
-    public TempResource() : base("Temp")
-    {
-        Description = "Manage files.";
-        Tags = ["Windows"];
-        ExitCodes.Add(10, new() { Exception = typeof(FileNotFoundException), Description = "File not found" });
-    }
-
     public TempSchema Get(TempSchema instance)
     {
         return new TempSchema()
