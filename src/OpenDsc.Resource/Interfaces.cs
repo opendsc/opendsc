@@ -2,19 +2,10 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
-using NuGet.Versioning;
-
 namespace OpenDsc.Resource;
 
 public interface IDscResource<T>
 {
-    string ManifestSchema { get; }
-    string Type { get; }
-    string Description { get; }
-    SemanticVersion Version { get; }
-    IEnumerable<string> Tags { get; }
-    IDictionary<int, ResourceExitCode> ExitCodes { get; }
-    string FileName { get; }
     string GetSchema();
     string ToJson(T instance);
     T Parse(string json);

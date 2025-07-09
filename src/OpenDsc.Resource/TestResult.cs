@@ -4,14 +4,21 @@
 
 namespace OpenDsc.Resource;
 
-public sealed class TestResult<T>
+public sealed class TestResult<T>(T actualState)
 {
-    public T ActualState { get; }
+    public T ActualState { get; } = actualState;
 
     public HashSet<string>? DifferingProperties { get; set; }
+}
 
-    public TestResult(T actualState)
-    {
-        ActualState = actualState;
-    }
+[AttributeUsage(AttributeTargets.Class)]
+public sealed class TestReturnAttribute(TestReturn testReturn) : Attribute
+{
+    public TestReturn TestReturn { get; } = testReturn;
+}
+
+public enum TestReturn
+{
+    State,
+    StateAndDiff
 }

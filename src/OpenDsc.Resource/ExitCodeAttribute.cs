@@ -4,10 +4,11 @@
 
 namespace OpenDsc.Resource;
 
-public sealed class ResourceExitCode
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
+public sealed class ExitCodeAttribute(int exitCode) : Attribute
 {
+    public int ExitCode { get; } = exitCode;
     public string Description { get; set; } = string.Empty;
-
     public Type? Exception
     {
         get

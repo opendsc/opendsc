@@ -490,7 +490,7 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
 
         try
         {
-            var exitCode = ExitCodeResolver.GetExitCode(resource.ExitCodes, e.GetType());
+            var exitCode = ExitCodeResolver.GetExitCode(resource, e.GetType());
             Environment.Exit(exitCode);
         }
         catch
