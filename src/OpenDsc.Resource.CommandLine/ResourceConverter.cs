@@ -83,10 +83,11 @@ public class ResourceConverter<T> : JsonConverter<IDscResource<T>>
             writer.WriteEndObject();
             writer.WriteEndArray();
 
-            var setReturn = GetSetReturn(value);
-            if (setReturn != "none")
+            if (dscAttr.SetReturn != SetReturn.None)
             {
-                writer.WriteString("return", setReturn);
+                var setReturn = dscAttr.SetReturn.ToString();
+                var camelCaseValue = char.ToLowerInvariant(setReturn[0]) + setReturn.Substring(1);
+                writer.WriteString("return", camelCaseValue);
             }
 
             writer.WriteEndObject();
@@ -106,7 +107,11 @@ public class ResourceConverter<T> : JsonConverter<IDscResource<T>>
             writer.WriteBoolean("mandatory", true);
             writer.WriteEndObject();
             writer.WriteEndArray();
-            writer.WriteString("return", GetTestReturn(value));
+
+            var testReturn = dscAttr.TestReturn.ToString();
+            var camelCaseValue = char.ToLowerInvariant(testReturn[0]) + testReturn.Substring(1);
+            writer.WriteString("return", camelCaseValue);
+
             writer.WriteEndObject();
         }
 
@@ -161,51 +166,5 @@ public class ResourceConverter<T> : JsonConverter<IDscResource<T>>
         }
 
         writer.WriteEndObject();
-    }
-
-    private static string GetSetReturn(IDscResource<T> value)
-    {
-        var attr = value.GetType().GetCustomAttribute<SetReturnAttribute>();
-
-        if (attr is null)
-        {
-            return "none";
-        }
-
-        if (attr.SetReturn == SetReturn.None)
-        {
-            return "none";
-        }
-        else if (attr.SetReturn == SetReturn.State)
-        {
-            return "state";
-        }
-        else if (attr.SetReturn == SetReturn.StateAndDiff)
-        {
-            return "stateAndDiff";
-        }
-
-        throw new InvalidOperationException($"Invalid '{nameof(SetReturn)}' enum value.");
-    }
-
-    private static string GetTestReturn(IDscResource<T> value)
-    {
-        var attr = value.GetType().GetCustomAttribute<TestReturnAttribute>();
-
-        if (attr is null)
-        {
-            return "state";
-        }
-
-        if (attr.TestReturn == TestReturn.State)
-        {
-            return "state";
-        }
-        else if (attr.TestReturn == TestReturn.StateAndDiff)
-        {
-            return "stateAndDiff";
-        }
-
-        throw new InvalidOperationException($"Invalid '{nameof(TestReturn)}' enum value.");
     }
 }

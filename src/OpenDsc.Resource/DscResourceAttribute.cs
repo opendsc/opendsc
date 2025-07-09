@@ -36,6 +36,8 @@ public sealed class DscResourceAttribute : Attribute
     public string ManifestSchema { get; set; } = "https://aka.ms/dsc/schemas/v3/bundled/resource/manifest.json";
     public string Description { get; set; } = string.Empty;
     public string[] Tags { get; set; } = [];
+    public SetReturn SetReturn { get; set; } = SetReturn.None;
+    public TestReturn TestReturn { get; set; } = TestReturn.State;
 
     private SemanticVersion? _semanticVersion;
 
