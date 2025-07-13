@@ -19,4 +19,12 @@
     <PackageReference Include="System.ServiceProcess.ServiceController" Version="9.0.6" />
   </ItemGroup>
 
+  <Target Name="RunAfterPublish" AfterTargets="Publish">
+    <PropertyGroup>
+      <OutputFileName>$(TargetName).dsc.resource.json</OutputFileName>
+    </PropertyGroup>
+
+    <Exec Command="$(PublishDir)$(TargetName).exe manifest &gt; $(PublishDir)$(OutputFileName)" />
+  </Target>
+
 </Project>

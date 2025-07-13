@@ -48,8 +48,6 @@ public abstract class DscResource<T> : DscResourceBase<T>
 
     private JsonSerializerOptions? _serializerOptions;
 
-    protected DscResource(string type) : base(type) { }
-
     public override string GetSchema()
     {
         return SerializerOptions.GetJsonSchemaAsNode(typeof(T), ExporterOptions).ToString();

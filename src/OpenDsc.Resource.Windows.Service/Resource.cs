@@ -4,32 +4,26 @@
 
 using System.ComponentModel;
 using System.ServiceProcess;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace OpenDsc.Resource.Windows.Service;
 
-public sealed class Resource : AotDscResource<Schema>, IGettable<Schema>, IExportable<Schema>
+[DscResource("OpenDsc.Windows/Service", Description = "Manage Windows services.", Tags = ["windows", "service"])]
+[ExitCode(0, Description = "Success")]
+[ExitCode(1, Description = "Invalid parameter")]
+[ExitCode(2, Exception = typeof(Exception), Description = "Generic error")]
+[ExitCode(3, Exception = typeof(JsonException), Description = "Invalid JSON")]
+[ExitCode(4, Exception = typeof(Win32Exception), Description = "Failed to get services")]
+public sealed class Resource(JsonSerializerContext context) : AotDscResource<Schema>(context), IGettable<Schema>, IExportable<Schema>
 {
-    public Resource(JsonSerializerContext context) : base("OpenDsc.Windows/Service", context)
-    {
-        Description = "Manage Windows services.";
-        Tags = ["Windows"];
-        ExitCodes.Add(10, new() { Exception = typeof(Win32Exception), Description = "Failed to get services" });
-    }
-
     public Schema Get(Schema instance)
     {
-        foreach (var service in ServiceController.GetServices())
+        foreach (var service in Export())
         {
-            if (string.Equals(service.ServiceName, instance.Name, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(service.Name, instance.Name, StringComparison.OrdinalIgnoreCase))
             {
-                return new Schema()
-                {
-                    Name = service.ServiceName,
-                    DisplayName = service.DisplayName,
-                    Status = service.Status,
-                    StartType = service.StartType
-                };
+                return service;
             }
         }
 
