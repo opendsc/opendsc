@@ -4,14 +4,22 @@
 
 namespace OpenDsc.Resource;
 
-public sealed class SetResult<T>
+public sealed class SetResult<T>(T actualState)
 {
-    public T ActualState { get; }
+    public T ActualState { get; } = actualState;
 
     public HashSet<string>? ChangedProperties { get; set; }
+}
 
-    public SetResult(T actualState)
-    {
-        ActualState = actualState;
-    }
+[AttributeUsage(AttributeTargets.Class)]
+public sealed class SetReturnAttribute(SetReturn setReturn) : Attribute
+{
+    public SetReturn SetReturn { get; } = setReturn;
+}
+
+public enum SetReturn
+{
+    None,
+    State,
+    StateAndDiff
 }

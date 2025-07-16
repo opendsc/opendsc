@@ -2,45 +2,50 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
+using System.Reflection;
+
 namespace OpenDsc.Resource;
 
 public static class ExitCodeResolver
 {
-    public static int GetExitCode(IDictionary<int, ResourceExitCode> exitCodes, Type exceptionType)
+    public static int GetExitCode<T>(IDscResource<T> resource, Type exceptionType)
     {
-        ResourceExitCode? bestMatch = null;
+        var attrs = resource.GetType().GetCustomAttributes<ExitCodeAttribute>()
+                    ?? throw new InvalidOperationException($"No '{nameof(ExitCodeAttribute)}' attribute defined.");
+
+        Type? bestMatch = null;
         int? bestCode = null;
         int bestDepth = int.MaxValue;
 
-        foreach (var kvp in exitCodes)
+        foreach (var attr in attrs)
         {
-            var mappedType = kvp.Value.Exception;
-
-            if (mappedType == null)
-                continue;
-
-            if (mappedType == exceptionType)
+            if (attr.Exception == null)
             {
-                return kvp.Key;
+                continue;
+            }
+
+            if (attr.Exception == exceptionType)
+            {
+                return attr.ExitCode;
             }
 
             // 2. Assignable match (skip System.Exception unless nothing else matches)
-            if (mappedType.IsAssignableFrom(exceptionType))
+            if (attr.Exception.IsAssignableFrom(exceptionType))
             {
-                int depth = GetInheritanceDistance(mappedType, exceptionType);
+                int depth = GetInheritanceDistance(attr.Exception, exceptionType);
 
                 if (depth >= 0 && depth < bestDepth)
                 {
-                    if (mappedType != typeof(Exception)) // prefer non-generic matches
+                    if (attr.Exception != typeof(Exception)) // prefer non-generic matches
                     {
-                        bestMatch = kvp.Value;
-                        bestCode = kvp.Key;
+                        bestMatch = attr.Exception;
+                        bestCode = attr.ExitCode;
                         bestDepth = depth;
                     }
                     else if (bestMatch == null) // only accept Exception if no better match
                     {
-                        bestMatch = kvp.Value;
-                        bestCode = kvp.Key;
+                        bestMatch = attr.Exception;
+                        bestCode = attr.ExitCode;
                         bestDepth = depth;
                     }
                 }

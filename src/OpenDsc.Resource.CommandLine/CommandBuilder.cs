@@ -3,6 +3,7 @@
 // terms of the MIT license.
 
 using System.CommandLine;
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -370,14 +371,15 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
         }
 
         var result = iSettable.Set(instance);
+        var dscAttr = GetDscAttribute(resource);
 
-        if (result is not null)
+        if (result is not null && dscAttr.SetReturn != SetReturn.None)
         {
             var json = resource.ToJson(result.ActualState);
             Console.WriteLine(json);
         }
 
-        if (result?.ChangedProperties is not null)
+        if (result?.ChangedProperties is not null && dscAttr.SetReturn == SetReturn.StateAndDiff)
         {
             var json = JsonSerializer.Serialize(result.ChangedProperties, options);
             Console.WriteLine(json);
@@ -394,14 +396,15 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
         }
 
         var result = iSettable.Set(instance);
+        var dscAttr = GetDscAttribute(resource);
 
-        if (result is not null)
+        if (result is not null && dscAttr.SetReturn != SetReturn.None)
         {
             var json = resource.ToJson(result.ActualState);
             Console.WriteLine(json);
         }
 
-        if (result?.ChangedProperties is not null)
+        if (result?.ChangedProperties is not null && dscAttr.SetReturn == SetReturn.StateAndDiff)
         {
             var json = JsonSerializer.Serialize(result.ChangedProperties, typeof(HashSet<string>), context);
             Console.WriteLine(json);
@@ -425,7 +428,9 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
         var json = JsonSerializer.Serialize(result.ActualState, options);
         Console.WriteLine(json);
 
-        if (result?.DifferingProperties is not null)
+        var dscAttr = GetDscAttribute(resource);
+
+        if (result?.DifferingProperties is not null && dscAttr.TestReturn == TestReturn.StateAndDiff)
         {
             json = JsonSerializer.Serialize(result.DifferingProperties, options);
             Console.WriteLine(json);
@@ -445,7 +450,9 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
         var json = JsonSerializer.Serialize(result.ActualState, typeof(TSchema), context);
         Console.WriteLine(json);
 
-        if (result?.DifferingProperties is not null)
+        var dscAttr = GetDscAttribute(resource);
+
+        if (result?.DifferingProperties is not null && dscAttr.TestReturn == TestReturn.StateAndDiff)
         {
             json = JsonSerializer.Serialize(result.DifferingProperties, typeof(HashSet<string>), context);
             Console.WriteLine(json);
@@ -490,12 +497,18 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
 
         try
         {
-            var exitCode = ExitCodeResolver.GetExitCode(resource.ExitCodes, e.GetType());
+            var exitCode = ExitCodeResolver.GetExitCode(resource, e.GetType());
             Environment.Exit(exitCode);
         }
         catch
         {
             Environment.Exit(int.MaxValue);
         }
+    }
+
+    private static DscResourceAttribute GetDscAttribute(IDscResource<TSchema> resource)
+    {
+        return resource.GetType().GetCustomAttribute<DscResourceAttribute>()
+                      ?? throw new InvalidOperationException($"Resource does not have '{nameof(DscResourceAttribute)}' attribute.");
     }
 }

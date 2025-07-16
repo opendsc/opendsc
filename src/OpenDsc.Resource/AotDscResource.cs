@@ -9,37 +9,20 @@ using System.Text.Json.Serialization.Metadata;
 
 namespace OpenDsc.Resource;
 
-public abstract class AotDscResource<T> : DscResourceBase<T>
+public abstract class AotDscResource<T>(JsonSerializerContext context) : DscResourceBase<T>
 {
-    protected JsonSerializerContext Context { get; set; }
-
-    protected AotDscResource(string type, JsonSerializerContext context) : base(type)
-    {
-        Context = context;
-    }
+    protected JsonSerializerContext Context { get; set; } = context;
 
     public override string GetSchema()
     {
-        var typeInfo = Context.GetTypeInfo(typeof(T));
-
-        if (typeInfo is null)
-        {
-            throw new ArgumentException();
-        }
-
+        var typeInfo = Context.GetTypeInfo(typeof(T)) ?? throw new ArgumentException();
         return JsonSchemaExporter.GetJsonSchemaAsNode(typeInfo, ExporterOptions).ToJsonString();
     }
 
     public override T Parse(string json)
     {
-        var typeInfo = Context.GetTypeInfo(typeof(T));
-
-        if (typeInfo is null)
-        {
-            throw new ArgumentException();
-        }
-
-        return JsonSerializer.Deserialize<T>(json, (JsonTypeInfo<T>)typeInfo) ?? throw new InvalidDataException();
+        var typeInfo = Context.GetTypeInfo(typeof(T)) ?? throw new ArgumentException();
+        return JsonSerializer.Deserialize(json, (JsonTypeInfo<T>)typeInfo) ?? throw new InvalidDataException();
     }
 
     public override string ToJson(T instance)
