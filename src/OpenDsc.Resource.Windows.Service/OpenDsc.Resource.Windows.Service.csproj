@@ -7,6 +7,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PublishAot>true</PublishAot>
+    <InvariantGlobalization>true</InvariantGlobalization>
     <AssemblyName>windows-service</AssemblyName>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
   </PropertyGroup>
@@ -20,5 +21,13 @@
     <PackageReference Include="System.Management" Version="9.0.6" />
     <PackageReference Include="System.ServiceProcess.ServiceController" Version="9.0.6" />
   </ItemGroup>
+
+  <Target Name="RunAfterPublish" AfterTargets="Publish">
+    <PropertyGroup>
+      <OutputFileName>$(TargetName).dsc.resource.json</OutputFileName>
+    </PropertyGroup>
+
+    <Exec Command="$(PublishDir)$(TargetName).exe manifest &gt; $(PublishDir)$(OutputFileName)" />
+  </Target>
 
 </Project>
