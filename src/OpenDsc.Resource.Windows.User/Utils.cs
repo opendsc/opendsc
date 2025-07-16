@@ -83,9 +83,13 @@ internal static class Utils
                 user.ExpirePasswordNow();
             }
         }
+        catch (UnauthorizedAccessException ex)
+        {
+            Logger.WriteError($"Access denied when creating user '{Schema.Username}': {ex.Message}");
+        }
         catch (Exception ex)
         {
-            Logger.WriteError($"Failed to create user '{Schema.Username}': {ex.Message}");
+            Logger.WriteError($"Failed to create user '{Schema.Username}' - {ex.Message}");
         }
     }
 
@@ -123,9 +127,13 @@ internal static class Utils
                 user.ExpirePasswordNow();
             }
         }
+        catch (UnauthorizedAccessException ex)
+        {
+            Logger.WriteError($"Access denied when updating user '{Schema.Username}': {ex.Message}");
+        }
         catch (Exception ex)
         {
-            Logger.WriteError($"Failed to update user '{Schema.Username}': {ex.Message}");
+            Logger.WriteError($"Failed to update user '{Schema.Username}' - {ex.Message}");
         }
     }
 

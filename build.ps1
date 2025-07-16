@@ -65,6 +65,11 @@ if ($Publish.IsPresent) {
         '--output', $outputDirectory
     )
 
+    if ($Configuration -eq 'Release') {
+        $publishParams += '/p:DebugType=None'
+        $publishParams += '/p:DebugSymbols=False'
+    } 
+
     Write-Verbose "Publishing project '$ProjectName' to '$outputDirectory'" -Verbose
     & $dotnet @publishParams
 

@@ -4,20 +4,20 @@
 
 using System.Text.Json.Serialization;
 using System.DirectoryServices.AccountManagement;
-using OpenDsc.Resource;
+using System.Text.Json;
 
 namespace OpenDsc.Resource.Windows.User;
 
-public sealed class Resource : AotDscResource<Schema>, IGettable<Schema>, ISettable<Schema>, IDeletable<Schema>, IExportable<Schema>
+[DscResource("OpenDsc.Windows/User", Description = "Manage users.", Tags = ["windows", "user"])]
+[ExitCode(0, Description = "Success")]
+[ExitCode(1, Description = "Invalid parameter")]
+[ExitCode(2, Exception = typeof(Exception), Description = "Generic error")]
+[ExitCode(3, Exception = typeof(JsonException), Description = "Invalid JSON")]
+[ExitCode(4, Exception = typeof(MultipleMatchesException), Description = "The user could not be found")]
+[ExitCode(5, Exception = typeof(InvalidOperationException), Description = "An error occurred while processing the user")]
+[ExitCode(6, Exception = typeof(UnauthorizedAccessException), Description = "Access denied when creating/updating user")]
+public sealed class Resource(JsonSerializerContext context) : AotDscResource<Schema>(context), IGettable<Schema>, ISettable<Schema>, IDeletable<Schema>, IExportable<Schema>
 {
-    public Resource(JsonSerializerContext context) : base("OpenDsc.Windows/User", context)
-    {
-        Description = "Manage users in computer management.";
-        Tags = ["Windows"];
-        ExitCodes.Add(4, new() { Exception = typeof(MultipleMatchesException), Description = "The user could not be found" });
-        ExitCodes.Add(5, new() { Exception = typeof(InvalidOperationException), Description = "An error occurred while processing the user" });
-    }
-
     public Schema Get(Schema instance)
     {
         return Utils.GetUser(instance.Username);

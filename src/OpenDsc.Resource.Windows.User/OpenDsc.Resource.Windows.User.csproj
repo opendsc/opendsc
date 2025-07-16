@@ -12,8 +12,20 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="OpenDsc.Resource.CommandLine" Version="0.1.2" />
+    <ProjectReference Include="..\OpenDsc.Resource\OpenDsc.Resource.csproj" />
+    <ProjectReference Include="..\OpenDsc.Resource.CommandLine\OpenDsc.Resource.CommandLine.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="System.DirectoryServices.AccountManagement" Version="9.0.6" />
   </ItemGroup>
+
+  <Target Name="RunAfterPublish" AfterTargets="Publish">
+    <PropertyGroup>
+      <OutputFileName>$(TargetName).dsc.resource.json</OutputFileName>
+    </PropertyGroup>
+
+    <Exec Command="$(PublishDir)$(TargetName).exe manifest &gt; $(PublishDir)$(OutputFileName)" />
+  </Target>
 
 </Project>
