@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <Version>0.1.2</Version>
+    <Version>0.2.0</Version>
     <Authors>Thomas Nieto</Authors>
     <Copyright>© 2025 Thomas Nieto. All rights reserved.</Copyright>
     <Description>Microsoft DSC v3 resource core library.</Description>

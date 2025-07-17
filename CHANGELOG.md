@@ -10,11 +10,18 @@ and this project adheres to [Semantic Versioning][semver].
 
 ## [Unreleased]
 
+## [0.2.0] - 2025-07-16
+
+### Added
+
+- Add InvariantGlobalization to windows-service (#15)
+- Add attributes (#14)
+
 ## [0.1.2] - 2025-06-30
 
 ### Fixed
 
-Fix manifest generation when using JsonSerializerOptions (#10)
+- Fix manifest generation when using JsonSerializerOptions (#10)
 
 ## [0.1.1] - 2025-06-29
 
@@ -28,7 +35,8 @@ Fix manifest generation when using JsonSerializerOptions (#10)
 
 - Initial release
 
-[Unreleased]: https://github.com/opendsc/opendsc/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/opendsc/opendsc/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/opendsc/opendsc/releases/tag/v0.2.0
 [0.1.2]: https://github.com/opendsc/opendsc/releases/tag/v0.1.2
 [0.1.1]: https://github.com/opendsc/opendsc/releases/tag/v0.1.1
 [0.1.0]: https://github.com/opendsc/opendsc/releases/tag/v0.1.0
