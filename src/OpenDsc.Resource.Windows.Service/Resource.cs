@@ -16,7 +16,7 @@ namespace OpenDsc.Resource.Windows.Service;
 [ExitCode(2, Exception = typeof(Exception), Description = "Generic error")]
 [ExitCode(3, Exception = typeof(JsonException), Description = "Invalid JSON")]
 [ExitCode(4, Exception = typeof(Win32Exception), Description = "Failed to get services")]
-public sealed class Resource(JsonSerializerContext context) : AotDscResource<Schema>(context), IGettable<Schema>, IExportable<Schema>
+public sealed class Resource(JsonSerializerContext context) : AotDscResource<Schema>(context), IGettable<Schema>, IDeletable<Schema>, IExportable<Schema>
 {
     public Schema Get(Schema instance)
     {
