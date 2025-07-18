@@ -9,6 +9,7 @@
     <PublishAot>true</PublishAot>
     <InvariantGlobalization>true</InvariantGlobalization>
     <AssemblyName>windows-service</AssemblyName>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
   </PropertyGroup>
 
   <ItemGroup>
@@ -17,6 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="System.Management" Version="9.0.6" />
     <PackageReference Include="System.ServiceProcess.ServiceController" Version="9.0.6" />
   </ItemGroup>
 
