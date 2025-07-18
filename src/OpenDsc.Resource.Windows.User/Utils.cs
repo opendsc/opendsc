@@ -152,6 +152,11 @@ internal static class Utils
 
             user.Delete();
         }
+        catch (UnauthorizedAccessException ex)
+        {
+            Logger.WriteError($"Access denied when deleting user '{Username}': {ex.Message}");
+        }
+
         catch (Exception ex)
         {
             Logger.WriteError($"Failed to delete user '{Username}': {ex.Message}");
