@@ -1,5 +1,5 @@
 using System.Text.Json;
-using System.Text.Json.Serialization;
+
 using OpenDsc.Resource;
 
 namespace Temp;
@@ -9,7 +9,7 @@ namespace Temp;
 [ExitCode(1, Description = "Invalid parameter")]
 [ExitCode(2, Exception = typeof(Exception), Description = "Generic error")]
 [ExitCode(3, Exception = typeof(JsonException), Description = "Invalid JSON")]
-public sealed class TempResource(JsonSerializerContext context) : DscResource<TempSchema>(context), IGettable<TempSchema>
+public sealed class TempResource : DscResource<TempSchema>, IGettable<TempSchema>
 {
     public TempSchema Get(TempSchema instance)
     {
