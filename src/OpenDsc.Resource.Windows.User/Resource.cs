@@ -13,10 +13,10 @@ namespace OpenDsc.Resource.Windows.User;
 [ExitCode(1, Description = "Invalid parameter")]
 [ExitCode(2, Exception = typeof(Exception), Description = "Generic error")]
 [ExitCode(3, Exception = typeof(JsonException), Description = "Invalid JSON")]
-[ExitCode(4, Exception = typeof(MultipleMatchesException), Description = "The user could not be found")]
-[ExitCode(5, Exception = typeof(InvalidOperationException), Description = "An error occurred while processing the user")]
-[ExitCode(6, Exception = typeof(UnauthorizedAccessException), Description = "Access denied when creating/updating user")]
-public sealed class Resource(JsonSerializerContext context) : AotDscResource<Schema>(context), IGettable<Schema>, ISettable<Schema>, IDeletable<Schema>, IExportable<Schema>
+[ExitCode(4, Exception = typeof(InvalidOperationException), Description = "An error occurred while processing the user")]
+[ExitCode(5, Exception = typeof(UnauthorizedAccessException), Description = "Access denied")]
+
+public sealed class Resource : DscResource<Schema>, IGettable<Schema>, ISettable<Schema>, IDeletable<Schema>, IExportable<Schema>
 {
     public Schema Get(Schema instance)
     {
@@ -25,43 +25,29 @@ public sealed class Resource(JsonSerializerContext context) : AotDscResource<Sch
 
     public SetResult<Schema> Set(Schema instance)
     {
-        try
-        {
-            bool userExists = Utils.UserExists(instance.Username);
 
-            if (!userExists)
-            {
-                Logger.WriteTrace($"Creating user '{instance.Username}'");
-                Utils.CreateUser(instance);
-            }
-            else
-            {
-                Logger.WriteTrace($"Updating user '{instance.Username}'");
-                Utils.UpdateUser(instance);
-            }
-
-            // TODO: Mask the password
-            return new SetResult<Schema>(instance);
-        }
-        catch (Exception ex)
+        bool userExists = Utils.UserExists(instance.Username);
+        if (!userExists)
         {
-            throw new InvalidOperationException($"Failed to set user '{instance.Username}': {ex.Message}", ex);
+            Logger.WriteTrace($"Creating user '{instance.Username}'");
+            Utils.CreateUser(instance);
         }
+        else
+        {
+            Logger.WriteTrace($"Updating user '{instance.Username}'");
+            Utils.UpdateUser(instance);
+        }
+
+        // TODO: Mask the password
+        return new SetResult<Schema>(instance);
     }
 
     public void Delete(Schema instance)
     {
-        try
+        if (Utils.UserExists(instance.Username))
         {
-            if (Utils.UserExists(instance.Username))
-            {
-                Logger.WriteTrace($"Deleting user '{instance.Username}'");
-                Utils.DeleteUser(instance.Username);
-            }
-        }
-        catch (Exception ex)
-        {
-            throw new InvalidOperationException($"Failed to delete user '{instance.Username}': {ex.Message}", ex);
+            Logger.WriteTrace($"Deleting user '{instance.Username}'");
+            Utils.DeleteUser(instance.Username);
         }
     }
 

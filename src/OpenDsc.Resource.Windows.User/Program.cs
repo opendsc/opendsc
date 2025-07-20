@@ -6,6 +6,7 @@ using System.CommandLine;
 using OpenDsc.Resource.CommandLine;
 using OpenDsc.Resource.Windows.User;
 
-var resource = new Resource(SourceGenerationContext.Default);
-var command = CommandBuilder<Resource, Schema>.Build(resource, SourceGenerationContext.Default);
+var resource = new Resource();
+var command = CommandBuilder<Resource, Schema>.Build(resource, resource.SerializerOptions);
 return command.Invoke(args);
+
