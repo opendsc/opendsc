@@ -6,7 +6,6 @@ using System.ComponentModel;
 using System.ServiceProcess;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Management;
 
 namespace OpenDsc.Resource.Windows.Service;
 
@@ -33,28 +32,6 @@ public sealed class Resource(JsonSerializerContext context) : AotDscResource<Sch
             Name = instance.Name,
             Exist = false
         };
-    }
-
-    public void Delete(Schema instance)
-    {
-        using (var service = new ServiceController(instance.Name))
-        {
-            if (service.Status != ServiceControllerStatus.Stopped)
-            {
-                service.Stop();
-                service.WaitForStatus(ServiceControllerStatus.Stopped);
-            }
-        }
-
-        using var serviceObject = new ManagementObject($"Win32_Service.Name='{instance.Name}'");
-        var result = (uint)serviceObject.InvokeMethod("Delete", null, null)["ReturnValue"];
-        if (result != 0)
-        {
-            Logger.WriteError($"Failed to delete service '{instance.Name}'. Return code: {result}");
-            Environment.Exit(5);
-        }
-
-        Logger.WriteTrace($"Service '{instance.Name}' deleted successfully.");
     }
 
     public IEnumerable<Schema> Export()
