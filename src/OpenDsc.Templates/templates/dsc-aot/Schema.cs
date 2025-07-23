@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace Temp;
 
-public sealed class TempSchema
+public sealed class Schema
 {
     [JsonRequired]
     public string Name { get; set; } = string.Empty;

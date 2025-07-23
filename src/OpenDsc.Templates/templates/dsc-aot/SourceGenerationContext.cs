@@ -9,9 +9,9 @@ namespace Temp;
                              PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
                              UseStringEnumConverter = true,
                              DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-                             Converters = [typeof(ResourceConverter<TempSchema>)])]
-[JsonSerializable(typeof(IDscResource<TempSchema>))]
-[JsonSerializable(typeof(TempSchema))]
+                             Converters = [typeof(ResourceConverter<Schema>)])]
+[JsonSerializable(typeof(IDscResource<Schema>))]
+[JsonSerializable(typeof(Schema))]
 [JsonSerializable(typeof(HashSet<string>))]
 internal partial class SourceGenerationContext : JsonSerializerContext
 {
