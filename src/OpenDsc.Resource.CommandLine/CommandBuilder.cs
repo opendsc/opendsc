@@ -25,6 +25,9 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
         inputOption.AddAlias("-i");
         inputOption.IsRequired = true;
 
+        var whatIfOption = new Option<bool>("--what-if", "Preview changes without applying them.");
+        whatIfOption.AddAlias("-w");
+
         var configCommand = new Command("config", "Manage resource.");
 
         if (resource is IGettable<TSchema>)
@@ -34,7 +37,7 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
 
         if (resource is ISettable<TSchema>)
         {
-            BuildSetCommand(resource, options, inputOption, configCommand);
+            BuildSetCommand(resource, options, inputOption, whatIfOption, configCommand);
         }
 
         if (resource is ITestable<TSchema>)
@@ -44,7 +47,7 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
 
         if (resource is IDeletable<TSchema>)
         {
-            BuildDeleteCommand(resource, inputOption, configCommand);
+            BuildDeleteCommand(resource, inputOption, whatIfOption, configCommand);
         }
 
         if (resource is IExportable<TSchema>)
@@ -69,6 +72,9 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
         inputOption.AddAlias("-i");
         inputOption.IsRequired = true;
 
+        var whatIfOption = new Option<bool>("--what-if", "Preview changes without applying them.");
+        whatIfOption.AddAlias("-w");
+
         var configCommand = new Command("config", "Manage resource.");
 
         if (resource is IGettable<TSchema>)
@@ -78,7 +84,7 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
 
         if (resource is ISettable<TSchema>)
         {
-            BuildSetCommand(resource, context, inputOption, configCommand);
+            BuildSetCommand(resource, context, inputOption, whatIfOption, configCommand);
         }
 
         if (resource is ITestable<TSchema>)
@@ -88,7 +94,7 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
 
         if (resource is IDeletable<TSchema>)
         {
-            BuildDeleteCommand(resource, inputOption, configCommand);
+            BuildDeleteCommand(resource, inputOption, whatIfOption, configCommand);
         }
 
         if (resource is IExportable<TSchema>)
@@ -133,46 +139,48 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
     [RequiresDynamicCodeAttribute("JSON serialization and deserialization might require types that cannot be statically analyzed and might need runtime code generation. Use System.Text.Json source generation for native AOT applications.")]
     [RequiresUnreferencedCodeAttribute("JSON serialization and deserialization might require types that cannot be statically analyzed. Use the overload that takes a JsonTypeInfo or JsonSerializerContext, or make sure all of the required types are preserved.")]
 #endif
-    private static void BuildSetCommand(TResource resource, JsonSerializerOptions options, Option<string> inputOption, Command configCommand)
+    private static void BuildSetCommand(TResource resource, JsonSerializerOptions options, Option<string> inputOption, Option<bool> whatIfOption, Command configCommand)
     {
         var setCommand = new Command("set", "Set resource configuration.")
             {
-                inputOption
+                inputOption,
+                whatIfOption
             };
 
-        setCommand.SetHandler((string inputOption) =>
+        setCommand.SetHandler((string inputOption, bool whatIf) =>
         {
             try
             {
-                SetHandler(resource, inputOption, options);
+                SetHandler(resource, inputOption, options, whatIf);
             }
             catch (Exception e)
             {
                 HandleException(resource, e);
             }
-        }, inputOption);
+        }, inputOption, whatIfOption);
 
         configCommand.AddCommand(setCommand);
     }
 
-    private static void BuildSetCommand(TResource resource, JsonSerializerContext context, Option<string> inputOption, Command configCommand)
+    private static void BuildSetCommand(TResource resource, JsonSerializerContext context, Option<string> inputOption, Option<bool> whatIfOption, Command configCommand)
     {
         var setCommand = new Command("set", "Set resource configuration.")
             {
-                inputOption
+                inputOption,
+                whatIfOption
             };
 
-        setCommand.SetHandler((string inputOption) =>
+        setCommand.SetHandler((string inputOption, bool whatIf) =>
         {
             try
             {
-                SetHandler(resource, inputOption, context);
+                SetHandler(resource, inputOption, context, whatIf);
             }
             catch (Exception e)
             {
                 HandleException(resource, e);
             }
-        }, inputOption);
+        }, inputOption, whatIfOption);
 
         configCommand.AddCommand(setCommand);
     }
@@ -225,24 +233,25 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
         configCommand.AddCommand(testCommand);
     }
 
-    private static void BuildDeleteCommand(TResource resource, Option<string> inputOption, Command configCommand)
+    private static void BuildDeleteCommand(TResource resource, Option<string> inputOption, Option<bool> whatIfOption, Command configCommand)
     {
         var deleteCommand = new Command("delete", "Delete resource configuration.")
             {
-                inputOption
+                inputOption,
+                whatIfOption
             };
 
-        deleteCommand.SetHandler((string inputOption) =>
+        deleteCommand.SetHandler((string inputOption, bool whatIf) =>
         {
             try
             {
-                DeleteHandler(resource, inputOption);
+                DeleteHandler(resource, inputOption, whatIf);
             }
             catch (Exception e)
             {
                 HandleException(resource, e);
             }
-        }, inputOption);
+        }, inputOption, whatIfOption);
 
         configCommand.AddCommand(deleteCommand);
     }
@@ -361,13 +370,18 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
     [RequiresDynamicCodeAttribute("JSON serialization and deserialization might require types that cannot be statically analyzed and might need runtime code generation. Use System.Text.Json source generation for native AOT applications.")]
     [RequiresUnreferencedCodeAttribute("JSON serialization and deserialization might require types that cannot be statically analyzed. Use the overload that takes a JsonTypeInfo or JsonSerializerContext, or make sure all of the required types are preserved.")]
 #endif
-    private static void SetHandler(IDscResource<TSchema> resource, string inputOption, JsonSerializerOptions options)
+    private static void SetHandler(IDscResource<TSchema> resource, string inputOption, JsonSerializerOptions options, bool whatIf = false)
     {
         var instance = resource.Parse(inputOption);
 
         if (resource is not ISettable<TSchema> iSettable)
         {
             throw new NotImplementedException("Resource does not support Set capability.");
+        }
+
+        if (whatIf)
+        {
+            // TODO: Implement what-if logic for Set operation
         }
 
         var result = iSettable.Set(instance);
@@ -386,13 +400,18 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
         }
     }
 
-    private static void SetHandler(IDscResource<TSchema> resource, string inputOption, JsonSerializerContext context)
+    private static void SetHandler(IDscResource<TSchema> resource, string inputOption, JsonSerializerContext context, bool whatIf = false)
     {
         var instance = resource.Parse(inputOption);
 
         if (resource is not ISettable<TSchema> iSettable)
         {
             throw new NotImplementedException("Resource does not support Set capability.");
+        }
+
+        if (whatIf)
+        {
+            // TODO: Implement what-if logic for Set operation
         }
 
         var result = iSettable.Set(instance);
@@ -459,13 +478,18 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
         }
     }
 
-    private static void DeleteHandler(IDscResource<TSchema> resource, string inputOption)
+    private static void DeleteHandler(IDscResource<TSchema> resource, string inputOption, bool whatIf = false)
     {
         var instance = resource.Parse(inputOption);
 
         if (resource is not IDeletable<TSchema> iTDeletable)
         {
             throw new NotImplementedException("Resource does not support Delete capability.");
+        }
+
+        if (whatIf)
+        {
+            // TODO: Implement what-if logic for Delete operation
         }
 
         iTDeletable.Delete(instance);
