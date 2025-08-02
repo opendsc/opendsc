@@ -9,8 +9,12 @@
 
   <ItemGroup>
     <PackageReference Include="JsonSchema.Net.Generation" Version="5.0.4" />
-    <PackageReference Include="PowerShellStandard.Library" Version="5.1.1" PrivateAssets='All' />
+    <PackageReference Include="PowerShellStandard.Library" Version="5.1.1" PrivateAssets="All" />
     <PackageReference Include="System.Text.Json" Version="9.0.6" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\OpenDsc.Resource\OpenDsc.Resource.csproj" />
   </ItemGroup>
 
 </Project>
