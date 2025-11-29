@@ -3,7 +3,6 @@
 // terms of the MIT license.
 
 using System.CommandLine;
-using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -15,61 +14,30 @@ namespace OpenDsc.Resource.CommandLine;
 
 public static class CommandBuilder<TResource, TSchema> where TResource : IDscResource<TSchema>
 {
+
 #if NET6_0_OR_GREATER
     [RequiresDynamicCodeAttribute("JSON serialization and deserialization might require types that cannot be statically analyzed and might need runtime code generation. Use System.Text.Json source generation for native AOT applications.")]
     [RequiresUnreferencedCodeAttribute("JSON serialization and deserialization might require types that cannot be statically analyzed. Use the overload that takes a JsonTypeInfo or JsonSerializerContext, or make sure all of the required types are preserved.")]
 #endif
     public static RootCommand Build(TResource resource, JsonSerializerOptions options)
     {
-        var inputOption = new Option<string>("--input", "The JSON input.");
-        inputOption.AddAlias("-i");
-        inputOption.IsRequired = true;
-
-        var configCommand = new Command("config", "Manage resource.");
-
-        if (resource is IGettable<TSchema>)
-        {
-            BuildGetCommand(resource, inputOption, configCommand);
-        }
-
-        if (resource is ISettable<TSchema>)
-        {
-            BuildSetCommand(resource, options, inputOption, configCommand);
-        }
-
-        if (resource is ITestable<TSchema>)
-        {
-            BuildTestCommand(resource, options, inputOption, configCommand);
-        }
-
-        if (resource is IDeletable<TSchema>)
-        {
-            BuildDeleteCommand(resource, inputOption, configCommand);
-        }
-
-        if (resource is IExportable<TSchema>)
-        {
-            BuildExportCommand(resource, configCommand);
-        }
-
-        var schemaCommand = BuildSchemaCommand(resource);
-        var manifestCommand = BuildManifestCommand(resource, options);
-
-        var rootCommand = new RootCommand("Manage resource.");
-        rootCommand.AddCommand(configCommand);
-        rootCommand.AddCommand(schemaCommand);
-        rootCommand.AddCommand(manifestCommand);
-
-        return rootCommand;
+        var serializer = new OptionsSerializer<TSchema>(options);
+        return Build(resource, serializer);
     }
 
     public static RootCommand Build(TResource resource, JsonSerializerContext context)
     {
-        var inputOption = new Option<string>("--input", "The JSON input.");
+        var serializer = new ContextSerializer<TSchema>(context);
+        return Build(resource, serializer);
+    }
+
+    private static RootCommand Build(TResource resource, ISerializer<TSchema> serializer)
+    {
+        var inputOption = new Option<string>("--input", CommandDescriptions.InputOption);
         inputOption.AddAlias("-i");
         inputOption.IsRequired = true;
 
-        var configCommand = new Command("config", "Manage resource.");
+        var configCommand = new Command("config", CommandDescriptions.Config);
 
         if (resource is IGettable<TSchema>)
         {
@@ -78,12 +46,12 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
 
         if (resource is ISettable<TSchema>)
         {
-            BuildSetCommand(resource, inputOption, configCommand);
+            BuildSetCommand(resource, serializer, inputOption, configCommand);
         }
 
         if (resource is ITestable<TSchema>)
         {
-            BuildTestCommand(resource, context, inputOption, configCommand);
+            BuildTestCommand(resource, serializer, inputOption, configCommand);
         }
 
         if (resource is IDeletable<TSchema>)
@@ -97,9 +65,9 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
         }
 
         var schemaCommand = BuildSchemaCommand(resource);
-        var manifestCommand = BuildManifestCommand(resource);
+        var manifestCommand = BuildManifestCommand(resource, serializer);
 
-        var rootCommand = new RootCommand("Manage resource.");
+        var rootCommand = new RootCommand(CommandDescriptions.Root);
         rootCommand.AddCommand(configCommand);
         rootCommand.AddCommand(schemaCommand);
         rootCommand.AddCommand(manifestCommand);
@@ -109,16 +77,16 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
 
     private static void BuildGetCommand(TResource resource, Option<string> inputOption, Command configCommand)
     {
-        var getCommand = new Command("get", "Retrieve resource configuration.")
+        var getCommand = new Command("get", CommandDescriptions.Get)
             {
                 inputOption
             };
 
-        getCommand.SetHandler((string inputOption) =>
+        getCommand.SetHandler(inputOption =>
         {
             try
             {
-                GetHandler(resource, inputOption);
+                CommandHandlers<TResource, TSchema>.GetHandler(resource, inputOption);
             }
             catch (Exception e)
             {
@@ -129,22 +97,18 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
         configCommand.AddCommand(getCommand);
     }
 
-#if NET6_0_OR_GREATER
-    [RequiresDynamicCodeAttribute("JSON serialization and deserialization might require types that cannot be statically analyzed and might need runtime code generation. Use System.Text.Json source generation for native AOT applications.")]
-    [RequiresUnreferencedCodeAttribute("JSON serialization and deserialization might require types that cannot be statically analyzed. Use the overload that takes a JsonTypeInfo or JsonSerializerContext, or make sure all of the required types are preserved.")]
-#endif
-    private static void BuildSetCommand(TResource resource, JsonSerializerOptions options, Option<string> inputOption, Command configCommand)
+    private static void BuildSetCommand(TResource resource, ISerializer<TSchema> serializer, Option<string> inputOption, Command configCommand)
     {
-        var setCommand = new Command("set", "Set resource configuration.")
+        var setCommand = new Command("set", CommandDescriptions.Set)
             {
                 inputOption
             };
 
-        setCommand.SetHandler((string inputOption) =>
+        setCommand.SetHandler(inputOption =>
         {
             try
             {
-                SetHandler(resource, inputOption, options);
+                CommandHandlers<TResource, TSchema>.SetHandler(resource, inputOption, serializer);
             }
             catch (Exception e)
             {
@@ -155,66 +119,18 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
         configCommand.AddCommand(setCommand);
     }
 
-    private static void BuildSetCommand(TResource resource, Option<string> inputOption, Command configCommand)
+    private static void BuildTestCommand(TResource resource, ISerializer<TSchema> serializer, Option<string> inputOption, Command configCommand)
     {
-        var setCommand = new Command("set", "Set resource configuration.")
+        var testCommand = new Command("test", CommandDescriptions.Test)
             {
                 inputOption
             };
 
-        setCommand.SetHandler((string inputOption) =>
+        testCommand.SetHandler(inputOption =>
         {
             try
             {
-                SetHandler(resource, inputOption);
-            }
-            catch (Exception e)
-            {
-                HandleException(resource, e);
-            }
-        }, inputOption);
-
-        configCommand.AddCommand(setCommand);
-    }
-
-#if NET6_0_OR_GREATER
-    [RequiresDynamicCodeAttribute("JSON serialization and deserialization might require types that cannot be statically analyzed and might need runtime code generation. Use System.Text.Json source generation for native AOT applications.")]
-    [RequiresUnreferencedCodeAttribute("JSON serialization and deserialization might require types that cannot be statically analyzed. Use the overload that takes a JsonTypeInfo or JsonSerializerContext, or make sure all of the required types are preserved.")]
-#endif
-    private static void BuildTestCommand(TResource resource, JsonSerializerOptions options, Option<string> inputOption, Command configCommand)
-    {
-        var testCommand = new Command("test", "Test resource configuration.")
-            {
-                inputOption
-            };
-
-        testCommand.SetHandler((string inputOption) =>
-        {
-            try
-            {
-                TestHandler(resource, inputOption, options);
-            }
-            catch (Exception e)
-            {
-                HandleException(resource, e);
-            }
-        }, inputOption);
-
-        configCommand.AddCommand(testCommand);
-    }
-
-    private static void BuildTestCommand(TResource resource, JsonSerializerContext context, Option<string> inputOption, Command configCommand)
-    {
-        var testCommand = new Command("test", "Test resource configuration.")
-            {
-                inputOption
-            };
-
-        testCommand.SetHandler((string inputOption) =>
-        {
-            try
-            {
-                TestHandler(resource, inputOption, context);
+                CommandHandlers<TResource, TSchema>.TestHandler(resource, inputOption, serializer);
             }
             catch (Exception e)
             {
@@ -227,16 +143,16 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
 
     private static void BuildDeleteCommand(TResource resource, Option<string> inputOption, Command configCommand)
     {
-        var deleteCommand = new Command("delete", "Delete resource configuration.")
+        var deleteCommand = new Command("delete", CommandDescriptions.Delete)
             {
                 inputOption
             };
 
-        deleteCommand.SetHandler((string inputOption) =>
+        deleteCommand.SetHandler(inputOption =>
         {
             try
             {
-                DeleteHandler(resource, inputOption);
+                CommandHandlers<TResource, TSchema>.DeleteHandler(resource, inputOption);
             }
             catch (Exception e)
             {
@@ -249,13 +165,13 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
 
     private static void BuildExportCommand(TResource resource, Command configCommand)
     {
-        var exportCommand = new Command("export", "Export resource configuration.");
+        var exportCommand = new Command("export", CommandDescriptions.Export);
 
         exportCommand.SetHandler(() =>
         {
             try
             {
-                ExportHandler(resource);
+                CommandHandlers<TResource, TSchema>.ExportHandler(resource);
             }
             catch (Exception e)
             {
@@ -268,12 +184,12 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
 
     private static Command BuildSchemaCommand(TResource resource)
     {
-        var schemaCommand = new Command("schema", "Retrieve resource JSON schema.");
+        var schemaCommand = new Command("schema", CommandDescriptions.Schema);
         schemaCommand.SetHandler(() =>
         {
             try
             {
-                SchemaHandler(resource);
+                CommandHandlers<TResource, TSchema>.SchemaHandler(resource);
             }
             catch (Exception e)
             {
@@ -283,18 +199,14 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
         return schemaCommand;
     }
 
-#if NET6_0_OR_GREATER
-    [RequiresDynamicCodeAttribute("JSON serialization and deserialization might require types that cannot be statically analyzed and might need runtime code generation. Use System.Text.Json source generation for native AOT applications.")]
-    [RequiresUnreferencedCodeAttribute("JSON serialization and deserialization might require types that cannot be statically analyzed. Use the overload that takes a JsonTypeInfo or JsonSerializerContext, or make sure all of the required types are preserved.")]
-#endif
-    private static Command BuildManifestCommand(TResource resource, JsonSerializerOptions options)
+    private static Command BuildManifestCommand(TResource resource, ISerializer<TSchema> serializer)
     {
-        var manifestCommand = new Command("manifest", "Retrieve resource manifest.");
+        var manifestCommand = new Command("manifest", CommandDescriptions.Manifest);
         manifestCommand.SetHandler(() =>
         {
             try
             {
-                ManifestHandler(resource, options);
+                CommandHandlers<TResource, TSchema>.ManifestHandler(resource, serializer);
             }
             catch (Exception e)
             {
@@ -302,187 +214,6 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
             }
         });
         return manifestCommand;
-    }
-
-    private static Command BuildManifestCommand(TResource resource)
-    {
-        var manifestCommand = new Command("manifest", "Retrieve resource manifest.");
-        manifestCommand.SetHandler(() =>
-        {
-            try
-            {
-                ManifestHandler(resource);
-            }
-            catch (Exception e)
-            {
-                HandleException(resource, e);
-            }
-        });
-        return manifestCommand;
-    }
-
-    private static void SchemaHandler(IDscResource<TSchema> resource)
-    {
-        Console.WriteLine(resource.GetSchema());
-    }
-
-#if NET6_0_OR_GREATER
-    [RequiresDynamicCodeAttribute("JSON serialization and deserialization might require types that cannot be statically analyzed and might need runtime code generation. Use System.Text.Json source generation for native AOT applications.")]
-    [RequiresUnreferencedCodeAttribute("JSON serialization and deserialization might require types that cannot be statically analyzed. Use the overload that takes a JsonTypeInfo or JsonSerializerContext, or make sure all of the required types are preserved.")]
-#endif
-    private static void ManifestHandler(IDscResource<TSchema> resource, JsonSerializerOptions options)
-    {
-        var manifest = ManifestBuilder.Build(resource);
-        var json = JsonSerializer.Serialize(manifest, options);
-        Console.WriteLine(json);
-    }
-
-    private static void ManifestHandler(IDscResource<TSchema> resource)
-    {
-        var manifest = ManifestBuilder.Build(resource);
-        var json = JsonSerializer.Serialize(manifest, typeof(DscResourceManifest), SourceGenerationContext.Default);
-        Console.WriteLine(json);
-    }
-
-    private static void GetHandler(IDscResource<TSchema> resource, string inputOption)
-    {
-        var instance = resource.Parse(inputOption);
-
-        if (resource is not IGettable<TSchema> iGettable)
-        {
-            throw new NotImplementedException("Resource does not support Get capability.");
-        }
-
-        var result = iGettable.Get(instance);
-        Console.WriteLine(resource.ToJson(result));
-    }
-
-#if NET6_0_OR_GREATER
-    [RequiresDynamicCodeAttribute("JSON serialization and deserialization might require types that cannot be statically analyzed and might need runtime code generation. Use System.Text.Json source generation for native AOT applications.")]
-    [RequiresUnreferencedCodeAttribute("JSON serialization and deserialization might require types that cannot be statically analyzed. Use the overload that takes a JsonTypeInfo or JsonSerializerContext, or make sure all of the required types are preserved.")]
-#endif
-    private static void SetHandler(IDscResource<TSchema> resource, string inputOption, JsonSerializerOptions options)
-    {
-        var instance = resource.Parse(inputOption);
-
-        if (resource is not ISettable<TSchema> iSettable)
-        {
-            throw new NotImplementedException("Resource does not support Set capability.");
-        }
-
-        var result = iSettable.Set(instance);
-        var dscAttr = GetDscAttribute(resource);
-
-        if (result is not null && dscAttr.SetReturn != SetReturn.None)
-        {
-            var json = resource.ToJson(result.ActualState);
-            Console.WriteLine(json);
-        }
-
-        if (result?.ChangedProperties is not null && dscAttr.SetReturn == SetReturn.StateAndDiff)
-        {
-            var json = JsonSerializer.Serialize(result.ChangedProperties, options);
-            Console.WriteLine(json);
-        }
-    }
-
-    private static void SetHandler(IDscResource<TSchema> resource, string inputOption)
-    {
-        var instance = resource.Parse(inputOption);
-
-        if (resource is not ISettable<TSchema> iSettable)
-        {
-            throw new NotImplementedException("Resource does not support Set capability.");
-        }
-
-        var result = iSettable.Set(instance);
-        var dscAttr = GetDscAttribute(resource);
-
-        if (result is not null && dscAttr.SetReturn != SetReturn.None)
-        {
-            var json = resource.ToJson(result.ActualState);
-            Console.WriteLine(json);
-        }
-
-        if (result?.ChangedProperties is not null && dscAttr.SetReturn == SetReturn.StateAndDiff)
-        {
-            var json = JsonSerializer.Serialize(result.ChangedProperties, typeof(HashSet<string>), SourceGenerationContext.Default);
-            Console.WriteLine(json);
-        }
-    }
-
-#if NET6_0_OR_GREATER
-    [RequiresDynamicCodeAttribute("JSON serialization and deserialization might require types that cannot be statically analyzed and might need runtime code generation. Use System.Text.Json source generation for native AOT applications.")]
-    [RequiresUnreferencedCodeAttribute("JSON serialization and deserialization might require types that cannot be statically analyzed. Use the overload that takes a JsonTypeInfo or JsonSerializerContext, or make sure all of the required types are preserved.")]
-#endif
-    private static void TestHandler(IDscResource<TSchema> resource, string inputOption, JsonSerializerOptions options)
-    {
-        var instance = resource.Parse(inputOption);
-
-        if (resource is not ITestable<TSchema> iTestable)
-        {
-            throw new NotImplementedException("Resource does not support Test capability.");
-        }
-
-        var result = iTestable.Test(instance);
-        var json = JsonSerializer.Serialize(result.ActualState, options);
-        Console.WriteLine(json);
-
-        var dscAttr = GetDscAttribute(resource);
-
-        if (result?.DifferingProperties is not null && dscAttr.TestReturn == TestReturn.StateAndDiff)
-        {
-            json = JsonSerializer.Serialize(result.DifferingProperties, options);
-            Console.WriteLine(json);
-        }
-    }
-
-    private static void TestHandler(IDscResource<TSchema> resource, string inputOption, JsonSerializerContext context)
-    {
-        var instance = resource.Parse(inputOption);
-
-        if (resource is not ITestable<TSchema> iTestable)
-        {
-            throw new NotImplementedException("Resource does not support Test capability.");
-        }
-
-        var result = iTestable.Test(instance);
-        var json = JsonSerializer.Serialize(result.ActualState, typeof(TSchema), context);
-        Console.WriteLine(json);
-
-        var dscAttr = GetDscAttribute(resource);
-
-        if (result?.DifferingProperties is not null && dscAttr.TestReturn == TestReturn.StateAndDiff)
-        {
-            json = JsonSerializer.Serialize(result.DifferingProperties, typeof(HashSet<string>), SourceGenerationContext.Default);
-            Console.WriteLine(json);
-        }
-    }
-
-    private static void DeleteHandler(IDscResource<TSchema> resource, string inputOption)
-    {
-        var instance = resource.Parse(inputOption);
-
-        if (resource is not IDeletable<TSchema> iTDeletable)
-        {
-            throw new NotImplementedException("Resource does not support Delete capability.");
-        }
-
-        iTDeletable.Delete(instance);
-    }
-
-    private static void ExportHandler(IDscResource<TSchema> resource)
-    {
-        if (resource is not IExportable<TSchema> iExportable)
-        {
-            throw new NotImplementedException("Resource does not support Export capability.");
-        }
-
-        foreach (var instance in iExportable.Export())
-        {
-            var json = resource.ToJson(instance);
-            Console.WriteLine(json);
-        }
     }
 
     private static void HandleException(TResource resource, Exception e)
@@ -504,11 +235,5 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
         {
             Environment.Exit(int.MaxValue);
         }
-    }
-
-    private static DscResourceAttribute GetDscAttribute(IDscResource<TSchema> resource)
-    {
-        return resource.GetType().GetCustomAttribute<DscResourceAttribute>()
-                      ?? throw new InvalidOperationException($"Resource does not have '{nameof(DscResourceAttribute)}' attribute.");
     }
 }
