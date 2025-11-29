@@ -18,7 +18,7 @@ namespace OpenDsc.Resource;
 #endif
 public static class DscJsonSerializerSettings
 {
-    public static JsonSerializerOptions Default => new JsonSerializerOptions()
+    public static JsonSerializerOptions Default => new()
     {
         // DSC requires JSON lines for most output
         WriteIndented = false,

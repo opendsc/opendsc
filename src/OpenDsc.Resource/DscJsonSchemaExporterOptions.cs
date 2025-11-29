@@ -8,7 +8,7 @@ namespace OpenDsc.Resource;
 
 public static class DscJsonSchemaExporterOptions
 {
-    public static JsonSchemaExporterOptions Default => new JsonSchemaExporterOptions()
+    public static JsonSchemaExporterOptions Default => new()
     {
         TreatNullObliviousAsNonNullable = true
     };
