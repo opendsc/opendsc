@@ -14,11 +14,9 @@ namespace OpenDsc.Resource.CommandLine;
 [RequiresDynamicCode("JSON serialization and deserialization might require types that cannot be statically analyzed and might need runtime code generation. Use System.Text.Json source generation for native AOT applications.")]
 [RequiresUnreferencedCode("JSON serialization and deserialization might require types that cannot be statically analyzed. Use the overload that takes a JsonTypeInfo or JsonSerializerContext, or make sure all of the required types are preserved.")]
 #endif
-internal class OptionsSerializer<TSchema> : ISerializer<TSchema>
+internal class OptionsSerializer<TSchema>(JsonSerializerOptions options) : ISerializer<TSchema>
 {
-    private readonly JsonSerializerOptions _options;
-
-    public OptionsSerializer(JsonSerializerOptions options) => _options = options;
+    private readonly JsonSerializerOptions _options = options;
 
     public string Serialize(TSchema item) => JsonSerializer.Serialize(item, _options);
     public string SerializeManifest(DscResourceManifest manifest) => JsonSerializer.Serialize(manifest, _options);

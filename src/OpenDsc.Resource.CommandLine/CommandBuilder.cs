@@ -33,9 +33,11 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
 
     private static RootCommand Build(TResource resource, ISerializer<TSchema> serializer)
     {
-        var inputOption = new Option<string>("--input", CommandDescriptions.InputOption);
-        inputOption.AddAlias("-i");
-        inputOption.IsRequired = true;
+        var inputOption = new Option<string>("--input", "-i")
+        {
+            Description = CommandDescriptions.InputOption,
+            Required = true
+        };
 
         var configCommand = new Command("config", CommandDescriptions.Config);
 
@@ -68,9 +70,9 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
         var manifestCommand = BuildManifestCommand(resource, serializer);
 
         var rootCommand = new RootCommand(CommandDescriptions.Root);
-        rootCommand.AddCommand(configCommand);
-        rootCommand.AddCommand(schemaCommand);
-        rootCommand.AddCommand(manifestCommand);
+        rootCommand.Subcommands.Add(configCommand);
+        rootCommand.Subcommands.Add(schemaCommand);
+        rootCommand.Subcommands.Add(manifestCommand);
 
         return rootCommand;
     }
@@ -82,19 +84,21 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
                 inputOption
             };
 
-        getCommand.SetHandler(inputOption =>
+        getCommand.SetAction(parseResult =>
         {
             try
             {
-                CommandHandlers<TResource, TSchema>.GetHandler(resource, inputOption);
+                var input = parseResult.GetValue(inputOption)!;
+                CommandHandlers<TResource, TSchema>.GetHandler(resource, input);
             }
             catch (Exception e)
             {
                 HandleException(resource, e);
             }
-        }, inputOption);
+            return 0;
+        });
 
-        configCommand.AddCommand(getCommand);
+        configCommand.Subcommands.Add(getCommand);
     }
 
     private static void BuildSetCommand(TResource resource, ISerializer<TSchema> serializer, Option<string> inputOption, Command configCommand)
@@ -104,19 +108,21 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
                 inputOption
             };
 
-        setCommand.SetHandler(inputOption =>
+        setCommand.SetAction(parseResult =>
         {
             try
             {
-                CommandHandlers<TResource, TSchema>.SetHandler(resource, inputOption, serializer);
+                var input = parseResult.GetValue(inputOption)!;
+                CommandHandlers<TResource, TSchema>.SetHandler(resource, input, serializer);
             }
             catch (Exception e)
             {
                 HandleException(resource, e);
             }
-        }, inputOption);
+            return 0;
+        });
 
-        configCommand.AddCommand(setCommand);
+        configCommand.Subcommands.Add(setCommand);
     }
 
     private static void BuildTestCommand(TResource resource, ISerializer<TSchema> serializer, Option<string> inputOption, Command configCommand)
@@ -126,19 +132,21 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
                 inputOption
             };
 
-        testCommand.SetHandler(inputOption =>
+        testCommand.SetAction(parseResult =>
         {
             try
             {
-                CommandHandlers<TResource, TSchema>.TestHandler(resource, inputOption, serializer);
+                var input = parseResult.GetValue(inputOption)!;
+                CommandHandlers<TResource, TSchema>.TestHandler(resource, input, serializer);
             }
             catch (Exception e)
             {
                 HandleException(resource, e);
             }
-        }, inputOption);
+            return 0;
+        });
 
-        configCommand.AddCommand(testCommand);
+        configCommand.Subcommands.Add(testCommand);
     }
 
     private static void BuildDeleteCommand(TResource resource, Option<string> inputOption, Command configCommand)
@@ -148,26 +156,28 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
                 inputOption
             };
 
-        deleteCommand.SetHandler(inputOption =>
+        deleteCommand.SetAction(parseResult =>
         {
             try
             {
-                CommandHandlers<TResource, TSchema>.DeleteHandler(resource, inputOption);
+                var input = parseResult.GetValue(inputOption)!;
+                CommandHandlers<TResource, TSchema>.DeleteHandler(resource, input);
             }
             catch (Exception e)
             {
                 HandleException(resource, e);
             }
-        }, inputOption);
+            return 0;
+        });
 
-        configCommand.AddCommand(deleteCommand);
+        configCommand.Subcommands.Add(deleteCommand);
     }
 
     private static void BuildExportCommand(TResource resource, Command configCommand)
     {
         var exportCommand = new Command("export", CommandDescriptions.Export);
 
-        exportCommand.SetHandler(() =>
+        exportCommand.SetAction(parseResult =>
         {
             try
             {
@@ -177,15 +187,16 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
             {
                 HandleException(resource, e);
             }
+            return 0;
         });
 
-        configCommand.AddCommand(exportCommand);
+        configCommand.Subcommands.Add(exportCommand);
     }
 
     private static Command BuildSchemaCommand(TResource resource)
     {
         var schemaCommand = new Command("schema", CommandDescriptions.Schema);
-        schemaCommand.SetHandler(() =>
+        schemaCommand.SetAction(parseResult =>
         {
             try
             {
@@ -195,6 +206,7 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
             {
                 HandleException(resource, e);
             }
+            return 0;
         });
         return schemaCommand;
     }
@@ -202,7 +214,7 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
     private static Command BuildManifestCommand(TResource resource, ISerializer<TSchema> serializer)
     {
         var manifestCommand = new Command("manifest", CommandDescriptions.Manifest);
-        manifestCommand.SetHandler(() =>
+        manifestCommand.SetAction(parseResult =>
         {
             try
             {
@@ -212,6 +224,7 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
             {
                 HandleException(resource, e);
             }
+            return 0;
         });
         return manifestCommand;
     }

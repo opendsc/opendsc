@@ -7,11 +7,9 @@ using System.Text.Json.Serialization;
 
 namespace OpenDsc.Resource.CommandLine;
 
-internal class ContextSerializer<TSchema> : ISerializer<TSchema>
+internal class ContextSerializer<TSchema>(JsonSerializerContext context) : ISerializer<TSchema>
 {
-    private readonly JsonSerializerContext _context;
-
-    public ContextSerializer(JsonSerializerContext context) => _context = context;
+    private readonly JsonSerializerContext _context = context;
 
     public string Serialize(TSchema item) => JsonSerializer.Serialize(item, typeof(TSchema), _context);
     public string SerializeManifest(DscResourceManifest manifest) => JsonSerializer.Serialize(manifest, typeof(DscResourceManifest), SourceGenerationContext.Default);
