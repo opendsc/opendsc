@@ -21,7 +21,7 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
 #endif
     public static RootCommand Build(TResource resource, JsonSerializerOptions options)
     {
-        var inputOption = new Option<string>("--input", "The file JSON input.");
+        var inputOption = new Option<string>("--input", "The JSON input.");
         inputOption.AddAlias("-i");
         inputOption.IsRequired = true;
 
@@ -65,7 +65,7 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
 
     public static RootCommand Build(TResource resource, JsonSerializerContext context)
     {
-        var inputOption = new Option<string>("--input", "The file JSON input.");
+        var inputOption = new Option<string>("--input", "The JSON input.");
         inputOption.AddAlias("-i");
         inputOption.IsRequired = true;
 
@@ -78,7 +78,7 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
 
         if (resource is ISettable<TSchema>)
         {
-            BuildSetCommand(resource, context, inputOption, configCommand);
+            BuildSetCommand(resource, inputOption, configCommand);
         }
 
         if (resource is ITestable<TSchema>)
@@ -97,7 +97,7 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
         }
 
         var schemaCommand = BuildSchemaCommand(resource);
-        var manifestCommand = BuildManifestCommand(resource, context);
+        var manifestCommand = BuildManifestCommand(resource);
 
         var rootCommand = new RootCommand("Manage resource.");
         rootCommand.AddCommand(configCommand);
@@ -155,7 +155,7 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
         configCommand.AddCommand(setCommand);
     }
 
-    private static void BuildSetCommand(TResource resource, JsonSerializerContext context, Option<string> inputOption, Command configCommand)
+    private static void BuildSetCommand(TResource resource, Option<string> inputOption, Command configCommand)
     {
         var setCommand = new Command("set", "Set resource configuration.")
             {
@@ -166,7 +166,7 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
         {
             try
             {
-                SetHandler(resource, inputOption, context);
+                SetHandler(resource, inputOption);
             }
             catch (Exception e)
             {
@@ -304,14 +304,14 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
         return manifestCommand;
     }
 
-    private static Command BuildManifestCommand(TResource resource, JsonSerializerContext context)
+    private static Command BuildManifestCommand(TResource resource)
     {
         var manifestCommand = new Command("manifest", "Retrieve resource manifest.");
         manifestCommand.SetHandler(() =>
         {
             try
             {
-                ManifestHandler(resource, context);
+                ManifestHandler(resource);
             }
             catch (Exception e)
             {
@@ -332,15 +332,15 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
 #endif
     private static void ManifestHandler(IDscResource<TSchema> resource, JsonSerializerOptions options)
     {
-        options.Converters.Add(new ResourceConverter<TSchema>());
-
-        var json = JsonSerializer.Serialize(resource, typeof(IDscResource<TSchema>), options);
+        var manifest = ManifestBuilder.Build(resource);
+        var json = JsonSerializer.Serialize(manifest, options);
         Console.WriteLine(json);
     }
 
-    private static void ManifestHandler(IDscResource<TSchema> resource, JsonSerializerContext context)
+    private static void ManifestHandler(IDscResource<TSchema> resource)
     {
-        var json = JsonSerializer.Serialize(resource, typeof(IDscResource<TSchema>), context);
+        var manifest = ManifestBuilder.Build(resource);
+        var json = JsonSerializer.Serialize(manifest, typeof(DscResourceManifest), SourceGenerationContext.Default);
         Console.WriteLine(json);
     }
 
@@ -386,7 +386,7 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
         }
     }
 
-    private static void SetHandler(IDscResource<TSchema> resource, string inputOption, JsonSerializerContext context)
+    private static void SetHandler(IDscResource<TSchema> resource, string inputOption)
     {
         var instance = resource.Parse(inputOption);
 
@@ -406,7 +406,7 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
 
         if (result?.ChangedProperties is not null && dscAttr.SetReturn == SetReturn.StateAndDiff)
         {
-            var json = JsonSerializer.Serialize(result.ChangedProperties, typeof(HashSet<string>), context);
+            var json = JsonSerializer.Serialize(result.ChangedProperties, typeof(HashSet<string>), SourceGenerationContext.Default);
             Console.WriteLine(json);
         }
     }
@@ -454,7 +454,7 @@ public static class CommandBuilder<TResource, TSchema> where TResource : IDscRes
 
         if (result?.DifferingProperties is not null && dscAttr.TestReturn == TestReturn.StateAndDiff)
         {
-            json = JsonSerializer.Serialize(result.DifferingProperties, typeof(HashSet<string>), context);
+            json = JsonSerializer.Serialize(result.DifferingProperties, typeof(HashSet<string>), SourceGenerationContext.Default);
             Console.WriteLine(json);
         }
     }
