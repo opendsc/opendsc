@@ -10,7 +10,9 @@
   },
   "fenced-code-language": {
     "allowed_languages": [
+      "csharp",
       "powershell",
+      "sh",
       "text"
     ],
     "language_only": true
