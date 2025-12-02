@@ -4,9 +4,11 @@
 
 using System.CommandLine;
 
+using OpenDsc.Resource;
 using OpenDsc.Resource.CommandLine;
-using OpenDsc.Resource.Windows.Service;
+using TestResource.Options;
 
-var resource = new Resource(SourceGenerationContext.Default);
-var command = CommandBuilder<Resource, Schema>.Build(resource, SourceGenerationContext.Default);
+var options = DscJsonSerializerSettings.Default;
+var resource = new Resource(options);
+var command = CommandBuilder<Resource, Schema>.Build(resource, options);
 return command.Parse(args).Invoke();
