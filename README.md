@@ -13,7 +13,6 @@ manifests.
 | [OpenDsc.Templates] | DSC project templates |
 | [OpenDsc.Resource] | Core DSC resource implementation |
 | [OpenDsc.Resource.CommandLine] | CLI and resource manifest generator |
-| OpenDsc.Resource.Windows.Service | Example native AOT resource |
 
 [OpenDsc.Templates]: https://www.nuget.org/packages/OpenDsc.Templates
 [OpenDsc.Resource]: https://www.nuget.org/packages/OpenDsc.Templates
