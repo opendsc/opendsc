@@ -5,7 +5,7 @@ A C# library for building Microsoft DSC v3 resources with ease.
 ## Features
 
 - 🚀 Quick scaffolding with project templates
-- 📦 Supports .NET Standard 2.0, .NET 8, and .NET 9
+- 📦 Supports .NET Standard 2.0, .NET 8, and .NET 9, and .NET 10
 - ⚡ Native AOT compilation support
 - 🔧 Automatic CLI generation
 - 📋 Automatic JSON schema generation
