@@ -67,6 +67,7 @@ public class ManifestExportMethod
 
 public class JsonInputArg
 {
+    [JsonPropertyName("jsonInputArg")]
     public string Arg { get; set; } = string.Empty;
 
     public bool? Mandatory { get; set; }
