@@ -1,8 +1,10 @@
 Describe 'TestResource.Aot' {
     BeforeAll {
-        $publishPath = Join-Path $PSScriptRoot 'TestResource.Aot\bin\Release\net9.0\win-x64\publish'
+        $configuration = if ($env:BUILD_CONFIGURATION) { $env:BUILD_CONFIGURATION } else { 'Release' }
+        $publishPath = Join-Path $PSScriptRoot "TestResource.Aot\bin\$configuration\*\*\publish" |
+            Resolve-Path | Select-Object -ExpandProperty ProviderPath
         $env:DSC_RESOURCE_PATH = $publishPath
-        $script:tempTestFile = Join-Path $TestDrive "test-file.txt"
+        $script:tempTestFile = Join-Path $TestDrive 'test-file.txt'
     }
 
     Context 'Discovery' {
@@ -91,7 +93,7 @@ Describe 'TestResource.Aot' {
 
     Context 'Get Operation' {
         BeforeEach {
-            Set-Content -Path $tempTestFile -Value "test content"
+            Set-Content -Path $tempTestFile -Value 'test content'
         }
 
         It 'Should not return _exist for existing file' {
@@ -101,7 +103,7 @@ Describe 'TestResource.Aot' {
         }
 
         It 'Should return _exist=false for non-existing file' {
-            $nonExistentPath = Join-Path $TestDrive "nonexistent.txt"
+            $nonExistentPath = Join-Path $TestDrive 'nonexistent.txt'
             $jsonInput = @{ path = $nonExistentPath } | ConvertTo-Json -Compress
             $result = dsc resource get -r 'OpenDsc.Test/AotFile' --input $jsonInput | ConvertFrom-Json
             $result.actualState._exist | Should -Be $false
@@ -110,7 +112,7 @@ Describe 'TestResource.Aot' {
 
     Context 'Test Operation' {
         BeforeEach {
-            Set-Content -Path $tempTestFile -Value "test content"
+            Set-Content -Path $tempTestFile -Value 'test content'
         }
 
         It 'Should return inDesiredState=true when file exists' {
@@ -121,14 +123,14 @@ Describe 'TestResource.Aot' {
         }
 
         It 'Should return inDesiredState=false when file does not exist' {
-            $nonExistentPath = Join-Path $TestDrive "nonexistent.txt"
+            $nonExistentPath = Join-Path $TestDrive 'nonexistent.txt'
             $jsonInput = @{ path = $nonExistentPath } | ConvertTo-Json -Compress
             $result = dsc resource test -r 'OpenDsc.Test/AotFile' --input $jsonInput | ConvertFrom-Json
             $result.inDesiredState | Should -Be $false
         }
 
         It 'Should return differingProperties when not in desired state' {
-            $nonExistentPath = Join-Path $TestDrive "nonexistent.txt"
+            $nonExistentPath = Join-Path $TestDrive 'nonexistent.txt'
             $jsonInput = @{ path = $nonExistentPath } | ConvertTo-Json -Compress
             $result = dsc resource test -r 'OpenDsc.Test/AotFile' --input $jsonInput | ConvertFrom-Json
             $result.differingProperties | Should -Contain '_exist'
@@ -152,7 +154,7 @@ Describe 'TestResource.Aot' {
         }
 
         It 'Should delete file when _exist=false' {
-            Set-Content -Path $tempTestFile -Value "test content"
+            Set-Content -Path $tempTestFile -Value 'test content'
             $jsonInput = @{ path = $tempTestFile; _exist = $false } | ConvertTo-Json -Compress
             $result = dsc resource set -r 'OpenDsc.Test/AotFile' --input $jsonInput | ConvertFrom-Json
             Test-Path $tempTestFile | Should -Be $false
@@ -160,7 +162,7 @@ Describe 'TestResource.Aot' {
         }
 
         It 'Should not modify existing file when _exist is omitted' {
-            Set-Content -Path $tempTestFile -Value "test content"
+            Set-Content -Path $tempTestFile -Value 'test content'
             $jsonInput = @{ path = $tempTestFile } | ConvertTo-Json -Compress
             $result = dsc resource set -r 'OpenDsc.Test/AotFile' --input $jsonInput | ConvertFrom-Json
             Test-Path $tempTestFile | Should -Be $true
@@ -170,7 +172,7 @@ Describe 'TestResource.Aot' {
 
     Context 'Delete Operation' {
         BeforeEach {
-            Set-Content -Path $tempTestFile -Value "test content"
+            Set-Content -Path $tempTestFile -Value 'test content'
         }
 
         It 'Should delete existing file' {
@@ -180,7 +182,7 @@ Describe 'TestResource.Aot' {
         }
 
         It 'Should not error when deleting non-existent file' {
-            $nonExistentPath = Join-Path $TestDrive "nonexistent.txt"
+            $nonExistentPath = Join-Path $TestDrive 'nonexistent.txt'
             $jsonInput = @{ path = $nonExistentPath } | ConvertTo-Json -Compress
             { dsc resource delete -r 'OpenDsc.Test/AotFile' --input $jsonInput } | Should -Not -Throw
         }
@@ -188,10 +190,10 @@ Describe 'TestResource.Aot' {
 
     Context 'Export Operation' {
         BeforeAll {
-            $exportTestFile1 = Join-Path $TestDrive "test-export1.txt"
-            $exportTestFile2 = Join-Path $TestDrive "test-export2.txt"
-            Set-Content -Path $exportTestFile1 -Value "export test 1"
-            Set-Content -Path $exportTestFile2 -Value "export test 2"
+            $exportTestFile1 = Join-Path $TestDrive 'test-export1.txt'
+            $exportTestFile2 = Join-Path $TestDrive 'test-export2.txt'
+            Set-Content -Path $exportTestFile1 -Value 'export test 1'
+            Set-Content -Path $exportTestFile2 -Value 'export test 2'
             $script:exportResult = dsc resource export -r 'OpenDsc.Test/AotFile' | ConvertFrom-Json
         }
 
@@ -210,7 +212,7 @@ Describe 'TestResource.Aot' {
 
     Context 'Error Handling' {
         It 'Should handle invalid JSON input gracefully' {
-            dsc resource get -r 'OpenDsc.Test/AotFile' --input "invalid json" 2>&1 | Out-Null
+            dsc resource get -r 'OpenDsc.Test/AotFile' --input 'invalid json' 2>&1 | Out-Null
             $LASTEXITCODE | Should -Not -Be 0
         }
 

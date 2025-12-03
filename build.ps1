@@ -37,10 +37,30 @@ if (-not $SkipBuild) {
     if ($LASTEXITCODE -ne 0) {
         throw "Build failed with exit code $LASTEXITCODE"
     }
+
+    dotnet publish "$PSScriptRoot\tests\TestResource.Aot\TestResource.Aot.csproj" --configuration $Configuration
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "Publish TestResource.Aot failed with exit code $LASTEXITCODE"
+    }
+
+    dotnet publish "$PSScriptRoot\tests\TestResource.NonAot\TestResource.NonAot.csproj" --configuration $Configuration
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "Publish TestResource.NonAot failed with exit code $LASTEXITCODE"
+    }
+
+    dotnet publish "$PSScriptRoot\tests\TestResource.Options\TestResource.Options.csproj" --configuration $Configuration
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "Publish TestResource.Options failed with exit code $LASTEXITCODE"
+    }
 }
 
 if ($SkipTest) {
     exit 0
 }
+
+$env:BUILD_CONFIGURATION = $Configuration
 
 Invoke-Pester
