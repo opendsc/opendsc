@@ -32,7 +32,7 @@ param(
 $ErrorActionPreference = 'Stop'
 
 if (-not $SkipBuild) {
-    dotnet build "$PSScriptRoot\src\OpenDsc.sln" --configuration $Configuration
+    dotnet build "$PSScriptRoot\src" --configuration $Configuration
 
     if ($LASTEXITCODE -ne 0) {
         throw "Build failed with exit code $LASTEXITCODE"
