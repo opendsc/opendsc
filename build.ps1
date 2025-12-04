@@ -103,7 +103,8 @@ if ($InstallDsc) {
 
         Remove-Item $archive
 
-        $env:PATH += ";$PSScriptRoot/dsc"
+        $pathSeparator = if ($IsWindows) { ";" } else { ":" }
+        $env:PATH += "$pathSeparator$($PSScriptRoot)/dsc"
     }
 
     $dscVersion = dsc --version
