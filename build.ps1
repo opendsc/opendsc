@@ -10,6 +10,12 @@
     Skip running build.
 .PARAMETER SkipTest
     Skip running tests after building.
+.PARAMETER Pack
+    Pack NuGet packages after building.
+.PARAMETER InstallDsc
+    Install DSC CLI before running tests.
+.PARAMETER SkipPublish
+    Skip publishing test resources.
 .EXAMPLE
     .\build.ps1
     Builds and tests the solution in Release configuration.
@@ -17,8 +23,14 @@
     .\build.ps1 -Configuration Debug
     Builds and tests the solution in Debug configuration.
 .EXAMPLE
-    .\build.ps1 SkipTest
+    .\build.ps1 -SkipTest
     Builds the solution without running tests.
+.EXAMPLE
+    .\build.ps1 -Pack
+    Builds the solution and creates NuGet packages.
+.EXAMPLE
+    .\build.ps1 -InstallDsc
+    Builds the solution, installs DSC, and runs tests.
 #>
 param(
     [ValidateSet('Debug', 'Release')]
@@ -26,34 +38,85 @@ param(
 
     [switch] $SkipBuild,
 
-    [switch] $SkipTest
+    [switch] $SkipTest,
+
+    [switch] $Pack,
+
+    [switch] $InstallDsc
 )
 
 $ErrorActionPreference = 'Stop'
 
 if (-not $SkipBuild) {
-    dotnet build "$PSScriptRoot\src" --configuration $Configuration
+    dotnet publish $PSScriptRoot --configuration $Configuration
 
     if ($LASTEXITCODE -ne 0) {
         throw "Build failed with exit code $LASTEXITCODE"
     }
+}
 
-    dotnet publish "$PSScriptRoot\tests\TestResource.Aot\TestResource.Aot.csproj" --configuration $Configuration
+if ($Pack) {
+    dotnet pack $PSScriptRoot --configuration $Configuration --output "$PSScriptRoot\packages"
 
     if ($LASTEXITCODE -ne 0) {
-        throw "Publish TestResource.Aot failed with exit code $LASTEXITCODE"
+        throw "Pack failed with exit code $LASTEXITCODE"
+    }
+}
+
+if ($InstallDsc) {
+    if (Get-Command dsc -ErrorAction SilentlyContinue) {
+        Write-Host "DSC is already installed."
+    } else {
+        $release = Invoke-RestMethod -Uri 'https://api.github.com/repos/PowerShell/DSC/releases/latest'
+        $tag = $release.tag_name
+        $version = $tag -replace '^v', ''
+        Write-Host "Latest DSC version: $version"
+
+        if ($IsWindows) {
+            $platform = "x86_64-pc-windows-msvc"
+            $extension = "zip"
+        } elseif ($IsLinux) {
+            $platform = "x86_64-unknown-linux-gnu"
+            $extension = "tar.gz"
+        } elseif ($IsMacOS) {
+            $platform = "x86_64-apple-darwin"
+            $extension = "tar.gz"
+        }
+
+        $url = "https://github.com/PowerShell/DSC/releases/download/$tag/DSC-$version-$platform.$extension"
+        $archive = "dsc.$extension"
+
+        Invoke-WebRequest -Uri $url -OutFile $archive
+        New-Item -ItemType Directory -Path ./dsc -Force | Out-Null
+
+        if ($extension -eq "zip") {
+            Expand-Archive -Path $archive -DestinationPath ./dsc
+        } else {
+            tar -xzf $archive -C ./dsc
+            if (-not $IsWindows) {
+                chmod +x ./dsc/dsc
+            }
+        }
+
+        Remove-Item $archive
+
+        $env:PATH += ";$PSScriptRoot/dsc"
     }
 
-    dotnet publish "$PSScriptRoot\tests\TestResource.NonAot\TestResource.NonAot.csproj" --configuration $Configuration
+    $dscVersion = dsc --version
+    Write-Host "Installed DSC version: $dscVersion"
+}
 
-    if ($LASTEXITCODE -ne 0) {
-        throw "Publish TestResource.NonAot failed with exit code $LASTEXITCODE"
-    }
-
-    dotnet publish "$PSScriptRoot\tests\TestResource.Options\TestResource.Options.csproj" --configuration $Configuration
-
-    if ($LASTEXITCODE -ne 0) {
-        throw "Publish TestResource.Options failed with exit code $LASTEXITCODE"
+if (-not $IsWindows) {
+    $testExecutables = @(
+        "tests/TestResource.Aot/bin/Release/net10.0/publish/test-resource-aot",
+        "tests/TestResource.NonAot/bin/Release/net10.0/publish/test-resource-nonaot",
+        "tests/TestResource.Options/bin/Release/net10.0/publish/test-resource-options"
+    )
+    foreach ($exe in $testExecutables) {
+        if (Test-Path $exe) {
+            chmod +x $exe
+        }
     }
 }
 

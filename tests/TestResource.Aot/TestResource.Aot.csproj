@@ -10,6 +10,7 @@
     <PublishAot>true</PublishAot>
     <InvariantGlobalization>true</InvariantGlobalization>
     <IlcOptimizationPreference>Size</IlcOptimizationPreference>
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>
