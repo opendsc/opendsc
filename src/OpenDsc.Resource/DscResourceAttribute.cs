@@ -2,7 +2,7 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
-using System.Diagnostics;
+using System.Reflection;
 using System.Text.RegularExpressions;
 
 using NuGet.Versioning;
@@ -19,8 +19,9 @@ public sealed class DscResourceAttribute : Attribute
         {
             if (_semanticVersion is null)
             {
-                var version = Process.GetCurrentProcess().MainModule?.FileVersionInfo?.ProductVersion
-                    ?? throw new InvalidOperationException();
+                var version = Assembly.GetEntryAssembly()
+                    ?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+                    ?? throw new InvalidOperationException("Unable to retrieve assembly informational version.");
                 _semanticVersion = SemanticVersion.Parse(version);
             }
 

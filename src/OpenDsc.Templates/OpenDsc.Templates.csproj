@@ -7,7 +7,6 @@
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <ContentTargetFolders>content</ContentTargetFolders>
     <NoWarn>NU5128</NoWarn>
-    <Version>0.2.2</Version>
     <Description>Microsoft DSC v3 project templates.</Description>
   </PropertyGroup>
 
