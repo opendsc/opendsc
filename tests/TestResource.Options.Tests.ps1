@@ -132,11 +132,16 @@ Describe 'TestResource.Options' {
 
     Context 'Export Operation' {
         BeforeAll {
+            $env:TEST_EXPORT_DIR = $TestDrive
             $exportTestFile1 = Join-Path $TestDrive 'test-export1.txt'
             $exportTestFile2 = Join-Path $TestDrive 'test-export2.txt'
             Set-Content -Path $exportTestFile1 -Value 'export test 1'
             Set-Content -Path $exportTestFile2 -Value 'export test 2'
             $script:exportResult = dsc resource export -r 'OpenDsc.Test/OptionsFile' | ConvertFrom-Json
+        }
+
+        AfterAll {
+            $env:TEST_EXPORT_DIR = $null
         }
 
         It 'Should export all matching test files' {

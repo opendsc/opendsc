@@ -105,8 +105,8 @@ namespace TestResource.NonAot
 
     public IEnumerable<Schema> Export()
     {
-        var tempPath = Path.GetTempPath();
-        var files = Directory.GetFiles(tempPath, "test-*.txt", SearchOption.AllDirectories);
+        var searchPath = Environment.GetEnvironmentVariable("TEST_EXPORT_DIR") ?? Directory.GetCurrentDirectory();
+        var files = Directory.GetFiles(searchPath, "test-*.txt", SearchOption.TopDirectoryOnly);
 
         foreach (var file in files)
         {
