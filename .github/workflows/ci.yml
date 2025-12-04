@@ -35,24 +35,6 @@ jobs:
           name: nuget-packages
           path: ./packages/*.nupkg
 
-      - name: Upload Test Resources (AOT)
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-resource-aot
-          path: tests/TestResource.Aot/bin/Release/**/publish/
-
-      - name: Upload Test Resources (NonAot)
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-resource-nonaot
-          path: tests/TestResource.NonAot/bin/Release/**/publish/
-
-      - name: Upload Test Resources (Options)
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-resource-options
-          path: tests/TestResource.Options/bin/Release/**/publish/
-
   test:
     needs: build
     strategy:
@@ -68,29 +50,8 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Download Test Resources (AOT)
-        uses: actions/download-artifact@v4
-        with:
-          name: test-resource-aot
-          path: tests/TestResource.Aot/bin/Release/net10.0/publish/
-
-      - name: Download Test Resources (NonAot)
-        uses: actions/download-artifact@v4
-        with:
-          name: test-resource-nonaot
-          path: tests/TestResource.NonAot/bin/Release/net10.0/publish/
-
-      - name: Download Test Resources (Options)
-        uses: actions/download-artifact@v4
-        with:
-          name: test-resource-options
-          path: tests/TestResource.Options/bin/Release/net10.0/publish/
-
-      - name: Install Pester
-        run: Install-Module -Name Pester -Force -SkipPublisherCheck
-
       - name: Run Tests
-        run: .\build.ps1 -InstallDsc -SkipBuild -GitHubToken ${{ secrets.GITHUB_TOKEN }}
+        run: .\build.ps1 -InstallDsc -GitHubToken ${{ secrets.GITHUB_TOKEN }}
 
   publish:
     needs: test
