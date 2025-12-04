@@ -1,0 +1,17 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/src/">
+    <Project Path="src/OpenDsc.Resource.CommandLine/OpenDsc.Resource.CommandLine.csproj" />
+    <Project Path="src/OpenDsc.Resource/OpenDsc.Resource.csproj" />
+    <Project Path="src/OpenDsc.Templates/OpenDsc.Templates.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/TestResource.Aot/TestResource.Aot.csproj" />
+    <Project Path="tests/TestResource.NonAot/TestResource.NonAot.csproj" />
+    <Project Path="tests/TestResource.Options/TestResource.Options.csproj" />
+  </Folder>
+</Solution>
