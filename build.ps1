@@ -14,8 +14,8 @@
     Pack NuGet packages after building.
 .PARAMETER InstallDsc
     Install DSC CLI before running tests.
-.PARAMETER SkipPublish
-    Skip publishing test resources.
+.PARAMETER GitHubToken
+    GitHub token for API authentication to avoid rate limiting.
 .EXAMPLE
     .\build.ps1
     Builds and tests the solution in Release configuration.
@@ -42,7 +42,9 @@ param(
 
     [switch] $Pack,
 
-    [switch] $InstallDsc
+    [switch] $InstallDsc,
+
+    [string] $GitHubToken
 )
 
 $ErrorActionPreference = 'Stop'
@@ -67,7 +69,8 @@ if ($InstallDsc) {
     if (Get-Command dsc -ErrorAction SilentlyContinue) {
         Write-Host "DSC is already installed."
     } else {
-        $release = Invoke-RestMethod -Uri 'https://api.github.com/repos/PowerShell/DSC/releases/latest'
+        $headers = if ($GitHubToken) { @{Authorization = "Bearer $GitHubToken"} } else { $null }
+        $release = Invoke-RestMethod -Uri 'https://api.github.com/repos/PowerShell/DSC/releases/latest' -Headers $headers
         $tag = $release.tag_name
         $version = $tag -replace '^v', ''
         Write-Host "Latest DSC version: $version"

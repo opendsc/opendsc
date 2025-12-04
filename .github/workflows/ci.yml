@@ -90,7 +90,7 @@ jobs:
         run: Install-Module -Name Pester -Force -SkipPublisherCheck
 
       - name: Run Tests
-        run: .\build.ps1 -InstallDsc -SkipBuild
+        run: .\build.ps1 -InstallDsc -SkipBuild -GitHubToken ${{ secrets.GITHUB_TOKEN }}
 
   publish:
     needs: test
