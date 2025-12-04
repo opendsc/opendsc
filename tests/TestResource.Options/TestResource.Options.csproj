@@ -20,7 +20,7 @@
       <OutputFileName>$(TargetName).dsc.resource.json</OutputFileName>
     </PropertyGroup>
 
-    <Exec Command="$(PublishDir)$(TargetName).exe manifest &gt; $(PublishDir)$(OutputFileName)" />
+    <Exec Command="$(PublishDir)$(TargetName)$(ExeSuffix) manifest &gt; $(PublishDir)$(OutputFileName)" />
   </Target>
 
 </Project>
