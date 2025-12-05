@@ -114,7 +114,7 @@ if ($InstallDsc) {
 if (-not $IsWindows) {
     $testExecutables = @(
         "tests/TestResource.Aot/bin/Release/net10.0/publish/test-resource-aot",
-        "tests/TestResource.NonAot/bin/Release/net10.0/publish/test-resource-nonaot",
+        "tests/TestResource.NonAot/bin/Release/net10.0/publish/test-resource-non-aot",
         "tests/TestResource.Options/bin/Release/net10.0/publish/test-resource-options"
     )
     foreach ($exe in $testExecutables) {
