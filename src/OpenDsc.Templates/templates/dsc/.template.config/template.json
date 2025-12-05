@@ -10,5 +10,45 @@
     "tags": {
         "language": "C#",
         "type": "project"
-    }
+    },
+    "symbols": {
+        "aot": {
+            "type": "parameter",
+            "datatype": "bool",
+            "defaultValue": "false",
+            "description": "Whether to enable the project for publishing as native AOT."
+        },
+        "use-options": {
+            "type": "parameter",
+            "datatype": "bool",
+            "defaultValue": "false",
+            "description": "Whether to use JsonSerializerOptions pattern instead of source generation."
+        },
+        "resource-name": {
+            "type": "parameter",
+            "datatype": "text",
+            "defaultValue": "InsertOwner/Resource",
+            "description": "Fully qualified DSC resource type name (e.g., OpenDsc.Windows/Service).",
+            "replaces": "RESOURCE_NAME"
+        },
+        "resource-description": {
+            "type": "parameter",
+            "datatype": "text",
+            "defaultValue": "Insert description",
+            "description": "Resource description used in the DscResource attribute.",
+            "replaces": "RESOURCE_DESCRIPTION"
+        }
+    },
+    "sources": [
+        {
+            "modifiers": [
+                {
+                    "condition": "(use-options)",
+                    "exclude": [
+                        "SourceGenerationContext.cs"
+                    ]
+                }
+            ]
+        }
+    ]
 }

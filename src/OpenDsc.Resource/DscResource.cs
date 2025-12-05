@@ -13,53 +13,44 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace OpenDsc.Resource;
 
-#if NET6_0_OR_GREATER
-    [RequiresDynamicCodeAttribute("JSON serialization and deserialization might require types that cannot be statically analyzed and might need runtime code generation. Use System.Text.Json source generation for native AOT applications.")]
-    [RequiresUnreferencedCodeAttribute("JSON serialization and deserialization might require types that cannot be statically analyzed. Use the overload that takes a JsonTypeInfo or JsonSerializerContext, or make sure all of the required types are preserved.")]
-#endif
-public abstract class DscResource<T> : DscResourceBase<T>
+public abstract class DscResource<T> : IDscResource<T>
 {
-    public JsonSerializerOptions SerializerOptions
+    private readonly JsonSerializerOptions? _serializerOptions;
+    private readonly JsonSerializerContext? _context;
+    private readonly JsonSchemaExporterOptions _exporterOptions;
+
+    public DscResource(JsonSerializerOptions options)
     {
-        get
-        {
-            _serializerOptions ??= new JsonSerializerOptions()
-            {
-                // DSC requires JSON lines for most output
-                WriteIndented = false,
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
-                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-                TypeInfoResolver = new DefaultJsonTypeInfoResolver(),
-                Converters =
-                {
-                    new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)
-                }
-            };
-
-            return _serializerOptions;
-        }
-
-        set
-        {
-            _serializerOptions = value;
-        }
+        _serializerOptions = options;
+        _exporterOptions = DscJsonSchemaExporterOptions.Default;
     }
 
-    private JsonSerializerOptions? _serializerOptions;
-
-    public override string GetSchema()
+    public DscResource(JsonSerializerContext context)
     {
-        return SerializerOptions.GetJsonSchemaAsNode(typeof(T), ExporterOptions).ToString();
+        _context = context;
+        _exporterOptions = DscJsonSchemaExporterOptions.Default;
     }
 
-    public override T Parse(string json)
+    protected virtual JsonTypeInfo<T> GetTypeInfo()
     {
-        return JsonSerializer.Deserialize<T>(json, SerializerOptions) ?? throw new InvalidDataException();
+        return _context is not null ?
+            (JsonTypeInfo<T>)(_context.GetTypeInfo(typeof(T)) ?? throw new ArgumentException($"Unable to get type info for {typeof(T).FullName} from the provided JsonSerializerContext.")) :
+            (JsonTypeInfo<T>)_serializerOptions!.GetTypeInfo(typeof(T));
     }
 
-    public override string ToJson(T item)
+    public virtual string GetSchema()
     {
-        return JsonSerializer.Serialize(item, SerializerOptions);
+        var typeInfo = GetTypeInfo();
+        return JsonSchemaExporter.GetJsonSchemaAsNode(typeInfo, _exporterOptions).ToJsonString();
+    }
+
+    public virtual T Parse(string json)
+    {
+        return JsonSerializer.Deserialize(json, GetTypeInfo()) ?? throw new InvalidDataException();
+    }
+
+    public virtual string ToJson(T item)
+    {
+        return JsonSerializer.Serialize(item, GetTypeInfo());
     }
 }

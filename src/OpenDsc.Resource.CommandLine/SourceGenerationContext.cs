@@ -2,23 +2,22 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
-using System.ServiceProcess;
 using System.Text.Json.Serialization;
 
-using OpenDsc.Resource.CommandLine;
-
-namespace OpenDsc.Resource.Windows.Service;
+namespace OpenDsc.Resource.CommandLine;
 
 [JsonSourceGenerationOptions(WriteIndented = false,
                              PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
                              UseStringEnumConverter = true,
-                             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-                             Converters = [typeof(ResourceConverter<Schema>)])]
-[JsonSerializable(typeof(Schema))]
-[JsonSerializable(typeof(IDscResource<Schema>))]
+                             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
+[JsonSerializable(typeof(DscResourceManifest))]
+[JsonSerializable(typeof(ManifestSchema))]
+[JsonSerializable(typeof(ManifestMethod))]
+[JsonSerializable(typeof(ManifestSetMethod))]
+[JsonSerializable(typeof(ManifestTestMethod))]
+[JsonSerializable(typeof(ManifestExportMethod))]
+[JsonSerializable(typeof(JsonInputArg))]
 [JsonSerializable(typeof(HashSet<string>))]
-[JsonSerializable(typeof(ServiceControllerStatus))]
-[JsonSerializable(typeof(ServiceStartMode))]
 internal partial class SourceGenerationContext : JsonSerializerContext
 {
 

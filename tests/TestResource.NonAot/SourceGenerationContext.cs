@@ -2,19 +2,20 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
+using OpenDsc.Resource;
 
-namespace OpenDsc.Resource;
+namespace TestResource.NonAot;
 
 [JsonSourceGenerationOptions(WriteIndented = false,
                              PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
                              UseStringEnumConverter = true,
-                             UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
-                             GenerationMode = JsonSourceGenerationMode.Serialization)]
-[JsonSerializable(typeof(Info))]
-[JsonSerializable(typeof(Warning))]
-[JsonSerializable(typeof(Error))]
-[JsonSerializable(typeof(Trace))]
+                             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
+[JsonSerializable(typeof(Schema))]
+[JsonSerializable(typeof(TestResult<Schema>))]
+[JsonSerializable(typeof(SetResult<Schema>))]
+[JsonSerializable(typeof(List<string>))]
 internal partial class SourceGenerationContext : JsonSerializerContext
 {
 
