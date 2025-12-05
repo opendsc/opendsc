@@ -15,7 +15,6 @@ namespace OpenDsc.Resource;
 
 public abstract class DscResource<T> : IDscResource<T>
 {
-
     private readonly JsonSerializerOptions? _serializerOptions;
     private readonly JsonSerializerContext? _context;
     private readonly JsonSchemaExporterOptions _exporterOptions;
@@ -34,14 +33,9 @@ public abstract class DscResource<T> : IDscResource<T>
 
     protected virtual JsonTypeInfo<T> GetTypeInfo()
     {
-        if (_context is not null)
-        {
-            return (JsonTypeInfo<T>)(_context.GetTypeInfo(typeof(T)) ?? throw new ArgumentException());
-        }
-        else
-        {
-            return (JsonTypeInfo<T>)_serializerOptions!.GetTypeInfo(typeof(T));
-        }
+        return _context is not null ?
+            (JsonTypeInfo<T>)(_context.GetTypeInfo(typeof(T)) ?? throw new ArgumentException($"Unable to get type info for {typeof(T).FullName} from the provided JsonSerializerContext.")) :
+            (JsonTypeInfo<T>)_serializerOptions!.GetTypeInfo(typeof(T));
     }
 
     public virtual string GetSchema()

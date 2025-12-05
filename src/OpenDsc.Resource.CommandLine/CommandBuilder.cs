@@ -14,7 +14,6 @@ namespace OpenDsc.Resource.CommandLine;
 
 public static class CommandBuilder<TResource, TSchema> where TResource : IDscResource<TSchema>
 {
-
 #if NET6_0_OR_GREATER
     [RequiresDynamicCodeAttribute("JSON serialization and deserialization might require types that cannot be statically analyzed and might need runtime code generation. Use System.Text.Json source generation for native AOT applications.")]
     [RequiresUnreferencedCodeAttribute("JSON serialization and deserialization might require types that cannot be statically analyzed. Use the overload that takes a JsonTypeInfo or JsonSerializerContext, or make sure all of the required types are preserved.")]

@@ -7,22 +7,23 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+
 using OpenDsc.Resource;
 
-namespace TestResource.NonAot
+namespace TestResource.NonAot;
+
+[DscResource("OpenDsc.Test/NonAotFile", Description = "Non-AOT test resource for file existence.", Tags = ["test", "file", "non-aot"], SetReturn = SetReturn.StateAndDiff, TestReturn = TestReturn.StateAndDiff)]
+[ExitCode(0, Description = "Success")]
+[ExitCode(1, Description = "Invalid parameter")]
+[ExitCode(2, Exception = typeof(Exception), Description = "Generic error")]
+[ExitCode(3, Exception = typeof(JsonException), Description = "Invalid JSON")]
+public sealed class Resource(JsonSerializerContext context) : DscResource<Schema>(context),
+    IGettable<Schema>,
+    ISettable<Schema>,
+    IDeletable<Schema>,
+    ITestable<Schema>,
+    IExportable<Schema>
 {
-    [DscResource("OpenDsc.Test/NonAotFile", Description = "Non-AOT test resource for file existence.", Tags = ["test", "file", "non-aot"], SetReturn = SetReturn.StateAndDiff, TestReturn = TestReturn.StateAndDiff)]
-    [ExitCode(0, Description = "Success")]
-    [ExitCode(1, Description = "Invalid parameter")]
-    [ExitCode(2, Exception = typeof(Exception), Description = "Generic error")]
-    [ExitCode(3, Exception = typeof(JsonException), Description = "Invalid JSON")]
-    public sealed class Resource(JsonSerializerContext context) : DscResource<Schema>(context),
-        IGettable<Schema>,
-        ISettable<Schema>,
-        IDeletable<Schema>,
-        ITestable<Schema>,
-        IExportable<Schema>
-    {
 
     public Schema Get(Schema instance)
     {
@@ -43,26 +44,25 @@ namespace TestResource.NonAot
         SetResult<Schema> result;
         if (desiredExist == currentExist)
         {
-            result = new SetResult<Schema>(currentState) { ChangedProperties = new HashSet<string>() };
+            result = new SetResult<Schema>(currentState) { ChangedProperties = [] };
         }
         else
         {
+            var changedProperties = new HashSet<string>();
 
-        var changedProperties = new HashSet<string>();
-
-        if (desiredExist)
-        {
-            File.WriteAllText(instance.Path, string.Empty);
-            changedProperties.Add("_exist");
-        }
-        else
-        {
-            if (File.Exists(instance.Path))
+            if (desiredExist)
             {
-                File.Delete(instance.Path);
+                File.WriteAllText(instance.Path, string.Empty);
                 changedProperties.Add("_exist");
             }
-        }
+            else
+            {
+                if (File.Exists(instance.Path))
+                {
+                    File.Delete(instance.Path);
+                    changedProperties.Add("_exist");
+                }
+            }
 
             var actualState = Get(instance);
             result = new SetResult<Schema>(actualState)
@@ -91,9 +91,10 @@ namespace TestResource.NonAot
 
         actual.InDesiredState = desiredExist == actualExist;
 
-        var result = new TestResult<Schema>(actual);
-
-        result.DifferingProperties = new HashSet<string>();
+        var result = new TestResult<Schema>(actual)
+        {
+            DifferingProperties = []
+        };
 
         if (desiredExist != actualExist)
         {
@@ -117,5 +118,4 @@ namespace TestResource.NonAot
             };
         }
     }
-}
 }

@@ -99,10 +99,9 @@ internal static class CommandHandlers<TResource, TSchema> where TResource : IDsc
             throw new NotImplementedException("Resource does not support Export capability.");
         }
 
-        foreach (var instance in iExportable.Export())
+        foreach (var item in iExportable.Export())
         {
-            var json = resource.ToJson(instance);
-            Console.WriteLine(json);
+            Console.WriteLine(resource.ToJson(item));
         }
     }
 

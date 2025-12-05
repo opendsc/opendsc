@@ -2,10 +2,9 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
-using System.CommandLine;
-
 using OpenDsc.Resource;
 using OpenDsc.Resource.CommandLine;
+
 using TestResource.Options;
 
 var options = DscJsonSerializerSettings.Default;

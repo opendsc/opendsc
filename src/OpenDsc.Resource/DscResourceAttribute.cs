@@ -21,7 +21,7 @@ public sealed class DscResourceAttribute : Attribute
             {
                 var version = Assembly.GetEntryAssembly()
                     ?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
-                    ?? throw new InvalidOperationException("Unable to retrieve assembly informational version.");
+                    ?? throw new InvalidOperationException("Unable to retrieve assembly informational version attribute.");
                 _semanticVersion = SemanticVersion.Parse(version);
             }
 
