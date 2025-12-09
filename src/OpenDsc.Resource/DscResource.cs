@@ -13,24 +13,41 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace OpenDsc.Resource;
 
+/// <summary>
+/// Base class for implementing DSC (Desired State Configuration) resources.
+/// </summary>
+/// <typeparam name="T">The schema type that defines the resource's properties.</typeparam>
 public abstract class DscResource<T> : IDscResource<T>
 {
     private readonly JsonSerializerOptions? _serializerOptions;
     private readonly JsonSerializerContext? _context;
     private readonly JsonSchemaExporterOptions _exporterOptions;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="DscResource{T}"/> class with JSON serializer options.
+    /// </summary>
+    /// <param name="options">The JSON serializer options for serialization operations.</param>
     public DscResource(JsonSerializerOptions options)
     {
         _serializerOptions = options;
         _exporterOptions = DscJsonSchemaExporterOptions.Default;
     }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="DscResource{T}"/> class with a JSON serializer context.
+    /// This constructor is recommended for Native AOT compilation.
+    /// </summary>
+    /// <param name="context">The JSON serializer context for serialization operations.</param>
     public DscResource(JsonSerializerContext context)
     {
         _context = context;
         _exporterOptions = DscJsonSchemaExporterOptions.Default;
     }
 
+    /// <summary>
+    /// Gets the JSON type information for the schema type.
+    /// </summary>
+    /// <returns>The JSON type information for serialization.</returns>
     protected virtual JsonTypeInfo<T> GetTypeInfo()
     {
         return _context is not null ?
@@ -38,17 +55,32 @@ public abstract class DscResource<T> : IDscResource<T>
             (JsonTypeInfo<T>)_serializerOptions!.GetTypeInfo(typeof(T));
     }
 
+    /// <summary>
+    /// Gets the JSON schema for the resource.
+    /// </summary>
+    /// <returns>A JSON string representing the resource schema.</returns>
     public virtual string GetSchema()
     {
         var typeInfo = GetTypeInfo();
         return JsonSchemaExporter.GetJsonSchemaAsNode(typeInfo, _exporterOptions).ToJsonString();
     }
 
+    /// <summary>
+    /// Parses a JSON string into a resource instance.
+    /// </summary>
+    /// <param name="json">The JSON string to parse.</param>
+    /// <returns>The deserialized resource instance.</returns>
+    /// <exception cref="InvalidDataException">Thrown when the JSON cannot be deserialized.</exception>
     public virtual T Parse(string json)
     {
         return JsonSerializer.Deserialize(json, GetTypeInfo()) ?? throw new InvalidDataException();
     }
 
+    /// <summary>
+    /// Serializes a resource instance to a JSON string.
+    /// </summary>
+    /// <param name="item">The resource instance to serialize.</param>
+    /// <returns>A JSON string representation of the resource instance.</returns>
     public virtual string ToJson(T item)
     {
         return JsonSerializer.Serialize(item, GetTypeInfo());

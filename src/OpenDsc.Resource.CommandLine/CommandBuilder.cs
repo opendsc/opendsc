@@ -6,6 +6,10 @@ using System.CommandLine;
 
 namespace OpenDsc.Resource.CommandLine;
 
+/// <summary>
+/// Builder for creating command-line interfaces for DSC resources using System.CommandLine.
+/// Supports both single and multi-resource executables.
+/// </summary>
 public sealed class CommandBuilder
 {
     private readonly ResourceRegistry _registry = new();
@@ -23,12 +27,14 @@ public sealed class CommandBuilder
     };
 
     /// <summary>
-    /// Add a DSC resource to the command line interface.
+    /// Adds a DSC resource to the command line interface.
+    /// Multiple resources can be registered to create a multi-resource executable.
     /// </summary>
-    /// <typeparam name="TResource">The resource type.</typeparam>
-    /// <typeparam name="TSchema">The schema type.</typeparam>
+    /// <typeparam name="TResource">The resource type that inherits from <see cref="DscResource{TSchema}"/>.</typeparam>
+    /// <typeparam name="TSchema">The schema type that defines the resource's properties.</typeparam>
     /// <param name="resource">The resource instance to register.</param>
-    /// <returns>This builder for fluent chaining.</returns>
+    /// <returns>This builder instance for method chaining.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when resource is null.</exception>
     public CommandBuilder AddResource<TResource, TSchema>(TResource resource)
         where TResource : DscResource<TSchema>
         where TSchema : class
@@ -43,9 +49,11 @@ public sealed class CommandBuilder
     }
 
     /// <summary>
-    /// Build and return the root command.
+    /// Builds and returns the root command with all registered resources.
+    /// Creates commands for get, set, test, delete, export, schema, and manifest operations.
     /// </summary>
-    /// <returns>A configured root command for the registered resources.</returns>
+    /// <returns>A configured <see cref="RootCommand"/> for the registered resources.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when no resources have been registered.</exception>
     public RootCommand Build()
     {
         if (!_registry.HasResources)
