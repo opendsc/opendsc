@@ -16,7 +16,7 @@
   </ItemGroup>
 
   <Target Name="RunAfterPublish" AfterTargets="Publish">
-    <Exec Command="$(PublishDir)$(AssemblyName).exe manifest --save" />
+    <Exec Command="$(PublishDir)$(AssemblyName)$(ExeSuffix) manifest --save" />
   </Target>
 
 </Project>

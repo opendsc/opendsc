@@ -37,13 +37,23 @@ public sealed class ServiceResource(JsonSerializerContext context) : DscResource
 
     public ServiceSchema Get(ServiceSchema instance)
     {
-        var exists = _services.ContainsKey(instance.Name);
-        return new ServiceSchema
+        if (_services.TryGetValue(instance.Name, out var state))
         {
-            Name = instance.Name,
-            State = exists ? _services[instance.Name] : null,
-            Exist = exists == false ? false : null
-        };
+            return new ServiceSchema
+            {
+                Name = instance.Name,
+                State = state
+            };
+        }
+        else
+        {
+            return new ServiceSchema
+            {
+                Name = instance.Name,
+                State = null,
+                Exist = false
+            };
+        }
     }
 
     public TestResult<ServiceSchema> Test(ServiceSchema instance)

@@ -29,7 +29,7 @@ public sealed class FileResource(JsonSerializerContext context) : DscResource<Fi
         {
             Path = instance.Path,
             Content = exists ? File.ReadAllText(instance.Path) : null,
-            Exist = exists == false ? false : null
+            Exist = !exists ? false : null
         };
     }
 

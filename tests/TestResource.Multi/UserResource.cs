@@ -30,11 +30,11 @@ public sealed class UserResource(JsonSerializerContext context) : DscResource<Us
 
     public UserSchema Get(UserSchema instance)
     {
-        var exists = _users.ContainsKey(instance.Name);
+        var exists = _users.TryGetValue(instance.Name, out var fullName);
         return new UserSchema
         {
             Name = instance.Name,
-            FullName = exists ? _users[instance.Name] : null,
+            FullName = exists ? fullName : null,
             Exist = exists == false ? false : null
         };
     }

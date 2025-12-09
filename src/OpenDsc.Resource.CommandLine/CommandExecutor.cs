@@ -234,42 +234,28 @@ internal static class CommandExecutor
 
     private static ManifestExportMethod BuildExportMethod(string exeName, ResourceRegistration registration, bool isMultiResourceExe)
     {
-        if (isMultiResourceExe)
+        return new ManifestExportMethod
         {
-            return new ManifestExportMethod
-            {
-                Executable = exeName,
-                Args = ["export", "--resource", registration.Type]
-            };
-        }
-        else
-        {
-            return new ManifestExportMethod
-            {
-                Executable = exeName,
-                Args = ["export"]
-            };
-        }
+            Executable = exeName,
+            Args = isMultiResourceExe
+                ? ["export", "--resource", registration.Type]
+                : ["export"]
+        };
     }
 
     private static ManifestMethod BuildMethod(string exeName, string verb, ResourceRegistration registration, bool isMultiResourceExe)
     {
-        if (isMultiResourceExe)
+        return isMultiResourceExe
+        ? new ManifestMethod
         {
-            return new ManifestMethod
-            {
-                Executable = exeName,
-                Args = [verb, "--resource", registration.Type, new JsonInputArg { Arg = "--input", Mandatory = true }]
-            };
+            Executable = exeName,
+            Args = [verb, "--resource", registration.Type, new JsonInputArg { Arg = "--input", Mandatory = true }]
         }
-        else
+        : new ManifestMethod
         {
-            return new ManifestMethod
-            {
-                Executable = exeName,
-                Args = [verb, new JsonInputArg { Arg = "--input", Mandatory = true }]
-            };
-        }
+            Executable = exeName,
+            Args = [verb, new JsonInputArg { Arg = "--input", Mandatory = true }]
+        };
     }
 
     private static Dictionary<string, string>? BuildExitCodes(ResourceRegistration registration)

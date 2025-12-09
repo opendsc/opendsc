@@ -254,7 +254,6 @@ public sealed class CommandBuilder
             catch (Exception ex)
             {
                 Logger.WriteError(ex.Message);
-                Logger.WriteTrace(ex.Message);
                 Logger.WriteTrace($"Exception: {ex.GetType().FullName}");
                 if (!string.IsNullOrEmpty(ex.StackTrace))
                 {
@@ -305,7 +304,6 @@ public sealed class CommandBuilder
             catch (Exception ex)
             {
                 Logger.WriteError(ex.Message);
-                Logger.WriteTrace(ex.Message);
                 Logger.WriteTrace($"Exception: {ex.GetType().FullName}");
                 if (!string.IsNullOrEmpty(ex.StackTrace))
                 {
