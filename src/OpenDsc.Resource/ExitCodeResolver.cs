@@ -6,8 +6,19 @@ using System.Reflection;
 
 namespace OpenDsc.Resource;
 
+/// <summary>
+/// Provides functionality to resolve exit codes for exceptions based on <see cref="ExitCodeAttribute"/> definitions.
+/// </summary>
 public static class ExitCodeResolver
 {
+    /// <summary>
+    /// Gets the exit code for a specific exception type based on the resource's exit code attributes.
+    /// </summary>
+    /// <typeparam name="T">The schema type of the resource.</typeparam>
+    /// <param name="resource">The DSC resource instance.</param>
+    /// <param name="exceptionType">The type of exception to get the exit code for.</param>
+    /// <returns>The exit code that corresponds to the exception type.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when no matching exit code attribute is found.</exception>
     public static int GetExitCode<T>(IDscResource<T> resource, Type exceptionType)
     {
         var attrs = resource.GetType().GetCustomAttributes<ExitCodeAttribute>()

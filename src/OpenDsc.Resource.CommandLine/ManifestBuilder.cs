@@ -8,8 +8,18 @@ using System.Text.Json;
 
 namespace OpenDsc.Resource.CommandLine;
 
+/// <summary>
+/// Provides functionality to build DSC v3 resource manifests from resource instances.
+/// </summary>
 public static class ManifestBuilder
 {
+    /// <summary>
+    /// Builds a DSC resource manifest from a resource instance.
+    /// </summary>
+    /// <typeparam name="TSchema">The schema type that defines the resource's properties.</typeparam>
+    /// <param name="resource">The resource instance to build the manifest from.</param>
+    /// <returns>A <see cref="DscResourceManifest"/> containing the resource metadata and operation definitions.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the resource lacks required attributes or the process filename cannot be determined.</exception>
     public static DscResourceManifest Build<TSchema>(IDscResource<TSchema> resource)
     {
         var dscAttr = resource.GetType().GetCustomAttribute<DscResourceAttribute>()
