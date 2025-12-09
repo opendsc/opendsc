@@ -11,7 +11,7 @@ A C# library for building Microsoft DSC v3 resources with ease.
 - 📋 Automatic JSON schema generation
 - 📄 Automatic resource manifest generation
 - 🎯 Type-safe DSC resource implementation
-- 🔀 Multi-resource support (multiple resources in a single executable)
+- 🔀 Multi-resource support (requires DSC v3.2+)
 
 ## Libraries
 
@@ -92,7 +92,7 @@ for real-world examples:
 ## Requirements
 
 - .NET 8 SDK or later (for development)
-- DSC v3 (for running resources)
+- DSC v3 (v3.2+ for multi-resource support)
 - Windows, Linux, or macOS
 
 ## Documentation

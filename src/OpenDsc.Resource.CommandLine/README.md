@@ -39,6 +39,8 @@ return command.Parse(args).Invoke();
 
 ### Multi-Resource Example
 
+> **Note**: Requires DSC v3.2 or later.
+
 You can register multiple resources in a single executable:
 
 ```csharp
@@ -159,6 +161,7 @@ app manifest --resource 'Owner/ResourceName'
 
 - .NET Standard 2.0 or higher
 - Depends on `OpenDsc.Resource` and `System.CommandLine`
+- DSC v3.2+ required for multi-resource support
 
 ## License
 
