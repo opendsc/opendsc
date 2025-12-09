@@ -11,6 +11,7 @@ A C# library for building Microsoft DSC v3 resources with ease.
 - 📋 Automatic JSON schema generation
 - 📄 Automatic resource manifest generation
 - 🎯 Type-safe DSC resource implementation
+- 🔀 Multi-resource support (multiple resources in a single executable)
 
 ## Libraries
 
@@ -51,10 +52,8 @@ using OpenDsc.Resource;
 using OpenDsc.Resource.CommandLine;
 
 [DscResource("MyCompany/MyResource", Description = "Manage my resource")]
-public class Resource : DscResource<Schema>, IGettable<Schema>
+public class Resource(JsonSerializerContext context) : DscResource<Schema>(context), IGettable<Schema>
 {
-    public Resource(JsonSerializerContext context) : base(context) { }
-
     public Schema Get(Schema instance)
     {
         // Implementation
@@ -62,7 +61,19 @@ public class Resource : DscResource<Schema>, IGettable<Schema>
 }
 ```
 
-### 4. Build and Run
+### 4. Create the Command Line Interface
+
+```csharp
+using OpenDsc.Resource.CommandLine;
+
+var resource = new Resource(SourceGenerationContext.Default);
+var command = new CommandBuilder()
+    .AddResource<Resource, Schema>(resource)
+    .Build();
+return command.Parse(args).Invoke();
+```
+
+### 5. Build and Run
 
 ```powershell
 .\build.ps1
