@@ -6,6 +6,11 @@
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
     <IsPublishable>false</IsPublishable>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <Description>Microsoft DSC v3 resource command line and manifest generator.</Description>
   </PropertyGroup>
 
