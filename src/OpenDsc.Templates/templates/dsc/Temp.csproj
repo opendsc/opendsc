@@ -12,7 +12,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="OpenDsc.Resource.CommandLine" Version="0.2.0" />
+    <PackageReference Include="OpenDsc.Resource.CommandLine" Version="0.3.0" />
   </ItemGroup>
 
   <Target Name="RunAfterPublish" AfterTargets="Publish">
