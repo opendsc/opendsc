@@ -8,9 +8,13 @@ using Temp;
 #if (use-options)
 var options = DscJsonSerializerSettings.Default;
 var resource = new Resource(options);
-var command = CommandBuilder<Resource, Schema>.Build(resource, options);
+var command = new CommandBuilder()
+    .AddResource<Resource, Schema>(resource)
+    .Build();
 #else
 var resource = new Resource(SourceGenerationContext.Default);
-var command = CommandBuilder<Resource, Schema>.Build(resource, SourceGenerationContext.Default);
+var command = new CommandBuilder()
+    .AddResource<Resource, Schema>(resource)
+    .Build();
 #endif
 return command.Parse(args).Invoke();

@@ -7,6 +7,7 @@
         "netstandard",
         "Nieto",
         "nonaot",
+        "testresource",
         "Trimmable"
     ]
 }

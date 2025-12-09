@@ -16,11 +16,7 @@
   </ItemGroup>
 
   <Target Name="RunAfterPublish" AfterTargets="Publish">
-    <PropertyGroup>
-      <OutputFileName>$(TargetName).dsc.resource.json</OutputFileName>
-    </PropertyGroup>
-
-    <Exec Command="$(PublishDir)$(TargetName)$(ExeSuffix) manifest &gt; $(PublishDir)$(OutputFileName)" />
+    <Exec Command="$(PublishDir)$(AssemblyName).exe manifest --save" />
   </Target>
 
 </Project>

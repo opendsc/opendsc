@@ -3,24 +3,25 @@
 // terms of the MIT license.
 
 using System.Reflection;
+using System.Text.Json;
 
 namespace OpenDsc.Resource.CommandLine;
 
-internal static class CommandHandlers<TResource, TSchema> where TResource : IDscResource<TSchema>
+internal static class ResourceExecutor<TResource, TSchema> where TResource : IDscResource<TSchema>
 {
-    public static void SchemaHandler(IDscResource<TSchema> resource)
+    internal static void ExecuteSchema(IDscResource<TSchema> resource)
     {
         Console.WriteLine(resource.GetSchema());
     }
 
-    public static void ManifestHandler(IDscResource<TSchema> resource, ISerializer<TSchema> serializer)
+    internal static void ExecuteManifest(IDscResource<TSchema> resource)
     {
         var manifest = ManifestBuilder.Build(resource);
-        var json = serializer.SerializeManifest(manifest);
+        var json = JsonSerializer.Serialize(manifest, typeof(DscResourceManifest), SourceGenerationContext.Default);
         Console.WriteLine(json);
     }
 
-    public static void GetHandler(IDscResource<TSchema> resource, string inputOption)
+    internal static void ExecuteGet(IDscResource<TSchema> resource, string inputOption)
     {
         var instance = resource.Parse(inputOption);
 
@@ -33,7 +34,7 @@ internal static class CommandHandlers<TResource, TSchema> where TResource : IDsc
         Console.WriteLine(resource.ToJson(result));
     }
 
-    public static void SetHandler(IDscResource<TSchema> resource, string inputOption, ISerializer<TSchema> serializer)
+    internal static void ExecuteSet(IDscResource<TSchema> resource, string inputOption)
     {
         var instance = resource.Parse(inputOption);
 
@@ -53,12 +54,12 @@ internal static class CommandHandlers<TResource, TSchema> where TResource : IDsc
 
         if (result?.ChangedProperties is not null && dscAttr.SetReturn == SetReturn.StateAndDiff)
         {
-            var json = serializer.SerializeHashSet(result.ChangedProperties);
+            var json = JsonSerializer.Serialize(result.ChangedProperties, typeof(HashSet<string>), SourceGenerationContext.Default);
             Console.WriteLine(json);
         }
     }
 
-    public static void TestHandler(IDscResource<TSchema> resource, string inputOption, ISerializer<TSchema> serializer)
+    internal static void ExecuteTest(IDscResource<TSchema> resource, string inputOption)
     {
         var instance = resource.Parse(inputOption);
 
@@ -68,19 +69,19 @@ internal static class CommandHandlers<TResource, TSchema> where TResource : IDsc
         }
 
         var result = iTestable.Test(instance);
-        var json = serializer.Serialize(result.ActualState);
+        var json = resource.ToJson(result.ActualState);
         Console.WriteLine(json);
 
         var dscAttr = GetDscAttribute(resource);
 
         if (result?.DifferingProperties is not null && dscAttr.TestReturn == TestReturn.StateAndDiff)
         {
-            json = serializer.SerializeHashSet(result.DifferingProperties);
+            json = JsonSerializer.Serialize(result.DifferingProperties, typeof(HashSet<string>), SourceGenerationContext.Default);
             Console.WriteLine(json);
         }
     }
 
-    public static void DeleteHandler(IDscResource<TSchema> resource, string inputOption)
+    internal static void ExecuteDelete(IDscResource<TSchema> resource, string inputOption)
     {
         var instance = resource.Parse(inputOption);
 
@@ -92,7 +93,7 @@ internal static class CommandHandlers<TResource, TSchema> where TResource : IDsc
         iTDeletable.Delete(instance);
     }
 
-    public static void ExportHandler(IDscResource<TSchema> resource)
+    internal static void ExecuteExport(IDscResource<TSchema> resource)
     {
         if (resource is not IExportable<TSchema> iExportable)
         {

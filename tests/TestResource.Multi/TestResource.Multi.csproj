@@ -1,13 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
-    <LangVersion>12.0</LangVersion>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>test-resource-multi</AssemblyName>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <AssemblyName>test-resource-non-aot</AssemblyName>
-    <IsPackable>false</IsPackable>
+    <PublishAot>true</PublishAot>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <IlcOptimizationPreference>Size</IlcOptimizationPreference>
+    <IsAotCompatible>true</IsAotCompatible>
+    <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,11 +19,7 @@
   </ItemGroup>
 
   <Target Name="RunAfterPublish" AfterTargets="Publish">
-    <PropertyGroup>
-      <OutputFileName>$(TargetName).dsc.resource.json</OutputFileName>
-    </PropertyGroup>
-
-    <Exec Command="$(PublishDir)$(TargetName)$(ExeSuffix) manifest &gt; $(PublishDir)$(OutputFileName)" />
+    <Exec Command="$(PublishDir)$(AssemblyName).exe manifest --save" />
   </Target>
 
 </Project>
