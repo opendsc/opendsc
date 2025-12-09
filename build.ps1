@@ -70,10 +70,14 @@ if ($InstallDsc) {
         Write-Host "DSC is already installed."
     } else {
         $headers = if ($GitHubToken) { @{Authorization = "Bearer $GitHubToken"} } else { $null }
-        $release = Invoke-RestMethod -Uri 'https://api.github.com/repos/PowerShell/DSC/releases/latest' -Headers $headers
+        $releases = Invoke-RestMethod -Uri 'https://api.github.com/repos/PowerShell/DSC/releases' -Headers $headers
+        $release = $releases | Where-Object { $_.prerelease } | Select-Object -First 1
+        if (-not $release) {
+            $release = $releases | Select-Object -First 1  # Fallback to latest if no prerelease
+        }
         $tag = $release.tag_name
         $version = $tag -replace '^v', ''
-        Write-Host "Latest DSC version: $version"
+        Write-Host "Latest DSC prerelease version: $version"
 
         if ($IsWindows) {
             $platform = "x86_64-pc-windows-msvc"
