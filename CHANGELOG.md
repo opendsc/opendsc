@@ -10,6 +10,25 @@ and this project adheres to [Semantic Versioning][semver].
 
 ## [Unreleased]
 
+## [0.3.0] - 2025-12-09
+
+### Added
+
+- Multi-resource support - register multiple resources in a single
+  executable (#25)
+- Symbol packages (.snupkg) for improved debugging (#26)
+- CI/CD workflows for automated testing and publishing
+- Build script with DSC installation and cross-platform testing
+- Comprehensive Pester test suites for all test resources
+
+### Changed
+
+- Command structure - commands now at root level (no `config` parent)
+- Manifest generation with `--save` flag
+- Refactored command builder to use registry pattern for multi-resource support
+- Improved error handling with resource type validation
+- Updated templates to support both single and multi-resource patterns
+
 ## [0.2.0] - 2025-07-16
 
 ### Added
@@ -35,7 +54,8 @@ and this project adheres to [Semantic Versioning][semver].
 
 - Initial release
 
-[Unreleased]: https://github.com/opendsc/opendsc/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/opendsc/opendsc/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/opendsc/opendsc/releases/tag/v0.3.0
 [0.2.0]: https://github.com/opendsc/opendsc/releases/tag/v0.2.0
 [0.1.2]: https://github.com/opendsc/opendsc/releases/tag/v0.1.2
 [0.1.1]: https://github.com/opendsc/opendsc/releases/tag/v0.1.1
