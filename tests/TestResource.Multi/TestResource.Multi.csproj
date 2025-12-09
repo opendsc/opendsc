@@ -20,6 +20,7 @@
   </ItemGroup>
 
   <Target Name="RunAfterPublish" AfterTargets="Publish">
+    <Exec Command="chmod +x $(PublishDir)$(AssemblyName)$(ExeSuffix)" Condition="'$(OS)' != 'Windows_NT'" />
     <Exec Command="$(PublishDir)$(AssemblyName)$(ExeSuffix) manifest --save" />
   </Target>
 
