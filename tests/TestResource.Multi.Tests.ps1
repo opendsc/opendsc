@@ -190,9 +190,7 @@ Describe 'Multi-Resource Schema Tests' {
 
 Describe 'Multi-Resource DSC CLI Discovery' {
     BeforeAll {
-        # Clean up any existing manifests from previous test runs
         Get-ChildItem $env:DSC_RESOURCE_PATH -Filter "*.dsc.*.json" | Remove-Item -Force -ErrorAction SilentlyContinue
-        # Generate the multi-resource manifest for DSC CLI discovery
         & $resourceExe manifest --save 2>&1 | Out-Null
     }
 
