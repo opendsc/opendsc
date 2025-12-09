@@ -6,6 +6,8 @@
     <Nullable>enable</Nullable>
     <LangVersion>Latest</LangVersion>
     <IsPublishable>false</IsPublishable>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <Description>Microsoft DSC v3 resource core library.</Description>
   </PropertyGroup>
 
