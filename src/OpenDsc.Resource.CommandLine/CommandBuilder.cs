@@ -3,249 +3,360 @@
 // terms of the MIT license.
 
 using System.CommandLine;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-
-#if NET6_0_OR_GREATER
-using System.Diagnostics.CodeAnalysis;
-#endif
 
 namespace OpenDsc.Resource.CommandLine;
 
-public static class CommandBuilder<TResource, TSchema> where TResource : IDscResource<TSchema>
+public sealed class CommandBuilder
 {
-#if NET6_0_OR_GREATER
-    [RequiresDynamicCodeAttribute("JSON serialization and deserialization might require types that cannot be statically analyzed and might need runtime code generation. Use System.Text.Json source generation for native AOT applications.")]
-    [RequiresUnreferencedCodeAttribute("JSON serialization and deserialization might require types that cannot be statically analyzed. Use the overload that takes a JsonTypeInfo or JsonSerializerContext, or make sure all of the required types are preserved.")]
-#endif
-    public static RootCommand Build(TResource resource, JsonSerializerOptions options)
+    private readonly ResourceRegistry _registry = new();
+    private bool IsSingleResource => _registry.Count == 1;
+
+    private readonly Option<string> _requiredResourceOption = new("--resource", "-r")
     {
-        var serializer = new OptionsSerializer<TSchema>(options);
-        return Build(resource, serializer);
+        Description = "Specify the DSC resource type",
+        Required = true
+    };
+
+    private readonly Option<string> _optionalResourceOption = new("--resource", "-r")
+    {
+        Description = "Specify the DSC resource type"
+    };
+
+    /// <summary>
+    /// Add a DSC resource to the command line interface.
+    /// </summary>
+    /// <typeparam name="TResource">The resource type.</typeparam>
+    /// <typeparam name="TSchema">The schema type.</typeparam>
+    /// <param name="resource">The resource instance to register.</param>
+    /// <returns>This builder for fluent chaining.</returns>
+    public CommandBuilder AddResource<TResource, TSchema>(TResource resource)
+        where TResource : DscResource<TSchema>
+        where TSchema : class
+    {
+        if (resource == null)
+        {
+            throw new ArgumentNullException(nameof(resource));
+        }
+
+        _registry.Register<TResource, TSchema>(resource);
+        return this;
     }
 
-    public static RootCommand Build(TResource resource, JsonSerializerContext context)
+    /// <summary>
+    /// Build and return the root command.
+    /// </summary>
+    /// <returns>A configured root command for the registered resources.</returns>
+    public RootCommand Build()
     {
-        var serializer = new ContextSerializer<TSchema>(context);
-        return Build(resource, serializer);
-    }
-
-    private static RootCommand Build(TResource resource, ISerializer<TSchema> serializer)
-    {
-        var inputOption = new Option<string>("--input", "-i")
+        if (!_registry.HasResources)
         {
-            Description = CommandDescriptions.InputOption,
-            Required = true
-        };
-
-        var configCommand = new Command("config", CommandDescriptions.Config);
-
-        if (resource is IGettable<TSchema>)
-        {
-            BuildGetCommand(resource, inputOption, configCommand);
+            throw new InvalidOperationException("No resources registered. Call AddResource() before Build().");
         }
 
-        if (resource is ISettable<TSchema>)
-        {
-            BuildSetCommand(resource, serializer, inputOption, configCommand);
-        }
+        var rootCommand = new RootCommand("DSC Resource Command Line Interface");
 
-        if (resource is ITestable<TSchema>)
-        {
-            BuildTestCommand(resource, serializer, inputOption, configCommand);
-        }
-
-        if (resource is IDeletable<TSchema>)
-        {
-            BuildDeleteCommand(resource, inputOption, configCommand);
-        }
-
-        if (resource is IExportable<TSchema>)
-        {
-            BuildExportCommand(resource, configCommand);
-        }
-
-        var schemaCommand = BuildSchemaCommand(resource);
-        var manifestCommand = BuildManifestCommand(resource, serializer);
-
-        var rootCommand = new RootCommand(CommandDescriptions.Root);
-        rootCommand.Subcommands.Add(configCommand);
-        rootCommand.Subcommands.Add(schemaCommand);
-        rootCommand.Subcommands.Add(manifestCommand);
+        // Add verb commands
+        rootCommand.Subcommands.Add(CreateGetCommand());
+        rootCommand.Subcommands.Add(CreateSetCommand());
+        rootCommand.Subcommands.Add(CreateTestCommand());
+        rootCommand.Subcommands.Add(CreateDeleteCommand());
+        rootCommand.Subcommands.Add(CreateExportCommand());
+        rootCommand.Subcommands.Add(CreateSchemaCommand());
+        rootCommand.Subcommands.Add(CreateManifestCommand());
 
         return rootCommand;
     }
 
-    private static void BuildGetCommand(TResource resource, Option<string> inputOption, Command configCommand)
+    private Command CreateGetCommand()
     {
-        var getCommand = new Command("get", CommandDescriptions.Get)
-            {
-                inputOption
-            };
+        var command = new Command("get", "Get the current state of a resource instance");
 
-        getCommand.SetAction(parseResult =>
+        var inputOption = new Option<string>("--input", "-i")
+        {
+            Description = "JSON input for the resource instance",
+            Required = true
+        };
+
+        if (!IsSingleResource)
+        {
+            command.Options.Add(_requiredResourceOption);
+        }
+        command.Options.Add(inputOption);
+
+        command.SetAction(parseResult =>
         {
             try
             {
+                var resourceType = parseResult.GetValue(_requiredResourceOption);
                 var input = parseResult.GetValue(inputOption)!;
-                CommandHandlers<TResource, TSchema>.GetHandler(resource, input);
+                var registration = ResolveResource(resourceType, IsSingleResource);
+                CommandExecutor.ExecuteGet(registration, input);
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                HandleException(resource, e);
+                HandleException(ex, parseResult.GetValue(_requiredResourceOption));
             }
             return 0;
         });
 
-        configCommand.Subcommands.Add(getCommand);
+        return command;
     }
 
-    private static void BuildSetCommand(TResource resource, ISerializer<TSchema> serializer, Option<string> inputOption, Command configCommand)
+    private Command CreateSetCommand()
     {
-        var setCommand = new Command("set", CommandDescriptions.Set)
-            {
-                inputOption
-            };
+        var command = new Command("set", "Set the desired state of a resource instance");
 
-        setCommand.SetAction(parseResult =>
+        var inputOption = new Option<string>("--input", "-i")
+        {
+            Description = "JSON input for the desired state",
+            Required = true
+        };
+
+        if (!IsSingleResource)
+        {
+            command.Options.Add(_requiredResourceOption);
+        }
+        command.Options.Add(inputOption);
+
+        command.SetAction(parseResult =>
         {
             try
             {
+                var resourceType = parseResult.GetValue(_requiredResourceOption);
                 var input = parseResult.GetValue(inputOption)!;
-                CommandHandlers<TResource, TSchema>.SetHandler(resource, input, serializer);
+                var registration = ResolveResource(resourceType, IsSingleResource);
+                CommandExecutor.ExecuteSet(registration, input);
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                HandleException(resource, e);
+                HandleException(ex, parseResult.GetValue(_requiredResourceOption));
             }
             return 0;
         });
 
-        configCommand.Subcommands.Add(setCommand);
+        return command;
     }
 
-    private static void BuildTestCommand(TResource resource, ISerializer<TSchema> serializer, Option<string> inputOption, Command configCommand)
+    private Command CreateTestCommand()
     {
-        var testCommand = new Command("test", CommandDescriptions.Test)
-            {
-                inputOption
-            };
+        var command = new Command("test", "Test if a resource instance is in the desired state");
 
-        testCommand.SetAction(parseResult =>
+        var inputOption = new Option<string>("--input", "-i")
+        {
+            Description = "JSON input for the desired state",
+            Required = true
+        };
+
+        if (!IsSingleResource)
+        {
+            command.Options.Add(_requiredResourceOption);
+        }
+        command.Options.Add(inputOption);
+
+        command.SetAction(parseResult =>
         {
             try
             {
+                var resourceType = parseResult.GetValue(_requiredResourceOption);
                 var input = parseResult.GetValue(inputOption)!;
-                CommandHandlers<TResource, TSchema>.TestHandler(resource, input, serializer);
+                var registration = ResolveResource(resourceType, IsSingleResource);
+                CommandExecutor.ExecuteTest(registration, input);
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                HandleException(resource, e);
+                HandleException(ex, parseResult.GetValue(_requiredResourceOption));
             }
             return 0;
         });
 
-        configCommand.Subcommands.Add(testCommand);
+        return command;
     }
 
-    private static void BuildDeleteCommand(TResource resource, Option<string> inputOption, Command configCommand)
+    private Command CreateDeleteCommand()
     {
-        var deleteCommand = new Command("delete", CommandDescriptions.Delete)
-            {
-                inputOption
-            };
+        var command = new Command("delete", "Delete a resource instance");
 
-        deleteCommand.SetAction(parseResult =>
+        var inputOption = new Option<string>("--input", "-i")
+        {
+            Description = "JSON input identifying the resource instance",
+            Required = true
+        };
+
+        if (!IsSingleResource)
+        {
+            command.Options.Add(_requiredResourceOption);
+        }
+        command.Options.Add(inputOption);
+
+        command.SetAction(parseResult =>
         {
             try
             {
+                var resourceType = parseResult.GetValue(_requiredResourceOption);
                 var input = parseResult.GetValue(inputOption)!;
-                CommandHandlers<TResource, TSchema>.DeleteHandler(resource, input);
+                var registration = ResolveResource(resourceType, IsSingleResource);
+                CommandExecutor.ExecuteDelete(registration, input);
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                HandleException(resource, e);
+                HandleException(ex, parseResult.GetValue(_requiredResourceOption));
             }
             return 0;
         });
 
-        configCommand.Subcommands.Add(deleteCommand);
+        return command;
     }
 
-    private static void BuildExportCommand(TResource resource, Command configCommand)
+    private Command CreateExportCommand()
     {
-        var exportCommand = new Command("export", CommandDescriptions.Export);
+        var command = new Command("export", "Export all instances of a resource");
 
-        exportCommand.SetAction(parseResult =>
+        if (!IsSingleResource)
         {
-            try
-            {
-                CommandHandlers<TResource, TSchema>.ExportHandler(resource);
-            }
-            catch (Exception e)
-            {
-                HandleException(resource, e);
-            }
-            return 0;
-        });
-
-        configCommand.Subcommands.Add(exportCommand);
-    }
-
-    private static Command BuildSchemaCommand(TResource resource)
-    {
-        var schemaCommand = new Command("schema", CommandDescriptions.Schema);
-        schemaCommand.SetAction(parseResult =>
-        {
-            try
-            {
-                CommandHandlers<TResource, TSchema>.SchemaHandler(resource);
-            }
-            catch (Exception e)
-            {
-                HandleException(resource, e);
-            }
-            return 0;
-        });
-        return schemaCommand;
-    }
-
-    private static Command BuildManifestCommand(TResource resource, ISerializer<TSchema> serializer)
-    {
-        var manifestCommand = new Command("manifest", CommandDescriptions.Manifest);
-        manifestCommand.SetAction(parseResult =>
-        {
-            try
-            {
-                CommandHandlers<TResource, TSchema>.ManifestHandler(resource, serializer);
-            }
-            catch (Exception e)
-            {
-                HandleException(resource, e);
-            }
-            return 0;
-        });
-        return manifestCommand;
-    }
-
-    private static void HandleException(TResource resource, Exception e)
-    {
-        Logger.WriteError(e.Message);
-        Logger.WriteTrace($"Exception: {e.GetType().FullName}");
-
-        if (!string.IsNullOrEmpty(e.StackTrace))
-        {
-            Logger.WriteTrace(e.StackTrace);
+            command.Options.Add(_requiredResourceOption);
         }
 
-        try
+        command.SetAction(parseResult =>
         {
-            var exitCode = ExitCodeResolver.GetExitCode(resource, e.GetType());
+            try
+            {
+                var resourceType = parseResult.GetValue(_requiredResourceOption);
+                var registration = ResolveResource(resourceType, IsSingleResource);
+                CommandExecutor.ExecuteExport(registration);
+            }
+            catch (Exception ex)
+            {
+                HandleException(ex, parseResult.GetValue(_requiredResourceOption));
+            }
+            return 0;
+        });
+
+        return command;
+    }
+
+    private Command CreateSchemaCommand()
+    {
+        var command = new Command("schema", "Get the JSON schema for a resource");
+
+        if (!IsSingleResource)
+        {
+            command.Options.Add(_requiredResourceOption);
+        }
+
+        command.SetAction(parseResult =>
+        {
+            try
+            {
+                var resourceType = parseResult.GetValue(_requiredResourceOption);
+                var registration = ResolveResource(resourceType, IsSingleResource);
+                CommandExecutor.ExecuteSchema(registration);
+            }
+            catch (Exception ex)
+            {
+                Logger.WriteError(ex.Message);
+                Logger.WriteTrace($"Exception: {ex.GetType().FullName}");
+                if (!string.IsNullOrEmpty(ex.StackTrace))
+                {
+                    Logger.WriteTrace(ex.StackTrace);
+                }
+                Environment.Exit(1);
+            }
+            return 0;
+        });
+
+        return command;
+    }
+
+    private Command CreateManifestCommand()
+    {
+        var command = new Command("manifest", "Generate the DSC resource manifest(s)");
+
+        var saveOption = new Option<bool>("--save", "-s")
+        {
+            Description = "Save the manifest to a file in the executable directory"
+        };
+
+        if (!IsSingleResource)
+        {
+            command.Options.Add(_optionalResourceOption!);
+        }
+        command.Options.Add(saveOption);
+
+        command.SetAction(parseResult =>
+        {
+            try
+            {
+                var resourceType = parseResult.GetValue(_optionalResourceOption!);
+                var save = parseResult.GetValue(saveOption);
+
+                if (string.IsNullOrEmpty(resourceType) && !IsSingleResource)
+                {
+                    // Generate multi-resource manifest
+                    CommandExecutor.GenerateMultiResourceManifest(_registry, save);
+                }
+                else
+                {
+                    // Generate single resource manifest
+                    var registration = ResolveResource(resourceType, IsSingleResource);
+                    CommandExecutor.GenerateSingleResourceManifest(registration, _registry.Count > 1, save);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.WriteError(ex.Message);
+                Logger.WriteTrace($"Exception: {ex.GetType().FullName}");
+                if (!string.IsNullOrEmpty(ex.StackTrace))
+                {
+                    Logger.WriteTrace(ex.StackTrace);
+                }
+                Environment.Exit(1);
+            }
+            return 0;
+        });
+
+        return command;
+    }
+
+    private ResourceRegistration ResolveResource(string? resourceType, bool isSingleResource)
+    {
+        if (isSingleResource)
+        {
+            return _registry.GetAll()[0];
+        }
+
+        var registration = _registry.GetByType(resourceType ?? string.Empty);
+        if (registration == null)
+        {
+            var available = string.Join(", ", _registry.GetAll().Select(r => r.Type));
+            var message = $"Resource type '{resourceType}' not found. Available resources: {available}";
+            // Write plain text to stdout and exit so callers reliably capture the message
+            Console.WriteLine(message);
+            Environment.Exit(1);
+        }
+
+        return registration!;
+    }
+
+    private void HandleException(Exception ex, string? resourceType)
+    {
+        Logger.WriteError(ex.Message);
+        Logger.WriteTrace($"Exception: {ex.GetType().FullName}");
+
+        if (!string.IsNullOrEmpty(ex.StackTrace))
+        {
+            Logger.WriteTrace(ex.StackTrace);
+        }
+
+        var registration = _registry.GetByType(resourceType ?? string.Empty);
+
+        if (registration != null)
+        {
+            var exitCode = registration.ExitCodeResolver(ex.GetType());
             Environment.Exit(exitCode);
         }
-        catch
+        else
         {
-            Environment.Exit(int.MaxValue);
+            Environment.Exit(1);
         }
     }
 }

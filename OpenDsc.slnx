@@ -11,6 +11,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/TestResource.Aot/TestResource.Aot.csproj" />
+    <Project Path="tests/TestResource.Multi/TestResource.Multi.csproj" />
     <Project Path="tests/TestResource.NonAot/TestResource.NonAot.csproj" />
     <Project Path="tests/TestResource.Options/TestResource.Options.csproj" />
   </Folder>

@@ -70,10 +70,14 @@ if ($InstallDsc) {
         Write-Host "DSC is already installed."
     } else {
         $headers = if ($GitHubToken) { @{Authorization = "Bearer $GitHubToken"} } else { $null }
-        $release = Invoke-RestMethod -Uri 'https://api.github.com/repos/PowerShell/DSC/releases/latest' -Headers $headers
+        $releases = Invoke-RestMethod -Uri 'https://api.github.com/repos/PowerShell/DSC/releases' -Headers $headers
+        $release = $releases | Where-Object { $_.prerelease } | Select-Object -First 1
+        if (-not $release) {
+            $release = $releases | Select-Object -First 1  # Fallback to latest if no prerelease
+        }
         $tag = $release.tag_name
         $version = $tag -replace '^v', ''
-        Write-Host "Latest DSC version: $version"
+        Write-Host "Latest DSC prerelease version: $version"
 
         if ($IsWindows) {
             $platform = "x86_64-pc-windows-msvc"
@@ -115,7 +119,8 @@ if (-not $IsWindows) {
     $testExecutables = @(
         "tests/TestResource.Aot/bin/Release/net10.0/publish/test-resource-aot",
         "tests/TestResource.NonAot/bin/Release/net10.0/publish/test-resource-non-aot",
-        "tests/TestResource.Options/bin/Release/net10.0/publish/test-resource-options"
+        "tests/TestResource.Options/bin/Release/net10.0/publish/test-resource-options",
+        "tests/TestResource.Multi/bin/Release/net10.0/publish/test-resource-multi"
     )
     foreach ($exe in $testExecutables) {
         if (Test-Path $exe) {

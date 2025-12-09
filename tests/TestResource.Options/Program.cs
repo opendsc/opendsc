@@ -9,5 +9,7 @@ using TestResource.Options;
 
 var options = DscJsonSerializerSettings.Default;
 var resource = new Resource(options);
-var command = CommandBuilder<Resource, Schema>.Build(resource, options);
+var command = new CommandBuilder()
+    .AddResource<Resource, Schema>(resource)
+    .Build();
 return command.Parse(args).Invoke();

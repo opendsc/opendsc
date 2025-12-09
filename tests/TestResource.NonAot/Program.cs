@@ -7,5 +7,7 @@ using OpenDsc.Resource.CommandLine;
 using TestResource.NonAot;
 
 var resource = new Resource(SourceGenerationContext.Default);
-var command = CommandBuilder<Resource, Schema>.Build(resource, SourceGenerationContext.Default);
+var command = new CommandBuilder()
+    .AddResource<Resource, Schema>(resource)
+    .Build();
 return command.Parse(args).Invoke();

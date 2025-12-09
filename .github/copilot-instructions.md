@@ -27,6 +27,31 @@ public class Resource(JsonSerializerContext context) : DscResource<Schema>(conte
 }
 ```
 
+### Command Line Interface
+
+**Single Resource**: Register one resource in the executable:
+```csharp
+var resource = new Resource(SourceGenerationContext.Default);
+var command = new CommandBuilder()
+    .AddResource<Resource, Schema>(resource)
+    .Build();
+return command.Parse(args).Invoke();
+```
+
+**Multi-Resource**: Register multiple resources in a single executable:
+```csharp
+var fileResource = new FileResource(SourceGenerationContext.Default);
+var userResource = new UserResource(SourceGenerationContext.Default);
+
+var command = new CommandBuilder()
+    .AddResource<FileResource, FileSchema>(fileResource)
+    .AddResource<UserResource, UserSchema>(userResource)
+    .Build();
+return command.Parse(args).Invoke();
+```
+
+For multi-resource executables, commands require `--resource` parameter to specify the target resource.
+
 ### JSON Serialization Approaches
 
 **Native AOT (preferred)**: Use source generation with `JsonSerializerContext`:
@@ -85,7 +110,7 @@ Invoke-Pester
 # Tests validate: resource discovery, schema generation, get/set/test/delete operations
 ```
 
-Test projects (`TestResource.Aot`, `TestResource.NonAot`, `TestResource.Options`) are published during build, then tested via `dsc resource` commands.
+Test projects (`TestResource.Aot`, `TestResource.NonAot`, `TestResource.Options`, `TestResource.Multi`) are published during build, then tested via `dsc resource` commands. The `TestResource.Multi` project demonstrates multiple resources in a single executable.
 
 ## Project Conventions
 
@@ -112,9 +137,13 @@ AOT-enabled resources require specific properties:
 Manifest generation post-publish target:
 ```xml
 <Target Name="RunAfterPublish" AfterTargets="Publish">
-  <Exec Command="$(PublishDir)$(TargetName).exe manifest &gt; $(PublishDir)$(OutputFileName)" />
+  <Exec Command="$(PublishDir)$(AssemblyName).exe manifest --save" />
 </Target>
 ```
+
+This generates:
+- Single resource: `owner.resourcename.dsc.resource.json`
+- Multi-resource: `executable-name.dsc.manifests.json`
 
 ## Common Tasks
 
@@ -135,10 +164,27 @@ After modifying library code, rebuild and test:
 - Follow semantic versioning
 - Update `CHANGELOG.md` following Keep a Changelog format
 
+## Command Line Structure
+
+### Command Hierarchy
+Commands are at the root level (no `config` parent):
+- `get`, `set`, `test`, `delete`, `export` - Resource operations
+- `schema` - JSON schema output
+- `manifest` - Manifest generation with optional `--save` flag
+
+### Multi-Resource Support
+When multiple resources are registered:
+- All commands require `--resource Owner/Name` parameter
+- `manifest` command can target all resources or a specific one
+- Generates `executable.dsc.manifests.json` for multi-resource discovery
+
 ## Key Files Reference
 
 - `src/OpenDsc.Resource/DscResource.cs`: Base class implementation
 - `src/OpenDsc.Resource/Interfaces.cs`: Capability interfaces (IGettable, ISettable, etc.)
-- `src/OpenDsc.Resource.CommandLine/CommandBuilder.cs`: CLI generation logic
+- `src/OpenDsc.Resource.CommandLine/CommandBuilder.cs`: CLI generation with builder pattern
+- `src/OpenDsc.Resource.CommandLine/ResourceRegistry.cs`: Multi-resource registration
+- `src/OpenDsc.Resource.CommandLine/CommandExecutor.cs`: Command execution logic
 - `tests/TestResource.Aot/`: Reference implementation with AOT support
+- `tests/TestResource.Multi/`: Multi-resource example (File, User, Service)
 - `build.ps1`: Central build orchestration script

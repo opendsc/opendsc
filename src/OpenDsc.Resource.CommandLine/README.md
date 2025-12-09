@@ -13,71 +13,115 @@ dotnet add package OpenDsc.Resource.CommandLine
 
 ## Usage
 
-This package provides a `CommandBuilder<TResource, TSchema>` class that
-generates a `System.CommandLine.RootCommand` for your DSC resource. The
-command structure includes:
+This package provides a `CommandBuilder` class that generates a
+`System.CommandLine.RootCommand` for your DSC resource(s). The command
+structure includes:
 
-- `config`: Manage resource configuration
-  - `get`: Retrieve resource configuration
-  - `set`: Set resource configuration
-  - `test`: Test resource configuration
-  - `delete`: Delete resource configuration
-  - `export`: Export resource configuration
-- `schema`: Retrieve resource JSON schema
-- `manifest`: Retrieve resource manifest
+- `get`: Get the current state of a resource instance
+- `set`: Set the desired state of a resource instance
+- `test`: Test if a resource instance is in the desired state
+- `delete`: Delete a resource instance
+- `export`: Export all instances of a resource
+- `schema`: Get the JSON schema for a resource
+- `manifest`: Generate the DSC resource manifest(s)
 
-### Example
+### Single Resource Example
 
 ```csharp
 using OpenDsc.Resource.CommandLine;
-using System.CommandLine;
-using System.Text.Json;
 
 var resource = new Resource(SourceGenerationContext.Default);
-var command = CommandBuilder<Resource, Schema>.Build(resource, SourceGenerationContext.Default);
+var command = new CommandBuilder()
+    .AddResource<Resource, Schema>(resource)
+    .Build();
 return command.Parse(args).Invoke();
 ```
 
+### Multi-Resource Example
+
+> **Note**: Requires DSC v3.2 or later.
+
+You can register multiple resources in a single executable:
+
+```csharp
+using OpenDsc.Resource.CommandLine;
+
+var fileResource = new FileResource(SourceGenerationContext.Default);
+var userResource = new UserResource(SourceGenerationContext.Default);
+var serviceResource = new ServiceResource(SourceGenerationContext.Default);
+
+var command = new CommandBuilder()
+    .AddResource<FileResource, FileSchema>(fileResource)
+    .AddResource<UserResource, UserSchema>(userResource)
+    .AddResource<ServiceResource, ServiceSchema>(serviceResource)
+    .Build();
+
+return command.Parse(args).Invoke();
+```
+
+When multiple resources are registered, all commands require the `--resource`
+parameter to specify which resource to operate on.
+
 ## Commands
 
-### config get
+### get
 
-Retrieves the current configuration of the resource.
+Retrieves the current state of the resource.
 
 ```sh
-app config get --input '{"property": "value"}'
+# Single resource
+app get --input '{"property": "value"}'
+
+# Multi-resource
+app get --resource 'Owner/ResourceName' --input '{"property": "value"}'
 ```
 
-### config set
+### set
 
-Sets the configuration of the resource.
+Sets the desired state of the resource.
 
 ```sh
-app config set --input '{"property": "value"}'
+# Single resource
+app set --input '{"property": "value"}'
+
+# Multi-resource
+app set --resource 'Owner/ResourceName' --input '{"property": "value"}'
 ```
 
-### config test
+### test
 
-Tests the configuration of the resource.
+Tests if the resource is in the desired state.
 
 ```sh
-app config test --input '{"property": "value"}'
+# Single resource
+app test --input '{"property": "value"}'
+
+# Multi-resource
+app test --resource 'Owner/ResourceName' --input '{"property": "value"}'
 ```
 
-### config delete
+### delete
 
-Deletes the configuration of the resource.
+Deletes the resource instance.
 
 ```sh
-app config delete --input '{"property": "value"}'
+# Single resource
+app delete --input '{"property": "value"}'
+
+# Multi-resource
+app delete --resource 'Owner/ResourceName' --input '{"property": "value"}'
 ```
 
-### config export
+### export
 
-Exports the configuration of the resource.
+Exports all instances of the resource.
 
 ```sh
-app config export
+# Single resource
+app export
+
+# Multi-resource
+app export --resource 'Owner/ResourceName'
 ```
 
 ### schema
@@ -85,21 +129,39 @@ app config export
 Outputs the JSON schema for the resource.
 
 ```sh
+# Single resource
 app schema
+
+# Multi-resource
+app schema --resource 'Owner/ResourceName'
 ```
 
 ### manifest
 
-Outputs the resource manifest.
+Generates the resource manifest(s).
 
 ```sh
+# Single resource - output to console
 app manifest
+
+# Single resource - save to file
+app manifest --save
+
+# Multi-resource - all manifests to console
+app manifest
+
+# Multi-resource - save all manifests to file
+app manifest --save
+
+# Multi-resource - specific resource manifest
+app manifest --resource 'Owner/ResourceName'
 ```
 
 ## Requirements
 
 - .NET Standard 2.0 or higher
 - Depends on `OpenDsc.Resource` and `System.CommandLine`
+- DSC v3.2+ required for multi-resource support
 
 ## License
 

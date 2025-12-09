@@ -23,12 +23,21 @@ generation:
 
 ```csharp
 using OpenDsc.Resource;
-using System.Text.Json;
+using System.Text.Json.Serialization;
 
 [DscResource("MyCompany/MyResource", "1.0.0")]
-public class MyResource : DscResource<MySchema>
+public class MyResource(JsonSerializerContext context) : DscResource<MySchema>(context)
 {
-    public MyResource() : base(DscJsonSerializerSettings.Default) { }
+    // Constructor automatically passes context to base class
+}
+```
+
+For non-AOT scenarios, you can use `JsonSerializerOptions`:
+
+```csharp
+public class MyResource(JsonSerializerOptions options) : DscResource<MySchema>(options)
+{
+    // Use DscJsonSerializerSettings.Default for standard settings
 }
 ```
 
@@ -47,12 +56,28 @@ Implement the following interfaces to add DSC operations:
 Use the `DscResourceAttribute` to define resource metadata:
 
 ```csharp
-[DscResource("MyCompany/MyResource", "1.0.0")]
-public class MyResource : DscResource<MySchema>, IGettable<MySchema>, ISettable<MySchema>
+[DscResource("MyCompany/MyResource", "1.0.0",
+    Description = "Manages my resource",
+    Tags = ["tag1", "tag2"],
+    SetReturn = SetReturn.StateAndDiff,
+    TestReturn = TestReturn.StateAndDiff)]
+public class MyResource(JsonSerializerContext context) : DscResource<MySchema>(context),
+    IGettable<MySchema>, ISettable<MySchema>, ITestable<MySchema>
 {
-    // Implementation
+    public MySchema Get(MySchema instance) { /* implementation */ }
+    public SetResult<MySchema>? Set(MySchema instance) { /* implementation */ }
+    public TestResult<MySchema> Test(MySchema instance) { /* implementation */ }
 }
 ```
+
+The attribute supports:
+
+- **Type** (required): Resource identifier in `Owner/Name` format
+- **Version** (required): Semantic version string
+- **Description**: Human-readable description
+- **Tags**: Array of tags for categorization
+- **SetReturn**: Controls `Set` operation output (None, State, StateAndDiff)
+- **TestReturn**: Controls `Test` operation output (State, StateAndDiff)
 
 ## Requirements
 
