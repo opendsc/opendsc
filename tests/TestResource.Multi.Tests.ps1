@@ -56,7 +56,7 @@ Describe 'Multi-Resource Manifest Tests' {
     }
 
     It 'Saves multi-resource manifest with --save' {
-        $manifestPath = Join-Path $PSScriptRoot 'TestResource.Multi\bin\Release\net10.0\win-x64\publish\test-resource-multi.dsc.manifests.json'
+        $manifestPath = Join-Path $publishPath 'test-resource-multi.dsc.manifests.json'
         if (Test-Path $manifestPath) { Remove-Item $manifestPath }
 
         & $resourceExe manifest --save 2>&1 | Out-Null
@@ -67,7 +67,7 @@ Describe 'Multi-Resource Manifest Tests' {
     }
 
     It 'Saves single resource manifest with --save and --resource' {
-        $manifestPath = Join-Path $PSScriptRoot 'TestResource.Multi\bin\Release\net10.0\win-x64\publish\testresource.multi.file.dsc.resource.json'
+        $manifestPath = Join-Path $publishPath 'testresource.multi.file.dsc.resource.json'
         if (Test-Path $manifestPath) { Remove-Item $manifestPath }
 
         & $resourceExe manifest --resource 'TestResource.Multi/File' --save 2>&1 | Out-Null
