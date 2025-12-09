@@ -3,7 +3,8 @@ BeforeAll {
     $publishPath = Join-Path $PSScriptRoot "TestResource.Multi\bin\$configuration\*\*\publish" |
         Resolve-Path | Select-Object -ExpandProperty ProviderPath
     $env:DSC_RESOURCE_PATH = $publishPath
-    $script:resourceExe = Join-Path $publishPath 'test-resource-multi.exe'
+    $exeSuffix = if ($IsWindows) { '.exe' } else { '' }
+    $script:resourceExe = Join-Path $publishPath "test-resource-multi$exeSuffix"
     if (-not (Test-Path $script:resourceExe)) {
         throw "Test resource executable not found at: $script:resourceExe. Run build.ps1 first."
     }
