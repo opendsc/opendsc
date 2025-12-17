@@ -5,6 +5,8 @@ Describe 'TestResource.NonAot' {
             Resolve-Path | Select-Object -ExpandProperty ProviderPath
         $env:DSC_RESOURCE_PATH = $publishPath
         $script:tempTestFile = Join-Path $TestDrive 'test-file.txt'
+        $exeSuffix = if ($IsWindows) { '.exe' } else { '' }
+        $script:resourceExe = Join-Path $publishPath "test-resource-non-aot$exeSuffix"
     }
 
     Context 'Discovery' {
@@ -148,6 +150,44 @@ Describe 'TestResource.NonAot' {
 
         It 'Should set _exist to null for exported files' {
             $script:exportResult.resources | ForEach-Object { $_.properties._exist | Should -BeNullOrEmpty }
+        }
+    }
+
+    Context 'Exit Code Handling' {
+        It 'Should return exit code 2 for JsonException' {
+            $jsonInput = @{ path = 'trigger-json-exception.txt' } | ConvertTo-Json -Compress
+            & $script:resourceExe get --input $jsonInput 2>&1 | Out-Null
+            $LASTEXITCODE | Should -Be 2
+        }
+
+        It 'Should return exit code 1 for generic Exception' {
+            $jsonInput = @{ path = 'trigger-generic-exception.txt' } | ConvertTo-Json -Compress
+            & $script:resourceExe get --input $jsonInput 2>&1 | Out-Null
+            $LASTEXITCODE | Should -Be 1
+        }
+
+        It 'Should return exit code 3 for IOException' {
+            $jsonInput = @{ path = 'trigger-io-exception.txt' } | ConvertTo-Json -Compress
+            & $script:resourceExe get --input $jsonInput 2>&1 | Out-Null
+            $LASTEXITCODE | Should -Be 3
+        }
+
+        It 'Should return exit code 4 for DirectoryNotFoundException' {
+            $jsonInput = @{ path = 'trigger-directory-not-found.txt' } | ConvertTo-Json -Compress
+            & $script:resourceExe get --input $jsonInput 2>&1 | Out-Null
+            $LASTEXITCODE | Should -Be 4
+        }
+
+        It 'Should return exit code 5 for UnauthorizedAccessException' {
+            $jsonInput = @{ path = 'trigger-unauthorized-access.txt' } | ConvertTo-Json -Compress
+            & $script:resourceExe get --input $jsonInput 2>&1 | Out-Null
+            $LASTEXITCODE | Should -Be 5
+        }
+
+        It 'Should return exit code 0 for success' {
+            $jsonInput = @{ path = $script:tempTestFile } | ConvertTo-Json -Compress
+            & $script:resourceExe get --input $jsonInput 2>&1 | Out-Null
+            $LASTEXITCODE | Should -Be 0
         }
     }
 }

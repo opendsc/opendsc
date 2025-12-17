@@ -170,7 +170,7 @@ Describe 'Multi-Resource Error Handling' {
         $inputJson = @{ path = 'test.txt' } | ConvertTo-Json -Compress
         $output = & $resourceExe get --resource 'Invalid/Resource' --input $inputJson 2>&1
         $LASTEXITCODE | Should -Not -Be 0
-        $output | Should -Match 'not found'
+        ($output -join ' ') | Should -Match 'not found|Failed to resolve'
     }
 }
 
@@ -317,6 +317,50 @@ Describe 'Multi-Resource DSC CLI Operations' {
             $inputJson = @{ name = 'TestService1'; state = 'Running'; _exist = $true } | ConvertTo-Json -Compress
             $result = dsc resource test -r 'TestResource.Multi/Service' --input $inputJson --output-format json | ConvertFrom-Json
             $result.actualState._exist | Should -BeNullOrEmpty
+        }
+    }
+
+    Context 'Exit Code Handling' {
+        It 'Should return exit code 1 for generic Exception in File resource' {
+            $jsonInput = @{ path = 'trigger-generic-exception.txt' } | ConvertTo-Json -Compress
+            & $resourceExe get --resource 'TestResource.Multi/File' --input $jsonInput 2>&1 | Out-Null
+            $LASTEXITCODE | Should -Be 1
+        }
+
+        It 'Should return exit code 2 for IOException in File resource' {
+            $jsonInput = @{ path = 'trigger-io-exception.txt' } | ConvertTo-Json -Compress
+            & $resourceExe get --resource 'TestResource.Multi/File' --input $jsonInput 2>&1 | Out-Null
+            $LASTEXITCODE | Should -Be 2
+        }
+
+        It 'Should return exit code 3 for DirectoryNotFoundException in File resource' {
+            $jsonInput = @{ path = 'trigger-directory-not-found.txt' } | ConvertTo-Json -Compress
+            & $resourceExe get --resource 'TestResource.Multi/File' --input $jsonInput 2>&1 | Out-Null
+            $LASTEXITCODE | Should -Be 3
+        }
+
+        It 'Should return exit code 4 for UnauthorizedAccessException in File resource' {
+            $jsonInput = @{ path = 'trigger-unauthorized-access.txt' } | ConvertTo-Json -Compress
+            & $resourceExe get --resource 'TestResource.Multi/File' --input $jsonInput 2>&1 | Out-Null
+            $LASTEXITCODE | Should -Be 4
+        }
+
+        It 'Should return exit code 0 for successful File resource operation' {
+            $jsonInput = @{ path = $testFile } | ConvertTo-Json -Compress
+            & $resourceExe get --resource 'TestResource.Multi/File' --input $jsonInput 2>&1 | Out-Null
+            $LASTEXITCODE | Should -Be 0
+        }
+
+        It 'Should return proper exit code for User resource' {
+            $jsonInput = @{ name = 'TestUser' } | ConvertTo-Json -Compress
+            & $resourceExe get --resource 'TestResource.Multi/User' --input $jsonInput 2>&1 | Out-Null
+            $LASTEXITCODE | Should -Be 0
+        }
+
+        It 'Should return proper exit code for Service resource' {
+            $jsonInput = @{ name = 'TestService1' } | ConvertTo-Json -Compress
+            & $resourceExe get --resource 'TestResource.Multi/Service' --input $jsonInput 2>&1 | Out-Null
+            $LASTEXITCODE | Should -Be 0
         }
     }
 }

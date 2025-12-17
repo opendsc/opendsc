@@ -10,9 +10,8 @@ namespace Temp;
 
 [DscResource("RESOURCE_NAME", Description = "RESOURCE_DESCRIPTION", Tags = new[] { "tag1", "tag2" })]
 [ExitCode(0, Description = "Success")]
-[ExitCode(1, Description = "Invalid parameter")]
-[ExitCode(2, Exception = typeof(Exception), Description = "Generic error")]
-[ExitCode(3, Exception = typeof(JsonException), Description = "Invalid JSON")]
+[ExitCode(1, Exception = typeof(Exception), Description = "Error")]
+[ExitCode(2, Exception = typeof(JsonException), Description = "Invalid JSON")]
 #if (use-options)
 public sealed class Resource(JsonSerializerOptions options) : DscResource<Schema>(options), IGettable<Schema>
 #else

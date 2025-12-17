@@ -1,4 +1,4 @@
-﻿// Copyright (c) Thomas Nieto - All Rights Reserved
+// Copyright (c) Thomas Nieto - All Rights Reserved
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
@@ -335,10 +335,7 @@ public sealed class CommandBuilder
         var registration = _registry.GetByType(resourceType ?? string.Empty);
         if (registration == null)
         {
-            var available = string.Join(", ", _registry.GetAll().Select(r => r.Type));
-            var message = $"Resource type '{resourceType}' not found. Available resources: {available}";
-            // Write plain text to stdout and exit so callers reliably capture the message
-            Console.WriteLine(message);
+            Logger.WriteTrace($"Failed to resolve resource type: {resourceType}");
             Environment.Exit(1);
         }
 
@@ -355,15 +352,15 @@ public sealed class CommandBuilder
             Logger.WriteTrace(ex.StackTrace);
         }
 
-        var registration = _registry.GetByType(resourceType ?? string.Empty);
-
-        if (registration != null)
+        try
         {
+            var registration = ResolveResource(resourceType, IsSingleResource);
             var exitCode = registration.ExitCodeResolver(ex.GetType());
             Environment.Exit(exitCode);
         }
-        else
+        catch
         {
+            Logger.WriteTrace("Failed to resolve resource type for exception handling");
             Environment.Exit(1);
         }
     }

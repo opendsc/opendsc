@@ -3,6 +3,7 @@
 // terms of the MIT license.
 
 using System.Text.Json.Serialization;
+
 using OpenDsc.Resource;
 
 namespace TestResource.Multi;
@@ -17,13 +18,35 @@ public sealed class FileSchema
 
 [DscResource("TestResource.Multi/File", "1.0.0", Description = "Manages file content", Tags = ["file", "content"], SetReturn = SetReturn.State, TestReturn = TestReturn.State)]
 [ExitCode(0, Description = "Success")]
-[ExitCode(1, Description = "Invalid parameter")]
-[ExitCode(2, Exception = typeof(Exception), Description = "Unhandled error")]
+[ExitCode(1, Exception = typeof(Exception), Description = "Error")]
+[ExitCode(2, Exception = typeof(IOException), Description = "I/O error")]
+[ExitCode(3, Exception = typeof(DirectoryNotFoundException), Description = "Directory not found")]
+[ExitCode(4, Exception = typeof(UnauthorizedAccessException), Description = "Access denied")]
 public sealed class FileResource(JsonSerializerContext context) : DscResource<FileSchema>(context),
     IGettable<FileSchema>, ISettable<FileSchema>, ITestable<FileSchema>, IDeletable<FileSchema>
 {
     public FileSchema Get(FileSchema instance)
     {
+        if (instance.Path.Contains("trigger-generic-exception", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Simulated generic error");
+        }
+
+        if (instance.Path.Contains("trigger-io-exception", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new IOException("Simulated I/O error");
+        }
+
+        if (instance.Path.Contains("trigger-directory-not-found", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new DirectoryNotFoundException("Simulated directory not found");
+        }
+
+        if (instance.Path.Contains("trigger-unauthorized-access", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new UnauthorizedAccessException("Simulated access denied");
+        }
+
         var exists = File.Exists(instance.Path);
         return new FileSchema
         {

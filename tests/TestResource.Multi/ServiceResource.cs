@@ -24,8 +24,7 @@ public sealed class ServiceSchema
 
 [DscResource("TestResource.Multi/Service", "1.0.0", Description = "Manages service state", Tags = ["service", "state"])]
 [ExitCode(0, Description = "Success")]
-[ExitCode(1, Description = "Invalid parameter")]
-[ExitCode(2, Exception = typeof(Exception), Description = "Unhandled error")]
+[ExitCode(1, Exception = typeof(Exception), Description = "Error")]
 public sealed class ServiceResource(JsonSerializerContext context) : DscResource<ServiceSchema>(context),
     IGettable<ServiceSchema>, ITestable<ServiceSchema>
 {
