@@ -26,23 +26,26 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
 
     public Schema Get(Schema instance)
     {
-        // Support triggering specific exceptions for exit code testing
         if (instance.Path.Contains("trigger-json-exception", StringComparison.OrdinalIgnoreCase))
         {
             throw new JsonException("Simulated JSON parsing error");
         }
+
         if (instance.Path.Contains("trigger-generic-exception", StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException("Simulated generic error");
         }
+
         if (instance.Path.Contains("trigger-io-exception", StringComparison.OrdinalIgnoreCase))
         {
             throw new IOException("Simulated I/O error");
         }
+
         if (instance.Path.Contains("trigger-directory-not-found", StringComparison.OrdinalIgnoreCase))
         {
             throw new DirectoryNotFoundException("Simulated directory not found");
         }
+
         if (instance.Path.Contains("trigger-unauthorized-access", StringComparison.OrdinalIgnoreCase))
         {
             throw new UnauthorizedAccessException("Simulated access denied");

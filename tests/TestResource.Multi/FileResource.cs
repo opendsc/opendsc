@@ -3,6 +3,7 @@
 // terms of the MIT license.
 
 using System.Text.Json.Serialization;
+
 using OpenDsc.Resource;
 
 namespace TestResource.Multi;
@@ -26,19 +27,21 @@ public sealed class FileResource(JsonSerializerContext context) : DscResource<Fi
 {
     public FileSchema Get(FileSchema instance)
     {
-        // Support triggering specific exceptions for exit code testing
         if (instance.Path.Contains("trigger-generic-exception", StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException("Simulated generic error");
         }
+
         if (instance.Path.Contains("trigger-io-exception", StringComparison.OrdinalIgnoreCase))
         {
             throw new IOException("Simulated I/O error");
         }
+
         if (instance.Path.Contains("trigger-directory-not-found", StringComparison.OrdinalIgnoreCase))
         {
             throw new DirectoryNotFoundException("Simulated directory not found");
         }
+
         if (instance.Path.Contains("trigger-unauthorized-access", StringComparison.OrdinalIgnoreCase))
         {
             throw new UnauthorizedAccessException("Simulated access denied");

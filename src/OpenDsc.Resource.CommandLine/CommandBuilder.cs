@@ -1,4 +1,4 @@
-﻿// Copyright (c) Thomas Nieto - All Rights Reserved
+// Copyright (c) Thomas Nieto - All Rights Reserved
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
@@ -360,7 +360,6 @@ public sealed class CommandBuilder
         }
         catch
         {
-            // If resolution fails, use generic error code
             Logger.WriteTrace("Failed to resolve resource type for exception handling");
             Environment.Exit(1);
         }

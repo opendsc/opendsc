@@ -3,6 +3,7 @@
 // terms of the MIT license.
 
 using OpenDsc.Resource.CommandLine;
+
 using TestResource.Multi;
 
 var fileResource = new FileResource(SourceGenerationContext.Default);
