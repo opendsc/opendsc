@@ -335,10 +335,7 @@ public sealed class CommandBuilder
         var registration = _registry.GetByType(resourceType ?? string.Empty);
         if (registration == null)
         {
-            var available = string.Join(", ", _registry.GetAll().Select(r => r.Type));
-            var message = $"Resource type '{resourceType}' not found. Available resources: {available}";
-            // Write plain text to stdout and exit so callers reliably capture the message
-            Console.WriteLine(message);
+            Logger.WriteTrace($"Failed to resolve resource type: {resourceType}");
             Environment.Exit(1);
         }
 
@@ -364,6 +361,7 @@ public sealed class CommandBuilder
         catch
         {
             // If resolution fails, use generic error code
+            Logger.WriteTrace("Failed to resolve resource type for exception handling");
             Environment.Exit(1);
         }
     }

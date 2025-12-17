@@ -18,8 +18,7 @@ public sealed class UserSchema
 
 [DscResource("TestResource.Multi/User", "1.0.0", Description = "Manages user accounts", Tags = ["user", "account"], SetReturn = SetReturn.State, TestReturn = TestReturn.State)]
 [ExitCode(0, Description = "Success")]
-[ExitCode(1, Description = "Invalid parameter")]
-[ExitCode(2, Exception = typeof(Exception), Description = "Unhandled error")]
+[ExitCode(1, Exception = typeof(Exception), Description = "Error")]
 public sealed class UserResource(JsonSerializerContext context) : DscResource<UserSchema>(context),
     IGettable<UserSchema>, ISettable<UserSchema>, ITestable<UserSchema>
 {

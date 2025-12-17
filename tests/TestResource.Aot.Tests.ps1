@@ -231,34 +231,34 @@ Describe 'TestResource.Aot' {
     }
 
     Context 'Exit Code Handling' {
-        It 'Should return exit code 3 for JsonException' {
+        It 'Should return exit code 2 for JsonException' {
             $jsonInput = @{ path = 'trigger-json-exception.txt' } | ConvertTo-Json -Compress
-            & $script:resourceExe get --input $jsonInput 2>&1 | Out-Null
-            $LASTEXITCODE | Should -Be 3
-        }
-
-        It 'Should return exit code 2 for generic Exception' {
-            $jsonInput = @{ path = 'trigger-generic-exception.txt' } | ConvertTo-Json -Compress
             & $script:resourceExe get --input $jsonInput 2>&1 | Out-Null
             $LASTEXITCODE | Should -Be 2
         }
 
-        It 'Should return exit code 4 for IOException' {
+        It 'Should return exit code 1 for generic Exception' {
+            $jsonInput = @{ path = 'trigger-generic-exception.txt' } | ConvertTo-Json -Compress
+            & $script:resourceExe get --input $jsonInput 2>&1 | Out-Null
+            $LASTEXITCODE | Should -Be 1
+        }
+
+        It 'Should return exit code 3 for IOException' {
             $jsonInput = @{ path = 'trigger-io-exception.txt' } | ConvertTo-Json -Compress
+            & $script:resourceExe get --input $jsonInput 2>&1 | Out-Null
+            $LASTEXITCODE | Should -Be 3
+        }
+
+        It 'Should return exit code 4 for DirectoryNotFoundException' {
+            $jsonInput = @{ path = 'trigger-directory-not-found.txt' } | ConvertTo-Json -Compress
             & $script:resourceExe get --input $jsonInput 2>&1 | Out-Null
             $LASTEXITCODE | Should -Be 4
         }
 
-        It 'Should return exit code 5 for DirectoryNotFoundException' {
-            $jsonInput = @{ path = 'trigger-directory-not-found.txt' } | ConvertTo-Json -Compress
-            & $script:resourceExe get --input $jsonInput 2>&1 | Out-Null
-            $LASTEXITCODE | Should -Be 5
-        }
-
-        It 'Should return exit code 6 for UnauthorizedAccessException' {
+        It 'Should return exit code 5 for UnauthorizedAccessException' {
             $jsonInput = @{ path = 'trigger-unauthorized-access.txt' } | ConvertTo-Json -Compress
             & $script:resourceExe get --input $jsonInput 2>&1 | Out-Null
-            $LASTEXITCODE | Should -Be 6
+            $LASTEXITCODE | Should -Be 5
         }
 
         It 'Should return exit code 0 for success' {

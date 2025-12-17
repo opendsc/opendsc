@@ -13,12 +13,11 @@ namespace TestResource.Aot;
 
 [DscResource("OpenDsc.Test/AotFile", Description = "AOT test resource for file existence.", Tags = ["test", "file", "aot"], SetReturn = SetReturn.StateAndDiff, TestReturn = TestReturn.StateAndDiff)]
 [ExitCode(0, Description = "Success")]
-[ExitCode(1, Description = "Invalid parameter")]
-[ExitCode(2, Exception = typeof(Exception), Description = "Generic error")]
-[ExitCode(3, Exception = typeof(JsonException), Description = "Invalid JSON")]
-[ExitCode(4, Exception = typeof(IOException), Description = "I/O error")]
-[ExitCode(5, Exception = typeof(DirectoryNotFoundException), Description = "Directory not found")]
-[ExitCode(6, Exception = typeof(UnauthorizedAccessException), Description = "Access denied")]
+[ExitCode(1, Exception = typeof(Exception), Description = "Error")]
+[ExitCode(2, Exception = typeof(JsonException), Description = "Invalid JSON")]
+[ExitCode(3, Exception = typeof(IOException), Description = "I/O error")]
+[ExitCode(4, Exception = typeof(DirectoryNotFoundException), Description = "Directory not found")]
+[ExitCode(5, Exception = typeof(UnauthorizedAccessException), Description = "Access denied")]
 public sealed class Resource(JsonSerializerContext context) : DscResource<Schema>(context), IGettable<Schema>, ISettable<Schema>, IDeletable<Schema>, ITestable<Schema>, IExportable<Schema>
 {
 

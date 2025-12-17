@@ -170,7 +170,7 @@ Describe 'Multi-Resource Error Handling' {
         $inputJson = @{ path = 'test.txt' } | ConvertTo-Json -Compress
         $output = & $resourceExe get --resource 'Invalid/Resource' --input $inputJson 2>&1
         $LASTEXITCODE | Should -Not -Be 0
-        $output | Should -Match 'not found'
+        ($output -join ' ') | Should -Match 'not found|Failed to resolve'
     }
 }
 
@@ -321,28 +321,28 @@ Describe 'Multi-Resource DSC CLI Operations' {
     }
 
     Context 'Exit Code Handling' {
-        It 'Should return exit code 2 for generic Exception in File resource' {
+        It 'Should return exit code 1 for generic Exception in File resource' {
             $jsonInput = @{ path = 'trigger-generic-exception.txt' } | ConvertTo-Json -Compress
+            & $resourceExe get --resource 'TestResource.Multi/File' --input $jsonInput 2>&1 | Out-Null
+            $LASTEXITCODE | Should -Be 1
+        }
+
+        It 'Should return exit code 2 for IOException in File resource' {
+            $jsonInput = @{ path = 'trigger-io-exception.txt' } | ConvertTo-Json -Compress
             & $resourceExe get --resource 'TestResource.Multi/File' --input $jsonInput 2>&1 | Out-Null
             $LASTEXITCODE | Should -Be 2
         }
 
-        It 'Should return exit code 4 for IOException in File resource' {
-            $jsonInput = @{ path = 'trigger-io-exception.txt' } | ConvertTo-Json -Compress
-            & $resourceExe get --resource 'TestResource.Multi/File' --input $jsonInput 2>&1 | Out-Null
-            $LASTEXITCODE | Should -Be 4
-        }
-
-        It 'Should return exit code 5 for DirectoryNotFoundException in File resource' {
+        It 'Should return exit code 3 for DirectoryNotFoundException in File resource' {
             $jsonInput = @{ path = 'trigger-directory-not-found.txt' } | ConvertTo-Json -Compress
             & $resourceExe get --resource 'TestResource.Multi/File' --input $jsonInput 2>&1 | Out-Null
-            $LASTEXITCODE | Should -Be 5
+            $LASTEXITCODE | Should -Be 3
         }
 
-        It 'Should return exit code 6 for UnauthorizedAccessException in File resource' {
+        It 'Should return exit code 4 for UnauthorizedAccessException in File resource' {
             $jsonInput = @{ path = 'trigger-unauthorized-access.txt' } | ConvertTo-Json -Compress
             & $resourceExe get --resource 'TestResource.Multi/File' --input $jsonInput 2>&1 | Out-Null
-            $LASTEXITCODE | Should -Be 6
+            $LASTEXITCODE | Should -Be 4
         }
 
         It 'Should return exit code 0 for successful File resource operation' {
