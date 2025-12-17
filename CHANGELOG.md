@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning][semver].
 
 ## [Unreleased]
 
+## [0.3.1] - 2025-12-17
+
+### Fixed
+
+- Fix exception exit codes not being returned (#29)
+
 ## [0.3.0] - 2025-12-09
 
 ### Added
@@ -54,7 +60,8 @@ and this project adheres to [Semantic Versioning][semver].
 
 - Initial release
 
-[Unreleased]: https://github.com/opendsc/opendsc/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/opendsc/opendsc/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/opendsc/opendsc/releases/tag/v0.3.1
 [0.3.0]: https://github.com/opendsc/opendsc/releases/tag/v0.3.0
 [0.2.0]: https://github.com/opendsc/opendsc/releases/tag/v0.2.0
 [0.1.2]: https://github.com/opendsc/opendsc/releases/tag/v0.1.2
