@@ -2,9 +2,6 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
-using System;
-using System.Collections.Generic;
-using System.IO;
 using System.Text.Json;
 
 using OpenDsc.Resource;

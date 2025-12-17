@@ -5,6 +5,8 @@ Describe 'TestResource.Aot' {
             Resolve-Path | Select-Object -ExpandProperty ProviderPath
         $env:DSC_RESOURCE_PATH = $publishPath
         $script:tempTestFile = Join-Path $TestDrive 'test-file.txt'
+        $exeSuffix = if ($IsWindows) { '.exe' } else { '' }
+        $script:resourceExe = Join-Path $publishPath "test-resource-aot$exeSuffix"
     }
 
     Context 'Discovery' {
@@ -225,6 +227,44 @@ Describe 'TestResource.Aot' {
             $jsonInput = @{} | ConvertTo-Json -Compress
             dsc resource get -r 'OpenDsc.Test/AotFile' --input $jsonInput 2>&1 | Out-Null
             $LASTEXITCODE | Should -Not -Be 0
+        }
+    }
+
+    Context 'Exit Code Handling' {
+        It 'Should return exit code 3 for JsonException' {
+            $jsonInput = @{ path = 'trigger-json-exception.txt' } | ConvertTo-Json -Compress
+            & $script:resourceExe get --input $jsonInput 2>&1 | Out-Null
+            $LASTEXITCODE | Should -Be 3
+        }
+
+        It 'Should return exit code 2 for generic Exception' {
+            $jsonInput = @{ path = 'trigger-generic-exception.txt' } | ConvertTo-Json -Compress
+            & $script:resourceExe get --input $jsonInput 2>&1 | Out-Null
+            $LASTEXITCODE | Should -Be 2
+        }
+
+        It 'Should return exit code 4 for IOException' {
+            $jsonInput = @{ path = 'trigger-io-exception.txt' } | ConvertTo-Json -Compress
+            & $script:resourceExe get --input $jsonInput 2>&1 | Out-Null
+            $LASTEXITCODE | Should -Be 4
+        }
+
+        It 'Should return exit code 5 for DirectoryNotFoundException' {
+            $jsonInput = @{ path = 'trigger-directory-not-found.txt' } | ConvertTo-Json -Compress
+            & $script:resourceExe get --input $jsonInput 2>&1 | Out-Null
+            $LASTEXITCODE | Should -Be 5
+        }
+
+        It 'Should return exit code 6 for UnauthorizedAccessException' {
+            $jsonInput = @{ path = 'trigger-unauthorized-access.txt' } | ConvertTo-Json -Compress
+            & $script:resourceExe get --input $jsonInput 2>&1 | Out-Null
+            $LASTEXITCODE | Should -Be 6
+        }
+
+        It 'Should return exit code 0 for success' {
+            $jsonInput = @{ path = $script:tempTestFile } | ConvertTo-Json -Compress
+            & $script:resourceExe get --input $jsonInput 2>&1 | Out-Null
+            $LASTEXITCODE | Should -Be 0
         }
     }
 }

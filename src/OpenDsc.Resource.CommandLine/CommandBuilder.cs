@@ -355,15 +355,15 @@ public sealed class CommandBuilder
             Logger.WriteTrace(ex.StackTrace);
         }
 
-        var registration = _registry.GetByType(resourceType ?? string.Empty);
-
-        if (registration != null)
+        try
         {
+            var registration = ResolveResource(resourceType, IsSingleResource);
             var exitCode = registration.ExitCodeResolver(ex.GetType());
             Environment.Exit(exitCode);
         }
-        else
+        catch
         {
+            // If resolution fails, use generic error code
             Environment.Exit(1);
         }
     }

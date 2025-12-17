@@ -2,9 +2,6 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
-using System;
-using System.Collections.Generic;
-using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -17,6 +14,9 @@ namespace TestResource.NonAot;
 [ExitCode(1, Description = "Invalid parameter")]
 [ExitCode(2, Exception = typeof(Exception), Description = "Generic error")]
 [ExitCode(3, Exception = typeof(JsonException), Description = "Invalid JSON")]
+[ExitCode(4, Exception = typeof(IOException), Description = "I/O error")]
+[ExitCode(5, Exception = typeof(DirectoryNotFoundException), Description = "Directory not found")]
+[ExitCode(6, Exception = typeof(UnauthorizedAccessException), Description = "Access denied")]
 public sealed class Resource(JsonSerializerContext context) : DscResource<Schema>(context),
     IGettable<Schema>,
     ISettable<Schema>,
@@ -27,6 +27,28 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
 
     public Schema Get(Schema instance)
     {
+        // Support triggering specific exceptions for exit code testing
+        if (instance.Path.Contains("trigger-json-exception", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new JsonException("Simulated JSON parsing error");
+        }
+        if (instance.Path.Contains("trigger-generic-exception", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Simulated generic error");
+        }
+        if (instance.Path.Contains("trigger-io-exception", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new IOException("Simulated I/O error");
+        }
+        if (instance.Path.Contains("trigger-directory-not-found", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new DirectoryNotFoundException("Simulated directory not found");
+        }
+        if (instance.Path.Contains("trigger-unauthorized-access", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new UnauthorizedAccessException("Simulated access denied");
+        }
+
         var exists = File.Exists(instance.Path);
         return new Schema
         {

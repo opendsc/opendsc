@@ -2,8 +2,8 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
-using System.Collections.Generic;
 using System.Text.Json.Serialization;
+
 using OpenDsc.Resource;
 
 namespace TestResource.NonAot;
