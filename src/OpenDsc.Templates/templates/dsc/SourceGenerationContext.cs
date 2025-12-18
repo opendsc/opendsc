@@ -10,8 +10,6 @@ namespace Temp;
                              UseStringEnumConverter = true,
                              DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 [JsonSerializable(typeof(Schema))]
-[JsonSerializable(typeof(TestResult<Schema>))]
-[JsonSerializable(typeof(SetResult<Schema>))]
 internal partial class SourceGenerationContext : JsonSerializerContext
 {
 
