@@ -8,6 +8,7 @@
     <ContentTargetFolders>content</ContentTargetFolders>
     <NoWarn>NU5128</NoWarn>
     <Description>Microsoft DSC v3 project templates.</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>

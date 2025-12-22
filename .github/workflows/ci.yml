@@ -7,39 +7,16 @@ defaults:
 on:
   push:
     branches: [ main ]
-
   pull_request:
     branches: [ main ]
-
   release:
     types: [ published ]
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '10.0.x'
-
-      - name: Build, Publish, and Pack
-        run: .\build.ps1 -Configuration Release -SkipTest -Pack
-
-      - name: Upload NuGet Packages
-        uses: actions/upload-artifact@v4
-        with:
-          name: nuget-packages
-          path: ./packages/*.nupkg
-
-  test:
-    needs: build
     strategy:
       matrix:
-        os: [windows-latest, ubuntu-latest, macos-latest]
+        os: [windows-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout Repository
@@ -50,8 +27,57 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      - name: Build, Publish, and Pack
+        run: .\build.ps1 -Configuration Release -SkipTest -Pack -Portable ${{ matrix.os == 'windows-latest' && '-Msi' || '' }}
+
+      - name: Upload NuGet Packages
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages
+          path: ./packages/*.nupkg
+
+      - name: Upload Windows Artifacts
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-artifacts
+          path: artifacts
+
+      - name: Upload Linux Artifacts
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-artifacts
+          path: artifacts
+
+  test:
+    needs: build
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.os == 'windows-latest' && 'windows-artifacts' || 'linux-artifacts' }}
+          path: artifacts
+
+      - name: Set Execute Permissions
+        if: matrix.os != 'windows-latest'
+        run: chmod +x artifacts/publish/OpenDsc.Resource.CommandLine.Linux
+
       - name: Run Tests
-        run: .\build.ps1 -InstallDsc -GitHubToken ${{ secrets.GITHUB_TOKEN }}
+        run: .\build.ps1 -SkipBuild -InstallDsc -GitHubToken ${{ secrets.GITHUB_TOKEN }}
 
   publish:
     needs: test

@@ -1,7 +1,7 @@
 Describe 'TestResource.Options' {
     BeforeAll {
         $configuration = if ($env:BUILD_CONFIGURATION) { $env:BUILD_CONFIGURATION } else { 'Release' }
-        $publishPath = Join-Path $PSScriptRoot "TestResource.Options\bin\$configuration\*\publish" |
+        $publishPath = Join-Path (Split-Path $PSScriptRoot) "TestResource.Options\bin\$configuration\*\publish" |
             Resolve-Path | Select-Object -ExpandProperty ProviderPath
         $env:DSC_RESOURCE_PATH = $publishPath
         $script:tempTestFile = Join-Path $TestDrive 'test-file.txt'

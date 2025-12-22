@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+
+  <Package
+    Name="OpenDSC Resources"
+    Manufacturer="Thomas Nieto"
+    Version="$(Version)"
+    UpgradeCode="A7B8C9D0-E1F2-4A3B-8C4D-5E6F7A8B9C0D">
+
+    <MediaTemplate EmbedCab="yes" />
+
+    <MajorUpgrade
+      DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+
+    <Property Id="ARPURLINFOABOUT"
+              Value="https://github.com/OpenDSC/OpenDSC" />
+
+    <Property Id="ARPHELPLINK"
+              Value="https://github.com/OpenDSC/OpenDSC/issues" />
+
+    <WixVariable Id="WixUILicenseRtf" Value="$(LicenseRtfPath)" />
+    <ui:WixUI Id="WixUI_Minimal" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="OpenDSC">
+        <Directory Id="ResourcesRootFolder" Name="Resources">
+        </Directory>
+      </Directory>
+    </StandardDirectory>
+
+    <Feature
+      Id="ProductFeature"
+      Title="Resources"
+      Level="1">
+
+      <ComponentGroupRef Id="AppFiles" />
+      <ComponentRef Id="PathEnvironment" />
+    </Feature>
+
+    <ComponentGroup Id="AppFiles" Directory="ResourcesRootFolder">
+      <Files Include="$(var.ProjectDir)..\..\..\artifacts\publish\**">
+        <Exclude Files="$(var.ProjectDir)..\..\..\artifacts\publish\**\*.pdb" />
+      </Files>
+    </ComponentGroup>
+
+    <Component
+      Id="PathEnvironment"
+      Directory="ResourcesRootFolder"
+      Guid="B8C9D0E1-F2A3-4B3C-8D4E-5F6A7B8C9D0E">
+
+      <Environment
+        Name="PATH"
+        Value="[ResourcesRootFolder]"
+        Action="set"
+        Part="last"
+        System="yes" />
+    </Component>
+
+  </Package>
+</Wix>
