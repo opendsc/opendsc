@@ -178,6 +178,24 @@ if (-not $SkipBuild) {
         }
     }
 
+    Write-Host "Building test resources..." -ForegroundColor Cyan
+    $testResourceProjects = @(
+        @{ Name = "TestResource.Aot"; Project = "tests/TestResource.Aot/TestResource.Aot.csproj" },
+        @{ Name = "TestResource.NonAot"; Project = "tests/TestResource.NonAot/TestResource.NonAot.csproj" },
+        @{ Name = "TestResource.Options"; Project = "tests/TestResource.Options/TestResource.Options.csproj" },
+        @{ Name = "TestResource.Multi"; Project = "tests/TestResource.Multi/TestResource.Multi.csproj" }
+    )
+    foreach ($proj in $testResourceProjects) {
+        $projPath = Join-Path $PSScriptRoot $proj.Project
+        if (Test-Path $projPath) {
+            $outputDir = Join-Path $PSScriptRoot "artifacts\$($proj.Name)"
+            dotnet publish $projPath -c $Configuration -o $outputDir
+            if ($LASTEXITCODE -ne 0) {
+                throw "Build failed for $($proj.Name) with exit code $LASTEXITCODE"
+            }
+        }
+    }
+
     Write-Host "Build completed successfully!" -ForegroundColor Green
 }
 
@@ -233,10 +251,10 @@ if ($InstallDsc) {
 
 if (-not $IsWindows) {
     $testExecutables = @(
-        "tests/TestResource.Aot/bin/Release/net10.0/publish/test-resource-aot",
-        "tests/TestResource.NonAot/bin/Release/net10.0/publish/test-resource-non-aot",
-        "tests/TestResource.Options/bin/Release/net10.0/publish/test-resource-options",
-        "tests/TestResource.Multi/bin/Release/net10.0/publish/test-resource-multi"
+        "artifacts/TestResource.Aot/test-resource-aot",
+        "artifacts/TestResource.NonAot/test-resource-non-aot",
+        "artifacts/TestResource.Options/test-resource-options",
+        "artifacts/TestResource.Multi/test-resource-multi"
     )
     foreach ($exe in $testExecutables) {
         if (Test-Path $exe) {

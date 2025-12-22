@@ -1,8 +1,7 @@
 Describe 'TestResource.Aot' {
     BeforeAll {
         $configuration = if ($env:BUILD_CONFIGURATION) { $env:BUILD_CONFIGURATION } else { 'Release' }
-        $publishPath = Join-Path (Split-Path $PSScriptRoot) "TestResource.Aot\bin\$configuration\*\*\publish" |
-            Resolve-Path | Select-Object -ExpandProperty ProviderPath
+        $publishPath = Join-Path $PSScriptRoot "..\..\artifacts\TestResource.Aot" | Resolve-Path | Select-Object -ExpandProperty ProviderPath
         $env:DSC_RESOURCE_PATH = $publishPath
         $script:tempTestFile = Join-Path $TestDrive 'test-file.txt'
         $exeSuffix = if ($IsWindows) { '.exe' } else { '' }
