@@ -4,8 +4,6 @@
 
 using System.Text.Json.Serialization;
 
-using OpenDsc.Resource;
-
 namespace TestResource.Aot;
 
 [JsonSourceGenerationOptions(WriteIndented = false,
@@ -13,8 +11,6 @@ namespace TestResource.Aot;
                              UseStringEnumConverter = true,
                              DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 [JsonSerializable(typeof(Schema))]
-[JsonSerializable(typeof(TestResult<Schema>))]
-[JsonSerializable(typeof(SetResult<Schema>))]
 internal partial class SourceGenerationContext : JsonSerializerContext
 {
 
