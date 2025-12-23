@@ -36,6 +36,7 @@ The project uses a **consolidated executable approach** where multiple resources
 **Platform Executables:**
 - `src/OpenDsc.Resource.CommandLine.Windows/` - Windows executable containing all Windows + cross-platform resources
 - `src/OpenDsc.Resource.CommandLine.Linux/` - Linux executable containing cross-platform resources only
+- `src/OpenDsc.Resource.CommandLine.macOS/` - macOS executable containing cross-platform resources only
 
 **Resource Implementation Structure:**
 
@@ -687,9 +688,14 @@ Use [Environment/](../src/OpenDsc.Resource.Windows/Environment/) as the template
 ## Package Dependencies
 
 All resources depend on:
-- `OpenDsc.Resource.CommandLine` - Version 0.3.1 (provides DscResource base class, interfaces, and CLI framework)
+- `OpenDsc.Resource.CommandLine` - Version 0.4.0 (provides DscResource base class, interfaces, and CLI framework)
 - `JsonSchema.Net.Generation` - Version 5.1.1 (JSON Schema generation attributes)
 
 Platform-specific dependencies:
-- `System.DirectoryServices.AccountManagement` - Built-in for user/group management
+- `System.DirectoryServices.AccountManagement` - Version 9.0.0 for user/group management
+- `System.ServiceProcess.ServiceController` - Version 9.0.0 for service management
 - Windows COM/Win32 APIs - P/Invoke declarations for shortcut, service, and DISM operations
+
+**Target Frameworks:**
+- Libraries: .NET Standard 2.0, .NET 8, .NET 9, .NET 10 (multi-targeting)
+- Executables: .NET 10 (Windows executables use `net10.0-windows`)
