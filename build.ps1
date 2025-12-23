@@ -94,6 +94,7 @@ if (-not $SkipBuild) {
                     -p:EnableCompressionInSingleFile=false `
                     -p:DebugType=None `
                     -p:DebugSymbols=false `
+                    -p:GenerateDocumentationFile=false `
                     --output $portableDir
                 if ($LASTEXITCODE -ne 0) {
                     throw "Portable build failed for OpenDsc.Resource.CommandLine.Windows with exit code $LASTEXITCODE"
@@ -155,6 +156,7 @@ if (-not $SkipBuild) {
                 -p:EnableCompressionInSingleFile=false `
                 -p:DebugType=None `
                 -p:DebugSymbols=false `
+                -p:GenerateDocumentationFile=false `
                 --output $portableLinuxDir
             if ($LASTEXITCODE -ne 0) {
                 throw "Portable build failed for OpenDsc.Resource.CommandLine.Linux with exit code $LASTEXITCODE"
@@ -191,6 +193,7 @@ if (-not $SkipBuild) {
                 -p:EnableCompressionInSingleFile=false `
                 -p:DebugType=None `
                 -p:DebugSymbols=false `
+                -p:GenerateDocumentationFile=false `
                 --output $portableMacDir
             if ($LASTEXITCODE -ne 0) {
                 throw "Portable build failed for OpenDsc.Resource.CommandLine.macOS with exit code $LASTEXITCODE"
