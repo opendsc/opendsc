@@ -169,6 +169,42 @@ if (-not $SkipBuild) {
             Write-Host "Output location: $portableLinuxDir" -ForegroundColor Green
             Write-Host "ZIP archive: $zipPath" -ForegroundColor Green
         }
+    } elseif ($IsMacOS) {
+        $macOSProj = Join-Path $PSScriptRoot "src\OpenDsc.Resource.CommandLine.macOS\OpenDsc.Resource.CommandLine.macOS.csproj"
+        if (Test-Path $macOSProj) {
+            dotnet publish $macOSProj -c $Configuration -o $publishDir
+            if ($LASTEXITCODE -ne 0) {
+                throw "Build failed for OpenDsc.Resource.CommandLine.macOS with exit code $LASTEXITCODE"
+            }
+        }
+
+        if ($Portable) {
+            Write-Host "Building self-contained portable version for macOS..." -ForegroundColor Cyan
+            $portableMacDir = Join-Path $PSScriptRoot "artifacts\portable"
+            New-Item -ItemType Directory -Path $portableMacDir -Force | Out-Null
+            dotnet publish $macOSProj `
+                --configuration $Configuration `
+                --runtime osx-arm64 `
+                --self-contained true `
+                -p:PublishSingleFile=true `
+                -p:IncludeNativeLibrariesForSelfExtract=true `
+                -p:EnableCompressionInSingleFile=false `
+                -p:DebugType=None `
+                -p:DebugSymbols=false `
+                --output $portableMacDir
+            if ($LASTEXITCODE -ne 0) {
+                throw "Portable build failed for OpenDsc.Resource.CommandLine.macOS with exit code $LASTEXITCODE"
+            }
+
+            Write-Host "Creating portable ZIP archive for macOS..." -ForegroundColor Cyan
+            $zipDir = Join-Path $PSScriptRoot "artifacts\zip"
+            New-Item -ItemType Directory -Path $zipDir -Force | Out-Null
+            $zipPath = Join-Path $zipDir "OpenDSC.Resources.macOS.Portable-$version.zip"
+            Compress-Archive -Path "$portableMacDir\*" -DestinationPath $zipPath -Force
+            Write-Host "Self-contained portable version for macOS built successfully!" -ForegroundColor Green
+            Write-Host "Output location: $portableMacDir" -ForegroundColor Green
+            Write-Host "ZIP archive: $zipPath" -ForegroundColor Green
+        }
     }
 
     if ($Pack) {
