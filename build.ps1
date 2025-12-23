@@ -76,7 +76,7 @@ if (-not $SkipBuild) {
     if ($IsWindows) {
         $windowsProj = Join-Path $PSScriptRoot "src\OpenDsc.Resource.CommandLine.Windows\OpenDsc.Resource.CommandLine.Windows.csproj"
         if (Test-Path $windowsProj) {
-            dotnet publish $windowsProj -c $Configuration -o $publishDir
+            dotnet publish $windowsProj -c $Configuration -o $publishDir -p:GenerateDocumentationFile=false
             if ($LASTEXITCODE -ne 0) {
                 throw "Build failed for OpenDsc.Resource.CommandLine.Windows with exit code $LASTEXITCODE"
             }
@@ -95,6 +95,7 @@ if (-not $SkipBuild) {
                     -p:DebugType=None `
                     -p:DebugSymbols=false `
                     -p:GenerateDocumentationFile=false `
+                    -p:CopyOutputSymbolsToPublishDirectory=false `
                     --output $portableDir
                 if ($LASTEXITCODE -ne 0) {
                     throw "Portable build failed for OpenDsc.Resource.CommandLine.Windows with exit code $LASTEXITCODE"
@@ -129,7 +130,7 @@ if (-not $SkipBuild) {
         $testServiceProj = Join-Path $PSScriptRoot "tests\TestService\TestService.csproj"
         if (Test-Path $testServiceProj) {
             $testServiceDir = Join-Path $PSScriptRoot "artifacts\TestService"
-            dotnet publish $testServiceProj -c $Configuration -o $testServiceDir
+            dotnet publish $testServiceProj -c $Configuration -o $testServiceDir -p:GenerateDocumentationFile=false
             if ($LASTEXITCODE -ne 0) {
                 throw "Build failed for TestService with exit code $LASTEXITCODE"
             }
@@ -137,7 +138,7 @@ if (-not $SkipBuild) {
     } elseif ($IsLinux) {
         $linuxProj = Join-Path $PSScriptRoot "src\OpenDsc.Resource.CommandLine.Linux\OpenDsc.Resource.CommandLine.Linux.csproj"
         if (Test-Path $linuxProj) {
-            dotnet publish $linuxProj -c $Configuration -o $publishDir
+            dotnet publish $linuxProj -c $Configuration -o $publishDir -p:GenerateDocumentationFile=false
             if ($LASTEXITCODE -ne 0) {
                 throw "Build failed for OpenDsc.Resource.CommandLine.Linux with exit code $LASTEXITCODE"
             }
@@ -157,6 +158,7 @@ if (-not $SkipBuild) {
                 -p:DebugType=None `
                 -p:DebugSymbols=false `
                 -p:GenerateDocumentationFile=false `
+                -p:CopyOutputSymbolsToPublishDirectory=false `
                 --output $portableLinuxDir
             if ($LASTEXITCODE -ne 0) {
                 throw "Portable build failed for OpenDsc.Resource.CommandLine.Linux with exit code $LASTEXITCODE"
@@ -174,7 +176,7 @@ if (-not $SkipBuild) {
     } elseif ($IsMacOS) {
         $macOSProj = Join-Path $PSScriptRoot "src\OpenDsc.Resource.CommandLine.macOS\OpenDsc.Resource.CommandLine.macOS.csproj"
         if (Test-Path $macOSProj) {
-            dotnet publish $macOSProj -c $Configuration -o $publishDir
+            dotnet publish $macOSProj -c $Configuration -o $publishDir -p:GenerateDocumentationFile=false
             if ($LASTEXITCODE -ne 0) {
                 throw "Build failed for OpenDsc.Resource.CommandLine.macOS with exit code $LASTEXITCODE"
             }
@@ -194,6 +196,7 @@ if (-not $SkipBuild) {
                 -p:DebugType=None `
                 -p:DebugSymbols=false `
                 -p:GenerateDocumentationFile=false `
+                -p:CopyOutputSymbolsToPublishDirectory=false `
                 --output $portableMacDir
             if ($LASTEXITCODE -ne 0) {
                 throw "Portable build failed for OpenDsc.Resource.CommandLine.macOS with exit code $LASTEXITCODE"
@@ -228,7 +231,7 @@ if (-not $SkipBuild) {
         $projPath = Join-Path $PSScriptRoot $proj.Project
         if (Test-Path $projPath) {
             $outputDir = Join-Path $PSScriptRoot "artifacts\$($proj.Name)"
-            dotnet publish $projPath -c $Configuration -o $outputDir
+            dotnet publish $projPath -c $Configuration -o $outputDir -p:GenerateDocumentationFile=false
             if ($LASTEXITCODE -ne 0) {
                 throw "Build failed for $($proj.Name) with exit code $LASTEXITCODE"
             }
