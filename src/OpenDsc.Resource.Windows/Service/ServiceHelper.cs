@@ -289,15 +289,7 @@ internal static partial class ServiceHelper
             if (service == IntPtr.Zero)
                 throw new Win32Exception(Marshal.GetLastWin32Error(), $"Failed to open service '{serviceName}'");
 
-            string? dependenciesString;
-            if (dependencies == null || dependencies.Length == 0)
-            {
-                dependenciesString = "\0";
-            }
-            else
-            {
-                dependenciesString = string.Join("\0", dependencies) + "\0";
-            }
+            var dependenciesString = (dependencies == null || dependencies.Length == 0) ? "\0" : string.Join("\0", dependencies) + "\0";
 
             if (!ChangeServiceConfig(service, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE, SERVICE_NO_CHANGE,
                 null, null, IntPtr.Zero, dependenciesString, null, null, null))

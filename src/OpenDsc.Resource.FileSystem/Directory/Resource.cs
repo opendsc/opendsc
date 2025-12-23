@@ -39,21 +39,9 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
     public Schema Get(Schema instance)
     {
         var fullPath = Path.GetFullPath(instance.Path);
-        if (System.IO.Directory.Exists(fullPath))
-        {
-            return new Schema()
-            {
-                Path = instance.Path
-            };
-        }
-        else
-        {
-            return new Schema()
-            {
-                Path = instance.Path,
-                Exist = false
-            };
-        }
+        return System.IO.Directory.Exists(fullPath)
+            ? new Schema { Path = instance.Path }
+            : new Schema { Path = instance.Path, Exist = false };
     }
 
     public TestResult<Schema> Test(Schema instance)
