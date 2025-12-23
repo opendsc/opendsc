@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning][semver].
 
 ## [Unreleased]
 
+## [0.4.0] - 2025-12-23
+
+### Added
+
+- Add Windows, Linux and macOS resources (#32)
+
 ## [0.3.1] - 2025-12-17
 
 ### Fixed
@@ -60,7 +66,8 @@ and this project adheres to [Semantic Versioning][semver].
 
 - Initial release
 
-[Unreleased]: https://github.com/opendsc/opendsc/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/opendsc/opendsc/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/opendsc/opendsc/releases/tag/v0.4.0
 [0.3.1]: https://github.com/opendsc/opendsc/releases/tag/v0.3.1
 [0.3.0]: https://github.com/opendsc/opendsc/releases/tag/v0.3.0
 [0.2.0]: https://github.com/opendsc/opendsc/releases/tag/v0.2.0
