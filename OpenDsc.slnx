@@ -8,11 +8,18 @@
     <Project Path="src/OpenDsc.Resource.CommandLine/OpenDsc.Resource.CommandLine.csproj" />
     <Project Path="src/OpenDsc.Resource/OpenDsc.Resource.csproj" />
     <Project Path="src/OpenDsc.Templates/OpenDsc.Templates.csproj" />
+    <Project Path="src/OpenDsc.Resource.FileSystem/OpenDsc.Resource.FileSystem.csproj" />
+    <Project Path="src/OpenDsc.Resource.CommandLine.Linux/OpenDsc.Resource.CommandLine.Linux.csproj" />
+    <Project Path="src/OpenDsc.Resource.CommandLine.macOS/OpenDsc.Resource.CommandLine.macOS.csproj" />
+    <Project Path="src/OpenDsc.Resource.Windows/OpenDsc.Resource.Windows.csproj" />
+    <Project Path="src/OpenDsc.Resource.CommandLine.Windows/OpenDsc.Resource.CommandLine.Windows.csproj" />
+    <Project Path="src/OpenDsc.Resource.Xml/OpenDsc.Resource.Xml.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/TestResource.Aot/TestResource.Aot.csproj" />
     <Project Path="tests/TestResource.Multi/TestResource.Multi.csproj" />
     <Project Path="tests/TestResource.NonAot/TestResource.NonAot.csproj" />
     <Project Path="tests/TestResource.Options/TestResource.Options.csproj" />
+    <Project Path="tests/TestService/TestService.csproj" />
   </Folder>
 </Solution>

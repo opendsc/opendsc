@@ -1,35 +1,36 @@
-Describe 'TestResource.Options' {
+Describe 'TestResource.NonAot' {
     BeforeAll {
         $configuration = if ($env:BUILD_CONFIGURATION) { $env:BUILD_CONFIGURATION } else { 'Release' }
-        $publishPath = Join-Path $PSScriptRoot "TestResource.Options\bin\$configuration\*\publish" |
-            Resolve-Path | Select-Object -ExpandProperty ProviderPath
+        $publishPath = Join-Path $PSScriptRoot "..\..\artifacts\TestResource.NonAot" | Resolve-Path | Select-Object -ExpandProperty ProviderPath
         $env:DSC_RESOURCE_PATH = $publishPath
         $script:tempTestFile = Join-Path $TestDrive 'test-file.txt'
+        $exeSuffix = if ($IsWindows) { '.exe' } else { '' }
+        $script:resourceExe = Join-Path $publishPath "test-resource-non-aot$exeSuffix"
     }
 
     Context 'Discovery' {
         BeforeAll {
-            $resources = dsc resource list '*OpenDsc.Test/OptionsFile' | ConvertFrom-Json
-            $script:optionsResource = $resources | Where-Object { $_.type -eq 'OpenDsc.Test/OptionsFile' }
+            $resources = dsc resource list '*OpenDsc.Test/NonAotFile' | ConvertFrom-Json
+            $script:nonAotResource = $resources | Where-Object { $_.type -eq 'OpenDsc.Test/NonAotFile' }
         }
 
         It 'Should be found by dsc resource list' {
             $resources.Count | Should -BeGreaterThan 0
-            $script:optionsResource | Should -Not -BeNullOrEmpty
+            $script:nonAotResource | Should -Not -BeNullOrEmpty
         }
 
         It 'Should have correct resource type' {
-            $script:optionsResource.type | Should -Be 'OpenDsc.Test/OptionsFile'
+            $script:nonAotResource.type | Should -Be 'OpenDsc.Test/NonAotFile'
         }
 
         It 'Should have description' {
-            $script:optionsResource.description | Should -Be 'Test resource using JsonSerializerOptions for file existence.'
+            $script:nonAotResource.description | Should -Be 'Non-AOT test resource for file existence.'
         }
 
-        It 'Should have tags including options' {
-            $script:optionsResource.manifest.tags | Should -Contain 'options'
-            $script:optionsResource.manifest.tags | Should -Contain 'test'
-            $script:optionsResource.manifest.tags | Should -Contain 'file'
+        It 'Should have tags including non-aot' {
+            $script:nonAotResource.manifest.tags | Should -Contain 'non-aot'
+            $script:nonAotResource.manifest.tags | Should -Contain 'test'
+            $script:nonAotResource.manifest.tags | Should -Contain 'file'
         }
     }
 
@@ -40,14 +41,14 @@ Describe 'TestResource.Options' {
 
         It 'Should not return _exist for existing file' {
             $jsonInput = @{ path = $tempTestFile } | ConvertTo-Json -Compress
-            $result = dsc resource get -r 'OpenDsc.Test/OptionsFile' --input $jsonInput | ConvertFrom-Json
+            $result = dsc resource get -r 'OpenDsc.Test/NonAotFile' --input $jsonInput | ConvertFrom-Json
             $result.actualState._exist | Should -BeNullOrEmpty
         }
 
         It 'Should return _exist=false for non-existing file' {
             $nonExistentPath = Join-Path $TestDrive 'nonexistent.txt'
             $jsonInput = @{ path = $nonExistentPath } | ConvertTo-Json -Compress
-            $result = dsc resource get -r 'OpenDsc.Test/OptionsFile' --input $jsonInput | ConvertFrom-Json
+            $result = dsc resource get -r 'OpenDsc.Test/NonAotFile' --input $jsonInput | ConvertFrom-Json
             $result.actualState._exist | Should -Be $false
         }
     }
@@ -59,7 +60,7 @@ Describe 'TestResource.Options' {
 
         It 'Should return inDesiredState=true when file exists' {
             $jsonInput = @{ path = $tempTestFile } | ConvertTo-Json -Compress
-            $result = dsc resource test -r 'OpenDsc.Test/OptionsFile' --input $jsonInput | ConvertFrom-Json
+            $result = dsc resource test -r 'OpenDsc.Test/NonAotFile' --input $jsonInput | ConvertFrom-Json
             $result.inDesiredState | Should -Be $true
             $result.differingProperties | Should -BeNullOrEmpty
         }
@@ -67,14 +68,8 @@ Describe 'TestResource.Options' {
         It 'Should return inDesiredState=false when file does not exist' {
             $nonExistentPath = Join-Path $TestDrive 'nonexistent.txt'
             $jsonInput = @{ path = $nonExistentPath } | ConvertTo-Json -Compress
-            $result = dsc resource test -r 'OpenDsc.Test/OptionsFile' --input $jsonInput | ConvertFrom-Json
+            $result = dsc resource test -r 'OpenDsc.Test/NonAotFile' --input $jsonInput | ConvertFrom-Json
             $result.inDesiredState | Should -Be $false
-        }
-
-        It 'Should return differingProperties when not in desired state' {
-            $nonExistentPath = Join-Path $TestDrive 'nonexistent.txt'
-            $jsonInput = @{ path = $nonExistentPath } | ConvertTo-Json -Compress
-            $result = dsc resource test -r 'OpenDsc.Test/OptionsFile' --input $jsonInput | ConvertFrom-Json
             $result.differingProperties | Should -Contain '_exist'
         }
     }
@@ -83,7 +78,7 @@ Describe 'TestResource.Options' {
         It 'Should create file when it does not exist' {
             Remove-Item $tempTestFile -Force -ErrorAction SilentlyContinue
             $jsonInput = @{ path = $tempTestFile } | ConvertTo-Json -Compress
-            $result = dsc resource set -r 'OpenDsc.Test/OptionsFile' --input $jsonInput | ConvertFrom-Json
+            $result = dsc resource set -r 'OpenDsc.Test/NonAotFile' --input $jsonInput | ConvertFrom-Json
             Test-Path $tempTestFile | Should -Be $true
             $result.afterState._exist | Should -BeNullOrEmpty
         }
@@ -91,14 +86,14 @@ Describe 'TestResource.Options' {
         It 'Should report changedProperties when creating file' {
             Remove-Item $tempTestFile -Force -ErrorAction SilentlyContinue
             $jsonInput = @{ path = $tempTestFile } | ConvertTo-Json -Compress
-            $result = dsc resource set -r 'OpenDsc.Test/OptionsFile' --input $jsonInput | ConvertFrom-Json
+            $result = dsc resource set -r 'OpenDsc.Test/NonAotFile' --input $jsonInput | ConvertFrom-Json
             $result.changedProperties | Should -Contain '_exist'
         }
 
         It 'Should delete file when _exist=false' {
             Set-Content -Path $tempTestFile -Value 'test content'
             $jsonInput = @{ path = $tempTestFile; _exist = $false } | ConvertTo-Json -Compress
-            $result = dsc resource set -r 'OpenDsc.Test/OptionsFile' --input $jsonInput | ConvertFrom-Json
+            $result = dsc resource set -r 'OpenDsc.Test/NonAotFile' --input $jsonInput | ConvertFrom-Json
             Test-Path $tempTestFile | Should -Be $false
             $result.afterState._exist | Should -Be $false
         }
@@ -106,7 +101,7 @@ Describe 'TestResource.Options' {
         It 'Should not modify existing file when _exist is omitted' {
             Set-Content -Path $tempTestFile -Value 'test content'
             $jsonInput = @{ path = $tempTestFile } | ConvertTo-Json -Compress
-            $result = dsc resource set -r 'OpenDsc.Test/OptionsFile' --input $jsonInput | ConvertFrom-Json
+            $result = dsc resource set -r 'OpenDsc.Test/NonAotFile' --input $jsonInput | ConvertFrom-Json
             Test-Path $tempTestFile | Should -Be $true
             $result.changedProperties | Should -BeNullOrEmpty
         }
@@ -119,14 +114,14 @@ Describe 'TestResource.Options' {
 
         It 'Should delete existing file' {
             $jsonInput = @{ path = $tempTestFile } | ConvertTo-Json -Compress
-            dsc resource delete -r 'OpenDsc.Test/OptionsFile' --input $jsonInput
+            dsc resource delete -r 'OpenDsc.Test/NonAotFile' --input $jsonInput
             Test-Path $tempTestFile | Should -Be $false
         }
 
         It 'Should not error when deleting non-existent file' {
             $nonExistentPath = Join-Path $TestDrive 'nonexistent.txt'
             $jsonInput = @{ path = $nonExistentPath } | ConvertTo-Json -Compress
-            { dsc resource delete -r 'OpenDsc.Test/OptionsFile' --input $jsonInput } | Should -Not -Throw
+            { dsc resource delete -r 'OpenDsc.Test/NonAotFile' --input $jsonInput } | Should -Not -Throw
         }
     }
 
@@ -137,7 +132,7 @@ Describe 'TestResource.Options' {
             $exportTestFile2 = Join-Path $TestDrive 'test-export2.txt'
             Set-Content -Path $exportTestFile1 -Value 'export test 1'
             Set-Content -Path $exportTestFile2 -Value 'export test 2'
-            $script:exportResult = dsc resource export -r 'OpenDsc.Test/OptionsFile' | ConvertFrom-Json
+            $script:exportResult = dsc resource export -r 'OpenDsc.Test/NonAotFile' | ConvertFrom-Json
         }
 
         AfterAll {
@@ -154,6 +149,44 @@ Describe 'TestResource.Options' {
 
         It 'Should set _exist to null for exported files' {
             $script:exportResult.resources | ForEach-Object { $_.properties._exist | Should -BeNullOrEmpty }
+        }
+    }
+
+    Context 'Exit Code Handling' {
+        It 'Should return exit code 2 for JsonException' {
+            $jsonInput = @{ path = 'trigger-json-exception.txt' } | ConvertTo-Json -Compress
+            & $script:resourceExe get --input $jsonInput 2>&1 | Out-Null
+            $LASTEXITCODE | Should -Be 2
+        }
+
+        It 'Should return exit code 1 for generic Exception' {
+            $jsonInput = @{ path = 'trigger-generic-exception.txt' } | ConvertTo-Json -Compress
+            & $script:resourceExe get --input $jsonInput 2>&1 | Out-Null
+            $LASTEXITCODE | Should -Be 1
+        }
+
+        It 'Should return exit code 3 for IOException' {
+            $jsonInput = @{ path = 'trigger-io-exception.txt' } | ConvertTo-Json -Compress
+            & $script:resourceExe get --input $jsonInput 2>&1 | Out-Null
+            $LASTEXITCODE | Should -Be 3
+        }
+
+        It 'Should return exit code 4 for DirectoryNotFoundException' {
+            $jsonInput = @{ path = 'trigger-directory-not-found.txt' } | ConvertTo-Json -Compress
+            & $script:resourceExe get --input $jsonInput 2>&1 | Out-Null
+            $LASTEXITCODE | Should -Be 4
+        }
+
+        It 'Should return exit code 5 for UnauthorizedAccessException' {
+            $jsonInput = @{ path = 'trigger-unauthorized-access.txt' } | ConvertTo-Json -Compress
+            & $script:resourceExe get --input $jsonInput 2>&1 | Out-Null
+            $LASTEXITCODE | Should -Be 5
+        }
+
+        It 'Should return exit code 0 for success' {
+            $jsonInput = @{ path = $script:tempTestFile } | ConvertTo-Json -Compress
+            & $script:resourceExe get --input $jsonInput 2>&1 | Out-Null
+            $LASTEXITCODE | Should -Be 0
         }
     }
 }

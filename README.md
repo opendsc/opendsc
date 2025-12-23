@@ -1,6 +1,8 @@
 # OpenDsc
 
-A C# library for building Microsoft DSC v3 resources with ease.
+A C# library ecosystem for building Microsoft DSC v3 resources with ease,
+including a comprehensive set of built-in resources for Windows and
+cross-platform management.
 
 ## Features
 
@@ -12,6 +14,7 @@ A C# library for building Microsoft DSC v3 resources with ease.
 - 📄 Automatic resource manifest generation
 - 🎯 Type-safe DSC resource implementation
 - 🔀 Multi-resource support (requires DSC v3.2+)
+- 🏗️ Built-in resources for Windows and cross-platform management
 
 ## Libraries
 
@@ -24,6 +27,43 @@ A C# library for building Microsoft DSC v3 resources with ease.
 [t]: https://www.nuget.org/packages/OpenDsc.Templates
 [r]: https://www.nuget.org/packages/OpenDsc.Resource
 [c]: https://www.nuget.org/packages/OpenDsc.Resource.CommandLine
+
+## Built-in Resources
+
+This repository includes a comprehensive set of DSC resources for
+managing Windows and cross-platform systems:
+
+### Windows Resources
+
+- **[OpenDsc.Windows/Environment][env]** - Manage Windows environment variables
+- **[OpenDsc.Windows/Group][group]** - Manage local Windows groups
+  and membership
+- **[OpenDsc.Windows/Service][service]** - Manage Windows services
+- **[OpenDsc.Windows/User][user]** - Manage local Windows user accounts
+- **[OpenDsc.Windows/Shortcut][shortcut]** - Manage Windows shortcuts
+  (.lnk files)
+- **[OpenDsc.Windows/OptionalFeature][optionalfeature]** - Manage Windows
+  optional features via DISM
+- **[OpenDsc.Windows.FileSystem/AccessControlList][acl]** - Manage file and
+  directory permissions (ACLs)
+
+### Cross-Platform Resources
+
+- **[OpenDsc.FileSystem/File][file]** - Manage files (Windows, Linux, macOS)
+- **[OpenDsc.FileSystem/Directory][directory]** - Manage directories with
+  hash-based synchronization
+- **[OpenDsc.Xml/Element][xml]** - Manage XML element content and attributes
+
+[env]: src/OpenDsc.Resource.Windows/Environment/README.md
+[group]: src/OpenDsc.Resource.Windows/Group/README.md
+[service]: src/OpenDsc.Resource.Windows/Service/README.md
+[user]: src/OpenDsc.Resource.Windows/User/README.md
+[shortcut]: src/OpenDsc.Resource.Windows/Shortcut/README.md
+[optionalfeature]: src/OpenDsc.Resource.Windows/OptionalFeature/README.md
+[acl]: src/OpenDsc.Resource.Windows/FileSystem/Acl/README.md
+[file]: src/OpenDsc.Resource.FileSystem/File/README.md
+[directory]: src/OpenDsc.Resource.FileSystem/Directory/README.md
+[xml]: src/OpenDsc.Resource.Xml/Element/README.md
 
 ## Quick Start
 
@@ -81,13 +121,30 @@ return command.Parse(args).Invoke();
 
 ## Examples
 
-See the [OpenDsc Resources repository](https://github.com/opendsc/resources)
-for real-world examples:
+See the built-in resources and test projects for real-world examples:
 
 - **Windows Management**: User accounts, groups, services, environment
   variables, optional features
 - **File System**: Files, directories, access control lists
 - **Cross-Platform**: XML element management, shortcuts
+
+### Using Built-in Resources
+
+The built-in resources are available as platform-specific executables:
+
+```powershell
+# Install DSC CLI
+winget install Microsoft.DSC
+
+# List available resources
+dsc resource list
+
+# Get environment variable
+dsc resource get -r OpenDsc.Windows/Environment --input '{"name":"PATH"}'
+
+# Set environment variable
+dsc resource set -r OpenDsc.Windows/Environment --input '{"name":"TEST","value":"123"}'
+```
 
 ## Requirements
 

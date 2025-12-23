@@ -1,7 +1,6 @@
 BeforeAll {
     $configuration = if ($env:BUILD_CONFIGURATION) { $env:BUILD_CONFIGURATION } else { 'Release' }
-    $publishPath = Join-Path $PSScriptRoot "TestResource.Multi\bin\$configuration\*\*\publish" |
-        Resolve-Path | Select-Object -ExpandProperty ProviderPath
+    $publishPath = Join-Path $PSScriptRoot "..\..\artifacts\TestResource.Multi" | Resolve-Path | Select-Object -ExpandProperty ProviderPath
     $env:DSC_RESOURCE_PATH = $publishPath
     $exeSuffix = if ($IsWindows) { '.exe' } else { '' }
     $script:resourceExe = Join-Path $publishPath "test-resource-multi$exeSuffix"

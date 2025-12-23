@@ -7,16 +7,17 @@ defaults:
 on:
   push:
     branches: [ main ]
-
   pull_request:
     branches: [ main ]
-
   release:
     types: [ published ]
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -27,13 +28,35 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Build, Publish, and Pack
-        run: .\build.ps1 -Configuration Release -SkipTest -Pack
+        run: .\build.ps1 -Configuration Release -SkipTest -Pack -Portable ${{ matrix.os == 'windows-latest' && '-Msi' || '' }}
 
       - name: Upload NuGet Packages
+        if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
         with:
           name: nuget-packages
           path: ./packages/*.nupkg
+
+      - name: Upload Windows Artifacts
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-artifacts
+          path: artifacts
+
+      - name: Upload Linux Artifacts
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-artifacts
+          path: artifacts
+
+      - name: Upload macOS Artifacts
+        if: matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-artifacts
+          path: artifacts
 
   test:
     needs: build
@@ -50,8 +73,19 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.os == 'windows-latest' && 'windows-artifacts' || matrix.os == 'ubuntu-latest' && 'linux-artifacts' || 'macos-artifacts' }}
+          path: artifacts
+
+      - name: Set Execute Permissions
+        if: matrix.os != 'windows-latest'
+        shell: bash
+        run: chmod +x artifacts/publish/OpenDsc.Resource.CommandLine.${{ matrix.os == 'macos-latest' && 'macOS' || 'Linux' }}
+
       - name: Run Tests
-        run: .\build.ps1 -InstallDsc -GitHubToken ${{ secrets.GITHUB_TOKEN }}
+        run: .\build.ps1 -SkipBuild -InstallDsc -GitHubToken ${{ secrets.GITHUB_TOKEN }}
 
   publish:
     needs: test
