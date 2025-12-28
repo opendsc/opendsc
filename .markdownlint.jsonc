@@ -12,6 +12,7 @@
     "allowed_languages": [
       "csharp",
       "powershell",
+      "mermaid",
       "sh",
       "text",
       "json",

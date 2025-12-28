@@ -1,14 +1,20 @@
 # OpenDSC
 
 OpenDsc is DSC's missing solution layer.
-This project is to recreate the Local Configuration Manager (LCM), pull server, and reporting capabilities for [DSCv3](https://github.com/PowerShell/DSC).
+This project is to recreate the Local Configuration Manager (LCM), pull server,
+and reporting capabilities for [Microsoft DSC](https://github.com/PowerShell/DSC).
 
-Microsoft's intention with DSCv3 is not to compete with other solutions
+Microsoft's intention with Microsoft DSC is not to compete with other solutions
 like Chef, Ansible and cloud based solutions like Azure Machine Configuration
 but, rather be the platform layer.
-This allows the other solutions to call DSC resources without competing directly.
+This allows the other solutions to call DSC resources without
+competing directly.
 
-While task-scheduler with PowerShell script can accomplish the needs for a basic and rudimentary LCM replacement, a full-featured LCM replacement can reduce the administrators technical debt maintaining and deploying configuration with reporting capabilities.
+While task-scheduler with PowerShell script can accomplish the needs
+for a basic and rudimentary LCM replacement,
+a full-featured LCM replacement can reduce the administrators
+technical debt maintaining and deploying configuration
+with reporting capabilities.
 
 ## Development Phases
 
@@ -18,8 +24,8 @@ Create proof of concept LCM with configuration file already on the node.
 
 Milestones:
 
-* Consume unencrypted configuration file and call DSC and capture status
-* Log status
+- Consume unencrypted configuration file and call DSC and capture status
+- Log status
 
 ### Phase 2
 
@@ -27,11 +33,11 @@ LCM as a service.
 
 Milestones:
 
-* LCM running as a service
-* Configuration file
-* Configuration mode: ApplyOnly, ApplyAndMonitor, ApplyAndAutoCorrect
-* Configuration mode time interval
-* Local API for a tool to call
+- LCM running as a service
+- Configuration file
+- Configuration mode: ApplyOnly, ApplyAndMonitor, ApplyAndAutoCorrect
+- Configuration mode time interval
+- Local API for a tool to call
 
 ### Phase 3
 
@@ -39,33 +45,38 @@ Create a proof of concept pull server.
 
 Milestones:
 
-* REST API
-* Token authentication
-* LCM pull configuration
+- REST API
+- Token authentication
+- LCM pull configuration
 
 ## LCM - Local Configuration Manager
 
-The LCM is the agent on the device to start dsc configuration and report back on the success or failure.
+The LCM is the agent on the device to start dsc configuration
+and report back on the success or failure.
 
 The LCM can be configured in a push or pull scenario.
 A push would be landing the configuration on the device.
 A pull would have the LCM call the pull server to retrieve new configuration.
 
 Partial configurations are not in scope.
-The intent is to have a single configuration that is compiled elsewhere and letting the `dsc` executable perform the key validation.
+The intent is to have a single configuration that is compiled elsewhere
+and letting the `dsc` executable perform the key validation.
 
 Open considerations:
 
-* Deployment model: MSI, Linux package, zip, etc
-* Platform specific configuration scheme: Windows registry, Linux conf file
-* Service and local command to interact with service or require restart to pick up new service config?
-* If separate command communication what protocol? REST, named pipes, sockets?
+- Deployment model: MSI, Linux package, zip, etc
+- Platform specific configuration scheme: Windows registry, Linux conf file
+- Service and local command to interact with service or require restart
+  to pick up new service config?
+- If separate command communication what protocol? REST, named pipes, sockets?
 
 ### Push Model
 
 In this diagram the author creates the configuration on their device.
-Pushes the configuration to the remote device using whatever method they like SSH/RDP/PSRemoting.
-Then lands the configuration in the directory the LCM is looking for the configuration.
+Pushes the configuration to the remote device using whatever method they like
+SSH/RDP/PSRemoting.
+Then lands the configuration in the directory the LCM is looking for
+the configuration.
 
 ```mermaid
 sequenceDiagram
@@ -77,18 +88,21 @@ sequenceDiagram
 
 ## Pull Server
 
-In DSCv1 pull server was used for the LCM to retrieve configuration and resources.
+In DSCv1 pull server was used for the LCM to retrieve configuration
+and resources.
 
-With DSCv3 having supporting multiple languages and different delivery mechanisms to deploy resources, is not in scope to carry over that feature at this time.
+With Microsoft DSC having supporting multiple languages and different delivery
+mechanisms to deploy resources, is not in scope to carry over that feature
+at this time.
 
 Implementation should be a REST API and not have a user interface.
 LCM will have a token to authenticate to the pull server.
 
 Open considerations:
 
-* Allow SMB pull servers?
-* How to handle token rotation?
-* Allow different configuration storage mediums: local, share, uri?
+- Allow SMB pull servers?
+- How to handle token rotation?
+- Allow different configuration storage mediums: local, share, uri?
 
 ### Pull Model
 
@@ -113,12 +127,13 @@ sequenceDiagram
 The reporting server is used for the LCM to send status updates.
 
 Implementation should be a REST API and not have a user interface.
-The storage medium should allow for different database providers using the entity framework.
+The storage medium should allow for different database providers
+using the entity framework.
 LCM will have a token to authenticate to the reporting server.
 
 Open considerations:
 
-* How to handle token rotation?
+- How to handle token rotation?
 
 ```mermaid
 sequenceDiagram
@@ -134,16 +149,21 @@ sequenceDiagram
 
 ## Configuration Server
 
-This does not have an equivalent in DSCv1, this would be an API and front-end website/application with the capability to create, update, and deploy configuration to the pull server or pushing to the device.
+This does not have an equivalent in DSCv1, this would be an API and front-end
+website/application with the capability to create, update, and deploy
+configuration to the pull server or pushing to the device.
 
-The configuration server should have the ability to create configuration based on role, location, environment, etc.
-Then the configuration would be merged at deployment time to the pull server or pushed to the device.
+The configuration server should have the ability to create configuration
+based on role, location, environment, etc.
+Then the configuration would be merged at deployment time
+to the pull server or pushed to the device.
 
 ## Agent-less Deployment Server
 
 There is an interesting capability that could be entertained.
 Ansible uses an agent-less deployment strategy.
-OpenDSC could have a model where a deployment server handles the LCM responsibilities remotely.
+OpenDSC could have a model where a deployment server handles
+the LCM responsibilities remotely.
 A con of this approach is scaling the deployment servers.
 
 Implementation should be a REST API and not have a user interface.
@@ -152,12 +172,13 @@ Implementation should be a REST API and not have a user interface.
 
 ### Push mode
 
-The following diagram is how the LCM would securely store the configuration file at rest.
+The following diagram is how the LCM would securely store the configuration file
+at rest.
 There is also the possibility of replacing GPG with CA certificates.
 
 Open considerations:
 
-* Allow unencrypted configuration?
+- Allow unencrypted configuration?
 
 ```mermaid
 flowchart TD
@@ -173,11 +194,12 @@ flowchart TD
 
 ### Pull mode
 
-In a pull server situation the following diagram illustrates bootstrapping and delivery process.
+In a pull server situation the following diagram illustrates bootstrapping
+and delivery process.
 
 Open considerations:
 
-* How to handle key rotation?
+- How to handle key rotation?
 
 ```mermaid
 sequenceDiagram
