@@ -13,6 +13,8 @@ using FileSystemAclNs = OpenDsc.Resource.Windows.FileSystem.Acl;
 using FileNs = OpenDsc.Resource.FileSystem.File;
 using DirectoryNs = OpenDsc.Resource.FileSystem.Directory;
 using XmlElementNs = OpenDsc.Resource.Xml.Element;
+using ZipCompressNs = OpenDsc.Resource.Archive.Zip.Compress;
+using ZipExpandNs = OpenDsc.Resource.Archive.Zip.Expand;
 
 var groupResource = new GroupNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
 var userResource = new UserNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
@@ -24,6 +26,8 @@ var fileSystemAclResource = new FileSystemAclNs.Resource(OpenDsc.Resource.Window
 var fileResource = new FileNs.Resource(OpenDsc.Resource.FileSystem.SourceGenerationContext.Default);
 var directoryResource = new DirectoryNs.Resource(OpenDsc.Resource.FileSystem.SourceGenerationContext.Default);
 var xmlElementResource = new XmlElementNs.Resource(OpenDsc.Resource.Xml.SourceGenerationContext.Default);
+var zipCompressResource = new ZipCompressNs.Resource(OpenDsc.Resource.Archive.SourceGenerationContext.Default);
+var zipExpandResource = new ZipExpandNs.Resource(OpenDsc.Resource.Archive.SourceGenerationContext.Default);
 
 var command = new CommandBuilder()
     .AddResource<GroupNs.Resource, GroupNs.Schema>(groupResource)
@@ -36,6 +40,8 @@ var command = new CommandBuilder()
     .AddResource<FileNs.Resource, FileNs.Schema>(fileResource)
     .AddResource<DirectoryNs.Resource, DirectoryNs.Schema>(directoryResource)
     .AddResource<XmlElementNs.Resource, XmlElementNs.Schema>(xmlElementResource)
+    .AddResource<ZipCompressNs.Resource, ZipCompressNs.Schema>(zipCompressResource)
+    .AddResource<ZipExpandNs.Resource, ZipExpandNs.Schema>(zipExpandResource)
     .Build();
 
 return command.Parse(args).Invoke();
