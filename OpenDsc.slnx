@@ -15,6 +15,7 @@
     <Project Path="src/OpenDsc.Resource.Windows/OpenDsc.Resource.Windows.csproj" />
     <Project Path="src/OpenDsc.Resource.CommandLine.Windows/OpenDsc.Resource.CommandLine.Windows.csproj" />
     <Project Path="src/OpenDsc.Resource.Xml/OpenDsc.Resource.Xml.csproj" />
+    <Project Path="src/OpenDsc.Lcm/OpenDsc.Lcm.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/TestResource.Aot/TestResource.Aot.csproj" />

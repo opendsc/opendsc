@@ -1,0 +1,40 @@
+<Project Sdk="WixToolset.Sdk/6.0.2">
+  <PropertyGroup>
+    <OutputType>Package</OutputType>
+    <OutputPath>..\..\..\artifacts\msi\</OutputPath>
+    <TargetName>OpenDSC.Lcm-$(Version)</TargetName>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <Platform>x64</Platform>
+    <SuppressPdbOutput>true</SuppressPdbOutput>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <DefineConstants>Version=$(Version)</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Product.wxs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WixToolset.UI.wixext" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\OpenDsc.Lcm\OpenDsc.Lcm.csproj" />
+  </ItemGroup>
+
+  <Target Name="ConvertLicenseToRtf" BeforeTargets="BeforeBuild;PrepareForBuild">
+    <PropertyGroup>
+      <LicenseTxt>$(MSBuildProjectDirectory)\..\..\..\LICENSE</LicenseTxt>
+      <LicenseRtf>$(IntermediateOutputPath)License.rtf</LicenseRtf>
+      <LicenseRtfFullPath>$(MSBuildProjectDirectory)\$(IntermediateOutputPath)License.rtf</LicenseRtfFullPath>
+    </PropertyGroup>
+    <Message Text="Converting LICENSE to License.rtf in $(IntermediateOutputPath)..." Importance="high" />
+    <MakeDir Directories="$(IntermediateOutputPath)" />
+    <Exec Command="pwsh -NoProfile -ExecutionPolicy Bypass -Command &quot;$text = Get-Content '$(LicenseTxt)' -Raw; $rtf = '{\rtf1\ansi\ansicpg1252\deff0\nouicompat\deflang1033{\fonttbl{\f0\fnil\fcharset0 Consolas;}}{\*\generator MSBuild}\viewkind4\uc1\pard\sa200\sl276\slmult1\f0\fs20\lang9 '; $text -split '\r?\n' | ForEach-Object { $rtf += ($_ -replace '\\', '\\\\' -replace '{', '\{' -replace '}', '\}') + '\par ' }; $rtf += '}'; [System.IO.File]::WriteAllText('$(LicenseRtf)', $rtf)&quot;" />
+    <PropertyGroup>
+      <DefineConstants>$(DefineConstants);LicenseRtfPath=$(LicenseRtfFullPath)</DefineConstants>
+    </PropertyGroup>
+  </Target>
+</Project>

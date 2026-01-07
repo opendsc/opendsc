@@ -124,6 +124,17 @@ if (-not $SkipBuild) {
                 Write-Host "MSI installer built successfully!" -ForegroundColor Green
                 Write-Host "Output location: $msiDir" -ForegroundColor Green
             }
+
+            Write-Host "Building LCM MSI installer..." -ForegroundColor Cyan
+            $lcmWixProj = Join-Path $PSScriptRoot "packaging\msi\OpenDsc.Lcm\OpenDsc.Lcm.wixproj"
+            if (Test-Path $lcmWixProj) {
+                dotnet build $lcmWixProj -c $Configuration
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Build failed for LCM MSI installer with exit code $LASTEXITCODE"
+                }
+                Write-Host "LCM MSI installer built successfully!" -ForegroundColor Green
+                Write-Host "Output location: $msiDir" -ForegroundColor Green
+            }
         }
 
         Write-Host "Building TestService..." -ForegroundColor Cyan
@@ -135,12 +146,32 @@ if (-not $SkipBuild) {
                 throw "Build failed for TestService with exit code $LASTEXITCODE"
             }
         }
+
+        Write-Host "Building LCM Service..." -ForegroundColor Cyan
+        $lcmProj = Join-Path $PSScriptRoot "src\OpenDsc.Lcm\OpenDsc.Lcm.csproj"
+        if (Test-Path $lcmProj) {
+            $lcmDir = Join-Path $PSScriptRoot "artifacts\Lcm"
+            dotnet publish $lcmProj -c $Configuration -f net10.0-windows -o $lcmDir -p:GenerateDocumentationFile=false
+            if ($LASTEXITCODE -ne 0) {
+                throw "Build failed for OpenDsc.Lcm with exit code $LASTEXITCODE"
+            }
+        }
     } elseif ($IsLinux) {
         $linuxProj = Join-Path $PSScriptRoot "src\OpenDsc.Resource.CommandLine.Linux\OpenDsc.Resource.CommandLine.Linux.csproj"
         if (Test-Path $linuxProj) {
             dotnet publish $linuxProj -c $Configuration -o $publishDir -p:GenerateDocumentationFile=false
             if ($LASTEXITCODE -ne 0) {
                 throw "Build failed for OpenDsc.Resource.CommandLine.Linux with exit code $LASTEXITCODE"
+            }
+        }
+
+        Write-Host "Building LCM Service for Linux..." -ForegroundColor Cyan
+        $lcmProj = Join-Path $PSScriptRoot "src\OpenDsc.Lcm\OpenDsc.Lcm.csproj"
+        if (Test-Path $lcmProj) {
+            $lcmDir = Join-Path $PSScriptRoot "artifacts\Lcm"
+            dotnet publish $lcmProj -c $Configuration -f net10.0 -o $lcmDir -p:GenerateDocumentationFile=false
+            if ($LASTEXITCODE -ne 0) {
+                throw "Build failed for OpenDsc.Lcm with exit code $LASTEXITCODE"
             }
         }
 
@@ -179,6 +210,16 @@ if (-not $SkipBuild) {
             dotnet publish $macOSProj -c $Configuration -o $publishDir -p:GenerateDocumentationFile=false
             if ($LASTEXITCODE -ne 0) {
                 throw "Build failed for OpenDsc.Resource.CommandLine.macOS with exit code $LASTEXITCODE"
+            }
+        }
+
+        Write-Host "Building LCM Service for macOS..." -ForegroundColor Cyan
+        $lcmProj = Join-Path $PSScriptRoot "src\OpenDsc.Lcm\OpenDsc.Lcm.csproj"
+        if (Test-Path $lcmProj) {
+            $lcmDir = Join-Path $PSScriptRoot "artifacts\Lcm"
+            dotnet publish $lcmProj -c $Configuration -f net10.0 -o $lcmDir -p:GenerateDocumentationFile=false
+            if ($LASTEXITCODE -ne 0) {
+                throw "Build failed for OpenDsc.Lcm with exit code $LASTEXITCODE"
             }
         }
 
