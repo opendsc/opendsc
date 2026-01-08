@@ -93,13 +93,15 @@
 
       <CreateFolder />
 
-      <util:PermissionEx
+      <Permission
         User="Administrators"
-        GenericAll="yes" />
+        GenericAll="yes"
+        Inheritable="no" />
 
-      <util:PermissionEx
+      <Permission
         User="SYSTEM"
-        GenericAll="yes" />
+        GenericAll="yes"
+        Inheritable="no" />
 
     </Component>
 
