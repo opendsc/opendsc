@@ -125,14 +125,14 @@ public partial class LcmWorker(IConfiguration configuration, IOptionsMonitor<Lcm
 
             try
             {
-                if (string.IsNullOrWhiteSpace(currentConfig.FullConfigurationPath) || !File.Exists(currentConfig.FullConfigurationPath))
+                if (string.IsNullOrWhiteSpace(currentConfig.ConfigurationPath) || !File.Exists(currentConfig.ConfigurationPath))
                 {
                     LogConfigurationNotAvailableSkippingDscTest();
                 }
                 else
                 {
                     var traceLevel = GetTraceLevelFromConfiguration(configuration);
-                    var result = await dscExecutor.ExecuteTestAsync(currentConfig.FullConfigurationPath, currentConfig, traceLevel, stoppingToken);
+                    var result = await dscExecutor.ExecuteTestAsync(currentConfig.ConfigurationPath, currentConfig, traceLevel, stoppingToken);
                     LogDscResult("Test", result);
                 }
 
@@ -168,21 +168,21 @@ public partial class LcmWorker(IConfiguration configuration, IOptionsMonitor<Lcm
         {
             var currentConfig = lcmMonitor.CurrentValue;
             var currentInterval = currentConfig.ConfigurationModeInterval;
-            var configPathBeforeTest = currentConfig.FullConfigurationPath;
+            var configPathBeforeTest = currentConfig.ConfigurationPath;
 
             try
             {
-                if (string.IsNullOrWhiteSpace(currentConfig.FullConfigurationPath) || !File.Exists(currentConfig.FullConfigurationPath))
+                if (string.IsNullOrWhiteSpace(currentConfig.ConfigurationPath) || !File.Exists(currentConfig.ConfigurationPath))
                 {
-                    LogConfigurationNotAvailableSkippingDscOperations(currentConfig.FullConfigurationPath!);
+                    LogConfigurationNotAvailableSkippingDscOperations(currentConfig.ConfigurationPath!);
                 }
                 else
                 {
                     var traceLevel = GetTraceLevelFromConfiguration(configuration);
-                    var testResult = await dscExecutor.ExecuteTestAsync(currentConfig.FullConfigurationPath, currentConfig, traceLevel, stoppingToken);
+                    var testResult = await dscExecutor.ExecuteTestAsync(currentConfig.ConfigurationPath, currentConfig, traceLevel, stoppingToken);
                     LogDscResult("Test", testResult);
 
-                    var configPathAfterTest = lcmMonitor.CurrentValue.FullConfigurationPath;
+                    var configPathAfterTest = lcmMonitor.CurrentValue.ConfigurationPath;
                     if (configPathBeforeTest != configPathAfterTest || modeChangeToken.IsCancellationRequested)
                     {
                         LogConfigurationChangedSkippingSet();
@@ -195,7 +195,7 @@ public partial class LcmWorker(IConfiguration configuration, IOptionsMonitor<Lcm
                     {
                         LogResourcesNotInDesiredStateApplyingCorrections();
                         traceLevel = GetTraceLevelFromConfiguration(configuration);
-                        var setResult = await dscExecutor.ExecuteSetAsync(currentConfig.FullConfigurationPath, currentConfig, traceLevel, stoppingToken);
+                        var setResult = await dscExecutor.ExecuteSetAsync(currentConfig.ConfigurationPath, currentConfig, traceLevel, stoppingToken);
                         LogDscResult("Correction Set", setResult);
 
                         if (setResult.RestartRequired?.Count > 0)

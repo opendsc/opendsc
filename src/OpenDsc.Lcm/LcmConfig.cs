@@ -18,26 +18,10 @@ public class LcmConfig
     public ConfigurationMode ConfigurationMode { get; set; } = ConfigurationMode.Monitor;
 
     /// <summary>
-    /// Directory containing the DSC configuration documents (relative to the LCM config directory).
+    /// Full path to the main DSC configuration file.
     /// </summary>
     [Required]
-    public string ConfigurationDirectory { get; set; } = "config";
-
-    /// <summary>
-    /// Name of the main DSC configuration file within the ConfigurationDirectory.
-    /// </summary>
-    [Required]
-    public string ConfigurationFileName { get; set; } = "config.dsc.yaml";
-
-    /// <summary>
-    /// Gets the full path to the DSC configuration directory.
-    /// </summary>
-    public string FullConfigurationDirectory => Path.Combine(ConfigPaths.GetLcmConfigDirectory(), ConfigurationDirectory);
-
-    /// <summary>
-    /// Gets the full path to the main DSC configuration file.
-    /// </summary>
-    public string FullConfigurationPath => Path.Combine(FullConfigurationDirectory, ConfigurationFileName);
+    public string ConfigurationPath { get; set; } = Path.Combine(ConfigPaths.GetLcmConfigDirectory(), "config", "main.dsc.yaml");
 
     private TimeSpan _configurationModeInterval = TimeSpan.FromMinutes(15);
 
