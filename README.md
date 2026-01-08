@@ -2,7 +2,8 @@
 
 A C# library ecosystem for building Microsoft DSC v3 resources with ease,
 including a comprehensive set of built-in resources for Windows and
-cross-platform management.
+cross-platform management, plus a Local Configuration Manager (LCM) service
+for continuous monitoring and remediation.
 
 ## Features
 
@@ -15,6 +16,7 @@ cross-platform management.
 - 🎯 Type-safe DSC resource implementation
 - 🔀 Multi-resource support (requires DSC v3.2+)
 - 🏗️ Built-in resources for Windows and cross-platform management
+- 🔄 Local Configuration Manager (LCM) service for continuous monitoring
 
 ## Libraries
 
@@ -53,6 +55,10 @@ managing Windows and cross-platform systems:
 - **[OpenDsc.FileSystem/Directory][directory]** - Manage directories with
   hash-based synchronization
 - **[OpenDsc.Xml/Element][xml]** - Manage XML element content and attributes
+- **[OpenDsc.Archive.Zip/Compress][zipcompress]** - Create ZIP archives from
+  files and directories
+- **[OpenDsc.Archive.Zip/Expand][zipexpand]** - Extract ZIP archives to
+  specified locations
 
 [env]: src/OpenDsc.Resource.Windows/Environment/README.md
 [group]: src/OpenDsc.Resource.Windows/Group/README.md
@@ -64,6 +70,8 @@ managing Windows and cross-platform systems:
 [file]: src/OpenDsc.Resource.FileSystem/File/README.md
 [directory]: src/OpenDsc.Resource.FileSystem/Directory/README.md
 [xml]: src/OpenDsc.Resource.Xml/Element/README.md
+[zipcompress]: src/OpenDsc.Resource.Archive/Zip/Compress/README.md
+[zipexpand]: src/OpenDsc.Resource.Archive/Zip/Expand/README.md
 
 ## Quick Start
 
@@ -119,14 +127,62 @@ return command.Parse(args).Invoke();
 .\build.ps1
 ```
 
+## Local Configuration Manager (LCM)
+
+The LCM is a background service that continuously monitors and optionally
+remediates DSC configurations. It supports two operational modes:
+
+- **Monitor Mode** - Periodically runs `dsc config test` to detect drift from
+  desired state
+- **Remediate Mode** - Automatically applies corrections when drift is detected
+  using `dsc config set`
+
+### Configuration
+
+Configure the LCM via environment variables or configuration files:
+
+```powershell
+# Set configuration via environment variables
+$env:LCM_ConfigurationPath = "C:\configs\main.dsc.yaml"
+$env:LCM_ConfigurationMode = "Remediate"  # or "Monitor"
+$env:LCM_ConfigurationModeInterval = "00:15:00"  # Check every 15 minutes
+
+# Run the LCM service
+.\artifacts\Lcm\OpenDsc.Lcm.exe
+```
+
+Alternatively, use a configuration file at `~/.opendsc/lcm/appsettings.json`:
+
+```json
+{
+  "LCM": {
+    "ConfigurationMode": "Remediate",
+    "ConfigurationPath": "/etc/opendsc/config/main.dsc.yaml",
+    "ConfigurationModeInterval": "00:15:00"
+  }
+}
+```
+
+### Installation
+
+**Windows**: Use the MSI installer to install as a Windows Service:
+
+```powershell
+.\build.ps1 -Msi
+msiexec /i artifacts\msi\OpenDsc.Lcm.msi
+```
+
+**Linux/macOS**: Run as a console application or configure as a systemd/launchd
+service.
+
 ## Examples
 
 See the built-in resources and test projects for real-world examples:
 
 - **Windows Management**: User accounts, groups, services, environment
   variables, optional features
-- **File System**: Files, directories, access control lists
-- **Cross-Platform**: XML element management, shortcuts
+- **File System**: Files, directories, access control lists, archives
+- **Cross-Platform**: XML element management, ZIP compression and extraction
 
 ### Using Built-in Resources
 
@@ -144,6 +200,12 @@ dsc resource get -r OpenDsc.Windows/Environment --input '{"name":"PATH"}'
 
 # Set environment variable
 dsc resource set -r OpenDsc.Windows/Environment --input '{"name":"TEST","value":"123"}'
+
+# Create a ZIP archive
+dsc resource set -r OpenDsc.Archive.Zip/Compress --input '{"path":"archive.zip","sourcePath":"C:\\Source"}'
+
+# Extract a ZIP archive
+dsc resource set -r OpenDsc.Archive.Zip/Expand --input '{"path":"archive.zip","destinationPath":"C:\\Destination"}'
 ```
 
 ## Requirements
