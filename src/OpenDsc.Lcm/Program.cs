@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 
 using OpenDsc.Lcm;
 
@@ -20,7 +21,10 @@ builder.Configuration
     .AddEnvironmentVariables("LCM_")
     .AddCommandLine(args);
 
-builder.Services.AddOptions<LcmConfig>().Bind(builder.Configuration.GetSection("LCM"));
+builder.Services.AddSingleton<IValidateOptions<LcmConfig>, LcmConfigValidator>();
+builder.Services.AddOptionsWithValidateOnStart<LcmConfig>()
+    .Bind(builder.Configuration.GetSection("LCM"));
+
 builder.Services.AddSingleton<DscExecutor>();
 builder.Services.AddHostedService<LcmWorker>();
 

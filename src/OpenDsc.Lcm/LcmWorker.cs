@@ -6,42 +6,82 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Microsoft.Extensions.Primitives;
 
 namespace OpenDsc.Lcm;
 
-public partial class LcmWorker(IConfiguration configuration, IOptions<LcmConfig> lcmOptions, DscExecutor dscExecutor, ILogger<LcmWorker> logger) : BackgroundService
+public partial class LcmWorker(IConfiguration configuration, IOptionsMonitor<LcmConfig> lcmMonitor, DscExecutor dscExecutor, ILogger<LcmWorker> logger) : BackgroundService
 {
     private static string TimeSpanFormat => "c";
-    private LcmConfig _currentConfig = new();
-    private IDisposable? _changeToken;
+    private ConfigurationMode _currentMode = ConfigurationMode.Monitor;
+    private CancellationTokenSource? _modeChangeCts;
+    private IDisposable? _configChangeToken;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         try
         {
-            LoadConfiguration();
-            LogLevel traceLevel = GetTraceLevelFromConfiguration(configuration);
-
-            _changeToken = ChangeToken.OnChange(
-                configuration.GetReloadToken,
-                OnConfigurationReloaded);
-
-            LogOperatingInMode(_currentConfig.ConfigurationMode);
-
-            switch (_currentConfig.ConfigurationMode)
+            _configChangeToken = lcmMonitor.OnChange((config, name) =>
             {
-                case ConfigurationMode.Monitor:
-                    await ExecuteMonitorModeAsync(_currentConfig, traceLevel, stoppingToken);
-                    break;
+                try
+                {
+                    OnConfigurationReloaded(config);
+                }
+                catch (OptionsValidationException ex)
+                {
+                    foreach (string failure in ex.Failures)
+                    {
+                        LogConfigurationValidationError(failure);
+                    }
+                }
+            });
 
-                case ConfigurationMode.Remediate:
-                    await ExecuteRemediateModeAsync(_currentConfig, traceLevel, stoppingToken);
-                    break;
+            _currentMode = lcmMonitor.CurrentValue.ConfigurationMode;
+            LogOperatingInMode(_currentMode);
 
-                default:
-                    LogUnknownLcmMode(_currentConfig.ConfigurationMode);
+            while (!stoppingToken.IsCancellationRequested)
+            {
+                _modeChangeCts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
+
+                try
+                {
+                    var config = lcmMonitor.CurrentValue;
+
+                    switch (config.ConfigurationMode)
+                    {
+                        case ConfigurationMode.Monitor:
+                            await ExecuteMonitorModeAsync(config, stoppingToken, _modeChangeCts.Token);
+                            break;
+
+                        case ConfigurationMode.Remediate:
+                            await ExecuteRemediateModeAsync(config, stoppingToken, _modeChangeCts.Token);
+                            break;
+
+                        default:
+                            LogUnknownLcmMode(config.ConfigurationMode);
+                            break;
+                    }
+                }
+                catch (OperationCanceledException) when (_modeChangeCts.IsCancellationRequested && !stoppingToken.IsCancellationRequested)
+                {
+                    var newMode = lcmMonitor.CurrentValue.ConfigurationMode;
+                    LogModeSwitched(_currentMode, newMode);
+                    _currentMode = newMode;
+                    continue;
+                }
+                catch (OperationCanceledException)
+                {
                     break;
+                }
+                finally
+                {
+                    _modeChangeCts?.Dispose();
+                    _modeChangeCts = null;
+                }
+
+                if (stoppingToken.IsCancellationRequested)
+                {
+                    break;
+                }
             }
         }
         catch (Exception ex)
@@ -51,26 +91,25 @@ public partial class LcmWorker(IConfiguration configuration, IOptions<LcmConfig>
         }
         finally
         {
-            _changeToken?.Dispose();
+            _configChangeToken?.Dispose();
+            _modeChangeCts?.Dispose();
         }
 
         LogLcmServiceStopping();
     }
 
-    private void LoadConfiguration()
-    {
-        _currentConfig = lcmOptions.Value;
-    }
-
-    private void OnConfigurationReloaded()
+    private void OnConfigurationReloaded(LcmConfig newConfig)
     {
         LogConfigurationReloaded();
-        LoadConfiguration();
-        // Note: Mode changes require service restart for simplicity
-        // Dynamic mode switching could be implemented if needed
+
+        if (newConfig.ConfigurationMode != _currentMode)
+        {
+            LogModeChangeDetected(_currentMode, newConfig.ConfigurationMode);
+            _modeChangeCts?.Cancel();
+        }
     }
 
-    private async Task ExecuteMonitorModeAsync(LcmConfig config, LogLevel traceLevel, CancellationToken stoppingToken)
+    private async Task ExecuteMonitorModeAsync(LcmConfig config, CancellationToken stoppingToken, CancellationToken modeChangeToken)
     {
 #pragma warning disable CA1873
         if (logger.IsEnabled(LogLevel.Information))
@@ -79,37 +118,44 @@ public partial class LcmWorker(IConfiguration configuration, IOptions<LcmConfig>
         }
 #pragma warning restore CA1873
 
-        while (!stoppingToken.IsCancellationRequested)
+        while (!stoppingToken.IsCancellationRequested && !modeChangeToken.IsCancellationRequested)
         {
+            var currentConfig = lcmMonitor.CurrentValue;
+            var currentInterval = currentConfig.ConfigurationModeInterval;
+
             try
             {
-                if (string.IsNullOrWhiteSpace(config.FullConfigurationPath) || !File.Exists(config.FullConfigurationPath))
+                if (string.IsNullOrWhiteSpace(currentConfig.FullConfigurationPath) || !File.Exists(currentConfig.FullConfigurationPath))
                 {
                     LogConfigurationNotAvailableSkippingDscTest();
                 }
                 else
                 {
-                    var result = await dscExecutor.ExecuteTestAsync(config.FullConfigurationPath, config, traceLevel, stoppingToken);
+                    var traceLevel = GetTraceLevelFromConfiguration(configuration);
+                    var result = await dscExecutor.ExecuteTestAsync(currentConfig.FullConfigurationPath, currentConfig, traceLevel, stoppingToken);
                     LogDscResult("Test", result);
                 }
 
-                await Task.Delay(config.ConfigurationModeInterval, stoppingToken);
+                await InterruptibleDelayAsync(currentInterval, currentInterval, stoppingToken, modeChangeToken);
+            }
+            catch (OperationCanceledException) when (modeChangeToken.IsCancellationRequested)
+            {
+                throw;
             }
             catch (OperationCanceledException)
             {
-                // Expected when stopping
                 break;
             }
             catch (Exception ex)
             {
                 LogErrorDuringMonitorCycle(ex);
-                // Continue monitoring despite errors
-                await Task.Delay(TimeSpan.FromSeconds(Math.Min(config.ConfigurationModeInterval.TotalSeconds, 60)), stoppingToken);
+                var errorDelay = TimeSpan.FromSeconds(Math.Min(currentInterval.TotalSeconds, 60));
+                await InterruptibleDelayAsync(errorDelay, currentInterval, stoppingToken, modeChangeToken);
             }
         }
     }
 
-    private async Task ExecuteRemediateModeAsync(LcmConfig config, LogLevel traceLevel, CancellationToken stoppingToken)
+    private async Task ExecuteRemediateModeAsync(LcmConfig config, CancellationToken stoppingToken, CancellationToken modeChangeToken)
     {
 #pragma warning disable CA1873
         if (logger.IsEnabled(LogLevel.Information))
@@ -118,25 +164,38 @@ public partial class LcmWorker(IConfiguration configuration, IOptions<LcmConfig>
         }
 #pragma warning restore CA1873
 
-        while (!stoppingToken.IsCancellationRequested)
+        while (!stoppingToken.IsCancellationRequested && !modeChangeToken.IsCancellationRequested)
         {
+            var currentConfig = lcmMonitor.CurrentValue;
+            var currentInterval = currentConfig.ConfigurationModeInterval;
+            var configPathBeforeTest = currentConfig.FullConfigurationPath;
+
             try
             {
-                if (string.IsNullOrWhiteSpace(config.FullConfigurationPath) || !File.Exists(config.FullConfigurationPath))
+                if (string.IsNullOrWhiteSpace(currentConfig.FullConfigurationPath) || !File.Exists(currentConfig.FullConfigurationPath))
                 {
-                    LogConfigurationNotAvailableSkippingDscOperations(config.FullConfigurationPath!);
+                    LogConfigurationNotAvailableSkippingDscOperations(currentConfig.FullConfigurationPath!);
                 }
                 else
                 {
-                    var testResult = await dscExecutor.ExecuteTestAsync(config.FullConfigurationPath, config, traceLevel, stoppingToken);
+                    var traceLevel = GetTraceLevelFromConfiguration(configuration);
+                    var testResult = await dscExecutor.ExecuteTestAsync(currentConfig.FullConfigurationPath, currentConfig, traceLevel, stoppingToken);
                     LogDscResult("Test", testResult);
+
+                    var configPathAfterTest = lcmMonitor.CurrentValue.FullConfigurationPath;
+                    if (configPathBeforeTest != configPathAfterTest || modeChangeToken.IsCancellationRequested)
+                    {
+                        LogConfigurationChangedSkippingSet();
+                        continue;
+                    }
 
                     var needsCorrection = (testResult.Resources?.Count(r => r.Result?.InDesiredState == false) ?? 0) > 0;
 
                     if (needsCorrection)
                     {
                         LogResourcesNotInDesiredStateApplyingCorrections();
-                        var setResult = await dscExecutor.ExecuteSetAsync(config.FullConfigurationPath, config, traceLevel, stoppingToken);
+                        traceLevel = GetTraceLevelFromConfiguration(configuration);
+                        var setResult = await dscExecutor.ExecuteSetAsync(currentConfig.FullConfigurationPath, currentConfig, traceLevel, stoppingToken);
                         LogDscResult("Correction Set", setResult);
 
                         if (setResult.RestartRequired?.Count > 0)
@@ -150,7 +209,11 @@ public partial class LcmWorker(IConfiguration configuration, IOptions<LcmConfig>
                     }
                 }
 
-                await Task.Delay(config.ConfigurationModeInterval, stoppingToken);
+                await InterruptibleDelayAsync(currentInterval, currentInterval, stoppingToken, modeChangeToken);
+            }
+            catch (OperationCanceledException) when (modeChangeToken.IsCancellationRequested)
+            {
+                throw;
             }
             catch (OperationCanceledException)
             {
@@ -159,7 +222,33 @@ public partial class LcmWorker(IConfiguration configuration, IOptions<LcmConfig>
             catch (Exception ex)
             {
                 LogErrorDuringRemediateCycle(ex);
-                await Task.Delay(TimeSpan.FromSeconds(Math.Min(config.ConfigurationModeInterval.TotalSeconds, 60)), stoppingToken);
+                var errorDelay = TimeSpan.FromSeconds(Math.Min(currentInterval.TotalSeconds, 60));
+                await InterruptibleDelayAsync(errorDelay, currentInterval, stoppingToken, modeChangeToken);
+            }
+        }
+    }
+
+    private async Task InterruptibleDelayAsync(TimeSpan delay, TimeSpan originalInterval, CancellationToken stoppingToken, CancellationToken modeChangeToken)
+    {
+        var elapsed = TimeSpan.Zero;
+        var pollInterval = TimeSpan.FromSeconds(1);
+
+        while (elapsed < delay && !stoppingToken.IsCancellationRequested && !modeChangeToken.IsCancellationRequested)
+        {
+            await Task.Delay(pollInterval, stoppingToken);
+            elapsed += pollInterval;
+
+            var currentInterval = lcmMonitor.CurrentValue.ConfigurationModeInterval;
+            if (currentInterval != originalInterval)
+            {
+#pragma warning disable CA1873
+                if (logger.IsEnabled(LogLevel.Debug))
+                {
+                    LogConfigurationIntervalChanged(originalInterval.ToString(TimeSpanFormat), currentInterval.ToString(TimeSpanFormat));
+                }
+#pragma warning restore CA1873
+
+                break;
             }
         }
     }
@@ -278,4 +367,22 @@ public partial class LcmWorker(IConfiguration configuration, IOptions<LcmConfig>
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Configuration reloaded, changes will take effect on next cycle")]
     private partial void LogConfigurationReloaded();
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Configuration validation error: {ErrorMessage}")]
+    private partial void LogConfigurationValidationError(string errorMessage);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Mode change detected from {OldMode} to {NewMode}, cancelling current mode")]
+    private partial void LogModeChangeDetected(ConfigurationMode oldMode, ConfigurationMode newMode);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Mode switched from {OldMode} to {NewMode}")]
+    private partial void LogModeSwitched(ConfigurationMode oldMode, ConfigurationMode newMode);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Configuration interval changed from {OldInterval} to {NewInterval}, interrupting delay")]
+    private partial void LogConfigurationIntervalChanged(string oldInterval, string newInterval);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Configuration changed after test, skipping set operation")]
+    private partial void LogConfigurationChangedSkippingSet();
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Trace level for DSC operations: {TraceLevel}")]
+    private partial void LogTraceLevelForDsc(LogLevel traceLevel);
 }

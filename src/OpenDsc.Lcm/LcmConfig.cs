@@ -2,6 +2,8 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
+using System.ComponentModel.DataAnnotations;
+
 namespace OpenDsc.Lcm;
 
 /// <summary>
@@ -12,16 +14,19 @@ public class LcmConfig
     /// <summary>
     /// The mode of operation for the LCM service.
     /// </summary>
+    [Required]
     public ConfigurationMode ConfigurationMode { get; set; } = ConfigurationMode.Monitor;
 
     /// <summary>
     /// Directory containing the DSC configuration documents (relative to the LCM config directory).
     /// </summary>
+    [Required]
     public string ConfigurationDirectory { get; set; } = "config";
 
     /// <summary>
     /// Name of the main DSC configuration file within the ConfigurationDirectory.
     /// </summary>
+    [Required]
     public string ConfigurationFileName { get; set; } = "config.dsc.yaml";
 
     /// <summary>
@@ -40,6 +45,7 @@ public class LcmConfig
     /// Interval between DSC operations (for Monitor and Remediate modes).
     /// Can be specified as a TimeSpan string like "00:15:00" for 15 minutes.
     /// </summary>
+    [Required]
     public TimeSpan ConfigurationModeInterval
     {
         get => _configurationModeInterval;
