@@ -1,4 +1,4 @@
-# OpenDsc
+# OpenDSC
 
 A C# library ecosystem for building Microsoft DSC v3 resources with ease,
 including a comprehensive set of built-in resources for Windows and
