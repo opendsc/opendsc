@@ -8,7 +8,7 @@ for continuous monitoring and remediation.
 ## Features
 
 - 🚀 Quick scaffolding with project templates
-- 📦 Supports .NET Standard 2.0, .NET 8, and .NET 9, and .NET 10
+- 📦 Supports .NET Standard 2.0, .NET 8, .NET 9, and .NET 10
 - ⚡ Native AOT compilation support
 - 🔧 Automatic CLI generation
 - 📋 Automatic JSON schema generation

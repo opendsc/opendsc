@@ -8,16 +8,18 @@ using System.Text.Json;
 
 using Microsoft.Extensions.Logging;
 
+using OpenDsc.Schema;
+
 namespace OpenDsc.Lcm;
 
 public partial class DscExecutor(ILogger<DscExecutor> logger)
 {
-    public async Task<DscResult> ExecuteTestAsync(string configPath, LcmConfig config, LogLevel traceLevel, CancellationToken cancellationToken = default)
+    public async Task<(DscResult Result, int ExitCode)> ExecuteTestAsync(string configPath, LcmConfig config, LogLevel traceLevel, CancellationToken cancellationToken = default)
     {
         return await ExecuteCommandAsync("test", configPath, config, traceLevel, cancellationToken);
     }
 
-    public async Task<DscResult> ExecuteSetAsync(string configPath, LcmConfig config, LogLevel traceLevel, CancellationToken cancellationToken = default)
+    public async Task<(DscResult Result, int ExitCode)> ExecuteSetAsync(string configPath, LcmConfig config, LogLevel traceLevel, CancellationToken cancellationToken = default)
     {
         return await ExecuteCommandAsync("set", configPath, config, traceLevel, cancellationToken);
     }
@@ -39,7 +41,7 @@ public partial class DscExecutor(ILogger<DscExecutor> logger)
         return null;
     }
 
-    private async Task<DscResult> ExecuteCommandAsync(string operation, string configPath, LcmConfig config, LogLevel traceLevel, CancellationToken cancellationToken)
+    private async Task<(DscResult Result, int ExitCode)> ExecuteCommandAsync(string operation, string configPath, LcmConfig config, LogLevel traceLevel, CancellationToken cancellationToken)
     {
         var arguments = BuildArguments(operation, configPath, traceLevel);
 
@@ -78,11 +80,12 @@ public partial class DscExecutor(ILogger<DscExecutor> logger)
 
         ParseAndLogDscMessages(stderr);
 
-        var result = ParseDscResult(stdout, process.ExitCode);
+        var result = ParseDscResult(stdout);
+        var exitCode = process.ExitCode;
 
-        LogDscCommandCompleted(operation, process.ExitCode);
+        LogDscCommandCompleted(operation, exitCode);
 
-        return result;
+        return (result, exitCode);
     }
 
     private static List<string> BuildArguments(string operation, string configPath, LogLevel traceLevel)
@@ -124,10 +127,10 @@ public partial class DscExecutor(ILogger<DscExecutor> logger)
         {
             try
             {
-                var message = JsonSerializer.Deserialize(line, SourceGenerationContext.Default.DscMessage);
+                var message = JsonSerializer.Deserialize(line, SourceGenerationContext.Default.DscTraceMessage);
                 if (message != null)
                 {
-                    LogDscMessage(message);
+                    LogDscTraceMessage(message);
                 }
             }
             catch (JsonException)
@@ -137,43 +140,45 @@ public partial class DscExecutor(ILogger<DscExecutor> logger)
         }
     }
 
-    private void LogDscMessage(DscMessage message)
+    private void LogDscTraceMessage(DscTraceMessage message)
     {
-        var level = message.Level?.ToLowerInvariant() switch
+        if (string.IsNullOrEmpty(message.Fields?.Message)) return;
+
+        var level = message.Level switch
         {
-            "error" => LogLevel.Error,
-            "warn" or "warning" => LogLevel.Warning,
-            "info" => LogLevel.Information,
-            "debug" => LogLevel.Debug,
-            "trace" => LogLevel.Trace,
+            DscTraceLevel.Error => LogLevel.Error,
+            DscTraceLevel.Warn => LogLevel.Warning,
+            DscTraceLevel.Info => LogLevel.Information,
+            DscTraceLevel.Debug => LogLevel.Debug,
+            DscTraceLevel.Trace => LogLevel.Trace,
             _ => LogLevel.Information
         };
 
         switch (level)
         {
             case LogLevel.Error:
-                LogDscErrorMessage(message.Level, message.Fields?.Message);
+                LogDscErrorMessage(message.Fields.Message);
                 break;
             case LogLevel.Warning:
-                LogDscWarningMessage(message.Level, message.Fields?.Message);
+                LogDscWarningMessage(message.Fields.Message);
                 break;
             case LogLevel.Information:
-                LogDscInfoMessage(message.Level, message.Fields?.Message);
+                LogDscInfoMessage(message.Fields.Message);
                 break;
             case LogLevel.Debug:
-                LogDscDebugMessage(message.Level, message.Fields?.Message);
+                LogDscDebugMessage(message.Fields.Message);
                 break;
             case LogLevel.Trace:
-                LogDscTraceMessage(message.Level, message.Fields?.Message);
+                LogDscTraceMessage(message.Fields.Message);
                 break;
         }
     }
 
-    private DscResult ParseDscResult(string stdout, int exitCode)
+    private DscResult ParseDscResult(string stdout)
     {
         if (string.IsNullOrWhiteSpace(stdout))
         {
-            return new DscResult { ExitCode = exitCode };
+            throw new InvalidOperationException("DSC command returned no output. This indicates a failure in the DSC execution.");
         }
 
         try
@@ -182,16 +187,16 @@ public partial class DscExecutor(ILogger<DscExecutor> logger)
 
             if (result != null)
             {
-                result.ExitCode = exitCode;
                 return result;
             }
+
+            throw new InvalidOperationException("DSC command returned invalid JSON that deserialized to null.");
         }
         catch (JsonException ex)
         {
             LogFailedToParseDscJsonResult(ex);
+            throw new InvalidOperationException("Failed to parse DSC JSON result. The output may be malformed.", ex);
         }
-
-        return new DscResult { ExitCode = exitCode };
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Executing DSC command: dsc {Arguments}")]
@@ -206,18 +211,18 @@ public partial class DscExecutor(ILogger<DscExecutor> logger)
     [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to parse DSC JSON result")]
     private partial void LogFailedToParseDscJsonResult(Exception ex);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "DSC {Level}: {Message}")]
-    private partial void LogDscErrorMessage(string? level, string? message);
+    [LoggerMessage(Level = LogLevel.Error, Message = "DSC: {Message}")]
+    private partial void LogDscErrorMessage(string message);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "DSC {Level}: {Message}")]
-    private partial void LogDscWarningMessage(string? level, string? message);
+    [LoggerMessage(Level = LogLevel.Warning, Message = "DSC: {Message}")]
+    private partial void LogDscWarningMessage(string message);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "DSC {Level}: {Message}")]
-    private partial void LogDscInfoMessage(string? level, string? message);
+    [LoggerMessage(Level = LogLevel.Information, Message = "DSC: {Message}")]
+    private partial void LogDscInfoMessage(string message);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "DSC {Level}: {Message}")]
-    private partial void LogDscDebugMessage(string? level, string? message);
+    [LoggerMessage(Level = LogLevel.Debug, Message = "DSC: {Message}")]
+    private partial void LogDscDebugMessage(string message);
 
-    [LoggerMessage(Level = LogLevel.Trace, Message = "DSC {Level}: {Message}")]
-    private partial void LogDscTraceMessage(string? level, string? message);
+    [LoggerMessage(Level = LogLevel.Trace, Message = "DSC: {Message}")]
+    private partial void LogDscTraceMessage(string message);
 }
