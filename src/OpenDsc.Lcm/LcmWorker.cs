@@ -136,6 +136,7 @@ public partial class LcmWorker(IConfiguration configuration, IOptionsMonitor<Lcm
                 else
                 {
                     var traceLevel = GetTraceLevelFromConfiguration(configuration);
+                    LogDscTestStarting();
                     var (result, exitCode) = await dscExecutor.ExecuteTestAsync(currentConfig.ConfigurationPath, currentConfig, traceLevel, stoppingToken);
                     LogDscTestResult(result, exitCode);
                 }
@@ -183,6 +184,7 @@ public partial class LcmWorker(IConfiguration configuration, IOptionsMonitor<Lcm
                 else
                 {
                     var traceLevel = GetTraceLevelFromConfiguration(configuration);
+                    LogDscTestStarting();
                     var (testResult, testExitCode) = await dscExecutor.ExecuteTestAsync(currentConfig.ConfigurationPath, currentConfig, traceLevel, stoppingToken);
                     LogDscTestResult(testResult, testExitCode);
 
@@ -203,6 +205,7 @@ public partial class LcmWorker(IConfiguration configuration, IOptionsMonitor<Lcm
                     {
                         LogResourcesNotInDesiredStateApplyingCorrections();
                         traceLevel = GetTraceLevelFromConfiguration(configuration);
+                        LogDscSetStarting();
                         var (setResult, setExitCode) = await dscExecutor.ExecuteSetAsync(currentConfig.ConfigurationPath, currentConfig, traceLevel, stoppingToken);
                         LogDscSetResult(setResult, setExitCode);
 
@@ -407,6 +410,12 @@ public partial class LcmWorker(IConfiguration configuration, IOptionsMonitor<Lcm
 
     [LoggerMessage(EventId = EventIds.DscTestCompletedWithIssues, Level = LogLevel.Information, Message = "DSC {Operation} completed with issues. Exit code: {ExitCode}")]
     private partial void LogDscOperationCompletedWithIssues(string operation, int exitCode);
+
+    [LoggerMessage(EventId = EventIds.DscTestStarting, Level = LogLevel.Information, Message = "Starting DSC test operation")]
+    private partial void LogDscTestStarting();
+
+    [LoggerMessage(EventId = EventIds.DscSetStarting, Level = LogLevel.Information, Message = "Starting DSC set operation")]
+    private partial void LogDscSetStarting();
 
     [LoggerMessage(EventId = EventIds.ResourceStatus, Level = LogLevel.Information, Message = "Resource status: {InDesired}/{Total} in desired state, {NotInDesired} not in desired state")]
     private partial void LogResourceStatus(int inDesired, int total, int notInDesired);

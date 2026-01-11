@@ -34,6 +34,8 @@ internal static class EventIds
     // DSC Execution Events: 3000-3099
     public const int DscCommandExecuting = 3000;
     public const int DscCommandCompleted = 3001;
+    public const int DscTestStarting = 3002;
+    public const int DscSetStarting = 3003;
     public const int DscTestCompleted = 3010;
     public const int DscTestCompletedWithIssues = 3011;
     public const int DscSetCompleted = 3012;

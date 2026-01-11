@@ -225,6 +225,36 @@ Linux (`/etc/opendsc/lcm/appsettings.json`):
 .\artifacts\Lcm\OpenDsc.Lcm.exe --LCM:ConfigurationMode=Remediate --LCM:ConfigurationPath="C:\configs\main.dsc.yaml" --LCM:ConfigurationModeInterval="00:15:00"
 ```
 
+### Logging Configuration
+
+The LCM supports detailed logging configuration through the `"Logging"`
+section in `appsettings.json`. You can control log levels for different
+components independently:
+
+| Category | Description | Default Level |
+| --- | --- | --- |
+| `Default` | Fallback for unspecified categories | `Warning` |
+| `DSC` | DSC executable trace messages | `Warning` |
+| `OpenDsc.Lcm` | LCM service operational logs | `Information` |
+
+**Example configuration with separate DSC logging:**
+
+```json
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Warning",
+      "DSC": "Warning",
+      "OpenDsc.Lcm": "Information"
+    }
+  }
+}
+```
+
+This allows you to enable detailed DSC debugging (e.g., `Debug` or `Trace`
+levels) while keeping LCM service logs at a higher level like `Information`
+or `Warning`.
+
 ### Installation
 
 **Windows**: Use the MSI installer to install as a Windows Service:

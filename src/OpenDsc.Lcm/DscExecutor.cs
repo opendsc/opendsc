@@ -12,8 +12,10 @@ using OpenDsc.Schema;
 
 namespace OpenDsc.Lcm;
 
-public partial class DscExecutor(ILogger<DscExecutor> logger)
+public partial class DscExecutor(ILogger<DscExecutor> logger, ILoggerFactory loggerFactory)
 {
+    private readonly ILogger _dscLogger = loggerFactory.CreateLogger("DSC");
+
     public async Task<(DscResult Result, int ExitCode)> ExecuteTestAsync(string configPath, LcmConfig config, LogLevel traceLevel, CancellationToken cancellationToken = default)
     {
         return await ExecuteCommandAsync("test", configPath, config, traceLevel, cancellationToken);
@@ -46,7 +48,7 @@ public partial class DscExecutor(ILogger<DscExecutor> logger)
         var arguments = BuildArguments(operation, configPath, traceLevel);
 
 #pragma warning disable CA1873
-        if (logger.IsEnabled(LogLevel.Information))
+        if (logger.IsEnabled(LogLevel.Debug))
         {
             LogExecutingDscCommand(string.Join(" ", arguments));
         }
@@ -199,7 +201,7 @@ public partial class DscExecutor(ILogger<DscExecutor> logger)
         }
     }
 
-    [LoggerMessage(EventId = EventIds.DscCommandExecuting, Level = LogLevel.Information, Message = "Executing DSC command: dsc {Arguments}")]
+    [LoggerMessage(EventId = EventIds.DscCommandExecuting, Level = LogLevel.Debug, Message = "Executing DSC command: dsc {Arguments}")]
     private partial void LogExecutingDscCommand(string arguments);
 
     [LoggerMessage(EventId = EventIds.DscCommandCompleted, Level = LogLevel.Information, Message = "DSC command '{Command}' completed with exit code {ExitCode}")]
@@ -211,18 +213,18 @@ public partial class DscExecutor(ILogger<DscExecutor> logger)
     [LoggerMessage(EventId = EventIds.DscParseError, Level = LogLevel.Warning, Message = "Failed to parse DSC JSON result")]
     private partial void LogFailedToParseDscJsonResult(Exception ex);
 
-    [LoggerMessage(EventId = EventIds.DscErrorMessage, Level = LogLevel.Error, Message = "DSC: {Message}")]
+    [LoggerMessage(EventId = EventIds.DscErrorMessage, Level = LogLevel.Error, Message = "{Message}")]
     private partial void LogDscErrorMessage(string message);
 
-    [LoggerMessage(EventId = EventIds.DscWarningMessage, Level = LogLevel.Warning, Message = "DSC: {Message}")]
+    [LoggerMessage(EventId = EventIds.DscWarningMessage, Level = LogLevel.Warning, Message = "{Message}")]
     private partial void LogDscWarningMessage(string message);
 
-    [LoggerMessage(EventId = EventIds.DscInfoMessage, Level = LogLevel.Information, Message = "DSC: {Message}")]
+    [LoggerMessage(EventId = EventIds.DscInfoMessage, Level = LogLevel.Information, Message = "{Message}")]
     private partial void LogDscInfoMessage(string message);
 
-    [LoggerMessage(EventId = EventIds.DscDebugMessage, Level = LogLevel.Debug, Message = "DSC: {Message}")]
+    [LoggerMessage(EventId = EventIds.DscDebugMessage, Level = LogLevel.Debug, Message = "{Message}")]
     private partial void LogDscDebugMessage(string message);
 
-    [LoggerMessage(EventId = EventIds.DscTraceMessage, Level = LogLevel.Trace, Message = "DSC: {Message}")]
+    [LoggerMessage(EventId = EventIds.DscTraceMessage, Level = LogLevel.Trace, Message = "{Message}")]
     private partial void LogDscTraceMessage(string message);
 }
