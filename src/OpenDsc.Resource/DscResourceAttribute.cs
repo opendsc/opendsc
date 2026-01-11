@@ -13,7 +13,7 @@ namespace OpenDsc.Resource;
 /// Specifies metadata for a DSC resource including its type name, version, description, and capabilities.
 /// </summary>
 [AttributeUsage(AttributeTargets.Class)]
-public sealed class DscResourceAttribute : Attribute
+public sealed partial class DscResourceAttribute : Attribute
 {
     /// <summary>
     /// Gets the resource type name in the format "Owner[.Group][.Area]/Name".
@@ -79,7 +79,7 @@ public sealed class DscResourceAttribute : Attribute
     /// <exception cref="ArgumentException">Thrown when the type format is invalid.</exception>
     public DscResourceAttribute(string type)
     {
-        var match = Regex.Match(type, @"^\w+(\.\w+){0,2}\/\w+$");
+        var match = GetTypeRegex().Match(type);
 
         if (!match.Success)
         {
@@ -104,4 +104,18 @@ public sealed class DscResourceAttribute : Attribute
 
         Version = parsedVersion;
     }
+
+#if NET7_0_OR_GREATER
+    [GeneratedRegex(@"^\w+(\.\w+){0,2}\/\w+$")]
+    private static partial Regex TypeRegex();
+#else
+    private static readonly Regex TypeRegex = new(@"^\w+(\.\w+){0,2}\/\w+$");
+#endif
+
+    private static Regex GetTypeRegex() =>
+#if NET7_0_OR_GREATER
+        TypeRegex();
+#else
+        TypeRegex;
+#endif
 }

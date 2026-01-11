@@ -2,7 +2,13 @@
 
 ## Project Overview
 
-This repository contains Microsoft DSC (Desired State Configuration) resources for Windows and cross-platform management. The project uses a **multi-resource executable architecture** where all resources are bundled into platform-specific executables (`OpenDsc.Resource.CommandLine.Windows.exe` and `OpenDsc.Resource.CommandLine.Linux`) that implement the standard DSC interface through the `OpenDsc.Resource.CommandLine` library.
+This repository contains Microsoft DSC (Desired State Configuration) resources for Windows and cross-platform management, plus a Local Configuration Manager (LCM) service. The project uses a **multi-resource executable architecture** where all resources are bundled into platform-specific executables (`OpenDsc.Resource.CommandLine.Windows.exe`, `.Linux`, and `.macOS`) that implement the standard DSC interface through the `OpenDsc.Resource.CommandLine` library.
+
+**Major Components:**
+
+1. **DSC Resources** - Built-in resources for system management
+2. **LCM Service** (`src/OpenDsc.Lcm/`) - Background service that monitors and remediates configurations
+3. **Resource Libraries** (`src/OpenDsc.Resource*`) - Core framework for building DSC resources
 
 **Available Resources:**
 
@@ -15,17 +21,20 @@ Windows Resources (in `src/OpenDsc.Resource.Windows/`):
 - `OptionalFeature/` - Windows optional features via DISM (`OpenDsc.Windows/OptionalFeature`)
 - `FileSystem/Acl/` - File system ACL management (`OpenDsc.Windows.FileSystem/AccessControlList`)
 
-Cross-Platform Resources (in `src/OpenDsc.Resource.FileSystem/` and `src/OpenDsc.Resource.Xml/`):
+Cross-Platform Resources (in `src/OpenDsc.Resource.FileSystem/`, `src/OpenDsc.Resource.Xml/`, and `src/OpenDsc.Resource.Archive/`):
 - `File/` - Cross-platform file management (`OpenDsc.FileSystem/File`)
 - `Directory/` - Cross-platform directory management (`OpenDsc.FileSystem/Directory`)
 - `Element/` - XML element manipulation (`OpenDsc.Xml/Element`)
+- `Zip/Compress/` - Create ZIP archives (`OpenDsc.Archive.Zip/Compress`)
+- `Zip/Expand/` - Extract ZIP archives (`OpenDsc.Archive.Zip/Expand`)
 
 **Resource Naming Convention:**
 - Windows-specific: `OpenDsc.Windows/<Name>` (namespace: `OpenDsc.Resource.Windows.<Name>`)
 - Cross-platform: `OpenDsc.<Area>/<Name>` (namespace: `OpenDsc.Resource.<Area>.<Name>`)
-- Specialized: `OpenDsc.Xml/<Name>` (namespace: `OpenDsc.Resource.Xml.<Name>`)
+- Specialized: `OpenDsc.Xml/<Name>`, `OpenDsc.Archive.Zip/<Name>` (namespace: `OpenDsc.Resource.Xml.<Name>`, `OpenDsc.Resource.Archive.Zip.<Name>`)
 - **With sub-area**: `OpenDsc.Windows.<SubArea>/<Name>` (namespace: `OpenDsc.Resource.Windows.<SubArea>.<Name>`)
   - Example: `OpenDsc.Windows.FileSystem/AccessControlList` → folder `src/OpenDsc.Resource.Windows/FileSystem/Acl/` → namespace `OpenDsc.Resource.Windows.FileSystem.Acl`
+  - Example: `OpenDsc.Archive.Zip/Compress` → folder `src/OpenDsc.Resource.Archive/Zip/Compress/` → namespace `OpenDsc.Resource.Archive.Zip.Compress`
 
 ## Architecture Pattern
 
@@ -99,17 +108,23 @@ using OpenDsc.Resource.CommandLine;
 using GroupNs = OpenDsc.Resource.Windows.Group;
 using EnvironmentNs = OpenDsc.Resource.Windows.Environment;
 using FileSystemAclNs = OpenDsc.Resource.Windows.FileSystem.Acl;  // Sub-area resource
+using ZipCompressNs = OpenDsc.Resource.Archive.Zip.Compress;
+using ZipExpandNs = OpenDsc.Resource.Archive.Zip.Expand;
 // ... other resource namespaces
 
 var groupResource = new GroupNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
 var environmentResource = new EnvironmentNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
 var fileSystemAclResource = new FileSystemAclNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
+var zipCompressResource = new ZipCompressNs.Resource(OpenDsc.Resource.Archive.SourceGenerationContext.Default);
+var zipExpandResource = new ZipExpandNs.Resource(OpenDsc.Resource.Archive.SourceGenerationContext.Default);
 // ... instantiate other resources
 
 var command = new CommandBuilder()
     .AddResource<GroupNs.Resource, GroupNs.Schema>(groupResource)
     .AddResource<EnvironmentNs.Resource, EnvironmentNs.Schema>(environmentResource)
     .AddResource<FileSystemAclNs.Resource, FileSystemAclNs.Schema>(fileSystemAclResource)
+    .AddResource<ZipCompressNs.Resource, ZipCompressNs.Schema>(zipCompressResource)
+    .AddResource<ZipExpandNs.Resource, ZipExpandNs.Schema>(zipExpandResource)
     // ... add other resources
     .Build();
 
@@ -389,8 +404,9 @@ DSC automatically aggregates `_restartRequired` entries from all resources into 
 **Build Process:**
 1. `dotnet publish` compiles platform-specific executable (`OpenDsc.Resource.CommandLine.Windows.exe` or `.Linux`)
 2. Build artifacts are placed in `artifacts/publish/`
-3. Portable builds create self-contained executables with embedded runtime in `artifacts/portable/`
-4. MSI builds create installer in `artifacts/msi/`
+3. LCM service is built to `artifacts/Lcm/`
+4. Portable builds create self-contained executables with embedded runtime in `artifacts/portable/`
+5. MSI builds create installers in `artifacts/msi/`
 
 **Output Structure:**
 ```
@@ -399,10 +415,14 @@ artifacts/
 │   ├── OpenDsc.Resource.CommandLine.Windows.exe
 │   ├── OpenDsc.Resource.CommandLine.Windows.dsc.manifests.json
 │   └── ...dependencies
+├── Lcm/                         # LCM service
+│   ├── OpenDsc.Lcm.exe
+│   └── appsettings.json
 ├── portable/                    # Self-contained with .NET runtime
 │   └── OpenDsc.Resource.CommandLine.Windows.exe
 └── msi/
-    └── OpenDsc.Resource.CommandLine.Windows.msi
+    ├── OpenDsc.Resource.CommandLine.Windows.msi
+    └── OpenDsc.Lcm.msi          # LCM installer
 ```
 
 ### Testing with Pester
@@ -603,6 +623,109 @@ var target = instance.Scope is Scope.Machine
 
 Machine scope requires admin elevation.
 
+## Local Configuration Manager (LCM) Service
+
+The LCM is a background service (`src/OpenDsc.Lcm/`) that continuously monitors and optionally remediates DSC configurations. It operates in two modes and is implemented as a cross-platform .NET service.
+
+### Architecture Overview
+
+**Key Components:**
+- `LcmWorker.cs` - Main background service implementing two operational modes
+- `DscExecutor.cs` - Executes DSC CLI commands (`dsc config test` and `dsc config set`)
+- `LcmConfig.cs` - Configuration model with validation
+- `ConfigPaths.cs` - Platform-specific configuration paths
+
+**Operational Modes:**
+1. **Monitor Mode** - Periodically runs `dsc config test` to detect drift
+2. **Remediate Mode** - Runs `dsc config test` and applies `dsc config set` when drift detected
+
+### Configuration Structure
+
+```csharp
+public class LcmConfig
+{
+    public ConfigurationMode ConfigurationMode { get; set; } = ConfigurationMode.Monitor;
+    public string ConfigurationPath { get; set; }  // Path to main.dsc.yaml
+    public TimeSpan ConfigurationModeInterval { get; set; } = TimeSpan.FromMinutes(15);
+    public string? DscExecutablePath { get; set; }  // Optional, defaults to 'dsc' in PATH
+}
+```
+
+**Configuration Sources (priority order):**
+1. Command-line arguments
+2. Environment variables (prefixed with `LCM_`)
+3. System-wide config (platform-specific):
+   - Linux: `/etc/opendsc/lcm/appsettings.json`
+   - macOS: `/Library/Preferences/OpenDSC/LCM/appsettings.json`
+   - Windows: `%ProgramData%\OpenDSC\LCM\appsettings.json`
+4. Bundled `appsettings.json` in service directory
+5. Environment-specific: `appsettings.{Environment}.json`
+
+### Building and Deploying LCM
+
+```powershell
+# Build LCM service
+.\build.ps1  # Outputs to artifacts/Lcm/
+
+# Build MSI installer (Windows only)
+.\build.ps1 -Msi  # Outputs to artifacts/msi/
+
+# Service is built for:
+# - Windows: net10.0-windows (can be installed as Windows Service)
+# - Linux: net10.0 (can run as systemd service)
+```
+
+**Platform-Specific Deployment:**
+- Windows: MSI installer registers as Windows Service
+- Linux/macOS: Run as console app or systemd/launchd service
+
+### Key Patterns
+
+**Dynamic Mode Switching:**
+The LCM watches configuration changes and gracefully switches between Monitor and Remediate modes without restarting:
+
+```csharp
+_configChangeToken = lcmMonitor.OnChange((config, name) => {
+    OnConfigurationReloaded(config);  // Cancels current operation, switches mode
+});
+```
+
+**DSC Execution Pattern:**
+The `DscExecutor` invokes DSC CLI with structured output parsing:
+
+```csharp
+var result = await dscExecutor.ExecuteTestAsync(config.ConfigurationPath, config, LogLevel.Information);
+// Returns parsed DscResult with messages, results, and hadErrors flag
+```
+
+**Logging:**
+Uses source-generated logging with `LoggerMessage` attributes for performance. All log messages are defined as partial methods in the worker classes.
+
+### Working with LCM
+
+**Testing Locally:**
+```powershell
+# Set configuration via environment
+$env:LCM_ConfigurationPath = "C:\configs\main.dsc.yaml"
+$env:LCM_ConfigurationMode = "Monitor"
+$env:LCM_ConfigurationModeInterval = "00:05:00"
+
+# Run as console app
+.\artifacts\Lcm\OpenDsc.Lcm.exe
+```
+
+**Configuration File Example:**
+```json
+{
+  "LCM": {
+    "ConfigurationMode": "Remediate",
+    "ConfigurationPath": "/etc/opendsc/config/main.dsc.yaml",
+    "ConfigurationModeInterval": "00:15:00",
+    "DscExecutablePath": "/usr/local/bin/dsc"
+  }
+}
+```
+
 ## Creating a New Resource
 
 ### Adding a Resource to an Existing Project
@@ -611,7 +734,7 @@ Use [Environment/](../src/OpenDsc.Resource.Windows/Environment/) as the template
 
 1. **Create resource folder** in the appropriate project:
    - Windows-only: `src/OpenDsc.Resource.Windows/<Name>/`
-   - Cross-platform: `src/OpenDsc.Resource.FileSystem/<Name>/` or `src/OpenDsc.Resource.Xml/<Name>/`
+   - Cross-platform: `src/OpenDsc.Resource.FileSystem/<Name>/`, `src/OpenDsc.Resource.Xml/<Name>/`, or `src/OpenDsc.Resource.Archive/<Area>/<Name>/`
 
 2. **Create core files** in the resource folder:
    - `Resource.cs` - Core implementation with `[DscResource]` attribute
@@ -681,6 +804,8 @@ Use [Environment/](../src/OpenDsc.Resource.Windows/Environment/) as the template
 - **COM Interop:** [Shortcut/](../src/OpenDsc.Resource.Windows/Shortcut/) (P/Invoke patterns for COM)
 - **Win32 API:** [Service/](../src/OpenDsc.Resource.Windows/Service/) (Win32 API wrappers)
 - **DISM API:** [OptionalFeature/](../src/OpenDsc.Resource.Windows/OptionalFeature/) (P/Invoke DISM interop)
+- **Archive Resources:** [Zip/Compress/](../src/OpenDsc.Resource.Archive/Zip/Compress/), [Zip/Expand/](../src/OpenDsc.Resource.Archive/Zip/Expand/) (multi-level namespace structure)
+- **LCM Service:** [LcmWorker.cs](../src/OpenDsc.Lcm/LcmWorker.cs), [DscExecutor.cs](../src/OpenDsc.Lcm/DscExecutor.cs) (background service patterns)
 - **Test Examples:** [Environment.Tests.ps1](../tests/Windows/Environment.Tests.ps1) (comprehensive integration tests)
 - **Platform Entry Point:** [Program.cs](../src/OpenDsc.Resource.CommandLine.Windows/Program.cs) (resource registration)
 - **Editor Config:** [.editorconfig](../.editorconfig) (C# style rules, file headers)
