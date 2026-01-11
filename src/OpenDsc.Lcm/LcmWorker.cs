@@ -208,11 +208,6 @@ public partial class LcmWorker(IConfiguration configuration, IOptionsMonitor<Lcm
                         LogDscSetStarting();
                         var (setResult, setExitCode) = await dscExecutor.ExecuteSetAsync(currentConfig.ConfigurationPath, currentConfig, traceLevel, stoppingToken);
                         LogDscSetResult(setResult, setExitCode);
-
-                        if (setResult.Metadata?.MicrosoftDsc?.RestartRequired?.Count > 0)
-                        {
-                            LogCorrectionChangesRequireSystemRestart();
-                        }
                     }
                     else
                     {
@@ -395,9 +390,6 @@ public partial class LcmWorker(IConfiguration configuration, IOptionsMonitor<Lcm
 
     [LoggerMessage(EventId = EventIds.ApplyingCorrections, Level = LogLevel.Information, Message = "Resources not in desired state, applying corrections")]
     private partial void LogResourcesNotInDesiredStateApplyingCorrections();
-
-    [LoggerMessage(EventId = EventIds.CorrectionRequiresRestart, Level = LogLevel.Warning, Message = "Correction changes require system restart")]
-    private partial void LogCorrectionChangesRequireSystemRestart();
 
     [LoggerMessage(EventId = EventIds.AllResourcesInDesiredState, Level = LogLevel.Debug, Message = "All resources are in desired state")]
     private partial void LogAllResourcesAreInDesiredState();
