@@ -654,7 +654,10 @@ public class LcmConfig
 **Configuration Sources (priority order):**
 1. Command-line arguments
 2. Environment variables (prefixed with `LCM_`)
-3. User-specific config: `~/.opendsc/lcm/appsettings.json`
+3. System-wide config (platform-specific):
+   - Linux: `/etc/opendsc/lcm/appsettings.json`
+   - macOS: `/Library/Preferences/OpenDSC/LCM/appsettings.json`
+   - Windows: `%ProgramData%\OpenDSC\LCM\appsettings.json`
 4. Bundled `appsettings.json` in service directory
 5. Environment-specific: `appsettings.{Environment}.json`
 
