@@ -195,7 +195,7 @@ public partial class LcmWorker(IConfiguration configuration, IOptionsMonitor<Lcm
 
                     var needsCorrection = (testResult.Results?.Count(r =>
                     {
-                        var testOp = JsonSerializer.Deserialize(r.Result, OpenDsc.Schema.SourceGenerationContext.Default.DscTestOperationResult);
+                        var testOp = JsonSerializer.Deserialize(r.Result, SourceGenerationContext.Default.DscTestOperationResult);
                         return testOp?.InDesiredState == false;
                     }) ?? 0) > 0;
 
@@ -265,7 +265,7 @@ public partial class LcmWorker(IConfiguration configuration, IOptionsMonitor<Lcm
     {
         bool allInDesiredState = result.Results?.All(r =>
         {
-            var testOp = JsonSerializer.Deserialize(r.Result, OpenDsc.Schema.SourceGenerationContext.Default.DscTestOperationResult);
+            var testOp = JsonSerializer.Deserialize(r.Result, SourceGenerationContext.Default.DscTestOperationResult);
             return testOp?.InDesiredState == true;
         }) ?? true;
 
@@ -283,12 +283,12 @@ public partial class LcmWorker(IConfiguration configuration, IOptionsMonitor<Lcm
             var totalResources = result.Results!.Count;
             var inDesiredState = result.Results.Count(r =>
             {
-                var testOp = JsonSerializer.Deserialize(r.Result, OpenDsc.Schema.SourceGenerationContext.Default.DscTestOperationResult);
+                var testOp = JsonSerializer.Deserialize(r.Result, SourceGenerationContext.Default.DscTestOperationResult);
                 return testOp?.InDesiredState == true;
             });
             var notInDesiredState = result.Results.Count(r =>
             {
-                var testOp = JsonSerializer.Deserialize(r.Result, OpenDsc.Schema.SourceGenerationContext.Default.DscTestOperationResult);
+                var testOp = JsonSerializer.Deserialize(r.Result, SourceGenerationContext.Default.DscTestOperationResult);
                 return testOp?.InDesiredState == false;
             });
 
@@ -298,7 +298,7 @@ public partial class LcmWorker(IConfiguration configuration, IOptionsMonitor<Lcm
             {
                 foreach (var resource in result.Results.Where(r =>
                 {
-                    var testOp = JsonSerializer.Deserialize(r.Result, OpenDsc.Schema.SourceGenerationContext.Default.DscTestOperationResult);
+                    var testOp = JsonSerializer.Deserialize(r.Result, SourceGenerationContext.Default.DscTestOperationResult);
                     return testOp?.InDesiredState == false;
                 }))
                 {
