@@ -363,87 +363,87 @@ public partial class LcmWorker(IConfiguration configuration, IOptionsMonitor<Lcm
         return Enum.Parse<LogLevel>(logLevelString);
     }
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "LCM operating in {ConfigurationMode} mode")]
+    [LoggerMessage(EventId = EventIds.ServiceStarting, Level = LogLevel.Information, Message = "LCM operating in {ConfigurationMode} mode")]
     private partial void LogOperatingInMode(ConfigurationMode configurationMode);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Unknown LCM mode: {ConfigurationMode}")]
+    [LoggerMessage(EventId = EventIds.UnknownMode, Level = LogLevel.Error, Message = "Unknown LCM mode: {ConfigurationMode}")]
     private partial void LogUnknownLcmMode(ConfigurationMode configurationMode);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Critical error in LCM service")]
+    [LoggerMessage(EventId = EventIds.CriticalError, Level = LogLevel.Error, Message = "Critical error in LCM service")]
     private partial void LogCriticalErrorInLcmService(Exception ex);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "LCM service stopping")]
+    [LoggerMessage(EventId = EventIds.ServiceStopping, Level = LogLevel.Information, Message = "LCM service stopping")]
     private partial void LogLcmServiceStopping();
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Starting monitor mode with {ConfigurationModeInterval} intervals")]
+    [LoggerMessage(EventId = EventIds.MonitorModeStarting, Level = LogLevel.Information, Message = "Starting monitor mode with {ConfigurationModeInterval} intervals")]
     private partial void LogStartingMonitorMode(string configurationModeInterval);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Configuration not available, skipping DSC test")]
+    [LoggerMessage(EventId = EventIds.ConfigurationNotAvailable, Level = LogLevel.Error, Message = "Configuration not available, skipping DSC test")]
     private partial void LogConfigurationNotAvailableSkippingDscTest();
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Error during monitor cycle")]
+    [LoggerMessage(EventId = EventIds.MonitorCycleError, Level = LogLevel.Error, Message = "Error during monitor cycle")]
     private partial void LogErrorDuringMonitorCycle(Exception ex);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Starting remediate mode with {ConfigurationModeInterval} intervals")]
+    [LoggerMessage(EventId = EventIds.RemediateModeStarting, Level = LogLevel.Information, Message = "Starting remediate mode with {ConfigurationModeInterval} intervals")]
     private partial void LogStartingRemediateMode(string configurationModeInterval);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Configuration not available, skipping DSC operations: {ConfigurationPath}")]
+    [LoggerMessage(EventId = EventIds.ConfigurationNotAvailable, Level = LogLevel.Error, Message = "Configuration not available, skipping DSC operations: {ConfigurationPath}")]
     private partial void LogConfigurationNotAvailableSkippingDscOperations(string configurationPath);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Resources not in desired state, applying corrections")]
+    [LoggerMessage(EventId = EventIds.ApplyingCorrections, Level = LogLevel.Information, Message = "Resources not in desired state, applying corrections")]
     private partial void LogResourcesNotInDesiredStateApplyingCorrections();
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Correction changes require system restart")]
+    [LoggerMessage(EventId = EventIds.CorrectionRequiresRestart, Level = LogLevel.Warning, Message = "Correction changes require system restart")]
     private partial void LogCorrectionChangesRequireSystemRestart();
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "All resources are in desired state")]
+    [LoggerMessage(EventId = EventIds.AllResourcesInDesiredState, Level = LogLevel.Debug, Message = "All resources are in desired state")]
     private partial void LogAllResourcesAreInDesiredState();
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Error during remediate cycle")]
+    [LoggerMessage(EventId = EventIds.RemediateCycleError, Level = LogLevel.Error, Message = "Error during remediate cycle")]
     private partial void LogErrorDuringRemediateCycle(Exception ex);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "DSC {Operation} completed successfully")]
+    [LoggerMessage(EventId = EventIds.DscTestCompleted, Level = LogLevel.Information, Message = "DSC {Operation} completed successfully")]
     private partial void LogDscOperationCompletedSuccessfully(string operation);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "DSC {Operation} completed with issues. Exit code: {ExitCode}")]
+    [LoggerMessage(EventId = EventIds.DscTestCompletedWithIssues, Level = LogLevel.Information, Message = "DSC {Operation} completed with issues. Exit code: {ExitCode}")]
     private partial void LogDscOperationCompletedWithIssues(string operation, int exitCode);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Resource status: {InDesired}/{Total} in desired state, {NotInDesired} not in desired state")]
+    [LoggerMessage(EventId = EventIds.ResourceStatus, Level = LogLevel.Information, Message = "Resource status: {InDesired}/{Total} in desired state, {NotInDesired} not in desired state")]
     private partial void LogResourceStatus(int inDesired, int total, int notInDesired);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Set operation status: {Successful}/{Total} resources successfully applied, {Failed} failed")]
+    [LoggerMessage(EventId = EventIds.SetOperationStatus, Level = LogLevel.Information, Message = "Set operation status: {Successful}/{Total} resources successfully applied, {Failed} failed")]
     private partial void LogSetResourceStatus(int successful, int total, int failed);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Resource instance '{Name}' with type '{Type}' is not in desired state")]
+    [LoggerMessage(EventId = EventIds.ResourceNotInDesiredState, Level = LogLevel.Warning, Message = "Resource instance '{Name}' with type '{Type}' is not in desired state")]
     private partial void LogResourceNotInDesiredState(string? type, string? name);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "DSC operation requires system restart: {ComputerName}")]
+    [LoggerMessage(EventId = EventIds.SystemRestartRequired, Level = LogLevel.Warning, Message = "DSC operation requires system restart: {ComputerName}")]
     private partial void LogDscOperationRequiresSystemRestart(string computerName);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "DSC operation requires service restart: {ServiceName}")]
+    [LoggerMessage(EventId = EventIds.ServiceRestartRequired, Level = LogLevel.Warning, Message = "DSC operation requires service restart: {ServiceName}")]
     private partial void LogDscOperationRequiresServiceRestart(string serviceName);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "DSC operation requires process restart: {ProcessName} (ID: {ProcessId})")]
+    [LoggerMessage(EventId = EventIds.ProcessRestartRequired, Level = LogLevel.Warning, Message = "DSC operation requires process restart: {ProcessName} (ID: {ProcessId})")]
     private partial void LogDscOperationRequiresProcessRestart(string processName, uint processId);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Configuration reloaded, changes will take effect on next cycle")]
+    [LoggerMessage(EventId = EventIds.ConfigurationReloaded, Level = LogLevel.Information, Message = "Configuration reloaded, changes will take effect on next cycle")]
     private partial void LogConfigurationReloaded();
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Configuration validation error: {ErrorMessage}")]
+    [LoggerMessage(EventId = EventIds.ConfigurationValidationError, Level = LogLevel.Error, Message = "Configuration validation error: {ErrorMessage}")]
     private partial void LogConfigurationValidationError(string errorMessage);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Mode change detected from {OldMode} to {NewMode}, cancelling current mode")]
+    [LoggerMessage(EventId = EventIds.ModeChangeDetected, Level = LogLevel.Debug, Message = "Mode change detected from {OldMode} to {NewMode}, cancelling current mode")]
     private partial void LogModeChangeDetected(ConfigurationMode oldMode, ConfigurationMode newMode);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Mode switched from {OldMode} to {NewMode}")]
+    [LoggerMessage(EventId = EventIds.ModeSwitched, Level = LogLevel.Information, Message = "Mode switched from {OldMode} to {NewMode}")]
     private partial void LogModeSwitched(ConfigurationMode oldMode, ConfigurationMode newMode);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Configuration interval changed from {OldInterval} to {NewInterval}, interrupting delay")]
+    [LoggerMessage(EventId = EventIds.ConfigurationIntervalChanged, Level = LogLevel.Information, Message = "Configuration interval changed from {OldInterval} to {NewInterval}, interrupting delay")]
     private partial void LogConfigurationIntervalChanged(string oldInterval, string newInterval);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Configuration changed after test, skipping set operation")]
+    [LoggerMessage(EventId = EventIds.ConfigurationChangedAfterTest, Level = LogLevel.Warning, Message = "Configuration changed after test, skipping set operation")]
     private partial void LogConfigurationChangedSkippingSet();
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Trace level for DSC operations: {TraceLevel}")]
+    [LoggerMessage(EventId = 9999, Level = LogLevel.Debug, Message = "Trace level for DSC operations: {TraceLevel}")]
     private partial void LogTraceLevelForDsc(LogLevel traceLevel);
 }

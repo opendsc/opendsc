@@ -199,30 +199,30 @@ public partial class DscExecutor(ILogger<DscExecutor> logger)
         }
     }
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Executing DSC command: dsc {Arguments}")]
+    [LoggerMessage(EventId = EventIds.DscCommandExecuting, Level = LogLevel.Information, Message = "Executing DSC command: dsc {Arguments}")]
     private partial void LogExecutingDscCommand(string arguments);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "DSC command '{Command}' completed with exit code {ExitCode}")]
+    [LoggerMessage(EventId = EventIds.DscCommandCompleted, Level = LogLevel.Information, Message = "DSC command '{Command}' completed with exit code {ExitCode}")]
     private partial void LogDscCommandCompleted(string command, int exitCode);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "DSC malformed JSON: {Message}")]
+    [LoggerMessage(EventId = EventIds.DscMalformedJson, Level = LogLevel.Warning, Message = "DSC malformed JSON: {Message}")]
     private partial void LogDscPlainTextMessage(string message);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to parse DSC JSON result")]
+    [LoggerMessage(EventId = EventIds.DscParseError, Level = LogLevel.Warning, Message = "Failed to parse DSC JSON result")]
     private partial void LogFailedToParseDscJsonResult(Exception ex);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "DSC: {Message}")]
+    [LoggerMessage(EventId = EventIds.DscErrorMessage, Level = LogLevel.Error, Message = "DSC: {Message}")]
     private partial void LogDscErrorMessage(string message);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "DSC: {Message}")]
+    [LoggerMessage(EventId = EventIds.DscWarningMessage, Level = LogLevel.Warning, Message = "DSC: {Message}")]
     private partial void LogDscWarningMessage(string message);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "DSC: {Message}")]
+    [LoggerMessage(EventId = EventIds.DscInfoMessage, Level = LogLevel.Information, Message = "DSC: {Message}")]
     private partial void LogDscInfoMessage(string message);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "DSC: {Message}")]
+    [LoggerMessage(EventId = EventIds.DscDebugMessage, Level = LogLevel.Debug, Message = "DSC: {Message}")]
     private partial void LogDscDebugMessage(string message);
 
-    [LoggerMessage(Level = LogLevel.Trace, Message = "DSC: {Message}")]
+    [LoggerMessage(EventId = EventIds.DscTraceMessage, Level = LogLevel.Trace, Message = "DSC: {Message}")]
     private partial void LogDscTraceMessage(string message);
 }

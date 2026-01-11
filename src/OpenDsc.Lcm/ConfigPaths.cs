@@ -26,20 +26,4 @@ public static class ConfigPaths
 
         throw new PlatformNotSupportedException("Unsupported platform");
     }
-
-    public static string GetLcmLogDirectory()
-    {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-        {
-            return "/var/log/opendsc";
-        }
-        else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-        {
-            return "/Library/Logs/OpenDSC";
-        }
-        else
-        {
-            return GetLcmConfigDirectory();
-        }
-    }
 }

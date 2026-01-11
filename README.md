@@ -139,28 +139,90 @@ remediates DSC configurations. It supports two operational modes:
 
 ### Configuration
 
-Configure the LCM via environment variables or configuration files:
+The LCM can be configured through multiple sources, with the following
+priority order (highest to lowest):
+
+1. Command-line arguments
+2. Environment variables (prefixed with `LCM_`)
+3. Platform-specific configuration file (see paths below)
+4. Bundled `appsettings.json` in the service directory
+5. Environment-specific `appsettings.{Environment}.json`
+
+#### Configuration File Locations
+
+| Platform | Configuration Directory | Logging |
+| --- | --- | --- |
+| Windows | `%ProgramData%\OpenDSC\LCM` | Windows Event Log (Application) |
+| Linux | `/etc/opendsc/lcm` | systemd journal |
+| macOS | `/Library/Preferences/OpenDSC/LCM` | Unified Logging |
+
+Place your `appsettings.json` in the configuration directory for your platform.
+
+#### Configurable Values
+
+All settings must be under the `"LCM"` section in JSON configuration:
+
+| Setting | Type | Default | Description |
+| --- | --- | --- | --- |
+| `ConfigurationMode` | string | `Monitor` | Operating mode: `Monitor` or `Remediate` |
+| `ConfigurationPath` | string | `{ConfigDir}/config/main.dsc.yaml` | Full path to the main DSC configuration file |
+| `ConfigurationModeInterval` | timespan | `00:15:00` | Interval between checks (format: `hh:mm:ss`) |
+| `DscExecutablePath` | string | `null` | Path to DSC executable (if not in PATH) |
+
+#### Configuration Examples
+
+**Using environment variables:**
 
 ```powershell
-# Set configuration via environment variables
+# Windows
 $env:LCM_ConfigurationPath = "C:\configs\main.dsc.yaml"
-$env:LCM_ConfigurationMode = "Remediate"  # or "Monitor"
-$env:LCM_ConfigurationModeInterval = "00:15:00"  # Check every 15 minutes
+$env:LCM_ConfigurationMode = "Remediate"
+$env:LCM_ConfigurationModeInterval = "00:15:00"
+$env:LCM_DscExecutablePath = "C:\Program Files\dsc\dsc.exe"
 
-# Run the LCM service
 .\artifacts\Lcm\OpenDsc.Lcm.exe
 ```
 
-Alternatively, use a configuration file at `~/.opendsc/lcm/appsettings.json`:
+```sh
+# Linux/macOS
+export LCM_ConfigurationPath="/etc/opendsc/config/main.dsc.yaml"
+export LCM_ConfigurationMode="Remediate"
+export LCM_ConfigurationModeInterval="00:15:00"
+
+./artifacts/Lcm/OpenDsc.Lcm
+```
+
+**Using configuration file (appsettings.json):**
+
+Windows (`%ProgramData%\OpenDSC\LCM\appsettings.json`):
 
 ```json
 {
   "LCM": {
     "ConfigurationMode": "Remediate",
-    "ConfigurationPath": "/etc/opendsc/config/main.dsc.yaml",
-    "ConfigurationModeInterval": "00:15:00"
+    "ConfigurationPath": "C:\\configs\\main.dsc.yaml",
+    "ConfigurationModeInterval": "00:15:00",
+    "DscExecutablePath": "C:\\Program Files\\dsc\\dsc.exe"
   }
 }
+```
+
+Linux (`/etc/opendsc/lcm/appsettings.json`):
+
+```json
+{
+  "LCM": {
+    "ConfigurationMode": "Monitor",
+    "ConfigurationPath": "/etc/opendsc/config/main.dsc.yaml",
+    "ConfigurationModeInterval": "00:30:00"
+  }
+}
+```
+
+**Using command-line arguments:**
+
+```powershell
+.\artifacts\Lcm\OpenDsc.Lcm.exe --LCM:ConfigurationMode=Remediate --LCM:ConfigurationPath="C:\configs\main.dsc.yaml" --LCM:ConfigurationModeInterval="00:15:00"
 ```
 
 ### Installation
@@ -174,6 +236,47 @@ msiexec /i artifacts\msi\OpenDsc.Lcm.msi
 
 **Linux/macOS**: Run as a console application or configure as a systemd/launchd
 service.
+
+### Viewing Logs
+
+Logs are automatically captured by each platform's native logging system:
+
+**Windows** (Event Viewer):
+
+```powershell
+# Open Event Viewer GUI
+eventvwr.msc
+
+# Navigate to: Windows Logs > Application
+# Filter by Source: OpenDsc.Lcm
+```
+
+**Linux** (journald):
+
+```sh
+# View all LCM logs
+journalctl -u opendsc-lcm
+
+# Follow logs in real-time
+journalctl -u opendsc-lcm -f
+
+# Filter by severity
+journalctl -u opendsc-lcm -p err
+journalctl -u opendsc-lcm -p warning
+```
+
+**macOS** (Unified Logging):
+
+```sh
+# View logs in Console.app (GUI)
+open -a Console
+
+# View logs via command line
+log show --predicate 'process == "OpenDsc.Lcm"' --info --last 1h
+
+# Stream logs in real-time
+log stream --predicate 'process == "OpenDsc.Lcm"' --level info
+```
 
 ## Examples
 

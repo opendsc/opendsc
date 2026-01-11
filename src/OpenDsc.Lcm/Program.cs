@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using OpenDsc.Lcm;
@@ -28,17 +29,28 @@ builder.Services.AddOptionsWithValidateOnStart<LcmConfig>()
 builder.Services.AddSingleton<DscExecutor>();
 builder.Services.AddHostedService<LcmWorker>();
 
+if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+{
+    builder.Logging.AddSystemdConsole(options =>
+    {
+        options.IncludeScopes = false;
+        options.TimestampFormat = "HH:mm:ss ";
+    });
+}
+else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+{
+    builder.Logging.AddSimpleConsole(options =>
+    {
+        options.SingleLine = true;
+        options.TimestampFormat = "HH:mm:ss ";
+    });
+}
+
 #if WINDOWS
 builder.Services.AddWindowsService();
+builder.Logging.AddEventLog();
 #endif
 
 var host = builder.Build();
-
-Directory.CreateDirectory(configDir);
-
-if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-{
-    Directory.CreateDirectory(ConfigPaths.GetLcmLogDirectory());
-}
 
 await host.RunAsync();
