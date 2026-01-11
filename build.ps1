@@ -81,6 +81,16 @@ if (-not $SkipBuild) {
                 throw "Build failed for OpenDsc.Resource.CommandLine.Windows with exit code $LASTEXITCODE"
             }
 
+            Write-Host "Building LCM Service..." -ForegroundColor Cyan
+            $lcmProj = Join-Path $PSScriptRoot "src\OpenDsc.Lcm\OpenDsc.Lcm.csproj"
+            if (Test-Path $lcmProj) {
+                $lcmDir = Join-Path $PSScriptRoot "artifacts\Lcm"
+                dotnet publish $lcmProj -c $Configuration -f net10.0-windows -o $lcmDir -p:GenerateDocumentationFile=false
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Build failed for OpenDsc.Lcm with exit code $LASTEXITCODE"
+                }
+            }
+
             if ($Portable) {
                 Write-Host "Building self-contained portable version..." -ForegroundColor Cyan
                 $portableDir = Join-Path $PSScriptRoot "artifacts\portable"
@@ -144,16 +154,6 @@ if (-not $SkipBuild) {
             dotnet publish $testServiceProj -c $Configuration -o $testServiceDir -p:GenerateDocumentationFile=false
             if ($LASTEXITCODE -ne 0) {
                 throw "Build failed for TestService with exit code $LASTEXITCODE"
-            }
-        }
-
-        Write-Host "Building LCM Service..." -ForegroundColor Cyan
-        $lcmProj = Join-Path $PSScriptRoot "src\OpenDsc.Lcm\OpenDsc.Lcm.csproj"
-        if (Test-Path $lcmProj) {
-            $lcmDir = Join-Path $PSScriptRoot "artifacts\Lcm"
-            dotnet publish $lcmProj -c $Configuration -f net10.0-windows -o $lcmDir -p:GenerateDocumentationFile=false
-            if ($LASTEXITCODE -ne 0) {
-                throw "Build failed for OpenDsc.Lcm with exit code $LASTEXITCODE"
             }
         }
     } elseif ($IsLinux) {
@@ -255,7 +255,9 @@ if (-not $SkipBuild) {
     }
 
     if ($Pack) {
-        dotnet pack $PSScriptRoot --configuration $Configuration --output "$PSScriptRoot\packages"
+        $packagesDir = Join-Path $PSScriptRoot "artifacts\packages"
+        New-Item -ItemType Directory -Path $packagesDir -Force | Out-Null
+        dotnet pack $PSScriptRoot --configuration $Configuration --output $packagesDir
         if ($LASTEXITCODE -ne 0) {
             throw "Pack failed with exit code $LASTEXITCODE"
         }

@@ -7,6 +7,7 @@
   <Folder Name="/src/">
     <Project Path="src/OpenDsc.Resource.CommandLine/OpenDsc.Resource.CommandLine.csproj" />
     <Project Path="src/OpenDsc.Resource/OpenDsc.Resource.csproj" />
+    <Project Path="src/OpenDsc.Schema/OpenDsc.Schema.csproj" />
     <Project Path="src/OpenDsc.Templates/OpenDsc.Templates.csproj" />
     <Project Path="src/OpenDsc.Resource.FileSystem/OpenDsc.Resource.FileSystem.csproj" />
     <Project Path="src/OpenDsc.Resource.Archive/OpenDsc.Resource.Archive.csproj" />
