@@ -74,11 +74,11 @@ if (-not $SkipBuild) {
     }
 
     if ($IsWindows) {
-        $windowsProj = Join-Path $PSScriptRoot "src\OpenDsc.Resource.CommandLine.Windows\OpenDsc.Resource.CommandLine.Windows.csproj"
-        if (Test-Path $windowsProj) {
-            dotnet publish $windowsProj -c $Configuration -o $publishDir -p:GenerateDocumentationFile=false
+        $resourcesProj = Join-Path $PSScriptRoot "src\OpenDsc.Resources\OpenDsc.Resources.csproj"
+        if (Test-Path $resourcesProj) {
+            dotnet publish $resourcesProj -c $Configuration -f net10.0-windows -o $publishDir -p:GenerateDocumentationFile=false
             if ($LASTEXITCODE -ne 0) {
-                throw "Build failed for OpenDsc.Resource.CommandLine.Windows with exit code $LASTEXITCODE"
+                throw "Build failed for OpenDsc.Resources with exit code $LASTEXITCODE"
             }
 
             Write-Host "Building LCM Service..." -ForegroundColor Cyan
@@ -95,10 +95,11 @@ if (-not $SkipBuild) {
                 Write-Host "Building self-contained portable version..." -ForegroundColor Cyan
                 $portableDir = Join-Path $PSScriptRoot "artifacts\portable"
                 New-Item -ItemType Directory -Path $portableDir -Force | Out-Null
-                dotnet publish $windowsProj `
+                dotnet publish $resourcesProj `
                     --configuration $Configuration `
                     --runtime win-x64 `
                     --self-contained true `
+                    -f net10.0-windows `
                     -p:PublishSingleFile=true `
                     -p:IncludeNativeLibrariesForSelfExtract=true `
                     -p:EnableCompressionInSingleFile=false `
@@ -108,7 +109,7 @@ if (-not $SkipBuild) {
                     -p:CopyOutputSymbolsToPublishDirectory=false `
                     --output $portableDir
                 if ($LASTEXITCODE -ne 0) {
-                    throw "Portable build failed for OpenDsc.Resource.CommandLine.Windows with exit code $LASTEXITCODE"
+                    throw "Portable build failed for OpenDsc.Resources with exit code $LASTEXITCODE"
                 }
 
                 Write-Host "Creating portable ZIP archive..." -ForegroundColor Cyan
@@ -157,11 +158,11 @@ if (-not $SkipBuild) {
             }
         }
     } elseif ($IsLinux) {
-        $linuxProj = Join-Path $PSScriptRoot "src\OpenDsc.Resource.CommandLine.Linux\OpenDsc.Resource.CommandLine.Linux.csproj"
-        if (Test-Path $linuxProj) {
-            dotnet publish $linuxProj -c $Configuration -o $publishDir -p:GenerateDocumentationFile=false
+        $resourcesProj = Join-Path $PSScriptRoot "src\OpenDsc.Resources\OpenDsc.Resources.csproj"
+        if (Test-Path $resourcesProj) {
+            dotnet publish $resourcesProj -c $Configuration -f net10.0 -o $publishDir -p:GenerateDocumentationFile=false
             if ($LASTEXITCODE -ne 0) {
-                throw "Build failed for OpenDsc.Resource.CommandLine.Linux with exit code $LASTEXITCODE"
+                throw "Build failed for OpenDsc.Resources with exit code $LASTEXITCODE"
             }
         }
 
@@ -179,10 +180,11 @@ if (-not $SkipBuild) {
             Write-Host "Building self-contained portable version for Linux..." -ForegroundColor Cyan
             $portableLinuxDir = Join-Path $PSScriptRoot "artifacts\portable"
             New-Item -ItemType Directory -Path $portableLinuxDir -Force | Out-Null
-            dotnet publish $linuxProj `
+            dotnet publish $resourcesProj `
                 --configuration $Configuration `
                 --runtime linux-x64 `
                 --self-contained true `
+                -f net10.0 `
                 -p:PublishSingleFile=true `
                 -p:IncludeNativeLibrariesForSelfExtract=true `
                 -p:EnableCompressionInSingleFile=false `
@@ -192,7 +194,7 @@ if (-not $SkipBuild) {
                 -p:CopyOutputSymbolsToPublishDirectory=false `
                 --output $portableLinuxDir
             if ($LASTEXITCODE -ne 0) {
-                throw "Portable build failed for OpenDsc.Resource.CommandLine.Linux with exit code $LASTEXITCODE"
+                throw "Portable build failed for OpenDsc.Resources with exit code $LASTEXITCODE"
             }
 
             Write-Host "Creating portable ZIP archive for Linux..." -ForegroundColor Cyan
@@ -205,11 +207,11 @@ if (-not $SkipBuild) {
             Write-Host "ZIP archive: $zipPath" -ForegroundColor Green
         }
     } elseif ($IsMacOS) {
-        $macOSProj = Join-Path $PSScriptRoot "src\OpenDsc.Resource.CommandLine.macOS\OpenDsc.Resource.CommandLine.macOS.csproj"
-        if (Test-Path $macOSProj) {
-            dotnet publish $macOSProj -c $Configuration -o $publishDir -p:GenerateDocumentationFile=false
+        $resourcesProj = Join-Path $PSScriptRoot "src\OpenDsc.Resources\OpenDsc.Resources.csproj"
+        if (Test-Path $resourcesProj) {
+            dotnet publish $resourcesProj -c $Configuration -f net10.0 -o $publishDir -p:GenerateDocumentationFile=false
             if ($LASTEXITCODE -ne 0) {
-                throw "Build failed for OpenDsc.Resource.CommandLine.macOS with exit code $LASTEXITCODE"
+                throw "Build failed for OpenDsc.Resources with exit code $LASTEXITCODE"
             }
         }
 
@@ -227,10 +229,11 @@ if (-not $SkipBuild) {
             Write-Host "Building self-contained portable version for macOS..." -ForegroundColor Cyan
             $portableMacDir = Join-Path $PSScriptRoot "artifacts\portable"
             New-Item -ItemType Directory -Path $portableMacDir -Force | Out-Null
-            dotnet publish $macOSProj `
+            dotnet publish $resourcesProj `
                 --configuration $Configuration `
                 --runtime osx-arm64 `
                 --self-contained true `
+                -f net10.0 `
                 -p:PublishSingleFile=true `
                 -p:IncludeNativeLibrariesForSelfExtract=true `
                 -p:EnableCompressionInSingleFile=false `
@@ -240,7 +243,7 @@ if (-not $SkipBuild) {
                 -p:CopyOutputSymbolsToPublishDirectory=false `
                 --output $portableMacDir
             if ($LASTEXITCODE -ne 0) {
-                throw "Portable build failed for OpenDsc.Resource.CommandLine.macOS with exit code $LASTEXITCODE"
+                throw "Portable build failed for OpenDsc.Resources with exit code $LASTEXITCODE"
             }
 
             Write-Host "Creating portable ZIP archive for macOS..." -ForegroundColor Cyan

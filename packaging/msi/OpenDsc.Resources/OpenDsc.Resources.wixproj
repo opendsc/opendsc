@@ -21,7 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\src\OpenDsc.Resource.CommandLine.Windows\OpenDsc.Resource.CommandLine.Windows.csproj" />
+    <ProjectReference Include="..\..\..\src\OpenDsc.Resources\OpenDsc.Resources.csproj" />
   </ItemGroup>
 
   <Target Name="ConvertLicenseToRtf" BeforeTargets="BeforeBuild;PrepareForBuild">
