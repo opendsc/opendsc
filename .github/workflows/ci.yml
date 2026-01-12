@@ -82,7 +82,7 @@ jobs:
       - name: Set Execute Permissions
         if: matrix.os != 'windows-latest'
         shell: bash
-        run: chmod +x artifacts/publish/OpenDsc.Resource.CommandLine.${{ matrix.os == 'macos-latest' && 'macOS' || 'Linux' }}
+        run: chmod +x artifacts/publish/OpenDsc.Resources
 
       - name: Run Tests
         run: .\build.ps1 -SkipBuild -InstallDsc -GitHubToken ${{ secrets.GITHUB_TOKEN }}
