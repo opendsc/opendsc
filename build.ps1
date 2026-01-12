@@ -99,6 +99,7 @@ if (-not $SkipBuild) {
                     --configuration $Configuration `
                     --runtime win-x64 `
                     --self-contained true `
+                    -f net10.0-windows `
                     -p:PublishSingleFile=true `
                     -p:IncludeNativeLibrariesForSelfExtract=true `
                     -p:EnableCompressionInSingleFile=false `
@@ -183,6 +184,7 @@ if (-not $SkipBuild) {
                 --configuration $Configuration `
                 --runtime linux-x64 `
                 --self-contained true `
+                -f net10.0 `
                 -p:PublishSingleFile=true `
                 -p:IncludeNativeLibrariesForSelfExtract=true `
                 -p:EnableCompressionInSingleFile=false `
@@ -231,6 +233,7 @@ if (-not $SkipBuild) {
                 --configuration $Configuration `
                 --runtime osx-arm64 `
                 --self-contained true `
+                -f net10.0 `
                 -p:PublishSingleFile=true `
                 -p:IncludeNativeLibrariesForSelfExtract=true `
                 -p:EnableCompressionInSingleFile=false `
