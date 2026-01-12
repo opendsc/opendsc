@@ -32,15 +32,9 @@ public partial class DscExecutor(ILogger<DscExecutor> logger, ILoggerFactory log
         var pathEnv = Environment.GetEnvironmentVariable("PATH");
         if (pathEnv == null) return null;
         var paths = pathEnv.Split(Path.PathSeparator);
-        foreach (var path in paths)
-        {
-            var fullPath = Path.Combine(path, executableName);
-            if (File.Exists(fullPath))
-            {
-                return fullPath;
-            }
-        }
-        return null;
+        return paths
+            .Select(path => Path.Combine(path, executableName))
+            .FirstOrDefault(File.Exists);
     }
 
     private async Task<(DscResult Result, int ExitCode)> ExecuteCommandAsync(string operation, string configPath, LcmConfig config, LogLevel traceLevel, CancellationToken cancellationToken)
