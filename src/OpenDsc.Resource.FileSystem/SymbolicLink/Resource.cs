@@ -2,7 +2,6 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
-using System.Runtime.CompilerServices;
 using System.Security;
 using System.Text.Json;
 using System.Text.Json.Serialization;
