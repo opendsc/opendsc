@@ -14,6 +14,10 @@ using OptionalFeatureNs = OpenDsc.Resource.Windows.OptionalFeature;
 using FileSystemAclNs = OpenDsc.Resource.Windows.FileSystem.Acl;
 #endif
 
+#if !WINDOWS
+using PosixPermissionNs = OpenDsc.Resource.Posix.FileSystem.Permission;
+#endif
+
 using FileNs = OpenDsc.Resource.FileSystem.File;
 using DirectoryNs = OpenDsc.Resource.FileSystem.Directory;
 using SymbolicLinkNs = OpenDsc.Resource.FileSystem.SymbolicLink;
@@ -29,6 +33,16 @@ var environmentResource = new EnvironmentNs.Resource(OpenDsc.Resource.Windows.So
 var shortcutResource = new ShortcutNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
 var optionalFeatureResource = new OptionalFeatureNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
 var fileSystemAclResource = new FileSystemAclNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
+#endif
+
+#if !WINDOWS
+#pragma warning disable CA1416 // 'Resource' is only supported on: 'linux', 'macOS'
+PosixPermissionNs.Resource? posixPermissionResource = null;
+if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
+{
+    posixPermissionResource = new PosixPermissionNs.Resource(OpenDsc.Resource.Posix.SourceGenerationContext.Default);
+}
+#pragma warning restore CA1416
 #endif
 
 var fileResource = new FileNs.Resource(OpenDsc.Resource.FileSystem.SourceGenerationContext.Default);
@@ -49,6 +63,15 @@ command
     .AddResource<ShortcutNs.Resource, ShortcutNs.Schema>(shortcutResource)
     .AddResource<OptionalFeatureNs.Resource, OptionalFeatureNs.Schema>(optionalFeatureResource)
     .AddResource<FileSystemAclNs.Resource, FileSystemAclNs.Schema>(fileSystemAclResource);
+#endif
+
+#if !WINDOWS
+#pragma warning disable CA1416 // 'Resource' is only supported on: 'linux', 'macOS'
+if (posixPermissionResource is not null)
+{
+    command.AddResource<PosixPermissionNs.Resource, PosixPermissionNs.Schema>(posixPermissionResource);
+}
+#pragma warning restore CA1416
 #endif
 
 command
