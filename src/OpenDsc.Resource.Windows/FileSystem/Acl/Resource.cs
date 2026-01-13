@@ -45,11 +45,7 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
     {
         if (!File.Exists(instance.Path) && !Directory.Exists(instance.Path))
         {
-            return new Schema()
-            {
-                Path = instance.Path,
-                Exist = false
-            };
+            throw new FileNotFoundException($"The file or directory '{instance.Path}' does not exist.");
         }
 
         var fileInfo = new FileInfo(instance.Path);
@@ -96,8 +92,7 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
             Path = instance.Path,
             Owner = owner,
             Group = group,
-            AccessRules = [.. accessRules],
-            Exist = true
+            AccessRules = [.. accessRules]
         };
     }
 
