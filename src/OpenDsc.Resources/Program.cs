@@ -36,7 +36,13 @@ var fileSystemAclResource = new FileSystemAclNs.Resource(OpenDsc.Resource.Window
 #endif
 
 #if !WINDOWS
-PosixPermissionNs.Resource posixPermissionResource = new PosixPermissionNs.Resource(OpenDsc.Resource.Posix.SourceGenerationContext.Default);
+#pragma warning disable CA1416 // 'Resource' is only supported on: 'linux', 'macOS'
+PosixPermissionNs.Resource? posixPermissionResource = null;
+if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
+{
+    posixPermissionResource = new PosixPermissionNs.Resource(OpenDsc.Resource.Posix.SourceGenerationContext.Default);
+}
+#pragma warning restore CA1416
 #endif
 
 var fileResource = new FileNs.Resource(OpenDsc.Resource.FileSystem.SourceGenerationContext.Default);
@@ -60,7 +66,12 @@ command
 #endif
 
 #if !WINDOWS
-command.AddResource<PosixPermissionNs.Resource, PosixPermissionNs.Schema>(posixPermissionResource);
+#pragma warning disable CA1416 // 'Resource' is only supported on: 'linux', 'macOS'
+if (posixPermissionResource is not null)
+{
+    command.AddResource<PosixPermissionNs.Resource, PosixPermissionNs.Schema>(posixPermissionResource);
+}
+#pragma warning restore CA1416
 #endif
 
 command

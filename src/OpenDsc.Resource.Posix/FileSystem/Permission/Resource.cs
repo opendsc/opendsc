@@ -43,20 +43,11 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
 
     public Schema Get(Schema instance)
     {
-        if (string.IsNullOrEmpty(instance.Path))
-        {
-            throw new ArgumentException("Path cannot be null or empty", nameof(instance));
-        }
-
         var fullPath = Path.GetFullPath(instance.Path);
 
         if (!File.Exists(fullPath) && !Directory.Exists(fullPath))
         {
-            return new Schema
-            {
-                Path = instance.Path,
-                Exist = false
-            };
+            throw new FileNotFoundException($"File or directory not found: {fullPath}");
         }
 
         var mode = File.GetUnixFileMode(fullPath);

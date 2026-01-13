@@ -14,6 +14,8 @@ namespace OpenDsc.Resource.Posix.FileSystem.Permission;
 public sealed class Schema
 {
     [Required]
+    [MinLength(1)]
+    [Pattern(@"^/.+")]
     [Description("The full path to the file or directory.")]
     public string Path { get; set; } = string.Empty;
 
@@ -29,10 +31,4 @@ public sealed class Schema
     [Description("The group of the file or directory. Can be specified as a group name (e.g., 'wheel', 'staff') or numeric GID (e.g., '0', '1000').")]
     [Nullable(false)]
     public string? Group { get; set; }
-
-    [JsonPropertyName("_exist")]
-    [Description("Indicates whether the file or directory exists.")]
-    [Nullable(false)]
-    [Default(true)]
-    public bool? Exist { get; set; }
 }
