@@ -265,15 +265,11 @@ Describe 'SymbolicLink Resource' -Tag 'Windows', 'Linux', 'macOS' {
             $validInput = @{
                 path   = $testLink
                 target = $testTarget
+                type   = 'File'
             } | ConvertTo-Json -Compress
 
-            # This should not fail validation (may fail execution if no permissions)
-            ./artifacts/publish/OpenDsc.Resources.exe set --resource OpenDsc.FileSystem/SymbolicLink --input $validInput 2>&1 | Out-Null
-
-            if ($LASTEXITCODE -ne 0) {
-                # If it failed, it should be an execution error (exit code 5), not validation
-                $LASTEXITCODE | Should -Not -Be 2  # 2 is JSON validation error
-            }
+            dsc resource set -r OpenDsc.FileSystem/SymbolicLink --input $validInput 2>&1 | Out-Null
+            $LASTEXITCODE | Should -Be 0
 
             Remove-Item $testLink -Force -ErrorAction SilentlyContinue
         }
