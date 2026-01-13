@@ -23,6 +23,8 @@ namespace OpenDsc.Resource.Posix.FileSystem.Permission;
 [ExitCode(6, Exception = typeof(FileNotFoundException), Description = "File or directory not found")]
 [ExitCode(7, Exception = typeof(DirectoryNotFoundException), Description = "Directory not found")]
 [ExitCode(8, Exception = typeof(PlatformNotSupportedException), Description = "Platform not supported")]
+[SupportedOSPlatform("linux")]
+[SupportedOSPlatform("macos")]
 public sealed class Resource(JsonSerializerContext context) : DscResource<Schema>(context), IGettable<Schema>, ISettable<Schema>
 {
     public override string GetSchema()
