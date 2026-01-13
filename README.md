@@ -54,6 +54,8 @@ managing Windows and cross-platform systems:
 - **[OpenDsc.FileSystem/File][file]** - Manage files (Windows, Linux, macOS)
 - **[OpenDsc.FileSystem/Directory][directory]** - Manage directories with
   hash-based synchronization
+- **[OpenDsc.FileSystem/SymbolicLink][symlink]** - Manage symbolic links
+  (Windows, Linux, macOS)
 - **[OpenDsc.Xml/Element][xml]** - Manage XML element content and attributes
 - **[OpenDsc.Archive.Zip/Compress][zipcompress]** - Create ZIP archives from
   files and directories
@@ -69,6 +71,7 @@ managing Windows and cross-platform systems:
 [acl]: src/OpenDsc.Resource.Windows/FileSystem/Acl/README.md
 [file]: src/OpenDsc.Resource.FileSystem/File/README.md
 [directory]: src/OpenDsc.Resource.FileSystem/Directory/README.md
+[symlink]: src/OpenDsc.Resource.FileSystem/SymbolicLink/README.md
 [xml]: src/OpenDsc.Resource.Xml/Element/README.md
 [zipcompress]: src/OpenDsc.Resource.Archive/Zip/Compress/README.md
 [zipexpand]: src/OpenDsc.Resource.Archive/Zip/Expand/README.md

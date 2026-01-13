@@ -13,6 +13,7 @@ namespace OpenDsc.Resource.FileSystem;
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 [JsonSerializable(typeof(File.Schema), TypeInfoPropertyName = "FileSchema")]
 [JsonSerializable(typeof(Directory.Schema), TypeInfoPropertyName = "DirectorySchema")]
+[JsonSerializable(typeof(SymbolicLink.Schema), TypeInfoPropertyName = "SymbolicLinkSchema")]
 public partial class SourceGenerationContext : JsonSerializerContext
 {
 }
