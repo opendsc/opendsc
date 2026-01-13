@@ -83,14 +83,11 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
             throw new FileNotFoundException($"File or directory not found: {fullPath}");
         }
 
-        bool changed = false;
-
         if (instance.Mode is not null)
         {
             var trimmed = instance.Mode.TrimStart('0');
             var mode = string.IsNullOrWhiteSpace(trimmed) ? 0 : (UnixFileMode)Convert.ToUInt32(trimmed, 8);
             File.SetUnixFileMode(fullPath, mode);
-            changed = true;
         }
 
         if (instance.Owner is not null || instance.Group is not null)
@@ -114,11 +111,9 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
                 var error = Marshal.GetLastPInvokeError();
                 throw new UnauthorizedAccessException($"Failed to change owner/group for '{fullPath}'. Error code: {error}");
             }
-
-            changed = true;
         }
 
-        return changed ? null : null;
+        return null;
     }
 
     private static uint ResolveUserId(string owner)

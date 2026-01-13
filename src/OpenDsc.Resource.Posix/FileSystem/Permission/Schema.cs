@@ -20,7 +20,7 @@ public sealed class Schema
     public string Path { get; set; } = string.Empty;
 
     [Description("The file mode in octal notation (e.g., '0644', '0755', '644'). Accepts 3 or 4 digit octal strings with optional leading zero.")]
-    [Pattern(@"^0?[0-7]{3,4}$")]
+    [Pattern(@"^0?[0-7]{3}$")]
     [Nullable(false)]
     public string? Mode { get; set; }
 
