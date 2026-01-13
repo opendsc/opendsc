@@ -68,7 +68,7 @@ operating systems that follow POSIX standards, including Linux and macOS. These
 resources provide Unix-specific functionality not available on Windows.
 
 - **[OpenDsc.Posix.FileSystem/Permission][posixpermission]** - Manage POSIX
-  file and directory permissions and ownership (Linux, macOS)
+  file and directory permissions and ownership
 
 [env]: src/OpenDsc.Resource.Windows/Environment/README.md
 [group]: src/OpenDsc.Resource.Windows/Group/README.md
