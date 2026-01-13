@@ -16,6 +16,7 @@ using FileSystemAclNs = OpenDsc.Resource.Windows.FileSystem.Acl;
 
 using FileNs = OpenDsc.Resource.FileSystem.File;
 using DirectoryNs = OpenDsc.Resource.FileSystem.Directory;
+using SymbolicLinkNs = OpenDsc.Resource.FileSystem.SymbolicLink;
 using XmlElementNs = OpenDsc.Resource.Xml.Element;
 using ZipCompressNs = OpenDsc.Resource.Archive.Zip.Compress;
 using ZipExpandNs = OpenDsc.Resource.Archive.Zip.Expand;
@@ -32,6 +33,7 @@ var fileSystemAclResource = new FileSystemAclNs.Resource(OpenDsc.Resource.Window
 
 var fileResource = new FileNs.Resource(OpenDsc.Resource.FileSystem.SourceGenerationContext.Default);
 var directoryResource = new DirectoryNs.Resource(OpenDsc.Resource.FileSystem.SourceGenerationContext.Default);
+var symbolicLinkResource = new SymbolicLinkNs.Resource(OpenDsc.Resource.FileSystem.SourceGenerationContext.Default);
 var xmlElementResource = new XmlElementNs.Resource(OpenDsc.Resource.Xml.SourceGenerationContext.Default);
 var zipCompressResource = new ZipCompressNs.Resource(OpenDsc.Resource.Archive.SourceGenerationContext.Default);
 var zipExpandResource = new ZipExpandNs.Resource(OpenDsc.Resource.Archive.SourceGenerationContext.Default);
@@ -52,6 +54,7 @@ command
 command
     .AddResource<FileNs.Resource, FileNs.Schema>(fileResource)
     .AddResource<DirectoryNs.Resource, DirectoryNs.Schema>(directoryResource)
+    .AddResource<SymbolicLinkNs.Resource, SymbolicLinkNs.Schema>(symbolicLinkResource)
     .AddResource<XmlElementNs.Resource, XmlElementNs.Schema>(xmlElementResource)
     .AddResource<ZipCompressNs.Resource, ZipCompressNs.Schema>(zipCompressResource)
     .AddResource<ZipExpandNs.Resource, ZipExpandNs.Schema>(zipExpandResource);
