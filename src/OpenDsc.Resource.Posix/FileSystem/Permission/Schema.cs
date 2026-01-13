@@ -15,7 +15,7 @@ public sealed class Schema
 {
     [Required]
     [Description("The full path to the file or directory.")]
-    public string Path { get; set; }
+    public string Path { get; set; } = string.Empty;
 
     [Description("The file mode in octal notation (e.g., '0644', '0755', '644'). Accepts 3 or 4 digit octal strings with optional leading zero.")]
     [Pattern(@"^0?[0-7]{3,4}$")]
