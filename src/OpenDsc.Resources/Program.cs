@@ -12,7 +12,9 @@ using EnvironmentNs = OpenDsc.Resource.Windows.Environment;
 using ShortcutNs = OpenDsc.Resource.Windows.Shortcut;
 using OptionalFeatureNs = OpenDsc.Resource.Windows.OptionalFeature;
 using FileSystemAclNs = OpenDsc.Resource.Windows.FileSystem.Acl;
-#else
+#endif
+
+#if !WINDOWS
 using PosixPermissionNs = OpenDsc.Resource.Posix.FileSystem.Permission;
 #endif
 
@@ -31,8 +33,10 @@ var environmentResource = new EnvironmentNs.Resource(OpenDsc.Resource.Windows.So
 var shortcutResource = new ShortcutNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
 var optionalFeatureResource = new OptionalFeatureNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
 var fileSystemAclResource = new FileSystemAclNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
-#else
-var posixPermissionResource = new PosixPermissionNs.Resource(OpenDsc.Resource.Posix.SourceGenerationContext.Default);
+#endif
+
+#if !WINDOWS
+PosixPermissionNs.Resource posixPermissionResource = new PosixPermissionNs.Resource(OpenDsc.Resource.Posix.SourceGenerationContext.Default);
 #endif
 
 var fileResource = new FileNs.Resource(OpenDsc.Resource.FileSystem.SourceGenerationContext.Default);
@@ -53,9 +57,10 @@ command
     .AddResource<ShortcutNs.Resource, ShortcutNs.Schema>(shortcutResource)
     .AddResource<OptionalFeatureNs.Resource, OptionalFeatureNs.Schema>(optionalFeatureResource)
     .AddResource<FileSystemAclNs.Resource, FileSystemAclNs.Schema>(fileSystemAclResource);
-#else
-command
-    .AddResource<PosixPermissionNs.Resource, PosixPermissionNs.Schema>(posixPermissionResource);
+#endif
+
+#if !WINDOWS
+command.AddResource<PosixPermissionNs.Resource, PosixPermissionNs.Schema>(posixPermissionResource);
 #endif
 
 command
