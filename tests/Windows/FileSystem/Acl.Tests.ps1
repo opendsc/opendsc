@@ -42,14 +42,13 @@ Describe 'Windows File System ACL Resource' -Tag 'Windows' -Skip:(!$IsWindows) {
             }
         }
 
-        It 'should return _exist=false for non-existent file' {
+        It 'should throw error for non-existent file' {
             $inputJson = @{
                 path = 'C:\NonExistent\Path\File.txt'
             } | ConvertTo-Json -Compress
 
-            $result = dsc resource get -r OpenDsc.Windows.FileSystem/AccessControlList --input $inputJson | ConvertFrom-Json
-            $result.actualState._exist | Should -Be $false
-            $result.actualState.path | Should -Be 'C:\NonExistent\Path\File.txt'
+            dsc resource get -r OpenDsc.Windows.FileSystem/AccessControlList --input $inputJson 2>&1 | Out-Null
+            $LASTEXITCODE | Should -Not -Be 0
         }
 
         It 'should read ACL of existing file' {
@@ -59,7 +58,6 @@ Describe 'Windows File System ACL Resource' -Tag 'Windows' -Skip:(!$IsWindows) {
 
             $result = dsc resource get -r OpenDsc.Windows.FileSystem/AccessControlList --input $inputJson | ConvertFrom-Json
             $result.actualState.path | Should -Be $script:testFile
-            $result.actualState._exist | Should -Be $true
             $result.actualState.owner | Should -Not -BeNullOrEmpty
             $result.actualState.accessRules | Should -Not -BeNullOrEmpty
         }
@@ -71,7 +69,6 @@ Describe 'Windows File System ACL Resource' -Tag 'Windows' -Skip:(!$IsWindows) {
 
             $result = dsc resource get -r OpenDsc.Windows.FileSystem/AccessControlList --input $inputJson | ConvertFrom-Json
             $result.actualState.path | Should -Be $script:testDir
-            $result.actualState._exist | Should -Be $true
             $result.actualState.owner | Should -Not -BeNullOrEmpty
             $result.actualState.accessRules | Should -Not -BeNullOrEmpty
         }

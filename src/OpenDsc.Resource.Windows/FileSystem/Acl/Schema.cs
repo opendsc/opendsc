@@ -38,10 +38,4 @@ public sealed class Schema
     [WriteOnly]
     [Default(false)]
     public bool? Purge { get; set; }
-
-    [JsonPropertyName("_exist")]
-    [Description("Indicates whether the file or directory exists.")]
-    [Nullable(false)]
-    [Default(true)]
-    public bool? Exist { get; set; }
 }

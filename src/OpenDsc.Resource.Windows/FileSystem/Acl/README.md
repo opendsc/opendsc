@@ -59,8 +59,6 @@ supports both files and directories.
   - **propagationFlags** (array) - How inheritance is propagated: `None`,
     `NoPropagateInherit`, `InheritOnly`
   - **accessControlType** (required, enum) - `Allow` or `Deny`
-- **_exist** (boolean) - Indicates whether the file or directory exists.
-  Default: `true`
 - **_purge** (boolean) - When `true`, removes access rules not in the
   `accessRules` list. When `false`, only adds rules without removing others.
   Default: `false`
