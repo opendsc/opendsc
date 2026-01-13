@@ -41,6 +41,8 @@ managing Windows and cross-platform systems:
 - **[OpenDsc.Windows/Group][group]** - Manage local Windows groups
   and membership
 - **[OpenDsc.Windows/Service][service]** - Manage Windows services
+- **[OpenDsc.Windows/ScheduledTask][scheduledtask]** - Manage Windows scheduled
+  tasks
 - **[OpenDsc.Windows/User][user]** - Manage local Windows user accounts
 - **[OpenDsc.Windows/Shortcut][shortcut]** - Manage Windows shortcuts
   (.lnk files)
@@ -73,6 +75,7 @@ resources provide Unix-specific functionality not available on Windows.
 [env]: src/OpenDsc.Resource.Windows/Environment/README.md
 [group]: src/OpenDsc.Resource.Windows/Group/README.md
 [service]: src/OpenDsc.Resource.Windows/Service/README.md
+[scheduledtask]: src/OpenDsc.Resource.Windows/ScheduledTask/README.md
 [user]: src/OpenDsc.Resource.Windows/User/README.md
 [shortcut]: src/OpenDsc.Resource.Windows/Shortcut/README.md
 [optionalfeature]: src/OpenDsc.Resource.Windows/OptionalFeature/README.md

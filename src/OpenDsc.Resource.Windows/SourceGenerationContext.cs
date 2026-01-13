@@ -18,6 +18,8 @@ namespace OpenDsc.Resource.Windows;
 [JsonSerializable(typeof(Shortcut.Schema), TypeInfoPropertyName = "ShortcutSchema")]
 [JsonSerializable(typeof(OptionalFeature.Schema), TypeInfoPropertyName = "OptionalFeatureSchema")]
 [JsonSerializable(typeof(FileSystem.Acl.Schema), TypeInfoPropertyName = "FileSystemAclSchema")]
+[JsonSerializable(typeof(ScheduledTask.Schema), TypeInfoPropertyName = "ScheduledTaskSchema")]
+[JsonSerializable(typeof(ScheduledTask.DaysOfWeek), TypeInfoPropertyName = "DaysOfWeek")]
 public partial class SourceGenerationContext : JsonSerializerContext
 {
 }
