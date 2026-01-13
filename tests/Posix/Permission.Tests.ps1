@@ -28,14 +28,13 @@ Describe 'POSIX File System Permission Resource' -Tag 'Linux', 'macOS' -Skip:($I
     }
 
     Context 'Get Operation' -Tag 'Get' {
-        It 'should return _exist=false for non-existent file' {
+        It 'should throw error for non-existent file' {
             $inputJson = @{
                 path = '/tmp/nonexistent_file_12345_xyz'
             } | ConvertTo-Json -Compress
 
-            $result = dsc resource get -r OpenDsc.Posix.FileSystem/Permission --input $inputJson | ConvertFrom-Json
-            $result.actualState._exist | Should -Be $false
-            $result.actualState.path | Should -Be '/tmp/nonexistent_file_12345_xyz'
+            dsc resource get -r OpenDsc.Posix.FileSystem/Permission --input $inputJson 2>&1 | Out-Null
+            $LASTEXITCODE | Should -Not -Be 0
         }
 
         It 'should read permissions of existing file' {
@@ -52,7 +51,6 @@ Describe 'POSIX File System Permission Resource' -Tag 'Linux', 'macOS' -Skip:($I
             $result.actualState.mode | Should -Match '^0?644$'
             $result.actualState.owner | Should -Not -BeNullOrEmpty
             $result.actualState.group | Should -Not -BeNullOrEmpty
-            $result.actualState._exist | Should -Be $true
         }
 
         It 'should read permissions of existing directory' {
