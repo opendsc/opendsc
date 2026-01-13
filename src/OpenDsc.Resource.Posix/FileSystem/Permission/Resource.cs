@@ -13,8 +13,6 @@ using Json.Schema.Generation;
 
 namespace OpenDsc.Resource.Posix.FileSystem.Permission;
 
-[SupportedOSPlatform("linux")]
-[SupportedOSPlatform("macos")]
 [DscResource("OpenDsc.Posix.FileSystem/Permission", "0.1.0", Description = "Manage POSIX file and directory permissions (mode, owner, group) on Linux and macOS", Tags = ["posix", "filesystem", "permissions", "chmod", "chown"])]
 [ExitCode(0, Description = "Success")]
 [ExitCode(1, Exception = typeof(Exception), Description = "Error")]
