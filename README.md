@@ -51,16 +51,24 @@ managing Windows and cross-platform systems:
 
 ### Cross-Platform Resources
 
-- **[OpenDsc.FileSystem/File][file]** - Manage files (Windows, Linux, macOS)
+- **[OpenDsc.FileSystem/File][file]** - Manage files
 - **[OpenDsc.FileSystem/Directory][directory]** - Manage directories with
   hash-based synchronization
 - **[OpenDsc.FileSystem/SymbolicLink][symlink]** - Manage symbolic links
-  (Windows, Linux, macOS)
 - **[OpenDsc.Xml/Element][xml]** - Manage XML element content and attributes
 - **[OpenDsc.Archive.Zip/Compress][zipcompress]** - Create ZIP archives from
   files and directories
 - **[OpenDsc.Archive.Zip/Expand][zipexpand]** - Extract ZIP archives to
   specified locations
+
+### POSIX Resources
+
+POSIX (Portable Operating System Interface) resources are designed for Unix-like
+operating systems that follow POSIX standards, including Linux and macOS. These
+resources provide Unix-specific functionality not available on Windows.
+
+- **[OpenDsc.Posix.FileSystem/Permission][posixpermission]** - Manage POSIX
+  file and directory permissions (Linux, macOS)
 
 [env]: src/OpenDsc.Resource.Windows/Environment/README.md
 [group]: src/OpenDsc.Resource.Windows/Group/README.md
@@ -72,6 +80,7 @@ managing Windows and cross-platform systems:
 [file]: src/OpenDsc.Resource.FileSystem/File/README.md
 [directory]: src/OpenDsc.Resource.FileSystem/Directory/README.md
 [symlink]: src/OpenDsc.Resource.FileSystem/SymbolicLink/README.md
+[posixpermission]: src/OpenDsc.Resource.Posix/FileSystem/Permission/README.md
 [xml]: src/OpenDsc.Resource.Xml/Element/README.md
 [zipcompress]: src/OpenDsc.Resource.Archive/Zip/Compress/README.md
 [zipexpand]: src/OpenDsc.Resource.Archive/Zip/Expand/README.md

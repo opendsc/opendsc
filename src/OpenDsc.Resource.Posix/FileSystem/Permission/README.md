@@ -97,7 +97,7 @@ dsc resource set -r OpenDsc.Posix.FileSystem/Permission -i $config
 
 ```powershell
 $config = @'
-path: "/opt/myapp/config"
+path: "/opt/app/config"
 owner: "1000"
 '@
 
@@ -110,7 +110,7 @@ dsc resource set -r OpenDsc.Posix.FileSystem/Permission -i $config
 
 ```powershell
 $config = @'
-path: "/var/log/myapp.log"
+path: "/var/log/app.log"
 group: "syslog"
 '@
 
@@ -130,10 +130,10 @@ dsc resource set -r OpenDsc.Posix.FileSystem/Permission -i $config
 
 ```powershell
 $config = @'
-path: "/opt/myapp/app.conf"
+path: "/opt/app/app.conf"
 mode: "0640"
-owner: "appuser"
-group: "appgroup"
+owner: "nginx"
+group: "nginx"
 '@
 
 dsc resource set -r OpenDsc.Posix.FileSystem/Permission -i $config
@@ -163,7 +163,7 @@ resources:
   - name: Log File
     type: OpenDsc.Posix.FileSystem/Permission
     properties:
-      path: /var/log/myapp.log
+      path: /var/log/app.log
       mode: '0644'
       owner: root
       group: syslog
