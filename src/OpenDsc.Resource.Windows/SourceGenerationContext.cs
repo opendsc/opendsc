@@ -2,7 +2,10 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
+using System.Diagnostics;
 using System.Text.Json.Serialization;
+
+using Microsoft.Win32.TaskScheduler;
 
 namespace OpenDsc.Resource.Windows;
 
@@ -19,7 +22,12 @@ namespace OpenDsc.Resource.Windows;
 [JsonSerializable(typeof(OptionalFeature.Schema), TypeInfoPropertyName = "OptionalFeatureSchema")]
 [JsonSerializable(typeof(FileSystem.Acl.Schema), TypeInfoPropertyName = "FileSystemAclSchema")]
 [JsonSerializable(typeof(ScheduledTask.Schema), TypeInfoPropertyName = "ScheduledTaskSchema")]
-[JsonSerializable(typeof(ScheduledTask.DaysOfWeek), TypeInfoPropertyName = "DaysOfWeek")]
+[JsonSerializable(typeof(DayOfWeek), TypeInfoPropertyName = "DayOfWeek")]
+[JsonSerializable(typeof(ScheduledTask.TriggerType), TypeInfoPropertyName = "TriggerType")]
+[JsonSerializable(typeof(TaskInstancesPolicy), TypeInfoPropertyName = "TaskInstancesPolicy")]
+[JsonSerializable(typeof(TaskCompatibility), TypeInfoPropertyName = "TaskCompatibility")]
+[JsonSerializable(typeof(TaskLogonType), TypeInfoPropertyName = "TaskLogonType")]
+[JsonSerializable(typeof(ProcessPriorityClass), TypeInfoPropertyName = "ProcessPriorityClass")]
 public partial class SourceGenerationContext : JsonSerializerContext
 {
 }

@@ -38,9 +38,9 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
     public Schema Get(Schema instance)
     {
         using var ts = new TaskService();
-        var task = ts.GetTask($"{instance.TaskPath.TrimEnd('\\')}{(instance.TaskPath == "\\" ? "" : "\\")}{instance.TaskName}");
+        var task = ts.GetTask($"{instance.TaskPath.TrimEnd('\\')}{ (instance.TaskPath == Schema.DefaultTaskPath ? "" : "\\")}{instance.TaskName}");
 
-        if (task == null)
+        if (task is null)
         {
             return new Schema
             {
@@ -53,10 +53,10 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         var trigger = task.Definition.Triggers.FirstOrDefault();
         TriggerType? triggerType = null;
         string? startTime = null;
-        DaysOfWeek[]? daysOfWeek = null;
+        DayOfWeek[]? daysOfWeek = null;
         int? daysInterval = null;
 
-        if (trigger != null)
+        if (trigger is not null)
         {
             triggerType = trigger switch
             {
@@ -65,7 +65,7 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
                 WeeklyTrigger => TriggerType.Weekly,
                 LogonTrigger => TriggerType.AtLogon,
                 BootTrigger => TriggerType.AtStartup,
-                _ => (TriggerType?)null
+                _ => null
             };
 
             if (trigger is TimeTrigger || trigger is DailyTrigger || trigger is WeeklyTrigger)
@@ -75,14 +75,14 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
 
             if (trigger is WeeklyTrigger weekly)
             {
-                var days = new List<DaysOfWeek>();
-                if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Monday)) days.Add(DaysOfWeek.Monday);
-                if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Tuesday)) days.Add(DaysOfWeek.Tuesday);
-                if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Wednesday)) days.Add(DaysOfWeek.Wednesday);
-                if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Thursday)) days.Add(DaysOfWeek.Thursday);
-                if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Friday)) days.Add(DaysOfWeek.Friday);
-                if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Saturday)) days.Add(DaysOfWeek.Saturday);
-                if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Sunday)) days.Add(DaysOfWeek.Sunday);
+                var days = new List<DayOfWeek>();
+                if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Monday)) days.Add(DayOfWeek.Monday);
+                if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Tuesday)) days.Add(DayOfWeek.Tuesday);
+                if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Wednesday)) days.Add(DayOfWeek.Wednesday);
+                if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Thursday)) days.Add(DayOfWeek.Thursday);
+                if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Friday)) days.Add(DayOfWeek.Friday);
+                if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Saturday)) days.Add(DayOfWeek.Saturday);
+                if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Sunday)) days.Add(DayOfWeek.Sunday);
                 daysOfWeek = [.. days];
             }
 
@@ -95,13 +95,13 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         var action = task.Definition.Actions.OfType<ExecAction>().FirstOrDefault();
 
         var taskPath = task.Path.Replace($"\\{task.Name}", string.Empty);
-        // Ensure task path ends with backslash unless it's the root
+
         if (!string.IsNullOrEmpty(taskPath) && !taskPath.EndsWith('\\'))
         {
             taskPath += '\\';
         }
 
-        return new Schema
+        var schema = new Schema
         {
             TaskName = instance.TaskName,
             TaskPath = taskPath,
@@ -116,17 +116,61 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
             Enabled = task.Enabled,
             RunWithHighestPrivileges = task.Definition.Principal.RunLevel == TaskRunLevel.Highest,
             RunOnlyIfNetworkAvailable = task.Definition.Settings.RunOnlyIfNetworkAvailable,
-            Description = task.Definition.RegistrationInfo.Description
+            Description = task.Definition.RegistrationInfo.Description,
+            ExecutionTimeLimit = task.Definition.Settings.ExecutionTimeLimit == TimeSpan.Zero
+                ? null
+                : task.Definition.Settings.ExecutionTimeLimit.ToString(),
+            DisallowStartIfOnBatteries = task.Definition.Settings.DisallowStartIfOnBatteries,
+            StopIfGoingOnBatteries = task.Definition.Settings.StopIfGoingOnBatteries,
+            WakeToRun = task.Definition.Settings.WakeToRun,
+            AllowDemandStart = task.Definition.Settings.AllowDemandStart,
+            AllowHardTerminate = task.Definition.Settings.AllowHardTerminate,
+            MultipleInstances = task.Definition.Settings.MultipleInstances,
+            Priority = task.Definition.Settings.Priority,
+            RestartCount = task.Definition.Settings.RestartCount,
+            RestartInterval = task.Definition.Settings.RestartInterval == TimeSpan.Zero
+                ? null
+                : task.Definition.Settings.RestartInterval.ToString(),
+            StartWhenAvailable = task.Definition.Settings.StartWhenAvailable,
+            RunOnlyIfIdle = task.Definition.Settings.RunOnlyIfIdle,
+            IdleDuration = task.Definition.Settings.IdleSettings.IdleDuration == TimeSpan.Zero
+                ? null
+                : task.Definition.Settings.IdleSettings.IdleDuration.ToString(),
+            IdleWaitTimeout = task.Definition.Settings.IdleSettings.WaitTimeout == TimeSpan.Zero
+                ? null
+                : task.Definition.Settings.IdleSettings.WaitTimeout.ToString(),
+            IdleRestartOnIdle = task.Definition.Settings.IdleSettings.RestartOnIdle,
+            IdleStopOnIdleEnd = task.Definition.Settings.IdleSettings.StopOnIdleEnd,
+            Hidden = task.Definition.Settings.Hidden,
+            Compatibility = task.Definition.Settings.Compatibility,
+            DisallowStartOnRemoteAppSession = task.Definition.Settings.DisallowStartOnRemoteAppSession,
+            LogonType = task.Definition.Principal.LogonType
         };
+
+        if (trigger is not null && trigger.Repetition.Interval != TimeSpan.Zero)
+        {
+            schema.RepetitionInterval = trigger.Repetition.Interval.ToString();
+            schema.RepetitionDuration = trigger.Repetition.Duration == TimeSpan.Zero
+                ? null
+                : trigger.Repetition.Duration.ToString();
+            schema.RepetitionStopAtDurationEnd = trigger.Repetition.StopAtDurationEnd;
+        }
+
+        if (trigger is ITriggerDelay delayTrigger && delayTrigger.Delay != TimeSpan.Zero)
+        {
+            schema.RandomDelay = delayTrigger.Delay.ToString();
+        }
+
+        return schema;
     }
 
     public SetResult<Schema>? Set(Schema instance)
     {
         using var ts = new TaskService();
-        var taskFullPath = $"{instance.TaskPath.TrimEnd('\\')}{(instance.TaskPath == "\\" ? "" : "\\")}{instance.TaskName}";
+        var taskFullPath = $"{instance.TaskPath.TrimEnd('\\')}{ (instance.TaskPath == Schema.DefaultTaskPath ? "" : "\\")}{instance.TaskName}";
         var task = ts.GetTask(taskFullPath);
 
-        if (task != null)
+        if (task is not null)
         {
             ts.RootFolder.DeleteTask(taskFullPath, false);
         }
@@ -136,6 +180,106 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         if (!string.IsNullOrEmpty(instance.Description))
         {
             td.RegistrationInfo.Description = instance.Description;
+        }
+
+        if (instance.ExecutionTimeLimit is not null)
+        {
+            td.Settings.ExecutionTimeLimit = TimeSpan.Parse(instance.ExecutionTimeLimit);
+        }
+
+        if (instance.DisallowStartIfOnBatteries is not null)
+        {
+            td.Settings.DisallowStartIfOnBatteries = instance.DisallowStartIfOnBatteries.Value;
+        }
+
+        if (instance.StopIfGoingOnBatteries is not null)
+        {
+            td.Settings.StopIfGoingOnBatteries = instance.StopIfGoingOnBatteries.Value;
+        }
+
+        if (instance.WakeToRun is not null)
+        {
+            td.Settings.WakeToRun = instance.WakeToRun.Value;
+        }
+
+        if (instance.AllowDemandStart is not null)
+        {
+            td.Settings.AllowDemandStart = instance.AllowDemandStart.Value;
+        }
+
+        if (instance.AllowHardTerminate is not null)
+        {
+            td.Settings.AllowHardTerminate = instance.AllowHardTerminate.Value;
+        }
+
+        if (instance.MultipleInstances is not null)
+        {
+            td.Settings.MultipleInstances = instance.MultipleInstances.Value;
+        }
+
+        if (instance.Priority is not null)
+        {
+            td.Settings.Priority = instance.Priority.Value;
+        }
+
+        if (instance.RestartCount is not null)
+        {
+            td.Settings.RestartCount = instance.RestartCount.Value;
+        }
+
+        if (instance.RestartInterval is not null)
+        {
+            td.Settings.RestartInterval = TimeSpan.Parse(instance.RestartInterval);
+        }
+
+        if (instance.StartWhenAvailable is not null)
+        {
+            td.Settings.StartWhenAvailable = instance.StartWhenAvailable.Value;
+        }
+
+        if (instance.RunOnlyIfIdle is not null)
+        {
+            td.Settings.RunOnlyIfIdle = instance.RunOnlyIfIdle.Value;
+        }
+
+        if (instance.IdleDuration is not null)
+        {
+            td.Settings.IdleSettings.IdleDuration = TimeSpan.Parse(instance.IdleDuration);
+        }
+
+        if (instance.IdleWaitTimeout is not null)
+        {
+            td.Settings.IdleSettings.WaitTimeout = TimeSpan.Parse(instance.IdleWaitTimeout);
+        }
+
+        if (instance.IdleRestartOnIdle is not null)
+        {
+            td.Settings.IdleSettings.RestartOnIdle = instance.IdleRestartOnIdle.Value;
+        }
+
+        if (instance.IdleStopOnIdleEnd is not null)
+        {
+            td.Settings.IdleSettings.StopOnIdleEnd = instance.IdleStopOnIdleEnd.Value;
+        }
+
+        if (instance.Hidden is not null)
+        {
+            td.Settings.Hidden = instance.Hidden.Value;
+        }
+
+        if (instance.Compatibility is not null)
+        {
+            td.Settings.Compatibility = instance.Compatibility.Value;
+        }
+
+        if (instance.DisallowStartOnRemoteAppSession is not null)
+        {
+            td.Settings.DisallowStartOnRemoteAppSession = instance.DisallowStartOnRemoteAppSession.Value;
+        }
+
+        if (instance.LogonType is not null)
+        {
+            td.Principal.LogonType = instance.LogonType.Value;
         }
 
         if (instance.TriggerType.HasValue)
@@ -149,16 +293,37 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
                 TriggerType.AtStartup => new BootTrigger(),
                 _ => throw new ArgumentException($"Unsupported trigger type: {instance.TriggerType}")
             };
+
+            if (instance.RepetitionInterval is not null)
+            {
+                trigger.Repetition.Interval = TimeSpan.Parse(instance.RepetitionInterval);
+
+                if (instance.RepetitionDuration is not null)
+                {
+                    trigger.Repetition.Duration = TimeSpan.Parse(instance.RepetitionDuration);
+                }
+
+                if (instance.RepetitionStopAtDurationEnd is not null)
+                {
+                    trigger.Repetition.StopAtDurationEnd = instance.RepetitionStopAtDurationEnd.Value;
+                }
+            }
+
+            if (instance.RandomDelay is not null && trigger is ITriggerDelay delayTrigger)
+            {
+                delayTrigger.Delay = TimeSpan.Parse(instance.RandomDelay);
+            }
+
             td.Triggers.Add(trigger);
         }
 
         if (!string.IsNullOrEmpty(instance.Execute))
         {
-            var action = new ExecAction(instance.Execute, instance.Arguments, instance.WorkingDirectory);
+            using var action = new ExecAction(instance.Execute, instance.Arguments, instance.WorkingDirectory);
             td.Actions.Add(action);
         }
 
-        td.Principal.UserId = string.IsNullOrEmpty(instance.User) ? "SYSTEM" : instance.User;
+        td.Principal.UserId = string.IsNullOrEmpty(instance.User) ? Schema.DefaultUser : instance.User;
         td.Principal.RunLevel = instance.RunWithHighestPrivileges == true ? TaskRunLevel.Highest : TaskRunLevel.LUA;
         td.Settings.Enabled = instance.Enabled ?? true;
         td.Settings.RunOnlyIfNetworkAvailable = instance.RunOnlyIfNetworkAvailable ?? false;
@@ -172,10 +337,10 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
     public void Delete(Schema instance)
     {
         using var ts = new TaskService();
-        var taskFullPath = $"{instance.TaskPath.TrimEnd('\\')}{(instance.TaskPath == "\\" ? "" : "\\")}{instance.TaskName}";
+        var taskFullPath = $"{instance.TaskPath.TrimEnd('\\')}{ (instance.TaskPath == Schema.DefaultTaskPath ? "" : "\\")}{instance.TaskName}";
         var task = ts.GetTask(taskFullPath);
 
-        if (task != null)
+        if (task is not null)
         {
             ts.RootFolder.DeleteTask(taskFullPath, false);
         }
@@ -194,10 +359,10 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
             var trigger = task.Definition.Triggers.FirstOrDefault();
             TriggerType? triggerType = null;
             string? startTime = null;
-            DaysOfWeek[]? daysOfWeek = null;
+            DayOfWeek[]? daysOfWeek = null;
             int? daysInterval = null;
 
-            if (trigger != null)
+            if (trigger is not null)
             {
                 triggerType = trigger switch
                 {
@@ -206,7 +371,7 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
                     WeeklyTrigger => TriggerType.Weekly,
                     LogonTrigger => TriggerType.AtLogon,
                     BootTrigger => TriggerType.AtStartup,
-                    _ => (TriggerType?)null
+                    _ => null
                 };
 
                 if (trigger is TimeTrigger || trigger is DailyTrigger || trigger is WeeklyTrigger)
@@ -216,14 +381,14 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
 
                 if (trigger is WeeklyTrigger weekly)
                 {
-                    var days = new List<DaysOfWeek>();
-                    if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Monday)) days.Add(DaysOfWeek.Monday);
-                    if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Tuesday)) days.Add(DaysOfWeek.Tuesday);
-                    if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Wednesday)) days.Add(DaysOfWeek.Wednesday);
-                    if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Thursday)) days.Add(DaysOfWeek.Thursday);
-                    if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Friday)) days.Add(DaysOfWeek.Friday);
-                    if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Saturday)) days.Add(DaysOfWeek.Saturday);
-                    if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Sunday)) days.Add(DaysOfWeek.Sunday);
+                    var days = new List<DayOfWeek>();
+                    if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Monday)) days.Add(DayOfWeek.Monday);
+                    if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Tuesday)) days.Add(DayOfWeek.Tuesday);
+                    if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Wednesday)) days.Add(DayOfWeek.Wednesday);
+                    if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Thursday)) days.Add(DayOfWeek.Thursday);
+                    if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Friday)) days.Add(DayOfWeek.Friday);
+                    if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Saturday)) days.Add(DayOfWeek.Saturday);
+                    if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Sunday)) days.Add(DayOfWeek.Sunday);
                     daysOfWeek = [.. days];
                 }
 
@@ -235,7 +400,7 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
 
             var action = task.Definition.Actions.OfType<ExecAction>().FirstOrDefault();
 
-            yield return new Schema
+            var schema = new Schema
             {
                 TaskName = task.Name,
                 TaskPath = task.Path.Replace(task.Name, string.Empty),
@@ -250,8 +415,52 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
                 Enabled = task.Enabled,
                 RunWithHighestPrivileges = task.Definition.Principal.RunLevel == TaskRunLevel.Highest,
                 RunOnlyIfNetworkAvailable = task.Definition.Settings.RunOnlyIfNetworkAvailable,
-                Description = task.Definition.RegistrationInfo.Description
+                Description = task.Definition.RegistrationInfo.Description,
+                ExecutionTimeLimit = task.Definition.Settings.ExecutionTimeLimit == TimeSpan.Zero
+                    ? null
+                    : task.Definition.Settings.ExecutionTimeLimit.ToString(),
+                DisallowStartIfOnBatteries = task.Definition.Settings.DisallowStartIfOnBatteries,
+                StopIfGoingOnBatteries = task.Definition.Settings.StopIfGoingOnBatteries,
+                WakeToRun = task.Definition.Settings.WakeToRun,
+                AllowDemandStart = task.Definition.Settings.AllowDemandStart,
+                AllowHardTerminate = task.Definition.Settings.AllowHardTerminate,
+                MultipleInstances = task.Definition.Settings.MultipleInstances,
+                Priority = task.Definition.Settings.Priority,
+                RestartCount = task.Definition.Settings.RestartCount,
+                RestartInterval = task.Definition.Settings.RestartInterval == TimeSpan.Zero
+                    ? null
+                    : task.Definition.Settings.RestartInterval.ToString(),
+                StartWhenAvailable = task.Definition.Settings.StartWhenAvailable,
+                RunOnlyIfIdle = task.Definition.Settings.RunOnlyIfIdle,
+                IdleDuration = task.Definition.Settings.IdleSettings.IdleDuration == TimeSpan.Zero
+                    ? null
+                    : task.Definition.Settings.IdleSettings.IdleDuration.ToString(),
+                IdleWaitTimeout = task.Definition.Settings.IdleSettings.WaitTimeout == TimeSpan.Zero
+                    ? null
+                    : task.Definition.Settings.IdleSettings.WaitTimeout.ToString(),
+                IdleRestartOnIdle = task.Definition.Settings.IdleSettings.RestartOnIdle,
+                IdleStopOnIdleEnd = task.Definition.Settings.IdleSettings.StopOnIdleEnd,
+                Hidden = task.Definition.Settings.Hidden,
+                Compatibility = task.Definition.Settings.Compatibility,
+                DisallowStartOnRemoteAppSession = task.Definition.Settings.DisallowStartOnRemoteAppSession,
+                LogonType = task.Definition.Principal.LogonType
             };
+
+            if (trigger is not null && trigger.Repetition.Interval != TimeSpan.Zero)
+            {
+                schema.RepetitionInterval = trigger.Repetition.Interval.ToString();
+                schema.RepetitionDuration = trigger.Repetition.Duration == TimeSpan.Zero
+                    ? null
+                    : trigger.Repetition.Duration.ToString();
+                schema.RepetitionStopAtDurationEnd = trigger.Repetition.StopAtDurationEnd;
+            }
+
+            if (trigger is ITriggerDelay delayTrigger && delayTrigger.Delay != TimeSpan.Zero)
+            {
+                schema.RandomDelay = delayTrigger.Delay.ToString();
+            }
+
+            yield return schema;
         }
 
         foreach (var subfolder in folder.SubFolders)
@@ -297,20 +506,20 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
             trigger.StartBoundary = new DateTime(now.Year, now.Month, now.Day, int.Parse(parts[0]), int.Parse(parts[1]), 0);
         }
 
-        if (instance.DaysOfWeek != null && instance.DaysOfWeek.Length > 0)
+        if (instance.DaysOfWeek is not null && instance.DaysOfWeek.Length > 0)
         {
             trigger.DaysOfWeek = 0;
             foreach (var day in instance.DaysOfWeek)
             {
                 trigger.DaysOfWeek |= day switch
                 {
-                    DaysOfWeek.Monday => DaysOfTheWeek.Monday,
-                    DaysOfWeek.Tuesday => DaysOfTheWeek.Tuesday,
-                    DaysOfWeek.Wednesday => DaysOfTheWeek.Wednesday,
-                    DaysOfWeek.Thursday => DaysOfTheWeek.Thursday,
-                    DaysOfWeek.Friday => DaysOfTheWeek.Friday,
-                    DaysOfWeek.Saturday => DaysOfTheWeek.Saturday,
-                    DaysOfWeek.Sunday => DaysOfTheWeek.Sunday,
+                    DayOfWeek.Monday => DaysOfTheWeek.Monday,
+                    DayOfWeek.Tuesday => DaysOfTheWeek.Tuesday,
+                    DayOfWeek.Wednesday => DaysOfTheWeek.Wednesday,
+                    DayOfWeek.Thursday => DaysOfTheWeek.Thursday,
+                    DayOfWeek.Friday => DaysOfTheWeek.Friday,
+                    DayOfWeek.Saturday => DaysOfTheWeek.Saturday,
+                    DayOfWeek.Sunday => DaysOfTheWeek.Sunday,
                     _ => throw new ArgumentException($"Invalid day of week: {day}")
                 };
             }
@@ -321,7 +530,7 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
 
     private static TaskFolder GetOrCreateFolder(TaskService ts, string path)
     {
-        if (path == "\\")
+        if (path == Schema.DefaultTaskPath)
         {
             return ts.RootFolder;
         }
