@@ -1,0 +1,448 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Windows Scheduled Task Schema",
+  "type": "object",
+  "properties": {
+    "taskName": {
+      "description": "The name of the scheduled task.",
+      "type": "string",
+      "pattern": "^[^\\\\/:\\*\\?\"<>\\|\\x00]+$"
+    },
+    "taskPath": {
+      "description": "The path where the task is located in Task Scheduler. Default is root (\\).",
+      "type": "string",
+      "pattern": "^\\\\([^\\\\]+(\\\\[^\\\\]+)*\\\\?)?$",
+      "default": "\\"
+    },
+    "triggers": {
+      "description": "Triggers that define when the task should run.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$definitions/Trigger"
+      }
+    },
+    "actions": {
+      "description": "Actions that define what the task should do when triggered.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$definitions/Action"
+      }
+    },
+    "user": {
+      "description": "The user account to run the task under. Default is SYSTEM.",
+      "type": "string",
+      "default": "SYSTEM"
+    },
+    "enabled": {
+      "description": "Whether the task is enabled (task-level setting).",
+      "type": "boolean",
+      "default": true
+    },
+    "runWithHighestPrivileges": {
+      "description": "Whether to run the task with highest privileges.",
+      "type": "boolean"
+    },
+    "runOnlyIfNetworkAvailable": {
+      "description": "Whether to run the task only if a network is available.",
+      "type": "boolean"
+    },
+    "description": {
+      "description": "The task description.",
+      "type": "string"
+    },
+    "executionTimeLimit": {
+      "description": "Maximum time allowed to complete the task (task-level default). Default: 3 days ('3.00:00:00'). Zero ('00:00:00') for no limit. Format: TimeSpan.",
+      "type": "string"
+    },
+    "disallowStartIfOnBatteries": {
+      "description": "Do not start the task if the computer is running on batteries.",
+      "type": "boolean",
+      "default": true
+    },
+    "stopIfGoingOnBatteries": {
+      "description": "Stop the task if the computer switches to battery power.",
+      "type": "boolean",
+      "default": true
+    },
+    "wakeToRun": {
+      "description": "Wake the computer to run this task.",
+      "type": "boolean"
+    },
+    "allowDemandStart": {
+      "description": "Allow the task to be run on demand.",
+      "type": "boolean",
+      "default": true
+    },
+    "allowHardTerminate": {
+      "description": "Allow the task to be terminated using TerminateProcess.",
+      "type": "boolean",
+      "default": true
+    },
+    "multipleInstances": {
+      "description": "Policy for handling multiple instances of the task.",
+      "type": "string",
+      "enum": ["Parallel", "Queue", "IgnoreNew", "StopExisting"]
+    },
+    "priority": {
+      "description": "Task process priority.",
+      "type": "string",
+      "enum": ["Idle", "BelowNormal", "Normal", "AboveNormal", "High", "RealTime"]
+    },
+    "restartCount": {
+      "description": "Number of times to attempt to restart the task on failure.",
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    },
+    "restartInterval": {
+      "description": "Time interval between task restart attempts. Format: TimeSpan (e.g., '00:01:00' for 1 minute).",
+      "type": "string"
+    },
+    "startWhenAvailable": {
+      "description": "Start the task as soon as possible after a scheduled start is missed.",
+      "type": "boolean"
+    },
+    "runOnlyIfIdle": {
+      "description": "Run the task only if the computer is idle.",
+      "type": "boolean"
+    },
+    "idleDuration": {
+      "description": "Computer must be idle for this duration before the task runs. Format: TimeSpan (e.g., '00:10:00' for 10 minutes).",
+      "type": "string"
+    },
+    "idleWaitTimeout": {
+      "description": "Maximum time to wait for an idle condition. Format: TimeSpan (e.g., '01:00:00' for 1 hour).",
+      "type": "string"
+    },
+    "idleRestartOnIdle": {
+      "description": "Restart the task if the idle condition resumes.",
+      "type": "boolean"
+    },
+    "idleStopOnIdleEnd": {
+      "description": "Stop the task when the computer is no longer idle.",
+      "type": "boolean",
+      "default": true
+    },
+    "hidden": {
+      "description": "Hide the task in the Task Scheduler UI.",
+      "type": "boolean"
+    },
+    "compatibility": {
+      "description": "Task Scheduler compatibility level.",
+      "type": "string",
+      "enum": ["AT", "V1", "V2", "V2_1", "V2_2", "V2_3"]
+    },
+    "disallowStartOnRemoteAppSession": {
+      "description": "Do not start the task in a Remote Desktop session (requires V2_1 or later).",
+      "type": "boolean"
+    },
+    "logonType": {
+      "description": "The security logon method for the task.",
+      "type": "string",
+      "enum": ["None", "Password", "S4U", "Interactive", "Group", "ServiceAccount", "InteractiveOrPassword"]
+    },
+    "_exist": {
+      "description": "Indicates whether the scheduled task should exist.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false,
+  "required": ["taskName"],
+  "$definitions": {
+    "Trigger": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "time": {
+              "$ref": "#/$definitions/TimeTriggerConfig"
+            }
+          },
+          "required": ["time"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "daily": {
+              "$ref": "#/$definitions/DailyTriggerConfig"
+            }
+          },
+          "required": ["daily"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "weekly": {
+              "$ref": "#/$definitions/WeeklyTriggerConfig"
+            }
+          },
+          "required": ["weekly"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "boot": {
+              "$ref": "#/$definitions/BootTriggerConfig"
+            }
+          },
+          "required": ["boot"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "logon": {
+              "$ref": "#/$definitions/LogonTriggerConfig"
+            }
+          },
+          "required": ["logon"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "TimeTriggerConfig": {
+      "type": "object",
+      "properties": {
+        "startBoundary": {
+          "description": "The date and time when the trigger activates. Format: yyyy-MM-ddTHH:mm:ss (e.g., '2026-01-15T09:00:00').",
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}$"
+        },
+        "endBoundary": {
+          "description": "The date and time when the trigger deactivates. Format: yyyy-MM-ddTHH:mm:ss.",
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}$"
+        },
+        "enabled": {
+          "description": "Whether the trigger is enabled.",
+          "type": "boolean",
+          "default": true
+        },
+        "executionTimeLimit": {
+          "description": "Maximum time the task can run after being triggered. Format: TimeSpan (e.g., '01:00:00' for 1 hour). Overrides task-level setting.",
+          "type": "string"
+        },
+        "repetitionInterval": {
+          "description": "Time between task repetitions. Minimum: 1 minute. Format: TimeSpan (e.g., '00:10:00' for 10 minutes).",
+          "type": "string"
+        },
+        "repetitionDuration": {
+          "description": "How long to repeat the task. Zero ('00:00:00') for infinite. Format: TimeSpan.",
+          "type": "string"
+        },
+        "repetitionStopAtDurationEnd": {
+          "description": "Stop running task instances at duration end.",
+          "type": "boolean"
+        },
+        "randomDelay": {
+          "description": "Random delay before task starts. Format: TimeSpan (e.g., '00:05:00' for 5 minutes).",
+          "type": "string"
+        }
+      },
+      "required": ["startBoundary"],
+      "additionalProperties": false
+    },
+    "DailyTriggerConfig": {
+      "type": "object",
+      "properties": {
+        "startBoundary": {
+          "description": "The date and time when the trigger activates. Format: yyyy-MM-ddTHH:mm:ss (e.g., '2026-01-15T09:00:00').",
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}$"
+        },
+        "endBoundary": {
+          "description": "The date and time when the trigger deactivates. Format: yyyy-MM-ddTHH:mm:ss.",
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}$"
+        },
+        "enabled": {
+          "description": "Whether the trigger is enabled.",
+          "type": "boolean",
+          "default": true
+        },
+        "executionTimeLimit": {
+          "description": "Maximum time the task can run after being triggered. Format: TimeSpan (e.g., '01:00:00' for 1 hour). Overrides task-level setting.",
+          "type": "string"
+        },
+        "repetitionInterval": {
+          "description": "Time between task repetitions. Minimum: 1 minute. Format: TimeSpan (e.g., '00:10:00' for 10 minutes).",
+          "type": "string"
+        },
+        "repetitionDuration": {
+          "description": "How long to repeat the task. Zero ('00:00:00') for infinite. Format: TimeSpan.",
+          "type": "string"
+        },
+        "repetitionStopAtDurationEnd": {
+          "description": "Stop running task instances at duration end.",
+          "type": "boolean"
+        },
+        "randomDelay": {
+          "description": "Random delay before task starts. Format: TimeSpan (e.g., '00:05:00' for 5 minutes).",
+          "type": "string"
+        },
+        "daysInterval": {
+          "description": "Interval in days between task runs. Default is 1 (run every day).",
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": ["startBoundary"],
+      "additionalProperties": false
+    },
+    "WeeklyTriggerConfig": {
+      "type": "object",
+      "properties": {
+        "startBoundary": {
+          "description": "The date and time when the trigger activates. Format: yyyy-MM-ddTHH:mm:ss (e.g., '2026-01-15T09:00:00').",
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}$"
+        },
+        "endBoundary": {
+          "description": "The date and time when the trigger deactivates. Format: yyyy-MM-ddTHH:mm:ss.",
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}$"
+        },
+        "enabled": {
+          "description": "Whether the trigger is enabled.",
+          "type": "boolean",
+          "default": true
+        },
+        "executionTimeLimit": {
+          "description": "Maximum time the task can run after being triggered. Format: TimeSpan (e.g., '01:00:00' for 1 hour). Overrides task-level setting.",
+          "type": "string"
+        },
+        "repetitionInterval": {
+          "description": "Time between task repetitions. Minimum: 1 minute. Format: TimeSpan (e.g., '00:10:00' for 10 minutes).",
+          "type": "string"
+        },
+        "repetitionDuration": {
+          "description": "How long to repeat the task. Zero ('00:00:00') for infinite. Format: TimeSpan.",
+          "type": "string"
+        },
+        "repetitionStopAtDurationEnd": {
+          "description": "Stop running task instances at duration end.",
+          "type": "boolean"
+        },
+        "randomDelay": {
+          "description": "Random delay before task starts. Format: TimeSpan (e.g., '00:05:00' for 5 minutes).",
+          "type": "string"
+        },
+        "daysOfWeek": {
+          "description": "Days of the week when the task runs.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+          },
+          "uniqueItems": true
+        },
+        "weeksInterval": {
+          "description": "Interval in weeks between task runs. Default is 1 (run every week).",
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": ["startBoundary", "daysOfWeek"],
+      "additionalProperties": false
+    },
+    "BootTriggerConfig": {
+      "type": "object",
+      "properties": {
+        "endBoundary": {
+          "description": "The date and time when the trigger deactivates. Format: yyyy-MM-ddTHH:mm:ss.",
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}$"
+        },
+        "enabled": {
+          "description": "Whether the trigger is enabled.",
+          "type": "boolean",
+          "default": true
+        },
+        "executionTimeLimit": {
+          "description": "Maximum time the task can run after being triggered. Format: TimeSpan (e.g., '01:00:00' for 1 hour). Overrides task-level setting.",
+          "type": "string"
+        },
+        "repetitionInterval": {
+          "description": "Time between task repetitions. Minimum: 1 minute. Format: TimeSpan (e.g., '00:10:00' for 10 minutes).",
+          "type": "string"
+        },
+        "repetitionDuration": {
+          "description": "How long to repeat the task. Zero ('00:00:00') for infinite. Format: TimeSpan.",
+          "type": "string"
+        },
+        "repetitionStopAtDurationEnd": {
+          "description": "Stop running task instances at duration end.",
+          "type": "boolean"
+        },
+        "randomDelay": {
+          "description": "Delay after boot before task starts. Format: TimeSpan (e.g., '00:02:00' for 2 minutes).",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "LogonTriggerConfig": {
+      "type": "object",
+      "properties": {
+        "endBoundary": {
+          "description": "The date and time when the trigger deactivates. Format: yyyy-MM-ddTHH:mm:ss.",
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}$"
+        },
+        "enabled": {
+          "description": "Whether the trigger is enabled.",
+          "type": "boolean",
+          "default": true
+        },
+        "executionTimeLimit": {
+          "description": "Maximum time the task can run after being triggered. Format: TimeSpan (e.g., '01:00:00' for 1 hour). Overrides task-level setting.",
+          "type": "string"
+        },
+        "repetitionInterval": {
+          "description": "Time between task repetitions. Minimum: 1 minute. Format: TimeSpan (e.g., '00:10:00' for 10 minutes).",
+          "type": "string"
+        },
+        "repetitionDuration": {
+          "description": "How long to repeat the task. Zero ('00:00:00') for infinite. Format: TimeSpan.",
+          "type": "string"
+        },
+        "repetitionStopAtDurationEnd": {
+          "description": "Stop running task instances at duration end.",
+          "type": "boolean"
+        },
+        "randomDelay": {
+          "description": "Delay after logon before task starts. Format: TimeSpan (e.g., '00:01:00' for 1 minute).",
+          "type": "string"
+        },
+        "userId": {
+          "description": "The user account that triggers the task when logged on. If null, any user logon triggers the task.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Action": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "description": "The path to the executable or script to run.",
+          "type": "string"
+        },
+        "arguments": {
+          "description": "The arguments to pass to the executable.",
+          "type": "string"
+        },
+        "workingDirectory": {
+          "description": "The working directory for the executable.",
+          "type": "string"
+        }
+      },
+      "required": ["path"],
+      "additionalProperties": false
+    }
+  }
+}

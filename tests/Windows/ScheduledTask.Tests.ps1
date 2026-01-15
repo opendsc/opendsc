@@ -42,12 +42,21 @@ Describe 'Windows Scheduled Task Resource' -Tag 'Windows' -Skip:(!$IsWindows) {
 
             $createJson = @{
                 taskName = $taskName
-                execute = 'powershell.exe'
-                arguments = '-NoProfile -Command "Write-Host Test"'
-                triggerType = 'Daily'
-                startTime = '14:00'
-                daysInterval = 1
-            } | ConvertTo-Json -Compress
+                triggers = @(
+                    @{
+                        daily = @{
+                            startBoundary = (Get-Date).AddDays(1).ToString('yyyy-MM-ddT14:00:00')
+                            daysInterval = 1
+                        }
+                    }
+                )
+                actions = @(
+                    @{
+                        path = 'powershell.exe'
+                        arguments = '-NoProfile -Command "Write-Host Test"'
+                    }
+                )
+            } | ConvertTo-Json -Depth 10 -Compress
 
             dsc resource set -r OpenDsc.Windows/ScheduledTask --input $createJson | Out-Null
 
@@ -57,10 +66,10 @@ Describe 'Windows Scheduled Task Resource' -Tag 'Windows' -Skip:(!$IsWindows) {
 
             $result = dsc resource get -r OpenDsc.Windows/ScheduledTask --input $getJson | ConvertFrom-Json
             $result.actualState.taskName | Should -Be $taskName
-            $result.actualState.execute | Should -Be 'powershell.exe'
-            $result.actualState.arguments | Should -BeLike '*Write-Host Test*'
-            $result.actualState.triggerType | Should -Be 'Daily'
-            $result.actualState.daysInterval | Should -Be 1
+            $result.actualState.actions[0].path | Should -Be 'powershell.exe'
+            $result.actualState.actions[0].arguments | Should -BeLike '*Write-Host Test*'
+            $result.actualState.triggers[0].daily | Should -Not -BeNullOrEmpty
+            $result.actualState.triggers[0].daily.daysInterval | Should -Be 1
 
             schtasks /delete /tn $taskName /f 2>&1 | Out-Null
         }
@@ -79,12 +88,21 @@ Describe 'Windows Scheduled Task Resource' -Tag 'Windows' -Skip:(!$IsWindows) {
 
             $inputJson = @{
                 taskName = $taskName
-                execute = 'notepad.exe'
-                triggerType = 'Daily'
-                startTime = '09:30'
-                daysInterval = 1
+                triggers = @(
+                    @{
+                        daily = @{
+                            startBoundary = (Get-Date).AddDays(1).ToString('yyyy-MM-ddT09:30:00')
+                            daysInterval = 1
+                        }
+                    }
+                )
+                actions = @(
+                    @{
+                        path = 'notepad.exe'
+                    }
+                )
                 description = 'Test task created by DSC'
-            } | ConvertTo-Json -Compress
+            } | ConvertTo-Json -Depth 10 -Compress
 
             dsc resource set -r OpenDsc.Windows/ScheduledTask --input $inputJson | Out-Null
 
@@ -93,22 +111,31 @@ Describe 'Windows Scheduled Task Resource' -Tag 'Windows' -Skip:(!$IsWindows) {
             } | ConvertTo-Json -Compress
 
             $getResult = dsc resource get -r OpenDsc.Windows/ScheduledTask --input $verifyJson | ConvertFrom-Json
-            $getResult.actualState.execute | Should -Be 'notepad.exe'
-            $getResult.actualState.triggerType | Should -Be 'Daily'
-            $getResult.actualState.startTime | Should -Be '09:30'
+            $getResult.actualState.actions[0].path | Should -Be 'notepad.exe'
+            $getResult.actualState.triggers[0].daily | Should -Not -BeNullOrEmpty
         }
 
         It 'should create task with weekly trigger' {
-            $taskName = 'TestTask_Weekly_' + [Guid]::NewGuid().ToString('N').Substring(0, 8)
+            $taskName = 'TestTask_weekly_' + [Guid]::NewGuid().ToString('N').Substring(0, 8)
 
             $inputJson = @{
                 taskName = $taskName
-                execute = 'cmd.exe'
-                arguments = '/c echo test'
-                triggerType = 'Weekly'
-                startTime = '10:00'
-                daysOfWeek = @('Monday', 'Wednesday', 'Friday')
-            } | ConvertTo-Json -Compress
+                triggers = @(
+                    @{
+                        weekly = @{
+                            startBoundary = (Get-Date).AddDays(1).ToString('yyyy-MM-ddT10:00:00')
+                            daysOfWeek = @('Monday', 'Wednesday', 'Friday')
+                            weeksInterval = 1
+                        }
+                    }
+                )
+                actions = @(
+                    @{
+                        path = 'cmd.exe'
+                        arguments = '/c echo test'
+                    }
+                )
+            } | ConvertTo-Json -Depth 10 -Compress
 
             dsc resource set -r OpenDsc.Windows/ScheduledTask --input $inputJson | Out-Null
 
@@ -117,19 +144,29 @@ Describe 'Windows Scheduled Task Resource' -Tag 'Windows' -Skip:(!$IsWindows) {
             } | ConvertTo-Json -Compress
 
             $getResult = dsc resource get -r OpenDsc.Windows/ScheduledTask --input $verifyJson | ConvertFrom-Json
-            $getResult.actualState.triggerType | Should -Be 'Weekly'
-            $getResult.actualState.daysOfWeek | Should -Be @('Monday', 'Wednesday', 'Friday')
+            $getResult.actualState.triggers[0].weekly | Should -Not -BeNullOrEmpty
+            $getResult.actualState.triggers[0].weekly.daysOfWeek | Should -Be @('Monday', 'Wednesday', 'Friday')
         }
 
-        It 'should create task with AtStartup trigger' {
+        It 'should create task with boot trigger' {
             $taskName = 'TestTask_Startup_' + [Guid]::NewGuid().ToString('N').Substring(0, 8)
 
             $inputJson = @{
                 taskName = $taskName
-                execute = 'powershell.exe'
-                arguments = '-Command "Write-Host Startup"'
-                triggerType = 'AtStartup'
-            } | ConvertTo-Json -Compress
+                triggers = @(
+                    @{
+                        boot = @{
+                            enabled = $true
+                        }
+                    }
+                )
+                actions = @(
+                    @{
+                        path = 'powershell.exe'
+                        arguments = '-Command "Write-Host Startup"'
+                    }
+                )
+            } | ConvertTo-Json -Depth 10 -Compress
 
             dsc resource set -r OpenDsc.Windows/ScheduledTask --input $inputJson | Out-Null
 
@@ -138,7 +175,81 @@ Describe 'Windows Scheduled Task Resource' -Tag 'Windows' -Skip:(!$IsWindows) {
             } | ConvertTo-Json -Compress
 
             $getResult = dsc resource get -r OpenDsc.Windows/ScheduledTask --input $verifyJson | ConvertFrom-Json
-            $getResult.actualState.triggerType | Should -Be 'AtStartup'
+            $getResult.actualState.triggers[0].boot | Should -Not -BeNullOrEmpty
+        }
+
+        It 'should create task with multiple triggers' {
+            $taskName = 'TestTask_MultiTrigger_' + [Guid]::NewGuid().ToString('N').Substring(0, 8)
+
+            $inputJson = @{
+                taskName = $taskName
+                triggers = @(
+                    @{
+                        daily = @{
+                            startBoundary = (Get-Date).AddDays(1).ToString('yyyy-MM-ddT08:00:00')
+                            daysInterval = 1
+                        }
+                    }
+                    @{
+                        boot = @{
+                            enabled = $true
+                        }
+                    }
+                )
+                actions = @(
+                    @{
+                        path = 'notepad.exe'
+                    }
+                )
+            } | ConvertTo-Json -Depth 10 -Compress
+
+            dsc resource set -r OpenDsc.Windows/ScheduledTask --input $inputJson | Out-Null
+
+            $verifyJson = @{
+                taskName = $taskName
+            } | ConvertTo-Json -Compress
+
+            $getResult = dsc resource get -r OpenDsc.Windows/ScheduledTask --input $verifyJson | ConvertFrom-Json
+            $getResult.actualState.triggers.Count | Should -Be 2
+            $getResult.actualState.triggers[0].daily | Should -Not -BeNullOrEmpty
+            $getResult.actualState.triggers[1].boot | Should -Not -BeNullOrEmpty
+        }
+
+        It 'should create task with multiple actions' {
+            $taskName = 'TestTask_MultiAction_' + [Guid]::NewGuid().ToString('N').Substring(0, 8)
+
+            $inputJson = @{
+                taskName = $taskName
+                triggers = @(
+                    @{
+                        daily = @{
+                            startBoundary = (Get-Date).AddDays(1).ToString('yyyy-MM-ddT08:00:00')
+                            daysInterval = 1
+                        }
+                    }
+                )
+                actions = @(
+                    @{
+                        path = 'cmd.exe'
+                        arguments = '/c echo First'
+                    }
+                    @{
+                        path = 'cmd.exe'
+                        arguments = '/c echo Second'
+                    }
+                )
+            } | ConvertTo-Json -Depth 10 -Compress
+
+            dsc resource set -r OpenDsc.Windows/ScheduledTask --input $inputJson | Out-Null
+
+            $verifyJson = @{
+                taskName = $taskName
+            } | ConvertTo-Json -Compress
+
+            $getResult = dsc resource get -r OpenDsc.Windows/ScheduledTask --input $verifyJson | ConvertFrom-Json
+            $getResult.actualState.actions.Count | Should -Be 2
+            $getResult.actualState.actions[0].arguments | Should -BeLike '*First*'
+            $getResult.actualState.actions[1].arguments | Should -BeLike '*Second*'
         }
 
         It 'should create task in custom folder path' {
@@ -147,11 +258,20 @@ Describe 'Windows Scheduled Task Resource' -Tag 'Windows' -Skip:(!$IsWindows) {
             $inputJson = @{
                 taskName = $taskName
                 taskPath = '\OpenDsc\Tests\'
-                execute = 'notepad.exe'
-                triggerType = 'Daily'
-                startTime = '12:00'
-                daysInterval = 1
-            } | ConvertTo-Json -Compress
+                triggers = @(
+                    @{
+                        daily = @{
+                            startBoundary = (Get-Date).AddDays(1).ToString('yyyy-MM-ddT12:00:00')
+                            daysInterval = 1
+                        }
+                    }
+                )
+                actions = @(
+                    @{
+                        path = 'notepad.exe'
+                    }
+                )
+            } | ConvertTo-Json -Depth 10 -Compress
 
             dsc resource set -r OpenDsc.Windows/ScheduledTask --input $inputJson | Out-Null
 
@@ -172,22 +292,40 @@ Describe 'Windows Scheduled Task Resource' -Tag 'Windows' -Skip:(!$IsWindows) {
 
             $createJson = @{
                 taskName = $taskName
-                execute = 'notepad.exe'
-                triggerType = 'Daily'
-                startTime = '08:00'
-                daysInterval = 1
-            } | ConvertTo-Json -Compress
+                triggers = @(
+                    @{
+                        daily = @{
+                            startBoundary = (Get-Date).AddDays(1).ToString('yyyy-MM-ddT08:00:00')
+                            daysInterval = 1
+                        }
+                    }
+                )
+                actions = @(
+                    @{
+                        path = 'notepad.exe'
+                    }
+                )
+            } | ConvertTo-Json -Depth 10 -Compress
 
             dsc resource set -r OpenDsc.Windows/ScheduledTask --input $createJson | Out-Null
 
             $updateJson = @{
                 taskName = $taskName
-                execute = 'cmd.exe'
-                arguments = '/c dir'
-                triggerType = 'Daily'
-                startTime = '09:00'
-                daysInterval = 2
-            } | ConvertTo-Json -Compress
+                triggers = @(
+                    @{
+                        daily = @{
+                            startBoundary = (Get-Date).AddDays(1).ToString('yyyy-MM-ddT09:00:00')
+                            daysInterval = 2
+                        }
+                    }
+                )
+                actions = @(
+                    @{
+                        path = 'cmd.exe'
+                        arguments = '/c dir'
+                    }
+                )
+            } | ConvertTo-Json -Depth 10 -Compress
 
             dsc resource set -r OpenDsc.Windows/ScheduledTask --input $updateJson | Out-Null
 
@@ -196,9 +334,74 @@ Describe 'Windows Scheduled Task Resource' -Tag 'Windows' -Skip:(!$IsWindows) {
             } | ConvertTo-Json -Compress
 
             $getResult = dsc resource get -r OpenDsc.Windows/ScheduledTask --input $verifyJson | ConvertFrom-Json
-            $getResult.actualState.execute | Should -Be 'cmd.exe'
-            $getResult.actualState.startTime | Should -Be '09:00'
-            $getResult.actualState.daysInterval | Should -Be 2
+            $getResult.actualState.actions[0].path | Should -Be 'cmd.exe'
+            $getResult.actualState.triggers[0].daily.daysInterval | Should -Be 2
+        }
+
+        It 'should create task with trigger repetition' {
+            $taskName = 'TestTask_Repetition_' + [Guid]::NewGuid().ToString('N').Substring(0, 8)
+
+            $inputJson = @{
+                taskName = $taskName
+                triggers = @(
+                    @{
+                        daily = @{
+                            startBoundary = (Get-Date).AddDays(1).ToString('yyyy-MM-ddT08:00:00')
+                            daysInterval = 1
+                            repetitionInterval = '01:00:00'
+                            repetitionDuration = '08:00:00'
+                        }
+                    }
+                )
+                actions = @(
+                    @{
+                        path = 'notepad.exe'
+                    }
+                )
+            } | ConvertTo-Json -Depth 10 -Compress
+
+            dsc resource set -r OpenDsc.Windows/ScheduledTask --input $inputJson | Out-Null
+
+            $verifyJson = @{
+                taskName = $taskName
+            } | ConvertTo-Json -Compress
+
+            $getResult = dsc resource get -r OpenDsc.Windows/ScheduledTask --input $verifyJson | ConvertFrom-Json
+            $getResult.actualState.triggers[0].daily.repetitionInterval | Should -Be '01:00:00'
+            $getResult.actualState.triggers[0].daily.repetitionDuration | Should -Be '08:00:00'
+        }
+
+        It 'should create task with per-trigger enabled flag' {
+            $taskName = 'TestTask_TriggerEnabled_' + [Guid]::NewGuid().ToString('N').Substring(0, 8)
+
+            $inputJson = @{
+                taskName = $taskName
+                triggers = @(
+                    @{
+                        daily = @{
+                            startBoundary = (Get-Date).AddDays(1).ToString('yyyy-MM-ddT08:00:00')
+                            daysInterval = 1
+                            enabled = $false
+                        }
+                    }
+                )
+                actions = @(
+                    @{
+                        path = 'notepad.exe'
+                    }
+                )
+                enabled = $true
+            } | ConvertTo-Json -Depth 10 -Compress
+
+            dsc resource set -r OpenDsc.Windows/ScheduledTask --input $inputJson | Out-Null
+
+            $verifyJson = @{
+                taskName = $taskName
+            } | ConvertTo-Json -Compress
+
+            $getResult = dsc resource get -r OpenDsc.Windows/ScheduledTask --input $verifyJson | ConvertFrom-Json
+            $getResult.actualState.enabled | Should -Be $true
+            $getResult.actualState.triggers[0].daily.enabled | Should -Be $false
         }
     }
 
@@ -208,11 +411,20 @@ Describe 'Windows Scheduled Task Resource' -Tag 'Windows' -Skip:(!$IsWindows) {
 
             $createJson = @{
                 taskName = $taskName
-                execute = 'notepad.exe'
-                triggerType = 'Daily'
-                startTime = '10:00'
-                daysInterval = 1
-            } | ConvertTo-Json -Compress
+                triggers = @(
+                    @{
+                        daily = @{
+                            startBoundary = (Get-Date).AddDays(1).ToString('yyyy-MM-ddT10:00:00')
+                            daysInterval = 1
+                        }
+                    }
+                )
+                actions = @(
+                    @{
+                        path = 'notepad.exe'
+                    }
+                )
+            } | ConvertTo-Json -Depth 10 -Compress
 
             dsc resource set -r OpenDsc.Windows/ScheduledTask --input $createJson | Out-Null
 
@@ -253,11 +465,14 @@ Describe 'Windows Scheduled Task Resource' -Tag 'Windows' -Skip:(!$IsWindows) {
             $firstTask.taskName | Should -Not -BeNullOrEmpty
         }
 
-        It 'should export tasks with different trigger types' {
+        It 'should export tasks with triggers and actions arrays' {
             $result = dsc resource export -r OpenDsc.Windows/ScheduledTask | ConvertFrom-Json
 
-            $tasks = $result.resources | Where-Object { $_.properties.triggerType -ne $null }
-            $tasks.Count | Should -BeGreaterThan 0
+            $tasksWithTriggers = $result.resources | Where-Object { $_.properties.triggers -ne $null }
+            $tasksWithTriggers.Count | Should -BeGreaterThan 0
+
+            $tasksWithActions = $result.resources | Where-Object { $_.properties.actions -ne $null }
+            $tasksWithActions.Count | Should -BeGreaterThan 0
         }
     }
 
@@ -265,8 +480,20 @@ Describe 'Windows Scheduled Task Resource' -Tag 'Windows' -Skip:(!$IsWindows) {
         It 'should validate task name pattern (no invalid characters)' {
             $invalidInput = @{
                 taskName = 'Invalid:Task*Name'
-                execute = 'notepad.exe'
-            } | ConvertTo-Json -Compress
+                triggers = @(
+                    @{
+                        daily = @{
+                            startBoundary = (Get-Date).AddDays(1).ToString('yyyy-MM-ddT10:00:00')
+                            daysInterval = 1
+                        }
+                    }
+                )
+                actions = @(
+                    @{
+                        path = 'notepad.exe'
+                    }
+                )
+            } | ConvertTo-Json -Depth 10 -Compress
 
             dsc resource set -r OpenDsc.Windows/ScheduledTask --input $invalidInput 2>&1 | Out-Null
             $LASTEXITCODE | Should -Not -Be 0
@@ -275,11 +502,20 @@ Describe 'Windows Scheduled Task Resource' -Tag 'Windows' -Skip:(!$IsWindows) {
         It 'should accept valid task names' {
             $validInput = @{
                 taskName = 'Valid-Task_Name123'
-                execute = 'notepad.exe'
-                triggerType = 'Daily'
-                startTime = '10:00'
-                daysInterval = 1
-            } | ConvertTo-Json -Compress
+                triggers = @(
+                    @{
+                        daily = @{
+                            startBoundary = (Get-Date).AddDays(1).ToString('yyyy-MM-ddT10:00:00')
+                            daysInterval = 1
+                        }
+                    }
+                )
+                actions = @(
+                    @{
+                        path = 'notepad.exe'
+                    }
+                )
+            } | ConvertTo-Json -Depth 10 -Compress
 
             if ($script:isAdmin) {
                 dsc resource set -r OpenDsc.Windows/ScheduledTask --input $validInput | Out-Null

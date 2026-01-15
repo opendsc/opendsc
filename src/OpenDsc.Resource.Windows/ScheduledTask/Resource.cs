@@ -6,9 +6,6 @@ using System.Security;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-using Json.Schema;
-using Json.Schema.Generation;
-
 using Microsoft.Win32.TaskScheduler;
 
 namespace OpenDsc.Resource.Windows.ScheduledTask;
@@ -21,18 +18,17 @@ namespace OpenDsc.Resource.Windows.ScheduledTask;
 [ExitCode(4, Exception = typeof(ArgumentException), Description = "Invalid argument")]
 public sealed class Resource(JsonSerializerContext context) : DscResource<Schema>(context), IGettable<Schema>, ISettable<Schema>, IDeletable<Schema>, IExportable<Schema>
 {
+    private const string DateTimeFormat = "yyyy-MM-ddTHH:mm:ss";
+
     public override string GetSchema()
     {
-        var config = new SchemaGeneratorConfiguration()
-        {
-            PropertyNameResolver = PropertyNameResolvers.CamelCase
-        };
+        var assembly = typeof(Resource).Assembly;
+        var resourceName = "OpenDsc.Resource.Windows.ScheduledTask.schema.json";
 
-        var builder = new JsonSchemaBuilder().FromType<Schema>(config);
-        builder.Schema("https://json-schema.org/draft/2020-12/schema");
-        var schema = builder.Build();
-
-        return JsonSerializer.Serialize(schema);
+        using var stream = assembly.GetManifestResourceStream(resourceName)
+            ?? throw new InvalidOperationException($"Embedded resource '{resourceName}' not found.");
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
     }
 
     public Schema Get(Schema instance)
@@ -50,49 +46,26 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
             };
         }
 
-        var trigger = task.Definition.Triggers.FirstOrDefault();
-        TriggerType? triggerType = null;
-        string? startTime = null;
-        DayOfWeek[]? daysOfWeek = null;
-        int? daysInterval = null;
-
-        if (trigger is not null)
+        var triggers = new List<Trigger>();
+        foreach (var trigger in task.Definition.Triggers)
         {
-            triggerType = trigger switch
+            var schemaTrigger = TriggerToSchema(trigger);
+            if (schemaTrigger is not null)
             {
-                TimeTrigger => TriggerType.Once,
-                DailyTrigger => TriggerType.Daily,
-                WeeklyTrigger => TriggerType.Weekly,
-                LogonTrigger => TriggerType.AtLogon,
-                BootTrigger => TriggerType.AtStartup,
-                _ => null
-            };
-
-            if (trigger is TimeTrigger || trigger is DailyTrigger || trigger is WeeklyTrigger)
-            {
-                startTime = trigger.StartBoundary.ToString("HH:mm");
-            }
-
-            if (trigger is WeeklyTrigger weekly)
-            {
-                var days = new List<DayOfWeek>();
-                if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Monday)) days.Add(DayOfWeek.Monday);
-                if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Tuesday)) days.Add(DayOfWeek.Tuesday);
-                if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Wednesday)) days.Add(DayOfWeek.Wednesday);
-                if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Thursday)) days.Add(DayOfWeek.Thursday);
-                if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Friday)) days.Add(DayOfWeek.Friday);
-                if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Saturday)) days.Add(DayOfWeek.Saturday);
-                if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Sunday)) days.Add(DayOfWeek.Sunday);
-                daysOfWeek = [.. days];
-            }
-
-            if (trigger is DailyTrigger daily)
-            {
-                daysInterval = daily.DaysInterval;
+                triggers.Add(schemaTrigger);
             }
         }
 
-        var action = task.Definition.Actions.OfType<ExecAction>().FirstOrDefault();
+        var actions = new List<Action>();
+        foreach (var action in task.Definition.Actions.OfType<ExecAction>())
+        {
+            actions.Add(new Action
+            {
+                Path = action.Path,
+                Arguments = action.Arguments,
+                WorkingDirectory = action.WorkingDirectory
+            });
+        }
 
         var taskPath = task.Path.Replace($"\\{task.Name}", string.Empty);
 
@@ -101,18 +74,13 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
             taskPath += '\\';
         }
 
-        var schema = new Schema
+        return new Schema
         {
             TaskName = instance.TaskName,
             TaskPath = taskPath,
-            Execute = action?.Path,
-            Arguments = action?.Arguments,
-            WorkingDirectory = action?.WorkingDirectory,
+            Triggers = triggers.Count > 0 ? [.. triggers] : null,
+            Actions = actions.Count > 0 ? [.. actions] : null,
             User = task.Definition.Principal.UserId ?? task.Definition.Principal.GroupId,
-            TriggerType = triggerType,
-            StartTime = startTime,
-            DaysOfWeek = daysOfWeek,
-            DaysInterval = daysInterval,
             Enabled = task.Enabled,
             RunWithHighestPrivileges = task.Definition.Principal.RunLevel == TaskRunLevel.Highest,
             RunOnlyIfNetworkAvailable = task.Definition.Settings.RunOnlyIfNetworkAvailable,
@@ -146,22 +114,6 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
             DisallowStartOnRemoteAppSession = task.Definition.Settings.DisallowStartOnRemoteAppSession,
             LogonType = task.Definition.Principal.LogonType
         };
-
-        if (trigger is not null && trigger.Repetition.Interval != TimeSpan.Zero)
-        {
-            schema.RepetitionInterval = trigger.Repetition.Interval.ToString();
-            schema.RepetitionDuration = trigger.Repetition.Duration == TimeSpan.Zero
-                ? null
-                : trigger.Repetition.Duration.ToString();
-            schema.RepetitionStopAtDurationEnd = trigger.Repetition.StopAtDurationEnd;
-        }
-
-        if (trigger is ITriggerDelay delayTrigger && delayTrigger.Delay != TimeSpan.Zero)
-        {
-            schema.RandomDelay = delayTrigger.Delay.ToString();
-        }
-
-        return schema;
     }
 
     public SetResult<Schema>? Set(Schema instance)
@@ -282,45 +234,47 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
             td.Principal.LogonType = instance.LogonType.Value;
         }
 
-        if (instance.TriggerType.HasValue)
+        if (instance.Triggers is not null)
         {
-            Trigger trigger = instance.TriggerType.Value switch
+            foreach (var triggerWrapper in instance.Triggers)
             {
-                TriggerType.Once => CreateTimeTrigger(instance),
-                TriggerType.Daily => CreateDailyTrigger(instance),
-                TriggerType.Weekly => CreateWeeklyTrigger(instance),
-                TriggerType.AtLogon => new LogonTrigger(),
-                TriggerType.AtStartup => new BootTrigger(),
-                _ => throw new ArgumentException($"Unsupported trigger type: {instance.TriggerType}")
-            };
+                Microsoft.Win32.TaskScheduler.Trigger? libTrigger = null;
 
-            if (instance.RepetitionInterval is not null)
-            {
-                trigger.Repetition.Interval = TimeSpan.Parse(instance.RepetitionInterval);
-
-                if (instance.RepetitionDuration is not null)
+                if (triggerWrapper.Time is not null)
                 {
-                    trigger.Repetition.Duration = TimeSpan.Parse(instance.RepetitionDuration);
+                    libTrigger = CreateTimeTrigger(triggerWrapper.Time);
+                }
+                else if (triggerWrapper.Daily is not null)
+                {
+                    libTrigger = CreateDailyTrigger(triggerWrapper.Daily);
+                }
+                else if (triggerWrapper.Weekly is not null)
+                {
+                    libTrigger = CreateWeeklyTrigger(triggerWrapper.Weekly);
+                }
+                else if (triggerWrapper.Boot is not null)
+                {
+                    libTrigger = CreateBootTrigger(triggerWrapper.Boot);
+                }
+                else if (triggerWrapper.Logon is not null)
+                {
+                    libTrigger = CreateLogonTrigger(triggerWrapper.Logon);
                 }
 
-                if (instance.RepetitionStopAtDurationEnd is not null)
+                if (libTrigger is not null)
                 {
-                    trigger.Repetition.StopAtDurationEnd = instance.RepetitionStopAtDurationEnd.Value;
+                    td.Triggers.Add(libTrigger);
                 }
             }
-
-            if (instance.RandomDelay is not null && trigger is ITriggerDelay delayTrigger)
-            {
-                delayTrigger.Delay = TimeSpan.Parse(instance.RandomDelay);
-            }
-
-            td.Triggers.Add(trigger);
         }
 
-        if (!string.IsNullOrEmpty(instance.Execute))
+        if (instance.Actions is not null)
         {
-            using var action = new ExecAction(instance.Execute, instance.Arguments, instance.WorkingDirectory);
-            td.Actions.Add(action);
+            foreach (var action in instance.Actions)
+            {
+                using var execAction = new ExecAction(action.Path, action.Arguments, action.WorkingDirectory);
+                td.Actions.Add(execAction);
+            }
         }
 
         td.Principal.UserId = string.IsNullOrEmpty(instance.User) ? Schema.DefaultUser : instance.User;
@@ -356,62 +310,40 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
     {
         foreach (var task in folder.Tasks)
         {
-            var trigger = task.Definition.Triggers.FirstOrDefault();
-            TriggerType? triggerType = null;
-            string? startTime = null;
-            DayOfWeek[]? daysOfWeek = null;
-            int? daysInterval = null;
-
-            if (trigger is not null)
+            var triggers = new List<Trigger>();
+            foreach (var trigger in task.Definition.Triggers)
             {
-                triggerType = trigger switch
+                var schemaTrigger = TriggerToSchema(trigger);
+                if (schemaTrigger is not null)
                 {
-                    TimeTrigger => TriggerType.Once,
-                    DailyTrigger => TriggerType.Daily,
-                    WeeklyTrigger => TriggerType.Weekly,
-                    LogonTrigger => TriggerType.AtLogon,
-                    BootTrigger => TriggerType.AtStartup,
-                    _ => null
-                };
-
-                if (trigger is TimeTrigger || trigger is DailyTrigger || trigger is WeeklyTrigger)
-                {
-                    startTime = trigger.StartBoundary.ToString("HH:mm");
-                }
-
-                if (trigger is WeeklyTrigger weekly)
-                {
-                    var days = new List<DayOfWeek>();
-                    if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Monday)) days.Add(DayOfWeek.Monday);
-                    if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Tuesday)) days.Add(DayOfWeek.Tuesday);
-                    if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Wednesday)) days.Add(DayOfWeek.Wednesday);
-                    if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Thursday)) days.Add(DayOfWeek.Thursday);
-                    if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Friday)) days.Add(DayOfWeek.Friday);
-                    if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Saturday)) days.Add(DayOfWeek.Saturday);
-                    if (weekly.DaysOfWeek.HasFlag(DaysOfTheWeek.Sunday)) days.Add(DayOfWeek.Sunday);
-                    daysOfWeek = [.. days];
-                }
-
-                if (trigger is DailyTrigger daily)
-                {
-                    daysInterval = daily.DaysInterval;
+                    triggers.Add(schemaTrigger);
                 }
             }
 
-            var action = task.Definition.Actions.OfType<ExecAction>().FirstOrDefault();
+            var actions = new List<Action>();
+            foreach (var action in task.Definition.Actions.OfType<ExecAction>())
+            {
+                actions.Add(new Action
+                {
+                    Path = action.Path,
+                    Arguments = action.Arguments,
+                    WorkingDirectory = action.WorkingDirectory
+                });
+            }
 
-            var schema = new Schema
+            var taskPath = task.Path.Replace($"\\{task.Name}", string.Empty);
+            if (!string.IsNullOrEmpty(taskPath) && !taskPath.EndsWith('\\'))
+            {
+                taskPath += '\\';
+            }
+
+            yield return new Schema
             {
                 TaskName = task.Name,
-                TaskPath = task.Path.Replace(task.Name, string.Empty),
-                Execute = action?.Path,
-                Arguments = action?.Arguments,
-                WorkingDirectory = action?.WorkingDirectory,
+                TaskPath = taskPath,
+                Triggers = triggers.Count > 0 ? [.. triggers] : null,
+                Actions = actions.Count > 0 ? [.. actions] : null,
                 User = task.Definition.Principal.UserId ?? task.Definition.Principal.GroupId,
-                TriggerType = triggerType,
-                StartTime = startTime,
-                DaysOfWeek = daysOfWeek,
-                DaysInterval = daysInterval,
                 Enabled = task.Enabled,
                 RunWithHighestPrivileges = task.Definition.Principal.RunLevel == TaskRunLevel.Highest,
                 RunOnlyIfNetworkAvailable = task.Definition.Settings.RunOnlyIfNetworkAvailable,
@@ -445,22 +377,6 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
                 DisallowStartOnRemoteAppSession = task.Definition.Settings.DisallowStartOnRemoteAppSession,
                 LogonType = task.Definition.Principal.LogonType
             };
-
-            if (trigger is not null && trigger.Repetition.Interval != TimeSpan.Zero)
-            {
-                schema.RepetitionInterval = trigger.Repetition.Interval.ToString();
-                schema.RepetitionDuration = trigger.Repetition.Duration == TimeSpan.Zero
-                    ? null
-                    : trigger.Repetition.Duration.ToString();
-                schema.RepetitionStopAtDurationEnd = trigger.Repetition.StopAtDurationEnd;
-            }
-
-            if (trigger is ITriggerDelay delayTrigger && delayTrigger.Delay != TimeSpan.Zero)
-            {
-                schema.RandomDelay = delayTrigger.Delay.ToString();
-            }
-
-            yield return schema;
         }
 
         foreach (var subfolder in folder.SubFolders)
@@ -472,44 +388,138 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         }
     }
 
-    private static TimeTrigger CreateTimeTrigger(Schema instance)
+    private static Trigger? TriggerToSchema(Microsoft.Win32.TaskScheduler.Trigger libTrigger)
     {
-        var trigger = new TimeTrigger();
-        if (!string.IsNullOrEmpty(instance.StartTime))
+        object? config = libTrigger switch
         {
-            var parts = instance.StartTime.Split(':');
-            var now = DateTime.Now;
-            trigger.StartBoundary = new DateTime(now.Year, now.Month, now.Day, int.Parse(parts[0]), int.Parse(parts[1]), 0);
+            TimeTrigger timeTrigger => new TimeTriggerConfig
+            {
+                StartBoundary = timeTrigger.StartBoundary.ToString(DateTimeFormat),
+                EndBoundary = timeTrigger.EndBoundary == DateTime.MinValue ? null : timeTrigger.EndBoundary.ToString(DateTimeFormat),
+                Enabled = timeTrigger.Enabled,
+                ExecutionTimeLimit = timeTrigger.ExecutionTimeLimit == TimeSpan.Zero ? null : timeTrigger.ExecutionTimeLimit.ToString(),
+                RepetitionInterval = timeTrigger.Repetition.Interval == TimeSpan.Zero ? null : timeTrigger.Repetition.Interval.ToString(),
+                RepetitionDuration = timeTrigger.Repetition.Duration == TimeSpan.Zero ? null : timeTrigger.Repetition.Duration.ToString(),
+                RepetitionStopAtDurationEnd = timeTrigger.Repetition.StopAtDurationEnd ? true : null,
+                RandomDelay = (timeTrigger as ITriggerDelay)?.Delay == TimeSpan.Zero ? null : (timeTrigger as ITriggerDelay)?.Delay.ToString()
+            },
+            DailyTrigger dailyTrigger => new DailyTriggerConfig
+            {
+                StartBoundary = dailyTrigger.StartBoundary.ToString(DateTimeFormat),
+                EndBoundary = dailyTrigger.EndBoundary == DateTime.MinValue ? null : dailyTrigger.EndBoundary.ToString(DateTimeFormat),
+                Enabled = dailyTrigger.Enabled,
+                ExecutionTimeLimit = dailyTrigger.ExecutionTimeLimit == TimeSpan.Zero ? null : dailyTrigger.ExecutionTimeLimit.ToString(),
+                RepetitionInterval = dailyTrigger.Repetition.Interval == TimeSpan.Zero ? null : dailyTrigger.Repetition.Interval.ToString(),
+                RepetitionDuration = dailyTrigger.Repetition.Duration == TimeSpan.Zero ? null : dailyTrigger.Repetition.Duration.ToString(),
+                RepetitionStopAtDurationEnd = dailyTrigger.Repetition.StopAtDurationEnd ? true : null,
+                RandomDelay = (dailyTrigger as ITriggerDelay)?.Delay == TimeSpan.Zero ? null : (dailyTrigger as ITriggerDelay)?.Delay.ToString(),
+                DaysInterval = dailyTrigger.DaysInterval
+            },
+            WeeklyTrigger weeklyTrigger => new WeeklyTriggerConfig
+            {
+                StartBoundary = weeklyTrigger.StartBoundary.ToString(DateTimeFormat),
+                EndBoundary = weeklyTrigger.EndBoundary == DateTime.MinValue ? null : weeklyTrigger.EndBoundary.ToString(DateTimeFormat),
+                Enabled = weeklyTrigger.Enabled,
+                ExecutionTimeLimit = weeklyTrigger.ExecutionTimeLimit == TimeSpan.Zero ? null : weeklyTrigger.ExecutionTimeLimit.ToString(),
+                RepetitionInterval = weeklyTrigger.Repetition.Interval == TimeSpan.Zero ? null : weeklyTrigger.Repetition.Interval.ToString(),
+                RepetitionDuration = weeklyTrigger.Repetition.Duration == TimeSpan.Zero ? null : weeklyTrigger.Repetition.Duration.ToString(),
+                RepetitionStopAtDurationEnd = weeklyTrigger.Repetition.StopAtDurationEnd ? true : null,
+                RandomDelay = (weeklyTrigger as ITriggerDelay)?.Delay == TimeSpan.Zero ? null : (weeklyTrigger as ITriggerDelay)?.Delay.ToString(),
+                DaysOfWeek = ConvertDaysOfTheWeekToDayOfWeekArray(weeklyTrigger.DaysOfWeek),
+                WeeksInterval = weeklyTrigger.WeeksInterval
+            },
+            BootTrigger bootTrigger => new BootTriggerConfig
+            {
+                EndBoundary = bootTrigger.EndBoundary == DateTime.MinValue ? null : bootTrigger.EndBoundary.ToString(DateTimeFormat),
+                Enabled = bootTrigger.Enabled,
+                ExecutionTimeLimit = bootTrigger.ExecutionTimeLimit == TimeSpan.Zero ? null : bootTrigger.ExecutionTimeLimit.ToString(),
+                RepetitionInterval = bootTrigger.Repetition.Interval == TimeSpan.Zero ? null : bootTrigger.Repetition.Interval.ToString(),
+                RepetitionDuration = bootTrigger.Repetition.Duration == TimeSpan.Zero ? null : bootTrigger.Repetition.Duration.ToString(),
+                RepetitionStopAtDurationEnd = bootTrigger.Repetition.StopAtDurationEnd ? true : null,
+                RandomDelay = bootTrigger.Delay == TimeSpan.Zero ? null : bootTrigger.Delay.ToString()
+            },
+            LogonTrigger logonTrigger => new LogonTriggerConfig
+            {
+                EndBoundary = logonTrigger.EndBoundary == DateTime.MinValue ? null : logonTrigger.EndBoundary.ToString(DateTimeFormat),
+                Enabled = logonTrigger.Enabled,
+                ExecutionTimeLimit = logonTrigger.ExecutionTimeLimit == TimeSpan.Zero ? null : logonTrigger.ExecutionTimeLimit.ToString(),
+                RepetitionInterval = logonTrigger.Repetition.Interval == TimeSpan.Zero ? null : logonTrigger.Repetition.Interval.ToString(),
+                RepetitionDuration = logonTrigger.Repetition.Duration == TimeSpan.Zero ? null : logonTrigger.Repetition.Duration.ToString(),
+                RepetitionStopAtDurationEnd = logonTrigger.Repetition.StopAtDurationEnd ? true : null,
+                RandomDelay = logonTrigger.Delay == TimeSpan.Zero ? null : logonTrigger.Delay.ToString(),
+                UserId = logonTrigger.UserId
+            },
+            _ => null
+        };
+
+        if (config is null)
+        {
+            return null;
         }
+
+        return config switch
+        {
+            TimeTriggerConfig time => new Trigger { Time = time },
+            DailyTriggerConfig daily => new Trigger { Daily = daily },
+            WeeklyTriggerConfig weekly => new Trigger { Weekly = weekly },
+            BootTriggerConfig boot => new Trigger { Boot = boot },
+            LogonTriggerConfig logon => new Trigger { Logon = logon },
+            _ => null
+        };
+    }
+
+    private static DayOfWeek[] ConvertDaysOfTheWeekToDayOfWeekArray(DaysOfTheWeek daysOfWeek)
+    {
+        var days = new List<DayOfWeek>();
+        if (daysOfWeek.HasFlag(DaysOfTheWeek.Monday)) days.Add(DayOfWeek.Monday);
+        if (daysOfWeek.HasFlag(DaysOfTheWeek.Tuesday)) days.Add(DayOfWeek.Tuesday);
+        if (daysOfWeek.HasFlag(DaysOfTheWeek.Wednesday)) days.Add(DayOfWeek.Wednesday);
+        if (daysOfWeek.HasFlag(DaysOfTheWeek.Thursday)) days.Add(DayOfWeek.Thursday);
+        if (daysOfWeek.HasFlag(DaysOfTheWeek.Friday)) days.Add(DayOfWeek.Friday);
+        if (daysOfWeek.HasFlag(DaysOfTheWeek.Saturday)) days.Add(DayOfWeek.Saturday);
+        if (daysOfWeek.HasFlag(DaysOfTheWeek.Sunday)) days.Add(DayOfWeek.Sunday);
+        return [.. days];
+    }
+
+    private static TimeTrigger CreateTimeTrigger(TimeTriggerConfig config)
+    {
+        var trigger = new TimeTrigger
+        {
+            StartBoundary = DateTime.Parse(config.StartBoundary)
+        };
+
+        SetCommonTriggerProperties(trigger, config.EndBoundary, config.Enabled, config.ExecutionTimeLimit,
+            config.RepetitionInterval, config.RepetitionDuration, config.RepetitionStopAtDurationEnd, config.RandomDelay);
+
         return trigger;
     }
 
-    private static DailyTrigger CreateDailyTrigger(Schema instance)
+    private static DailyTrigger CreateDailyTrigger(DailyTriggerConfig config)
     {
-        var trigger = new DailyTrigger { DaysInterval = (short)(instance.DaysInterval ?? 1) };
-        if (!string.IsNullOrEmpty(instance.StartTime))
+        var trigger = new DailyTrigger
         {
-            var parts = instance.StartTime.Split(':');
-            var now = DateTime.Now;
-            trigger.StartBoundary = new DateTime(now.Year, now.Month, now.Day, int.Parse(parts[0]), int.Parse(parts[1]), 0);
-        }
+            StartBoundary = DateTime.Parse(config.StartBoundary),
+            DaysInterval = (short)(config.DaysInterval ?? 1)
+        };
+
+        SetCommonTriggerProperties(trigger, config.EndBoundary, config.Enabled, config.ExecutionTimeLimit,
+            config.RepetitionInterval, config.RepetitionDuration, config.RepetitionStopAtDurationEnd, config.RandomDelay);
+
         return trigger;
     }
 
-    private static WeeklyTrigger CreateWeeklyTrigger(Schema instance)
+    private static WeeklyTrigger CreateWeeklyTrigger(WeeklyTriggerConfig config)
     {
-        var trigger = new WeeklyTrigger();
-        if (!string.IsNullOrEmpty(instance.StartTime))
+        var trigger = new WeeklyTrigger
         {
-            var parts = instance.StartTime.Split(':');
-            var now = DateTime.Now;
-            trigger.StartBoundary = new DateTime(now.Year, now.Month, now.Day, int.Parse(parts[0]), int.Parse(parts[1]), 0);
-        }
+            StartBoundary = DateTime.Parse(config.StartBoundary),
+            WeeksInterval = (short)(config.WeeksInterval ?? 1)
+        };
 
-        if (instance.DaysOfWeek is not null && instance.DaysOfWeek.Length > 0)
+        if (config.DaysOfWeek is not null && config.DaysOfWeek.Length > 0)
         {
             trigger.DaysOfWeek = 0;
-            foreach (var day in instance.DaysOfWeek)
+            foreach (var day in config.DaysOfWeek)
             {
                 trigger.DaysOfWeek |= day switch
                 {
@@ -525,7 +535,75 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
             }
         }
 
+        SetCommonTriggerProperties(trigger, config.EndBoundary, config.Enabled, config.ExecutionTimeLimit,
+            config.RepetitionInterval, config.RepetitionDuration, config.RepetitionStopAtDurationEnd, config.RandomDelay);
+
         return trigger;
+    }
+
+    private static BootTrigger CreateBootTrigger(BootTriggerConfig config)
+    {
+        var trigger = new BootTrigger();
+
+        SetCommonTriggerProperties(trigger, config.EndBoundary, config.Enabled, config.ExecutionTimeLimit,
+            config.RepetitionInterval, config.RepetitionDuration, config.RepetitionStopAtDurationEnd, config.RandomDelay);
+
+        return trigger;
+    }
+
+    private static LogonTrigger CreateLogonTrigger(LogonTriggerConfig config)
+    {
+        var trigger = new LogonTrigger();
+
+        if (!string.IsNullOrEmpty(config.UserId))
+        {
+            trigger.UserId = config.UserId;
+        }
+
+        SetCommonTriggerProperties(trigger, config.EndBoundary, config.Enabled, config.ExecutionTimeLimit,
+            config.RepetitionInterval, config.RepetitionDuration, config.RepetitionStopAtDurationEnd, config.RandomDelay);
+
+        return trigger;
+    }
+
+    private static void SetCommonTriggerProperties(Microsoft.Win32.TaskScheduler.Trigger trigger, string? endBoundary,
+        bool? enabled, string? executionTimeLimit, string? repetitionInterval, string? repetitionDuration,
+        bool? repetitionStopAtDurationEnd, string? randomDelay)
+    {
+        if (endBoundary is not null)
+        {
+            trigger.EndBoundary = DateTime.Parse(endBoundary);
+        }
+
+        if (enabled is not null)
+        {
+            trigger.Enabled = enabled.Value;
+        }
+
+        if (executionTimeLimit is not null)
+        {
+            trigger.ExecutionTimeLimit = TimeSpan.Parse(executionTimeLimit);
+        }
+
+        if (repetitionInterval is not null)
+        {
+            trigger.Repetition.Interval = TimeSpan.Parse(repetitionInterval);
+
+            if (repetitionDuration is not null)
+            {
+                trigger.Repetition.Duration = TimeSpan.Parse(repetitionDuration);
+            }
+
+            if (repetitionStopAtDurationEnd is not null)
+            {
+                trigger.Repetition.StopAtDurationEnd = repetitionStopAtDurationEnd.Value;
+            }
+        }
+
+        if (randomDelay is not null && trigger is ITriggerDelay delayTrigger)
+        {
+            delayTrigger.Delay = TimeSpan.Parse(randomDelay);
+        }
     }
 
     private static TaskFolder GetOrCreateFolder(TaskService ts, string path)

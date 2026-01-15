@@ -29,43 +29,20 @@ public sealed class Schema
     [Default(DefaultTaskPath)]
     public string TaskPath { get; set; } = DefaultTaskPath;
 
-    [Description("The executable or script to run.")]
+    [Description("Triggers that define when the task should run.")]
     [Nullable(false)]
-    public string? Execute { get; set; }
+    public Trigger[]? Triggers { get; set; }
 
-    [Description("The arguments to pass to the executable.")]
+    [Description("Actions that define what the task should do when triggered.")]
     [Nullable(false)]
-    public string? Arguments { get; set; }
-
-    [Description("The working directory for the task.")]
-    [Nullable(false)]
-    public string? WorkingDirectory { get; set; }
+    public Action[]? Actions { get; set; }
 
     [Description("The user account to run the task under. Default is SYSTEM.")]
     [Nullable(false)]
     [Default(DefaultUser)]
     public string? User { get; set; }
 
-    [Description("The trigger schedule for the task (e.g., 'Daily', 'Weekly', 'AtLogon', 'AtStartup').")]
-    [Nullable(false)]
-    public TriggerType? TriggerType { get; set; }
-
-    [Description("The time to run the task (for time-based triggers, format: HH:mm).")]
-    [Nullable(false)]
-    [Pattern(@"^([01]?[0-9]|2[0-3]):[0-5][0-9]$")]
-    public string? StartTime { get; set; }
-
-    [Description("Days of the week for weekly triggers.")]
-    [UniqueItems(true)]
-    [Nullable(false)]
-    public DayOfWeek[]? DaysOfWeek { get; set; }
-
-    [Description("Interval in days for daily triggers.")]
-    [Nullable(false)]
-    [Minimum(1)]
-    public int? DaysInterval { get; set; }
-
-    [Description("Whether the task is enabled.")]
+    [Description("Whether the task is enabled (task-level setting).")]
     [Nullable(false)]
     [Default(true)]
     public bool? Enabled { get; set; }
@@ -82,23 +59,7 @@ public sealed class Schema
     [Nullable(false)]
     public string? Description { get; set; }
 
-    [Description("Time between task repetitions. Minimum: 1 minute. Format: TimeSpan (e.g., '00:10:00' for 10 minutes).")]
-    [Nullable(false)]
-    public string? RepetitionInterval { get; set; }
-
-    [Description("How long to repeat the task. Zero for infinite. Format: TimeSpan (e.g., '01:00:00' for 1 hour, '00:00:00' for infinite).")]
-    [Nullable(false)]
-    public string? RepetitionDuration { get; set; }
-
-    [Description("Stop running task instances at duration end.")]
-    [Nullable(false)]
-    public bool? RepetitionStopAtDurationEnd { get; set; }
-
-    [Description("Random delay before task starts. Format: TimeSpan (e.g., '00:05:00' for 5 minutes).")]
-    [Nullable(false)]
-    public string? RandomDelay { get; set; }
-
-    [Description("Maximum time allowed to complete the task. Default: 3 days ('3.00:00:00'). Zero ('00:00:00') for no limit. Format: TimeSpan.")]
+    [Description("Maximum time allowed to complete the task (task-level default). Default: 3 days ('3.00:00:00'). Zero ('00:00:00') for no limit. Format: TimeSpan.")]
     [Nullable(false)]
     public string? ExecutionTimeLimit { get; set; }
 

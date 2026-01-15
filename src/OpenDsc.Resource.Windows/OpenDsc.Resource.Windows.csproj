@@ -14,4 +14,8 @@
     <PackageReference Include="TaskScheduler" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="**\schema.json" />
+  </ItemGroup>
+
 </Project>
