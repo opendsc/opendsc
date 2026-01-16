@@ -19,14 +19,17 @@ Windows Resources (in `src/OpenDsc.Resource.Windows/`):
 - `Group/` - Local Windows group management (`OpenDsc.Windows/Group`)
 - `User/` - Local Windows user accounts (`OpenDsc.Windows/User`)
 - `OptionalFeature/` - Windows optional features via DISM (`OpenDsc.Windows/OptionalFeature`)
+- `ScheduledTask/` - Scheduled task management (`OpenDsc.Windows/ScheduledTask`)
 - `FileSystem/Acl/` - File system ACL management (`OpenDsc.Windows.FileSystem/AccessControlList`)
 
-Cross-Platform Resources (in `src/OpenDsc.Resource.FileSystem/`, `src/OpenDsc.Resource.Xml/`, and `src/OpenDsc.Resource.Archive/`):
+Cross-Platform Resources (in `src/OpenDsc.Resource.FileSystem/`, `src/OpenDsc.Resource.Xml/`, `src/OpenDsc.Resource.Archive/`, and `src/OpenDsc.Resource.Posix/`):
 - `File/` - Cross-platform file management (`OpenDsc.FileSystem/File`)
 - `Directory/` - Cross-platform directory management (`OpenDsc.FileSystem/Directory`)
+- `SymbolicLink/` - Cross-platform symbolic link management (`OpenDsc.FileSystem/SymbolicLink`)
 - `Element/` - XML element manipulation (`OpenDsc.Xml/Element`)
 - `Zip/Compress/` - Create ZIP archives (`OpenDsc.Archive.Zip/Compress`)
 - `Zip/Expand/` - Extract ZIP archives (`OpenDsc.Archive.Zip/Expand`)
+- `FileSystem/Permission/` - POSIX file permissions (`OpenDsc.Posix.FileSystem/Permission`)
 
 **Resource Naming Convention:**
 - Windows-specific: `OpenDsc.Windows/<Name>` (namespace: `OpenDsc.Resource.Windows.<Name>`)
@@ -43,9 +46,12 @@ Cross-Platform Resources (in `src/OpenDsc.Resource.FileSystem/`, `src/OpenDsc.Re
 The project uses a **consolidated executable approach** where multiple resources are bundled into platform-specific executables:
 
 **Platform Executables:**
-- `src/OpenDsc.Resource.CommandLine.Windows/` - Windows executable containing all Windows + cross-platform resources
-- `src/OpenDsc.Resource.CommandLine.Linux/` - Linux executable containing cross-platform resources only
-- `src/OpenDsc.Resource.CommandLine.macOS/` - macOS executable containing cross-platform resources only
+
+The project uses a single unified executable (`src/OpenDsc.Resources/`) that contains all resources and conditionally compiles platform-specific resources based on the target OS:
+- Windows builds include: All Windows resources + cross-platform resources
+- Linux/macOS builds include: Cross-platform resources + POSIX resources only
+
+This is achieved through conditional compilation (`#if WINDOWS` / `#if !WINDOWS`) in `Program.cs`.
 
 **Resource Implementation Structure:**
 
@@ -64,9 +70,9 @@ src/OpenDsc.Resource.Windows/
 │   └── Schema.cs
 └── ...other resources...
 
-src/OpenDsc.Resource.CommandLine.Windows/
+src/OpenDsc.Resources/
 ├── Program.cs                          # Entry point: registers all resources
-└── OpenDsc.Resource.CommandLine.Windows.csproj
+└── OpenDsc.Resources.csproj
 
 tests/
 ├── Environment.Tests.ps1               # Integration tests per resource
@@ -100,35 +106,68 @@ public sealed class Resource(JsonSerializerContext context)
 
 **Platform Executable Entry Point (Program.cs):**
 
-The `Program.cs` in platform executables (Windows/Linux) registers all resources using `CommandBuilder`:
+The `Program.cs` in `src/OpenDsc.Resources/` registers all resources using `CommandBuilder` with conditional compilation:
 
 ```csharp
-// src/OpenDsc.Resource.CommandLine.Windows/Program.cs
+// src/OpenDsc.Resources/Program.cs
 using OpenDsc.Resource.CommandLine;
+
+#if WINDOWS
 using GroupNs = OpenDsc.Resource.Windows.Group;
 using EnvironmentNs = OpenDsc.Resource.Windows.Environment;
+using ScheduledTaskNs = OpenDsc.Resource.Windows.ScheduledTask;
 using FileSystemAclNs = OpenDsc.Resource.Windows.FileSystem.Acl;  // Sub-area resource
+#endif
+
+#if !WINDOWS
+using PosixPermissionNs = OpenDsc.Resource.Posix.FileSystem.Permission;
+#endif
+
 using ZipCompressNs = OpenDsc.Resource.Archive.Zip.Compress;
 using ZipExpandNs = OpenDsc.Resource.Archive.Zip.Expand;
-// ... other resource namespaces
+// ... other cross-platform resource namespaces
 
+#if WINDOWS
 var groupResource = new GroupNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
 var environmentResource = new EnvironmentNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
+var scheduledTaskResource = new ScheduledTaskNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
 var fileSystemAclResource = new FileSystemAclNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
+#endif
+
+#if !WINDOWS
+PosixPermissionNs.Resource? posixPermissionResource = null;
+if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
+{
+    posixPermissionResource = new PosixPermissionNs.Resource(OpenDsc.Resource.Posix.SourceGenerationContext.Default);
+}
+#endif
+
 var zipCompressResource = new ZipCompressNs.Resource(OpenDsc.Resource.Archive.SourceGenerationContext.Default);
 var zipExpandResource = new ZipExpandNs.Resource(OpenDsc.Resource.Archive.SourceGenerationContext.Default);
-// ... instantiate other resources
+// ... instantiate other cross-platform resources
 
-var command = new CommandBuilder()
+var command = new CommandBuilder();
+
+#if WINDOWS
+command
     .AddResource<GroupNs.Resource, GroupNs.Schema>(groupResource)
     .AddResource<EnvironmentNs.Resource, EnvironmentNs.Schema>(environmentResource)
-    .AddResource<FileSystemAclNs.Resource, FileSystemAclNs.Schema>(fileSystemAclResource)
-    .AddResource<ZipCompressNs.Resource, ZipCompressNs.Schema>(zipCompressResource)
-    .AddResource<ZipExpandNs.Resource, ZipExpandNs.Schema>(zipExpandResource)
-    // ... add other resources
-    .Build();
+    .AddResource<ScheduledTaskNs.Resource, ScheduledTaskNs.Schema>(scheduledTaskResource)
+    .AddResource<FileSystemAclNs.Resource, FileSystemAclNs.Schema>(fileSystemAclResource);
+#endif
 
-return command.Parse(args).Invoke();
+#if !WINDOWS
+if (posixPermissionResource is not null)
+{
+    command.AddResource<PosixPermissionNs.Resource, PosixPermissionNs.Schema>(posixPermissionResource);
+}
+#endif
+
+command
+    .AddResource<ZipCompressNs.Resource, ZipCompressNs.Schema>(zipCompressResource)
+    .AddResource<ZipExpandNs.Resource, ZipExpandNs.Schema>(zipExpandResource);
+
+return command.Build().Parse(args).Invoke();
 ```
 
 **Shared SourceGenerationContext:**
@@ -167,6 +206,30 @@ public override string GetSchema()
 
     return JsonSerializer.Serialize(schema);
 }
+```
+
+**Alternative: Embedded Schema (for complex schemas):**
+
+For resources with very complex schemas (e.g., ScheduledTask with nested objects), you can use a pre-generated embedded JSON schema file:
+
+```csharp
+public override string GetSchema()
+{
+    var assembly = typeof(Resource).Assembly;
+    var resourceName = "OpenDsc.Resource.Windows.ScheduledTask.schema.json";
+
+    using var stream = assembly.GetManifestResourceStream(resourceName)
+        ?? throw new InvalidOperationException($"Embedded resource '{resourceName}' not found.");
+    using var reader = new StreamReader(stream);
+    return reader.ReadToEnd();
+}
+```
+
+The embedded schema file must be added to the `.csproj` as an `EmbeddedResource`:
+```xml
+<ItemGroup>
+  <EmbeddedResource Include="ScheduledTask\schema.json" />
+</ItemGroup>
 ```
 
 **Interface Contract (all interfaces are optional, implement those that make sense):**
@@ -402,7 +465,7 @@ DSC automatically aggregates `_restartRequired` entries from all resources into 
 ```
 
 **Build Process:**
-1. `dotnet publish` compiles platform-specific executable (`OpenDsc.Resource.CommandLine.Windows.exe` or `.Linux`)
+1. `dotnet publish` compiles the unified executable with platform-specific resources based on target OS
 2. Build artifacts are placed in `artifacts/publish/`
 3. LCM service is built to `artifacts/Lcm/`
 4. Portable builds create self-contained executables with embedded runtime in `artifacts/portable/`
@@ -412,16 +475,16 @@ DSC automatically aggregates `_restartRequired` entries from all resources into 
 ```
 artifacts/
 ├── publish/
-│   ├── OpenDsc.Resource.CommandLine.Windows.exe
-│   ├── OpenDsc.Resource.CommandLine.Windows.dsc.manifests.json
+│   ├── OpenDsc.Resources.exe (Windows) / OpenDsc.Resources (Linux/macOS)
+│   ├── OpenDsc.Resources.dsc.manifests.json
 │   └── ...dependencies
 ├── Lcm/                         # LCM service
 │   ├── OpenDsc.Lcm.exe
 │   └── appsettings.json
 ├── portable/                    # Self-contained with .NET runtime
-│   └── OpenDsc.Resource.CommandLine.Windows.exe
+│   └── OpenDsc.Resources.exe (Windows) / OpenDsc.Resources (Linux/macOS)
 └── msi/
-    ├── OpenDsc.Resource.CommandLine.Windows.msi
+    ├── OpenDsc.Resources.msi
     └── OpenDsc.Lcm.msi          # LCM installer
 ```
 
@@ -807,7 +870,9 @@ Use [Environment/](../src/OpenDsc.Resource.Windows/Environment/) as the template
 - **Archive Resources:** [Zip/Compress/](../src/OpenDsc.Resource.Archive/Zip/Compress/), [Zip/Expand/](../src/OpenDsc.Resource.Archive/Zip/Expand/) (multi-level namespace structure)
 - **LCM Service:** [LcmWorker.cs](../src/OpenDsc.Lcm/LcmWorker.cs), [DscExecutor.cs](../src/OpenDsc.Lcm/DscExecutor.cs) (background service patterns)
 - **Test Examples:** [Environment.Tests.ps1](../tests/Windows/Environment.Tests.ps1) (comprehensive integration tests)
-- **Platform Entry Point:** [Program.cs](../src/OpenDsc.Resource.CommandLine.Windows/Program.cs) (resource registration)
+- **Platform Entry Point:** [Program.cs](../src/OpenDsc.Resources/Program.cs) (resource registration with conditional compilation)
+- **Scheduled Task Resource:** [ScheduledTask/](../src/OpenDsc.Resource.Windows/ScheduledTask/) (complex resource with embedded schema, multiple supporting types)
+- **POSIX Resources:** [FileSystem/Permission/](../src/OpenDsc.Resource.Posix/FileSystem/Permission/) (cross-platform file permissions)
 - **Editor Config:** [.editorconfig](../.editorconfig) (C# style rules, file headers)
 
 ## Package Dependencies
