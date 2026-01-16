@@ -2,7 +2,10 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
+using System.Diagnostics;
 using System.Text.Json.Serialization;
+
+using Microsoft.Win32.TaskScheduler;
 
 namespace OpenDsc.Resource.Windows;
 
@@ -18,6 +21,21 @@ namespace OpenDsc.Resource.Windows;
 [JsonSerializable(typeof(Shortcut.Schema), TypeInfoPropertyName = "ShortcutSchema")]
 [JsonSerializable(typeof(OptionalFeature.Schema), TypeInfoPropertyName = "OptionalFeatureSchema")]
 [JsonSerializable(typeof(FileSystem.Acl.Schema), TypeInfoPropertyName = "FileSystemAclSchema")]
+[JsonSerializable(typeof(ScheduledTask.Schema), TypeInfoPropertyName = "ScheduledTaskSchema")]
+[JsonSerializable(typeof(ScheduledTask.Trigger), TypeInfoPropertyName = "ScheduledTaskTrigger")]
+[JsonSerializable(typeof(ScheduledTask.Trigger[]), TypeInfoPropertyName = "ScheduledTaskTriggerArray")]
+[JsonSerializable(typeof(ScheduledTask.Action), TypeInfoPropertyName = "ScheduledTaskAction")]
+[JsonSerializable(typeof(ScheduledTask.Action[]), TypeInfoPropertyName = "ScheduledTaskActionArray")]
+[JsonSerializable(typeof(ScheduledTask.TimeTriggerConfig), TypeInfoPropertyName = "TimeTriggerConfig")]
+[JsonSerializable(typeof(ScheduledTask.DailyTriggerConfig), TypeInfoPropertyName = "DailyTriggerConfig")]
+[JsonSerializable(typeof(ScheduledTask.WeeklyTriggerConfig), TypeInfoPropertyName = "WeeklyTriggerConfig")]
+[JsonSerializable(typeof(ScheduledTask.BootTriggerConfig), TypeInfoPropertyName = "BootTriggerConfig")]
+[JsonSerializable(typeof(ScheduledTask.LogonTriggerConfig), TypeInfoPropertyName = "LogonTriggerConfig")]
+[JsonSerializable(typeof(DayOfWeek), TypeInfoPropertyName = "DayOfWeek")]
+[JsonSerializable(typeof(TaskInstancesPolicy), TypeInfoPropertyName = "TaskInstancesPolicy")]
+[JsonSerializable(typeof(TaskCompatibility), TypeInfoPropertyName = "TaskCompatibility")]
+[JsonSerializable(typeof(TaskLogonType), TypeInfoPropertyName = "TaskLogonType")]
+[JsonSerializable(typeof(ProcessPriorityClass), TypeInfoPropertyName = "ProcessPriorityClass")]
 public partial class SourceGenerationContext : JsonSerializerContext
 {
 }

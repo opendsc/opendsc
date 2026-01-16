@@ -11,6 +11,11 @@
     <PackageReference Include="JsonSchema.Net.Generation" />
     <PackageReference Include="System.DirectoryServices.AccountManagement" />
     <PackageReference Include="System.ServiceProcess.ServiceController" />
+    <PackageReference Include="TaskScheduler" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="**\schema.json" />
   </ItemGroup>
 
 </Project>
