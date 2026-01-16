@@ -18,7 +18,7 @@ namespace OpenDsc.Resource.Windows.ScheduledTask;
 [ExitCode(4, Exception = typeof(ArgumentException), Description = "Invalid argument")]
 public sealed class Resource(JsonSerializerContext context) : DscResource<Schema>(context), IGettable<Schema>, ISettable<Schema>, IDeletable<Schema>, IExportable<Schema>
 {
-    private const string DateTimeFormat = "yyyy-MM-ddTHH:mm:ss";
+    private const string DateTimeFormat = "s";
 
     public override string GetSchema()
     {
