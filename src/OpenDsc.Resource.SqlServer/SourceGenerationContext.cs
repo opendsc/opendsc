@@ -12,6 +12,7 @@ namespace OpenDsc.Resource.SqlServer;
     UseStringEnumConverter = true,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 [JsonSerializable(typeof(Login.Schema), TypeInfoPropertyName = "LoginSchema")]
+[JsonSerializable(typeof(Database.Schema), TypeInfoPropertyName = "DatabaseSchema")]
 public partial class SourceGenerationContext : JsonSerializerContext
 {
 }

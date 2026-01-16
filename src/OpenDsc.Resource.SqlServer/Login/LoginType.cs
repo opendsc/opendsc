@@ -2,7 +2,7 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
-namespace OpenDsc.Resource.SqlServer;
+namespace OpenDsc.Resource.SqlServer.Login;
 
 /// <summary>
 /// Specifies the type of SQL Server login.

@@ -18,7 +18,7 @@ BeforeAll {
     }
 }
 
-Describe 'SQL Server Login Resource' -Tag 'SqlServer' -Skip:(!$IsWindows -or !$script:sqlServerAvailable) {
+Describe 'SQL Server Login Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerAvailable) {
     BeforeAll {
         $publishDir = Join-Path $PSScriptRoot "..\..\artifacts\publish"
         if (Test-Path $publishDir)
