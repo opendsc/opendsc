@@ -16,6 +16,7 @@ using ScheduledTaskNs = OpenDsc.Resource.Windows.ScheduledTask;
 #endif
 
 using SqlServerLoginNs = OpenDsc.Resource.SqlServer.Login;
+using SqlServerDatabaseNs = OpenDsc.Resource.SqlServer.Database;
 
 #if !WINDOWS
 using PosixPermissionNs = OpenDsc.Resource.Posix.FileSystem.Permission;
@@ -40,6 +41,7 @@ var scheduledTaskResource = new ScheduledTaskNs.Resource(OpenDsc.Resource.Window
 #endif
 
 var sqlServerLoginResource = new SqlServerLoginNs.Resource(OpenDsc.Resource.SqlServer.SourceGenerationContext.Default);
+var sqlServerDatabaseResource = new SqlServerDatabaseNs.Resource(OpenDsc.Resource.SqlServer.SourceGenerationContext.Default);
 
 #if !WINDOWS
 #pragma warning disable CA1416 // 'Resource' is only supported on: 'linux', 'macOS'
@@ -73,6 +75,7 @@ command
 #endif
 
 command.AddResource<SqlServerLoginNs.Resource, SqlServerLoginNs.Schema>(sqlServerLoginResource);
+command.AddResource<SqlServerDatabaseNs.Resource, SqlServerDatabaseNs.Schema>(sqlServerDatabaseResource);
 
 #if !WINDOWS
 #pragma warning disable CA1416 // 'Resource' is only supported on: 'linux', 'macOS'
