@@ -17,6 +17,8 @@ using ScheduledTaskNs = OpenDsc.Resource.Windows.ScheduledTask;
 
 #if !WINDOWS
 using PosixPermissionNs = OpenDsc.Resource.Posix.FileSystem.Permission;
+using CronJobNs = OpenDsc.Resource.Posix.Cron.Job;
+using CronEnvironmentNs = OpenDsc.Resource.Posix.Cron.Environment;
 #endif
 
 using FileNs = OpenDsc.Resource.FileSystem.File;
@@ -40,9 +42,13 @@ var scheduledTaskResource = new ScheduledTaskNs.Resource(OpenDsc.Resource.Window
 #if !WINDOWS
 #pragma warning disable CA1416 // 'Resource' is only supported on: 'linux', 'macOS'
 PosixPermissionNs.Resource? posixPermissionResource = null;
+CronJobNs.Resource? cronJobResource = null;
+CronEnvironmentNs.Resource? cronEnvironmentResource = null;
 if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
 {
     posixPermissionResource = new PosixPermissionNs.Resource(OpenDsc.Resource.Posix.SourceGenerationContext.Default);
+    cronJobResource = new CronJobNs.Resource(OpenDsc.Resource.Posix.SourceGenerationContext.Default);
+    cronEnvironmentResource = new CronEnvironmentNs.Resource(OpenDsc.Resource.Posix.SourceGenerationContext.Default);
 }
 #pragma warning restore CA1416
 #endif
@@ -73,6 +79,16 @@ command
 if (posixPermissionResource is not null)
 {
     command.AddResource<PosixPermissionNs.Resource, PosixPermissionNs.Schema>(posixPermissionResource);
+}
+
+if (cronJobResource is not null)
+{
+    command.AddResource<CronJobNs.Resource, CronJobNs.Schema>(cronJobResource);
+}
+
+if (cronEnvironmentResource is not null)
+{
+    command.AddResource<CronEnvironmentNs.Resource, CronEnvironmentNs.Schema>(cronEnvironmentResource);
 }
 #pragma warning restore CA1416
 #endif

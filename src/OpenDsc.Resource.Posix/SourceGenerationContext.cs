@@ -12,6 +12,8 @@ namespace OpenDsc.Resource.Posix;
     UseStringEnumConverter = true,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 [JsonSerializable(typeof(FileSystem.Permission.Schema), TypeInfoPropertyName = "FileSystemPermissionSchema")]
+[JsonSerializable(typeof(Cron.Job.Schema), TypeInfoPropertyName = "CronJobSchema")]
+[JsonSerializable(typeof(Cron.Environment.Schema), TypeInfoPropertyName = "CronEnvironmentSchema")]
 public partial class SourceGenerationContext : JsonSerializerContext
 {
 }
