@@ -9,6 +9,8 @@ using System.Text.Json.Serialization;
 using Json.Schema;
 using Json.Schema.Generation;
 
+using OpenDsc.Schema;
+
 namespace OpenDsc.Resource.Windows.Environment;
 
 using Environment = System.Environment;
@@ -37,7 +39,7 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
 
     public Schema Get(Schema instance)
     {
-        var target = instance.Scope is Scope.Machine ? EnvironmentVariableTarget.Machine : EnvironmentVariableTarget.User;
+        var target = instance.Scope is DscScope.Machine ? EnvironmentVariableTarget.Machine : EnvironmentVariableTarget.User;
         var value = Environment.GetEnvironmentVariable(instance.Name, target);
 
         return new Schema()
@@ -45,7 +47,7 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
             Name = instance.Name,
             Value = value,
             Exist = value is not null,
-            Scope = instance.Scope is Scope.Machine ? Scope.Machine : null
+            Scope = instance.Scope is DscScope.Machine ? DscScope.Machine : null
         };
     }
 
@@ -56,7 +58,7 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
             throw new ArgumentException("Environment variable value cannot be empty.");
         }
 
-        var target = instance.Scope is Scope.Machine ? EnvironmentVariableTarget.Machine : EnvironmentVariableTarget.User;
+        var target = instance.Scope is DscScope.Machine ? EnvironmentVariableTarget.Machine : EnvironmentVariableTarget.User;
         Environment.SetEnvironmentVariable(instance.Name, instance.Value, target);
 
         return null;
@@ -64,7 +66,7 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
 
     public void Delete(Schema instance)
     {
-        var target = instance.Scope is Scope.Machine ? EnvironmentVariableTarget.Machine : EnvironmentVariableTarget.User;
+        var target = instance.Scope is DscScope.Machine ? EnvironmentVariableTarget.Machine : EnvironmentVariableTarget.User;
         Environment.SetEnvironmentVariable(instance.Name, null, target);
     }
 
@@ -77,7 +79,7 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
             {
                 Name = key,
                 Value = machineVars[key]?.ToString(),
-                Scope = Scope.Machine
+                Scope = DscScope.Machine
             };
         }
 

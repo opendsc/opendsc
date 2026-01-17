@@ -125,3 +125,19 @@ public enum DscTraceLevel
     /// </summary>
     Trace
 }
+
+/// <summary>
+/// DSC scope for operations that can target user or machine level.
+/// </summary>
+public enum DscScope
+{
+    /// <summary>
+    /// User scope - affects current user.
+    /// </summary>
+    User,
+
+    /// <summary>
+    /// Machine scope - affects entire machine.
+    /// </summary>
+    Machine
+}
