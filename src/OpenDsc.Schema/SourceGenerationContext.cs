@@ -35,6 +35,7 @@ namespace OpenDsc.Schema;
 [JsonSerializable(typeof(DscSecurityContext))]
 [JsonSerializable(typeof(DscMessageLevel))]
 [JsonSerializable(typeof(DscTraceLevel))]
+[JsonSerializable(typeof(DscScope))]
 public partial class SourceGenerationContext : JsonSerializerContext
 {
 }

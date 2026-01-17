@@ -6,6 +6,8 @@ using System.Text.Json.Serialization;
 
 using Json.Schema.Generation;
 
+using OpenDsc.Schema;
+
 namespace OpenDsc.Resource.Windows.Environment;
 
 [Title("Windows Environment Variable Schema")]
@@ -32,5 +34,5 @@ public sealed class Schema
     [Description("If environment variable should be user or machine scope.")]
     [Nullable(false)]
     [Default("User")]
-    public Scope? Scope { get; set; }
+    public DscScope? Scope { get; set; }
 }
