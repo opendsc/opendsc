@@ -18,6 +18,7 @@ using ScheduledTaskNs = OpenDsc.Resource.Windows.ScheduledTask;
 using SqlServerLoginNs = OpenDsc.Resource.SqlServer.Login;
 using SqlServerDatabaseNs = OpenDsc.Resource.SqlServer.Database;
 using SqlServerDatabasePermissionNs = OpenDsc.Resource.SqlServer.DatabasePermission;
+using SqlServerServerPermissionNs = OpenDsc.Resource.SqlServer.ServerPermission;
 
 #if !WINDOWS
 using PosixPermissionNs = OpenDsc.Resource.Posix.FileSystem.Permission;
@@ -45,6 +46,7 @@ var scheduledTaskResource = new ScheduledTaskNs.Resource(OpenDsc.Resource.Window
 var sqlServerLoginResource = new SqlServerLoginNs.Resource(OpenDsc.Resource.SqlServer.SourceGenerationContext.Default);
 var sqlServerDatabaseResource = new SqlServerDatabaseNs.Resource(OpenDsc.Resource.SqlServer.SourceGenerationContext.Default);
 var sqlServerDatabasePermissionResource = new SqlServerDatabasePermissionNs.Resource(OpenDsc.Resource.SqlServer.SourceGenerationContext.Default);
+var sqlServerServerPermissionResource = new SqlServerServerPermissionNs.Resource(OpenDsc.Resource.SqlServer.SourceGenerationContext.Default);
 
 #if !WINDOWS
 #pragma warning disable CA1416 // 'Resource' is only supported on: 'linux', 'macOS'
@@ -81,6 +83,7 @@ command
 command.AddResource<SqlServerLoginNs.Resource, SqlServerLoginNs.Schema>(sqlServerLoginResource);
 command.AddResource<SqlServerDatabaseNs.Resource, SqlServerDatabaseNs.Schema>(sqlServerDatabaseResource);
 command.AddResource<SqlServerDatabasePermissionNs.Resource, SqlServerDatabasePermissionNs.Schema>(sqlServerDatabasePermissionResource);
+command.AddResource<SqlServerServerPermissionNs.Resource, SqlServerServerPermissionNs.Schema>(sqlServerServerPermissionResource);
 
 #if !WINDOWS
 #pragma warning disable CA1416 // 'Resource' is only supported on: 'linux', 'macOS'
