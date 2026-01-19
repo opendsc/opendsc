@@ -37,9 +37,11 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         // JsonSchema.Net.Generation treats JsonElement as an object with properties,
         // but we want it to accept any valid JSON value (string, number, boolean, null, object, array)
         var schemaObj = JsonNode.Parse(JsonSerializer.Serialize(schema))?.AsObject();
-        if (schemaObj?["properties"]?["value"] != null)
+        if (schemaObj?["properties"]?["value"] is JsonObject valueSchema)
         {
-            schemaObj["properties"]!["value"] = JsonNode.Parse("{\"description\":\"The JSON value to set. Can be a string, number, boolean, null, object, or array.\"}");
+            // Remove type constraint to allow any JSON value
+            valueSchema.Remove("type");
+            valueSchema.Remove("properties");
         }
 
         return schemaObj?.ToJsonString() ?? JsonSerializer.Serialize(schema);
@@ -121,12 +123,8 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         var targetNode = FindOrCreatePath(doc, instance.JsonPath);
         ReplaceNodeValue(targetNode.Parent, targetNode.PropertyName, targetNode.Index, valueNode);
 
-        var options = new JsonSerializerOptions
-        {
-            WriteIndented = true,
-            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-        };
-
+        var writeIndented = IsIndented(content);
+        var options = new JsonSerializerOptions { WriteIndented = writeIndented };
         File.WriteAllText(instance.Path, doc.ToJsonString(options), Encoding.UTF8);
         return null;
     }
@@ -169,12 +167,8 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
                 arr.Remove(value);
             }
 
-            var options = new JsonSerializerOptions
-            {
-                WriteIndented = true,
-                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-            };
-
+            var writeIndented = IsIndented(content);
+            var options = new JsonSerializerOptions { WriteIndented = writeIndented };
             File.WriteAllText(instance.Path, doc.ToJsonString(options), Encoding.UTF8);
         }
     }
@@ -376,5 +370,13 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         public required string Name { get; init; }
         public required bool IsArray { get; init; }
         public required int Index { get; init; }
+    }
+
+    private static bool IsIndented(string jsonContent)
+    {
+        // Check if the JSON contains newlines (indented) or is minified
+        // Trim end to ignore trailing newline that some editors add
+        var trimmed = jsonContent.TrimEnd();
+        return trimmed.Contains('\n') || trimmed.Contains('\r');
     }
 }
