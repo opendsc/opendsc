@@ -57,6 +57,7 @@ managing Windows and cross-platform systems:
 - **[OpenDsc.FileSystem/Directory][directory]** - Manage directories with
   hash-based synchronization
 - **[OpenDsc.FileSystem/SymbolicLink][symlink]** - Manage symbolic links
+- **[OpenDsc.Json/Value][json]** - Manage JSON values at JSONPath locations
 - **[OpenDsc.Xml/Element][xml]** - Manage XML element content and attributes
 - **[OpenDsc.Archive.Zip/Compress][zipcompress]** - Create ZIP archives from
   files and directories
@@ -84,6 +85,7 @@ resources provide Unix-specific functionality not available on Windows.
 [directory]: src/OpenDsc.Resource.FileSystem/Directory/README.md
 [symlink]: src/OpenDsc.Resource.FileSystem/SymbolicLink/README.md
 [posixpermission]: src/OpenDsc.Resource.Posix/FileSystem/Permission/README.md
+[json]: src/OpenDsc.Resource.Json/Value/README.md
 [xml]: src/OpenDsc.Resource.Xml/Element/README.md
 [zipcompress]: src/OpenDsc.Resource.Archive/Zip/Compress/README.md
 [zipexpand]: src/OpenDsc.Resource.Archive/Zip/Expand/README.md

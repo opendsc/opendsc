@@ -22,6 +22,7 @@
   <ItemGroup>
     <ProjectReference Include="..\OpenDsc.Resource.FileSystem\OpenDsc.Resource.FileSystem.csproj" />
     <ProjectReference Include="..\OpenDsc.Resource.Xml\OpenDsc.Resource.Xml.csproj" />
+    <ProjectReference Include="..\OpenDsc.Resource.Json\OpenDsc.Resource.Json.csproj" />
     <ProjectReference Include="..\OpenDsc.Resource.Archive\OpenDsc.Resource.Archive.csproj" />
     <ProjectReference Include="..\OpenDsc.Resource.CommandLine\OpenDsc.Resource.CommandLine.csproj" />
   </ItemGroup>
