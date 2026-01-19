@@ -13,6 +13,7 @@ namespace OpenDsc.Resource.SqlServer;
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 [JsonSerializable(typeof(Login.Schema), TypeInfoPropertyName = "LoginSchema")]
 [JsonSerializable(typeof(Database.Schema), TypeInfoPropertyName = "DatabaseSchema")]
+[JsonSerializable(typeof(DatabasePermission.Schema), TypeInfoPropertyName = "DatabasePermissionSchema")]
 public partial class SourceGenerationContext : JsonSerializerContext
 {
 }
