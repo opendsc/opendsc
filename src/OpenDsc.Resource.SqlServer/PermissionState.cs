@@ -4,7 +4,7 @@
 
 using Json.Schema.Generation;
 
-namespace OpenDsc.Resource.SqlServer.DatabasePermission;
+namespace OpenDsc.Resource.SqlServer;
 
 [Description("Specifies the state of a permission.")]
 public enum PermissionState
