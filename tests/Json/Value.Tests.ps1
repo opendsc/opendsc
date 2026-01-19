@@ -1,6 +1,6 @@
-Describe 'JSON Value Resource' -Tag 'Json' {
+Describe 'JSON Value Resource' -Tag 'Json', 'Windows', 'Linux', 'macOS' {
     BeforeAll {
-        $publishDir = Join-Path $PSScriptRoot "..\artifacts\publish"
+        $publishDir = Join-Path $PSScriptRoot "..\..\artifacts\publish"
         if (Test-Path $publishDir) {
             $env:DSC_RESOURCE_PATH = $publishDir
         }
@@ -32,14 +32,15 @@ Describe 'JSON Value Resource' -Tag 'Json' {
 
     Context 'Get Operation' -Tag 'Get' {
         It 'should return _exist=false for non-existent file' {
+            $nonExistentPath = Join-Path -Path $script:testDir -ChildPath 'NonExistent/file.json'
             $inputJson = @{
-                path = 'C:\NonExistent\file.json'
+                path = $nonExistentPath
                 jsonPath = '$.config.timeout'
             } | ConvertTo-Json -Compress
 
             $result = dsc resource get -r OpenDsc.Json/Value --input $inputJson | ConvertFrom-Json
             $result.actualState._exist | Should -Be $false
-            $result.actualState.path | Should -Be 'C:\NonExistent\file.json'
+            $result.actualState.path | Should -Be $nonExistentPath
         }
 
         It 'should return _exist=false for non-existent value' {
@@ -161,8 +162,9 @@ Describe 'JSON Value Resource' -Tag 'Json' {
 
     Context 'Set Operation - File Not Exist' -Tag 'Set' {
         It 'should fail when file does not exist' {
+            $nonExistentPath = Join-Path -Path $script:testDir -ChildPath 'NonExistent/file.json'
             $inputJson = @{
-                path = 'C:\NonExistent\file.json'
+                path = $nonExistentPath
                 jsonPath = '$.config.name'
                 value = 'TestApp'
             } | ConvertTo-Json -Compress
@@ -399,8 +401,9 @@ Describe 'JSON Value Resource' -Tag 'Json' {
         }
 
         It 'should handle deleting from non-existent file' {
+            $nonExistentPath = Join-Path -Path $script:testDir -ChildPath 'NonExistent/file.json'
             $inputJson = @{
-                path = 'C:\NonExistent\file.json'
+                path = $nonExistentPath
                 jsonPath = '$.config.name'
                 _exist = $false
             } | ConvertTo-Json -Compress
@@ -494,7 +497,7 @@ Describe 'JSON Value Resource' -Tag 'Json' {
         }
     }
 
-    Context 'All Valid JSON Types' -Tag 'Types' {
+    Context 'JSON Types' -Tag 'Types' {
         It 'should handle JSON null value' {
             $jsonPath = Join-Path $script:testDir 'test-null.json'
             @'

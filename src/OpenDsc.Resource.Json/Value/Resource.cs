@@ -109,16 +109,10 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
 
         // When System.Text.Json deserializes {"value": null}, it sets JsonElement? to C# null
         // So we treat C# null as "create JSON null value"
-        JsonNode valueNode;
-        if (!instance.Value.HasValue || instance.Value.Value.ValueKind == JsonValueKind.Null)
-        {
-            valueNode = JsonValue.Create((object?)null)!;
-        }
-        else
-        {
-            valueNode = JsonSerializer.Deserialize<JsonNode>(instance.Value.Value)
+        JsonNode valueNode = !instance.Value.HasValue || instance.Value.Value.ValueKind == JsonValueKind.Null
+            ? JsonValue.Create((object?)null)!
+            : JsonSerializer.Deserialize<JsonNode>(instance.Value.Value)
                 ?? throw new JsonException("Failed to deserialize JSON value");
-        }
 
         var targetNode = FindOrCreatePath(doc, instance.JsonPath);
         ReplaceNodeValue(targetNode.Parent, targetNode.PropertyName, targetNode.Index, valueNode);
