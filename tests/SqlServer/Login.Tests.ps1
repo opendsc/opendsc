@@ -88,7 +88,6 @@ Describe 'SQL Server Login Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerA
             $result = dsc resource list OpenDsc.SqlServer/Login | ConvertFrom-Json
             $result.capabilities | Should -Contain 'get'
             $result.capabilities | Should -Contain 'set'
-            $result.capabilities | Should -Contain 'test'
             $result.capabilities | Should -Contain 'delete'
         }
     }
@@ -199,73 +198,6 @@ Describe 'SQL Server Login Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerA
         }
     }
 
-    Context 'Test Operation' -Tag 'Test' {
-        It 'should return inDesiredState=false for non-existent login when _exist=true' {
-            $inputJson = Get-SqlServerTestInput @{
-                name           = 'NonExistentLogin_Test123'
-            } | ConvertTo-Json -Compress
-
-            $result = dsc resource test -r OpenDsc.SqlServer/Login --input $inputJson | ConvertFrom-Json
-            $result.actualState._inDesiredState | Should -Be $false
-        }
-
-        It 'should return inDesiredState=true for existing login matching desired state' {
-            $loginName = "$($script:testLoginPrefix)TestMatch1"
-
-            # Create login
-            $createJson = Get-SqlServerTestInput @{
-                name            = $loginName
-                loginType       = 'SqlLogin'
-                password        = 'T3stP@ssw0rd!Test123'
-                defaultDatabase = 'master'
-            } | ConvertTo-Json -Compress
-
-            dsc resource set -r OpenDsc.SqlServer/Login --input $createJson | Out-Null
-
-            # Test with matching desired state
-            $testJson = Get-SqlServerTestInput @{
-                name            = $loginName
-                defaultDatabase = 'master'
-            } | ConvertTo-Json -Compress
-
-            $result = dsc resource test -r OpenDsc.SqlServer/Login --input $testJson | ConvertFrom-Json
-            $result.actualState._inDesiredState | Should -Be $true
-
-            # Cleanup
-            dsc resource delete -r OpenDsc.SqlServer/Login --input (Get-SqlServerTestInput @{
-                    name           = $loginName
-                } | ConvertTo-Json -Compress) | Out-Null
-        }
-
-        It 'should return inDesiredState=false for login with different properties' {
-            $loginName = "$($script:testLoginPrefix)TestDiff1"
-
-            # Create login with master as default database
-            $createJson = Get-SqlServerTestInput @{
-                name            = $loginName
-                loginType       = 'SqlLogin'
-                password        = 'T3stP@ssw0rd!Diff123'
-                defaultDatabase = 'master'
-            } | ConvertTo-Json -Compress
-
-            dsc resource set -r OpenDsc.SqlServer/Login --input $createJson | Out-Null
-
-            # Test expecting tempdb as default database
-            $testJson = Get-SqlServerTestInput @{
-                name            = $loginName
-                defaultDatabase = 'tempdb'
-            } | ConvertTo-Json -Compress
-
-            $result = dsc resource test -r OpenDsc.SqlServer/Login --input $testJson | ConvertFrom-Json
-            $result.actualState._inDesiredState | Should -Be $false
-
-            # Cleanup
-            dsc resource delete -r OpenDsc.SqlServer/Login --input (Get-SqlServerTestInput @{
-                    name           = $loginName
-                } | ConvertTo-Json -Compress) | Out-Null
-        }
-    }
-
     Context 'Delete Operation' -Tag 'Delete' {
         It 'should delete SQL login' {
             $loginName = "$($script:testLoginPrefix)Delete1"
@@ -365,6 +297,286 @@ Describe 'SQL Server Login Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerA
             $getResult.actualState.serverRoles | Should -Not -Contain 'dbcreator'
             $getResult.actualState.serverRoles | Should -Contain 'securityadmin'
             $getResult.actualState.serverRoles | Should -Contain 'processadmin'
+
+            # Cleanup
+            dsc resource delete -r OpenDsc.SqlServer/Login --input $verifyJson | Out-Null
+        }
+    }
+
+    Context 'Create Disabled Login' -Tag 'Set' {
+        It 'should create a login that is disabled from the start' {
+            $loginName = "$($script:testLoginPrefix)Disabled1"
+            $inputJson = Get-SqlServerTestInput @{
+                name      = $loginName
+                loginType = 'SqlLogin'
+                password  = 'T3stP@ssw0rd!Disabled123'
+                disabled  = $true
+            } | ConvertTo-Json -Compress
+
+            dsc resource set -r OpenDsc.SqlServer/Login --input $inputJson | Out-Null
+            $LASTEXITCODE | Should -Be 0
+
+            # Verify it was created and is disabled
+            $verifyJson = Get-SqlServerTestInput @{
+                name = $loginName
+            } | ConvertTo-Json -Compress
+
+            $getResult = dsc resource get -r OpenDsc.SqlServer/Login --input $verifyJson | ConvertFrom-Json
+            $getResult.actualState.name | Should -Be $loginName
+            $getResult.actualState.disabled | Should -Be $true
+            $getResult.actualState._exist | Should -Not -Be $false
+
+            # Cleanup
+            dsc resource delete -r OpenDsc.SqlServer/Login --input $verifyJson | Out-Null
+        }
+    }
+
+    Context 'Password Change' -Tag 'Set' {
+        It 'should change password on existing login' {
+            $loginName = "$($script:testLoginPrefix)PwdChange1"
+
+            # Create login with initial password
+            $createJson = Get-SqlServerTestInput @{
+                name      = $loginName
+                loginType = 'SqlLogin'
+                password  = 'T3stP@ssw0rd!Initial123'
+            } | ConvertTo-Json -Compress
+
+            dsc resource set -r OpenDsc.SqlServer/Login --input $createJson | Out-Null
+            $LASTEXITCODE | Should -Be 0
+
+            # Change the password
+            $updateJson = Get-SqlServerTestInput @{
+                name     = $loginName
+                password = 'T3stP@ssw0rd!Changed456'
+            } | ConvertTo-Json -Compress
+
+            dsc resource set -r OpenDsc.SqlServer/Login --input $updateJson | Out-Null
+            $LASTEXITCODE | Should -Be 0
+
+            # Verify login still exists (password is write-only, can't verify directly)
+            $verifyJson = Get-SqlServerTestInput @{
+                name = $loginName
+            } | ConvertTo-Json -Compress
+
+            $getResult = dsc resource get -r OpenDsc.SqlServer/Login --input $verifyJson | ConvertFrom-Json
+            $getResult.actualState.name | Should -Be $loginName
+            $getResult.actualState._exist | Should -Not -Be $false
+
+            # Cleanup
+            dsc resource delete -r OpenDsc.SqlServer/Login --input $verifyJson | Out-Null
+        }
+    }
+
+    Context 'Password Policy Toggle' -Tag 'Set' {
+        It 'should enable password policy on existing login' {
+            $loginName = "$($script:testLoginPrefix)Policy1"
+
+            # Create login with password policy disabled
+            $createJson = Get-SqlServerTestInput @{
+                name                   = $loginName
+                loginType              = 'SqlLogin'
+                password               = 'T3stP@ssw0rd!Policy123'
+                passwordPolicyEnforced = $false
+            } | ConvertTo-Json -Compress
+
+            dsc resource set -r OpenDsc.SqlServer/Login --input $createJson | Out-Null
+
+            # Enable password policy
+            $updateJson = Get-SqlServerTestInput @{
+                name                   = $loginName
+                passwordPolicyEnforced = $true
+            } | ConvertTo-Json -Compress
+
+            dsc resource set -r OpenDsc.SqlServer/Login --input $updateJson | Out-Null
+            $LASTEXITCODE | Should -Be 0
+
+            # Verify policy is enabled
+            $verifyJson = Get-SqlServerTestInput @{
+                name = $loginName
+            } | ConvertTo-Json -Compress
+
+            $getResult = dsc resource get -r OpenDsc.SqlServer/Login --input $verifyJson | ConvertFrom-Json
+            $getResult.actualState.passwordPolicyEnforced | Should -Be $true
+
+            # Cleanup
+            dsc resource delete -r OpenDsc.SqlServer/Login --input $verifyJson | Out-Null
+        }
+
+        It 'should disable password policy on existing login' {
+            $loginName = "$($script:testLoginPrefix)Policy2"
+
+            # Create login with password policy enabled
+            $createJson = Get-SqlServerTestInput @{
+                name                   = $loginName
+                loginType              = 'SqlLogin'
+                password               = 'T3stP@ssw0rd!Policy456'
+                passwordPolicyEnforced = $true
+            } | ConvertTo-Json -Compress
+
+            dsc resource set -r OpenDsc.SqlServer/Login --input $createJson | Out-Null
+
+            # Disable password policy
+            $updateJson = Get-SqlServerTestInput @{
+                name                   = $loginName
+                passwordPolicyEnforced = $false
+            } | ConvertTo-Json -Compress
+
+            dsc resource set -r OpenDsc.SqlServer/Login --input $updateJson | Out-Null
+            $LASTEXITCODE | Should -Be 0
+
+            # Verify policy is disabled
+            $verifyJson = Get-SqlServerTestInput @{
+                name = $loginName
+            } | ConvertTo-Json -Compress
+
+            $getResult = dsc resource get -r OpenDsc.SqlServer/Login --input $verifyJson | ConvertFrom-Json
+            $getResult.actualState.passwordPolicyEnforced | Should -Be $false
+
+            # Cleanup
+            dsc resource delete -r OpenDsc.SqlServer/Login --input $verifyJson | Out-Null
+        }
+    }
+
+    Context 'Password Expiration Toggle' -Tag 'Set' {
+        It 'should enable password expiration on existing login' {
+            $loginName = "$($script:testLoginPrefix)Expiry1"
+
+            # Create login with password expiration disabled (policy must be enabled for expiration)
+            $createJson = Get-SqlServerTestInput @{
+                name                      = $loginName
+                loginType                 = 'SqlLogin'
+                password                  = 'T3stP@ssw0rd!Expiry123'
+                passwordPolicyEnforced    = $true
+                passwordExpirationEnabled = $false
+            } | ConvertTo-Json -Compress
+
+            dsc resource set -r OpenDsc.SqlServer/Login --input $createJson | Out-Null
+
+            # Enable password expiration
+            $updateJson = Get-SqlServerTestInput @{
+                name                      = $loginName
+                passwordExpirationEnabled = $true
+            } | ConvertTo-Json -Compress
+
+            dsc resource set -r OpenDsc.SqlServer/Login --input $updateJson | Out-Null
+            $LASTEXITCODE | Should -Be 0
+
+            # Verify expiration is enabled
+            $verifyJson = Get-SqlServerTestInput @{
+                name = $loginName
+            } | ConvertTo-Json -Compress
+
+            $getResult = dsc resource get -r OpenDsc.SqlServer/Login --input $verifyJson | ConvertFrom-Json
+            $getResult.actualState.passwordExpirationEnabled | Should -Be $true
+
+            # Cleanup
+            dsc resource delete -r OpenDsc.SqlServer/Login --input $verifyJson | Out-Null
+        }
+
+        It 'should disable password expiration on existing login' {
+            $loginName = "$($script:testLoginPrefix)Expiry2"
+
+            # Create login with password expiration enabled
+            $createJson = Get-SqlServerTestInput @{
+                name                      = $loginName
+                loginType                 = 'SqlLogin'
+                password                  = 'T3stP@ssw0rd!Expiry456'
+                passwordPolicyEnforced    = $true
+                passwordExpirationEnabled = $true
+            } | ConvertTo-Json -Compress
+
+            dsc resource set -r OpenDsc.SqlServer/Login --input $createJson | Out-Null
+
+            # Disable password expiration
+            $updateJson = Get-SqlServerTestInput @{
+                name                      = $loginName
+                passwordExpirationEnabled = $false
+            } | ConvertTo-Json -Compress
+
+            dsc resource set -r OpenDsc.SqlServer/Login --input $updateJson | Out-Null
+            $LASTEXITCODE | Should -Be 0
+
+            # Verify expiration is disabled
+            $verifyJson = Get-SqlServerTestInput @{
+                name = $loginName
+            } | ConvertTo-Json -Compress
+
+            $getResult = dsc resource get -r OpenDsc.SqlServer/Login --input $verifyJson | ConvertFrom-Json
+            $getResult.actualState.passwordExpirationEnabled | Should -Be $false
+
+            # Cleanup
+            dsc resource delete -r OpenDsc.SqlServer/Login --input $verifyJson | Out-Null
+        }
+    }
+
+    Context 'Enable Disabled Login' -Tag 'Set' {
+        It 'should re-enable a disabled login' {
+            $loginName = "$($script:testLoginPrefix)ReEnable1"
+
+            # Create a disabled login
+            $createJson = Get-SqlServerTestInput @{
+                name      = $loginName
+                loginType = 'SqlLogin'
+                password  = 'T3stP@ssw0rd!ReEnable123'
+                disabled  = $true
+            } | ConvertTo-Json -Compress
+
+            dsc resource set -r OpenDsc.SqlServer/Login --input $createJson | Out-Null
+
+            # Verify it's disabled
+            $verifyJson = Get-SqlServerTestInput @{
+                name = $loginName
+            } | ConvertTo-Json -Compress
+
+            $getResult = dsc resource get -r OpenDsc.SqlServer/Login --input $verifyJson | ConvertFrom-Json
+            $getResult.actualState.disabled | Should -Be $true
+
+            # Re-enable the login
+            $updateJson = Get-SqlServerTestInput @{
+                name     = $loginName
+                disabled = $false
+            } | ConvertTo-Json -Compress
+
+            dsc resource set -r OpenDsc.SqlServer/Login --input $updateJson | Out-Null
+            $LASTEXITCODE | Should -Be 0
+
+            # Verify it's now enabled
+            $getResult = dsc resource get -r OpenDsc.SqlServer/Login --input $verifyJson | ConvertFrom-Json
+            $getResult.actualState.disabled | Should -Be $false
+
+            # Cleanup
+            dsc resource delete -r OpenDsc.SqlServer/Login --input $verifyJson | Out-Null
+        }
+    }
+
+    Context 'Idempotency' -Tag 'Set' {
+        It 'should be idempotent when creating same login twice' {
+            $loginName = "$($script:testLoginPrefix)Idempotent1"
+            $inputJson = Get-SqlServerTestInput @{
+                name            = $loginName
+                loginType       = 'SqlLogin'
+                password        = 'T3stP@ssw0rd!Idempotent123'
+                defaultDatabase = 'master'
+            } | ConvertTo-Json -Compress
+
+            # First set
+            dsc resource set -r OpenDsc.SqlServer/Login --input $inputJson | Out-Null
+            $LASTEXITCODE | Should -Be 0
+
+            # Second set (should be idempotent)
+            dsc resource set -r OpenDsc.SqlServer/Login --input $inputJson | Out-Null
+            $LASTEXITCODE | Should -Be 0
+
+            # Verify the login exists with correct properties
+            $verifyJson = Get-SqlServerTestInput @{
+                name = $loginName
+            } | ConvertTo-Json -Compress
+
+            $getResult = dsc resource get -r OpenDsc.SqlServer/Login --input $verifyJson | ConvertFrom-Json
+            $getResult.actualState.name | Should -Be $loginName
+            $getResult.actualState.defaultDatabase | Should -Be 'master'
+            $getResult.actualState._exist | Should -Not -Be $false
 
             # Cleanup
             dsc resource delete -r OpenDsc.SqlServer/Login --input $verifyJson | Out-Null

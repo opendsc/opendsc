@@ -73,7 +73,7 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
             try
             {
                 . $helperScript
-                
+
                 $conn = New-Object System.Data.SqlClient.SqlConnection
                 $conn.ConnectionString = Get-SqlServerConnectionString
                 $conn.Open()
@@ -307,6 +307,243 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
             } | ConvertTo-Json -Compress
 
             { dsc resource delete -r OpenDsc.SqlServer/DatabasePermission --input $inputJson } | Should -Not -Throw
+        }
+    }
+
+    Context 'Deny and Remove Deny' -Tag 'Set' {
+        AfterEach {
+            # Clean up any permissions
+            try
+            {
+                $conn = New-Object System.Data.SqlClient.SqlConnection
+                $conn.ConnectionString = "$(Get-SqlServerConnectionString);Database=$($script:testDb)"
+                $conn.Open()
+
+                $cmd = $conn.CreateCommand()
+                $cmd.CommandText = "REVOKE ALTER FROM [$($script:testUser)]"
+                try { $cmd.ExecuteNonQuery() | Out-Null } catch { }
+
+                $conn.Close()
+            }
+            catch { }
+        }
+
+        It 'should deny permission' {
+            $inputJson = Get-SqlServerTestInput @{
+                databaseName   = $script:testDb
+                principal      = $script:testUser
+                permission     = 'Alter'
+                state          = 'Deny'
+            } | ConvertTo-Json -Compress
+
+            dsc resource set -r OpenDsc.SqlServer/DatabasePermission --input $inputJson | Out-Null
+            $LASTEXITCODE | Should -Be 0
+
+            # Verify the permission was denied
+            $verifyJson = Get-SqlServerTestInput @{
+                databaseName   = $script:testDb
+                principal      = $script:testUser
+                permission     = 'Alter'
+            } | ConvertTo-Json -Compress
+
+            $result = dsc resource get -r OpenDsc.SqlServer/DatabasePermission --input $verifyJson | ConvertFrom-Json
+            $result.actualState._exist | Should -Not -Be $false
+            $result.actualState.state | Should -Be 'Deny'
+        }
+
+        It 'should remove deny by deleting permission' {
+            # First deny the permission
+            $denyJson = Get-SqlServerTestInput @{
+                databaseName   = $script:testDb
+                principal      = $script:testUser
+                permission     = 'Alter'
+                state          = 'Deny'
+            } | ConvertTo-Json -Compress
+
+            dsc resource set -r OpenDsc.SqlServer/DatabasePermission --input $denyJson | Out-Null
+
+            # Now delete (revoke) the permission
+            $deleteJson = Get-SqlServerTestInput @{
+                databaseName   = $script:testDb
+                principal      = $script:testUser
+                permission     = 'Alter'
+            } | ConvertTo-Json -Compress
+
+            dsc resource delete -r OpenDsc.SqlServer/DatabasePermission --input $deleteJson | Out-Null
+            $LASTEXITCODE | Should -Be 0
+
+            # Verify the permission no longer exists
+            $result = dsc resource get -r OpenDsc.SqlServer/DatabasePermission --input $deleteJson | ConvertFrom-Json
+            $result.actualState._exist | Should -Be $false
+        }
+    }
+
+    Context 'GrantWithGrant to Grant Transition' -Tag 'Set' {
+        AfterEach {
+            # Clean up any permissions
+            try
+            {
+                $conn = New-Object System.Data.SqlClient.SqlConnection
+                $conn.ConnectionString = "$(Get-SqlServerConnectionString);Database=$($script:testDb)"
+                $conn.Open()
+
+                $cmd = $conn.CreateCommand()
+                $cmd.CommandText = "REVOKE REFERENCES FROM [$($script:testUser)] CASCADE"
+                try { $cmd.ExecuteNonQuery() | Out-Null } catch { }
+
+                $conn.Close()
+            }
+            catch { }
+        }
+
+        It 'should transition from GrantWithGrant to Grant' {
+            # First grant with grant option
+            $grantWithGrantJson = Get-SqlServerTestInput @{
+                databaseName   = $script:testDb
+                principal      = $script:testUser
+                permission     = 'References'
+                state          = 'GrantWithGrant'
+            } | ConvertTo-Json -Compress
+
+            dsc resource set -r OpenDsc.SqlServer/DatabasePermission --input $grantWithGrantJson | Out-Null
+            $LASTEXITCODE | Should -Be 0
+
+            # Verify GrantWithGrant state
+            $verifyJson = Get-SqlServerTestInput @{
+                databaseName   = $script:testDb
+                principal      = $script:testUser
+                permission     = 'References'
+            } | ConvertTo-Json -Compress
+
+            $result = dsc resource get -r OpenDsc.SqlServer/DatabasePermission --input $verifyJson | ConvertFrom-Json
+            $result.actualState.state | Should -Be 'GrantWithGrant'
+
+            # Now change to just Grant (should revoke the grant option)
+            $grantJson = Get-SqlServerTestInput @{
+                databaseName   = $script:testDb
+                principal      = $script:testUser
+                permission     = 'References'
+                state          = 'Grant'
+            } | ConvertTo-Json -Compress
+
+            dsc resource set -r OpenDsc.SqlServer/DatabasePermission --input $grantJson | Out-Null
+            $LASTEXITCODE | Should -Be 0
+
+            # Verify state is now Grant (not GrantWithGrant)
+            $result = dsc resource get -r OpenDsc.SqlServer/DatabasePermission --input $verifyJson | ConvertFrom-Json
+            $result.actualState.state | Should -Be 'Grant'
+        }
+    }
+
+    Context 'Database Role Permissions' -Tag 'Set' {
+        BeforeAll {
+            # Create a test database role
+            try
+            {
+                $conn = New-Object System.Data.SqlClient.SqlConnection
+                $conn.ConnectionString = "$(Get-SqlServerConnectionString);Database=$($script:testDb)"
+                $conn.Open()
+
+                $cmd = $conn.CreateCommand()
+                $cmd.CommandText = "IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = 'OpenDscTestRole' AND type = 'R') CREATE ROLE [OpenDscTestRole]"
+                $cmd.ExecuteNonQuery() | Out-Null
+
+                $conn.Close()
+            }
+            catch
+            {
+                Write-Warning "Failed to create test role: $_"
+            }
+        }
+
+        AfterAll {
+            # Drop the test role
+            try
+            {
+                $conn = New-Object System.Data.SqlClient.SqlConnection
+                $conn.ConnectionString = "$(Get-SqlServerConnectionString);Database=$($script:testDb)"
+                $conn.Open()
+
+                $cmd = $conn.CreateCommand()
+                $cmd.CommandText = "REVOKE SELECT FROM [OpenDscTestRole]"
+                try { $cmd.ExecuteNonQuery() | Out-Null } catch { }
+
+                $cmd.CommandText = "DROP ROLE IF EXISTS [OpenDscTestRole]"
+                try { $cmd.ExecuteNonQuery() | Out-Null } catch { }
+
+                $conn.Close()
+            }
+            catch { }
+        }
+
+        It 'should grant permission to database role' {
+            $inputJson = Get-SqlServerTestInput @{
+                databaseName   = $script:testDb
+                principal      = 'OpenDscTestRole'
+                permission     = 'Select'
+                state          = 'Grant'
+            } | ConvertTo-Json -Compress
+
+            dsc resource set -r OpenDsc.SqlServer/DatabasePermission --input $inputJson | Out-Null
+            $LASTEXITCODE | Should -Be 0
+
+            # Verify the permission was granted to the role
+            $verifyJson = Get-SqlServerTestInput @{
+                databaseName   = $script:testDb
+                principal      = 'OpenDscTestRole'
+                permission     = 'Select'
+            } | ConvertTo-Json -Compress
+
+            $result = dsc resource get -r OpenDsc.SqlServer/DatabasePermission --input $verifyJson | ConvertFrom-Json
+            $result.actualState._exist | Should -Not -Be $false
+            $result.actualState.state | Should -Be 'Grant'
+        }
+    }
+
+    Context 'Idempotency' -Tag 'Set' {
+        AfterEach {
+            # Clean up any permissions
+            try
+            {
+                $conn = New-Object System.Data.SqlClient.SqlConnection
+                $conn.ConnectionString = "$(Get-SqlServerConnectionString);Database=$($script:testDb)"
+                $conn.Open()
+
+                $cmd = $conn.CreateCommand()
+                $cmd.CommandText = "REVOKE EXECUTE FROM [$($script:testUser)]"
+                try { $cmd.ExecuteNonQuery() | Out-Null } catch { }
+
+                $conn.Close()
+            }
+            catch { }
+        }
+
+        It 'should be idempotent when granting same permission twice' {
+            $inputJson = Get-SqlServerTestInput @{
+                databaseName   = $script:testDb
+                principal      = $script:testUser
+                permission     = 'Execute'
+                state          = 'Grant'
+            } | ConvertTo-Json -Compress
+
+            # First set
+            dsc resource set -r OpenDsc.SqlServer/DatabasePermission --input $inputJson | Out-Null
+            $LASTEXITCODE | Should -Be 0
+
+            # Second set (should be idempotent)
+            dsc resource set -r OpenDsc.SqlServer/DatabasePermission --input $inputJson | Out-Null
+            $LASTEXITCODE | Should -Be 0
+
+            # Verify the permission is still granted
+            $verifyJson = Get-SqlServerTestInput @{
+                databaseName   = $script:testDb
+                principal      = $script:testUser
+                permission     = 'Execute'
+            } | ConvertTo-Json -Compress
+
+            $result = dsc resource get -r OpenDsc.SqlServer/DatabasePermission --input $verifyJson | ConvertFrom-Json
+            $result.actualState._exist | Should -Not -Be $false
+            $result.actualState.state | Should -Be 'Grant'
         }
     }
 }

@@ -109,7 +109,8 @@ public sealed class Resource(JsonSerializerContext context)
                     return null;
                 }
 
-                server.Revoke(permissionSet, instance.Principal, false, false);
+                // Revoke with cascade to handle GrantWithGrant and any dependent grants
+                server.Revoke(permissionSet, instance.Principal, false, true);
             }
 
             switch (desiredState)

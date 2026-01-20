@@ -3,8 +3,8 @@
 // terms of the MIT license.
 
 using System.Text.Json.Serialization;
-
 using Json.Schema.Generation;
+using LoginType = Microsoft.SqlServer.Management.Smo.LoginType;
 
 namespace OpenDsc.Resource.SqlServer.Login;
 
@@ -103,9 +103,4 @@ public sealed class Schema
     [Nullable(false)]
     [Default(true)]
     public bool? Exist { get; set; }
-
-    [JsonPropertyName("_inDesiredState")]
-    [Description("Indicates whether the login is in the desired state.")]
-    [ReadOnly]
-    public bool? InDesiredState { get; set; }
 }

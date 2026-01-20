@@ -11,7 +11,7 @@ using Json.Schema.Generation;
 
 using Microsoft.SqlServer.Management.Smo;
 
-using SmoLoginType = Microsoft.SqlServer.Management.Smo.LoginType;
+using LoginType = Microsoft.SqlServer.Management.Smo.LoginType;
 
 namespace OpenDsc.Resource.SqlServer.Login;
 
@@ -26,7 +26,6 @@ public sealed class Resource(JsonSerializerContext context)
     : DscResource<Schema>(context),
       IGettable<Schema>,
       ISettable<Schema>,
-      ITestable<Schema>,
       IDeletable<Schema>,
       IExportable<Schema>
 {
@@ -69,20 +68,20 @@ public sealed class Resource(JsonSerializerContext context)
             {
                 ServerInstance = instance.ServerInstance,
                 Name = login.Name,
-                LoginType = MapLoginType(login.LoginType),
+                LoginType = login.LoginType,
                 DefaultDatabase = login.DefaultDatabase,
                 Language = login.Language,
                 Disabled = login.IsDisabled,
-                PasswordExpirationEnabled = login.LoginType == SmoLoginType.SqlLogin ? login.PasswordExpirationEnabled : null,
-                PasswordPolicyEnforced = login.LoginType == SmoLoginType.SqlLogin ? login.PasswordPolicyEnforced : null,
-                DenyWindowsLogin = (login.LoginType == SmoLoginType.WindowsUser || login.LoginType == SmoLoginType.WindowsGroup)
+                PasswordExpirationEnabled = login.LoginType == LoginType.SqlLogin ? login.PasswordExpirationEnabled : null,
+                PasswordPolicyEnforced = login.LoginType == LoginType.SqlLogin ? login.PasswordPolicyEnforced : null,
+                DenyWindowsLogin = (login.LoginType == LoginType.WindowsUser || login.LoginType == LoginType.WindowsGroup)
                     ? login.DenyWindowsLogin
                     : null,
                 CreateDate = login.CreateDate,
                 DateLastModified = login.DateLastModified,
                 HasAccess = login.HasAccess,
-                IsLocked = login.LoginType == SmoLoginType.SqlLogin ? login.IsLocked : null,
-                IsPasswordExpired = login.LoginType == SmoLoginType.SqlLogin ? login.IsPasswordExpired : null,
+                IsLocked = login.LoginType == LoginType.SqlLogin ? login.IsLocked : null,
+                IsPasswordExpired = login.LoginType == LoginType.SqlLogin ? login.IsPasswordExpired : null,
                 IsSystemObject = login.IsSystemObject,
                 ServerRoles = roles?.Length > 0 ? roles : null
             };
@@ -123,79 +122,6 @@ public sealed class Resource(JsonSerializerContext context)
                 server.ConnectionContext.Disconnect();
             }
         }
-    }
-
-    public TestResult<Schema> Test(Schema instance)
-    {
-        var actualState = Get(instance);
-        bool inDesiredState = true;
-
-        if (instance.Exist == false)
-        {
-            inDesiredState = actualState.Exist == false;
-        }
-        else if (actualState.Exist == false)
-        {
-            inDesiredState = false;
-        }
-        else
-        {
-            if (instance.LoginType.HasValue && actualState.LoginType != instance.LoginType)
-            {
-                inDesiredState = false;
-            }
-
-            if (!string.IsNullOrEmpty(instance.DefaultDatabase) &&
-                !string.Equals(actualState.DefaultDatabase, instance.DefaultDatabase, StringComparison.OrdinalIgnoreCase))
-            {
-                inDesiredState = false;
-            }
-
-            if (!string.IsNullOrEmpty(instance.Language) &&
-                !string.Equals(actualState.Language, instance.Language, StringComparison.OrdinalIgnoreCase))
-            {
-                inDesiredState = false;
-            }
-
-            if (instance.Disabled.HasValue && actualState.Disabled != instance.Disabled)
-            {
-                inDesiredState = false;
-            }
-
-            if (instance.PasswordExpirationEnabled.HasValue &&
-                actualState.PasswordExpirationEnabled != instance.PasswordExpirationEnabled)
-            {
-                inDesiredState = false;
-            }
-
-            if (instance.PasswordPolicyEnforced.HasValue &&
-                actualState.PasswordPolicyEnforced != instance.PasswordPolicyEnforced)
-            {
-                inDesiredState = false;
-            }
-
-            if (instance.DenyWindowsLogin.HasValue && actualState.DenyWindowsLogin != instance.DenyWindowsLogin)
-            {
-                inDesiredState = false;
-            }
-
-            if (instance.ServerRoles != null && instance.ServerRoles.Length > 0)
-            {
-                var actualRoles = new HashSet<string>(
-                    actualState.ServerRoles ?? [],
-                    StringComparer.OrdinalIgnoreCase);
-                var desiredRoles = new HashSet<string>(instance.ServerRoles, StringComparer.OrdinalIgnoreCase);
-
-                if (!desiredRoles.SetEquals(actualRoles))
-                {
-                    inDesiredState = false;
-                }
-            }
-        }
-
-        actualState.InDesiredState = inDesiredState;
-
-        return new TestResult<Schema>(actualState);
     }
 
     public void Delete(Schema instance)
@@ -246,20 +172,20 @@ public sealed class Resource(JsonSerializerContext context)
                 {
                     ServerInstance = serverInstance,
                     Name = login.Name,
-                    LoginType = MapLoginType(login.LoginType),
+                    LoginType = login.LoginType,
                     DefaultDatabase = login.DefaultDatabase,
                     Language = login.Language,
                     Disabled = login.IsDisabled,
-                    PasswordExpirationEnabled = login.LoginType == SmoLoginType.SqlLogin ? login.PasswordExpirationEnabled : null,
-                    PasswordPolicyEnforced = login.LoginType == SmoLoginType.SqlLogin ? login.PasswordPolicyEnforced : null,
-                    DenyWindowsLogin = (login.LoginType == SmoLoginType.WindowsUser || login.LoginType == SmoLoginType.WindowsGroup)
+                    PasswordExpirationEnabled = login.LoginType == LoginType.SqlLogin ? login.PasswordExpirationEnabled : null,
+                    PasswordPolicyEnforced = login.LoginType == LoginType.SqlLogin ? login.PasswordPolicyEnforced : null,
+                    DenyWindowsLogin = (login.LoginType == LoginType.WindowsUser || login.LoginType == LoginType.WindowsGroup)
                         ? login.DenyWindowsLogin
                         : null,
                     CreateDate = login.CreateDate,
                     DateLastModified = login.DateLastModified,
                     HasAccess = login.HasAccess,
-                    IsLocked = login.LoginType == SmoLoginType.SqlLogin ? login.IsLocked : null,
-                    IsPasswordExpired = login.LoginType == SmoLoginType.SqlLogin ? login.IsPasswordExpired : null,
+                    IsLocked = login.LoginType == LoginType.SqlLogin ? login.IsLocked : null,
+                    IsPasswordExpired = login.LoginType == LoginType.SqlLogin ? login.IsPasswordExpired : null,
                     IsSystemObject = login.IsSystemObject,
                     ServerRoles = roles?.Length > 0 ? roles : null
                 });
@@ -281,7 +207,7 @@ public sealed class Resource(JsonSerializerContext context)
 
         var login = new Microsoft.SqlServer.Management.Smo.Login(server, instance.Name)
         {
-            LoginType = MapToSmoLoginType(loginType)
+            LoginType = loginType
         };
 
         if (!string.IsNullOrEmpty(instance.DefaultDatabase))
@@ -357,7 +283,7 @@ public sealed class Resource(JsonSerializerContext context)
             altered = true;
         }
 
-        if (login.LoginType == SmoLoginType.SqlLogin)
+        if (login.LoginType == LoginType.SqlLogin)
         {
             if (instance.PasswordExpirationEnabled.HasValue &&
                 login.PasswordExpirationEnabled != instance.PasswordExpirationEnabled.Value)
@@ -379,7 +305,7 @@ public sealed class Resource(JsonSerializerContext context)
             }
         }
 
-        if ((login.LoginType == SmoLoginType.WindowsUser || login.LoginType == SmoLoginType.WindowsGroup) &&
+        if ((login.LoginType == LoginType.WindowsUser || login.LoginType == LoginType.WindowsGroup) &&
             instance.DenyWindowsLogin.HasValue && login.DenyWindowsLogin != instance.DenyWindowsLogin.Value)
         {
             login.DenyWindowsLogin = instance.DenyWindowsLogin.Value;
@@ -429,30 +355,6 @@ public sealed class Resource(JsonSerializerContext context)
             server.Roles[roleName]?.DropMember(login.Name);
         }
     }
-
-    private static LoginType MapLoginType(SmoLoginType smoLoginType) => smoLoginType switch
-    {
-        SmoLoginType.WindowsUser => LoginType.WindowsUser,
-        SmoLoginType.WindowsGroup => LoginType.WindowsGroup,
-        SmoLoginType.SqlLogin => LoginType.SqlLogin,
-        SmoLoginType.Certificate => LoginType.Certificate,
-        SmoLoginType.AsymmetricKey => LoginType.AsymmetricKey,
-        SmoLoginType.ExternalUser => LoginType.ExternalUser,
-        SmoLoginType.ExternalGroup => LoginType.ExternalGroup,
-        _ => LoginType.SqlLogin
-    };
-
-    private static SmoLoginType MapToSmoLoginType(LoginType loginType) => loginType switch
-    {
-        LoginType.WindowsUser => SmoLoginType.WindowsUser,
-        LoginType.WindowsGroup => SmoLoginType.WindowsGroup,
-        LoginType.SqlLogin => SmoLoginType.SqlLogin,
-        LoginType.Certificate => SmoLoginType.Certificate,
-        LoginType.AsymmetricKey => SmoLoginType.AsymmetricKey,
-        LoginType.ExternalUser => SmoLoginType.ExternalUser,
-        LoginType.ExternalGroup => SmoLoginType.ExternalGroup,
-        _ => SmoLoginType.SqlLogin
-    };
 
     private static string[]? StringCollectionToArray(StringCollection? collection)
     {

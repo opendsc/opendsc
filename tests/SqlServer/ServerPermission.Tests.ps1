@@ -89,6 +89,15 @@ Describe 'SQL Server Server Permission Resource' -Tag 'SqlServer' -Skip:(!$scrip
                 $cmd.CommandText = "REVOKE VIEW ANY ERROR LOG FROM [$($script:testLogin)]"
                 try { $cmd.ExecuteNonQuery() | Out-Null } catch { }
 
+                $cmd.CommandText = "REVOKE VIEW ANY DEFINITION FROM [$($script:testLogin)]"
+                try { $cmd.ExecuteNonQuery() | Out-Null } catch { }
+
+                $cmd.CommandText = "REVOKE ALTER ANY LOGIN FROM [$($script:testLogin)]"
+                try { $cmd.ExecuteNonQuery() | Out-Null } catch { }
+
+                $cmd.CommandText = "REVOKE CONNECT SQL FROM [$($script:testLogin)]"
+                try { $cmd.ExecuteNonQuery() | Out-Null } catch { }
+
                 # Drop the test login
                 $cmd.CommandText = "IF EXISTS (SELECT 1 FROM sys.server_principals WHERE name = '$($script:testLogin)') DROP LOGIN [$($script:testLogin)]"
                 try { $cmd.ExecuteNonQuery() | Out-Null } catch { }
@@ -291,6 +300,309 @@ Describe 'SQL Server Server Permission Resource' -Tag 'SqlServer' -Skip:(!$scrip
             } | ConvertTo-Json -Compress
 
             { dsc resource delete -r OpenDsc.SqlServer/ServerPermission --input $inputJson } | Should -Not -Throw
+        }
+    }
+
+    Context 'Deny and Remove Deny' -Tag 'Set' {
+        AfterEach {
+            # Cleanup any permissions
+            try
+            {
+                $conn = New-Object System.Data.SqlClient.SqlConnection
+                $conn.ConnectionString = Get-SqlServerConnectionString
+                $conn.Open()
+
+                $cmd = $conn.CreateCommand()
+                $cmd.CommandText = "REVOKE VIEW ANY DEFINITION FROM [$($script:testLogin)]"
+                try { $cmd.ExecuteNonQuery() | Out-Null } catch { }
+
+                $conn.Close()
+            }
+            catch { }
+        }
+
+        It 'should deny a permission' {
+            $inputJson = Get-SqlServerTestInput @{
+                principal  = $script:testLogin
+                permission = 'ViewAnyDefinition'
+                state      = 'Deny'
+            } | ConvertTo-Json -Compress
+
+            dsc resource set -r OpenDsc.SqlServer/ServerPermission --input $inputJson | Out-Null
+            $LASTEXITCODE | Should -Be 0
+
+            # Verify the permission was denied
+            $verifyJson = Get-SqlServerTestInput @{
+                principal  = $script:testLogin
+                permission = 'ViewAnyDefinition'
+            } | ConvertTo-Json -Compress
+
+            $result = dsc resource get -r OpenDsc.SqlServer/ServerPermission --input $verifyJson | ConvertFrom-Json
+            $result.actualState._exist | Should -Not -Be $false
+            $result.actualState.state | Should -Be 'Deny'
+        }
+
+        It 'should remove a denied permission' {
+            # First deny the permission
+            $denyJson = Get-SqlServerTestInput @{
+                principal  = $script:testLogin
+                permission = 'ViewAnyDefinition'
+                state      = 'Deny'
+            } | ConvertTo-Json -Compress
+
+            dsc resource set -r OpenDsc.SqlServer/ServerPermission --input $denyJson | Out-Null
+
+            # Now remove the deny by deleting
+            $deleteJson = Get-SqlServerTestInput @{
+                principal  = $script:testLogin
+                permission = 'ViewAnyDefinition'
+            } | ConvertTo-Json -Compress
+
+            dsc resource delete -r OpenDsc.SqlServer/ServerPermission --input $deleteJson | Out-Null
+            $LASTEXITCODE | Should -Be 0
+
+            # Verify the permission was removed
+            $result = dsc resource get -r OpenDsc.SqlServer/ServerPermission --input $deleteJson | ConvertFrom-Json
+            $result.actualState._exist | Should -Be $false
+        }
+    }
+
+    Context 'GrantWithGrant to Grant Transition' -Tag 'Set' {
+        AfterEach {
+            # Cleanup any permissions
+            try
+            {
+                $conn = New-Object System.Data.SqlClient.SqlConnection
+                $conn.ConnectionString = Get-SqlServerConnectionString
+                $conn.Open()
+
+                $cmd = $conn.CreateCommand()
+                $cmd.CommandText = "REVOKE ALTER ANY LOGIN FROM [$($script:testLogin)]"
+                try { $cmd.ExecuteNonQuery() | Out-Null } catch { }
+
+                $conn.Close()
+            }
+            catch { }
+        }
+
+        It 'should change permission from GrantWithGrant to Grant' {
+            # First grant with grant option
+            $grantWithGrantJson = Get-SqlServerTestInput @{
+                principal  = $script:testLogin
+                permission = 'AlterAnyLogin'
+                state      = 'GrantWithGrant'
+            } | ConvertTo-Json -Compress
+
+            dsc resource set -r OpenDsc.SqlServer/ServerPermission --input $grantWithGrantJson | Out-Null
+            $LASTEXITCODE | Should -Be 0
+
+            # Verify GrantWithGrant
+            $verifyJson = Get-SqlServerTestInput @{
+                principal  = $script:testLogin
+                permission = 'AlterAnyLogin'
+            } | ConvertTo-Json -Compress
+
+            $result = dsc resource get -r OpenDsc.SqlServer/ServerPermission --input $verifyJson | ConvertFrom-Json
+            $result.actualState.state | Should -Be 'GrantWithGrant'
+
+            # Now change to just Grant (remove the with grant option)
+            $grantJson = Get-SqlServerTestInput @{
+                principal  = $script:testLogin
+                permission = 'AlterAnyLogin'
+                state      = 'Grant'
+            } | ConvertTo-Json -Compress
+
+            dsc resource set -r OpenDsc.SqlServer/ServerPermission --input $grantJson | Out-Null
+            $LASTEXITCODE | Should -Be 0
+
+            # Verify it changed to Grant
+            $result = dsc resource get -r OpenDsc.SqlServer/ServerPermission --input $verifyJson | ConvertFrom-Json
+            $result.actualState._exist | Should -Not -Be $false
+            $result.actualState.state | Should -Be 'Grant'
+        }
+    }
+
+    Context 'Server Role Permissions' -Tag 'Set' {
+        BeforeAll {
+            # Create a test server role
+            $script:testRole = "$($script:testLoginPrefix)Role"
+            try
+            {
+                $conn = New-Object System.Data.SqlClient.SqlConnection
+                $conn.ConnectionString = Get-SqlServerConnectionString
+                $conn.Open()
+
+                $cmd = $conn.CreateCommand()
+                $cmd.CommandText = "IF NOT EXISTS (SELECT 1 FROM sys.server_principals WHERE name = '$($script:testRole)' AND type = 'R') CREATE SERVER ROLE [$($script:testRole)]"
+                $cmd.ExecuteNonQuery() | Out-Null
+
+                $conn.Close()
+            }
+            catch
+            {
+                Write-Warning "Failed to create test server role: $_"
+            }
+        }
+
+        AfterAll {
+            # Cleanup test server role
+            try
+            {
+                $conn = New-Object System.Data.SqlClient.SqlConnection
+                $conn.ConnectionString = Get-SqlServerConnectionString
+                $conn.Open()
+
+                $cmd = $conn.CreateCommand()
+
+                # Revoke permissions first
+                $cmd.CommandText = "REVOKE VIEW SERVER STATE FROM [$($script:testRole)]"
+                try { $cmd.ExecuteNonQuery() | Out-Null } catch { }
+
+                $cmd.CommandText = "REVOKE ALTER ANY ENDPOINT FROM [$($script:testRole)]"
+                try { $cmd.ExecuteNonQuery() | Out-Null } catch { }
+
+                # Drop the server role
+                $cmd.CommandText = "IF EXISTS (SELECT 1 FROM sys.server_principals WHERE name = '$($script:testRole)' AND type = 'R') DROP SERVER ROLE [$($script:testRole)]"
+                try { $cmd.ExecuteNonQuery() | Out-Null } catch { }
+
+                $conn.Close()
+            }
+            catch
+            {
+                Write-Warning "Failed to cleanup test server role: $_"
+            }
+        }
+
+        It 'should grant permission to a server role' {
+            $inputJson = Get-SqlServerTestInput @{
+                principal  = $script:testRole
+                permission = 'ViewServerState'
+                state      = 'Grant'
+            } | ConvertTo-Json -Compress
+
+            dsc resource set -r OpenDsc.SqlServer/ServerPermission --input $inputJson | Out-Null
+            $LASTEXITCODE | Should -Be 0
+
+            # Verify the permission was granted
+            $verifyJson = Get-SqlServerTestInput @{
+                principal  = $script:testRole
+                permission = 'ViewServerState'
+            } | ConvertTo-Json -Compress
+
+            $result = dsc resource get -r OpenDsc.SqlServer/ServerPermission --input $verifyJson | ConvertFrom-Json
+            $result.actualState._exist | Should -Not -Be $false
+            $result.actualState.state | Should -Be 'Grant'
+        }
+
+        It 'should deny permission to a server role' {
+            $inputJson = Get-SqlServerTestInput @{
+                principal  = $script:testRole
+                permission = 'AlterAnyEndpoint'
+                state      = 'Deny'
+            } | ConvertTo-Json -Compress
+
+            dsc resource set -r OpenDsc.SqlServer/ServerPermission --input $inputJson | Out-Null
+            $LASTEXITCODE | Should -Be 0
+
+            # Verify the permission was denied
+            $verifyJson = Get-SqlServerTestInput @{
+                principal  = $script:testRole
+                permission = 'AlterAnyEndpoint'
+            } | ConvertTo-Json -Compress
+
+            $result = dsc resource get -r OpenDsc.SqlServer/ServerPermission --input $verifyJson | ConvertFrom-Json
+            $result.actualState._exist | Should -Not -Be $false
+            $result.actualState.state | Should -Be 'Deny'
+        }
+    }
+
+    Context 'Idempotency' -Tag 'Set' {
+        AfterEach {
+            # Cleanup any permissions
+            try
+            {
+                $conn = New-Object System.Data.SqlClient.SqlConnection
+                $conn.ConnectionString = Get-SqlServerConnectionString
+                $conn.Open()
+
+                $cmd = $conn.CreateCommand()
+                $cmd.CommandText = "REVOKE CONNECT SQL FROM [$($script:testLogin)]"
+                try { $cmd.ExecuteNonQuery() | Out-Null } catch { }
+
+                $conn.Close()
+            }
+            catch { }
+        }
+
+        It 'should be idempotent when granting the same permission twice' {
+            $inputJson = Get-SqlServerTestInput @{
+                principal  = $script:testLogin
+                permission = 'ConnectSql'
+                state      = 'Grant'
+            } | ConvertTo-Json -Compress
+
+            # First application
+            dsc resource set -r OpenDsc.SqlServer/ServerPermission --input $inputJson | Out-Null
+            $LASTEXITCODE | Should -Be 0
+
+            # Second application (should not fail)
+            dsc resource set -r OpenDsc.SqlServer/ServerPermission --input $inputJson | Out-Null
+            $LASTEXITCODE | Should -Be 0
+
+            # Verify the permission is still granted
+            $verifyJson = Get-SqlServerTestInput @{
+                principal  = $script:testLogin
+                permission = 'ConnectSql'
+            } | ConvertTo-Json -Compress
+
+            $result = dsc resource get -r OpenDsc.SqlServer/ServerPermission --input $verifyJson | ConvertFrom-Json
+            $result.actualState._exist | Should -Not -Be $false
+            $result.actualState.state | Should -Be 'Grant'
+        }
+
+        It 'should be idempotent when denying the same permission twice' {
+            $inputJson = Get-SqlServerTestInput @{
+                principal  = $script:testLogin
+                permission = 'ConnectSql'
+                state      = 'Deny'
+            } | ConvertTo-Json -Compress
+
+            # First application
+            dsc resource set -r OpenDsc.SqlServer/ServerPermission --input $inputJson | Out-Null
+            $LASTEXITCODE | Should -Be 0
+
+            # Second application (should not fail)
+            dsc resource set -r OpenDsc.SqlServer/ServerPermission --input $inputJson | Out-Null
+            $LASTEXITCODE | Should -Be 0
+
+            # Verify the permission is still denied
+            $verifyJson = Get-SqlServerTestInput @{
+                principal  = $script:testLogin
+                permission = 'ConnectSql'
+            } | ConvertTo-Json -Compress
+
+            $result = dsc resource get -r OpenDsc.SqlServer/ServerPermission --input $verifyJson | ConvertFrom-Json
+            $result.actualState._exist | Should -Not -Be $false
+            $result.actualState.state | Should -Be 'Deny'
+        }
+
+        It 'should be idempotent when deleting a non-existent permission twice' {
+            $inputJson = Get-SqlServerTestInput @{
+                principal  = $script:testLogin
+                permission = 'ConnectSql'
+            } | ConvertTo-Json -Compress
+
+            # First deletion (permission doesn't exist)
+            dsc resource delete -r OpenDsc.SqlServer/ServerPermission --input $inputJson | Out-Null
+            $LASTEXITCODE | Should -Be 0
+
+            # Second deletion (still doesn't exist)
+            dsc resource delete -r OpenDsc.SqlServer/ServerPermission --input $inputJson | Out-Null
+            $LASTEXITCODE | Should -Be 0
+
+            # Verify the permission still doesn't exist
+            $result = dsc resource get -r OpenDsc.SqlServer/ServerPermission --input $inputJson | ConvertFrom-Json
+            $result.actualState._exist | Should -Be $false
         }
     }
 }
