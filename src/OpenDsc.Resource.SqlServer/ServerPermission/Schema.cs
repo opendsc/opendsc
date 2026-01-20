@@ -20,6 +20,16 @@ public sealed class Schema
     [Pattern(@"^.+$")]
     public string ServerInstance { get; set; } = string.Empty;
 
+    [Description("The username for SQL Server authentication when connecting to the server. If not specified, Windows Authentication is used.")]
+    [Nullable(false)]
+    [WriteOnly]
+    public string? ConnectUsername { get; set; }
+
+    [Description("The password for SQL Server authentication when connecting to the server. Required when ConnectUsername is specified.")]
+    [Nullable(false)]
+    [WriteOnly]
+    public string? ConnectPassword { get; set; }
+
     [Required]
     [Description("The name of the principal (login or server role) to grant or deny permissions to.")]
     [Pattern(@"^.+$")]

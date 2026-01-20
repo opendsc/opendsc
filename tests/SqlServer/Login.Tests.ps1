@@ -1,14 +1,22 @@
-# Skip SQL Server tests if no SQL Server instance is available
-BeforeDiscovery {
-    # Load shared SQL Server installation script
-    . $PSScriptRoot/Install-SqlServer.ps1
+[CmdletBinding()]
+param (
+    [Parameter()]
+    $UtilitiesPath = (Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) 'sharedScripts' 'utilities')
+)
 
-    # Initialize SQL Server (installs if in GitHub Actions)
+$script:helperScript = Join-Path $UtilitiesPath 'Install-SqlServer.ps1'
+
+BeforeDiscovery {
+    # Dot-source script
+    . $helperScript
+
     $script:sqlServerAvailable = Initialize-SqlServerForTests
 }
 
 Describe 'SQL Server Login Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerAvailable) {
     BeforeAll {
+        . $helperScript
+
         $script:sqlServerInstance = if ($env:SQLSERVER_INSTANCE) { $env:SQLSERVER_INSTANCE } else { '.' }
 
         $publishDir = Join-Path $PSScriptRoot "..\..\artifacts\publish"
@@ -27,7 +35,7 @@ Describe 'SQL Server Login Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerA
             try
             {
                 $conn = New-Object System.Data.SqlClient.SqlConnection
-                $conn.ConnectionString = "Server=$script:sqlServerInstance;Integrated Security=True"
+                $conn.ConnectionString = Get-SqlServerConnectionString
                 $conn.Open()
 
                 $cmd = $conn.CreateCommand()
@@ -87,9 +95,8 @@ Describe 'SQL Server Login Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerA
 
     Context 'Get Operation' -Tag 'Get' {
         It 'should return _exist=false for non-existent login' {
-            $inputJson = @{
-                serverInstance = $script:sqlServerInstance
-                name           = 'NonExistentLogin_12345_XYZ'
+            $inputJson = Get-SqlServerTestInput @{
+                name = 'NonExistentLogin_12345_XYZ'
             } | ConvertTo-Json -Compress
 
             $result = dsc resource get -r OpenDsc.SqlServer/Login --input $inputJson | ConvertFrom-Json
@@ -98,9 +105,8 @@ Describe 'SQL Server Login Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerA
         }
 
         It 'should return properties of existing sa login' {
-            $inputJson = @{
-                serverInstance = $script:sqlServerInstance
-                name           = 'sa'
+            $inputJson = Get-SqlServerTestInput @{
+                name = 'sa'
             } | ConvertTo-Json -Compress
 
             $result = dsc resource get -r OpenDsc.SqlServer/Login --input $inputJson | ConvertFrom-Json
@@ -113,8 +119,7 @@ Describe 'SQL Server Login Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerA
     Context 'Set Operation - SQL Login' -Tag 'Set' {
         It 'should create a new SQL login' {
             $loginName = "$($script:testLoginPrefix)Create1"
-            $inputJson = @{
-                serverInstance            = $script:sqlServerInstance
+            $inputJson = Get-SqlServerTestInput @{
                 name                      = $loginName
                 loginType                 = 'SqlLogin'
                 password                  = 'T3stP@ssw0rd!Secure123'
@@ -126,9 +131,8 @@ Describe 'SQL Server Login Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerA
             $LASTEXITCODE | Should -Be 0
 
             # Verify it was created
-            $verifyJson = @{
-                serverInstance = $script:sqlServerInstance
-                name           = $loginName
+            $verifyJson = Get-SqlServerTestInput @{
+                name = $loginName
             } | ConvertTo-Json -Compress
 
             $getResult = dsc resource get -r OpenDsc.SqlServer/Login --input $verifyJson | ConvertFrom-Json
@@ -137,9 +141,8 @@ Describe 'SQL Server Login Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerA
             $getResult.actualState._exist | Should -Not -Be $false
 
             # Cleanup
-            $deleteJson = @{
-                serverInstance = $script:sqlServerInstance
-                name           = $loginName
+            $deleteJson = Get-SqlServerTestInput @{
+                name = $loginName
             } | ConvertTo-Json -Compress
             dsc resource delete -r OpenDsc.SqlServer/Login --input $deleteJson | Out-Null
         }
@@ -148,8 +151,7 @@ Describe 'SQL Server Login Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerA
             $loginName = "$($script:testLoginPrefix)Update1"
 
             # Create initial login
-            $createJson = @{
-                serverInstance  = $script:sqlServerInstance
+            $createJson = Get-SqlServerTestInput @{
                 name            = $loginName
                 loginType       = 'SqlLogin'
                 password        = 'T3stP@ssw0rd!Initial123'
@@ -159,8 +161,7 @@ Describe 'SQL Server Login Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerA
             dsc resource set -r OpenDsc.SqlServer/Login --input $createJson | Out-Null
 
             # Update the login
-            $updateJson = @{
-                serverInstance  = $script:sqlServerInstance
+            $updateJson = Get-SqlServerTestInput @{
                 name            = $loginName
                 defaultDatabase = 'tempdb'
                 disabled        = $true
@@ -170,8 +171,7 @@ Describe 'SQL Server Login Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerA
             $LASTEXITCODE | Should -Be 0
 
             # Verify update
-            $verifyJson = @{
-                serverInstance = $script:sqlServerInstance
+            $verifyJson = Get-SqlServerTestInput @{
                 name           = $loginName
             } | ConvertTo-Json -Compress
 
@@ -180,8 +180,7 @@ Describe 'SQL Server Login Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerA
             $getResult.actualState.disabled | Should -Be $true
 
             # Cleanup
-            $deleteJson = @{
-                serverInstance = $script:sqlServerInstance
+            $deleteJson = Get-SqlServerTestInput @{
                 name           = $loginName
             } | ConvertTo-Json -Compress
             dsc resource delete -r OpenDsc.SqlServer/Login --input $deleteJson | Out-Null
@@ -190,8 +189,7 @@ Describe 'SQL Server Login Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerA
 
     Context 'Test Operation' -Tag 'Test' {
         It 'should return inDesiredState=false for non-existent login when _exist=true' {
-            $inputJson = @{
-                serverInstance = $script:sqlServerInstance
+            $inputJson = Get-SqlServerTestInput @{
                 name           = 'NonExistentLogin_Test123'
             } | ConvertTo-Json -Compress
 
@@ -203,8 +201,7 @@ Describe 'SQL Server Login Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerA
             $loginName = "$($script:testLoginPrefix)TestMatch1"
 
             # Create login
-            $createJson = @{
-                serverInstance  = $script:sqlServerInstance
+            $createJson = Get-SqlServerTestInput @{
                 name            = $loginName
                 loginType       = 'SqlLogin'
                 password        = 'T3stP@ssw0rd!Test123'
@@ -214,8 +211,7 @@ Describe 'SQL Server Login Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerA
             dsc resource set -r OpenDsc.SqlServer/Login --input $createJson | Out-Null
 
             # Test with matching desired state
-            $testJson = @{
-                serverInstance  = $script:sqlServerInstance
+            $testJson = Get-SqlServerTestInput @{
                 name            = $loginName
                 defaultDatabase = 'master'
             } | ConvertTo-Json -Compress
@@ -224,8 +220,7 @@ Describe 'SQL Server Login Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerA
             $result.actualState._inDesiredState | Should -Be $true
 
             # Cleanup
-            dsc resource delete -r OpenDsc.SqlServer/Login --input (@{
-                    serverInstance = $script:sqlServerInstance
+            dsc resource delete -r OpenDsc.SqlServer/Login --input (Get-SqlServerTestInput @{
                     name           = $loginName
                 } | ConvertTo-Json -Compress) | Out-Null
         }
@@ -234,8 +229,7 @@ Describe 'SQL Server Login Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerA
             $loginName = "$($script:testLoginPrefix)TestDiff1"
 
             # Create login with master as default database
-            $createJson = @{
-                serverInstance  = $script:sqlServerInstance
+            $createJson = Get-SqlServerTestInput @{
                 name            = $loginName
                 loginType       = 'SqlLogin'
                 password        = 'T3stP@ssw0rd!Diff123'
@@ -245,8 +239,7 @@ Describe 'SQL Server Login Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerA
             dsc resource set -r OpenDsc.SqlServer/Login --input $createJson | Out-Null
 
             # Test expecting tempdb as default database
-            $testJson = @{
-                serverInstance  = $script:sqlServerInstance
+            $testJson = Get-SqlServerTestInput @{
                 name            = $loginName
                 defaultDatabase = 'tempdb'
             } | ConvertTo-Json -Compress
@@ -255,8 +248,7 @@ Describe 'SQL Server Login Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerA
             $result.actualState._inDesiredState | Should -Be $false
 
             # Cleanup
-            dsc resource delete -r OpenDsc.SqlServer/Login --input (@{
-                    serverInstance = $script:sqlServerInstance
+            dsc resource delete -r OpenDsc.SqlServer/Login --input (Get-SqlServerTestInput @{
                     name           = $loginName
                 } | ConvertTo-Json -Compress) | Out-Null
         }
@@ -267,8 +259,7 @@ Describe 'SQL Server Login Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerA
             $loginName = "$($script:testLoginPrefix)Delete1"
 
             # Create a login to delete
-            $createJson = @{
-                serverInstance = $script:sqlServerInstance
+            $createJson = Get-SqlServerTestInput @{
                 name           = $loginName
                 loginType      = 'SqlLogin'
                 password       = 'T3stP@ssw0rd!Delete123'
@@ -277,8 +268,7 @@ Describe 'SQL Server Login Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerA
             dsc resource set -r OpenDsc.SqlServer/Login --input $createJson | Out-Null
 
             # Delete the login
-            $deleteJson = @{
-                serverInstance = $script:sqlServerInstance
+            $deleteJson = Get-SqlServerTestInput @{
                 name           = $loginName
             } | ConvertTo-Json -Compress
 
@@ -286,8 +276,7 @@ Describe 'SQL Server Login Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerA
             $LASTEXITCODE | Should -Be 0
 
             # Verify deletion
-            $verifyJson = @{
-                serverInstance = $script:sqlServerInstance
+            $verifyJson = Get-SqlServerTestInput @{
                 name           = $loginName
             } | ConvertTo-Json -Compress
 
@@ -296,8 +285,7 @@ Describe 'SQL Server Login Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerA
         }
 
         It 'should handle deleting non-existent login gracefully' {
-            $inputJson = @{
-                serverInstance = $script:sqlServerInstance
+            $inputJson = Get-SqlServerTestInput @{
                 name           = 'NonExistentLogin_ToDelete_XYZ'
             } | ConvertTo-Json -Compress
 
@@ -311,8 +299,7 @@ Describe 'SQL Server Login Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerA
             $loginName = "$($script:testLoginPrefix)Roles1"
 
             # Create login with server roles
-            $createJson = @{
-                serverInstance = $script:sqlServerInstance
+            $createJson = Get-SqlServerTestInput @{
                 name           = $loginName
                 loginType      = 'SqlLogin'
                 password       = 'T3stP@ssw0rd!Roles123'
@@ -323,8 +310,7 @@ Describe 'SQL Server Login Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerA
             $LASTEXITCODE | Should -Be 0
 
             # Verify roles
-            $verifyJson = @{
-                serverInstance = $script:sqlServerInstance
+            $verifyJson = Get-SqlServerTestInput @{
                 name           = $loginName
             } | ConvertTo-Json -Compress
 
@@ -340,8 +326,7 @@ Describe 'SQL Server Login Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerA
             $loginName = "$($script:testLoginPrefix)RolesUpdate1"
 
             # Create login with initial roles
-            $createJson = @{
-                serverInstance = $script:sqlServerInstance
+            $createJson = Get-SqlServerTestInput @{
                 name           = $loginName
                 loginType      = 'SqlLogin'
                 password       = 'T3stP@ssw0rd!RolesUp123'
@@ -351,8 +336,7 @@ Describe 'SQL Server Login Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerA
             dsc resource set -r OpenDsc.SqlServer/Login --input $createJson | Out-Null
 
             # Update to different roles
-            $updateJson = @{
-                serverInstance = $script:sqlServerInstance
+            $updateJson = Get-SqlServerTestInput @{
                 name           = $loginName
                 serverRoles    = @('securityadmin', 'processadmin')
             } | ConvertTo-Json -Compress
@@ -361,8 +345,7 @@ Describe 'SQL Server Login Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerA
             $LASTEXITCODE | Should -Be 0
 
             # Verify new roles (should have only the new ones, not dbcreator)
-            $verifyJson = @{
-                serverInstance = $script:sqlServerInstance
+            $verifyJson = Get-SqlServerTestInput @{
                 name           = $loginName
             } | ConvertTo-Json -Compress
 

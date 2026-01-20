@@ -1,14 +1,22 @@
-# Skip SQL Server tests if no SQL Server instance is available
-BeforeDiscovery {
-    # Load shared SQL Server installation script
-    . $PSScriptRoot/Install-SqlServer.ps1
+[CmdletBinding()]
+param (
+    [Parameter()]
+    $UtilitiesPath = (Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) 'sharedScripts' 'utilities')
+)
 
-    # Initialize SQL Server (installs if in GitHub Actions)
+$script:helperScript = Join-Path $UtilitiesPath 'Install-SqlServer.ps1'
+
+BeforeDiscovery {
+    # Dot-source script
+    . $helperScript
+
     $script:sqlServerAvailable = Initialize-SqlServerForTests
 }
 
 Describe 'SQL Server Database Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerAvailable) {
     BeforeAll {
+        . $helperScript
+        
         $script:sqlServerInstance = if ($env:SQLSERVER_INSTANCE) { $env:SQLSERVER_INSTANCE } else { '.' }
 
         $publishDir = Join-Path $PSScriptRoot "..\..\artifacts\publish"
@@ -27,7 +35,7 @@ Describe 'SQL Server Database Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServ
             try
             {
                 $conn = New-Object System.Data.SqlClient.SqlConnection
-                $conn.ConnectionString = "Server=$script:sqlServerInstance;Integrated Security=True"
+                $conn.ConnectionString = Get-SqlServerConnectionString
                 $conn.Open()
 
                 $cmd = $conn.CreateCommand()
@@ -88,8 +96,7 @@ Describe 'SQL Server Database Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServ
 
     Context 'Get Operation' -Tag 'Get' {
         It 'should return _exist=false for non-existent database' {
-            $inputJson = @{
-                serverInstance = $script:sqlServerInstance
+            $inputJson = Get-SqlServerTestInput @{
                 name           = 'NonExistentDatabase_12345_XYZ'
             } | ConvertTo-Json -Compress
 
@@ -99,8 +106,7 @@ Describe 'SQL Server Database Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServ
         }
 
         It 'should return properties of existing master database' {
-            $inputJson = @{
-                serverInstance = $script:sqlServerInstance
+            $inputJson = Get-SqlServerTestInput @{
                 name           = 'master'
             } | ConvertTo-Json -Compress
 
@@ -113,8 +119,7 @@ Describe 'SQL Server Database Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServ
         }
 
         It 'should return read-only metadata properties' {
-            $inputJson = @{
-                serverInstance = $script:sqlServerInstance
+            $inputJson = Get-SqlServerTestInput @{
                 name           = 'tempdb'
             } | ConvertTo-Json -Compress
 
@@ -129,8 +134,7 @@ Describe 'SQL Server Database Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServ
     Context 'Set Operation - Create Database' -Tag 'Set' {
         It 'should create a new database with default settings' {
             $dbName = "$($script:testDbPrefix)Create1"
-            $inputJson = @{
-                serverInstance = $script:sqlServerInstance
+            $inputJson = Get-SqlServerTestInput @{
                 name           = $dbName
             } | ConvertTo-Json -Compress
 
@@ -138,8 +142,7 @@ Describe 'SQL Server Database Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServ
             $LASTEXITCODE | Should -Be 0
 
             # Verify it was created
-            $verifyJson = @{
-                serverInstance = $script:sqlServerInstance
+            $verifyJson = Get-SqlServerTestInput @{
                 name           = $dbName
             } | ConvertTo-Json -Compress
 
@@ -149,8 +152,7 @@ Describe 'SQL Server Database Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServ
             $getResult.actualState.isSystemObject | Should -Be $false
 
             # Cleanup
-            $deleteJson = @{
-                serverInstance = $script:sqlServerInstance
+            $deleteJson = Get-SqlServerTestInput @{
                 name           = $dbName
             } | ConvertTo-Json -Compress
             dsc resource delete -r OpenDsc.SqlServer/Database --input $deleteJson | Out-Null
@@ -158,8 +160,7 @@ Describe 'SQL Server Database Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServ
 
         It 'should create database with specified recovery model' {
             $dbName = "$($script:testDbPrefix)Create2"
-            $inputJson = @{
-                serverInstance = $script:sqlServerInstance
+            $inputJson = Get-SqlServerTestInput @{
                 name           = $dbName
                 recoveryModel  = 'Simple'
             } | ConvertTo-Json -Compress
@@ -168,8 +169,7 @@ Describe 'SQL Server Database Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServ
             $LASTEXITCODE | Should -Be 0
 
             # Verify recovery model
-            $verifyJson = @{
-                serverInstance = $script:sqlServerInstance
+            $verifyJson = Get-SqlServerTestInput @{
                 name           = $dbName
             } | ConvertTo-Json -Compress
 
@@ -184,8 +184,7 @@ Describe 'SQL Server Database Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServ
             $dbName = "$($script:testDbPrefix)Update1"
 
             # Create initial database
-            $createJson = @{
-                serverInstance = $script:sqlServerInstance
+            $createJson = Get-SqlServerTestInput @{
                 name           = $dbName
                 recoveryModel  = 'Full'
             } | ConvertTo-Json -Compress
@@ -193,8 +192,7 @@ Describe 'SQL Server Database Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServ
             dsc resource set -r OpenDsc.SqlServer/Database --input $createJson | Out-Null
 
             # Update the database
-            $updateJson = @{
-                serverInstance = $script:sqlServerInstance
+            $updateJson = Get-SqlServerTestInput @{
                 name           = $dbName
                 recoveryModel  = 'Simple'
                 autoShrink     = $true
@@ -204,8 +202,7 @@ Describe 'SQL Server Database Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServ
             $LASTEXITCODE | Should -Be 0
 
             # Verify update
-            $verifyJson = @{
-                serverInstance = $script:sqlServerInstance
+            $verifyJson = Get-SqlServerTestInput @{
                 name           = $dbName
             } | ConvertTo-Json -Compress
 
@@ -222,8 +219,7 @@ Describe 'SQL Server Database Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServ
         It 'should set ANSI options on database' {
             $dbName = "$($script:testDbPrefix)Ansi1"
 
-            $inputJson = @{
-                serverInstance         = $script:sqlServerInstance
+            $inputJson = Get-SqlServerTestInput @{
                 name                   = $dbName
                 ansiNullDefault        = $true
                 ansiNullsEnabled       = $true
@@ -235,8 +231,7 @@ Describe 'SQL Server Database Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServ
             $LASTEXITCODE | Should -Be 0
 
             # Verify ANSI settings
-            $verifyJson = @{
-                serverInstance = $script:sqlServerInstance
+            $verifyJson = Get-SqlServerTestInput @{
                 name           = $dbName
             } | ConvertTo-Json -Compress
 
@@ -253,8 +248,7 @@ Describe 'SQL Server Database Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServ
 
     Context 'Test Operation' -Tag 'Test' {
         It 'should return inDesiredState=false for non-existent database when _exist=true' {
-            $inputJson = @{
-                serverInstance = $script:sqlServerInstance
+            $inputJson = Get-SqlServerTestInput @{
                 name           = 'NonExistentDatabase_Test123'
             } | ConvertTo-Json -Compress
 
@@ -266,8 +260,7 @@ Describe 'SQL Server Database Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServ
             $dbName = "$($script:testDbPrefix)TestMatch1"
 
             # Create database
-            $createJson = @{
-                serverInstance = $script:sqlServerInstance
+            $createJson = Get-SqlServerTestInput @{
                 name           = $dbName
                 recoveryModel  = 'Simple'
             } | ConvertTo-Json -Compress
@@ -275,8 +268,7 @@ Describe 'SQL Server Database Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServ
             dsc resource set -r OpenDsc.SqlServer/Database --input $createJson | Out-Null
 
             # Test with matching desired state
-            $testJson = @{
-                serverInstance = $script:sqlServerInstance
+            $testJson = Get-SqlServerTestInput @{
                 name           = $dbName
                 recoveryModel  = 'Simple'
             } | ConvertTo-Json -Compress
@@ -285,8 +277,7 @@ Describe 'SQL Server Database Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServ
             $result.actualState._inDesiredState | Should -Be $true
 
             # Cleanup
-            dsc resource delete -r OpenDsc.SqlServer/Database --input (@{
-                    serverInstance = $script:sqlServerInstance
+            dsc resource delete -r OpenDsc.SqlServer/Database --input (Get-SqlServerTestInput @{
                     name           = $dbName
                 } | ConvertTo-Json -Compress) | Out-Null
         }
@@ -295,8 +286,7 @@ Describe 'SQL Server Database Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServ
             $dbName = "$($script:testDbPrefix)TestDiff1"
 
             # Create database with Simple recovery model
-            $createJson = @{
-                serverInstance = $script:sqlServerInstance
+            $createJson = Get-SqlServerTestInput @{
                 name           = $dbName
                 recoveryModel  = 'Simple'
             } | ConvertTo-Json -Compress
@@ -304,8 +294,7 @@ Describe 'SQL Server Database Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServ
             dsc resource set -r OpenDsc.SqlServer/Database --input $createJson | Out-Null
 
             # Test expecting Full recovery model
-            $testJson = @{
-                serverInstance = $script:sqlServerInstance
+            $testJson = Get-SqlServerTestInput @{
                 name           = $dbName
                 recoveryModel  = 'Full'
             } | ConvertTo-Json -Compress
@@ -314,15 +303,13 @@ Describe 'SQL Server Database Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServ
             $result.actualState._inDesiredState | Should -Be $false
 
             # Cleanup
-            dsc resource delete -r OpenDsc.SqlServer/Database --input (@{
-                    serverInstance = $script:sqlServerInstance
+            dsc resource delete -r OpenDsc.SqlServer/Database --input (Get-SqlServerTestInput @{
                     name           = $dbName
                 } | ConvertTo-Json -Compress) | Out-Null
         }
 
         It 'should return inDesiredState=true when database should not exist and does not exist' {
-            $inputJson = @{
-                serverInstance = $script:sqlServerInstance
+            $inputJson = Get-SqlServerTestInput @{
                 name           = 'NonExistentDatabase_TestNotExist'
                 _exist         = $false
             } | ConvertTo-Json -Compress
@@ -337,16 +324,14 @@ Describe 'SQL Server Database Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServ
             $dbName = "$($script:testDbPrefix)Delete1"
 
             # Create a database to delete
-            $createJson = @{
-                serverInstance = $script:sqlServerInstance
+            $createJson = Get-SqlServerTestInput @{
                 name           = $dbName
             } | ConvertTo-Json -Compress
 
             dsc resource set -r OpenDsc.SqlServer/Database --input $createJson | Out-Null
 
             # Delete the database
-            $deleteJson = @{
-                serverInstance = $script:sqlServerInstance
+            $deleteJson = Get-SqlServerTestInput @{
                 name           = $dbName
             } | ConvertTo-Json -Compress
 
@@ -354,8 +339,7 @@ Describe 'SQL Server Database Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServ
             $LASTEXITCODE | Should -Be 0
 
             # Verify deletion
-            $verifyJson = @{
-                serverInstance = $script:sqlServerInstance
+            $verifyJson = Get-SqlServerTestInput @{
                 name           = $dbName
             } | ConvertTo-Json -Compress
 
@@ -364,8 +348,7 @@ Describe 'SQL Server Database Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServ
         }
 
         It 'should handle deleting non-existent database gracefully' {
-            $inputJson = @{
-                serverInstance = $script:sqlServerInstance
+            $inputJson = Get-SqlServerTestInput @{
                 name           = 'NonExistentDatabase_ToDelete_XYZ'
             } | ConvertTo-Json -Compress
 
@@ -379,8 +362,7 @@ Describe 'SQL Server Database Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServ
             $dbName = "$($script:testDbPrefix)Export1"
 
             # Create a test database
-            $createJson = @{
-                serverInstance = $script:sqlServerInstance
+            $createJson = Get-SqlServerTestInput @{
                 name           = $dbName
             } | ConvertTo-Json -Compress
 
@@ -398,8 +380,7 @@ Describe 'SQL Server Database Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServ
             $testDbExport | Should -Not -BeNullOrEmpty
 
             # Cleanup
-            dsc resource delete -r OpenDsc.SqlServer/Database --input (@{
-                    serverInstance = $script:sqlServerInstance
+            dsc resource delete -r OpenDsc.SqlServer/Database --input (Get-SqlServerTestInput @{
                     name           = $dbName
                 } | ConvertTo-Json -Compress) | Out-Null
         }

@@ -255,6 +255,18 @@ function Initialize-SqlServerForTests
         $conn.Close()
         $script:sqlServerAvailable = $true
 
+        # Set authentication variables for tests
+        if ($env:SQLSERVER_USE_SQL_AUTH -eq 'true' -and $env:SQLSERVER_SA_PASSWORD)
+        {
+            $script:sqlServerUsername = 'sa'
+            $script:sqlServerPassword = $env:SQLSERVER_SA_PASSWORD
+        }
+        else
+        {
+            $script:sqlServerUsername = $null
+            $script:sqlServerPassword = $null
+        }
+
         Write-Host "SQL Server is available at '$sqlServerInstance'"
 
         return $script:sqlServerAvailable
@@ -263,4 +275,76 @@ function Initialize-SqlServerForTests
     {
         Write-Warning "SQL Server not available at '$sqlServerInstance'. Skipping SQL Server tests. Error: $_"
     }
+}
+
+function Get-SqlServerTestInput
+{
+    <#
+    .SYNOPSIS
+        Creates a base hashtable with server connection details for DSC resource tests.
+
+    .DESCRIPTION
+        This helper function creates a hashtable with serverInstance and optional
+        authentication properties (connectUsername, connectPassword) that can be
+        extended with resource-specific properties for test input.
+
+    .PARAMETER Properties
+        Additional properties to include in the hashtable.
+
+    .EXAMPLE
+        $inputJson = Get-SqlServerTestInput @{ name = 'TestLogin' } | ConvertTo-Json -Compress
+    #>
+    param(
+        [Parameter(Mandatory = $false)]
+        [hashtable]$Properties = @{}
+    )
+
+    $baseInput = @{
+        serverInstance = $script:sqlServerInstance
+    }
+
+    # Add SQL Authentication credentials if using SQL auth
+    if ($script:sqlServerUsername -and $script:sqlServerPassword)
+    {
+        $baseInput['connectUsername'] = $script:sqlServerUsername
+        $baseInput['connectPassword'] = $script:sqlServerPassword
+    }
+
+    # Merge with provided properties
+    foreach ($key in $Properties.Keys)
+    {
+        $baseInput[$key] = $Properties[$key]
+    }
+
+    return $baseInput
+}
+
+function Get-SqlServerConnectionString
+{
+    <#
+    .SYNOPSIS
+        Gets a connection string for SQL Server with appropriate authentication.
+
+    .DESCRIPTION
+        Returns a connection string using either Windows Authentication or SQL Authentication
+        based on the current test environment configuration.
+
+    .EXAMPLE
+        $conn = New-Object System.Data.SqlClient.SqlConnection
+        $conn.ConnectionString = Get-SqlServerConnectionString
+    #>
+    param()
+
+    $connectionString = "Server=$script:sqlServerInstance;Connection Timeout=30"
+
+    if ($script:sqlServerUsername -and $script:sqlServerPassword)
+    {
+        $connectionString += ";User Id=$script:sqlServerUsername;Password=$script:sqlServerPassword;TrustServerCertificate=True"
+    }
+    else
+    {
+        $connectionString += ";Integrated Security=True"
+    }
+
+    return $connectionString
 }
