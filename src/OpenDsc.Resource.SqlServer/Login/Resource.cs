@@ -426,8 +426,7 @@ public sealed class Resource(JsonSerializerContext context)
         var server = login.Parent;
         foreach (var roleName in rolesToRemove)
         {
-            var serverRole = server.Roles[roleName];
-            serverRole?.DropMember(login.Name);
+            server.Roles[roleName]?.DropMember(login.Name);
         }
     }
 

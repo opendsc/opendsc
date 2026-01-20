@@ -487,12 +487,12 @@ public sealed class Resource(JsonSerializerContext context)
 
             if (instance.PrimaryFileSize.HasValue)
             {
-                primaryFile.Size = instance.PrimaryFileSize.Value * 1024; // Convert MB to KB
+                primaryFile.Size = instance.PrimaryFileSize.Value * 1024.0; // Convert MB to KB
             }
 
             if (instance.PrimaryFileGrowth.HasValue)
             {
-                primaryFile.Growth = instance.PrimaryFileGrowth.Value * 1024; // Convert MB to KB
+                primaryFile.Growth = instance.PrimaryFileGrowth.Value * 1024.0; // Convert MB to KB
                 primaryFile.GrowthType = FileGrowthType.KB;
             }
 
@@ -508,12 +508,12 @@ public sealed class Resource(JsonSerializerContext context)
 
             if (instance.LogFileSize.HasValue)
             {
-                logFile.Size = instance.LogFileSize.Value * 1024; // Convert MB to KB
+                logFile.Size = instance.LogFileSize.Value * 1024.0; // Convert MB to KB
             }
 
             if (instance.LogFileGrowth.HasValue)
             {
-                logFile.Growth = instance.LogFileGrowth.Value * 1024; // Convert MB to KB
+                logFile.Growth = instance.LogFileGrowth.Value * 1024.0; // Convert MB to KB
                 logFile.GrowthType = FileGrowthType.KB;
             }
 
