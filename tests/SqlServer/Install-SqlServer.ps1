@@ -181,10 +181,7 @@ function Initialize-SqlServerForTests
     $script:sqlServerInstance = if ($env:SQLSERVER_INSTANCE) { $env:SQLSERVER_INSTANCE } else { '.' }
     $script:sqlServerAvailable = $false
 
-    # Check if running in GitHub Actions
-    $isGitHubActions = $env:GITHUB_ACTIONS -eq 'true'
-
-    if ($isGitHubActions)
+    if ($env:GITHUB_ACTIONS)
     {
         Write-Host 'Running in GitHub Actions - checking for SQL Server installation...'
 
