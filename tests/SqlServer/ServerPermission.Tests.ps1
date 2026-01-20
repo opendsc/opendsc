@@ -13,10 +13,10 @@ BeforeDiscovery {
     $script:sqlServerAvailable = Initialize-SqlServerForTests
 }
 
-Describe 'SQL Server Server Permission Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerAvailable) {
+Describe 'SQL Server Server Permission Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerAvailable -or $IsLinux) {
     BeforeAll {
         . $helperScript
-        
+
         $script:sqlServerInstance = if ($env:SQLSERVER_INSTANCE) { $env:SQLSERVER_INSTANCE } else { '.' }
 
         $publishDir = Join-Path $PSScriptRoot "..\..\artifacts\publish"

@@ -13,7 +13,7 @@ BeforeDiscovery {
     $script:sqlServerAvailable = Initialize-SqlServerForTests
 }
 
-Describe 'SQL Server Login Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerAvailable) {
+Describe 'SQL Server Login Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerAvailable -or $IsLinux) {
     BeforeAll {
         . $helperScript
 
