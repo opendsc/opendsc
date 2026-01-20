@@ -13,7 +13,7 @@ BeforeDiscovery {
     $script:sqlServerAvailable = Initialize-SqlServerForTests
 }
 
-Describe 'SQL Server Server Permission Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerAvailable -or $IsLinux) {
+Describe 'SQL Server Server Permission Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerAvailable) {
     BeforeAll {
         . $helperScript
 
