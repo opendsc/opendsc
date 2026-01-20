@@ -5,6 +5,21 @@ BeforeAll {
 
     # Initialize SQL Server (installs if in GitHub Actions)
     Initialize-SqlServerForTests
+
+    # Test SQL Server connectivity
+    try
+    {
+        $conn = New-Object System.Data.SqlClient.SqlConnection
+        $conn.ConnectionString = "Server=$script:sqlServerInstance;Integrated Security=True"
+        $conn.Open()
+        $conn.Close()
+
+        $script:sqlServerAvailable = $true
+    }
+    catch
+    {
+        Write-Warning "SQL Server not available at '$script:sqlServerInstance'. Skipping SQL Server tests. Error: $_"
+    }
 }
 
 Describe 'SQL Server Login Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerAvailable) {
