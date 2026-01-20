@@ -97,7 +97,7 @@ function Install-SqlServerLinux
         [string]$SaPassword = $script:SqlServerSaPassword
     )
 
-    Write-Host 'Installing SQL Server 2022 on Linux...'
+    Write-Host 'Installing SQL Server on Linux...'
 
     # Check if SQL Server is already installed
     $mssqlStatus = bash -c 'systemctl is-active mssql-server 2>/dev/null' 2>$null
@@ -118,14 +118,33 @@ function Install-SqlServerLinux
 
         Write-Host "Detected Ubuntu version: $ubuntuVersion"
 
-        # Import Microsoft GPG key
-        Write-Host 'Importing Microsoft GPG key...'
-        bash -c 'curl https://packages.microsoft.com/keys/microsoft.asc | sudo tee /etc/apt/trusted.gpg.d/microsoft.asc'
+        # Ubuntu 24.04 uses different GPG key method and SQL Server 2025
+        if ($ubuntuVersion -like '24.*')
+        {
+            Write-Host 'Using Ubuntu 24.04 installation method with SQL Server 2025...'
 
-        # Register SQL Server repository based on Ubuntu version
-        Write-Host 'Registering SQL Server repository...'
-        $repoUrl = "https://packages.microsoft.com/config/ubuntu/$ubuntuVersion/mssql-server-2022.list"
-        bash -c "curl -fsSL $repoUrl | sudo tee /etc/apt/sources.list.d/mssql-server-2022.list"
+            # Download the public key, convert from ASCII to GPG format
+            Write-Host 'Importing Microsoft GPG key...'
+            bash -c 'curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg'
+
+            # Register SQL Server 2025 repository for Ubuntu 24.04
+            Write-Host 'Registering SQL Server 2025 repository...'
+            bash -c 'curl -fsSL https://packages.microsoft.com/config/ubuntu/24.04/mssql-server-2025.list | sudo tee /etc/apt/sources.list.d/mssql-server-2025.list'
+        }
+        else
+        {
+            # For Ubuntu 22.04 and earlier, use existing method with SQL Server 2022
+            Write-Host 'Using standard installation method with SQL Server 2022...'
+
+            # Import Microsoft GPG key
+            Write-Host 'Importing Microsoft GPG key...'
+            bash -c 'curl https://packages.microsoft.com/keys/microsoft.asc | sudo tee /etc/apt/trusted.gpg.d/microsoft.asc'
+
+            # Register SQL Server 2022 repository based on Ubuntu version
+            Write-Host 'Registering SQL Server 2022 repository...'
+            $repoUrl = "https://packages.microsoft.com/config/ubuntu/$ubuntuVersion/mssql-server-2022.list"
+            bash -c "curl -fsSL $repoUrl | sudo tee /etc/apt/sources.list.d/mssql-server-2022.list"
+        }
 
         # Update packages and install SQL Server
         Write-Host 'Installing mssql-server package...'
@@ -181,7 +200,7 @@ function Initialize-SqlServerForTests
     $script:sqlServerInstance = if ($env:SQLSERVER_INSTANCE) { $env:SQLSERVER_INSTANCE } else { '.' }
     $script:sqlServerAvailable = $false
 
-    if ($true)
+    if ($env:GITHUB_ACTIONS)
     {
         Write-Verbose 'Running in GitHub Actions - checking for SQL Server installation...' -Verbose
 
@@ -235,6 +254,7 @@ function Initialize-SqlServerForTests
         $conn.Open()
         $conn.Close()
         $script:sqlServerAvailable = $true
+
         Write-Host "SQL Server is available at '$script:sqlServerInstance'"
     }
     catch
