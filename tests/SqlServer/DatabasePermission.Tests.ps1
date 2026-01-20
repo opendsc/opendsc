@@ -1,14 +1,22 @@
-# Skip SQL Server tests if no SQL Server instance is available
-BeforeAll {
-    # Load shared SQL Server installation script
-    . $PSScriptRoot/Install-SqlServer.ps1
+[CmdletBinding()]
+param (
+    [Parameter()]
+    $UtilitiesPath = (Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) 'sharedScripts' 'utilities')
+)
 
-    # Initialize SQL Server (installs if in GitHub Actions)
+$script:helperScript = Join-Path $UtilitiesPath 'Install-SqlServer.ps1'
+
+BeforeDiscovery {
+    # Dot-source script
+    . $helperScript
+
     $script:sqlServerAvailable = Initialize-SqlServerForTests
 }
 
 Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerAvailable) {
     BeforeAll {
+        . $helperScript
+        
         $script:sqlServerInstance = if ($env:SQLSERVER_INSTANCE) { $env:SQLSERVER_INSTANCE } else { '.' }
 
         $publishDir = Join-Path $PSScriptRoot "..\..\artifacts\publish"
@@ -26,7 +34,7 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
         try
         {
             $conn = New-Object System.Data.SqlClient.SqlConnection
-            $conn.ConnectionString = "Server=$script:sqlServerInstance;Integrated Security=True"
+            $conn.ConnectionString = Get-SqlServerConnectionString
             $conn.Open()
 
             # Create test database
@@ -53,7 +61,7 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
             try
             {
                 $conn = New-Object System.Data.SqlClient.SqlConnection
-                $conn.ConnectionString = "Server=$script:sqlServerInstance;Integrated Security=True"
+                $conn.ConnectionString = Get-SqlServerConnectionString
                 $conn.Open()
 
                 $cmd = $conn.CreateCommand()
@@ -121,8 +129,7 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
 
     Context 'Get Operation' -Tag 'Get' {
         It 'should return _exist=false for non-existent permission' {
-            $inputJson = @{
-                serverInstance = $script:sqlServerInstance
+            $inputJson = Get-SqlServerTestInput @{
                 databaseName   = $script:testDb
                 principal      = $script:testUser
                 permission     = 'Select'
@@ -141,7 +148,7 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
             try
             {
                 $conn = New-Object System.Data.SqlClient.SqlConnection
-                $conn.ConnectionString = "Server=$script:sqlServerInstance;Database=$($script:testDb);Integrated Security=True"
+                $conn.ConnectionString = "$(Get-SqlServerConnectionString);Database=$($script:testDb)"
                 $conn.Open()
 
                 $cmd = $conn.CreateCommand()
@@ -157,8 +164,7 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
         }
 
         It 'should grant VIEW DEFINITION permission' {
-            $inputJson = @{
-                serverInstance = $script:sqlServerInstance
+            $inputJson = Get-SqlServerTestInput @{
                 databaseName   = $script:testDb
                 principal      = $script:testUser
                 permission     = 'ViewDefinition'
@@ -169,8 +175,7 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
             $LASTEXITCODE | Should -Be 0
 
             # Verify the permission was granted
-            $verifyJson = @{
-                serverInstance = $script:sqlServerInstance
+            $verifyJson = Get-SqlServerTestInput @{
                 databaseName   = $script:testDb
                 principal      = $script:testUser
                 permission     = 'ViewDefinition'
@@ -182,8 +187,7 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
         }
 
         It 'should grant permission with GRANT option' {
-            $inputJson = @{
-                serverInstance = $script:sqlServerInstance
+            $inputJson = Get-SqlServerTestInput @{
                 databaseName   = $script:testDb
                 principal      = $script:testUser
                 permission     = 'ViewDefinition'
@@ -194,8 +198,7 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
             $LASTEXITCODE | Should -Be 0
 
             # Verify the permission was granted with grant option
-            $verifyJson = @{
-                serverInstance = $script:sqlServerInstance
+            $verifyJson = Get-SqlServerTestInput @{
                 databaseName   = $script:testDb
                 principal      = $script:testUser
                 permission     = 'ViewDefinition'
@@ -208,8 +211,7 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
 
         It 'should change permission state from Grant to Deny' {
             # First grant the permission (use database-level permission)
-            $grantJson = @{
-                serverInstance = $script:sqlServerInstance
+            $grantJson = Get-SqlServerTestInput @{
                 databaseName   = $script:testDb
                 principal      = $script:testUser
                 permission     = 'Showplan'
@@ -219,8 +221,7 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
             dsc resource set -r OpenDsc.SqlServer/DatabasePermission --input $grantJson | Out-Null
 
             # Now deny the permission
-            $denyJson = @{
-                serverInstance = $script:sqlServerInstance
+            $denyJson = Get-SqlServerTestInput @{
                 databaseName   = $script:testDb
                 principal      = $script:testUser
                 permission     = 'Showplan'
@@ -231,8 +232,7 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
             $LASTEXITCODE | Should -Be 0
 
             # Verify the permission state changed to Deny
-            $verifyJson = @{
-                serverInstance = $script:sqlServerInstance
+            $verifyJson = Get-SqlServerTestInput @{
                 databaseName   = $script:testDb
                 principal      = $script:testUser
                 permission     = 'Showplan'
@@ -245,8 +245,7 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
 
     Context 'Test Operation' -Tag 'Test' {
         It 'should return _inDesiredState=false when permission does not exist' {
-            $inputJson = @{
-                serverInstance = $script:sqlServerInstance
+            $inputJson = Get-SqlServerTestInput @{
                 databaseName   = $script:testDb
                 principal      = $script:testUser
                 permission     = 'Checkpoint'
@@ -258,8 +257,7 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
         }
 
         It 'should return _inDesiredState=true when _exist=false and permission does not exist' {
-            $inputJson = @{
-                serverInstance = $script:sqlServerInstance
+            $inputJson = Get-SqlServerTestInput @{
                 databaseName   = $script:testDb
                 principal      = $script:testUser
                 permission     = 'Checkpoint'
@@ -277,7 +275,7 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
             try
             {
                 $conn = New-Object System.Data.SqlClient.SqlConnection
-                $conn.ConnectionString = "Server=$script:sqlServerInstance;Database=$($script:testDb);Integrated Security=True"
+                $conn.ConnectionString = "$(Get-SqlServerConnectionString);Database=$($script:testDb)"
                 $conn.Open()
 
                 $cmd = $conn.CreateCommand()
@@ -290,8 +288,7 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
         }
 
         It 'should revoke/delete a permission' {
-            $inputJson = @{
-                serverInstance = $script:sqlServerInstance
+            $inputJson = Get-SqlServerTestInput @{
                 databaseName   = $script:testDb
                 principal      = $script:testUser
                 permission     = 'BackupDatabase'
@@ -306,8 +303,7 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
         }
 
         It 'should not fail when deleting non-existent permission' {
-            $inputJson = @{
-                serverInstance = $script:sqlServerInstance
+            $inputJson = Get-SqlServerTestInput @{
                 databaseName   = $script:testDb
                 principal      = $script:testUser
                 permission     = 'Control'
