@@ -18,6 +18,7 @@ namespace OpenDsc.Resource.Windows;
 [JsonSerializable(typeof(User.Schema), TypeInfoPropertyName = "UserSchema")]
 [JsonSerializable(typeof(Service.Schema), TypeInfoPropertyName = "ServiceSchema")]
 [JsonSerializable(typeof(Environment.Schema), TypeInfoPropertyName = "EnvironmentSchema")]
+[JsonSerializable(typeof(OpenDsc.Schema.DscScope), TypeInfoPropertyName = "DscScope")]
 [JsonSerializable(typeof(Shortcut.Schema), TypeInfoPropertyName = "ShortcutSchema")]
 [JsonSerializable(typeof(OptionalFeature.Schema), TypeInfoPropertyName = "OptionalFeatureSchema")]
 [JsonSerializable(typeof(FileSystem.Acl.Schema), TypeInfoPropertyName = "FileSystemAclSchema")]

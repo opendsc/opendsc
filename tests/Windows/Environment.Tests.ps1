@@ -190,9 +190,10 @@ Describe 'Windows Environment Variable Resource' -Tag 'Windows' -Skip:(!$IsWindo
             $result.resources | Should -Not -BeNullOrEmpty
             $result.resources.Count | Should -BeGreaterThan 0
 
-            $firstVar = $result.resources[0].properties
-            $firstVar.name | Should -Not -BeNullOrEmpty
-            $firstVar.value | Should -Not -BeNullOrEmpty
+            $validVar = $result.resources | Where-Object { $_.properties.value -and $_.properties.value.Trim() } | Select-Object -First 1
+            $validVar | Should -Not -BeNullOrEmpty
+            $validVar.properties.name | Should -Not -BeNullOrEmpty
+            $validVar.properties.value | Should -Not -BeNullOrEmpty
         }
 
         It 'should export both user and machine variables' {

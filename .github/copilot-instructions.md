@@ -679,7 +679,7 @@ public SetResult<Schema>? Set(Schema instance)
 Check scope in Get/Set/Delete for user vs. machine operations (see [Environment](../src/OpenDsc.Resource.Windows/Environment/)):
 
 ```csharp
-var target = instance.Scope is Scope.Machine
+var target = instance.Scope is DscScope.Machine
     ? EnvironmentVariableTarget.Machine
     : EnvironmentVariableTarget.User;
 ```
