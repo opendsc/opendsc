@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param (
     [Parameter()]
-    $UtilitiesPath = (Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) 'sharedScripts' 'utilities')
+    $UtilitiesPath = (Join-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) 'tools')
 )
 
 $script:helperScript = Join-Path $UtilitiesPath 'Install-SqlServer.ps1'

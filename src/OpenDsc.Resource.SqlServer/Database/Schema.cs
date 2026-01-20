@@ -6,6 +6,8 @@ using System.Text.Json.Serialization;
 
 using Json.Schema.Generation;
 
+using Microsoft.SqlServer.Management.Smo;
+
 namespace OpenDsc.Resource.SqlServer.Database;
 
 [Title("SQL Server Database Schema")]
@@ -88,7 +90,7 @@ public sealed class Schema
 
     [Description("The user access mode of the database.")]
     [Nullable(false)]
-    public UserAccess? UserAccess { get; set; }
+    public DatabaseUserAccess? UserAccess { get; set; }
 
     [Description("The page verification method.")]
     [Nullable(false)]
@@ -302,9 +304,4 @@ public sealed class Schema
     [Nullable(false)]
     [Default(true)]
     public bool? Exist { get; set; }
-
-    [JsonPropertyName("_inDesiredState")]
-    [Description("Indicates whether the database is in the desired state.")]
-    [ReadOnly]
-    public bool? InDesiredState { get; set; }
 }

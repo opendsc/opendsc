@@ -10,12 +10,6 @@ using Json.Schema.Generation;
 
 using Microsoft.SqlServer.Management.Smo;
 
-using SmoCompatibilityLevel = Microsoft.SqlServer.Management.Smo.CompatibilityLevel;
-using SmoContainmentType = Microsoft.SqlServer.Management.Smo.ContainmentType;
-using SmoPageVerify = Microsoft.SqlServer.Management.Smo.PageVerify;
-using SmoRecoveryModel = Microsoft.SqlServer.Management.Smo.RecoveryModel;
-using SmoUserAccess = Microsoft.SqlServer.Management.Smo.DatabaseUserAccess;
-
 namespace OpenDsc.Resource.SqlServer.Database;
 
 [DscResource("OpenDsc.SqlServer/Database", "0.1.0", Description = "Manage SQL Server databases", Tags = ["sql", "sqlserver", "database"])]
@@ -29,7 +23,6 @@ public sealed class Resource(JsonSerializerContext context)
     : DscResource<Schema>(context),
       IGettable<Schema>,
       ISettable<Schema>,
-      ITestable<Schema>,
       IDeletable<Schema>,
       IExportable<Schema>
 {
@@ -73,15 +66,15 @@ public sealed class Resource(JsonSerializerContext context)
 
                 // Database options
                 Collation = database.Collation,
-                CompatibilityLevel = MapCompatibilityLevel(database.CompatibilityLevel),
-                RecoveryModel = MapRecoveryModel(database.RecoveryModel),
+                CompatibilityLevel = database.CompatibilityLevel,
+                RecoveryModel = database.RecoveryModel,
                 Owner = database.Owner,
 
                 // Access and state options
                 ReadOnly = database.ReadOnly,
-                UserAccess = MapUserAccess(database.UserAccess),
-                PageVerify = MapPageVerify(database.PageVerify),
-                ContainmentType = MapContainmentType(database.ContainmentType),
+                UserAccess = database.UserAccess,
+                PageVerify = database.PageVerify,
+                ContainmentType = database.ContainmentType,
 
                 // ANSI options
                 AnsiNullDefault = database.AnsiNullDefault,
@@ -181,211 +174,6 @@ public sealed class Resource(JsonSerializerContext context)
         }
     }
 
-    public TestResult<Schema> Test(Schema instance)
-    {
-        var actualState = Get(instance);
-        bool inDesiredState = true;
-
-        if (instance.Exist == false)
-        {
-            inDesiredState = actualState.Exist == false;
-        }
-        else if (actualState.Exist == false)
-        {
-            inDesiredState = false;
-        }
-        else
-        {
-            // Database options
-            if (!string.IsNullOrEmpty(instance.Collation) &&
-                !string.Equals(actualState.Collation, instance.Collation, StringComparison.OrdinalIgnoreCase))
-            {
-                inDesiredState = false;
-            }
-
-            if (instance.CompatibilityLevel.HasValue && actualState.CompatibilityLevel != instance.CompatibilityLevel)
-            {
-                inDesiredState = false;
-            }
-
-            if (instance.RecoveryModel.HasValue && actualState.RecoveryModel != instance.RecoveryModel)
-            {
-                inDesiredState = false;
-            }
-
-            if (!string.IsNullOrEmpty(instance.Owner) &&
-                !string.Equals(actualState.Owner, instance.Owner, StringComparison.OrdinalIgnoreCase))
-            {
-                inDesiredState = false;
-            }
-
-            // Access and state options
-            if (instance.ReadOnly.HasValue && actualState.ReadOnly != instance.ReadOnly)
-            {
-                inDesiredState = false;
-            }
-
-            if (instance.UserAccess.HasValue && actualState.UserAccess != instance.UserAccess)
-            {
-                inDesiredState = false;
-            }
-
-            if (instance.PageVerify.HasValue && actualState.PageVerify != instance.PageVerify)
-            {
-                inDesiredState = false;
-            }
-
-            if (instance.ContainmentType.HasValue && actualState.ContainmentType != instance.ContainmentType)
-            {
-                inDesiredState = false;
-            }
-
-            // ANSI options
-            if (instance.AnsiNullDefault.HasValue && actualState.AnsiNullDefault != instance.AnsiNullDefault)
-            {
-                inDesiredState = false;
-            }
-
-            if (instance.AnsiNullsEnabled.HasValue && actualState.AnsiNullsEnabled != instance.AnsiNullsEnabled)
-            {
-                inDesiredState = false;
-            }
-
-            if (instance.AnsiPaddingEnabled.HasValue && actualState.AnsiPaddingEnabled != instance.AnsiPaddingEnabled)
-            {
-                inDesiredState = false;
-            }
-
-            if (instance.AnsiWarningsEnabled.HasValue && actualState.AnsiWarningsEnabled != instance.AnsiWarningsEnabled)
-            {
-                inDesiredState = false;
-            }
-
-            if (instance.ArithmeticAbortEnabled.HasValue && actualState.ArithmeticAbortEnabled != instance.ArithmeticAbortEnabled)
-            {
-                inDesiredState = false;
-            }
-
-            if (instance.ConcatenateNullYieldsNull.HasValue && actualState.ConcatenateNullYieldsNull != instance.ConcatenateNullYieldsNull)
-            {
-                inDesiredState = false;
-            }
-
-            if (instance.NumericRoundAbortEnabled.HasValue && actualState.NumericRoundAbortEnabled != instance.NumericRoundAbortEnabled)
-            {
-                inDesiredState = false;
-            }
-
-            if (instance.QuotedIdentifiersEnabled.HasValue && actualState.QuotedIdentifiersEnabled != instance.QuotedIdentifiersEnabled)
-            {
-                inDesiredState = false;
-            }
-
-            // Auto options
-            if (instance.AutoClose.HasValue && actualState.AutoClose != instance.AutoClose)
-            {
-                inDesiredState = false;
-            }
-
-            if (instance.AutoShrink.HasValue && actualState.AutoShrink != instance.AutoShrink)
-            {
-                inDesiredState = false;
-            }
-
-            if (instance.AutoCreateStatisticsEnabled.HasValue && actualState.AutoCreateStatisticsEnabled != instance.AutoCreateStatisticsEnabled)
-            {
-                inDesiredState = false;
-            }
-
-            if (instance.AutoUpdateStatisticsEnabled.HasValue && actualState.AutoUpdateStatisticsEnabled != instance.AutoUpdateStatisticsEnabled)
-            {
-                inDesiredState = false;
-            }
-
-            if (instance.AutoUpdateStatisticsAsync.HasValue && actualState.AutoUpdateStatisticsAsync != instance.AutoUpdateStatisticsAsync)
-            {
-                inDesiredState = false;
-            }
-
-            // Cursor options
-            if (instance.CloseCursorsOnCommitEnabled.HasValue && actualState.CloseCursorsOnCommitEnabled != instance.CloseCursorsOnCommitEnabled)
-            {
-                inDesiredState = false;
-            }
-
-            if (instance.LocalCursorsDefault.HasValue && actualState.LocalCursorsDefault != instance.LocalCursorsDefault)
-            {
-                inDesiredState = false;
-            }
-
-            // Trigger options
-            if (instance.NestedTriggersEnabled.HasValue && actualState.NestedTriggersEnabled != instance.NestedTriggersEnabled)
-            {
-                inDesiredState = false;
-            }
-
-            if (instance.RecursiveTriggersEnabled.HasValue && actualState.RecursiveTriggersEnabled != instance.RecursiveTriggersEnabled)
-            {
-                inDesiredState = false;
-            }
-
-            // Advanced options
-            if (instance.Trustworthy.HasValue && actualState.Trustworthy != instance.Trustworthy)
-            {
-                inDesiredState = false;
-            }
-
-            if (instance.DatabaseOwnershipChaining.HasValue && actualState.DatabaseOwnershipChaining != instance.DatabaseOwnershipChaining)
-            {
-                inDesiredState = false;
-            }
-
-            if (instance.DateCorrelationOptimization.HasValue && actualState.DateCorrelationOptimization != instance.DateCorrelationOptimization)
-            {
-                inDesiredState = false;
-            }
-
-            if (instance.BrokerEnabled.HasValue && actualState.BrokerEnabled != instance.BrokerEnabled)
-            {
-                inDesiredState = false;
-            }
-
-            if (instance.EncryptionEnabled.HasValue && actualState.EncryptionEnabled != instance.EncryptionEnabled)
-            {
-                inDesiredState = false;
-            }
-
-            if (instance.IsParameterizationForced.HasValue && actualState.IsParameterizationForced != instance.IsParameterizationForced)
-            {
-                inDesiredState = false;
-            }
-
-            if (instance.IsReadCommittedSnapshotOn.HasValue && actualState.IsReadCommittedSnapshotOn != instance.IsReadCommittedSnapshotOn)
-            {
-                inDesiredState = false;
-            }
-
-            if (instance.IsFullTextEnabled.HasValue && actualState.IsFullTextEnabled != instance.IsFullTextEnabled)
-            {
-                inDesiredState = false;
-            }
-
-            if (instance.TargetRecoveryTime.HasValue && actualState.TargetRecoveryTime != instance.TargetRecoveryTime)
-            {
-                inDesiredState = false;
-            }
-
-            if (instance.AcceleratedRecoveryEnabled.HasValue && actualState.AcceleratedRecoveryEnabled != instance.AcceleratedRecoveryEnabled)
-            {
-                inDesiredState = false;
-            }
-        }
-
-        actualState.InDesiredState = inDesiredState;
-
-        return new TestResult<Schema>(actualState);
-    }
-
     public void Delete(Schema instance)
     {
         var server = SqlConnectionHelper.CreateConnection(instance.ServerInstance, instance.ConnectUsername, instance.ConnectPassword);
@@ -434,13 +222,13 @@ public sealed class Resource(JsonSerializerContext context)
                     ServerInstance = serverInstance,
                     Name = database.Name,
                     Collation = database.Collation,
-                    CompatibilityLevel = MapCompatibilityLevel(database.CompatibilityLevel),
-                    RecoveryModel = MapRecoveryModel(database.RecoveryModel),
+                    CompatibilityLevel = database.CompatibilityLevel,
+                    RecoveryModel = database.RecoveryModel,
                     Owner = database.Owner,
                     ReadOnly = database.ReadOnly,
-                    UserAccess = MapUserAccess(database.UserAccess),
-                    PageVerify = MapPageVerify(database.PageVerify),
-                    ContainmentType = MapContainmentType(database.ContainmentType),
+                    UserAccess = database.UserAccess,
+                    PageVerify = database.PageVerify,
+                    ContainmentType = database.ContainmentType,
                     AutoClose = database.AutoClose,
                     AutoShrink = database.AutoShrink,
                     Trustworthy = database.Trustworthy
@@ -471,7 +259,7 @@ public sealed class Resource(JsonSerializerContext context)
         // Set containment type before creation if specified
         if (instance.ContainmentType.HasValue)
         {
-            database.ContainmentType = MapToSmoContainmentType(instance.ContainmentType.Value);
+            database.ContainmentType = instance.ContainmentType.Value;
         }
 
         // Configure file groups and files if paths are specified
@@ -539,10 +327,9 @@ public sealed class Resource(JsonSerializerContext context)
         // Recovery model
         if (instance.RecoveryModel.HasValue)
         {
-            var smoRecoveryModel = MapToSmoRecoveryModel(instance.RecoveryModel.Value);
-            if (database.RecoveryModel != smoRecoveryModel)
+            if (database.RecoveryModel != instance.RecoveryModel.Value)
             {
-                database.RecoveryModel = smoRecoveryModel;
+                database.RecoveryModel = instance.RecoveryModel.Value;
                 needsAlter = true;
             }
         }
@@ -550,10 +337,9 @@ public sealed class Resource(JsonSerializerContext context)
         // Compatibility level
         if (instance.CompatibilityLevel.HasValue)
         {
-            var smoCompatLevel = MapToSmoCompatibilityLevel(instance.CompatibilityLevel.Value);
-            if (database.CompatibilityLevel != smoCompatLevel)
+            if (database.CompatibilityLevel != instance.CompatibilityLevel.Value)
             {
-                database.CompatibilityLevel = smoCompatLevel;
+                database.CompatibilityLevel = instance.CompatibilityLevel.Value;
                 needsAlter = true;
             }
         }
@@ -561,10 +347,9 @@ public sealed class Resource(JsonSerializerContext context)
         // User access
         if (instance.UserAccess.HasValue)
         {
-            var smoUserAccess = MapToSmoUserAccess(instance.UserAccess.Value);
-            if (database.UserAccess != smoUserAccess)
+            if (database.UserAccess != instance.UserAccess.Value)
             {
-                database.UserAccess = smoUserAccess;
+                database.UserAccess = instance.UserAccess.Value;
                 needsAlter = true;
             }
         }
@@ -572,10 +357,9 @@ public sealed class Resource(JsonSerializerContext context)
         // Page verify
         if (instance.PageVerify.HasValue)
         {
-            var smoPageVerify = MapToSmoPageVerify(instance.PageVerify.Value);
-            if (database.PageVerify != smoPageVerify)
+            if (database.PageVerify != instance.PageVerify.Value)
             {
-                database.PageVerify = smoPageVerify;
+                database.PageVerify = instance.PageVerify.Value;
                 needsAlter = true;
             }
         }
@@ -765,90 +549,4 @@ public sealed class Resource(JsonSerializerContext context)
             return null;
         }
     }
-
-    private static CompatibilityLevel? MapCompatibilityLevel(SmoCompatibilityLevel level) => level switch
-    {
-        SmoCompatibilityLevel.Version100 => CompatibilityLevel.Version100,
-        SmoCompatibilityLevel.Version110 => CompatibilityLevel.Version110,
-        SmoCompatibilityLevel.Version120 => CompatibilityLevel.Version120,
-        SmoCompatibilityLevel.Version130 => CompatibilityLevel.Version130,
-        SmoCompatibilityLevel.Version140 => CompatibilityLevel.Version140,
-        SmoCompatibilityLevel.Version150 => CompatibilityLevel.Version150,
-        SmoCompatibilityLevel.Version160 => CompatibilityLevel.Version160,
-        _ => null
-    };
-
-    private static SmoCompatibilityLevel MapToSmoCompatibilityLevel(CompatibilityLevel level) => level switch
-    {
-        CompatibilityLevel.Version100 => SmoCompatibilityLevel.Version100,
-        CompatibilityLevel.Version110 => SmoCompatibilityLevel.Version110,
-        CompatibilityLevel.Version120 => SmoCompatibilityLevel.Version120,
-        CompatibilityLevel.Version130 => SmoCompatibilityLevel.Version130,
-        CompatibilityLevel.Version140 => SmoCompatibilityLevel.Version140,
-        CompatibilityLevel.Version150 => SmoCompatibilityLevel.Version150,
-        CompatibilityLevel.Version160 => SmoCompatibilityLevel.Version160,
-        _ => SmoCompatibilityLevel.Version160
-    };
-
-    private static RecoveryModel? MapRecoveryModel(SmoRecoveryModel model) => model switch
-    {
-        SmoRecoveryModel.Full => RecoveryModel.Full,
-        SmoRecoveryModel.BulkLogged => RecoveryModel.BulkLogged,
-        SmoRecoveryModel.Simple => RecoveryModel.Simple,
-        _ => null
-    };
-
-    private static SmoRecoveryModel MapToSmoRecoveryModel(RecoveryModel model) => model switch
-    {
-        RecoveryModel.Full => SmoRecoveryModel.Full,
-        RecoveryModel.BulkLogged => SmoRecoveryModel.BulkLogged,
-        RecoveryModel.Simple => SmoRecoveryModel.Simple,
-        _ => SmoRecoveryModel.Full
-    };
-
-    private static UserAccess? MapUserAccess(SmoUserAccess access) => access switch
-    {
-        SmoUserAccess.Multiple => UserAccess.Multiple,
-        SmoUserAccess.Single => UserAccess.Single,
-        SmoUserAccess.Restricted => UserAccess.Restricted,
-        _ => null
-    };
-
-    private static SmoUserAccess MapToSmoUserAccess(UserAccess access) => access switch
-    {
-        UserAccess.Multiple => SmoUserAccess.Multiple,
-        UserAccess.Single => SmoUserAccess.Single,
-        UserAccess.Restricted => SmoUserAccess.Restricted,
-        _ => SmoUserAccess.Multiple
-    };
-
-    private static PageVerify? MapPageVerify(SmoPageVerify verify) => verify switch
-    {
-        SmoPageVerify.None => PageVerify.None,
-        SmoPageVerify.TornPageDetection => PageVerify.TornPageDetection,
-        SmoPageVerify.Checksum => PageVerify.Checksum,
-        _ => null
-    };
-
-    private static SmoPageVerify MapToSmoPageVerify(PageVerify verify) => verify switch
-    {
-        PageVerify.None => SmoPageVerify.None,
-        PageVerify.TornPageDetection => SmoPageVerify.TornPageDetection,
-        PageVerify.Checksum => SmoPageVerify.Checksum,
-        _ => SmoPageVerify.Checksum
-    };
-
-    private static ContainmentType? MapContainmentType(SmoContainmentType type) => type switch
-    {
-        SmoContainmentType.None => ContainmentType.None,
-        SmoContainmentType.Partial => ContainmentType.Partial,
-        _ => null
-    };
-
-    private static SmoContainmentType MapToSmoContainmentType(ContainmentType type) => type switch
-    {
-        ContainmentType.None => SmoContainmentType.None,
-        ContainmentType.Partial => SmoContainmentType.Partial,
-        _ => SmoContainmentType.None
-    };
 }
