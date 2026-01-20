@@ -1,10 +1,10 @@
 # Skip SQL Server tests if no SQL Server instance is available
-BeforeAll {
+BeforeDiscovery {
     # Load shared SQL Server installation script
     . $PSScriptRoot/Install-SqlServer.ps1
 
     # Initialize SQL Server (installs if in GitHub Actions)
-    Initialize-SqlServerForTests
+    $script:sqlServerAvailable = Initialize-SqlServerForTests
 }
 
 Describe 'SQL Server Database Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerAvailable) {

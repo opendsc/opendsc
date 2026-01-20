@@ -4,7 +4,7 @@ BeforeDiscovery {
     . $PSScriptRoot/Install-SqlServer.ps1
 
     # Initialize SQL Server (installs if in GitHub Actions)
-    Initialize-SqlServerForTests
+    $script:sqlServerAvailable = Initialize-SqlServerForTests
 }
 
 Describe 'SQL Server Login Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerAvailable) {
