@@ -17,6 +17,20 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
     BeforeAll {
         . $helperScript
 
+        $script:sqlServerInstance = if ($env:SQLSERVER_INSTANCE) { 
+            $env:SQLSERVER_INSTANCE 
+        } elseif ($IsLinux) { 
+            'localhost' 
+        } else { 
+            '.' 
+        }
+
+        # Set SQL Authentication for Linux
+        if ($IsLinux -and $env:SQLSERVER_SA_PASSWORD) {
+            $script:sqlServerUsername = 'sa'
+            $script:sqlServerPassword = $env:SQLSERVER_SA_PASSWORD
+        }
+
         $publishDir = Join-Path $PSScriptRoot "..\..\artifacts\publish"
         if (Test-Path $publishDir)
         {
