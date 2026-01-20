@@ -219,7 +219,10 @@ function Initialize-SqlServerForTests
             {
                 # On Linux, we need to use SQL authentication
                 $script:sqlServerInstance = 'localhost'
+                $env:SQLSERVER_INSTANCE = 'localhost'
                 $env:SQLSERVER_USE_SQL_AUTH = 'true'
+                $env:SQLSERVER_USERNAME = 'sa'
+                $env:SQLSERVER_PASSWORD = $script:SqlServerSaPassword
                 $env:SQLSERVER_SA_PASSWORD = $script:SqlServerSaPassword
             }
             else
