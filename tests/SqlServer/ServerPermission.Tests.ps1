@@ -1,21 +1,10 @@
 # Skip SQL Server tests if no SQL Server instance is available
 BeforeAll {
-    $script:sqlServerInstance = if ($env:SQLSERVER_INSTANCE) { $env:SQLSERVER_INSTANCE } else { '.' }
-    $script:sqlServerAvailable = $false
+    # Load shared SQL Server installation script
+    . $PSScriptRoot/Install-SqlServer.ps1
 
-    # Test SQL Server connectivity
-    try
-    {
-        $conn = New-Object System.Data.SqlClient.SqlConnection
-        $conn.ConnectionString = "Server=$script:sqlServerInstance;Integrated Security=True;Connection Timeout=5"
-        $conn.Open()
-        $conn.Close()
-        $script:sqlServerAvailable = $true
-    }
-    catch
-    {
-        Write-Warning "SQL Server not available at '$script:sqlServerInstance'. Skipping SQL Server tests."
-    }
+    # Initialize SQL Server (installs if in GitHub Actions)
+    Initialize-SqlServerForTests
 }
 
 Describe 'SQL Server Server Permission Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerAvailable) {
