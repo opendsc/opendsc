@@ -15,6 +15,8 @@ BeforeAll {
         $conn.Close()
 
         $script:sqlServerAvailable = $true
+
+        Write-Verbose -Message "SQL Server is available" -Verbose
     }
     catch
     {
