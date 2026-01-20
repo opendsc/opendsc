@@ -17,8 +17,6 @@ Describe 'SQL Server Login Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerA
     BeforeAll {
         . $helperScript
 
-        $script:sqlServerInstance = if ($env:SQLSERVER_INSTANCE) { $env:SQLSERVER_INSTANCE } else { '.' }
-
         $publishDir = Join-Path $PSScriptRoot "..\..\artifacts\publish"
         if (Test-Path $publishDir)
         {
