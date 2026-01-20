@@ -2,6 +2,7 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -10,8 +11,8 @@ using Json.Schema.Generation;
 
 using Microsoft.SqlServer.Management.Smo;
 
+using PermissionState = Microsoft.SqlServer.Management.Smo.PermissionState;
 using SmoServerPermission = Microsoft.SqlServer.Management.Smo.ServerPermission;
-using SmoPermissionState = Microsoft.SqlServer.Management.Smo.PermissionState;
 
 namespace OpenDsc.Resource.SqlServer.ServerPermission;
 
@@ -26,7 +27,6 @@ public sealed class Resource(JsonSerializerContext context)
     : DscResource<Schema>(context),
       IGettable<Schema>,
       ISettable<Schema>,
-      ITestable<Schema>,
       IDeletable<Schema>,
       IExportable<Schema>
 {
@@ -74,7 +74,7 @@ public sealed class Resource(JsonSerializerContext context)
                 ServerInstance = instance.ServerInstance,
                 Principal = matchingPermission.Grantee,
                 Permission = instance.Permission,
-                State = MapSmoPermissionState(matchingPermission.PermissionState),
+                State = matchingPermission.PermissionState,
                 Grantor = matchingPermission.Grantor
             };
         }
@@ -103,7 +103,7 @@ public sealed class Resource(JsonSerializerContext context)
 
             if (currentMatch != null)
             {
-                var currentState = MapSmoPermissionState(currentMatch.PermissionState);
+                var currentState = currentMatch.PermissionState;
                 if (currentState == desiredState)
                 {
                     return null;
@@ -138,33 +138,6 @@ public sealed class Resource(JsonSerializerContext context)
         }
     }
 
-    public TestResult<Schema> Test(Schema instance)
-    {
-        var actualState = Get(instance);
-        bool inDesiredState = true;
-
-        if (instance.Exist == false)
-        {
-            inDesiredState = actualState.Exist == false;
-        }
-        else if (actualState.Exist == false)
-        {
-            inDesiredState = false;
-        }
-        else
-        {
-            var desiredPermissionState = instance.State ?? PermissionState.Grant;
-            if (actualState.State != desiredPermissionState)
-            {
-                inDesiredState = false;
-            }
-        }
-
-        actualState.InDesiredState = inDesiredState;
-
-        return new TestResult<Schema>(actualState);
-    }
-
     public void Delete(Schema instance)
     {
         var server = SqlConnectionHelper.CreateConnection(instance.ServerInstance, instance.ConnectUsername, instance.ConnectPassword);
@@ -197,137 +170,28 @@ public sealed class Resource(JsonSerializerContext context)
         yield break;
     }
 
-    private static bool HasPermission(ServerPermissionSet permissionSet, ServerPermissionName permission)
+    private static bool HasPermission(ServerPermissionSet permissionSet, string permission)
     {
-        return permission switch
+        var property = typeof(ServerPermissionSet).GetProperty(permission, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+        if (property == null || property.PropertyType != typeof(bool))
         {
-            ServerPermissionName.AdministerBulkOperations => permissionSet.AdministerBulkOperations,
-            ServerPermissionName.AlterAnyAvailabilityGroup => permissionSet.AlterAnyAvailabilityGroup,
-            ServerPermissionName.AlterAnyConnection => permissionSet.AlterAnyConnection,
-            ServerPermissionName.AlterAnyCredential => permissionSet.AlterAnyCredential,
-            ServerPermissionName.AlterAnyDatabase => permissionSet.AlterAnyDatabase,
-            ServerPermissionName.AlterAnyEndpoint => permissionSet.AlterAnyEndpoint,
-            ServerPermissionName.AlterAnyEventNotification => permissionSet.AlterAnyEventNotification,
-            ServerPermissionName.AlterAnyEventSession => permissionSet.AlterAnyEventSession,
-            ServerPermissionName.AlterAnyEventSessionAddEvent => permissionSet.AlterAnyEventSessionAddEvent,
-            ServerPermissionName.AlterAnyEventSessionAddTarget => permissionSet.AlterAnyEventSessionAddTarget,
-            ServerPermissionName.AlterAnyEventSessionDisable => permissionSet.AlterAnyEventSessionDisable,
-            ServerPermissionName.AlterAnyEventSessionDropEvent => permissionSet.AlterAnyEventSessionDropEvent,
-            ServerPermissionName.AlterAnyEventSessionDropTarget => permissionSet.AlterAnyEventSessionDropTarget,
-            ServerPermissionName.AlterAnyEventSessionEnable => permissionSet.AlterAnyEventSessionEnable,
-            ServerPermissionName.AlterAnyEventSessionOption => permissionSet.AlterAnyEventSessionOption,
-            ServerPermissionName.AlterAnyLinkedServer => permissionSet.AlterAnyLinkedServer,
-            ServerPermissionName.AlterAnyLogin => permissionSet.AlterAnyLogin,
-            ServerPermissionName.AlterAnyServerAudit => permissionSet.AlterAnyServerAudit,
-            ServerPermissionName.AlterAnyServerRole => permissionSet.AlterAnyServerRole,
-            ServerPermissionName.AlterResources => permissionSet.AlterResources,
-            ServerPermissionName.AlterServerState => permissionSet.AlterServerState,
-            ServerPermissionName.AlterSettings => permissionSet.AlterSettings,
-            ServerPermissionName.AlterTrace => permissionSet.AlterTrace,
-            ServerPermissionName.AuthenticateServer => permissionSet.AuthenticateServer,
-            ServerPermissionName.ConnectAnyDatabase => permissionSet.ConnectAnyDatabase,
-            ServerPermissionName.ConnectSql => permissionSet.ConnectSql,
-            ServerPermissionName.ControlServer => permissionSet.ControlServer,
-            ServerPermissionName.CreateAnyDatabase => permissionSet.CreateAnyDatabase,
-            ServerPermissionName.CreateAnyEventSession => permissionSet.CreateAnyEventSession,
-            ServerPermissionName.CreateAvailabilityGroup => permissionSet.CreateAvailabilityGroup,
-            ServerPermissionName.CreateDdlEventNotification => permissionSet.CreateDdlEventNotification,
-            ServerPermissionName.CreateEndpoint => permissionSet.CreateEndpoint,
-            ServerPermissionName.CreateLogin => permissionSet.CreateLogin,
-            ServerPermissionName.CreateServerRole => permissionSet.CreateServerRole,
-            ServerPermissionName.CreateTraceEventNotification => permissionSet.CreateTraceEventNotification,
-            ServerPermissionName.DropAnyEventSession => permissionSet.DropAnyEventSession,
-            ServerPermissionName.ExternalAccessAssembly => permissionSet.ExternalAccessAssembly,
-            ServerPermissionName.ImpersonateAnyLogin => permissionSet.ImpersonateAnyLogin,
-            ServerPermissionName.SelectAllUserSecurables => permissionSet.SelectAllUserSecurables,
-            ServerPermissionName.Shutdown => permissionSet.Shutdown,
-            ServerPermissionName.UnsafeAssembly => permissionSet.UnsafeAssembly,
-            ServerPermissionName.ViewAnyCryptographicallySecuredDefinition => permissionSet.ViewAnyCryptographicallySecuredDefinition,
-            ServerPermissionName.ViewAnyDatabase => permissionSet.ViewAnyDatabase,
-            ServerPermissionName.ViewAnyDefinition => permissionSet.ViewAnyDefinition,
-            ServerPermissionName.ViewAnyErrorLog => permissionSet.ViewAnyErrorLog,
-            ServerPermissionName.ViewAnyPerformanceDefinition => permissionSet.ViewAnyPerformanceDefinition,
-            ServerPermissionName.ViewAnySecurityDefinition => permissionSet.ViewAnySecurityDefinition,
-            ServerPermissionName.ViewServerPerformanceState => permissionSet.ViewServerPerformanceState,
-            ServerPermissionName.ViewServerSecurityAudit => permissionSet.ViewServerSecurityAudit,
-            ServerPermissionName.ViewServerSecurityState => permissionSet.ViewServerSecurityState,
-            ServerPermissionName.ViewServerState => permissionSet.ViewServerState,
-            _ => false
-        };
+            return false;
+        }
+
+        return (bool)(property.GetValue(permissionSet) ?? false);
     }
 
-    private static SmoServerPermission MapPermissionNameToSmoPermission(ServerPermissionName permission)
+    private static SmoServerPermission MapPermissionNameToSmoPermission(string permission)
     {
-        return permission switch
-        {
-            ServerPermissionName.AdministerBulkOperations => SmoServerPermission.AdministerBulkOperations,
-            ServerPermissionName.AlterAnyAvailabilityGroup => SmoServerPermission.AlterAnyAvailabilityGroup,
-            ServerPermissionName.AlterAnyConnection => SmoServerPermission.AlterAnyConnection,
-            ServerPermissionName.AlterAnyCredential => SmoServerPermission.AlterAnyCredential,
-            ServerPermissionName.AlterAnyDatabase => SmoServerPermission.AlterAnyDatabase,
-            ServerPermissionName.AlterAnyEndpoint => SmoServerPermission.AlterAnyEndpoint,
-            ServerPermissionName.AlterAnyEventNotification => SmoServerPermission.AlterAnyEventNotification,
-            ServerPermissionName.AlterAnyEventSession => SmoServerPermission.AlterAnyEventSession,
-            ServerPermissionName.AlterAnyEventSessionAddEvent => SmoServerPermission.AlterAnyEventSessionAddEvent,
-            ServerPermissionName.AlterAnyEventSessionAddTarget => SmoServerPermission.AlterAnyEventSessionAddTarget,
-            ServerPermissionName.AlterAnyEventSessionDisable => SmoServerPermission.AlterAnyEventSessionDisable,
-            ServerPermissionName.AlterAnyEventSessionDropEvent => SmoServerPermission.AlterAnyEventSessionDropEvent,
-            ServerPermissionName.AlterAnyEventSessionDropTarget => SmoServerPermission.AlterAnyEventSessionDropTarget,
-            ServerPermissionName.AlterAnyEventSessionEnable => SmoServerPermission.AlterAnyEventSessionEnable,
-            ServerPermissionName.AlterAnyEventSessionOption => SmoServerPermission.AlterAnyEventSessionOption,
-            ServerPermissionName.AlterAnyLinkedServer => SmoServerPermission.AlterAnyLinkedServer,
-            ServerPermissionName.AlterAnyLogin => SmoServerPermission.AlterAnyLogin,
-            ServerPermissionName.AlterAnyServerAudit => SmoServerPermission.AlterAnyServerAudit,
-            ServerPermissionName.AlterAnyServerRole => SmoServerPermission.AlterAnyServerRole,
-            ServerPermissionName.AlterResources => SmoServerPermission.AlterResources,
-            ServerPermissionName.AlterServerState => SmoServerPermission.AlterServerState,
-            ServerPermissionName.AlterSettings => SmoServerPermission.AlterSettings,
-            ServerPermissionName.AlterTrace => SmoServerPermission.AlterTrace,
-            ServerPermissionName.AuthenticateServer => SmoServerPermission.AuthenticateServer,
-            ServerPermissionName.ConnectAnyDatabase => SmoServerPermission.ConnectAnyDatabase,
-            ServerPermissionName.ConnectSql => SmoServerPermission.ConnectSql,
-            ServerPermissionName.ControlServer => SmoServerPermission.ControlServer,
-            ServerPermissionName.CreateAnyDatabase => SmoServerPermission.CreateAnyDatabase,
-            ServerPermissionName.CreateAnyEventSession => SmoServerPermission.CreateAnyEventSession,
-            ServerPermissionName.CreateAvailabilityGroup => SmoServerPermission.CreateAvailabilityGroup,
-            ServerPermissionName.CreateDdlEventNotification => SmoServerPermission.CreateDdlEventNotification,
-            ServerPermissionName.CreateEndpoint => SmoServerPermission.CreateEndpoint,
-            ServerPermissionName.CreateLogin => SmoServerPermission.CreateLogin,
-            ServerPermissionName.CreateServerRole => SmoServerPermission.CreateServerRole,
-            ServerPermissionName.CreateTraceEventNotification => SmoServerPermission.CreateTraceEventNotification,
-            ServerPermissionName.DropAnyEventSession => SmoServerPermission.DropAnyEventSession,
-            ServerPermissionName.ExternalAccessAssembly => SmoServerPermission.ExternalAccessAssembly,
-            ServerPermissionName.ImpersonateAnyLogin => SmoServerPermission.ImpersonateAnyLogin,
-            ServerPermissionName.SelectAllUserSecurables => SmoServerPermission.SelectAllUserSecurables,
-            ServerPermissionName.Shutdown => SmoServerPermission.Shutdown,
-            ServerPermissionName.UnsafeAssembly => SmoServerPermission.UnsafeAssembly,
-            ServerPermissionName.ViewAnyCryptographicallySecuredDefinition => SmoServerPermission.ViewAnyCryptographicallySecuredDefinition,
-            ServerPermissionName.ViewAnyDatabase => SmoServerPermission.ViewAnyDatabase,
-            ServerPermissionName.ViewAnyDefinition => SmoServerPermission.ViewAnyDefinition,
-            ServerPermissionName.ViewAnyErrorLog => SmoServerPermission.ViewAnyErrorLog,
-            ServerPermissionName.ViewAnyPerformanceDefinition => SmoServerPermission.ViewAnyPerformanceDefinition,
-            ServerPermissionName.ViewAnySecurityDefinition => SmoServerPermission.ViewAnySecurityDefinition,
-            ServerPermissionName.ViewServerPerformanceState => SmoServerPermission.ViewServerPerformanceState,
-            ServerPermissionName.ViewServerSecurityAudit => SmoServerPermission.ViewServerSecurityAudit,
-            ServerPermissionName.ViewServerSecurityState => SmoServerPermission.ViewServerSecurityState,
-            ServerPermissionName.ViewServerState => SmoServerPermission.ViewServerState,
-            _ => throw new ArgumentException($"Unknown permission: {permission}", nameof(permission))
-        };
+        var property = typeof(SmoServerPermission).GetProperty(permission, BindingFlags.Public | BindingFlags.Static | BindingFlags.IgnoreCase)
+            ?? throw new ArgumentException($"Unknown permission: {permission}", nameof(permission));
+
+        return (SmoServerPermission)(property.GetValue(null)
+            ?? throw new ArgumentException($"Permission property returned null: {permission}", nameof(permission)));
     }
 
-    private static ServerPermissionSet MapPermissionNameToPermissionSet(ServerPermissionName permission)
+    private static ServerPermissionSet MapPermissionNameToPermissionSet(string permission)
     {
         return new ServerPermissionSet(MapPermissionNameToSmoPermission(permission));
-    }
-
-    private static PermissionState MapSmoPermissionState(SmoPermissionState state)
-    {
-        return state switch
-        {
-            SmoPermissionState.Grant => PermissionState.Grant,
-            SmoPermissionState.GrantWithGrant => PermissionState.GrantWithGrant,
-            SmoPermissionState.Deny => PermissionState.Deny,
-            _ => throw new ArgumentException($"Unknown permission state: {state}", nameof(state))
-        };
     }
 }

@@ -88,7 +88,6 @@ Describe 'SQL Server Database Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServ
             $result = dsc resource list OpenDsc.SqlServer/Database | ConvertFrom-Json
             $result.capabilities | Should -Contain 'get'
             $result.capabilities | Should -Contain 'set'
-            $result.capabilities | Should -Contain 'test'
             $result.capabilities | Should -Contain 'delete'
             $result.capabilities | Should -Contain 'export'
         }
@@ -257,80 +256,7 @@ Describe 'SQL Server Database Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServ
             dsc resource delete -r OpenDsc.SqlServer/Database --input $verifyJson | Out-Null
         }
     }
-
-    Context 'Test Operation' -Tag 'Test' {
-        It 'should return inDesiredState=false for non-existent database when _exist=true' {
-            $inputJson = Get-SqlServerTestInput @{
-                name           = 'NonExistentDatabase_Test123'
-            } | ConvertTo-Json -Compress
-
-            $result = dsc resource test -r OpenDsc.SqlServer/Database --input $inputJson | ConvertFrom-Json
-            $result.actualState._inDesiredState | Should -Be $false
-        }
-
-        It 'should return inDesiredState=true for existing database matching desired state' {
-            $dbName = "$($script:testDbPrefix)TestMatch1"
-
-            # Create database
-            $createJson = Get-SqlServerTestInput @{
-                name           = $dbName
-                recoveryModel  = 'Simple'
-            } | ConvertTo-Json -Compress
-
-            dsc resource set -r OpenDsc.SqlServer/Database --input $createJson | Out-Null
-
-            # Test with matching desired state
-            $testJson = Get-SqlServerTestInput @{
-                name           = $dbName
-                recoveryModel  = 'Simple'
-            } | ConvertTo-Json -Compress
-
-            $result = dsc resource test -r OpenDsc.SqlServer/Database --input $testJson | ConvertFrom-Json
-            $result.actualState._inDesiredState | Should -Be $true
-
-            # Cleanup
-            dsc resource delete -r OpenDsc.SqlServer/Database --input (Get-SqlServerTestInput @{
-                    name           = $dbName
-                } | ConvertTo-Json -Compress) | Out-Null
-        }
-
-        It 'should return inDesiredState=false for database with different properties' {
-            $dbName = "$($script:testDbPrefix)TestDiff1"
-
-            # Create database with Simple recovery model
-            $createJson = Get-SqlServerTestInput @{
-                name           = $dbName
-                recoveryModel  = 'Simple'
-            } | ConvertTo-Json -Compress
-
-            dsc resource set -r OpenDsc.SqlServer/Database --input $createJson | Out-Null
-
-            # Test expecting Full recovery model
-            $testJson = Get-SqlServerTestInput @{
-                name           = $dbName
-                recoveryModel  = 'Full'
-            } | ConvertTo-Json -Compress
-
-            $result = dsc resource test -r OpenDsc.SqlServer/Database --input $testJson | ConvertFrom-Json
-            $result.actualState._inDesiredState | Should -Be $false
-
-            # Cleanup
-            dsc resource delete -r OpenDsc.SqlServer/Database --input (Get-SqlServerTestInput @{
-                    name           = $dbName
-                } | ConvertTo-Json -Compress) | Out-Null
-        }
-
-        It 'should return inDesiredState=true when database should not exist and does not exist' {
-            $inputJson = Get-SqlServerTestInput @{
-                name           = 'NonExistentDatabase_TestNotExist'
-                _exist         = $false
-            } | ConvertTo-Json -Compress
-
-            $result = dsc resource test -r OpenDsc.SqlServer/Database --input $inputJson | ConvertFrom-Json
-            $result.actualState._inDesiredState | Should -Be $true
-        }
-    }
-
+    
     Context 'Delete Operation' -Tag 'Delete' {
         It 'should delete database' {
             $dbName = "$($script:testDbPrefix)Delete1"

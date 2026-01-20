@@ -17,16 +17,22 @@ Describe 'SQL Server Server Permission Resource' -Tag 'SqlServer' -Skip:(!$scrip
     BeforeAll {
         . $helperScript
 
-        $script:sqlServerInstance = if ($env:SQLSERVER_INSTANCE) { 
+        $script:sqlServerInstance = if ($env:SQLSERVER_INSTANCE)
+        { 
             $env:SQLSERVER_INSTANCE 
-        } elseif ($IsLinux) { 
+        }
+        elseif ($IsLinux)
+        { 
             'localhost' 
-        } else { 
+        }
+        else
+        { 
             '.' 
         }
 
         # Set SQL Authentication for Linux
-        if ($IsLinux -and $env:SQLSERVER_SA_PASSWORD) {
+        if ($IsLinux -and $env:SQLSERVER_SA_PASSWORD)
+        {
             $script:sqlServerUsername = 'sa'
             $script:sqlServerPassword = $env:SQLSERVER_SA_PASSWORD
         }
@@ -61,16 +67,29 @@ Describe 'SQL Server Server Permission Resource' -Tag 'SqlServer' -Skip:(!$scrip
     }
 
     AfterAll {
-        # Cleanup test login
-        if ($script:sqlServerAvailable)
+        # Cleanup test login and any permissions
+        if ($sqlServerAvailable)
         {
             try
             {
+                . $helperScript
                 $conn = New-Object System.Data.SqlClient.SqlConnection
                 $conn.ConnectionString = Get-SqlServerConnectionString
                 $conn.Open()
 
                 $cmd = $conn.CreateCommand()
+
+                # Revoke any permissions that might have been granted during tests
+                $cmd.CommandText = "REVOKE VIEW SERVER STATE FROM [$($script:testLogin)]"
+                try { $cmd.ExecuteNonQuery() | Out-Null } catch { }
+
+                $cmd.CommandText = "REVOKE VIEW ANY DATABASE FROM [$($script:testLogin)]"
+                try { $cmd.ExecuteNonQuery() | Out-Null } catch { }
+
+                $cmd.CommandText = "REVOKE VIEW ANY ERROR LOG FROM [$($script:testLogin)]"
+                try { $cmd.ExecuteNonQuery() | Out-Null } catch { }
+
+                # Drop the test login
                 $cmd.CommandText = "IF EXISTS (SELECT 1 FROM sys.server_principals WHERE name = '$($script:testLogin)') DROP LOGIN [$($script:testLogin)]"
                 try { $cmd.ExecuteNonQuery() | Out-Null } catch { }
 
@@ -94,7 +113,6 @@ Describe 'SQL Server Server Permission Resource' -Tag 'SqlServer' -Skip:(!$scrip
             $result = dsc resource list OpenDsc.SqlServer/ServerPermission | ConvertFrom-Json
             $result.capabilities | Should -Contain 'get'
             $result.capabilities | Should -Contain 'set'
-            $result.capabilities | Should -Contain 'test'
             $result.capabilities | Should -Contain 'delete'
             $result.capabilities | Should -Contain 'export'
         }
@@ -111,15 +129,10 @@ Describe 'SQL Server Server Permission Resource' -Tag 'SqlServer' -Skip:(!$scrip
             $result.properties.state | Should -Not -BeNullOrEmpty
         }
 
-        It 'should have permission enum with common permissions' {
+        It 'should have permission as string with pattern' {
             $result = dsc resource schema -r OpenDsc.SqlServer/ServerPermission | ConvertFrom-Json
-            # Permission enum is in $defs due to $ref usage
-            $permissionEnum = $result.'$defs'.serverPermissionName.enum
-            $permissionEnum | Should -Contain 'ViewServerState'
-            $permissionEnum | Should -Contain 'ViewAnyDatabase'
-            $permissionEnum | Should -Contain 'ViewAnyDefinition'
-            $permissionEnum | Should -Contain 'ConnectSql'
-            $permissionEnum | Should -Contain 'ControlServer'
+            $result.properties.permission.type | Should -Be 'string'
+            $result.properties.permission.pattern | Should -Not -BeNullOrEmpty
         }
 
         It 'should have state enum with Grant, GrantWithGrant, and Deny' {
@@ -134,8 +147,8 @@ Describe 'SQL Server Server Permission Resource' -Tag 'SqlServer' -Skip:(!$scrip
     Context 'Get Operation' -Tag 'Get' {
         It 'should return _exist=false for non-existent permission' {
             $inputJson = Get-SqlServerTestInput @{
-                principal      = $script:testLogin
-                permission     = 'ViewServerState'
+                principal  = $script:testLogin
+                permission = 'ViewServerState'
             } | ConvertTo-Json -Compress
 
             $result = dsc resource get -r OpenDsc.SqlServer/ServerPermission --input $inputJson | ConvertFrom-Json
@@ -168,9 +181,9 @@ Describe 'SQL Server Server Permission Resource' -Tag 'SqlServer' -Skip:(!$scrip
 
         It 'should grant VIEW SERVER STATE permission' {
             $inputJson = Get-SqlServerTestInput @{
-                principal      = $script:testLogin
-                permission     = 'ViewServerState'
-                state          = 'Grant'
+                principal  = $script:testLogin
+                permission = 'ViewServerState'
+                state      = 'Grant'
             } | ConvertTo-Json -Compress
 
             dsc resource set -r OpenDsc.SqlServer/ServerPermission --input $inputJson | Out-Null
@@ -178,8 +191,8 @@ Describe 'SQL Server Server Permission Resource' -Tag 'SqlServer' -Skip:(!$scrip
 
             # Verify the permission was granted
             $verifyJson = Get-SqlServerTestInput @{
-                principal      = $script:testLogin
-                permission     = 'ViewServerState'
+                principal  = $script:testLogin
+                permission = 'ViewServerState'
             } | ConvertTo-Json -Compress
 
             $result = dsc resource get -r OpenDsc.SqlServer/ServerPermission --input $verifyJson | ConvertFrom-Json
@@ -189,9 +202,9 @@ Describe 'SQL Server Server Permission Resource' -Tag 'SqlServer' -Skip:(!$scrip
 
         It 'should grant permission with GRANT option' {
             $inputJson = Get-SqlServerTestInput @{
-                principal      = $script:testLogin
-                permission     = 'ViewServerState'
-                state          = 'GrantWithGrant'
+                principal  = $script:testLogin
+                permission = 'ViewServerState'
+                state      = 'GrantWithGrant'
             } | ConvertTo-Json -Compress
 
             dsc resource set -r OpenDsc.SqlServer/ServerPermission --input $inputJson | Out-Null
@@ -199,8 +212,8 @@ Describe 'SQL Server Server Permission Resource' -Tag 'SqlServer' -Skip:(!$scrip
 
             # Verify the permission was granted with grant option
             $verifyJson = Get-SqlServerTestInput @{
-                principal      = $script:testLogin
-                permission     = 'ViewServerState'
+                principal  = $script:testLogin
+                permission = 'ViewServerState'
             } | ConvertTo-Json -Compress
 
             $result = dsc resource get -r OpenDsc.SqlServer/ServerPermission --input $verifyJson | ConvertFrom-Json
@@ -211,18 +224,18 @@ Describe 'SQL Server Server Permission Resource' -Tag 'SqlServer' -Skip:(!$scrip
         It 'should change permission state from Grant to Deny' {
             # First grant the permission
             $grantJson = Get-SqlServerTestInput @{
-                principal      = $script:testLogin
-                permission     = 'ViewAnyDatabase'
-                state          = 'Grant'
+                principal  = $script:testLogin
+                permission = 'ViewAnyDatabase'
+                state      = 'Grant'
             } | ConvertTo-Json -Compress
 
             dsc resource set -r OpenDsc.SqlServer/ServerPermission --input $grantJson | Out-Null
 
             # Now deny the permission
             $denyJson = Get-SqlServerTestInput @{
-                principal      = $script:testLogin
-                permission     = 'ViewAnyDatabase'
-                state          = 'Deny'
+                principal  = $script:testLogin
+                permission = 'ViewAnyDatabase'
+                state      = 'Deny'
             } | ConvertTo-Json -Compress
 
             dsc resource set -r OpenDsc.SqlServer/ServerPermission --input $denyJson | Out-Null
@@ -230,36 +243,12 @@ Describe 'SQL Server Server Permission Resource' -Tag 'SqlServer' -Skip:(!$scrip
 
             # Verify the permission state changed to Deny
             $verifyJson = Get-SqlServerTestInput @{
-                principal      = $script:testLogin
-                permission     = 'ViewAnyDatabase'
+                principal  = $script:testLogin
+                permission = 'ViewAnyDatabase'
             } | ConvertTo-Json -Compress
 
             $result = dsc resource get -r OpenDsc.SqlServer/ServerPermission --input $verifyJson | ConvertFrom-Json
             $result.actualState.state | Should -Be 'Deny'
-        }
-    }
-
-    Context 'Test Operation' -Tag 'Test' {
-        It 'should return _inDesiredState=false when permission does not exist' {
-            $inputJson = Get-SqlServerTestInput @{
-                principal      = $script:testLogin
-                permission     = 'ViewAnyDefinition'
-                state          = 'Grant'
-            } | ConvertTo-Json -Compress
-
-            $result = dsc resource test -r OpenDsc.SqlServer/ServerPermission --input $inputJson | ConvertFrom-Json
-            $result.actualState._inDesiredState | Should -Be $false
-        }
-
-        It 'should return _inDesiredState=true when _exist=false and permission does not exist' {
-            $inputJson = Get-SqlServerTestInput @{
-                principal      = $script:testLogin
-                permission     = 'ViewAnyDefinition'
-                _exist         = $false
-            } | ConvertTo-Json -Compress
-
-            $result = dsc resource test -r OpenDsc.SqlServer/ServerPermission --input $inputJson | ConvertFrom-Json
-            $result.actualState._inDesiredState | Should -Be $true
         }
     }
 
@@ -283,8 +272,8 @@ Describe 'SQL Server Server Permission Resource' -Tag 'SqlServer' -Skip:(!$scrip
 
         It 'should revoke/delete a permission' {
             $inputJson = Get-SqlServerTestInput @{
-                principal      = $script:testLogin
-                permission     = 'ViewAnyErrorLog'
+                principal  = $script:testLogin
+                permission = 'ViewAnyErrorLog'
             } | ConvertTo-Json -Compress
 
             dsc resource delete -r OpenDsc.SqlServer/ServerPermission --input $inputJson | Out-Null
@@ -297,8 +286,8 @@ Describe 'SQL Server Server Permission Resource' -Tag 'SqlServer' -Skip:(!$scrip
 
         It 'should not fail when deleting non-existent permission' {
             $inputJson = Get-SqlServerTestInput @{
-                principal      = $script:testLogin
-                permission     = 'ControlServer'
+                principal  = $script:testLogin
+                permission = 'ControlServer'
             } | ConvertTo-Json -Compress
 
             { dsc resource delete -r OpenDsc.SqlServer/ServerPermission --input $inputJson } | Should -Not -Throw

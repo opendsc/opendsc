@@ -6,6 +6,8 @@ using System.Text.Json.Serialization;
 
 using Json.Schema.Generation;
 
+using PermissionState = Microsoft.SqlServer.Management.Smo.PermissionState;
+
 namespace OpenDsc.Resource.SqlServer.DatabasePermission;
 
 [Title("SQL Server Database Permission Schema")]
@@ -41,9 +43,9 @@ public sealed class Schema
     public string Principal { get; set; } = string.Empty;
 
     [Required]
-    [Description("The permission to grant or deny.")]
-    [Nullable(false)]
-    public DatabasePermissionName Permission { get; set; }
+    [Description("The permission to grant or deny (e.g., 'Connect', 'Select', 'Execute', 'Alter').")]
+    [Pattern(@"^[A-Za-z]+$")]
+    public string Permission { get; set; } = string.Empty;
 
     [Description("The state of the permission (Grant, GrantWithGrant, or Deny).")]
     [Nullable(false)]
@@ -60,10 +62,4 @@ public sealed class Schema
     [Nullable(false)]
     [Default(true)]
     public bool? Exist { get; set; }
-
-    [JsonPropertyName("_inDesiredState")]
-    [Description("Indicates whether the permission is in the desired state.")]
-    [ReadOnly]
-    [Nullable(false)]
-    public bool? InDesiredState { get; set; }
 }

@@ -68,15 +68,33 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
 
     AfterAll {
         # Cleanup test database
-        if ($script:sqlServerAvailable)
+        if ($sqlServerAvailable)
         {
             try
             {
+                . $helperScript
+                
                 $conn = New-Object System.Data.SqlClient.SqlConnection
                 $conn.ConnectionString = Get-SqlServerConnectionString
                 $conn.Open()
 
+                # Revoke any permissions we might have granted (do this before dropping the database)
                 $cmd = $conn.CreateCommand()
+                $cmd.CommandText = "USE [$($script:testDb)]"
+                try { $cmd.ExecuteNonQuery() | Out-Null } catch { }
+
+                $cmd.CommandText = "REVOKE VIEW DEFINITION FROM [$($script:testUser)]"
+                try { $cmd.ExecuteNonQuery() | Out-Null } catch { }
+
+                $cmd.CommandText = "REVOKE SHOWPLAN FROM [$($script:testUser)]"
+                try { $cmd.ExecuteNonQuery() | Out-Null } catch { }
+
+                $cmd.CommandText = "REVOKE BACKUP DATABASE FROM [$($script:testUser)]"
+                try { $cmd.ExecuteNonQuery() | Out-Null } catch { }
+
+                $cmd.CommandText = "USE [master]"
+                try { $cmd.ExecuteNonQuery() | Out-Null } catch { }
+
                 $cmd.CommandText = "IF EXISTS (SELECT 1 FROM sys.databases WHERE name = '$($script:testDb)') BEGIN ALTER DATABASE [$($script:testDb)] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [$($script:testDb)]; END"
                 try { $cmd.ExecuteNonQuery() | Out-Null } catch { }
 
@@ -100,7 +118,6 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
             $result = dsc resource list OpenDsc.SqlServer/DatabasePermission | ConvertFrom-Json
             $result.capabilities | Should -Contain 'get'
             $result.capabilities | Should -Contain 'set'
-            $result.capabilities | Should -Contain 'test'
             $result.capabilities | Should -Contain 'delete'
             $result.capabilities | Should -Contain 'export'
         }
@@ -118,16 +135,10 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
             $result.properties.state | Should -Not -BeNullOrEmpty
         }
 
-        It 'should have permission enum with common permissions' {
+        It 'should have permission as string with pattern' {
             $result = dsc resource schema -r OpenDsc.SqlServer/DatabasePermission | ConvertFrom-Json
-            # Permission enum is in $defs due to $ref usage
-            $permissionEnum = $result.'$defs'.databasePermissionName.enum
-            $permissionEnum | Should -Contain 'Select'
-            $permissionEnum | Should -Contain 'Insert'
-            $permissionEnum | Should -Contain 'Update'
-            $permissionEnum | Should -Contain 'Delete'
-            $permissionEnum | Should -Contain 'Execute'
-            $permissionEnum | Should -Contain 'ViewDefinition'
+            $result.properties.permission.type | Should -Be 'string'
+            $result.properties.permission.pattern | Should -Not -BeNullOrEmpty
         }
 
         It 'should have state enum with Grant, GrantWithGrant, and Deny' {
@@ -252,32 +263,6 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
 
             $result = dsc resource get -r OpenDsc.SqlServer/DatabasePermission --input $verifyJson | ConvertFrom-Json
             $result.actualState.state | Should -Be 'Deny'
-        }
-    }
-
-    Context 'Test Operation' -Tag 'Test' {
-        It 'should return _inDesiredState=false when permission does not exist' {
-            $inputJson = Get-SqlServerTestInput @{
-                databaseName   = $script:testDb
-                principal      = $script:testUser
-                permission     = 'Checkpoint'
-                state          = 'Grant'
-            } | ConvertTo-Json -Compress
-
-            $result = dsc resource test -r OpenDsc.SqlServer/DatabasePermission --input $inputJson | ConvertFrom-Json
-            $result.actualState._inDesiredState | Should -Be $false
-        }
-
-        It 'should return _inDesiredState=true when _exist=false and permission does not exist' {
-            $inputJson = Get-SqlServerTestInput @{
-                databaseName   = $script:testDb
-                principal      = $script:testUser
-                permission     = 'Checkpoint'
-                _exist         = $false
-            } | ConvertTo-Json -Compress
-
-            $result = dsc resource test -r OpenDsc.SqlServer/DatabasePermission --input $inputJson | ConvertFrom-Json
-            $result.actualState._inDesiredState | Should -Be $true
         }
     }
 
