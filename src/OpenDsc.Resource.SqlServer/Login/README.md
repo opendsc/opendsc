@@ -70,6 +70,18 @@ The resource has the following capabilities:
 
 ## Examples
 
+### Login Type Property Requirements
+
+Different login types have different property requirements:
+
+| Login Type    | Password            | PasswordPolicyEnforced | PasswordExpirationEnabled | DenyWindowsLogin |
+|---------------|---------------------|------------------------|---------------------------|------------------|
+| SqlLogin      | Required for create | Optional               | Optional                  | N/A              |
+| WindowsUser   | N/A                 | N/A                    | N/A                       | Optional         |
+| WindowsGroup  | N/A                 | N/A                    | N/A                       | Optional         |
+| Certificate   | N/A                 | N/A                    | N/A                       | N/A              |
+| AsymmetricKey | N/A                 | N/A                    | N/A                       | N/A              |
+
 ### Get Login
 
 Retrieve the current state of a login:
@@ -85,7 +97,7 @@ dsc resource get -r OpenDsc.SqlServer/Login --input '{"serverInstance":".","name
 
 ### Create SQL Server Login
 
-Create a new SQL Server authentication login:
+Create a new SQL Server authentication login with password:
 
 ```yaml
 serverInstance: .
@@ -101,9 +113,9 @@ passwordExpirationEnabled: true
 dsc resource set -r OpenDsc.SqlServer/Login --input '{"serverInstance":".","name":"MyAppLogin","loginType":"SqlLogin","password":"SecureP@ssw0rd!","defaultDatabase":"MyAppDb"}'
 ```
 
-### Create Windows Login
+### Create Windows User Login
 
-Create a Windows authentication login:
+Create a Windows user authentication login (no password needed):
 
 ```yaml
 serverInstance: .
@@ -114,6 +126,52 @@ defaultDatabase: master
 
 ```powershell
 dsc resource set -r OpenDsc.SqlServer/Login --input '{"serverInstance":".","name":"DOMAIN\\ServiceAccount","loginType":"WindowsUser"}'
+```
+
+### Create Windows Group Login
+
+Create a Windows group login (no password needed):
+
+```yaml
+serverInstance: .
+name: DOMAIN\DBAdmins
+loginType: WindowsGroup
+defaultDatabase: master
+```
+
+```powershell
+dsc resource set -r OpenDsc.SqlServer/Login --input '{"serverInstance":".","name":"DOMAIN\\DBAdmins","loginType":"WindowsGroup"}'
+```
+
+### Create Certificate Login
+
+Create a login from a certificate (certificate must exist on server):
+
+```yaml
+serverInstance: .
+name: MyCertificateLogin
+loginType: Certificate
+```
+
+### Create Asymmetric Key Login
+
+Create a login from an asymmetric key (key must exist on server):
+
+```yaml
+serverInstance: .
+name: MyKeyLogin
+loginType: AsymmetricKey
+```
+
+### Deny Windows Login Access
+
+Create a Windows login but deny it access to the server:
+
+```yaml
+serverInstance: .
+name: DOMAIN\RestrictedUser
+loginType: WindowsUser
+denyWindowsLogin: true
 ```
 
 ### Assign Server Roles
