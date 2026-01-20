@@ -9,6 +9,8 @@ BeforeAll {
 
 Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerAvailable) {
     BeforeAll {
+        $script:sqlServerInstance = if ($env:SQLSERVER_INSTANCE) { $env:SQLSERVER_INSTANCE } else { '.' }
+
         $publishDir = Join-Path $PSScriptRoot "..\..\artifacts\publish"
         if (Test-Path $publishDir)
         {

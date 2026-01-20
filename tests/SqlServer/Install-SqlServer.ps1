@@ -197,8 +197,8 @@ function Initialize-SqlServerForTests
     #>
 
     # Default instance name
-    $sqlServerInstance = if ($env:SQLSERVER_INSTANCE) { $env:SQLSERVER_INSTANCE } else { '.' }
-    $sqlServerAvailable = $false
+    $script:sqlServerInstance = if ($env:SQLSERVER_INSTANCE) { $env:SQLSERVER_INSTANCE } else { '.' }
+    $script:sqlServerAvailable = $false
 
     if ($env:GITHUB_ACTIONS)
     {
@@ -253,11 +253,11 @@ function Initialize-SqlServerForTests
         $conn.ConnectionString = $connectionString
         $conn.Open()
         $conn.Close()
-        $sqlServerAvailable = $true
+        $script:sqlServerAvailable = $true
 
         Write-Host "SQL Server is available at '$sqlServerInstance'"
 
-        return $sqlServerAvailable
+        return $script:sqlServerAvailable
     }
     catch
     {
