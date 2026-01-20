@@ -364,4 +364,4 @@ if (Test-Path $publishDir) {
 
 Write-Host "Running tests..." -ForegroundColor Cyan
 
-Invoke-Pester
+Invoke-Pester -Output Detailed

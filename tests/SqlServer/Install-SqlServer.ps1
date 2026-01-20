@@ -197,8 +197,8 @@ function Initialize-SqlServerForTests
     #>
 
     # Default instance name
-    $script:sqlServerInstance = if ($env:SQLSERVER_INSTANCE) { $env:SQLSERVER_INSTANCE } else { '.' }
-    $script:sqlServerAvailable = $false
+    $sqlServerInstance = if ($env:SQLSERVER_INSTANCE) { $env:SQLSERVER_INSTANCE } else { '.' }
+    $sqlServerAvailable = $false
 
     if ($env:GITHUB_ACTIONS)
     {
@@ -218,7 +218,7 @@ function Initialize-SqlServerForTests
             if ($installed)
             {
                 # On Linux, we need to use SQL authentication
-                $script:sqlServerInstance = 'localhost'
+                $sqlServerInstance = 'localhost'
                 $env:SQLSERVER_USE_SQL_AUTH = 'true'
                 $env:SQLSERVER_SA_PASSWORD = $script:SqlServerSaPassword
             }
@@ -236,7 +236,7 @@ function Initialize-SqlServerForTests
     # Test SQL Server connectivity
     try
     {
-        $connectionString = "Server=$script:sqlServerInstance;Connection Timeout=10"
+        $connectionString = "Server=$sqlServerInstance;Connection Timeout=10"
 
         if ($env:SQLSERVER_USE_SQL_AUTH -eq 'true' -and $env:SQLSERVER_SA_PASSWORD)
         {
@@ -253,12 +253,14 @@ function Initialize-SqlServerForTests
         $conn.ConnectionString = $connectionString
         $conn.Open()
         $conn.Close()
-        $script:sqlServerAvailable = $true
+        $sqlServerAvailable = $true
 
-        Write-Host "SQL Server is available at '$script:sqlServerInstance'"
+        Write-Host "SQL Server is available at '$sqlServerInstance'"
+
+        return $sqlServerAvailable
     }
     catch
     {
-        Write-Warning "SQL Server not available at '$script:sqlServerInstance'. Skipping SQL Server tests. Error: $_"
+        Write-Warning "SQL Server not available at '$sqlServerInstance'. Skipping SQL Server tests. Error: $_"
     }
 }
