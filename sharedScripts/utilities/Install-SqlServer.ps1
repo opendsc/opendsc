@@ -202,7 +202,7 @@ function Initialize-SqlServerForTests
 
     if ($env:GITHUB_ACTIONS)
     {
-        Write-Verbose 'Running in GitHub Actions - checking for SQL Server installation...' -Verbose
+        Write-Verbose 'Running in GitHub Actions - checking for SQL Server installation...'
 
         if ($IsWindows)
         {
