@@ -7,6 +7,9 @@ using System.Text.Json.Schema;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
 
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+
 #if NET6_0_OR_GREATER
 using System.Diagnostics.CodeAnalysis;
 #endif
@@ -24,13 +27,20 @@ public abstract class DscResource<T> : IDscResource<T>
     private readonly JsonSchemaExporterOptions _exporterOptions;
 
     /// <summary>
+    /// Gets the logger instance for this resource.
+    /// </summary>
+    protected ILogger Logger { get; }
+
+    /// <summary>
     /// Initializes a new instance of the <see cref="DscResource{T}"/> class with JSON serializer options.
     /// </summary>
     /// <param name="options">The JSON serializer options for serialization operations.</param>
-    public DscResource(JsonSerializerOptions options)
+    /// <param name="logger">Optional logger instance for diagnostic messages.</param>
+    public DscResource(JsonSerializerOptions options, ILogger? logger = null)
     {
         _serializerOptions = options;
         _exporterOptions = DscJsonSchemaExporterOptions.Default;
+        Logger = logger ?? NullLogger.Instance;
     }
 
     /// <summary>
@@ -38,10 +48,12 @@ public abstract class DscResource<T> : IDscResource<T>
     /// This constructor is recommended for Native AOT compilation.
     /// </summary>
     /// <param name="context">The JSON serializer context for serialization operations.</param>
-    public DscResource(JsonSerializerContext context)
+    /// <param name="logger">Optional logger instance for diagnostic messages.</param>
+    public DscResource(JsonSerializerContext context, ILogger? logger = null)
     {
         _context = context;
         _exporterOptions = DscJsonSchemaExporterOptions.Default;
+        Logger = logger ?? NullLogger.Instance;
     }
 
     /// <summary>

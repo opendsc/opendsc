@@ -2,7 +2,10 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
+using Microsoft.Extensions.Logging;
+
 using OpenDsc.Resource.CommandLine;
+using OpenDsc.Resource.Logging;
 
 #if WINDOWS
 using GroupNs = OpenDsc.Resource.Windows.Group;
@@ -27,15 +30,20 @@ using JsonValueNs = OpenDsc.Resource.Json.Value;
 using ZipCompressNs = OpenDsc.Resource.Archive.Zip.Compress;
 using ZipExpandNs = OpenDsc.Resource.Archive.Zip.Expand;
 
+using var loggerFactory = LoggerFactory.Create(builder =>
+{
+    builder.AddDscResource();
+});
+
 #if WINDOWS
-var groupResource = new GroupNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
-var userResource = new UserNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
-var serviceResource = new ServiceNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
-var environmentResource = new EnvironmentNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
-var shortcutResource = new ShortcutNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
-var optionalFeatureResource = new OptionalFeatureNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
-var fileSystemAclResource = new FileSystemAclNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
-var scheduledTaskResource = new ScheduledTaskNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
+var groupResource = new GroupNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default, loggerFactory.CreateLogger<GroupNs.Resource>());
+var userResource = new UserNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default, loggerFactory.CreateLogger<UserNs.Resource>());
+var serviceResource = new ServiceNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default, loggerFactory.CreateLogger<ServiceNs.Resource>());
+var environmentResource = new EnvironmentNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default, loggerFactory.CreateLogger<EnvironmentNs.Resource>());
+var shortcutResource = new ShortcutNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default, loggerFactory.CreateLogger<ShortcutNs.Resource>());
+var optionalFeatureResource = new OptionalFeatureNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default, loggerFactory.CreateLogger<OptionalFeatureNs.Resource>());
+var fileSystemAclResource = new FileSystemAclNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default, loggerFactory.CreateLogger<FileSystemAclNs.Resource>());
+var scheduledTaskResource = new ScheduledTaskNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default, loggerFactory.CreateLogger<ScheduledTaskNs.Resource>());
 #endif
 
 #if !WINDOWS
@@ -43,18 +51,18 @@ var scheduledTaskResource = new ScheduledTaskNs.Resource(OpenDsc.Resource.Window
 PosixPermissionNs.Resource? posixPermissionResource = null;
 if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
 {
-    posixPermissionResource = new PosixPermissionNs.Resource(OpenDsc.Resource.Posix.SourceGenerationContext.Default);
+    posixPermissionResource = new PosixPermissionNs.Resource(OpenDsc.Resource.Posix.SourceGenerationContext.Default, loggerFactory.CreateLogger<PosixPermissionNs.Resource>());
 }
 #pragma warning restore CA1416
 #endif
 
-var fileResource = new FileNs.Resource(OpenDsc.Resource.FileSystem.SourceGenerationContext.Default);
-var directoryResource = new DirectoryNs.Resource(OpenDsc.Resource.FileSystem.SourceGenerationContext.Default);
-var symbolicLinkResource = new SymbolicLinkNs.Resource(OpenDsc.Resource.FileSystem.SourceGenerationContext.Default);
-var xmlElementResource = new XmlElementNs.Resource(OpenDsc.Resource.Xml.SourceGenerationContext.Default);
-var jsonValueResource = new JsonValueNs.Resource(OpenDsc.Resource.Json.SourceGenerationContext.Default);
-var zipCompressResource = new ZipCompressNs.Resource(OpenDsc.Resource.Archive.SourceGenerationContext.Default);
-var zipExpandResource = new ZipExpandNs.Resource(OpenDsc.Resource.Archive.SourceGenerationContext.Default);
+var fileResource = new FileNs.Resource(OpenDsc.Resource.FileSystem.SourceGenerationContext.Default, loggerFactory.CreateLogger<FileNs.Resource>());
+var directoryResource = new DirectoryNs.Resource(OpenDsc.Resource.FileSystem.SourceGenerationContext.Default, loggerFactory.CreateLogger<DirectoryNs.Resource>());
+var symbolicLinkResource = new SymbolicLinkNs.Resource(OpenDsc.Resource.FileSystem.SourceGenerationContext.Default, loggerFactory.CreateLogger<SymbolicLinkNs.Resource>());
+var xmlElementResource = new XmlElementNs.Resource(OpenDsc.Resource.Xml.SourceGenerationContext.Default, loggerFactory.CreateLogger<XmlElementNs.Resource>());
+var jsonValueResource = new JsonValueNs.Resource(OpenDsc.Resource.Json.SourceGenerationContext.Default, loggerFactory.CreateLogger<JsonValueNs.Resource>());
+var zipCompressResource = new ZipCompressNs.Resource(OpenDsc.Resource.Archive.SourceGenerationContext.Default, loggerFactory.CreateLogger<ZipCompressNs.Resource>());
+var zipExpandResource = new ZipExpandNs.Resource(OpenDsc.Resource.Archive.SourceGenerationContext.Default, loggerFactory.CreateLogger<ZipExpandNs.Resource>());
 
 var command = new CommandBuilder();
 

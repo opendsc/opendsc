@@ -4,6 +4,8 @@
 
 using System.Text.Json;
 
+using OpenDsc.Resource.Logging;
+
 namespace OpenDsc.Resource;
 
 /// <summary>
@@ -21,7 +23,7 @@ public static class Logger
 #if NET6_0_OR_GREATER
         string json = JsonSerializer.Serialize(infoMessage, typeof(Info), SourceGenerationContext.Default);
 #else
-        string json = JsonSerializer.Serialize(infoMessage, typeof(Info));
+        string json = JsonSerializer.Serialize(infoMessage);
 #endif
         Console.Error.WriteLine(json);
     }

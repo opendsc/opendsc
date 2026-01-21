@@ -4,16 +4,13 @@
 
 using System.Text.Json.Serialization;
 
-using OpenDsc.Resource.Logging;
-
-namespace OpenDsc.Resource;
+namespace OpenDsc.Resource.Logging;
 
 [JsonSourceGenerationOptions(
     WriteIndented = false,
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
     UseStringEnumConverter = true,
-    UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
-    GenerationMode = JsonSourceGenerationMode.Serialization)]
+    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 [JsonSerializable(typeof(Info))]
 [JsonSerializable(typeof(Warning))]
 [JsonSerializable(typeof(Error))]

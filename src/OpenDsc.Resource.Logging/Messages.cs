@@ -4,7 +4,7 @@
 
 using System.Text.Json.Serialization;
 
-namespace OpenDsc.Resource;
+namespace OpenDsc.Resource.Logging;
 
 /// <summary>
 /// Represents an informational log message for DSC resources.
