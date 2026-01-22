@@ -42,7 +42,7 @@ public sealed class Resource(JsonSerializerContext context)
 
     public Schema Get(Schema instance)
     {
-        var server = SqlConnectionHelper.CreateConnection(instance.ServerInstance, instance.ConnectUsername, instance.ConnectPassword);
+        var server = SqlConnectionHelper.CreateConnection(instance.ServerInstance, instance.Authentication);
 
         try
         {
@@ -147,7 +147,7 @@ public sealed class Resource(JsonSerializerContext context)
 
     public SetResult<Schema>? Set(Schema instance)
     {
-        var server = SqlConnectionHelper.CreateConnection(instance.ServerInstance, instance.ConnectUsername, instance.ConnectPassword);
+        var server = SqlConnectionHelper.CreateConnection(instance.ServerInstance, instance.Authentication);
 
         try
         {
@@ -176,7 +176,7 @@ public sealed class Resource(JsonSerializerContext context)
 
     public void Delete(Schema instance)
     {
-        var server = SqlConnectionHelper.CreateConnection(instance.ServerInstance, instance.ConnectUsername, instance.ConnectPassword);
+        var server = SqlConnectionHelper.CreateConnection(instance.ServerInstance, instance.Authentication);
 
         try
         {
@@ -197,14 +197,36 @@ public sealed class Resource(JsonSerializerContext context)
     public IEnumerable<Schema> Export()
     {
         var serverInstance = Environment.GetEnvironmentVariable("SQLSERVER_INSTANCE") ?? ".";
+        var authTypeStr = Environment.GetEnvironmentVariable("SQLSERVER_AUTH_TYPE");
         var username = Environment.GetEnvironmentVariable("SQLSERVER_USERNAME");
         var password = Environment.GetEnvironmentVariable("SQLSERVER_PASSWORD");
-        return Export(serverInstance, username, password);
+
+        SqlAuthentication? authentication = null;
+        if (!string.IsNullOrEmpty(authTypeStr) && Enum.TryParse<SqlAuthType>(authTypeStr, true, out var authType))
+        {
+            authentication = new SqlAuthentication
+            {
+                AuthType = authType,
+                Username = username,
+                Password = password
+            };
+        }
+        else if (!string.IsNullOrEmpty(username))
+        {
+            authentication = new SqlAuthentication
+            {
+                AuthType = SqlAuthType.Sql,
+                Username = username,
+                Password = password
+            };
+        }
+
+        return Export(serverInstance, authentication);
     }
 
-    public IEnumerable<Schema> Export(string serverInstance, string? username = null, string? password = null)
+    public IEnumerable<Schema> Export(string serverInstance, SqlAuthentication? authentication = null)
     {
-        var server = SqlConnectionHelper.CreateConnection(serverInstance, username, password);
+        var server = SqlConnectionHelper.CreateConnection(serverInstance, authentication);
 
         try
         {

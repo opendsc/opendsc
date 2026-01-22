@@ -11,6 +11,7 @@ namespace OpenDsc.Resource.SqlServer;
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
     UseStringEnumConverter = true,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
+[JsonSerializable(typeof(SqlAuthentication), TypeInfoPropertyName = "SqlAuthenticationSchema")]
 [JsonSerializable(typeof(Login.Schema), TypeInfoPropertyName = "LoginSchema")]
 [JsonSerializable(typeof(Database.Schema), TypeInfoPropertyName = "DatabaseSchema")]
 [JsonSerializable(typeof(DatabasePermission.Schema), TypeInfoPropertyName = "DatabasePermissionSchema")]
