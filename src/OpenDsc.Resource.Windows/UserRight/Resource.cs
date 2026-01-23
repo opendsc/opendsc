@@ -67,19 +67,18 @@ public sealed class Resource(JsonSerializerContext context)
 
     public SetResult<Schema>? Set(Schema instance)
     {
-        if (instance.Rights == null || instance.Rights.Length == 0)
-        {
-            throw new ArgumentException("Rights array is required and must contain at least one right.");
-        }
-
         var principalSid = LsaHelper.ResolvePrincipalToSid(instance.Principal).Value;
 
         foreach (var right in instance.Rights)
         {
             var currentPrincipals = LsaHelper.GetPrincipalsWithRight(right);
-            var currentPrincipalSids = currentPrincipals.Select(p => LsaHelper.ResolvePrincipalToSid(p).Value).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-            var hasPrincipal = currentPrincipalSids.Contains(principalSid);
+            var principalToSid = currentPrincipals.ToDictionary(
+                p => p,
+                p => LsaHelper.ResolvePrincipalToSid(p).Value,
+                StringComparer.OrdinalIgnoreCase);
+
+            var hasPrincipal = principalToSid.Values.Contains(principalSid, StringComparer.OrdinalIgnoreCase);
 
             if (!hasPrincipal)
             {
@@ -88,11 +87,10 @@ public sealed class Resource(JsonSerializerContext context)
 
             if (instance.Purge == true)
             {
-                var toRemove = currentPrincipals.Where(p =>
-                {
-                    var sid = LsaHelper.ResolvePrincipalToSid(p).Value;
-                    return !sid.Equals(principalSid, StringComparison.OrdinalIgnoreCase);
-                }).ToList();
+                var toRemove = principalToSid
+                    .Where(kvp => !kvp.Value.Equals(principalSid, StringComparison.OrdinalIgnoreCase))
+                    .Select(kvp => kvp.Key)
+                    .ToList();
 
                 foreach (var principal in toRemove)
                 {

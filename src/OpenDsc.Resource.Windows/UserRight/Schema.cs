@@ -16,6 +16,7 @@ public sealed class Schema
     [Required]
     [Description("The user rights to grant or revoke.")]
     [UniqueItems(true)]
+    [MinItems(1)]
     public UserRight[] Rights { get; set; } = [];
 
     [Required]

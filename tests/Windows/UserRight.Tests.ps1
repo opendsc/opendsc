@@ -92,38 +92,20 @@ Describe 'Windows User Rights Assignment Resource' -Tag 'Windows' -Skip:(!$IsWin
 
     Context 'Set Operation - User Rights Management' -Tag 'Set', 'Admin' -Skip:(!$script:isAdmin) {
         BeforeEach {
-            # Create a test user for user rights assignments
             $script:testUser = "DscTestUser_$(Get-Random -Maximum 99999)"
             $password = ConvertTo-SecureString "P@ssw0rd!$(Get-Random -Maximum 99999)" -AsPlainText -Force
             New-LocalUser -Name $script:testUser -Password $password -Description "Test user for DSC UserRight resource" -ErrorAction SilentlyContinue | Out-Null
         }
 
         AfterEach {
-            # Remove test user
             if ($script:testUser) {
                 Remove-LocalUser -Name $script:testUser -ErrorAction SilentlyContinue
-            }
-
-            # Remove test user from rights
-            if ($script:testRight) {
-                try {
-                    $inputJson = @{
-                        right = $script:testRight
-                        principals = @()
-                        _purge = $true
-                    } | ConvertTo-Json -Compress
-
-                    dsc resource set -r OpenDsc.Windows/UserRight --input $inputJson 2>&1 | Out-Null
-                } catch {
-                    # Ignore cleanup errors
-                }
             }
         }
 
         It 'should grant multiple rights to a user (additive mode)' {
             $script:testRight = 'SeServiceLogonRight'
 
-            # Add test user to the right
             $setInputJson = @{
                 rights = @($script:testRight, 'SeBatchLogonRight')
                 principal = $script:testUser
@@ -133,7 +115,6 @@ Describe 'Windows User Rights Assignment Resource' -Tag 'Windows' -Skip:(!$IsWin
             $setResult = dsc resource set -r OpenDsc.Windows/UserRight --input $setInputJson | ConvertFrom-Json
             $setResult.afterState.principal | Should -Match $script:testUser
 
-            # Verify test user has both rights
             $verifyJson = @{
                 rights = @($script:testRight, 'SeBatchLogonRight')
                 principal = $script:testUser
@@ -147,16 +128,14 @@ Describe 'Windows User Rights Assignment Resource' -Tag 'Windows' -Skip:(!$IsWin
         It 'should support _purge mode (removes other principals)' {
             $script:testRight = 'SeBatchLogonRight'
 
-            # Set to only include test user (purge others from this right)
             $setInputJson = @{
                 rights = @($script:testRight)
                 principal = $script:testUser
                 _purge = $true
             } | ConvertTo-Json -Compress
 
-            $setResult = dsc resource set -r OpenDsc.Windows/UserRight --input $setInputJson | ConvertFrom-Json
+            dsc resource set -r OpenDsc.Windows/UserRight --input $setInputJson | Out-Null
 
-            # Verify only test user has the right
             $getPrincipalsJson = @{
                 rights = @($script:testRight)
                 principal = $script:testUser
@@ -168,7 +147,6 @@ Describe 'Windows User Rights Assignment Resource' -Tag 'Windows' -Skip:(!$IsWin
         It 'should accept multiple principal formats' {
             $script:testRight = 'SeRemoteShutdownPrivilege'
 
-            # Test with local username format
             $setInputJson = @{
                 rights = @($script:testRight)
                 principal = $script:testUser
@@ -201,7 +179,6 @@ Describe 'Windows User Rights Assignment Resource' -Tag 'Windows' -Skip:(!$IsWin
             $result.resources | Should -Not -BeNullOrEmpty
             $result.resources.Count | Should -BeGreaterThan 0
 
-            # Verify exported resources have the correct structure
             $firstResource = $result.resources[0]
             $firstResource.type | Should -Be 'OpenDsc.Windows/UserRight'
             $firstResource.properties.principal | Should -Not -BeNullOrEmpty
@@ -211,13 +188,10 @@ Describe 'Windows User Rights Assignment Resource' -Tag 'Windows' -Skip:(!$IsWin
         It 'should export principals with their rights grouped' {
             $result = dsc resource export -r OpenDsc.Windows/UserRight | ConvertFrom-Json
 
-            # Check that each principal has an array of rights
             foreach ($resource in $result.resources) {
-                # Rights should be an array (even if single element)
                 if ($resource.properties.rights -is [array]) {
                     $resource.properties.rights.Count | Should -BeGreaterThan 0
                 } else {
-                    # Single right is also valid, just ensure it's not null
                     $resource.properties.rights | Should -Not -BeNullOrEmpty
                 }
             }
@@ -226,9 +200,6 @@ Describe 'Windows User Rights Assignment Resource' -Tag 'Windows' -Skip:(!$IsWin
         It 'should export principals in friendly name format' {
             $result = dsc resource export -r OpenDsc.Windows/UserRight | ConvertFrom-Json
 
-            # Most principals should be in friendly name format, but some system SIDs
-            # may not have friendly names (e.g., deleted accounts, app packages)
-            # Just verify we got some results and they have principals
             foreach ($resource in $result.resources) {
                 $resource.properties.principal | Should -Not -BeNullOrEmpty
             }
