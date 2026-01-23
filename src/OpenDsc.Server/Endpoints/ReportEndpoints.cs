@@ -18,13 +18,30 @@ public static class ReportEndpoints
 {
     public static void MapReportEndpoints(this IEndpointRouteBuilder app)
     {
-        var nodeGroup = app.MapGroup("/api/v1/nodes/{nodeId:guid}/reports");
-        nodeGroup.MapPost("/", SubmitReport).RequireAuthorization("Node");
-        nodeGroup.MapGet("/", GetNodeReports).RequireAuthorization("Admin");
+        var nodeGroup = app.MapGroup("/api/v1/nodes/{nodeId:guid}/reports")
+            .WithTags("Reports");
 
-        var reportGroup = app.MapGroup("/api/v1/reports").RequireAuthorization("Admin");
-        reportGroup.MapGet("/", GetAllReports);
-        reportGroup.MapGet("/{reportId:guid}", GetReport);
+        nodeGroup.MapPost("/", SubmitReport)
+            .RequireAuthorization("Node")
+            .WithSummary("Submit compliance report")
+            .WithDescription("Submits a compliance report from a node.");
+
+        nodeGroup.MapGet("/", GetNodeReports)
+            .RequireAuthorization("Admin")
+            .WithSummary("Get node reports")
+            .WithDescription("Returns all compliance reports for a specific node.");
+
+        var reportGroup = app.MapGroup("/api/v1/reports")
+            .RequireAuthorization("Admin")
+            .WithTags("Reports");
+
+        reportGroup.MapGet("/", GetAllReports)
+            .WithSummary("List all reports")
+            .WithDescription("Returns a paginated list of all compliance reports.");
+
+        reportGroup.MapGet("/{reportId:guid}", GetReport)
+            .WithSummary("Get report details")
+            .WithDescription("Returns the full details of a specific compliance report.");
     }
 
     private static async Task<Results<Created<ReportSummary>, NotFound<ErrorResponse>, BadRequest<ErrorResponse>, ForbidHttpResult>> SubmitReport(

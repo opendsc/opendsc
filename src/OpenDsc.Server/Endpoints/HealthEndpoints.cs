@@ -13,8 +13,16 @@ public static class HealthEndpoints
 {
     public static void MapHealthEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/health", GetHealth);
-        app.MapGet("/health/ready", GetReadiness);
+        var group = app.MapGroup("/health")
+            .WithTags("Health");
+
+        group.MapGet("/", GetHealth)
+            .WithSummary("Liveness check")
+            .WithDescription("Returns the health status of the server.");
+
+        group.MapGet("/ready", GetReadiness)
+            .WithSummary("Readiness check")
+            .WithDescription("Checks if the server is ready to accept requests, including database connectivity.");
     }
 
     private static Ok<HealthResponse> GetHealth()

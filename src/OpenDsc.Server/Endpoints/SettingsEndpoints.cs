@@ -16,11 +16,20 @@ public static class SettingsEndpoints
     public static void MapSettingsEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/v1/settings")
-            .RequireAuthorization("Admin");
+            .RequireAuthorization("Admin")
+            .WithTags("Settings");
 
-        group.MapGet("/", GetSettings);
-        group.MapPut("/", UpdateSettings);
-        group.MapPost("/registration-key/rotate", RotateRegistrationKey);
+        group.MapGet("/", GetSettings)
+            .WithSummary("Get server settings")
+            .WithDescription("Returns the current server settings.");
+
+        group.MapPut("/", UpdateSettings)
+            .WithSummary("Update server settings")
+            .WithDescription("Updates server settings like key rotation interval.");
+
+        group.MapPost("/registration-key/rotate", RotateRegistrationKey)
+            .WithSummary("Rotate registration key")
+            .WithDescription("Generates a new registration key, invalidating the old one.");
     }
 
     private static async Task<Results<Ok<ServerSettingsResponse>, NotFound<ErrorResponse>>> GetSettings(

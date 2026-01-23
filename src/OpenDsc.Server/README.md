@@ -10,6 +10,7 @@ A modern REST API-based pull server for DSC v3, providing centralized configurat
 - **API Key Rotation**: Secure, atomic key rotation for node authentication
 - **Multi-Database Support**: SQLite (default), SQL Server, and PostgreSQL
 - **Docker Ready**: Multi-stage Dockerfile and docker-compose configurations
+- **Interactive API Documentation**: Built-in Scalar API reference at `/scalar/v1`
 
 ## Quick Start
 

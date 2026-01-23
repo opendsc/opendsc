@@ -7,6 +7,8 @@ using OpenDsc.Server.Authentication;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Endpoints;
 
+using Scalar.AspNetCore;
+
 var builder = WebApplication.CreateSlimBuilder(args);
 
 builder.Services.ConfigureHttpJsonOptions(options =>
@@ -16,12 +18,22 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 
 builder.Services.AddSingleton(SourceGenerationContext.Default.Options);
 
+builder.Services.AddOpenApi();
+
 builder.Services.AddServerDatabase(builder.Configuration);
 builder.Services.AddApiKeyAuthentication();
 
 var app = builder.Build();
 
 await app.InitializeDatabaseAsync();
+
+app.MapOpenApi();
+app.MapScalarApiReference(options =>
+{
+    options
+        .WithTitle("OpenDSC Pull Server")
+        .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient);
+});
 
 app.UseAuthentication();
 app.UseAuthorization();

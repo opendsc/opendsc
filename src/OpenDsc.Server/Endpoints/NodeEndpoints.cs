@@ -18,16 +18,47 @@ public static class NodeEndpoints
 {
     public static void MapNodeEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/v1/nodes");
+        var group = app.MapGroup("/api/v1/nodes")
+            .WithTags("Nodes");
 
-        group.MapPost("/register", RegisterNode);
-        group.MapGet("/", GetNodes).RequireAuthorization("Admin");
-        group.MapGet("/{nodeId:guid}", GetNode).RequireAuthorization("Admin");
-        group.MapDelete("/{nodeId:guid}", DeleteNode).RequireAuthorization("Admin");
-        group.MapGet("/{nodeId:guid}/configuration", GetNodeConfiguration).RequireAuthorization("Node");
-        group.MapPut("/{nodeId:guid}/configuration", AssignConfiguration).RequireAuthorization("Admin");
-        group.MapGet("/{nodeId:guid}/configuration/checksum", GetConfigurationChecksum).RequireAuthorization("Node");
-        group.MapPost("/{nodeId:guid}/rotate-key", RotateKey).RequireAuthorization("Node");
+        group.MapPost("/register", RegisterNode)
+            .WithSummary("Register a node")
+            .WithDescription("Registers a new node or re-registers an existing node with the server.");
+
+        group.MapGet("/", GetNodes)
+            .RequireAuthorization("Admin")
+            .WithSummary("List all nodes")
+            .WithDescription("Returns a list of all registered nodes.");
+
+        group.MapGet("/{nodeId:guid}", GetNode)
+            .RequireAuthorization("Admin")
+            .WithSummary("Get node details")
+            .WithDescription("Returns details for a specific node.");
+
+        group.MapDelete("/{nodeId:guid}", DeleteNode)
+            .RequireAuthorization("Admin")
+            .WithSummary("Delete a node")
+            .WithDescription("Deletes a node and its associated reports.");
+
+        group.MapGet("/{nodeId:guid}/configuration", GetNodeConfiguration)
+            .RequireAuthorization("Node")
+            .WithSummary("Get assigned configuration")
+            .WithDescription("Downloads the configuration assigned to the node.");
+
+        group.MapPut("/{nodeId:guid}/configuration", AssignConfiguration)
+            .RequireAuthorization("Admin")
+            .WithSummary("Assign configuration")
+            .WithDescription("Assigns a configuration to a node by name.");
+
+        group.MapGet("/{nodeId:guid}/configuration/checksum", GetConfigurationChecksum)
+            .RequireAuthorization("Node")
+            .WithSummary("Get configuration checksum")
+            .WithDescription("Returns the checksum of the assigned configuration for change detection.");
+
+        group.MapPost("/{nodeId:guid}/rotate-key", RotateKey)
+            .RequireAuthorization("Node")
+            .WithSummary("Rotate API key")
+            .WithDescription("Generates a new API key for the node, invalidating the old one.");
     }
 
     private static async Task<Results<Ok<RegisterNodeResponse>, BadRequest<ErrorResponse>, Conflict<ErrorResponse>>> RegisterNode(

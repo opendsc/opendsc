@@ -19,13 +19,28 @@ public static class ConfigurationEndpoints
     public static void MapConfigurationEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/v1/configurations")
-            .RequireAuthorization("Admin");
+            .RequireAuthorization("Admin")
+            .WithTags("Configurations");
 
-        group.MapGet("/", GetConfigurations);
-        group.MapPost("/", CreateConfiguration);
-        group.MapGet("/{name}", GetConfiguration);
-        group.MapPut("/{name}", UpdateConfiguration);
-        group.MapDelete("/{name}", DeleteConfiguration);
+        group.MapGet("/", GetConfigurations)
+            .WithSummary("List configurations")
+            .WithDescription("Returns a list of all DSC configurations.");
+
+        group.MapPost("/", CreateConfiguration)
+            .WithSummary("Create configuration")
+            .WithDescription("Creates a new DSC configuration.");
+
+        group.MapGet("/{name}", GetConfiguration)
+            .WithSummary("Get configuration")
+            .WithDescription("Returns the content of a specific configuration.");
+
+        group.MapPut("/{name}", UpdateConfiguration)
+            .WithSummary("Update configuration")
+            .WithDescription("Updates the content of an existing configuration.");
+
+        group.MapDelete("/{name}", DeleteConfiguration)
+            .WithSummary("Delete configuration")
+            .WithDescription("Deletes a configuration and unassigns it from any nodes.");
     }
 
     private static async Task<Ok<List<ConfigurationSummary>>> GetConfigurations(
