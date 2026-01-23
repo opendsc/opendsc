@@ -44,6 +44,8 @@ managing Windows and cross-platform systems:
 - **[OpenDsc.Windows/ScheduledTask][scheduledtask]** - Manage Windows scheduled
   tasks
 - **[OpenDsc.Windows/User][user]** - Manage local Windows user accounts
+- **[OpenDsc.Windows/UserRight][userright]** - Manage Windows user rights
+  assignments (privileges)
 - **[OpenDsc.Windows/Shortcut][shortcut]** - Manage Windows shortcuts
   (.lnk files)
 - **[OpenDsc.Windows/OptionalFeature][optionalfeature]** - Manage Windows
@@ -78,6 +80,7 @@ resources provide Unix-specific functionality not available on Windows.
 [service]: src/OpenDsc.Resource.Windows/Service/README.md
 [scheduledtask]: src/OpenDsc.Resource.Windows/ScheduledTask/README.md
 [user]: src/OpenDsc.Resource.Windows/User/README.md
+[userright]: src/OpenDsc.Resource.Windows/UserRight/README.md
 [shortcut]: src/OpenDsc.Resource.Windows/Shortcut/README.md
 [optionalfeature]: src/OpenDsc.Resource.Windows/OptionalFeature/README.md
 [acl]: src/OpenDsc.Resource.Windows/FileSystem/Acl/README.md
