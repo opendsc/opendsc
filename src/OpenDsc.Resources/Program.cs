@@ -19,6 +19,7 @@ using UserRightNs = OpenDsc.Resource.Windows.UserRight;
 using SqlServerLoginNs = OpenDsc.Resource.SqlServer.Login;
 using SqlServerDatabaseNs = OpenDsc.Resource.SqlServer.Database;
 using SqlServerDatabaseRoleNs = OpenDsc.Resource.SqlServer.DatabaseRole;
+using SqlServerServerRoleNs = OpenDsc.Resource.SqlServer.ServerRole;
 using SqlServerDatabasePermissionNs = OpenDsc.Resource.SqlServer.DatabasePermission;
 using SqlServerServerPermissionNs = OpenDsc.Resource.SqlServer.ServerPermission;
 
@@ -49,6 +50,7 @@ var userRightResource = new UserRightNs.Resource(OpenDsc.Resource.Windows.Source
 var sqlServerLoginResource = new SqlServerLoginNs.Resource(OpenDsc.Resource.SqlServer.SourceGenerationContext.Default);
 var sqlServerDatabaseResource = new SqlServerDatabaseNs.Resource(OpenDsc.Resource.SqlServer.SourceGenerationContext.Default);
 var sqlServerDatabaseRoleResource = new SqlServerDatabaseRoleNs.Resource(OpenDsc.Resource.SqlServer.SourceGenerationContext.Default);
+var sqlServerServerRoleResource = new SqlServerServerRoleNs.Resource(OpenDsc.Resource.SqlServer.SourceGenerationContext.Default);
 var sqlServerDatabasePermissionResource = new SqlServerDatabasePermissionNs.Resource(OpenDsc.Resource.SqlServer.SourceGenerationContext.Default);
 var sqlServerServerPermissionResource = new SqlServerServerPermissionNs.Resource(OpenDsc.Resource.SqlServer.SourceGenerationContext.Default);
 
@@ -88,6 +90,7 @@ command
 command.AddResource<SqlServerLoginNs.Resource, SqlServerLoginNs.Schema>(sqlServerLoginResource);
 command.AddResource<SqlServerDatabaseNs.Resource, SqlServerDatabaseNs.Schema>(sqlServerDatabaseResource);
 command.AddResource<SqlServerDatabaseRoleNs.Resource, SqlServerDatabaseRoleNs.Schema>(sqlServerDatabaseRoleResource);
+command.AddResource<SqlServerServerRoleNs.Resource, SqlServerServerRoleNs.Schema>(sqlServerServerRoleResource);
 command.AddResource<SqlServerDatabasePermissionNs.Resource, SqlServerDatabasePermissionNs.Schema>(sqlServerDatabasePermissionResource);
 command.AddResource<SqlServerServerPermissionNs.Resource, SqlServerServerPermissionNs.Schema>(sqlServerServerPermissionResource);
 
