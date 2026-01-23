@@ -31,7 +31,7 @@ app.MapOpenApi();
 app.MapScalarApiReference(options =>
 {
     options
-        .WithTitle("OpenDSC Pull Server")
+        .WithTitle("OpenDSC Server")
         .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient);
 });
 

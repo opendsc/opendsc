@@ -1,22 +1,30 @@
 # OpenDSC Pull Server
 
-A modern REST API-based pull server for DSC v3, providing centralized configuration management for distributed systems.
+A modern REST API-based pull server for DSC v3, providing centralized
+configuration management for distributed systems.
 
 ## Features
 
-- **Configuration Management**: Store and distribute DSC configurations to registered nodes
-- **Node Registration**: FQDN-based node identification with automatic API key generation
-- **Compliance Reporting**: Collect and store compliance reports from LCM agents
-- **API Key Rotation**: Secure, atomic key rotation for node authentication
-- **Multi-Database Support**: SQLite (default), SQL Server, and PostgreSQL
-- **Docker Ready**: Multi-stage Dockerfile and docker-compose configurations
-- **Interactive API Documentation**: Built-in Scalar API reference at `/scalar/v1`
+- **Configuration Management**: Store and distribute DSC configurations
+  to registered nodes
+- **Node Registration**: FQDN-based node identification with automatic
+  API key generation
+- **Compliance Reporting**: Collect and store compliance reports from
+  LCM agents
+- **API Key Rotation**: Secure, atomic key rotation for node
+  authentication
+- **Multi-Database Support**: SQLite (default), SQL Server, and
+  PostgreSQL
+- **Docker Ready**: Multi-stage Dockerfile and docker-compose
+  configurations
+- **Interactive API Documentation**: Built-in Scalar API reference at
+  `/scalar/v1`
 
 ## Quick Start
 
 ### Running with Docker
 
-```bash
+```sh
 # Start with SQLite (default)
 docker-compose up -d
 
@@ -29,7 +37,7 @@ docker-compose --profile sqlserver up -d
 
 ### Running Locally
 
-```bash
+```sh
 # Build the server
 dotnet build
 
@@ -42,14 +50,14 @@ dotnet run
 ### Health
 
 | Endpoint | Method | Auth | Description |
-|----------|--------|------|-------------|
+| :-------- | :----- | :--- | :---------- |
 | `/health` | GET | None | Liveness check |
 | `/health/ready` | GET | None | Readiness check (includes database) |
 
 ### Nodes
 
 | Endpoint | Method | Auth | Description |
-|----------|--------|------|-------------|
+| :-------- | :----- | :--- | :---------- |
 | `/api/v1/nodes/register` | POST | Registration Key | Register or re-register a node |
 | `/api/v1/nodes` | GET | Admin | List all nodes |
 | `/api/v1/nodes/{nodeId}` | GET | Admin | Get node details |
@@ -62,7 +70,7 @@ dotnet run
 ### Configurations
 
 | Endpoint | Method | Auth | Description |
-|----------|--------|------|-------------|
+| :-------- | :----- | :--- | :---------- |
 | `/api/v1/configurations` | GET | Admin | List all configurations |
 | `/api/v1/configurations` | POST | Admin | Create a new configuration |
 | `/api/v1/configurations/{name}` | GET | Admin | Get configuration details |
@@ -72,7 +80,7 @@ dotnet run
 ### Reports
 
 | Endpoint | Method | Auth | Description |
-|----------|--------|------|-------------|
+| :-------- | :----- | :--- | :---------- |
 | `/api/v1/nodes/{nodeId}/reports` | POST | Node | Submit a compliance report |
 | `/api/v1/nodes/{nodeId}/reports` | GET | Admin | Get reports for a node |
 | `/api/v1/reports` | GET | Admin | List all reports |
@@ -81,7 +89,7 @@ dotnet run
 ### Settings
 
 | Endpoint | Method | Auth | Description |
-|----------|--------|------|-------------|
+| :-------- | :----- | :--- | :---------- |
 | `/api/v1/settings` | GET | Admin | Get server settings |
 | `/api/v1/settings` | PUT | Admin | Update server settings |
 | `/api/v1/settings/registration-key/rotate` | POST | Admin | Rotate registration key |
@@ -90,7 +98,8 @@ dotnet run
 
 ### Node Authentication
 
-Nodes authenticate using the `Authorization: Bearer {apiKey}` header. The API key is obtained during registration.
+Nodes authenticate using the `Authorization: Bearer {apiKey}` header.
+The API key is obtained during registration.
 
 ### Admin Authentication
 
@@ -101,10 +110,10 @@ Administrators authenticate using the `X-Admin-Key: {apiKey}` header.
 ### Environment Variables
 
 | Variable | Description | Default |
-|----------|-------------|---------|
+| :-------- | :---------- | :------ |
 | `Database__Provider` | Database provider (SQLite, SqlServer, PostgreSQL) | SQLite |
 | `Database__ConnectionString` | Database connection string | Data Source=opendsc-server.db |
-| `ASPNETCORE_URLS` | Server URL(s) | http://localhost:5000 |
+| `ASPNETCORE_URLS` | Server URL(s) | `http://localhost:5000` |
 
 ### appsettings.json
 
@@ -153,19 +162,19 @@ Configure the LCM to use pull mode by updating its configuration:
 
 ### Building
 
-```bash
+```sh
 dotnet build
 ```
 
 ### Running Tests
 
-```bash
+```sh
 dotnet test
 ```
 
 ### Publishing
 
-```bash
+```sh
 dotnet publish -c Release
 ```
 
