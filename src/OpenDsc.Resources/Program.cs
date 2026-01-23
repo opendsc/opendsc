@@ -13,6 +13,7 @@ using ShortcutNs = OpenDsc.Resource.Windows.Shortcut;
 using OptionalFeatureNs = OpenDsc.Resource.Windows.OptionalFeature;
 using FileSystemAclNs = OpenDsc.Resource.Windows.FileSystem.Acl;
 using ScheduledTaskNs = OpenDsc.Resource.Windows.ScheduledTask;
+using UserRightNs = OpenDsc.Resource.Windows.UserRight;
 #endif
 
 #if !WINDOWS
@@ -36,6 +37,7 @@ var shortcutResource = new ShortcutNs.Resource(OpenDsc.Resource.Windows.SourceGe
 var optionalFeatureResource = new OptionalFeatureNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
 var fileSystemAclResource = new FileSystemAclNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
 var scheduledTaskResource = new ScheduledTaskNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
+var userRightResource = new UserRightNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
 #endif
 
 #if !WINDOWS
@@ -67,7 +69,8 @@ command
     .AddResource<ShortcutNs.Resource, ShortcutNs.Schema>(shortcutResource)
     .AddResource<OptionalFeatureNs.Resource, OptionalFeatureNs.Schema>(optionalFeatureResource)
     .AddResource<FileSystemAclNs.Resource, FileSystemAclNs.Schema>(fileSystemAclResource)
-    .AddResource<ScheduledTaskNs.Resource, ScheduledTaskNs.Schema>(scheduledTaskResource);
+    .AddResource<ScheduledTaskNs.Resource, ScheduledTaskNs.Schema>(scheduledTaskResource)
+    .AddResource<UserRightNs.Resource, UserRightNs.Schema>(userRightResource);
 #endif
 
 #if !WINDOWS

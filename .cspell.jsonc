@@ -54,6 +54,7 @@
         "svcaccount",
         "svchost",
         "SYSLIB",
+        "Systemtime",
         "Tcpip",
         "tempuser",
         "testresource",
