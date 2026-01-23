@@ -46,7 +46,7 @@ public sealed class Resource(JsonSerializerContext context)
 
     public Schema Get(Schema instance)
     {
-        var server = SqlConnectionHelper.CreateConnection(instance.ServerInstance, instance.Authentication);
+        var server = SqlConnectionHelper.CreateConnection(instance.ServerInstance, instance.ConnectUsername, instance.ConnectPassword);
 
         try
         {
@@ -89,7 +89,7 @@ public sealed class Resource(JsonSerializerContext context)
 
     public SetResult<Schema>? Set(Schema instance)
     {
-        var server = SqlConnectionHelper.CreateConnection(instance.ServerInstance, instance.Authentication);
+        var server = SqlConnectionHelper.CreateConnection(instance.ServerInstance, instance.ConnectUsername, instance.ConnectPassword);
 
         try
         {
@@ -141,7 +141,7 @@ public sealed class Resource(JsonSerializerContext context)
 
     public void Delete(Schema instance)
     {
-        var server = SqlConnectionHelper.CreateConnection(instance.ServerInstance, instance.Authentication);
+        var server = SqlConnectionHelper.CreateConnection(instance.ServerInstance, instance.ConnectUsername, instance.ConnectPassword);
 
         try
         {

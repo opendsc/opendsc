@@ -16,32 +16,24 @@ public static class SqlConnectionHelper
     /// Creates a new Server connection with the specified authentication.
     /// </summary>
     /// <param name="serverInstance">The SQL Server instance name.</param>
-    /// <param name="authentication">The authentication configuration.</param>
+    /// <param name="username">Optional username for SQL Authentication.</param>
+    /// <param name="password">Optional password for SQL Authentication.</param>
     /// <param name="connectTimeout">Connection timeout in seconds. Default is 30.</param>
     /// <returns>A configured Server object.</returns>
-    /// <exception cref="ArgumentException">Thrown when SQL authentication is specified but username is missing.</exception>
     public static Server CreateConnection(
         string serverInstance,
-        SqlAuthentication? authentication = null,
+        string? username = null,
+        string? password = null,
         int connectTimeout = 30)
     {
         var server = new Server(serverInstance);
         server.ConnectionContext.ConnectTimeout = connectTimeout;
 
-        if (authentication is null || authentication.AuthType == SqlAuthType.Windows)
+        if (!string.IsNullOrEmpty(username))
         {
-            server.ConnectionContext.LoginSecure = true;
-        }
-        else if (authentication.AuthType == SqlAuthType.Sql)
-        {
-            if (string.IsNullOrEmpty(authentication.Username))
-            {
-                throw new ArgumentException("Username is required for SQL Server authentication.");
-            }
-
             server.ConnectionContext.LoginSecure = false;
-            server.ConnectionContext.Login = authentication.Username;
-            server.ConnectionContext.Password = authentication.Password ?? string.Empty;
+            server.ConnectionContext.Login = username;
+            server.ConnectionContext.Password = password ?? string.Empty;
         }
 
         return server;
