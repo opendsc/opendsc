@@ -11,7 +11,6 @@ using Json.Schema.Generation;
 namespace OpenDsc.Resource.Windows.UserRight;
 
 [DscResource("OpenDsc.Windows/UserRight", "0.1.0",
-    SetReturn = SetReturn.State,
     Description = "Manage Windows user rights assignments",
     Tags = ["windows", "security", "rights", "privileges"])]
 [ExitCode(0, Description = "Success")]
@@ -23,7 +22,6 @@ public sealed class Resource(JsonSerializerContext context)
     : DscResource<Schema>(context),
       IGettable<Schema>,
       ISettable<Schema>,
-      IDeletable<Schema>,
       IExportable<Schema>
 {
     public override string GetSchema()
@@ -42,20 +40,10 @@ public sealed class Resource(JsonSerializerContext context)
 
     public Schema Get(Schema instance)
     {
-        if (instance.Rights == null || instance.Rights.Length == 0)
-        {
-            return new Schema
-            {
-                Principal = instance.Principal,
-                Exist = false,
-                Rights = []
-            };
-        }
-
         var principalSid = LsaHelper.ResolvePrincipalToSid(instance.Principal).Value;
         var hasRights = new List<UserRight>();
 
-        foreach (var right in instance.Rights)
+        foreach (var right in Enum.GetValues<UserRight>())
         {
             var principals = LsaHelper.GetPrincipalsWithRight(right);
             var hasPrincipal = principals.Any(p =>
@@ -68,16 +56,6 @@ public sealed class Resource(JsonSerializerContext context)
             {
                 hasRights.Add(right);
             }
-        }
-
-        if (hasRights.Count == 0)
-        {
-            return new Schema
-            {
-                Principal = instance.Principal,
-                Rights = instance.Rights,
-                Exist = false
-            };
         }
 
         return new Schema
@@ -123,22 +101,7 @@ public sealed class Resource(JsonSerializerContext context)
             }
         }
 
-        var actualState = Get(instance);
-
-        return new SetResult<Schema>(actualState);
-    }
-
-    public void Delete(Schema instance)
-    {
-        if (instance.Rights == null || instance.Rights.Length == 0)
-        {
-            return;
-        }
-
-        foreach (var right in instance.Rights)
-        {
-            LsaHelper.RevokeRight(instance.Principal, right);
-        }
+        return null;
     }
 
     public IEnumerable<Schema> Export()

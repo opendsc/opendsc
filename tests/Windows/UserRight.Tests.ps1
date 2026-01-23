@@ -57,14 +57,14 @@ Describe 'Windows User Rights Assignment Resource' -Tag 'Windows' -Skip:(!$IsWin
             $result.actualState.principal | Should -Not -Match '^S-1-'
         }
 
-        It 'should handle principal without specified rights' {
+        It 'should return empty rights array for principal without specified rights' {
             $inputJson = @{
                 rights = @('SeTrustedCredManAccessPrivilege')
                 principal = 'Guest'
             } | ConvertTo-Json -Compress
 
             $result = dsc resource get -r OpenDsc.Windows/UserRight --input $inputJson | ConvertFrom-Json
-            $result.actualState._exist | Should -Be $false
+            $result.actualState.rights | Should -BeNullOrEmpty
         }
     }
 
@@ -190,50 +190,6 @@ Describe 'Windows User Rights Assignment Resource' -Tag 'Windows' -Skip:(!$IsWin
             $setResult = dsc resource set -r OpenDsc.Windows/UserRight --input $setInputJson | ConvertFrom-Json
             $setResult.afterState.principal | Should -Match $script:testUser
             $setResult.afterState.rights | Should -Contain $script:testRight
-        }
-    }
-
-    Context 'Delete Operation' -Tag 'Delete', 'Admin' -Skip:(!$script:isAdmin) {
-        BeforeEach {
-            # Create test user and grant a right
-            $script:testUser = "DscTestUser_$(Get-Random -Maximum 99999)"
-            $password = ConvertTo-SecureString "P@ssw0rd!$(Get-Random -Maximum 99999)" -AsPlainText -Force
-            New-LocalUser -Name $script:testUser -Password $password -Description "Test user for DSC UserRight resource" -ErrorAction SilentlyContinue | Out-Null
-
-            $script:testRight = 'SeIncreaseQuotaPrivilege'
-
-            $setInputJson = @{
-                rights = @($script:testRight)
-                principal = $script:testUser
-                _purge = $false
-            } | ConvertTo-Json -Compress
-            dsc resource set -r OpenDsc.Windows/UserRight --input $setInputJson | Out-Null
-        }
-
-        AfterEach {
-            # Cleanup test user
-            if ($script:testUser) {
-                Remove-LocalUser -Name $script:testUser -ErrorAction SilentlyContinue
-            }
-        }
-
-        It 'should remove principal from rights' {
-            $deleteInputJson = @{
-                rights = @($script:testRight)
-                principal = $script:testUser
-                _exist = $false
-            } | ConvertTo-Json -Compress
-
-            dsc resource delete -r OpenDsc.Windows/UserRight --input $deleteInputJson | Out-Null
-
-            # Verify principal no longer has the right
-            $verifyJson = @{
-                rights = @($script:testRight)
-                principal = $script:testUser
-            } | ConvertTo-Json -Compress
-            $verifyResult = dsc resource get -r OpenDsc.Windows/UserRight --input $verifyJson | ConvertFrom-Json
-
-            $verifyResult.actualState._exist | Should -Be $false
         }
     }
 

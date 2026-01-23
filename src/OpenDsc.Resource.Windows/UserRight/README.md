@@ -27,9 +27,8 @@ distinct from file permissions. Common examples include `SeBackupPrivilege`,
 
 The resource has the following capabilities:
 
-- `get` - Check if a principal has specified user rights
-- `set` - Grant user rights to a principal
-- `delete` - Revoke user rights from a principal
+- `get` - Check which user rights a principal currently has
+- `set` - Grant user rights to a principal (additive or exact mode)
 - `export` - List all user rights assignments grouped by principal
 
 ## Properties
@@ -62,8 +61,6 @@ The resource has the following capabilities:
     other principals who also have those rights
   - `true` (exclusive mode): Ensures only the specified principal has the
     rights, removing all other principals
-- **_exist** (boolean) - Indicates whether the user right assignment should
-  exist. Default: `true`.
 
 ## Examples
 
@@ -154,36 +151,6 @@ dsc config set --file exclusive-debug-right.dsc.yaml
 
 This removes `SeDebugPrivilege` from all other principals, granting it
 exclusively to the Administrators group.
-
-### Revoke User Rights
-
-Remove user rights from a principal:
-
-```yaml
-# revoke-batch-logon.dsc.yaml
-$schema: https://aka.ms/dsc/schemas/v3/config/document.json
-resources:
-  - name: Revoke Batch Logon
-    type: OpenDsc.Windows/UserRight
-    properties:
-      rights:
-        - SeBatchLogonRight
-      principal: TestUser
-      _exist: false
-```
-
-```powershell
-dsc config set --file revoke-batch-logon.dsc.yaml
-```
-
-Alternatively, use the delete operation:
-
-```powershell
-dsc resource delete -r OpenDsc.Windows/UserRight --input '{
-  "rights": ["SeBatchLogonRight"],
-  "principal": "TestUser"
-}'
-```
 
 ### Export All User Rights Assignments
 

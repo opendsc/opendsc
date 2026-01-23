@@ -29,10 +29,4 @@ public sealed class Schema
     [WriteOnly]
     [Default(false)]
     public bool? Purge { get; set; }
-
-    [JsonPropertyName("_exist")]
-    [Description("Indicates whether the user right assignment exists.")]
-    [Nullable(false)]
-    [Default(true)]
-    public bool? Exist { get; set; }
 }
