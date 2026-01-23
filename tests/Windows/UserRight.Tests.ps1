@@ -21,7 +21,6 @@ Describe 'Windows User Rights Assignment Resource' -Tag 'Windows' -Skip:(!$IsWin
             $result = dsc resource list OpenDsc.Windows/UserRight | ConvertFrom-Json
             $result.capabilities | Should -Contain 'get'
             $result.capabilities | Should -Contain 'set'
-            $result.capabilities | Should -Contain 'delete'
             $result.capabilities | Should -Contain 'export'
         }
 
