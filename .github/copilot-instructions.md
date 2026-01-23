@@ -20,6 +20,7 @@ Windows Resources (in `src/OpenDsc.Resource.Windows/`):
 - `User/` - Local Windows user accounts (`OpenDsc.Windows/User`)
 - `OptionalFeature/` - Windows optional features via DISM (`OpenDsc.Windows/OptionalFeature`)
 - `ScheduledTask/` - Scheduled task management (`OpenDsc.Windows/ScheduledTask`)
+- `UserRight/` - User rights assignment management (`OpenDsc.Windows/UserRight`)
 - `FileSystem/Acl/` - File system ACL management (`OpenDsc.Windows.FileSystem/AccessControlList`)
 
 Cross-Platform Resources (in `src/OpenDsc.Resource.FileSystem/`, `src/OpenDsc.Resource.Xml/`, `src/OpenDsc.Resource.Archive/`, and `src/OpenDsc.Resource.Posix/`):
@@ -276,20 +277,64 @@ public sealed class Schema
 
 DSC defines several canonical properties that provide shared semantics across resources. These properties always start with an underscore (`_`) and should not be overridden or extended:
 
-- **`_exist` (bool?)** - Indicates whether the resource instance should exist. Used to enforce create/update/delete operations during `set`. This is the most commonly used canonical property.
+- **`_exist` (bool?)** - Indicates whether the resource instance should exist. Controls whether the DSC engine calls `Set()` (when true/omitted) or `Delete()` (when false).
   - Default: `true`
-  - Use in: Resources that manage instance lifecycle
+  - Use in: Resources that manage instance lifecycle (e.g., User, Group, File)
+  - **CRITICAL**: The DSC engine routes operations based on `_exist`:
+    - `_exist=true` or omitted → calls `Set()`
+    - `_exist=false` → calls `Delete()`
+  - **DO NOT use with `_purge`**: Resources managing lists should NOT have both `_exist` and `_purge`
 
-- **`_purge` (bool?)** - Write-only property for list-based resources to indicate whether unmanaged entries should be removed. Useful for resources managing collections where you want to either allow or remove items not explicitly defined.
+- **`_purge` (bool?)** - Write-only property for pure list-management resources to control additive vs exact mode.
   - Default: `false` (additive mode - only add specified items)
   - When `true`: Exact mode - removes items not in the specified list
   - When `false`: Additive mode - only adds items from the list without removing others
-  - Use in: Resources managing lists/collections (e.g., group members, installed features)
+  - Use in: Pure list-management resources (e.g., ACL rules, user rights)
   - Mark with `[WriteOnly]` attribute since it's a control property, not state
-  - Example: `Group` resource uses `_purge` to control group membership behavior
+  - **DO NOT use with `_exist`**: Resources with `_purge` should NOT implement `IDeletable` or have `_exist`
 
 - **`_inDesiredState` (bool?)** - Read-only property indicating whether the instance is in desired state. Mandatory for resources that implement the `test` operation.
   - Use in: Resources implementing `ITestable<Schema>`
+
+**Resource Design Patterns: `_exist` vs `_purge`**
+
+Choose ONE pattern based on what your resource manages:
+
+**Pattern 1: Instance Management (use `_exist`, implement `IDeletable`)**
+- Use when: Managing the existence of an instance (e.g., User, Group, File, Service)
+- Properties: `_exist` (bool?, default true)
+- Interfaces: `IGettable`, `ISettable`, `IDeletable`, optionally `IExportable`
+- Behavior:
+  - `_exist=true`: Create or update the instance
+  - `_exist=false`: Delete the instance (calls `Delete()`)
+- Examples: User, Group, File, Service, Environment variable
+
+**Pattern 2: Pure List Management (use `_purge`, NO `_exist`, NO `IDeletable`)**
+- Use when: Managing a collection/list where the container must pre-exist
+- Properties: Array property + `_purge` (bool?, default false)
+- Interfaces: `IGettable`, `ISettable`, optionally `IExportable` - **NO `IDeletable`**
+- Behavior:
+  - `_purge=false`: Additive mode - ensure items are present
+  - `_purge=true`: Exact mode - ensure ONLY these items are present
+- Examples: FileSystem/Acl (AccessRules), UserRight (Rights)
+- **Container Prerequisite**: The parent object (file, directory, principal) must already exist
+
+**Pattern 3: Hybrid (use BOTH `_exist` and `_purge`)**
+- Use when: Managing an instance that contains a list (e.g., Group with Members)
+- Properties: `_exist` (for container) + Array property + `_purge` (for list)
+- Interfaces: `IGettable`, `ISettable`, `IDeletable`, optionally `IExportable`
+- Behavior:
+  - `_exist=true` + `_purge=false`: Create/update group, add members (additive)
+  - `_exist=true` + `_purge=true`: Create/update group, set exact members
+  - `_exist=false`: Delete the entire group (calls `Delete()`)
+- Examples: Group (container) with Members (list), Xml/Element (element) with Attributes (list)
+- **Semantic Note**: `_exist` controls the container, `_purge` controls the list items
+
+**Anti-Pattern: DO NOT mix patterns incorrectly**
+- ❌ Pure list resources should NOT have `_exist` or `IDeletable`
+- ❌ Resources with `_purge` managing lists should NOT implement `IDeletable` unless they also manage the container (Pattern 3)
+- ✅ Follow FileSystem/Acl (Pattern 2) for pure list management
+- ✅ Follow Group (Pattern 3) for container+list management
 
 **`_purge` Implementation Pattern:**
 
@@ -863,7 +908,8 @@ Use [Environment/](../src/OpenDsc.Resource.Windows/Environment/) as the template
 
 - **Template Resource:** [Environment/](../src/OpenDsc.Resource.Windows/Environment/) (simplest, most complete implementation)
 - **Complex Resource:** [OptionalFeature/](../src/OpenDsc.Resource.Windows/OptionalFeature/) (uses SetReturn.State, metadata, and restart handling)
-- **Collection Management:** [Group/](../src/OpenDsc.Resource.Windows/Group/) (demonstrates _purge pattern)
+- **Hybrid Pattern (container+list):** [Group/](../src/OpenDsc.Resource.Windows/Group/) (demonstrates _purge + _exist pattern)
+- **Pure List Pattern:** [UserRight/](../src/OpenDsc.Resource.Windows/UserRight/), [FileSystem/Acl/](../src/OpenDsc.Resource.Windows/FileSystem/Acl/) (demonstrates _purge without _exist)
 - **COM Interop:** [Shortcut/](../src/OpenDsc.Resource.Windows/Shortcut/) (P/Invoke patterns for COM)
 - **Win32 API:** [Service/](../src/OpenDsc.Resource.Windows/Service/) (Win32 API wrappers)
 - **DISM API:** [OptionalFeature/](../src/OpenDsc.Resource.Windows/OptionalFeature/) (P/Invoke DISM interop)

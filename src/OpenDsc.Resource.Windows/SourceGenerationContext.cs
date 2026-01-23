@@ -37,6 +37,7 @@ namespace OpenDsc.Resource.Windows;
 [JsonSerializable(typeof(TaskCompatibility), TypeInfoPropertyName = "TaskCompatibility")]
 [JsonSerializable(typeof(TaskLogonType), TypeInfoPropertyName = "TaskLogonType")]
 [JsonSerializable(typeof(ProcessPriorityClass), TypeInfoPropertyName = "ProcessPriorityClass")]
+[JsonSerializable(typeof(UserRight.Schema), TypeInfoPropertyName = "UserRightSchema")]
 public partial class SourceGenerationContext : JsonSerializerContext
 {
 }
