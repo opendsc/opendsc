@@ -13,7 +13,12 @@ using OpenDsc.Schema;
 
 namespace OpenDsc.Lcm;
 
-public partial class LcmWorker(IConfiguration configuration, IOptionsMonitor<LcmConfig> lcmMonitor, DscExecutor dscExecutor, ILogger<LcmWorker> logger) : BackgroundService
+public partial class LcmWorker(
+    IConfiguration configuration,
+    IOptionsMonitor<LcmConfig> lcmMonitor,
+    DscExecutor dscExecutor,
+    PullServerClient pullServerClient,
+    ILogger<LcmWorker> logger) : BackgroundService
 {
     private static string TimeSpanFormat => "c";
     private ConfigurationMode _currentMode = ConfigurationMode.Monitor;
@@ -129,7 +134,9 @@ public partial class LcmWorker(IConfiguration configuration, IOptionsMonitor<Lcm
 
             try
             {
-                if (string.IsNullOrWhiteSpace(currentConfig.ConfigurationPath) || !File.Exists(currentConfig.ConfigurationPath))
+                var configPath = await GetConfigurationPathAsync(currentConfig, stoppingToken);
+
+                if (string.IsNullOrWhiteSpace(configPath) || !File.Exists(configPath))
                 {
                     LogConfigurationNotAvailableSkippingDscTest();
                 }
@@ -137,8 +144,10 @@ public partial class LcmWorker(IConfiguration configuration, IOptionsMonitor<Lcm
                 {
                     var traceLevel = GetTraceLevelFromConfiguration(configuration);
                     LogDscTestStarting();
-                    var (result, exitCode) = await dscExecutor.ExecuteTestAsync(currentConfig.ConfigurationPath, currentConfig, traceLevel, stoppingToken);
+                    var (result, exitCode) = await dscExecutor.ExecuteTestAsync(configPath, currentConfig, traceLevel, stoppingToken);
                     LogDscTestResult(result, exitCode);
+
+                    await SubmitReportAsync(currentConfig, DscOperation.Test, result, stoppingToken);
                 }
 
                 await InterruptibleDelayAsync(currentInterval, currentInterval, stoppingToken, modeChangeToken);
@@ -177,7 +186,9 @@ public partial class LcmWorker(IConfiguration configuration, IOptionsMonitor<Lcm
 
             try
             {
-                if (string.IsNullOrWhiteSpace(currentConfig.ConfigurationPath) || !File.Exists(currentConfig.ConfigurationPath))
+                var configPath = await GetConfigurationPathAsync(currentConfig, stoppingToken);
+
+                if (string.IsNullOrWhiteSpace(configPath) || !File.Exists(configPath))
                 {
                     LogConfigurationNotAvailableSkippingDscOperations(currentConfig.ConfigurationPath!);
                 }
@@ -185,7 +196,7 @@ public partial class LcmWorker(IConfiguration configuration, IOptionsMonitor<Lcm
                 {
                     var traceLevel = GetTraceLevelFromConfiguration(configuration);
                     LogDscTestStarting();
-                    var (testResult, testExitCode) = await dscExecutor.ExecuteTestAsync(currentConfig.ConfigurationPath, currentConfig, traceLevel, stoppingToken);
+                    var (testResult, testExitCode) = await dscExecutor.ExecuteTestAsync(configPath, currentConfig, traceLevel, stoppingToken);
                     LogDscTestResult(testResult, testExitCode);
 
                     var configPathAfterTest = lcmMonitor.CurrentValue.ConfigurationPath;
@@ -197,7 +208,7 @@ public partial class LcmWorker(IConfiguration configuration, IOptionsMonitor<Lcm
 
                     var needsCorrection = (testResult.Results?.Count(r =>
                     {
-                        var testOp = JsonSerializer.Deserialize(r.Result, SourceGenerationContext.Default.DscTestOperationResult);
+                        var testOp = JsonSerializer.Deserialize(r.Result, OpenDsc.Schema.SourceGenerationContext.Default.DscTestOperationResult);
                         return testOp?.InDesiredState == false;
                     }) ?? 0) > 0;
 
@@ -206,12 +217,15 @@ public partial class LcmWorker(IConfiguration configuration, IOptionsMonitor<Lcm
                         LogResourcesNotInDesiredStateApplyingCorrections();
                         traceLevel = GetTraceLevelFromConfiguration(configuration);
                         LogDscSetStarting();
-                        var (setResult, setExitCode) = await dscExecutor.ExecuteSetAsync(currentConfig.ConfigurationPath, currentConfig, traceLevel, stoppingToken);
+                        var (setResult, setExitCode) = await dscExecutor.ExecuteSetAsync(configPath, currentConfig, traceLevel, stoppingToken);
                         LogDscSetResult(setResult, setExitCode);
+
+                        await SubmitReportAsync(currentConfig, DscOperation.Set, setResult, stoppingToken);
                     }
                     else
                     {
                         LogAllResourcesAreInDesiredState();
+                        await SubmitReportAsync(currentConfig, DscOperation.Test, testResult, stoppingToken);
                     }
                 }
 
@@ -232,6 +246,112 @@ public partial class LcmWorker(IConfiguration configuration, IOptionsMonitor<Lcm
                 await InterruptibleDelayAsync(errorDelay, currentInterval, stoppingToken, modeChangeToken);
             }
         }
+    }
+
+    /// <summary>
+    /// Gets the configuration path, downloading from pull server if needed.
+    /// </summary>
+    private async Task<string?> GetConfigurationPathAsync(LcmConfig config, CancellationToken cancellationToken)
+    {
+        if (config.ConfigurationSource == ConfigurationSource.Local)
+        {
+            return config.ConfigurationPath;
+        }
+
+        if (config.PullServer is null)
+        {
+            LogPullServerNotConfigured();
+            return null;
+        }
+
+        if (config.PullServer.NodeId is null || string.IsNullOrWhiteSpace(config.PullServer.ApiKey))
+        {
+            var registrationResult = await pullServerClient.RegisterAsync(cancellationToken);
+            if (registrationResult is null)
+            {
+                return null;
+            }
+
+            config.PullServer.NodeId = registrationResult.NodeId;
+            config.PullServer.ApiKey = registrationResult.ApiKey;
+            config.PullServer.KeyRotationInterval = registrationResult.KeyRotationInterval;
+            config.PullServer.LastKeyRotation = DateTimeOffset.UtcNow;
+        }
+
+        await CheckAndRotateApiKeyAsync(config.PullServer, cancellationToken);
+
+        var hasChanged = await pullServerClient.HasConfigurationChangedAsync(cancellationToken);
+        if (!hasChanged && !string.IsNullOrWhiteSpace(config.ConfigurationPath) && File.Exists(config.ConfigurationPath))
+        {
+            return config.ConfigurationPath;
+        }
+
+        var content = await pullServerClient.GetConfigurationAsync(cancellationToken);
+        if (content is null)
+        {
+            return !string.IsNullOrWhiteSpace(config.ConfigurationPath) && File.Exists(config.ConfigurationPath)
+                ? config.ConfigurationPath
+                : null;
+        }
+
+        var checksum = await pullServerClient.GetConfigurationChecksumAsync(cancellationToken);
+        config.PullServer.ConfigurationChecksum = checksum;
+
+        var pullConfigPath = Path.Combine(ConfigPaths.GetLcmConfigDirectory(), "config", "pull-config.dsc.yaml");
+        var configDir = Path.GetDirectoryName(pullConfigPath);
+        if (!string.IsNullOrWhiteSpace(configDir) && !Directory.Exists(configDir))
+        {
+            Directory.CreateDirectory(configDir);
+        }
+
+        await File.WriteAllTextAsync(pullConfigPath, content, cancellationToken);
+        LogConfigurationDownloadedFromServer(pullConfigPath);
+
+        return pullConfigPath;
+    }
+
+    /// <summary>
+    /// Checks if the API key needs rotation and rotates it if necessary.
+    /// </summary>
+    private async Task CheckAndRotateApiKeyAsync(PullServerSettings pullServer, CancellationToken cancellationToken)
+    {
+        if (pullServer.LastKeyRotation is null)
+        {
+            return;
+        }
+
+        var timeSinceRotation = DateTimeOffset.UtcNow - pullServer.LastKeyRotation.Value;
+        if (timeSinceRotation < pullServer.KeyRotationInterval)
+        {
+            return;
+        }
+
+        var rotateResult = await pullServerClient.RotateApiKeyAsync(cancellationToken);
+        if (rotateResult is not null)
+        {
+            pullServer.ApiKey = rotateResult.ApiKey;
+            pullServer.KeyRotationInterval = rotateResult.KeyRotationInterval;
+            pullServer.LastKeyRotation = DateTimeOffset.UtcNow;
+            LogApiKeyRotated();
+        }
+    }
+
+    /// <summary>
+    /// Submits a compliance report to the pull server if configured.
+    /// </summary>
+    private async Task SubmitReportAsync(LcmConfig config, DscOperation operation, DscResult result, CancellationToken cancellationToken)
+    {
+        if (config.ConfigurationSource != ConfigurationSource.Pull)
+        {
+            return;
+        }
+
+        if (config.PullServer?.ReportCompliance != true)
+        {
+            return;
+        }
+
+        await pullServerClient.SubmitReportAsync(operation, result, cancellationToken);
     }
 
     private async Task InterruptibleDelayAsync(TimeSpan delay, TimeSpan originalInterval, CancellationToken stoppingToken, CancellationToken modeChangeToken)
@@ -444,6 +564,15 @@ public partial class LcmWorker(IConfiguration configuration, IOptionsMonitor<Lcm
 
     [LoggerMessage(EventId = EventIds.ConfigurationChangedAfterTest, Level = LogLevel.Warning, Message = "Configuration changed after test, skipping set operation")]
     private partial void LogConfigurationChangedSkippingSet();
+
+    [LoggerMessage(EventId = EventIds.PullServerNotConfigured, Level = LogLevel.Error, Message = "Pull server not configured for pull mode")]
+    private partial void LogPullServerNotConfigured();
+
+    [LoggerMessage(EventId = EventIds.ConfigurationDownloadedFromServer, Level = LogLevel.Information, Message = "Configuration downloaded from server: {ConfigurationPath}")]
+    private partial void LogConfigurationDownloadedFromServer(string configurationPath);
+
+    [LoggerMessage(EventId = EventIds.ApiKeyRotated, Level = LogLevel.Information, Message = "API key rotated successfully")]
+    private partial void LogApiKeyRotated();
 
     [LoggerMessage(EventId = 9999, Level = LogLevel.Debug, Message = "Trace level for DSC operations: {TraceLevel}")]
     private partial void LogTraceLevelForDsc(LogLevel traceLevel);

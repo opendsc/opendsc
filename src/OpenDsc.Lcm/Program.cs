@@ -27,6 +27,7 @@ builder.Services.AddOptionsWithValidateOnStart<LcmConfig>()
     .Bind(builder.Configuration.GetSection("LCM"));
 
 builder.Services.AddSingleton<DscExecutor>();
+builder.Services.AddHttpClient<PullServerClient>();
 builder.Services.AddHostedService<LcmWorker>();
 
 if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))

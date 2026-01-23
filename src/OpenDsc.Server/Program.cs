@@ -1,0 +1,35 @@
+// Copyright (c) Thomas Nieto - All Rights Reserved
+// You may use, distribute and modify this code under the
+// terms of the MIT license.
+
+using OpenDsc.Server;
+using OpenDsc.Server.Authentication;
+using OpenDsc.Server.Data;
+using OpenDsc.Server.Endpoints;
+
+var builder = WebApplication.CreateSlimBuilder(args);
+
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.TypeInfoResolverChain.Insert(0, SourceGenerationContext.Default);
+});
+
+builder.Services.AddSingleton(SourceGenerationContext.Default.Options);
+
+builder.Services.AddServerDatabase(builder.Configuration);
+builder.Services.AddApiKeyAuthentication();
+
+var app = builder.Build();
+
+await app.InitializeDatabaseAsync();
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapHealthEndpoints();
+app.MapNodeEndpoints();
+app.MapConfigurationEndpoints();
+app.MapReportEndpoints();
+app.MapSettingsEndpoints();
+
+app.Run();

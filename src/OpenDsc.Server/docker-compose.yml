@@ -1,0 +1,110 @@
+# OpenDSC Pull Server Docker Compose Configuration
+#
+# Usage:
+#   docker-compose up -d              # Start with SQLite (default)
+#   docker-compose --profile postgres up -d  # Start with PostgreSQL
+#   docker-compose --profile sqlserver up -d # Start with SQL Server
+
+services:
+  server:
+    build:
+      context: ../..
+      dockerfile: src/OpenDsc.Server/Dockerfile
+    container_name: opendsc-server
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - Database__Provider=SQLite
+      - Database__ConnectionString=Data Source=/app/data/opendsc-server.db
+    volumes:
+      - opendsc-data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  # PostgreSQL configuration (use --profile postgres to enable)
+  server-postgres:
+    build:
+      context: ../..
+      dockerfile: src/OpenDsc.Server/Dockerfile
+    container_name: opendsc-server-postgres
+    profiles:
+      - postgres
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - Database__Provider=PostgreSQL
+      - Database__ConnectionString=Host=postgres;Database=opendsc;Username=opendsc;Password=opendsc_secret
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: opendsc-postgres
+    profiles:
+      - postgres
+    environment:
+      - POSTGRES_USER=opendsc
+      - POSTGRES_PASSWORD=opendsc_secret
+      - POSTGRES_DB=opendsc
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U opendsc"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # SQL Server configuration (use --profile sqlserver to enable)
+  server-sqlserver:
+    build:
+      context: ../..
+      dockerfile: src/OpenDsc.Server/Dockerfile
+    container_name: opendsc-server-sqlserver
+    profiles:
+      - sqlserver
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - Database__Provider=SqlServer
+      - Database__ConnectionString=Server=sqlserver;Database=OpenDsc;User Id=sa;Password=OpenDsc_Secret1!;TrustServerCertificate=true
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    restart: unless-stopped
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: opendsc-sqlserver
+    profiles:
+      - sqlserver
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=OpenDsc_Secret1!
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'OpenDsc_Secret1!' -Q 'SELECT 1' -C || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+volumes:
+  opendsc-data:
+    name: opendsc-data
+  postgres-data:
+    name: opendsc-postgres-data
+  sqlserver-data:
+    name: opendsc-sqlserver-data

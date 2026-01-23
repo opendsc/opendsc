@@ -16,6 +16,7 @@
     <Project Path="src/OpenDsc.Resource.SqlServer/OpenDsc.Resource.SqlServer.csproj" />
     <Project Path="src/OpenDsc.Resource.Xml/OpenDsc.Resource.Xml.csproj" />
     <Project Path="src/OpenDsc.Lcm/OpenDsc.Lcm.csproj" />
+    <Project Path="src/OpenDsc.Server/OpenDsc.Server.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/TestResource.Aot/TestResource.Aot.csproj" />
