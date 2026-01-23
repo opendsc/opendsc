@@ -26,7 +26,37 @@
     Initialize-SqlServerForTests
 #>
 
-$script:SqlServerSaPassword = 'P@ssw0rd123!'
+function Get-RandomPassword {
+    [CmdletBinding()]
+    [OutputType([String])]
+    Param
+    (
+        [Int]$Length = 14,
+
+        [Switch][Bool]$Simple
+    )
+
+    begin {
+        $SimpleChars = ('!ABCDEFGHKLMNPRSTUVWXYZ!abcdefghkmnprstuvwxyz!123456789!').ToCharArray()
+        $ComplexChars = (33..122 | ForEach-Object {([char]$_).ToString()}).ToCharArray()
+    }
+
+    process {
+        if ($Simple) {
+            $Chars = $SimpleChars
+        }
+        else {
+            $Chars = $ComplexChars
+        }
+
+        Write-Output -InputObject ((Get-Random -Count $Length -InputObject $Chars) -join '')
+    }
+
+    end {
+    }
+}
+
+$script:SqlServerSaPassword = Get-RandomPassword -Simple
 
 function Install-SqlServerWindows
 {
