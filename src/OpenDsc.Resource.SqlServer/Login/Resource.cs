@@ -258,9 +258,9 @@ public sealed class Resource(JsonSerializerContext context)
 
         if (instance.ServerRoles != null)
         {
-            foreach (var role in instance.ServerRoles)
+            foreach (var roleName in instance.ServerRoles)
             {
-                login.AddToRole(role);
+                login.AddToRole(roleName);
             }
         }
     }
@@ -331,28 +331,31 @@ public sealed class Resource(JsonSerializerContext context)
 
         if (instance.ServerRoles != null)
         {
-            UpdateServerRoles(login, instance.ServerRoles);
+            UpdateServerRoles(login, instance);
         }
     }
 
-    private static void UpdateServerRoles(Microsoft.SqlServer.Management.Smo.Login login, string[] desiredRoles)
+    private static void UpdateServerRoles(Microsoft.SqlServer.Management.Smo.Login login, Schema instance)
     {
+        var desiredRoles = instance.ServerRoles!;
         var currentRolesArray = StringCollectionToArray(login.ListMembers()) ?? [];
         var currentRoles = new HashSet<string>(currentRolesArray, StringComparer.OrdinalIgnoreCase);
         var targetRoles = new HashSet<string>(desiredRoles, StringComparer.OrdinalIgnoreCase);
 
-        var rolesToAdd = targetRoles.Except(currentRoles);
-        var rolesToRemove = currentRoles.Except(targetRoles);
-
-        foreach (var role in rolesToAdd)
+        if (instance.Purge == true)
         {
-            login.AddToRole(role);
+            var rolesToRemove = currentRoles.Except(targetRoles);
+            var server = login.Parent;
+            foreach (var roleName in rolesToRemove)
+            {
+                server.Roles[roleName]?.DropMember(login.Name);
+            }
         }
 
-        var server = login.Parent;
-        foreach (var roleName in rolesToRemove)
+        var rolesToAdd = targetRoles.Except(currentRoles);
+        foreach (var roleName in rolesToAdd)
         {
-            server.Roles[roleName]?.DropMember(login.Name);
+            login.AddToRole(roleName);
         }
     }
 
