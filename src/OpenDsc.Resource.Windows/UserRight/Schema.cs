@@ -35,9 +35,4 @@ public sealed class Schema
     [Nullable(false)]
     [Default(true)]
     public bool? Exist { get; set; }
-
-    [JsonPropertyName("_metadata")]
-    [Description("Metadata about the resource state.")]
-    [Nullable(false)]
-    public Dictionary<string, object>? Metadata { get; set; }
 }

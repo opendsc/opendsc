@@ -94,7 +94,6 @@ public sealed class Resource(JsonSerializerContext context)
             throw new ArgumentException("Rights array is required and must contain at least one right.");
         }
 
-        var changed = false;
         var principalSid = LsaHelper.ResolvePrincipalToSid(instance.Principal).Value;
 
         foreach (var right in instance.Rights)
@@ -107,7 +106,6 @@ public sealed class Resource(JsonSerializerContext context)
             if (!hasPrincipal)
             {
                 LsaHelper.GrantRight(instance.Principal, right);
-                changed = true;
             }
 
             if (instance.Purge == true)
@@ -121,23 +119,11 @@ public sealed class Resource(JsonSerializerContext context)
                 foreach (var principal in toRemove)
                 {
                     LsaHelper.RevokeRight(principal, right);
-                    changed = true;
                 }
             }
         }
 
         var actualState = Get(instance);
-
-        if (changed && instance.Rights.Any(r => RequiresServiceRestart(r)))
-        {
-            actualState.Metadata = new Dictionary<string, object>
-            {
-                ["_restartRequired"] = new[]
-                {
-                    new { service = GetAffectedService(instance.Rights.First(r => RequiresServiceRestart(r))) }
-                }
-            };
-        }
 
         return new SetResult<Schema>(actualState);
     }
@@ -188,23 +174,5 @@ public sealed class Resource(JsonSerializerContext context)
                 Rights = kvp.Value.ToArray()
             };
         }
-    }
-
-    private static bool RequiresServiceRestart(UserRight right)
-    {
-        return right is UserRight.SeServiceLogonRight or
-               UserRight.SeBatchLogonRight or
-               UserRight.SeInteractiveLogonRight;
-    }
-
-    private static string GetAffectedService(UserRight right)
-    {
-        return right switch
-        {
-            UserRight.SeServiceLogonRight => "Services that run under affected accounts",
-            UserRight.SeBatchLogonRight => "Task Scheduler",
-            UserRight.SeInteractiveLogonRight => "Interactive logon sessions",
-            _ => "Unknown"
-        };
     }
 }

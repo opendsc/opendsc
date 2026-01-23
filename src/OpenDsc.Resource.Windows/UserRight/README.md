@@ -107,7 +107,8 @@ resources:
 dsc config set --file grant-service-logon.dsc.yaml
 ```
 
-**Note**: Changes to logon rights may require restarting affected services.
+**Note**: Services running under the affected account must be restarted for the
+changes to take effect.
 
 ### Grant Multiple Rights to a User
 
@@ -273,15 +274,20 @@ resources:
   caller
 - **SeUndockPrivilege** - Remove computer from docking station
 
-## Restart Requirements
+## Notes
 
-Granting or revoking certain logon rights may require restarting affected
-services or logon sessions. The resource returns metadata indicating when
-restarts are recommended:
-
-- **SeServiceLogonRight** - May require restarting services
-- **SeBatchLogonRight** - May require restarting Task Scheduler
-- **SeInteractiveLogonRight** - May require users to log off and log on again
+- All operations require administrator privileges
+- User rights are system-wide and affect all logon sessions
+- **Logon rights changes require affected processes to restart** to create new
+  access tokens with the updated rights:
+  - Services (`SeServiceLogonRight`) must be restarted to pick up the changes
+  - Scheduled tasks (`SeBatchLogonRight`) need to be re-run or Task Scheduler
+    restarted
+  - Interactive sessions (`SeInteractiveLogonRight`) require users to log off
+    and log back on
+- Use `_purge: true` carefully as it removes rights from all other principals
+- The resource uses Security Identifiers (SIDs) internally for reliable
+  principal matching, but returns friendly names for readability
 
 ## Exit Codes
 
@@ -297,7 +303,13 @@ The resource returns the following exit codes:
 
 - All operations require administrator privileges
 - User rights are system-wide and affect all logon sessions
-- Changes to logon rights typically take effect at the next logon
+- **Logon rights changes require affected processes to restart** to create new
+  access tokens with the updated rights:
+  - Services (`SeServiceLogonRight`) must be restarted to pick up the changes
+  - Scheduled tasks (`SeBatchLogonRight`) need to be re-run or Task Scheduler
+    restarted
+  - Interactive sessions (`SeInteractiveLogonRight`) require users to log off
+    and log back on
 - Use `_purge: true` carefully as it removes rights from all other principals
 - The resource uses Security Identifiers (SIDs) internally for reliable
   principal matching, but returns friendly names for readability

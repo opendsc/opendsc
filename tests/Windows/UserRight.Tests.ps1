@@ -178,7 +178,7 @@ Describe 'Windows User Rights Assignment Resource' -Tag 'Windows' -Skip:(!$IsWin
             { dsc resource set -r OpenDsc.Windows/UserRight --input $setInputJson } | Should -Not -Throw
         }
 
-        It 'should return restart metadata for logon rights' {
+        It 'should successfully grant logon rights' {
             $script:testRight = 'SeServiceLogonRight'
 
             $setInputJson = @{
@@ -188,11 +188,8 @@ Describe 'Windows User Rights Assignment Resource' -Tag 'Windows' -Skip:(!$IsWin
             } | ConvertTo-Json -Compress
 
             $setResult = dsc resource set -r OpenDsc.Windows/UserRight --input $setInputJson | ConvertFrom-Json
-
-            if ($setResult.afterState._metadata.'_restartRequired') {
-                $setResult.afterState._metadata.'_restartRequired' | Should -Not -BeNullOrEmpty
-                $setResult.afterState._metadata.'_restartRequired'[0].service | Should -Not -BeNullOrEmpty
-            }
+            $setResult.afterState.principal | Should -Match $script:testUser
+            $setResult.afterState.rights | Should -Contain $script:testRight
         }
     }
 
