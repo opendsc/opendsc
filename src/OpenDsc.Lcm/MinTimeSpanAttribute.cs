@@ -27,12 +27,9 @@ public sealed class MinTimeSpanAttribute : ValidationAttribute
     /// <inheritdoc/>
     protected override ValidationResult? IsValid(object? value, ValidationContext validationContext)
     {
-        if (value is TimeSpan timeSpan)
+        if (value is TimeSpan timeSpan && timeSpan <= _minValue)
         {
-            if (timeSpan <= _minValue)
-            {
-                return new ValidationResult(ErrorMessage ?? $"The field {validationContext.DisplayName} must be greater than {_minValue}.");
-            }
+            return new ValidationResult(ErrorMessage ?? $"The field {validationContext.DisplayName} must be greater than {_minValue}.");
         }
 
         return ValidationResult.Success;

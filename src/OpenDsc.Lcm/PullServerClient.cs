@@ -58,8 +58,9 @@ public partial class PullServerClient : IDisposable
         {
             fqdn = System.Net.Dns.GetHostEntry(Environment.MachineName).HostName;
         }
-        catch
+        catch (Exception ex)
         {
+            LogFqdnResolutionFailed(ex, Environment.MachineName);
         }
 
         var request = new RegisterNodeRequest
@@ -392,6 +393,9 @@ public partial class PullServerClient : IDisposable
 
     [LoggerMessage(EventId = 1016, Level = LogLevel.Warning, Message = "API key rotation error")]
     private partial void LogKeyRotationError(Exception ex);
+
+    [LoggerMessage(EventId = 1017, Level = LogLevel.Debug, Message = "Failed to resolve fully qualified domain name; using machine name '{MachineName}' instead.")]
+    private partial void LogFqdnResolutionFailed(Exception ex, string machineName);
 }
 
 /// <summary>
