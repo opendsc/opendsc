@@ -266,20 +266,20 @@ Describe 'SQL Server Login Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerA
             dsc resource delete -r OpenDsc.SqlServer/Login --input $verifyJson | Out-Null
         }
 
-        It 'should update server roles' {
-            $loginName = "$($script:testLoginPrefix)RolesUpdate1"
+        It 'should add server roles without purging by default' {
+            $loginName = "$($script:testLoginPrefix)RolesAdditive1"
 
-            # Create login with initial roles
+            # Create login with initial role
             $createJson = Get-SqlServerTestInput @{
                 name           = $loginName
                 loginType      = 'SqlLogin'
-                password       = 'T3stP@ssw0rd!RolesUp123'
+                password       = 'T3stP@ssw0rd!RolesAdd123'
                 serverRoles    = @('dbcreator')
             } | ConvertTo-Json -Compress
 
             dsc resource set -r OpenDsc.SqlServer/Login --input $createJson | Out-Null
 
-            # Update to different roles
+            # Add more roles without purging (default behavior)
             $updateJson = Get-SqlServerTestInput @{
                 name           = $loginName
                 serverRoles    = @('securityadmin', 'processadmin')
@@ -288,15 +288,89 @@ Describe 'SQL Server Login Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerA
             dsc resource set -r OpenDsc.SqlServer/Login --input $updateJson | Out-Null
             $LASTEXITCODE | Should -Be 0
 
-            # Verify new roles (should have only the new ones, not dbcreator)
+            # Verify all roles exist (original + new ones since purge is false by default)
+            $verifyJson = Get-SqlServerTestInput @{
+                name           = $loginName
+            } | ConvertTo-Json -Compress
+
+            $getResult = dsc resource get -r OpenDsc.SqlServer/Login --input $verifyJson | ConvertFrom-Json
+            $getResult.actualState.serverRoles | Should -Contain 'dbcreator'
+            $getResult.actualState.serverRoles | Should -Contain 'securityadmin'
+            $getResult.actualState.serverRoles | Should -Contain 'processadmin'
+
+            # Cleanup
+            dsc resource delete -r OpenDsc.SqlServer/Login --input $verifyJson | Out-Null
+        }
+
+        It 'should replace server roles when purge is true' {
+            $loginName = "$($script:testLoginPrefix)RolesPurge1"
+
+            # Create login with initial roles
+            $createJson = Get-SqlServerTestInput @{
+                name           = $loginName
+                loginType      = 'SqlLogin'
+                password       = 'T3stP@ssw0rd!RolesPurge123'
+                serverRoles    = @('dbcreator', 'bulkadmin')
+            } | ConvertTo-Json -Compress
+
+            dsc resource set -r OpenDsc.SqlServer/Login --input $createJson | Out-Null
+
+            # Update to different roles with purge=true
+            $updateJson = Get-SqlServerTestInput @{
+                name              = $loginName
+                serverRoles       = @('securityadmin', 'processadmin')
+                _purge            = $true
+            } | ConvertTo-Json -Compress
+
+            dsc resource set -r OpenDsc.SqlServer/Login --input $updateJson | Out-Null
+            $LASTEXITCODE | Should -Be 0
+
+            # Verify only new roles exist (original ones should be removed)
             $verifyJson = Get-SqlServerTestInput @{
                 name           = $loginName
             } | ConvertTo-Json -Compress
 
             $getResult = dsc resource get -r OpenDsc.SqlServer/Login --input $verifyJson | ConvertFrom-Json
             $getResult.actualState.serverRoles | Should -Not -Contain 'dbcreator'
+            $getResult.actualState.serverRoles | Should -Not -Contain 'bulkadmin'
             $getResult.actualState.serverRoles | Should -Contain 'securityadmin'
             $getResult.actualState.serverRoles | Should -Contain 'processadmin'
+
+            # Cleanup
+            dsc resource delete -r OpenDsc.SqlServer/Login --input $verifyJson | Out-Null
+        }
+
+        It 'should not remove roles when purge is explicitly false' {
+            $loginName = "$($script:testLoginPrefix)RolesNoPurge1"
+
+            # Create login with initial role
+            $createJson = Get-SqlServerTestInput @{
+                name           = $loginName
+                loginType      = 'SqlLogin'
+                password       = 'T3stP@ssw0rd!RolesNoPurge123'
+                serverRoles    = @('dbcreator')
+            } | ConvertTo-Json -Compress
+
+            dsc resource set -r OpenDsc.SqlServer/Login --input $createJson | Out-Null
+
+            # Add roles with purge=false
+            $updateJson = Get-SqlServerTestInput @{
+                name              = $loginName
+                serverRoles       = @('securityadmin')
+                _purge            = $false
+            } | ConvertTo-Json -Compress
+
+            dsc resource set -r OpenDsc.SqlServer/Login --input $updateJson | Out-Null
+            $LASTEXITCODE | Should -Be 0
+
+            # Verify both roles exist
+            $verifyJson = Get-SqlServerTestInput @{
+                name           = $loginName
+            } | ConvertTo-Json -Compress
+
+            $getResult = dsc resource get -r OpenDsc.SqlServer/Login --input $verifyJson | ConvertFrom-Json
+            $getResult.actualState.serverRoles | Should -Contain 'dbcreator'
+            $getResult.actualState.serverRoles | Should -Contain 'securityadmin'
 
             # Cleanup
             dsc resource delete -r OpenDsc.SqlServer/Login --input $verifyJson | Out-Null

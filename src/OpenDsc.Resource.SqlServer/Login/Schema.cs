@@ -70,9 +70,17 @@ public sealed class Schema
     [Nullable(false)]
     public bool? DenyWindowsLogin { get; set; }
 
-    [Description("Server roles to assign to the login.")]
+    [Description("Server roles to assign to the login. Valid roles: sysadmin, serveradmin, securityadmin, processadmin, setupadmin, bulkadmin, diskadmin, dbcreator, public.")]
     [Nullable(false)]
+    [UniqueItems(true)]
     public string[]? ServerRoles { get; set; }
+
+    [JsonPropertyName("_purge")]
+    [Description("When true, removes server roles not in the ServerRoles list. When false, only adds roles from the ServerRoles list without removing others. Only applicable when ServerRoles is specified.")]
+    [Nullable(false)]
+    [WriteOnly]
+    [Default(false)]
+    public bool? Purge { get; set; }
 
     [ReadOnly]
     [Description("The creation date of the login.")]
