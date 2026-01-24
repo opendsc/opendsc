@@ -293,7 +293,7 @@ public class LcmWorkerTests
                 .ReturnsAsync((dscResult, 0));
 
             var worker = new LcmWorker(configMock.Object, optionsMonitor, dscExecutorMock.Object, pullServerClient, loggerMock.Object);
-            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
 
             await worker.StartAsync(cts.Token);
             await Task.Delay(200, CancellationToken.None);
@@ -358,7 +358,7 @@ public class LcmWorkerTests
                     op == "test" ? (testResult, 0) : (setResult, 0));
 
             var worker = new LcmWorker(configMock.Object, optionsMonitor, dscExecutorMock.Object, pullServerClient, loggerMock.Object);
-            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
 
             await worker.StartAsync(cts.Token);
             await Task.Delay(200, CancellationToken.None);
@@ -424,7 +424,7 @@ public class LcmWorkerTests
                 .ReturnsAsync((testResult, 0));
 
             var worker = new LcmWorker(configMock.Object, optionsMonitor, dscExecutorMock.Object, pullServerClient, loggerMock.Object);
-            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
 
             await worker.StartAsync(cts.Token);
             await Task.Delay(200, CancellationToken.None);
@@ -478,7 +478,7 @@ public class LcmWorkerTests
             .ReturnsAsync((dscResult, 0));
 
         var worker = new LcmWorker(configMock.Object, optionsMonitorMock.Object, dscExecutorMock.Object, pullServerClient, loggerMock.Object);
-        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
 
         await worker.StartAsync(cts.Token);
         await Task.Delay(100, CancellationToken.None);
@@ -534,7 +534,7 @@ public class LcmWorkerTests
                 });
 
             var worker = new LcmWorker(configMock.Object, optionsMonitor, dscExecutorMock.Object, pullServerClient, loggerMock.Object);
-            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
 
             await worker.StartAsync(cts.Token);
             await Task.Delay(1500, CancellationToken.None);
@@ -567,7 +567,7 @@ public class LcmWorkerTests
         var loggerMock = new Mock<ILogger<LcmWorker>>();
 
         var worker = new LcmWorker(configMock.Object, optionsMonitor, dscExecutorMock.Object, pullServerClient, loggerMock.Object);
-        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
 
         await worker.StartAsync(cts.Token);
         await Task.Delay(300, CancellationToken.None);
@@ -615,7 +615,7 @@ public class LcmWorkerTests
                 .ReturnsAsync((dscResult, 0));
 
             var worker = new LcmWorker(configMock.Object, optionsMonitorMock.Object, dscExecutorMock.Object, pullServerClient, loggerMock.Object);
-            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
 
             await worker.StartAsync(cts.Token);
             await Task.Delay(200, CancellationToken.None);

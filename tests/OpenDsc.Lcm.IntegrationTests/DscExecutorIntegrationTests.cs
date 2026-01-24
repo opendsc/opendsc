@@ -23,7 +23,6 @@ public class DscExecutorIntegrationTests
         });
 
         var executorLogger = loggerFactory.CreateLogger<DscExecutor>();
-        var dscLogger = loggerFactory.CreateLogger("DSC");
 
         return new DscExecutor(executorLogger, loggerFactory);
     }
@@ -370,7 +369,7 @@ resources: []
 
             var executor = CreateExecutor();
             var config = CreateConfig();
-            var cts = new CancellationTokenSource();
+            using var cts = new CancellationTokenSource();
             cts.Cancel();
 
             var act = async () => await executor.ExecuteTestAsync(tempConfigPath, config, LogLevel.Information, cts.Token);
@@ -399,7 +398,7 @@ resources: []
 
             var executor = CreateExecutor();
             var config = CreateConfig();
-            var cts = new CancellationTokenSource();
+            using var cts = new CancellationTokenSource();
             cts.Cancel();
 
             var act = async () => await executor.ExecuteSetAsync(tempConfigPath, config, LogLevel.Information, cts.Token);

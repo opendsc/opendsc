@@ -71,7 +71,7 @@ public partial class PullServerClient : IDisposable
 
         try
         {
-            var response = await _httpClient.PostAsJsonAsync(
+            using var response = await _httpClient.PostAsJsonAsync(
                 $"{pullServer.ServerUrl}/api/v1/nodes/register",
                 request,
                 PullServerJsonContext.Default.RegisterNodeRequest,
@@ -128,7 +128,7 @@ public partial class PullServerClient : IDisposable
         {
             SetAuthorizationHeader(pullServer.ApiKey);
 
-            var response = await _httpClient.GetAsync(
+            using var response = await _httpClient.GetAsync(
                 $"{pullServer.ServerUrl}/api/v1/nodes/{pullServer.NodeId}/configuration/checksum",
                 cancellationToken);
 
@@ -174,7 +174,7 @@ public partial class PullServerClient : IDisposable
         {
             SetAuthorizationHeader(pullServer.ApiKey);
 
-            var response = await _httpClient.GetAsync(
+            using var response = await _httpClient.GetAsync(
                 $"{pullServer.ServerUrl}/api/v1/nodes/{pullServer.NodeId}/configuration",
                 cancellationToken);
 
@@ -212,7 +212,7 @@ public partial class PullServerClient : IDisposable
         {
             SetAuthorizationHeader(pullServer.ApiKey);
 
-            var response = await _httpClient.GetAsync(
+            using var response = await _httpClient.GetAsync(
                 $"{pullServer.ServerUrl}/api/v1/nodes/{pullServer.NodeId}/configuration/checksum",
                 cancellationToken);
 
@@ -261,7 +261,7 @@ public partial class PullServerClient : IDisposable
                 Result = result
             };
 
-            var response = await _httpClient.PostAsJsonAsync(
+            using var response = await _httpClient.PostAsJsonAsync(
                 $"{pullServer.ServerUrl}/api/v1/nodes/{pullServer.NodeId}/reports",
                 request,
                 PullServerJsonContext.Default.SubmitReportRequest,
@@ -301,7 +301,7 @@ public partial class PullServerClient : IDisposable
         {
             SetAuthorizationHeader(pullServer.ApiKey);
 
-            var response = await _httpClient.PostAsync(
+            using var response = await _httpClient.PostAsync(
                 $"{pullServer.ServerUrl}/api/v1/nodes/{pullServer.NodeId}/rotate-key",
                 null,
                 cancellationToken);

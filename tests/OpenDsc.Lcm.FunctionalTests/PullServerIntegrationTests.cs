@@ -166,7 +166,6 @@ public sealed class PullServerIntegrationTests(ServerFixture serverFixture) : IA
         config.ConfigurationModeInterval = TimeSpan.FromSeconds(2);
 
         using var host = CreateTestHost(config);
-        var lcmWorker = host.Services.GetRequiredService<IHostedService>() as LcmWorker;
 
         await host.StartAsync();
 
