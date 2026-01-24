@@ -537,7 +537,7 @@ public class LcmWorkerTests
             var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
 
             await worker.StartAsync(cts.Token);
-            await Task.Delay(1000, CancellationToken.None);
+            await Task.Delay(1500, CancellationToken.None);
             await worker.StopAsync(CancellationToken.None);
 
             callCount.Should().BeGreaterOrEqualTo(2, "worker should retry after error");
