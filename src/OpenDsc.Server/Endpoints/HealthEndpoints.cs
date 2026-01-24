@@ -3,7 +3,6 @@
 // terms of the MIT license.
 
 using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.EntityFrameworkCore;
 
 using OpenDsc.Server.Data;
 
