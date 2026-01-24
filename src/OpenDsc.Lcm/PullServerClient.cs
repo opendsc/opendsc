@@ -16,7 +16,7 @@ namespace OpenDsc.Lcm;
 /// <summary>
 /// HTTP client for communicating with the DSC pull server.
 /// </summary>
-public sealed partial class PullServerClient : IDisposable
+public partial class PullServerClient : IDisposable
 {
     private readonly HttpClient _httpClient;
     private readonly IOptionsMonitor<LcmConfig> _lcmMonitor;

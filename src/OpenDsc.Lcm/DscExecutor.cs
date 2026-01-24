@@ -37,7 +37,7 @@ public partial class DscExecutor(ILogger<DscExecutor> logger, ILoggerFactory log
             .FirstOrDefault(File.Exists);
     }
 
-    private async Task<(DscResult Result, int ExitCode)> ExecuteCommandAsync(string operation, string configPath, LcmConfig config, LogLevel traceLevel, CancellationToken cancellationToken)
+    protected virtual async Task<(DscResult Result, int ExitCode)> ExecuteCommandAsync(string operation, string configPath, LcmConfig config, LogLevel traceLevel, CancellationToken cancellationToken)
     {
         var arguments = BuildArguments(operation, configPath, traceLevel);
 

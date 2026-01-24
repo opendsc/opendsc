@@ -29,6 +29,7 @@
     <Project Path="tests/OpenDsc.Server.Tests/OpenDsc.Server.Tests.csproj" />
     <Project Path="tests/OpenDsc.Server.IntegrationTests/OpenDsc.Server.IntegrationTests.csproj" />
     <Project Path="tests/OpenDsc.Server.FunctionalTests/OpenDsc.Server.FunctionalTests.csproj" />
+    <Project Path="tests/OpenDsc.Lcm.FunctionalTests/OpenDsc.Lcm.FunctionalTests.csproj" />
     <Project Path="tests/OpenDsc.Schema.Tests/OpenDsc.Schema.Tests.csproj" />
   </Folder>
 </Solution>
