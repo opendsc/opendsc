@@ -1,0 +1,27 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Server",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build-server",
+      "program": "${workspaceFolder}/src/OpenDsc.Server/bin/Debug/net10.0/OpenDsc.Server.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/OpenDsc.Server",
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    },
+    {
+      "name": "Debug LCM",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build-lcm",
+      "program": "${workspaceFolder}/src/OpenDsc.Lcm/bin/Debug/net10.0/OpenDsc.Lcm.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/OpenDsc.Lcm",
+      "console": "internalConsole"
+    }
+  ]
+}

@@ -28,26 +28,13 @@ public class LcmConfig
     /// </summary>
     public string ConfigurationPath { get; set; } = Path.Combine(ConfigPaths.GetLcmConfigDirectory(), "config", "main.dsc.yaml");
 
-    private TimeSpan _configurationModeInterval = TimeSpan.FromMinutes(15);
-
     /// <summary>
     /// Interval between DSC operations (for Monitor and Remediate modes).
     /// Can be specified as a TimeSpan string like "00:15:00" for 15 minutes.
     /// </summary>
     [Required]
-    public TimeSpan ConfigurationModeInterval
-    {
-        get => _configurationModeInterval;
-        set
-        {
-            if (value <= TimeSpan.Zero)
-            {
-                throw new ArgumentOutOfRangeException(nameof(value), "Interval must be greater than 0");
-            }
-
-            _configurationModeInterval = value;
-        }
-    }
+    [MinTimeSpan("00:00:00.001")]
+    public TimeSpan ConfigurationModeInterval { get; set; } = TimeSpan.FromMinutes(15);
 
     /// <summary>
     /// Path to the DSC executable. If not specified, uses 'dsc' from PATH.

@@ -134,7 +134,7 @@ public static class ConfigurationEndpoints
         return TypedResults.Ok(config);
     }
 
-    private static async Task<Results<Ok<ConfigurationSummary>, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> UpdateConfiguration(
+    private static async Task<Results<NoContent, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> UpdateConfiguration(
         string name,
         UpdateConfigurationRequest request,
         ServerDbContext db,
@@ -156,16 +156,7 @@ public static class ConfigurationEndpoints
         config.ModifiedAt = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
 
-        var summary = new ConfigurationSummary
-        {
-            Id = config.Id,
-            Name = config.Name,
-            Checksum = config.Checksum,
-            CreatedAt = config.CreatedAt,
-            ModifiedAt = config.ModifiedAt
-        };
-
-        return TypedResults.Ok(summary);
+        return TypedResults.NoContent();
     }
 
     private static async Task<Results<NoContent, NotFound<ErrorResponse>>> DeleteConfiguration(

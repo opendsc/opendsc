@@ -190,7 +190,7 @@ public static class NodeEndpoints
         ServerDbContext db,
         CancellationToken cancellationToken)
     {
-        var authenticatedNodeId = user.FindFirst("NodeId")?.Value;
+        var authenticatedNodeId = user.FindFirst("node_id")?.Value;
         if (authenticatedNodeId is null || !Guid.TryParse(authenticatedNodeId, out var authNodeId) || authNodeId != nodeId)
         {
             return TypedResults.Forbid();
@@ -259,7 +259,7 @@ public static class NodeEndpoints
         ServerDbContext db,
         CancellationToken cancellationToken)
     {
-        var authenticatedNodeId = user.FindFirst("NodeId")?.Value;
+        var authenticatedNodeId = user.FindFirst("node_id")?.Value;
         if (authenticatedNodeId is null || !Guid.TryParse(authenticatedNodeId, out var authNodeId) || authNodeId != nodeId)
         {
             return TypedResults.Forbid();
@@ -301,7 +301,7 @@ public static class NodeEndpoints
         ServerDbContext db,
         CancellationToken cancellationToken)
     {
-        var authenticatedNodeId = user.FindFirst("NodeId")?.Value;
+        var authenticatedNodeId = user.FindFirst("node_id")?.Value;
         if (authenticatedNodeId is null || !Guid.TryParse(authenticatedNodeId, out var authNodeId) || authNodeId != nodeId)
         {
             return TypedResults.Forbid();

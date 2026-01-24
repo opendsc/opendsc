@@ -24,5 +24,11 @@
     <Project Path="tests/TestResource.NonAot/TestResource.NonAot.csproj" />
     <Project Path="tests/TestResource.Options/TestResource.Options.csproj" />
     <Project Path="tests/TestService/TestService.csproj" />
+    <Project Path="tests/OpenDsc.Lcm.Tests/OpenDsc.Lcm.Tests.csproj" />
+    <Project Path="tests/OpenDsc.Lcm.IntegrationTests/OpenDsc.Lcm.IntegrationTests.csproj" />
+    <Project Path="tests/OpenDsc.Server.Tests/OpenDsc.Server.Tests.csproj" />
+    <Project Path="tests/OpenDsc.Server.IntegrationTests/OpenDsc.Server.IntegrationTests.csproj" />
+    <Project Path="tests/OpenDsc.Server.FunctionalTests/OpenDsc.Server.FunctionalTests.csproj" />
+    <Project Path="tests/OpenDsc.Schema.Tests/OpenDsc.Schema.Tests.csproj" />
   </Folder>
 </Solution>

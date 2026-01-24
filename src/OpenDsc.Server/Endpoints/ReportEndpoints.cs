@@ -52,7 +52,7 @@ public static class ReportEndpoints
         JsonSerializerOptions jsonOptions,
         CancellationToken cancellationToken)
     {
-        var authenticatedNodeId = user.FindFirst("NodeId")?.Value;
+        var authenticatedNodeId = user.FindFirst("node_id")?.Value;
         if (authenticatedNodeId is null || !Guid.TryParse(authenticatedNodeId, out var authNodeId) || authNodeId != nodeId)
         {
             return TypedResults.Forbid();
@@ -125,15 +125,10 @@ public static class ReportEndpoints
             return TypedResults.NotFound(new ErrorResponse { Error = "Node not found." });
         }
 
-        var query = db.Reports
+        var reports = await db.Reports
             .AsNoTracking()
             .Include(r => r.Node)
             .Where(r => r.NodeId == nodeId)
-            .OrderByDescending(r => r.Timestamp);
-
-        var paginatedQuery = query.Skip(skip ?? 0).Take(take ?? 100);
-
-        var reports = await paginatedQuery
             .Select(r => new ReportSummary
             {
                 Id = r.Id,
@@ -146,7 +141,13 @@ public static class ReportEndpoints
             })
             .ToListAsync(cancellationToken);
 
-        return TypedResults.Ok(reports);
+        var orderedReports = reports
+            .OrderByDescending(r => r.Timestamp)
+            .Skip(skip ?? 0)
+            .Take(take ?? 100)
+            .ToList();
+
+        return TypedResults.Ok(orderedReports);
     }
 
     private static async Task<Ok<List<ReportSummary>>> GetAllReports(
@@ -155,14 +156,9 @@ public static class ReportEndpoints
         int? take,
         CancellationToken cancellationToken)
     {
-        var query = db.Reports
+        var reports = await db.Reports
             .AsNoTracking()
             .Include(r => r.Node)
-            .OrderByDescending(r => r.Timestamp);
-
-        var paginatedQuery = query.Skip(skip ?? 0).Take(take ?? 100);
-
-        var reports = await paginatedQuery
             .Select(r => new ReportSummary
             {
                 Id = r.Id,
@@ -175,7 +171,13 @@ public static class ReportEndpoints
             })
             .ToListAsync(cancellationToken);
 
-        return TypedResults.Ok(reports);
+        var orderedReports = reports
+            .OrderByDescending(r => r.Timestamp)
+            .Skip(skip ?? 0)
+            .Take(take ?? 100)
+            .ToList();
+
+        return TypedResults.Ok(orderedReports);
     }
 
     private static async Task<Results<Ok<ReportDetails>, NotFound<ErrorResponse>>> GetReport(

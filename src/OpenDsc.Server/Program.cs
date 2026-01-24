@@ -27,13 +27,16 @@ var app = builder.Build();
 
 await app.InitializeDatabaseAsync();
 
-app.MapOpenApi();
-app.MapScalarApiReference(options =>
+if (app.Environment.IsDevelopment())
 {
-    options
-        .WithTitle("OpenDSC Server")
-        .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient);
-});
+    app.MapOpenApi();
+    app.MapScalarApiReference(options =>
+    {
+        options
+            .WithTitle("OpenDSC Server")
+            .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient);
+    });
+}
 
 app.UseAuthentication();
 app.UseAuthorization();

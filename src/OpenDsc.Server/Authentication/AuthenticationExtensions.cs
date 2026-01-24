@@ -25,9 +25,11 @@ public static class AuthenticationExtensions
         services.AddAuthorizationBuilder()
             .AddPolicy("Node", policy => policy
                 .RequireAuthenticatedUser()
+                .AddAuthenticationSchemes(ApiKeyAuthHandler.NodeScheme)
                 .RequireRole("Node"))
             .AddPolicy("Admin", policy => policy
                 .RequireAuthenticatedUser()
+                .AddAuthenticationSchemes(ApiKeyAuthHandler.AdminScheme)
                 .RequireRole("Admin"));
 
         return services;

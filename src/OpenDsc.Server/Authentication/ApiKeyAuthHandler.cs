@@ -36,7 +36,6 @@ public sealed class ApiKeyAuthHandler(
     public const string AdminScheme = "AdminApiKey";
 
     private const string AuthorizationHeader = "Authorization";
-    private const string AdminKeyHeader = "X-Admin-Key";
     private const string BearerPrefix = "Bearer ";
 
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
@@ -99,12 +98,18 @@ public sealed class ApiKeyAuthHandler(
 
     private async Task<AuthenticateResult> AuthenticateAdminAsync()
     {
-        if (!Request.Headers.TryGetValue(AdminKeyHeader, out var adminKeyHeader))
+        if (!Request.Headers.TryGetValue(AuthorizationHeader, out var authHeader))
         {
             return AuthenticateResult.NoResult();
         }
 
-        var apiKey = adminKeyHeader.ToString().Trim();
+        var headerValue = authHeader.ToString();
+        if (!headerValue.StartsWith(BearerPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            return AuthenticateResult.NoResult();
+        }
+
+        var apiKey = headerValue[BearerPrefix.Length..].Trim();
         if (string.IsNullOrEmpty(apiKey))
         {
             return AuthenticateResult.Fail("Admin API key is empty");
