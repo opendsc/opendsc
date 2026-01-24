@@ -111,6 +111,9 @@ Administrators authenticate using the `X-Admin-Key: {apiKey}` header.
 
 | Variable | Description | Default |
 | :-------- | :---------- | :------ |
+| `Server__RegistrationKey` | Pre-shared key for node registration | (empty) |
+| `Server__AdminApiKey` | API key for admin endpoints | (empty) |
+| `Server__KeyRotationInterval` | Node key rotation interval | `7.00:00:00` |
 | `Database__Provider` | Database provider (SQLite, SqlServer, PostgreSQL) | SQLite |
 | `Database__ConnectionString` | Database connection string | Data Source=opendsc-server.db |
 | `ASPNETCORE_URLS` | Server URL(s) | `http://localhost:5000` |
@@ -119,6 +122,11 @@ Administrators authenticate using the `X-Admin-Key: {apiKey}` header.
 
 ```json
 {
+  "Server": {
+    "RegistrationKey": "your-registration-key",
+    "AdminApiKey": "your-admin-api-key",
+    "KeyRotationInterval": "7.00:00:00"
+  },
   "Database": {
     "Provider": "SQLite",
     "ConnectionString": "Data Source=opendsc-server.db"
@@ -126,7 +134,8 @@ Administrators authenticate using the `X-Admin-Key: {apiKey}` header.
   "Logging": {
     "LogLevel": {
       "Default": "Information",
-      "Microsoft.AspNetCore": "Warning"
+      "Microsoft.AspNetCore": "Warning",
+      "Microsoft.EntityFrameworkCore": "Warning"
     }
   }
 }
@@ -141,8 +150,9 @@ Configure the LCM to use pull mode by updating its configuration:
   "LCM": {
     "ConfigurationMode": "Remediate",
     "ConfigurationSource": "Pull",
+    "ConfigurationModeInterval": "00:15:00",
     "PullServer": {
-      "ServerUrl": "http://your-server:8080",
+      "ServerUrl": "http://your-server:5000",
       "RegistrationKey": "your-registration-key",
       "ReportCompliance": true
     }

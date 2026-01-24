@@ -27,6 +27,7 @@
         "getgrnam",
         "getpwnam",
         "getpwuid",
+        "Hashtable",
         "INSTALLFOLDER",
         "Interruptible",
         "jdoe",

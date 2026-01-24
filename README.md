@@ -149,26 +149,43 @@ return command.Parse(args).Invoke();
 
 ## Local Configuration Manager (LCM)
 
-The LCM is a background service that continuously monitors and optionally
-remediates DSC configurations. It supports two operational modes:
+The LCM is a cross-platform background service that continuously monitors and
+optionally remediates DSC configurations. It supports two operational modes:
 
 - **Monitor Mode** - Periodically runs `dsc config test` to detect drift from
   desired state
 - **Remediate Mode** - Automatically applies corrections when drift is detected
   using `dsc config set`
 
-### Configuration
+The LCM also supports pull mode, allowing it to download configurations from
+the OpenDSC Pull Server with automatic updates, API key rotation, and
+compliance reporting.
 
-The LCM can be configured through multiple sources, with the following
-priority order (highest to lowest):
+For detailed documentation, see the [LCM README][lcm-readme].
 
-1. Command-line arguments
-2. Environment variables (prefixed with `LCM_`)
-3. Platform-specific configuration file (see paths below)
-4. Bundled `appsettings.json` in the service directory
-5. Environment-specific `appsettings.{Environment}.json`
+[lcm-readme]: src/OpenDsc.Lcm/README.md
 
-#### Configuration File Locations
+### Quick Start
+
+Install as a Windows Service:
+
+```powershell
+.\build.ps1 -Msi
+msiexec /i artifacts\msi\OpenDsc.Lcm.msi
+```
+
+Or run as a console application:
+
+```powershell
+# Configure via environment variables
+$env:LCM_ConfigurationPath = "C:\configs\main.dsc.yaml"
+$env:LCM_ConfigurationMode = "Monitor"
+$env:LCM_ConfigurationModeInterval = "00:15:00"
+
+.\artifacts\Lcm\OpenDsc.Lcm.exe
+```
+
+### Configuration File Locations
 
 | Platform | Configuration Directory | Logging |
 | --- | --- | --- |
@@ -176,157 +193,20 @@ priority order (highest to lowest):
 | Linux | `/etc/opendsc/lcm` | systemd journal |
 | macOS | `/Library/Preferences/OpenDSC/LCM` | Unified Logging |
 
-Place your `appsettings.json` in the configuration directory for your platform.
+## OpenDSC Pull Server
 
-#### Configurable Values
+The OpenDSC Pull Server is a REST API-based centralized configuration server
+that integrates with the LCM for pull mode operations. It provides:
 
-All settings must be under the `"LCM"` section in JSON configuration:
+- Configuration storage and distribution
+- Node registration and management
+- API key rotation
+- Compliance reporting
+- Multi-database support (SQLite, SQL Server, PostgreSQL)
 
-| Setting | Type | Default | Description |
-| --- | --- | --- | --- |
-| `ConfigurationMode` | string | `Monitor` | Operating mode: `Monitor` or `Remediate` |
-| `ConfigurationPath` | string | `{ConfigDir}/config/main.dsc.yaml` | Full path to the main DSC configuration file |
-| `ConfigurationModeInterval` | timespan | `00:15:00` | Interval between checks (format: `hh:mm:ss`) |
-| `DscExecutablePath` | string | `null` | Path to DSC executable (if not in PATH) |
+For detailed documentation, see the [Server README][server-readme].
 
-#### Configuration Examples
-
-**Using environment variables:**
-
-```powershell
-# Windows
-$env:LCM_ConfigurationPath = "C:\configs\main.dsc.yaml"
-$env:LCM_ConfigurationMode = "Remediate"
-$env:LCM_ConfigurationModeInterval = "00:15:00"
-$env:LCM_DscExecutablePath = "C:\Program Files\dsc\dsc.exe"
-
-.\artifacts\Lcm\OpenDsc.Lcm.exe
-```
-
-```sh
-# Linux/macOS
-export LCM_ConfigurationPath="/etc/opendsc/config/main.dsc.yaml"
-export LCM_ConfigurationMode="Remediate"
-export LCM_ConfigurationModeInterval="00:15:00"
-
-./artifacts/Lcm/OpenDsc.Lcm
-```
-
-**Using configuration file (appsettings.json):**
-
-Windows (`%ProgramData%\OpenDSC\LCM\appsettings.json`):
-
-```json
-{
-  "LCM": {
-    "ConfigurationMode": "Remediate",
-    "ConfigurationPath": "C:\\configs\\main.dsc.yaml",
-    "ConfigurationModeInterval": "00:15:00",
-    "DscExecutablePath": "C:\\Program Files\\dsc\\dsc.exe"
-  }
-}
-```
-
-Linux (`/etc/opendsc/lcm/appsettings.json`):
-
-```json
-{
-  "LCM": {
-    "ConfigurationMode": "Monitor",
-    "ConfigurationPath": "/etc/opendsc/config/main.dsc.yaml",
-    "ConfigurationModeInterval": "00:30:00"
-  }
-}
-```
-
-**Using command-line arguments:**
-
-```powershell
-.\artifacts\Lcm\OpenDsc.Lcm.exe --LCM:ConfigurationMode=Remediate --LCM:ConfigurationPath="C:\configs\main.dsc.yaml" --LCM:ConfigurationModeInterval="00:15:00"
-```
-
-### Logging Configuration
-
-The LCM supports detailed logging configuration through the `"Logging"`
-section in `appsettings.json`. You can control log levels for different
-components independently:
-
-| Category | Description | Default Level |
-| --- | --- | --- |
-| `Default` | Fallback for unspecified categories | `Warning` |
-| `DSC` | DSC executable trace messages | `Warning` |
-| `OpenDsc.Lcm` | LCM service operational logs | `Information` |
-
-**Example configuration with separate DSC logging:**
-
-```json
-{
-  "Logging": {
-    "LogLevel": {
-      "Default": "Warning",
-      "DSC": "Warning",
-      "OpenDsc.Lcm": "Information"
-    }
-  }
-}
-```
-
-This allows you to enable detailed DSC debugging (e.g., `Debug` or `Trace`
-levels) while keeping LCM service logs at a higher level like `Information`
-or `Warning`.
-
-### Installation
-
-**Windows**: Use the MSI installer to install as a Windows Service:
-
-```powershell
-.\build.ps1 -Msi
-msiexec /i artifacts\msi\OpenDsc.Lcm.msi
-```
-
-**Linux/macOS**: Run as a console application or configure as a systemd/launchd
-service.
-
-### Viewing Logs
-
-Logs are automatically captured by each platform's native logging system:
-
-**Windows** (Event Viewer):
-
-```powershell
-# Open Event Viewer GUI
-eventvwr.msc
-
-# Navigate to: Windows Logs > Application
-# Filter by Source: OpenDsc.Lcm
-```
-
-**Linux** (journald):
-
-```sh
-# View all LCM logs
-journalctl -u opendsc-lcm
-
-# Follow logs in real-time
-journalctl -u opendsc-lcm -f
-
-# Filter by severity
-journalctl -u opendsc-lcm -p err
-journalctl -u opendsc-lcm -p warning
-```
-
-**macOS** (Unified Logging):
-
-```sh
-# View logs in Console.app (GUI)
-open -a Console
-
-# View logs via command line
-log show --predicate 'process == "OpenDsc.Lcm"' --info --last 1h
-
-# Stream logs in real-time
-log stream --predicate 'process == "OpenDsc.Lcm"' --level info
-```
+[server-readme]: src/OpenDsc.Server/README.md
 
 ## Examples
 
