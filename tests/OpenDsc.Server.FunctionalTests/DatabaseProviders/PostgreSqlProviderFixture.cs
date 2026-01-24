@@ -30,15 +30,4 @@ public sealed class PostgreSqlProviderFixture : DatabaseProviderFixture
             await _container.DisposeAsync();
         }
     }
-
-    protected override void Dispose(bool disposing)
-    {
-        if (disposing && _container is not null)
-        {
-            _container.StopAsync().GetAwaiter().GetResult();
-            _container.DisposeAsync().AsTask().GetAwaiter().GetResult();
-        }
-
-        base.Dispose(disposing);
-    }
 }
