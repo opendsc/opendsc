@@ -84,8 +84,13 @@ jobs:
         shell: bash
         run: chmod +x artifacts/publish/OpenDsc.Resources
 
-      - name: Run Tests
-        run: .\build.ps1 -SkipBuild -InstallDsc -GitHubToken ${{ secrets.GITHUB_TOKEN }} ${{ matrix.os != 'ubuntu-latest' && '-SkipFunctionalTests' || '' }}
+      - name: Run Tests (Ubuntu - with Functional Tests)
+        if: matrix.os == 'ubuntu-latest'
+        run: .\build.ps1 -SkipBuild -InstallDsc -GitHubToken ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run Tests (Windows/macOS - skip Functional Tests)
+        if: matrix.os != 'ubuntu-latest'
+        run: .\build.ps1 -SkipBuild -SkipFunctionalTests -InstallDsc -GitHubToken ${{ secrets.GITHUB_TOKEN }}
 
   publish:
     needs: test
