@@ -65,6 +65,9 @@ managing Windows and cross-platform systems:
   files and directories
 - **[OpenDsc.Archive.Zip/Expand][zipexpand]** - Extract ZIP archives to
   specified locations
+
+### SQL Server Resources
+
 - **[OpenDsc.SqlServer/Login][sqllogin]** - Manage SQL Server logins
 - **[OpenDsc.SqlServer/Database][sqldatabase]** - Manage SQL Server databases
 - **[OpenDsc.SqlServer/DatabaseRole][sqldatabaserole]** - Manage SQL Server
@@ -76,6 +79,8 @@ managing Windows and cross-platform systems:
 - **[OpenDsc.SqlServer/ServerPermission][sqlserverperm]** - Manage SQL Server
   server-level permissions
 - **[OpenDsc.SqlServer/AgentJob][sqlagentjob]** - Manage SQL Server Agent jobs
+- **[OpenDsc.SqlServer/LinkedServer][sqllinkedserver]** - Manage SQL Server
+  linked servers
 
 ### POSIX Resources
 
@@ -110,6 +115,7 @@ resources provide Unix-specific functionality not available on Windows.
 [sqldatabaseperm]: src/OpenDsc.Resource.SqlServer/DatabasePermission/README.md
 [sqlserverperm]: src/OpenDsc.Resource.SqlServer/ServerPermission/README.md
 [sqlagentjob]: src/OpenDsc.Resource.SqlServer/AgentJob/README.md
+[sqllinkedserver]: src/OpenDsc.Resource.SqlServer/LinkedServer/README.md
 
 ## Quick Start
 
