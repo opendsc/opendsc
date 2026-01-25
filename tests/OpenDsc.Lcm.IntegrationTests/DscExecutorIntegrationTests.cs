@@ -4,10 +4,6 @@
 
 using FluentAssertions;
 
-using Microsoft.Extensions.Logging;
-
-using OpenDsc.Lcm;
-
 using Xunit;
 
 namespace OpenDsc.Lcm.IntegrationTests;

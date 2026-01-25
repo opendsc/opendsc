@@ -2,12 +2,8 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 
 using OpenDsc.Server.Data;
 

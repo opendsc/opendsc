@@ -3,7 +3,6 @@
 // terms of the MIT license.
 
 using System.Net;
-using System.Net.Http.Json;
 
 using FluentAssertions;
 

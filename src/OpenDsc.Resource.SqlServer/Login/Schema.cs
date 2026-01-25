@@ -3,7 +3,9 @@
 // terms of the MIT license.
 
 using System.Text.Json.Serialization;
+
 using Json.Schema.Generation;
+
 using LoginType = Microsoft.SqlServer.Management.Smo.LoginType;
 
 namespace OpenDsc.Resource.SqlServer.Login;

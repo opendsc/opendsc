@@ -3,7 +3,6 @@
 // terms of the MIT license.
 
 using Microsoft.Data.Sqlite;
-using Microsoft.EntityFrameworkCore;
 
 namespace OpenDsc.Server.FunctionalTests.DatabaseProviders;
 

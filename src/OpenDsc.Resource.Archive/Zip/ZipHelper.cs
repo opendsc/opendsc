@@ -2,8 +2,8 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
-using System.IO.Hashing;
 using System.Buffers.Binary;
+using System.IO.Hashing;
 
 namespace OpenDsc.Resource.Archive.Zip;
 

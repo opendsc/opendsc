@@ -3,12 +3,12 @@
 // terms of the MIT license.
 
 using DotNet.Testcontainers.Builders;
-
-using Xunit;
 using DotNet.Testcontainers.Containers;
 using DotNet.Testcontainers.Images;
 
 using Microsoft.Data.Sqlite;
+
+using Xunit;
 
 namespace OpenDsc.Lcm.FunctionalTests;
 

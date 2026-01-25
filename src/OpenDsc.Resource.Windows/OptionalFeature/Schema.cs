@@ -3,6 +3,7 @@
 // terms of the MIT license.
 
 using System.Text.Json.Serialization;
+
 using Json.Schema.Generation;
 
 namespace OpenDsc.Resource.Windows.OptionalFeature;

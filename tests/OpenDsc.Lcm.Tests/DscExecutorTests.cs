@@ -10,8 +10,6 @@ using Microsoft.Extensions.Logging;
 
 using Moq;
 
-using OpenDsc.Lcm;
-
 using Xunit;
 
 namespace OpenDsc.Lcm.Tests;

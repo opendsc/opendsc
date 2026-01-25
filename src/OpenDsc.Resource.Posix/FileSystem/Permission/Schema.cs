@@ -2,8 +2,6 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
-using System.Text.Json.Serialization;
-
 using Json.Schema.Generation;
 
 namespace OpenDsc.Resource.Posix.FileSystem.Permission;

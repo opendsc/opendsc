@@ -4,8 +4,6 @@
 
 using System.Net.Http.Json;
 
-using Xunit;
-
 using FluentAssertions;
 
 using Microsoft.Extensions.Configuration;
@@ -15,6 +13,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using OpenDsc.Server.Contracts;
+
+using Xunit;
 
 namespace OpenDsc.Lcm.FunctionalTests;
 

@@ -34,7 +34,7 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
     public Schema Get(Schema instance)
     {
         using var ts = new TaskService();
-        var task = ts.GetTask($"{instance.TaskPath.TrimEnd('\\')}{ (instance.TaskPath == Schema.DefaultTaskPath ? "" : "\\")}{instance.TaskName}");
+        var task = ts.GetTask($"{instance.TaskPath.TrimEnd('\\')}{(instance.TaskPath == Schema.DefaultTaskPath ? "" : "\\")}{instance.TaskName}");
 
         if (task is null)
         {
@@ -119,7 +119,7 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
     public SetResult<Schema>? Set(Schema instance)
     {
         using var ts = new TaskService();
-        var taskFullPath = $"{instance.TaskPath.TrimEnd('\\')}{ (instance.TaskPath == Schema.DefaultTaskPath ? "" : "\\")}{instance.TaskName}";
+        var taskFullPath = $"{instance.TaskPath.TrimEnd('\\')}{(instance.TaskPath == Schema.DefaultTaskPath ? "" : "\\")}{instance.TaskName}";
         var task = ts.GetTask(taskFullPath);
 
         if (task is not null)
@@ -291,7 +291,7 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
     public void Delete(Schema instance)
     {
         using var ts = new TaskService();
-        var taskFullPath = $"{instance.TaskPath.TrimEnd('\\')}{ (instance.TaskPath == Schema.DefaultTaskPath ? "" : "\\")}{instance.TaskName}";
+        var taskFullPath = $"{instance.TaskPath.TrimEnd('\\')}{(instance.TaskPath == Schema.DefaultTaskPath ? "" : "\\")}{instance.TaskName}";
         var task = ts.GetTask(taskFullPath);
 
         if (task is not null)
