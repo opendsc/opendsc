@@ -57,4 +57,9 @@ internal static class EventIds
     public const int SystemRestartRequired = 5000;
     public const int ServiceRestartRequired = 5001;
     public const int ProcessRestartRequired = 5002;
+
+    // Pull Server Events: 6000-6099
+    public const int PullServerNotConfigured = 6000;
+    public const int ConfigurationDownloadedFromServer = 6001;
+    public const int ApiKeyRotated = 6002;
 }

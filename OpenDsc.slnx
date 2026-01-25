@@ -16,6 +16,7 @@
     <Project Path="src/OpenDsc.Resource.SqlServer/OpenDsc.Resource.SqlServer.csproj" />
     <Project Path="src/OpenDsc.Resource.Xml/OpenDsc.Resource.Xml.csproj" />
     <Project Path="src/OpenDsc.Lcm/OpenDsc.Lcm.csproj" />
+    <Project Path="src/OpenDsc.Server/OpenDsc.Server.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/TestResource.Aot/TestResource.Aot.csproj" />
@@ -23,5 +24,12 @@
     <Project Path="tests/TestResource.NonAot/TestResource.NonAot.csproj" />
     <Project Path="tests/TestResource.Options/TestResource.Options.csproj" />
     <Project Path="tests/TestService/TestService.csproj" />
+    <Project Path="tests/OpenDsc.Lcm.Tests/OpenDsc.Lcm.Tests.csproj" />
+    <Project Path="tests/OpenDsc.Lcm.IntegrationTests/OpenDsc.Lcm.IntegrationTests.csproj" />
+    <Project Path="tests/OpenDsc.Server.Tests/OpenDsc.Server.Tests.csproj" />
+    <Project Path="tests/OpenDsc.Server.IntegrationTests/OpenDsc.Server.IntegrationTests.csproj" />
+    <Project Path="tests/OpenDsc.Server.FunctionalTests/OpenDsc.Server.FunctionalTests.csproj" />
+    <Project Path="tests/OpenDsc.Lcm.FunctionalTests/OpenDsc.Lcm.FunctionalTests.csproj" />
+    <Project Path="tests/OpenDsc.Schema.Tests/OpenDsc.Schema.Tests.csproj" />
   </Folder>
 </Solution>

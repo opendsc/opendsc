@@ -1,0 +1,14 @@
+$schema: https://aka.ms/dsc/schemas/v3/bundled/config/document.json
+resources:
+  - name: test directory
+    type: OpenDsc.FileSystem/Directory
+    properties:
+      path: /tmp/dsc-test-dir
+
+  - name: test file
+    type: OpenDsc.FileSystem/File
+    properties:
+      path: /tmp/dsc-test-dir/test.txt
+      content: "Multi-resource test"
+    dependsOn:
+      - "[resourceId('OpenDsc.FileSystem/Directory','test directory')]"
