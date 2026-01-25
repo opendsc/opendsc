@@ -8,7 +8,8 @@ This repository contains Microsoft DSC (Desired State Configuration) resources f
 
 1. **DSC Resources** - Built-in resources for system management
 2. **LCM Service** (`src/OpenDsc.Lcm/`) - Background service that monitors and remediates configurations
-3. **Resource Libraries** (`src/OpenDsc.Resource*`) - Core framework for building DSC resources
+3. **Pull Server** (`src/OpenDsc.Server/`) - REST API server for centralized configuration management
+4. **Resource Libraries** (`src/OpenDsc.Resource*`) - Core framework for building DSC resources
 
 **Available Resources:**
 
@@ -23,19 +24,29 @@ Windows Resources (in `src/OpenDsc.Resource.Windows/`):
 - `UserRight/` - User rights assignment management (`OpenDsc.Windows/UserRight`)
 - `FileSystem/Acl/` - File system ACL management (`OpenDsc.Windows.FileSystem/AccessControlList`)
 
-Cross-Platform Resources (in `src/OpenDsc.Resource.FileSystem/`, `src/OpenDsc.Resource.Xml/`, `src/OpenDsc.Resource.Archive/`, and `src/OpenDsc.Resource.Posix/`):
+SQL Server Resources (in `src/OpenDsc.Resource.SqlServer/`):
+- `Login/` - SQL Server login management (`OpenDsc.SqlServer/Login`)
+- `Database/` - SQL Server database management (`OpenDsc.SqlServer/Database`)
+- `DatabaseRole/` - SQL Server database role management (`OpenDsc.SqlServer/DatabaseRole`)
+- `ServerRole/` - SQL Server server role management (`OpenDsc.SqlServer/ServerRole`)
+- `DatabasePermission/` - SQL Server database permissions (`OpenDsc.SqlServer/DatabasePermission`)
+- `ServerPermission/` - SQL Server server permissions (`OpenDsc.SqlServer/ServerPermission`)
+
+Cross-Platform Resources (in `src/OpenDsc.Resource.FileSystem/`, `src/OpenDsc.Resource.Xml/`, `src/OpenDsc.Resource.Json/`, `src/OpenDsc.Resource.Archive/`, and `src/OpenDsc.Resource.Posix/`):
 - `File/` - Cross-platform file management (`OpenDsc.FileSystem/File`)
 - `Directory/` - Cross-platform directory management (`OpenDsc.FileSystem/Directory`)
 - `SymbolicLink/` - Cross-platform symbolic link management (`OpenDsc.FileSystem/SymbolicLink`)
 - `Element/` - XML element manipulation (`OpenDsc.Xml/Element`)
+- `Value/` - JSON value management via JSONPath (`OpenDsc.Json/Value`)
 - `Zip/Compress/` - Create ZIP archives (`OpenDsc.Archive.Zip/Compress`)
 - `Zip/Expand/` - Extract ZIP archives (`OpenDsc.Archive.Zip/Expand`)
 - `FileSystem/Permission/` - POSIX file permissions (`OpenDsc.Posix.FileSystem/Permission`)
 
 **Resource Naming Convention:**
 - Windows-specific: `OpenDsc.Windows/<Name>` (namespace: `OpenDsc.Resource.Windows.<Name>`)
+- SQL Server: `OpenDsc.SqlServer/<Name>` (namespace: `OpenDsc.Resource.SqlServer.<Name>`)
 - Cross-platform: `OpenDsc.<Area>/<Name>` (namespace: `OpenDsc.Resource.<Area>.<Name>`)
-- Specialized: `OpenDsc.Xml/<Name>`, `OpenDsc.Archive.Zip/<Name>` (namespace: `OpenDsc.Resource.Xml.<Name>`, `OpenDsc.Resource.Archive.Zip.<Name>`)
+- Specialized: `OpenDsc.Xml/<Name>`, `OpenDsc.Json/<Name>`, `OpenDsc.Archive.Zip/<Name>` (namespace: `OpenDsc.Resource.Xml.<Name>`, `OpenDsc.Resource.Json.<Name>`, `OpenDsc.Resource.Archive.Zip.<Name>`)
 - **With sub-area**: `OpenDsc.Windows.<SubArea>/<Name>` (namespace: `OpenDsc.Resource.Windows.<SubArea>.<Name>`)
   - Example: `OpenDsc.Windows.FileSystem/AccessControlList` → folder `src/OpenDsc.Resource.Windows/FileSystem/Acl/` → namespace `OpenDsc.Resource.Windows.FileSystem.Acl`
   - Example: `OpenDsc.Archive.Zip/Compress` → folder `src/OpenDsc.Resource.Archive/Zip/Compress/` → namespace `OpenDsc.Resource.Archive.Zip.Compress`
@@ -124,8 +135,10 @@ using FileSystemAclNs = OpenDsc.Resource.Windows.FileSystem.Acl;  // Sub-area re
 using PosixPermissionNs = OpenDsc.Resource.Posix.FileSystem.Permission;
 #endif
 
+using SqlServerLoginNs = OpenDsc.Resource.SqlServer.Login;
 using ZipCompressNs = OpenDsc.Resource.Archive.Zip.Compress;
 using ZipExpandNs = OpenDsc.Resource.Archive.Zip.Expand;
+using JsonValueNs = OpenDsc.Resource.Json.Value;
 // ... other cross-platform resource namespaces
 
 #if WINDOWS
@@ -134,6 +147,8 @@ var environmentResource = new EnvironmentNs.Resource(OpenDsc.Resource.Windows.So
 var scheduledTaskResource = new ScheduledTaskNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
 var fileSystemAclResource = new FileSystemAclNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
 #endif
+
+var sqlServerLoginResource = new SqlServerLoginNs.Resource(OpenDsc.Resource.SqlServer.SourceGenerationContext.Default);
 
 #if !WINDOWS
 PosixPermissionNs.Resource? posixPermissionResource = null;
@@ -145,6 +160,7 @@ if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
 
 var zipCompressResource = new ZipCompressNs.Resource(OpenDsc.Resource.Archive.SourceGenerationContext.Default);
 var zipExpandResource = new ZipExpandNs.Resource(OpenDsc.Resource.Archive.SourceGenerationContext.Default);
+var jsonValueResource = new JsonValueNs.Resource(OpenDsc.Resource.Json.SourceGenerationContext.Default);
 // ... instantiate other cross-platform resources
 
 var command = new CommandBuilder();
@@ -157,6 +173,8 @@ command
     .AddResource<FileSystemAclNs.Resource, FileSystemAclNs.Schema>(fileSystemAclResource);
 #endif
 
+command.AddResource<SqlServerLoginNs.Resource, SqlServerLoginNs.Schema>(sqlServerLoginResource);
+
 #if !WINDOWS
 if (posixPermissionResource is not null)
 {
@@ -166,7 +184,8 @@ if (posixPermissionResource is not null)
 
 command
     .AddResource<ZipCompressNs.Resource, ZipCompressNs.Schema>(zipCompressResource)
-    .AddResource<ZipExpandNs.Resource, ZipExpandNs.Schema>(zipExpandResource);
+    .AddResource<ZipExpandNs.Resource, ZipExpandNs.Schema>(zipExpandResource)
+    .AddResource<JsonValueNs.Resource, JsonValueNs.Schema>(jsonValueResource);
 
 return command.Build().Parse(args).Invoke();
 ```
@@ -505,16 +524,23 @@ DSC automatically aggregates `_restartRequired` entries from all resources into 
 # Create NuGet packages
 .\build.ps1 -Pack
 
-# Skip tests during build
+# Skip all tests during build
 .\build.ps1 -SkipTest
+
+# Skip specific test categories
+.\build.ps1 -SkipUnitTests        # Skip xUnit unit tests
+.\build.ps1 -SkipIntegrationTests # Skip xUnit integration tests
+.\build.ps1 -SkipFunctionalTests  # Skip cross-database provider tests (Testcontainers)
+.\build.ps1 -SkipE2ETests          # Skip Pester E2E tests for DSC resources
 ```
 
 **Build Process:**
 1. `dotnet publish` compiles the unified executable with platform-specific resources based on target OS
 2. Build artifacts are placed in `artifacts/publish/`
 3. LCM service is built to `artifacts/Lcm/`
-4. Portable builds create self-contained executables with embedded runtime in `artifacts/portable/`
-5. MSI builds create installers in `artifacts/msi/`
+4. Pull Server is built to `artifacts/Server/`
+5. Portable builds create self-contained executables with embedded runtime in `artifacts/portable/`
+6. MSI builds create installers in `artifacts/msi/`
 
 **Output Structure:**
 ```
@@ -526,16 +552,46 @@ artifacts/
 ├── Lcm/                         # LCM service
 │   ├── OpenDsc.Lcm.exe
 │   └── appsettings.json
+├── Server/                      # Pull Server
+│   ├── OpenDsc.Server.exe
+│   └── appsettings.json
 ├── portable/                    # Self-contained with .NET runtime
 │   └── OpenDsc.Resources.exe (Windows) / OpenDsc.Resources (Linux/macOS)
 └── msi/
     ├── OpenDsc.Resources.msi
-    └── OpenDsc.Lcm.msi          # LCM installer
+    ├── OpenDsc.Lcm.msi          # LCM installer
+    └── OpenDsc.Server.msi       # Pull Server installer
 ```
 
-### Testing with Pester
+### Test Structure
 
-Tests are **integration tests only** - they verify end-to-end behavior through the DSC CLI:
+The project uses **multiple test types**:
+
+1. **Unit Tests** (xUnit) - In `tests/OpenDsc.*.Tests/` folders
+   - Fast, isolated tests for individual components
+   - Located in: `OpenDsc.Lcm.Tests`, `OpenDsc.Schema.Tests`, `OpenDsc.Server.Tests`
+   - Run with: `dotnet test --filter Category=Unit`
+
+2. **Integration Tests** (xUnit) - In `tests/OpenDsc.*.IntegrationTests/` folders
+   - Test component interactions and database operations
+   - Located in: `OpenDsc.Lcm.IntegrationTests`, `OpenDsc.Server.IntegrationTests`
+   - Run with: `dotnet test --filter Category=Integration`
+
+3. **Functional Tests** (xUnit) - In `tests/OpenDsc.*.FunctionalTests/` folders
+   - Cross-database provider tests using Testcontainers
+   - Test against SQLite, PostgreSQL, and SQL Server
+   - Located in: `OpenDsc.Lcm.FunctionalTests`, `OpenDsc.Server.FunctionalTests`
+   - Run with: `dotnet test --filter Category=Functional`
+
+4. **E2E Tests** (Pester) - In `tests/Windows/`, `tests/SqlServer/`, `tests/Archive/`, etc.
+   - End-to-end tests through DSC CLI
+   - Test published resource executables
+   - Always run integration tests through DSC CLI (no unit tests)
+   - Run with: `Invoke-Pester` after build
+
+**Test Pattern for DSC Resources (E2E):**
+
+**Test Pattern for DSC Resources (E2E):**
 
 ```powershell
 # Discovery
@@ -547,8 +603,13 @@ dsc resource set -r OpenDsc.Windows/Environment --input '{"name":"TEST","value":
 dsc resource delete -r OpenDsc.Windows/Environment --input '{"name":"TEST"}'
 ```
 
-**Test Pattern:** Create → Verify → Cleanup (always cleanup in `AfterEach`/`AfterAll`)
-**No unit tests** - resources are tested through published executables via DSC CLI
+Create → Verify → Cleanup (always cleanup in `AfterEach`/`AfterAll`)
+
+**SQL Server Resources Testing:**
+- SQL Server resources require SQL Server installed or available via connection string
+- Tests use helper script: `tools/Install-SqlServer.ps1` to setup SQL Server on CI
+- Connection via Windows Authentication (default) or SQL Authentication (Linux)
+- Set `$env:SQLSERVER_INSTANCE` for custom instance, `$env:SQLSERVER_SA_PASSWORD` for SQL auth
 
 ### Admin-Required Test Pattern
 
@@ -731,6 +792,129 @@ var target = instance.Scope is DscScope.Machine
 
 Machine scope requires admin elevation.
 
+## Pull Server (OpenDsc.Server)
+
+The Pull Server (`src/OpenDsc.Server/`) is a REST API-based centralized configuration management server for DSC v3, enabling LCM agents to retrieve configurations and submit compliance reports.
+
+### Architecture Overview
+
+**Key Components:**
+- `Program.cs` - ASP.NET Core minimal API entry point with endpoint registration
+- `Endpoints/` - Grouped endpoint definitions (Health, Nodes, Configurations, Reports, Settings)
+- `Data/` - EF Core database layer with SQLite, PostgreSQL, and SQL Server support
+- `Authentication/` - API key-based authentication for node and admin operations
+- `PullServerClient.cs` (in LCM) - HTTP client for LCM-to-server communication
+
+**Supported Databases:**
+- SQLite (default, file-based)
+- PostgreSQL (production-ready)
+- SQL Server (enterprise environments)
+
+### Key Features
+
+1. **Node Registration** - FQDN-based node identification with automatic API key generation
+2. **Configuration Distribution** - Store configurations and distribute to registered nodes
+3. **Compliance Reporting** - Collect and store reports from LCM agents
+4. **API Key Rotation** - Secure, atomic key rotation for node authentication
+5. **Pull Mode Integration** - LCM can operate in pull mode by connecting to the server
+
+### API Endpoint Structure
+
+```csharp
+// Health endpoints
+app.MapHealthEndpoints();           // /health, /health/ready
+
+// Node endpoints
+app.MapNodeEndpoints();             // /api/v1/nodes/*, /api/v1/nodes/{nodeId}/configuration
+
+// Configuration endpoints
+app.MapConfigurationEndpoints();    // /api/v1/configurations/*
+
+// Report endpoints
+app.MapReportEndpoints();           // /api/v1/nodes/{nodeId}/reports, /api/v1/reports/*
+
+// Settings endpoints
+app.MapSettingsEndpoints();         // /api/v1/settings/*
+```
+
+### Authentication Model
+
+**Two-tier authentication:**
+1. **Registration Key** - Used for initial node registration (shared secret)
+2. **Node API Key** - Generated per-node for ongoing operations (rotatable)
+3. **Admin Key** - For administrative operations (future enhancement)
+
+**LCM Pull Mode Configuration:**
+```json
+{
+  "LCM": {
+    "ConfigurationSource": "Pull",
+    "PullServer": {
+      "ServerUrl": "https://pull-server.example.com",
+      "NodeId": null,            // Auto-assigned on registration
+      "ApiKey": null,            // Auto-generated on registration
+      "ReportCompliance": true,  // Submit compliance reports
+      "KeyRotationInterval": "30.00:00:00"  // 30 days
+    }
+  }
+}
+```
+
+### Database Configuration
+
+**Connection strings (via appsettings.json or environment variables):**
+```json
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Data Source=opendsc.db"  // SQLite
+    // "DefaultConnection": "Host=localhost;Database=opendsc;Username=postgres;Password=***"  // PostgreSQL
+    // "DefaultConnection": "Server=.;Database=OpenDSC;Integrated Security=true"  // SQL Server
+  },
+  "DatabaseProvider": "Sqlite"  // or "PostgreSql", "SqlServer"
+}
+```
+
+### Running the Pull Server
+
+```powershell
+# Build server
+.\build.ps1
+
+# Run locally
+dotnet run --project src/OpenDsc.Server
+
+# Run from published artifacts
+.\artifacts\Server\OpenDsc.Server.exe
+
+# Run with Docker
+docker-compose up -d                    # SQLite
+docker-compose --profile postgres up -d # PostgreSQL
+docker-compose --profile sqlserver up -d # SQL Server
+```
+
+**API Documentation:**
+- Development mode: Navigate to `/scalar/v1` for interactive API reference
+- OpenAPI schema: `/openapi/v1.json`
+
+### LCM Pull Server Integration
+
+The LCM integrates with the Pull Server via `PullServerClient.cs`:
+
+**Key Operations:**
+1. **Registration** - `RegisterAsync()` - Initial node registration with FQDN
+2. **Configuration Download** - `GetConfigurationAsync()` - Fetch assigned configuration
+3. **Configuration Change Detection** - `HasConfigurationChangedAsync()` - Check checksum
+4. **Report Submission** - `SubmitReportAsync()` - Send compliance reports
+5. **API Key Rotation** - `RotateApiKeyAsync()` - Rotate node API key
+
+**LCM Worker Pull Mode Flow:**
+1. Check if configuration source is Pull mode
+2. Register node if not already registered (get NodeId and ApiKey)
+3. Check for key rotation and rotate if needed
+4. Download configuration if changed (checksum comparison)
+5. Execute DSC operations (test/set)
+6. Submit compliance report if enabled
+
 ## Local Configuration Manager (LCM) Service
 
 The LCM is a background service (`src/OpenDsc.Lcm/`) that continuously monitors and optionally remediates DSC configurations. It operates in two modes and is implemented as a cross-platform .NET service.
@@ -747,15 +931,21 @@ The LCM is a background service (`src/OpenDsc.Lcm/`) that continuously monitors 
 1. **Monitor Mode** - Periodically runs `dsc config test` to detect drift
 2. **Remediate Mode** - Runs `dsc config test` and applies `dsc config set` when drift detected
 
+**Configuration Sources:**
+- **Local** - Read configuration from local file path (`ConfigurationPath`)
+- **Pull** - Download configuration from Pull Server (`PullServer.BaseUrl`)
+
 ### Configuration Structure
 
 ```csharp
 public class LcmConfig
 {
     public ConfigurationMode ConfigurationMode { get; set; } = ConfigurationMode.Monitor;
-    public string ConfigurationPath { get; set; }  // Path to main.dsc.yaml
+    public ConfigurationSource ConfigurationSource { get; set; } = ConfigurationSource.Local;  // Local or Pull
+    public string ConfigurationPath { get; set; }  // Path to main.dsc.yaml (Local mode)
     public TimeSpan ConfigurationModeInterval { get; set; } = TimeSpan.FromMinutes(15);
     public string? DscExecutablePath { get; set; }  // Optional, defaults to 'dsc' in PATH
+    public PullServerSettings? PullServer { get; set; }  // Pull server configuration (Pull mode)
 }
 ```
 
@@ -842,7 +1032,8 @@ Use [Environment/](../src/OpenDsc.Resource.Windows/Environment/) as the template
 
 1. **Create resource folder** in the appropriate project:
    - Windows-only: `src/OpenDsc.Resource.Windows/<Name>/`
-   - Cross-platform: `src/OpenDsc.Resource.FileSystem/<Name>/`, `src/OpenDsc.Resource.Xml/<Name>/`, or `src/OpenDsc.Resource.Archive/<Area>/<Name>/`
+   - SQL Server: `src/OpenDsc.Resource.SqlServer/<Name>/`
+   - Cross-platform: `src/OpenDsc.Resource.FileSystem/<Name>/`, `src/OpenDsc.Resource.Xml/<Name>/`, `src/OpenDsc.Resource.Json/<Name>/`, or `src/OpenDsc.Resource.Archive/<Area>/<Name>/`
 
 2. **Create core files** in the resource folder:
    - `Resource.cs` - Core implementation with `[DscResource]` attribute
@@ -852,6 +1043,8 @@ Use [Environment/](../src/OpenDsc.Resource.Windows/Environment/) as the template
 3. **Implement Resource class:**
    - Inherit from `DscResource<Schema>` with context parameter
    - Add `[DscResource("OpenDsc.Windows/<Name>", "0.1.0")]` attribute with version and metadata
+     - For SQL Server: `[DscResource("OpenDsc.SqlServer/<Name>", "0.1.0")]`
+     - For cross-platform: `[DscResource("OpenDsc.<Area>/<Name>", "0.1.0")]`
    - Override `GetSchema()` method with standard implementation
    - Define `[ExitCode]` mappings for exceptions
    - Implement capability interfaces (all optional, but implement those that make sense):
@@ -913,8 +1106,11 @@ Use [Environment/](../src/OpenDsc.Resource.Windows/Environment/) as the template
 - **COM Interop:** [Shortcut/](../src/OpenDsc.Resource.Windows/Shortcut/) (P/Invoke patterns for COM)
 - **Win32 API:** [Service/](../src/OpenDsc.Resource.Windows/Service/) (Win32 API wrappers)
 - **DISM API:** [OptionalFeature/](../src/OpenDsc.Resource.Windows/OptionalFeature/) (P/Invoke DISM interop)
+- **SQL Server Resources:** [Login/](../src/OpenDsc.Resource.SqlServer/Login/), [Database/](../src/OpenDsc.Resource.SqlServer/Database/) (SQL Server management via SMO)
 - **Archive Resources:** [Zip/Compress/](../src/OpenDsc.Resource.Archive/Zip/Compress/), [Zip/Expand/](../src/OpenDsc.Resource.Archive/Zip/Expand/) (multi-level namespace structure)
+- **JSON Resources:** [Value/](../src/OpenDsc.Resource.Json/Value/) (JSONPath manipulation, custom schema override)
 - **LCM Service:** [LcmWorker.cs](../src/OpenDsc.Lcm/LcmWorker.cs), [DscExecutor.cs](../src/OpenDsc.Lcm/DscExecutor.cs) (background service patterns)
+- **Pull Server:** [Program.cs](../src/OpenDsc.Server/Program.cs), [Endpoints/](../src/OpenDsc.Server/Endpoints/) (ASP.NET Core minimal APIs, EF Core)
 - **Test Examples:** [Environment.Tests.ps1](../tests/Windows/Environment.Tests.ps1) (comprehensive integration tests)
 - **Platform Entry Point:** [Program.cs](../src/OpenDsc.Resources/Program.cs) (resource registration with conditional compilation)
 - **Scheduled Task Resource:** [ScheduledTask/](../src/OpenDsc.Resource.Windows/ScheduledTask/) (complex resource with embedded schema, multiple supporting types)
