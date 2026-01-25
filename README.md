@@ -20,10 +20,10 @@ for continuous monitoring and remediation.
 
 ## Libraries
 
-| Library | Description |
-| --- | --- |
-| [OpenDsc.Templates][t] | DSC project templates |
-| [OpenDsc.Resource][r] | Core DSC resource implementation |
+| Library                           | Description                         |
+|-----------------------------------|-------------------------------------|
+| [OpenDsc.Templates][t]            | DSC project templates               |
+| [OpenDsc.Resource][r]             | Core DSC resource implementation    |
 | [OpenDsc.Resource.CommandLine][c] | CLI and resource manifest generator |
 
 [t]: https://www.nuget.org/packages/OpenDsc.Templates
@@ -65,6 +65,17 @@ managing Windows and cross-platform systems:
   files and directories
 - **[OpenDsc.Archive.Zip/Expand][zipexpand]** - Extract ZIP archives to
   specified locations
+- **[OpenDsc.SqlServer/Login][sqllogin]** - Manage SQL Server logins
+- **[OpenDsc.SqlServer/Database][sqldatabase]** - Manage SQL Server databases
+- **[OpenDsc.SqlServer/DatabaseRole][sqldatabaserole]** - Manage SQL Server
+  database roles and membership
+- **[OpenDsc.SqlServer/ServerRole][sqlserverrole]** - Manage SQL Server server
+  roles and membership
+- **[OpenDsc.SqlServer/DatabasePermission][sqldatabaseperm]** - Manage SQL
+  Server database-level permissions
+- **[OpenDsc.SqlServer/ServerPermission][sqlserverperm]** - Manage SQL Server
+  server-level permissions
+- **[OpenDsc.SqlServer/AgentJob][sqlagentjob]** - Manage SQL Server Agent jobs
 
 ### POSIX Resources
 
@@ -92,6 +103,13 @@ resources provide Unix-specific functionality not available on Windows.
 [xml]: src/OpenDsc.Resource.Xml/Element/README.md
 [zipcompress]: src/OpenDsc.Resource.Archive/Zip/Compress/README.md
 [zipexpand]: src/OpenDsc.Resource.Archive/Zip/Expand/README.md
+[sqllogin]: src/OpenDsc.Resource.SqlServer/Login/README.md
+[sqldatabase]: src/OpenDsc.Resource.SqlServer/Database/README.md
+[sqldatabaserole]: src/OpenDsc.Resource.SqlServer/DatabaseRole/README.md
+[sqlserverrole]: src/OpenDsc.Resource.SqlServer/ServerRole/README.md
+[sqldatabaseperm]: src/OpenDsc.Resource.SqlServer/DatabasePermission/README.md
+[sqlserverperm]: src/OpenDsc.Resource.SqlServer/ServerPermission/README.md
+[sqlagentjob]: src/OpenDsc.Resource.SqlServer/AgentJob/README.md
 
 ## Quick Start
 
