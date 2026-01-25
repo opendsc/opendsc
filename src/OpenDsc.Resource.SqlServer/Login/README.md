@@ -55,7 +55,11 @@ The resource has the following capabilities:
   on next login.
 - **denyWindowsLogin** (boolean) - Whether to deny Windows login access. Only
   applicable for Windows logins.
-- **serverRoles** (string[]) - Server roles to assign to the login.
+- **serverRoles** (string[]) - Server roles to assign to the login. See
+  [Server Roles](#server-roles) for valid values.
+- **_purge** (boolean) - When `true`, removes server roles not in
+  the `serverRoles` list. When `false` (default), only adds roles without
+  removing others. Write-only.
 - **_exist** (boolean) - Indicates whether the login should exist.
   Default: `true`.
 
@@ -67,6 +71,22 @@ The resource has the following capabilities:
 - **isLocked** (boolean) - Whether the login is locked out.
 - **isPasswordExpired** (boolean) - Whether the login's password has expired.
 - **isSystemObject** (boolean) - Whether this is a system login.
+
+## Server Roles
+
+The following fixed server roles can be assigned to logins:
+
+| Role            | Description                                                                   |
+|-----------------|-------------------------------------------------------------------------------|
+| `sysadmin`      | Members can perform any activity in the server                                |
+| `serveradmin`   | Members can change server-wide configuration options and shut down the server |
+| `securityadmin` | Members manage logins and their properties                                    |
+| `processadmin`  | Members can end processes running in SQL Server                               |
+| `setupadmin`    | Members can add and remove linked servers                                     |
+| `bulkadmin`     | Members can run the BULK INSERT statement                                     |
+| `diskadmin`     | Members manage disk files                                                     |
+| `dbcreator`     | Members can create, alter, drop, and restore any database                     |
+| `public`        | Every login belongs to the public role                                        |
 
 ## Examples
 
@@ -176,7 +196,7 @@ denyWindowsLogin: true
 
 ### Assign Server Roles
 
-Create a login and assign server roles:
+Create a login and assign server roles (additive mode - default):
 
 ```yaml
 serverInstance: .
@@ -186,6 +206,45 @@ password: SecureP@ssw0rd!
 serverRoles:
   - sysadmin
   - securityadmin
+```
+
+### Add Server Roles to Existing Login
+
+Add additional roles without removing existing ones (additive mode):
+
+```yaml
+serverInstance: .
+name: AdminLogin
+serverRoles:
+  - dbcreator
+  - processadmin
+```
+
+### Replace Server Roles (Purge Mode)
+
+Set exact server roles, removing any roles not in the list:
+
+```yaml
+serverInstance: .
+name: AdminLogin
+serverRoles:
+  - dbcreator
+_purge: true
+```
+
+```powershell
+dsc resource set -r OpenDsc.SqlServer/Login --input '{"serverInstance":".","name":"AdminLogin","serverRoles":["dbcreator"],"_purge":true}'
+```
+
+### Remove All Server Roles
+
+Remove all server roles from a login:
+
+```yaml
+serverInstance: .
+name: AdminLogin
+serverRoles: []
+_purge: true
 ```
 
 ### Disable a Login
