@@ -81,6 +81,8 @@ managing Windows and cross-platform systems:
 - **[OpenDsc.SqlServer/AgentJob][sqlagentjob]** - Manage SQL Server Agent jobs
 - **[OpenDsc.SqlServer/LinkedServer][sqllinkedserver]** - Manage SQL Server
   linked servers
+- **[OpenDsc.SqlServer/Configuration][sqlconfig]** - Manage SQL Server
+  instance configuration options (sp_configure)
 
 ### POSIX Resources
 
@@ -116,6 +118,7 @@ resources provide Unix-specific functionality not available on Windows.
 [sqlserverperm]: src/OpenDsc.Resource.SqlServer/ServerPermission/README.md
 [sqlagentjob]: src/OpenDsc.Resource.SqlServer/AgentJob/README.md
 [sqllinkedserver]: src/OpenDsc.Resource.SqlServer/LinkedServer/README.md
+[sqlconfig]: src/OpenDsc.Resource.SqlServer/Configuration/README.md
 
 ## Quick Start
 
