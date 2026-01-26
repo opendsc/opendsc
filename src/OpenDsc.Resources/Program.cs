@@ -22,6 +22,7 @@ using SqlServerDatabaseRoleNs = OpenDsc.Resource.SqlServer.DatabaseRole;
 using SqlServerServerRoleNs = OpenDsc.Resource.SqlServer.ServerRole;
 using SqlServerDatabasePermissionNs = OpenDsc.Resource.SqlServer.DatabasePermission;
 using SqlServerServerPermissionNs = OpenDsc.Resource.SqlServer.ServerPermission;
+using SqlServerLinkedServerNs = OpenDsc.Resource.SqlServer.LinkedServer;
 
 #if !WINDOWS
 using PosixPermissionNs = OpenDsc.Resource.Posix.FileSystem.Permission;
@@ -53,6 +54,8 @@ var sqlServerDatabaseRoleResource = new SqlServerDatabaseRoleNs.Resource(OpenDsc
 var sqlServerServerRoleResource = new SqlServerServerRoleNs.Resource(OpenDsc.Resource.SqlServer.SourceGenerationContext.Default);
 var sqlServerDatabasePermissionResource = new SqlServerDatabasePermissionNs.Resource(OpenDsc.Resource.SqlServer.SourceGenerationContext.Default);
 var sqlServerServerPermissionResource = new SqlServerServerPermissionNs.Resource(OpenDsc.Resource.SqlServer.SourceGenerationContext.Default);
+var sqlServerLinkedServerResource = new SqlServerLinkedServerNs.Resource(OpenDsc.Resource.SqlServer.SourceGenerationContext.Default);
+
 
 #if !WINDOWS
 #pragma warning disable CA1416 // 'Resource' is only supported on: 'linux', 'macOS'
@@ -93,6 +96,7 @@ command.AddResource<SqlServerDatabaseRoleNs.Resource, SqlServerDatabaseRoleNs.Sc
 command.AddResource<SqlServerServerRoleNs.Resource, SqlServerServerRoleNs.Schema>(sqlServerServerRoleResource);
 command.AddResource<SqlServerDatabasePermissionNs.Resource, SqlServerDatabasePermissionNs.Schema>(sqlServerDatabasePermissionResource);
 command.AddResource<SqlServerServerPermissionNs.Resource, SqlServerServerPermissionNs.Schema>(sqlServerServerPermissionResource);
+command.AddResource<SqlServerLinkedServerNs.Resource, SqlServerLinkedServerNs.Schema>(sqlServerLinkedServerResource);
 
 #if !WINDOWS
 #pragma warning disable CA1416 // 'Resource' is only supported on: 'linux', 'macOS'
