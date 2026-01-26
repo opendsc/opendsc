@@ -59,40 +59,14 @@ public sealed class Resource(JsonSerializerContext context)
                 };
             }
 
-            return new Schema
-            {
-                ServerInstance = instance.ServerInstance,
-                Name = job.Name,
-                Description = string.IsNullOrEmpty(job.Description) ? null : job.Description,
-                IsEnabled = job.IsEnabled,
-                Category = job.Category,
-                OwnerLoginName = job.OwnerLoginName,
-                StartStepId = job.StartStepID,
-                EmailLevel = job.EmailLevel,
-                OperatorToEmail = string.IsNullOrEmpty(job.OperatorToEmail) ? null : job.OperatorToEmail,
-                PageLevel = job.PageLevel,
-                OperatorToPage = string.IsNullOrEmpty(job.OperatorToPage) ? null : job.OperatorToPage,
-                NetSendLevel = job.NetSendLevel,
-                OperatorToNetSend = string.IsNullOrEmpty(job.OperatorToNetSend) ? null : job.OperatorToNetSend,
-                EventLogLevel = job.EventLogLevel,
-                DeleteLevel = job.DeleteLevel,
-                JobId = job.JobID,
-                DateCreated = job.DateCreated,
-                DateLastModified = job.DateLastModified,
-                LastRunDate = job.LastRunDate == DateTime.MinValue ? null : job.LastRunDate,
-                LastRunOutcome = job.LastRunOutcome,
-                NextRunDate = job.NextRunDate == DateTime.MinValue ? null : job.NextRunDate,
-                CurrentRunStatus = job.CurrentRunStatus,
-                CurrentRunStep = job.CurrentRunStep,
-                CurrentRunRetryAttempt = job.CurrentRunRetryAttempt,
-                HasStep = job.HasStep,
-                HasSchedule = job.HasSchedule,
-                VersionNumber = job.VersionNumber
-            };
+            return MapJobToSchema(job, instance.ServerInstance);
         }
         finally
         {
-            SqlConnectionHelper.SafeDisconnect(server);
+            if (server.ConnectionContext.IsOpen)
+            {
+                server.ConnectionContext.Disconnect();
+            }
         }
     }
 
@@ -118,7 +92,10 @@ public sealed class Resource(JsonSerializerContext context)
         }
         finally
         {
-            SqlConnectionHelper.SafeDisconnect(server);
+            if (server.ConnectionContext.IsOpen)
+            {
+                server.ConnectionContext.Disconnect();
+            }
         }
     }
 
@@ -135,7 +112,10 @@ public sealed class Resource(JsonSerializerContext context)
         }
         finally
         {
-            SqlConnectionHelper.SafeDisconnect(server);
+            if (server.ConnectionContext.IsOpen)
+            {
+                server.ConnectionContext.Disconnect();
+            }
         }
     }
 
@@ -156,44 +136,52 @@ public sealed class Resource(JsonSerializerContext context)
             var jobs = new List<Schema>();
             foreach (Job job in server.JobServer.Jobs)
             {
-                jobs.Add(new Schema
-                {
-                    ServerInstance = serverInstance,
-                    Name = job.Name,
-                    Description = string.IsNullOrEmpty(job.Description) ? null : job.Description,
-                    IsEnabled = job.IsEnabled,
-                    Category = job.Category,
-                    OwnerLoginName = job.OwnerLoginName,
-                    StartStepId = job.StartStepID,
-                    EmailLevel = job.EmailLevel,
-                    OperatorToEmail = string.IsNullOrEmpty(job.OperatorToEmail) ? null : job.OperatorToEmail,
-                    PageLevel = job.PageLevel,
-                    OperatorToPage = string.IsNullOrEmpty(job.OperatorToPage) ? null : job.OperatorToPage,
-                    NetSendLevel = job.NetSendLevel,
-                    OperatorToNetSend = string.IsNullOrEmpty(job.OperatorToNetSend) ? null : job.OperatorToNetSend,
-                    EventLogLevel = job.EventLogLevel,
-                    DeleteLevel = job.DeleteLevel,
-                    JobId = job.JobID,
-                    DateCreated = job.DateCreated,
-                    DateLastModified = job.DateLastModified,
-                    LastRunDate = job.LastRunDate == DateTime.MinValue ? null : job.LastRunDate,
-                    LastRunOutcome = job.LastRunOutcome,
-                    NextRunDate = job.NextRunDate == DateTime.MinValue ? null : job.NextRunDate,
-                    CurrentRunStatus = job.CurrentRunStatus,
-                    CurrentRunStep = job.CurrentRunStep,
-                    CurrentRunRetryAttempt = job.CurrentRunRetryAttempt,
-                    HasStep = job.HasStep,
-                    HasSchedule = job.HasSchedule,
-                    VersionNumber = job.VersionNumber
-                });
+                jobs.Add(MapJobToSchema(job, serverInstance));
             }
 
             return jobs;
         }
         finally
         {
-            SqlConnectionHelper.SafeDisconnect(server);
+            if (server.ConnectionContext.IsOpen)
+            {
+                server.ConnectionContext.Disconnect();
+            }
         }
+    }
+
+    private static Schema MapJobToSchema(Job job, string serverInstance)
+    {
+        return new Schema
+        {
+            ServerInstance = serverInstance,
+            Name = job.Name,
+            Description = string.IsNullOrEmpty(job.Description) ? null : job.Description,
+            IsEnabled = job.IsEnabled,
+            Category = job.Category,
+            OwnerLoginName = job.OwnerLoginName,
+            StartStepId = job.StartStepID,
+            EmailLevel = job.EmailLevel,
+            OperatorToEmail = string.IsNullOrEmpty(job.OperatorToEmail) ? null : job.OperatorToEmail,
+            PageLevel = job.PageLevel,
+            OperatorToPage = string.IsNullOrEmpty(job.OperatorToPage) ? null : job.OperatorToPage,
+            NetSendLevel = job.NetSendLevel,
+            OperatorToNetSend = string.IsNullOrEmpty(job.OperatorToNetSend) ? null : job.OperatorToNetSend,
+            EventLogLevel = job.EventLogLevel,
+            DeleteLevel = job.DeleteLevel,
+            JobId = job.JobID,
+            DateCreated = job.DateCreated,
+            DateLastModified = job.DateLastModified,
+            LastRunDate = job.LastRunDate == DateTime.MinValue ? null : job.LastRunDate,
+            LastRunOutcome = job.LastRunOutcome,
+            NextRunDate = job.NextRunDate == DateTime.MinValue ? null : job.NextRunDate,
+            CurrentRunStatus = job.CurrentRunStatus,
+            CurrentRunStep = job.CurrentRunStep,
+            CurrentRunRetryAttempt = job.CurrentRunRetryAttempt,
+            HasStep = job.HasStep,
+            HasSchedule = job.HasSchedule,
+            VersionNumber = job.VersionNumber
+        };
     }
 
     private static void CreateJob(JobServer jobServer, Schema instance)
@@ -272,7 +260,7 @@ public sealed class Resource(JsonSerializerContext context)
     {
         bool altered = false;
 
-        if (!string.IsNullOrEmpty(instance.Description) &&
+        if (instance.Description != null &&
             !string.Equals(job.Description, instance.Description, StringComparison.Ordinal))
         {
             job.Description = instance.Description;
@@ -285,14 +273,14 @@ public sealed class Resource(JsonSerializerContext context)
             altered = true;
         }
 
-        if (!string.IsNullOrEmpty(instance.Category) &&
+        if (instance.Category != null &&
             !string.Equals(job.Category, instance.Category, StringComparison.OrdinalIgnoreCase))
         {
             job.Category = instance.Category;
             altered = true;
         }
 
-        if (!string.IsNullOrEmpty(instance.OwnerLoginName) &&
+        if (instance.OwnerLoginName != null &&
             !string.Equals(job.OwnerLoginName, instance.OwnerLoginName, StringComparison.OrdinalIgnoreCase))
         {
             job.OwnerLoginName = instance.OwnerLoginName;
@@ -311,7 +299,7 @@ public sealed class Resource(JsonSerializerContext context)
             altered = true;
         }
 
-        if (!string.IsNullOrEmpty(instance.OperatorToEmail) &&
+        if (instance.OperatorToEmail != null &&
             !string.Equals(job.OperatorToEmail, instance.OperatorToEmail, StringComparison.OrdinalIgnoreCase))
         {
             job.OperatorToEmail = instance.OperatorToEmail;
@@ -324,7 +312,7 @@ public sealed class Resource(JsonSerializerContext context)
             altered = true;
         }
 
-        if (!string.IsNullOrEmpty(instance.OperatorToPage) &&
+        if (instance.OperatorToPage != null &&
             !string.Equals(job.OperatorToPage, instance.OperatorToPage, StringComparison.OrdinalIgnoreCase))
         {
             job.OperatorToPage = instance.OperatorToPage;
@@ -337,7 +325,7 @@ public sealed class Resource(JsonSerializerContext context)
             altered = true;
         }
 
-        if (!string.IsNullOrEmpty(instance.OperatorToNetSend) &&
+        if (instance.OperatorToNetSend != null &&
             !string.Equals(job.OperatorToNetSend, instance.OperatorToNetSend, StringComparison.OrdinalIgnoreCase))
         {
             job.OperatorToNetSend = instance.OperatorToNetSend;
