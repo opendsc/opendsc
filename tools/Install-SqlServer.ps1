@@ -26,7 +26,8 @@
     Initialize-SqlServerForTests
 #>
 
-function Get-RandomPassword {
+function Get-RandomPassword
+{
     [CmdletBinding()]
     [OutputType([String])]
     Param
@@ -36,23 +37,28 @@ function Get-RandomPassword {
         [Switch][Bool]$Simple
     )
 
-    begin {
+    begin
+    {
         $SimpleChars = ('!ABCDEFGHKLMNPRSTUVWXYZ!abcdefghkmnprstuvwxyz!123456789!').ToCharArray()
-        $ComplexChars = (33..122 | ForEach-Object {([char]$_).ToString()}).ToCharArray()
+        $ComplexChars = (33..122 | ForEach-Object { ([char]$_).ToString() }).ToCharArray()
     }
 
-    process {
-        if ($Simple) {
+    process
+    {
+        if ($Simple)
+        {
             $Chars = $SimpleChars
         }
-        else {
+        else
+        {
             $Chars = $ComplexChars
         }
 
         Write-Output -InputObject ((Get-Random -Count $Length -InputObject $Chars) -join '')
     }
 
-    end {
+    end
+    {
     }
 }
 
@@ -362,13 +368,28 @@ function Get-SqlServerConnectionString
         Returns a connection string using either Windows Authentication or SQL Authentication
         based on the current test environment configuration.
 
+    .PARAMETER Database
+        Optional database name to include in the connection string.
+
     .EXAMPLE
         $conn = New-Object System.Data.SqlClient.SqlConnection
         $conn.ConnectionString = Get-SqlServerConnectionString
+
+    .EXAMPLE
+        $conn = New-Object System.Data.SqlClient.SqlConnection
+        $conn.ConnectionString = Get-SqlServerConnectionString -Database 'MyDatabase'
     #>
-    param()
+    param(
+        [Parameter(Mandatory = $false)]
+        [string]$Database
+    )
 
     $connectionString = "Server=$script:sqlServerInstance;Connection Timeout=30"
+
+    if ($Database)
+    {
+        $connectionString += ";Database=$Database"
+    }
 
     if ($script:sqlServerUsername -and $script:sqlServerPassword)
     {
