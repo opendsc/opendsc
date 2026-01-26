@@ -161,12 +161,14 @@ This exports all linked servers from all accessible SQL Server instances.
 
 ## Exit Codes
 
-| Code | Description              |
-|------|--------------------------|
-| 0    | Success                  |
-| 1    | General error            |
-| 2    | JSON serialization error |
-| 3    | SMO connection error     |
+| Code | Description               |
+|------|---------------------------|
+| 0    | Success                   |
+| 1    | Exception (general error) |
+| 2    | Invalid JSON              |
+| 3    | Invalid argument          |
+| 4    | Unauthorized access       |
+| 5    | Invalid operation         |
 
 ## Notes
 
@@ -180,7 +182,9 @@ This exports all linked servers from all accessible SQL Server instances.
 - Enable `rpcOut` to execute stored procedures on the linked server.
 - Enable `dataAccess` to run distributed queries against the linked server.
 - The `connectUsername` and `connectPassword` properties are write-only and are
-  used to set up a linked server login mapping. They are not returned by Get
-  operations.
+  used to authenticate to the SQL Server instance specified by `serverInstance`
+  when managing the linked server. They are not returned by Get operations and
+  are not used to configure linked server login mappings (for that, use
+  `sp_addlinkedsrvlogin` or other SQL Server tooling outside this resource).
 - Remote collation (`useRemoteCollation`) should typically be set to `true`
   unless you have specific collation requirements.

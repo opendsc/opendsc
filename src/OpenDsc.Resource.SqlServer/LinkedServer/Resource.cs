@@ -100,7 +100,10 @@ public sealed class Resource(JsonSerializerContext context)
         }
         finally
         {
-            SqlConnectionHelper.SafeDisconnect(server);
+            if (server.ConnectionContext.IsOpen)
+            {
+                server.ConnectionContext.Disconnect();
+            }
         }
     }
 
@@ -132,7 +135,10 @@ public sealed class Resource(JsonSerializerContext context)
         }
         finally
         {
-            SqlConnectionHelper.SafeDisconnect(server);
+            if (server.ConnectionContext.IsOpen)
+            {
+                server.ConnectionContext.Disconnect();
+            }
         }
     }
 
@@ -155,7 +161,10 @@ public sealed class Resource(JsonSerializerContext context)
         }
         finally
         {
-            SqlConnectionHelper.SafeDisconnect(server);
+            if (server.ConnectionContext.IsOpen)
+            {
+                server.ConnectionContext.Disconnect();
+            }
         }
     }
 
@@ -213,7 +222,10 @@ public sealed class Resource(JsonSerializerContext context)
         }
         finally
         {
-            SqlConnectionHelper.SafeDisconnect(server);
+            if (server.ConnectionContext.IsOpen)
+            {
+                server.ConnectionContext.Disconnect();
+            }
         }
     }
 
