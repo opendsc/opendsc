@@ -116,7 +116,10 @@ public sealed class Resource(JsonSerializerContext context)
         }
         finally
         {
-            server.ConnectionContext.Disconnect();
+            if (server.ConnectionContext.IsOpen)
+            {
+                server.ConnectionContext.Disconnect();
+            }
         }
     }
 
@@ -442,7 +445,10 @@ public sealed class Resource(JsonSerializerContext context)
         }
         finally
         {
-            server.ConnectionContext.Disconnect();
+            if (server.ConnectionContext.IsOpen)
+            {
+                server.ConnectionContext.Disconnect();
+            }
         }
     }
 }

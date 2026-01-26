@@ -42,25 +42,6 @@ Describe 'SQL Server Configuration Resource' -Tag 'SqlServer' -Skip:(!$script:sq
         {
             $env:DSC_RESOURCE_PATH = $publishDir
         }
-
-        # Store original configuration values to restore later
-        $script:originalConfig = $null
-    }
-
-    AfterAll {
-        # Restore original configuration if we changed anything
-        if ($script:originalConfig)
-        {
-            try
-            {
-                $restoreJson = Get-SqlServerTestInput $script:originalConfig | ConvertTo-Json -Compress
-                dsc resource set -r OpenDsc.SqlServer/Configuration --input $restoreJson | Out-Null
-            }
-            catch
-            {
-                Write-Warning "Failed to restore original configuration: $_"
-            }
-        }
     }
 
     Context 'Discovery' -Tag 'Discovery' {
