@@ -268,13 +268,9 @@ public sealed class Resource(JsonSerializerContext context)
 
     private static void UpdateUser(SmoUser user, Schema instance)
     {
-        var changed = false;
+        ValidateImmutableProperties(user, instance);
 
-        if (instance.Login != null && !string.Equals(user.Login, instance.Login, StringComparison.OrdinalIgnoreCase))
-        {
-            user.Login = instance.Login;
-            changed = true;
-        }
+        var changed = false;
 
         if (instance.DefaultSchema != null && !string.Equals(user.DefaultSchema, instance.DefaultSchema, StringComparison.OrdinalIgnoreCase))
         {
@@ -290,6 +286,37 @@ public sealed class Resource(JsonSerializerContext context)
         if (!string.IsNullOrEmpty(instance.Password))
         {
             user.ChangePassword(instance.Password);
+        }
+    }
+
+    private static void ValidateImmutableProperties(SmoUser user, Schema instance)
+    {
+        if (instance.Login != null && !string.Equals(user.Login, instance.Login, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"Cannot change the Login property of database user '{user.Name}' from '{user.Login}' to '{instance.Login}'. " +
+                "The Login property is immutable after user creation. To change the login mapping, drop and recreate the user.");
+        }
+
+        if (instance.UserType.HasValue && user.UserType != instance.UserType.Value)
+        {
+            throw new InvalidOperationException(
+                $"Cannot change the UserType property of database user '{user.Name}' from '{user.UserType}' to '{instance.UserType.Value}'. " +
+                "The UserType property is immutable after user creation. To change the user type, drop and recreate the user.");
+        }
+
+        if (instance.AsymmetricKey != null && !string.Equals(user.AsymmetricKey, instance.AsymmetricKey, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"Cannot change the AsymmetricKey property of database user '{user.Name}' from '{user.AsymmetricKey}' to '{instance.AsymmetricKey}'. " +
+                "The AsymmetricKey property is immutable after user creation. To change the asymmetric key, drop and recreate the user.");
+        }
+
+        if (instance.Certificate != null && !string.Equals(user.Certificate, instance.Certificate, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"Cannot change the Certificate property of database user '{user.Name}' from '{user.Certificate}' to '{instance.Certificate}'. " +
+                "The Certificate property is immutable after user creation. To change the certificate, drop and recreate the user.");
         }
     }
 }
