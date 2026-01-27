@@ -195,6 +195,34 @@ dsc resource export -r OpenDsc.SqlServer/DatabaseUser
 - When updating a user's password, the new password is set directly without
   requiring the old password (administrator password change).
 
+## Limitations
+
+### Immutable Properties
+
+The following properties cannot be changed after the database user is created:
+
+- **login** - The login mapping cannot be modified after creation. This is a
+  limitation of SQL Server Management Objects (SMO). Attempting to change the
+  login will result in an `InvalidOperationException`. To change a user's login
+  mapping, you must drop and recreate the user.
+
+- **userType** - The user type is determined at creation time and cannot be
+  changed.
+
+- **asymmetricKey** / **certificate** - The key or certificate mapping is set
+  at creation and cannot be modified.
+
+If you need to change an immutable property, delete the user and recreate it
+with the new settings:
+
+```powershell
+# Delete the existing user
+dsc resource delete -r OpenDsc.SqlServer/DatabaseUser --input '{"serverInstance":".","databaseName":"MyDatabase","name":"AppUser"}'
+
+# Recreate with new login
+dsc resource set -r OpenDsc.SqlServer/DatabaseUser --input '{"serverInstance":".","databaseName":"MyDatabase","name":"AppUser","login":"NewLogin"}'
+```
+
 ## See Also
 
 - [OpenDsc.SqlServer/Login](../Login/README.md) - Manage SQL Server logins
