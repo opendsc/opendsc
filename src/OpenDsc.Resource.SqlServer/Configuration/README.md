@@ -110,8 +110,8 @@ to manage server configuration options declaratively.
 ### Get current server configuration
 
 ```yaml
-# get.dsc.yaml
-$schema: https://aka.ms/dsc/2023/10/config/document.schema.json
+# get-configuration.dsc.config.yaml
+$schema: https://aka.ms/dsc/schemas/v3/bundled/config/document.json
 resources:
   - name: Get SQL Server configuration
     type: OpenDsc.SqlServer/Configuration
@@ -120,7 +120,7 @@ resources:
 ```
 
 ```powershell
-dsc config get --file get.dsc.yaml
+dsc config get --file get.dsc.config.yaml
 ```
 
 ### Configure MAXDOP and Cost Threshold
@@ -128,8 +128,8 @@ dsc config get --file get.dsc.yaml
 A common best practice configuration for OLTP workloads:
 
 ```yaml
-# set-parallelism.dsc.yaml
-$schema: https://aka.ms/dsc/2023/10/config/document.schema.json
+# set-parallelism.dsc.config.yaml
+$schema: https://aka.ms/dsc/schemas/v3/bundled/config/document.json
 resources:
   - name: Configure parallelism settings
     type: OpenDsc.SqlServer/Configuration
@@ -140,14 +140,14 @@ resources:
 ```
 
 ```powershell
-dsc config set --file set-parallelism.dsc.yaml
+dsc config set --file set-parallelism.dsc.config.yaml
 ```
 
 ### Configure memory settings
 
 ```yaml
-# set-memory.dsc.yaml
-$schema: https://aka.ms/dsc/2023/10/config/document.schema.json
+# set-memory.dsc.config.yaml
+$schema: https://aka.ms/dsc/schemas/v3/bundled/config/document.json
 resources:
   - name: Configure memory settings
     type: OpenDsc.SqlServer/Configuration
@@ -158,14 +158,14 @@ resources:
 ```
 
 ```powershell
-dsc config set --file set-memory.dsc.yaml
+dsc config set --file set-memory.dsc.config.yaml
 ```
 
 ### Enable backup best practices
 
 ```yaml
-# set-backup.dsc.yaml
-$schema: https://aka.ms/dsc/2023/10/config/document.schema.json
+# set-backup.dsc.config.yaml
+$schema: https://aka.ms/dsc/schemas/v3/bundled/config/document.json
 resources:
   - name: Configure backup defaults
     type: OpenDsc.SqlServer/Configuration
@@ -176,14 +176,14 @@ resources:
 ```
 
 ```powershell
-dsc config set --file set-backup.dsc.yaml
+dsc config set --file set-backup.dsc.config.yaml
 ```
 
 ### Enable performance optimization features
 
 ```yaml
-# set-performance.dsc.yaml
-$schema: https://aka.ms/dsc/2023/10/config/document.schema.json
+# set-performance.dsc.config.yaml
+$schema: https://aka.ms/dsc/schemas/v3/bundled/config/document.json
 resources:
   - name: Configure performance settings
     type: OpenDsc.SqlServer/Configuration
@@ -194,14 +194,14 @@ resources:
 ```
 
 ```powershell
-dsc config set --file set-performance.dsc.yaml
+dsc config set --file set-performance.dsc.config.yaml
 ```
 
 ### Enable remote DAC for troubleshooting
 
 ```yaml
-# set-dac.dsc.yaml
-$schema: https://aka.ms/dsc/2023/10/config/document.schema.json
+# set-dac.dsc.config.yaml
+$schema: https://aka.ms/dsc/schemas/v3/bundled/config/document.json
 resources:
   - name: Enable remote DAC
     type: OpenDsc.SqlServer/Configuration
@@ -211,7 +211,7 @@ resources:
 ```
 
 ```powershell
-dsc config set --file set-dac.dsc.yaml
+dsc config set --file set-dac.dsc.config.yaml
 ```
 
 ### Standard production server configuration
@@ -219,8 +219,8 @@ dsc config set --file set-dac.dsc.yaml
 A comprehensive configuration for production SQL Server instances:
 
 ```yaml
-# set-production.dsc.yaml
-$schema: https://aka.ms/dsc/2023/10/config/document.schema.json
+# set-production.dsc.config.yaml
+$schema: https://aka.ms/dsc/schemas/v3/bundled/config/document.json
 resources:
   - name: Production SQL Server configuration
     type: OpenDsc.SqlServer/Configuration
@@ -247,7 +247,7 @@ resources:
 ```
 
 ```powershell
-dsc config set --file set-production.dsc.yaml
+dsc config set --file set-production.dsc.config.yaml
 ```
 
 ## Exit Codes

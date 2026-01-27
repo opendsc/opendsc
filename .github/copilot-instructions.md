@@ -14,6 +14,7 @@ This repository contains Microsoft DSC (Desired State Configuration) resources f
 **Available Resources:**
 
 Windows Resources (in `src/OpenDsc.Resource.Windows/`):
+
 - `Environment/` - Environment variable management (`OpenDsc.Windows/Environment`)
 - `Service/` - Windows service control (`OpenDsc.Windows/Service`)
 - `Shortcut/` - Shortcut (.lnk) file management (`OpenDsc.Windows/Shortcut`)
@@ -25,6 +26,7 @@ Windows Resources (in `src/OpenDsc.Resource.Windows/`):
 - `FileSystem/Acl/` - File system ACL management (`OpenDsc.Windows.FileSystem/AccessControlList`)
 
 SQL Server Resources (in `src/OpenDsc.Resource.SqlServer/`):
+
 - `Login/` - SQL Server login management (`OpenDsc.SqlServer/Login`)
 - `Database/` - SQL Server database management (`OpenDsc.SqlServer/Database`)
 - `DatabaseRole/` - SQL Server database role management (`OpenDsc.SqlServer/DatabaseRole`)
@@ -33,6 +35,7 @@ SQL Server Resources (in `src/OpenDsc.Resource.SqlServer/`):
 - `ServerPermission/` - SQL Server server permissions (`OpenDsc.SqlServer/ServerPermission`)
 
 Cross-Platform Resources (in `src/OpenDsc.Resource.FileSystem/`, `src/OpenDsc.Resource.Xml/`, `src/OpenDsc.Resource.Json/`, `src/OpenDsc.Resource.Archive/`, and `src/OpenDsc.Resource.Posix/`):
+
 - `File/` - Cross-platform file management (`OpenDsc.FileSystem/File`)
 - `Directory/` - Cross-platform directory management (`OpenDsc.FileSystem/Directory`)
 - `SymbolicLink/` - Cross-platform symbolic link management (`OpenDsc.FileSystem/SymbolicLink`)
@@ -43,6 +46,7 @@ Cross-Platform Resources (in `src/OpenDsc.Resource.FileSystem/`, `src/OpenDsc.Re
 - `FileSystem/Permission/` - POSIX file permissions (`OpenDsc.Posix.FileSystem/Permission`)
 
 **Resource Naming Convention:**
+
 - Windows-specific: `OpenDsc.Windows/<Name>` (namespace: `OpenDsc.Resource.Windows.<Name>`)
 - SQL Server: `OpenDsc.SqlServer/<Name>` (namespace: `OpenDsc.Resource.SqlServer.<Name>`)
 - Cross-platform: `OpenDsc.<Area>/<Name>` (namespace: `OpenDsc.Resource.<Area>.<Name>`)
@@ -60,6 +64,7 @@ The project uses a **consolidated executable approach** where multiple resources
 **Platform Executables:**
 
 The project uses a single unified executable (`src/OpenDsc.Resources/`) that contains all resources and conditionally compiles platform-specific resources based on the target OS:
+
 - Windows builds include: All Windows resources + cross-platform resources
 - Linux/macOS builds include: Cross-platform resources + POSIX resources only
 
@@ -246,6 +251,7 @@ public override string GetSchema()
 ```
 
 The embedded schema file must be added to the `.csproj` as an `EmbeddedResource`:
+
 ```xml
 <ItemGroup>
   <EmbeddedResource Include="ScheduledTask\schema.json" />
@@ -253,6 +259,7 @@ The embedded schema file must be added to the `.csproj` as an `EmbeddedResource`
 ```
 
 **Interface Contract (all interfaces are optional, implement those that make sense):**
+
 - `IGettable.Get(Schema)` → return current state
   - Set `Exist = false` if resource not found (explicitly set to false)
   - Do NOT set `Exist = true` if resource exists (true is the default value, omit the property)
@@ -288,6 +295,7 @@ public sealed class Schema
 ```
 
 **Naming Rules:**
+
 - User-facing properties: camelCase (enforced by `PropertyNameResolver.CamelCase`)
 - DSC canonical properties: `_exist`, `_purge`, `_inDesiredState` (underscore prefix)
 - Enums: PascalCase values (e.g., `User`, `Machine`)
@@ -320,6 +328,7 @@ DSC defines several canonical properties that provide shared semantics across re
 Choose ONE pattern based on what your resource manages:
 
 **Pattern 1: Instance Management (use `_exist`, implement `IDeletable`)**
+
 - Use when: Managing the existence of an instance (e.g., User, Group, File, Service)
 - Properties: `_exist` (bool?, default true)
 - Interfaces: `IGettable`, `ISettable`, `IDeletable`, optionally `IExportable`
@@ -329,6 +338,7 @@ Choose ONE pattern based on what your resource manages:
 - Examples: User, Group, File, Service, Environment variable
 
 **Pattern 2: Pure List Management (use `_purge`, NO `_exist`, NO `IDeletable`)**
+
 - Use when: Managing a collection/list where the container must pre-exist
 - Properties: Array property + `_purge` (bool?, default false)
 - Interfaces: `IGettable`, `ISettable`, optionally `IExportable` - **NO `IDeletable`**
@@ -339,6 +349,7 @@ Choose ONE pattern based on what your resource manages:
 - **Container Prerequisite**: The parent object (file, directory, principal) must already exist
 
 **Pattern 3: Hybrid (use BOTH `_exist` and `_purge`)**
+
 - Use when: Managing an instance that contains a list (e.g., Group with Members)
 - Properties: `_exist` (for container) + Array property + `_purge` (for list)
 - Interfaces: `IGettable`, `ISettable`, `IDeletable`, optionally `IExportable`
@@ -350,6 +361,7 @@ Choose ONE pattern based on what your resource manages:
 - **Semantic Note**: `_exist` controls the container, `_purge` controls the list items
 
 **Anti-Pattern: DO NOT mix patterns incorrectly**
+
 - ❌ Pure list resources should NOT have `_exist` or `IDeletable`
 - ❌ Resources with `_purge` managing lists should NOT implement `IDeletable` unless they also manage the container (Pattern 3)
 - ✅ Follow FileSystem/Acl (Pattern 2) for pure list management
@@ -400,6 +412,7 @@ if (instance.Items != null)
 ```
 
 **Nullability Guidelines:**
+
 - Use `[Nullable(false)]` only on C# nullable properties (those with `?`) where you want to prevent users from submitting `null` values in JSON (e.g., optional strings, booleans)
 - Non-nullable C# types (e.g., `string Name` with `[Required]`) don't need `[Nullable(false)]` - they already cannot be null
 - DSC canonical properties like `_exist` should use nullable types (e.g., `bool?`) for their C# type, and should have `[Nullable(false)]` to prevent explicit null submission
@@ -484,6 +497,7 @@ public sealed class Resource(JsonSerializerContext context)
 ```
 
 **Restart Types:**
+
 - **System restart**: `{ "system": "computerName" }` - indicates the computer needs to restart
 - **Service restart**: `{ "service": "serviceName" }` - indicates a specific service needs to restart
 - **Process restart**: `{ "process": { "name": "processName", "id": 1234 } }` - indicates a specific process needs to restart
@@ -495,9 +509,7 @@ public sealed class Resource(JsonSerializerContext context)
   "name": "MyFeature",
   "state": "Present",
   "_metadata": {
-    "_restartRequired": [
-      { "system": "SERVER01" }
-    ]
+    "_restartRequired": [{ "system": "SERVER01" }]
   }
 }
 ```
@@ -535,6 +547,7 @@ DSC automatically aggregates `_restartRequired` entries from all resources into 
 ```
 
 **Build Process:**
+
 1. `dotnet publish` compiles the unified executable with platform-specific resources based on target OS
 2. Build artifacts are placed in `artifacts/publish/`
 3. LCM service is built to `artifacts/Lcm/`
@@ -543,6 +556,7 @@ DSC automatically aggregates `_restartRequired` entries from all resources into 
 6. MSI builds create installers in `artifacts/msi/`
 
 **Output Structure:**
+
 ```
 artifacts/
 ├── publish/
@@ -606,6 +620,7 @@ dsc resource delete -r OpenDsc.Windows/Environment --input '{"name":"TEST"}'
 Create → Verify → Cleanup (always cleanup in `AfterEach`/`AfterAll`)
 
 **SQL Server Resources Testing:**
+
 - SQL Server resources require SQL Server installed or available via connection string
 - Tests use helper script: `tools/Install-SqlServer.ps1` to setup SQL Server on CI
 - Connection via Windows Authentication (default) or SQL Authentication (Linux)
@@ -659,6 +674,7 @@ Describe 'resource-name' {
 ```
 
 **Key Points:**
+
 - Use `$script:isAdmin` variable to check elevation status at the start of the test file, wrapped in `if ($IsWindows)` check
 - Apply `-Skip:(!$script:isAdmin)` to `Context` blocks that require admin privileges
 - Keep non-elevated tests (Discovery, Schema Validation, Get operations) in separate contexts that always run
@@ -670,6 +686,7 @@ Describe 'resource-name' {
 ### Code Style and Comments
 
 **Comment Usage:**
+
 - **Avoid self-explanatory comments** - code should be self-documenting through clear naming
 - **Remove comments that merely restate the code** (e.g., "// Try to find as user first" before `UserPrincipal.FindByIdentity()`)
 - **Keep comments only for non-obvious logic** or complex algorithms
@@ -677,6 +694,7 @@ Describe 'resource-name' {
 - **File headers** are required (MIT license) - this is enforced by IDE0073
 
 **Examples of comments to avoid:**
+
 ```csharp
 // BAD: Restates the obvious
 // When _purge is true, remove members not in desired list
@@ -799,6 +817,7 @@ The Pull Server (`src/OpenDsc.Server/`) is a REST API-based centralized configur
 ### Architecture Overview
 
 **Key Components:**
+
 - `Program.cs` - ASP.NET Core minimal API entry point with endpoint registration
 - `Endpoints/` - Grouped endpoint definitions (Health, Nodes, Configurations, Reports, Settings)
 - `Data/` - EF Core database layer with SQLite, PostgreSQL, and SQL Server support
@@ -806,6 +825,7 @@ The Pull Server (`src/OpenDsc.Server/`) is a REST API-based centralized configur
 - `PullServerClient.cs` (in LCM) - HTTP client for LCM-to-server communication
 
 **Supported Databases:**
+
 - SQLite (default, file-based)
 - PostgreSQL (production-ready)
 - SQL Server (enterprise environments)
@@ -840,21 +860,23 @@ app.MapSettingsEndpoints();         // /api/v1/settings/*
 ### Authentication Model
 
 **Two-tier authentication:**
+
 1. **Registration Key** - Used for initial node registration (shared secret)
 2. **Node API Key** - Generated per-node for ongoing operations (rotatable)
 3. **Admin Key** - For administrative operations (future enhancement)
 
 **LCM Pull Mode Configuration:**
+
 ```json
 {
   "LCM": {
     "ConfigurationSource": "Pull",
     "PullServer": {
       "ServerUrl": "https://pull-server.example.com",
-      "NodeId": null,            // Auto-assigned on registration
-      "ApiKey": null,            // Auto-generated on registration
-      "ReportCompliance": true,  // Submit compliance reports
-      "KeyRotationInterval": "30.00:00:00"  // 30 days
+      "NodeId": null, // Auto-assigned on registration
+      "ApiKey": null, // Auto-generated on registration
+      "ReportCompliance": true, // Submit compliance reports
+      "KeyRotationInterval": "30.00:00:00" // 30 days
     }
   }
 }
@@ -863,14 +885,15 @@ app.MapSettingsEndpoints();         // /api/v1/settings/*
 ### Database Configuration
 
 **Connection strings (via appsettings.json or environment variables):**
+
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Data Source=opendsc.db"  // SQLite
+    "DefaultConnection": "Data Source=opendsc.db" // SQLite
     // "DefaultConnection": "Host=localhost;Database=opendsc;Username=postgres;Password=***"  // PostgreSQL
     // "DefaultConnection": "Server=.;Database=OpenDSC;Integrated Security=true"  // SQL Server
   },
-  "DatabaseProvider": "Sqlite"  // or "PostgreSql", "SqlServer"
+  "DatabaseProvider": "Sqlite" // or "PostgreSql", "SqlServer"
 }
 ```
 
@@ -893,6 +916,7 @@ docker-compose --profile sqlserver up -d # SQL Server
 ```
 
 **API Documentation:**
+
 - Development mode: Navigate to `/scalar/v1` for interactive API reference
 - OpenAPI schema: `/openapi/v1.json`
 
@@ -901,6 +925,7 @@ docker-compose --profile sqlserver up -d # SQL Server
 The LCM integrates with the Pull Server via `PullServerClient.cs`:
 
 **Key Operations:**
+
 1. **Registration** - `RegisterAsync()` - Initial node registration with FQDN
 2. **Configuration Download** - `GetConfigurationAsync()` - Fetch assigned configuration
 3. **Configuration Change Detection** - `HasConfigurationChangedAsync()` - Check checksum
@@ -908,6 +933,7 @@ The LCM integrates with the Pull Server via `PullServerClient.cs`:
 5. **API Key Rotation** - `RotateApiKeyAsync()` - Rotate node API key
 
 **LCM Worker Pull Mode Flow:**
+
 1. Check if configuration source is Pull mode
 2. Register node if not already registered (get NodeId and ApiKey)
 3. Check for key rotation and rotate if needed
@@ -922,16 +948,19 @@ The LCM is a background service (`src/OpenDsc.Lcm/`) that continuously monitors 
 ### Architecture Overview
 
 **Key Components:**
+
 - `LcmWorker.cs` - Main background service implementing two operational modes
 - `DscExecutor.cs` - Executes DSC CLI commands (`dsc config test` and `dsc config set`)
 - `LcmConfig.cs` - Configuration model with validation
 - `ConfigPaths.cs` - Platform-specific configuration paths
 
 **Operational Modes:**
+
 1. **Monitor Mode** - Periodically runs `dsc config test` to detect drift
 2. **Remediate Mode** - Runs `dsc config test` and applies `dsc config set` when drift detected
 
 **Configuration Sources:**
+
 - **Local** - Read configuration from local file path (`ConfigurationPath`)
 - **Pull** - Download configuration from Pull Server (`PullServer.BaseUrl`)
 
@@ -950,6 +979,7 @@ public class LcmConfig
 ```
 
 **Configuration Sources (priority order):**
+
 1. Command-line arguments
 2. Environment variables (prefixed with `LCM_`)
 3. System-wide config (platform-specific):
@@ -974,6 +1004,7 @@ public class LcmConfig
 ```
 
 **Platform-Specific Deployment:**
+
 - Windows: MSI installer registers as Windows Service
 - Linux/macOS: Run as console app or systemd/launchd service
 
@@ -1002,6 +1033,7 @@ Uses source-generated logging with `LoggerMessage` attributes for performance. A
 ### Working with LCM
 
 **Testing Locally:**
+
 ```powershell
 # Set configuration via environment
 $env:LCM_ConfigurationPath = "C:\configs\main.dsc.yaml"
@@ -1013,6 +1045,7 @@ $env:LCM_ConfigurationModeInterval = "00:05:00"
 ```
 
 **Configuration File Example:**
+
 ```json
 {
   "LCM": {
@@ -1062,11 +1095,13 @@ Use [Environment/](../src/OpenDsc.Resource.Windows/Environment/) as the template
    - All enums use PascalCase values
 
 5. **Update SourceGenerationContext.cs** in the project root:
+
    ```csharp
    [JsonSerializable(typeof(YourResource.Schema), TypeInfoPropertyName = "YourResourceSchema")]
    ```
 
 6. **Register resource in Program.cs** of the platform executable:
+
    ```csharp
    // Add namespace alias
    using YourResourceNs = OpenDsc.Resource.Windows.YourResource;
@@ -1101,8 +1136,8 @@ Use [Environment/](../src/OpenDsc.Resource.Windows/Environment/) as the template
 
 - **Template Resource:** [Environment/](../src/OpenDsc.Resource.Windows/Environment/) (simplest, most complete implementation)
 - **Complex Resource:** [OptionalFeature/](../src/OpenDsc.Resource.Windows/OptionalFeature/) (uses SetReturn.State, metadata, and restart handling)
-- **Hybrid Pattern (container+list):** [Group/](../src/OpenDsc.Resource.Windows/Group/) (demonstrates _purge + _exist pattern)
-- **Pure List Pattern:** [UserRight/](../src/OpenDsc.Resource.Windows/UserRight/), [FileSystem/Acl/](../src/OpenDsc.Resource.Windows/FileSystem/Acl/) (demonstrates _purge without _exist)
+- **Hybrid Pattern (container+list):** [Group/](../src/OpenDsc.Resource.Windows/Group/) (demonstrates \_purge + \_exist pattern)
+- **Pure List Pattern:** [UserRight/](../src/OpenDsc.Resource.Windows/UserRight/), [FileSystem/Acl/](../src/OpenDsc.Resource.Windows/FileSystem/Acl/) (demonstrates \_purge without \_exist)
 - **COM Interop:** [Shortcut/](../src/OpenDsc.Resource.Windows/Shortcut/) (P/Invoke patterns for COM)
 - **Win32 API:** [Service/](../src/OpenDsc.Resource.Windows/Service/) (Win32 API wrappers)
 - **DISM API:** [OptionalFeature/](../src/OpenDsc.Resource.Windows/OptionalFeature/) (P/Invoke DISM interop)
@@ -1117,17 +1152,268 @@ Use [Environment/](../src/OpenDsc.Resource.Windows/Environment/) as the template
 - **POSIX Resources:** [FileSystem/Permission/](../src/OpenDsc.Resource.Posix/FileSystem/Permission/) (cross-platform file permissions)
 - **Editor Config:** [.editorconfig](../.editorconfig) (C# style rules, file headers)
 
+## README Documentation Standards
+
+All resources must include a `README.md` file in their resource folder with comprehensive documentation. Examples should demonstrate both direct resource commands and configuration documents.
+
+### Two Example Patterns
+
+Resources should provide examples using **both** command patterns where applicable:
+
+1. **Direct Resource Commands** (`dsc resource <operation>`)
+   - For simple, one-off operations
+   - Shows immediate command execution with inline JSON
+   - Best for: get, set, delete, export operations on individual resources
+   - Pattern: `dsc resource <operation> -r ResourceType --input '{"prop":"value"}'`
+
+2. **Configuration Documents** (`dsc config <operation>`)
+   - For complex scenarios, multiple resources, or repeatable configurations
+   - Uses YAML files with declarative syntax
+   - Best for: Production deployments, complex setups, orchestrated operations
+   - Pattern: `dsc config <operation> --file filename.dsc.config.yaml`
+
+### Mandatory Schema and Naming Conventions
+
+**Configuration Document Schema:**
+
+- **Always use**: `https://aka.ms/dsc/schemas/v3/bundled/config/document.json`
+- This is the v3 bundled schema format
+- Never use old schema URLs (e.g., `https://aka.ms/dsc/2023/10/config/document.schema.json`)
+
+**File Naming:**
+
+- Configuration files must use suffix: `.dsc.config.yaml`
+- Examples: `set-parallelism.dsc.config.yaml`, `production-config.dsc.config.yaml`
+- Never use: `.dsc.yaml`, `.yaml`, or other suffixes
+
+### Example Structure for Resource READMEs
+
+**Pattern 1: Direct Resource Commands** (see [ServerPermission/README.md](../src/OpenDsc.Resource.SqlServer/ServerPermission/README.md))
+
+````markdown
+### Get Permission State
+
+Retrieve the current state of a server permission:
+
+\```yaml
+serverInstance: .
+principal: MonitoringLogin
+permission: ViewServerState
+\```
+
+\```powershell
+dsc resource get -r OpenDsc.SqlServer/ServerPermission --input '{"serverInstance":".","principal":"MonitoringLogin","permission":"ViewServerState"}'
+\```
+````
+
+**Pattern 2: Configuration Documents** (see [Configuration/README.md](../src/OpenDsc.Resource.SqlServer/Configuration/README.md))
+
+````markdown
+### Configure MAXDOP and Cost Threshold
+
+A common best practice configuration for OLTP workloads:
+
+\```yaml
+
+# set-parallelism.dsc.config.yaml
+
+$schema: https://aka.ms/dsc/schemas/v3/bundled/config/document.json
+resources:
+
+- name: Configure parallelism settings
+  type: OpenDsc.SqlServer/Configuration
+  properties:
+  serverInstance: localhost
+  maxDegreeOfParallelism: 4
+  costThresholdForParallelism: 50
+  \```
+
+\```powershell
+dsc config set --file set-parallelism.dsc.config.yaml
+\```
+````
+
+### Multi-Scenario Coverage
+
+Resource documentation should cover multiple real-world scenarios:
+
+**Essential Examples** (all resources):
+
+- **Get Operation**: Retrieve current state
+- **Set Operation**: Apply configuration
+- **Delete Operation**: Remove resource (if applicable)
+
+**Scenario-Based Examples** (where applicable):
+
+- **Development**: Simple configurations for local testing
+- **Production**: Complete, production-ready configurations
+- **Edge Cases**: Handling special characters, empty values, complex inputs
+- **Common Patterns**: Industry best practices for the resource type
+
+**Example from Configuration Resource:**
+
+- Basic retrieval (`get-configuration.dsc.config.yaml`)
+- Parallelism tuning (`set-parallelism.dsc.config.yaml`)
+- Memory management (`set-memory.dsc.config.yaml`)
+- Backup settings (`set-backup.dsc.config.yaml`)
+- Security hardening (`set-security.dsc.config.yaml`)
+- Feature toggles (`enable-features.dsc.config.yaml`)
+- Production deployment (`production-config.dsc.config.yaml`)
+
+### YAML and PowerShell Pairing
+
+Every configuration document example should include:
+
+1. **YAML Configuration File**:
+   - Include filename as comment: `# set-parallelism.dsc.config.yaml`
+   - Include schema on first line: `$schema: https://aka.ms/dsc/schemas/v3/bundled/config/document.json`
+   - Use descriptive resource names: `name: Configure parallelism settings`
+   - Show complete, runnable configuration
+
+2. **PowerShell Command**:
+   - Show the exact command to execute the configuration
+   - Use `--file` parameter with the documented filename
+   - Keep commands simple: `dsc config set --file filename.dsc.config.yaml`
+
+### When to Use Each Pattern
+
+**Use Direct Resource Commands when**:
+
+- Demonstrating single property retrieval
+- Showing simple get/set/delete operations
+- Examples are for quick testing or exploration
+- Resource operations are independent and atomic
+
+**Use Configuration Documents when**:
+
+- Setting multiple properties together
+- Showing production-ready configurations
+- Demonstrating complex scenarios
+- Examples should be reusable across environments
+- Orchestrating multiple resources together
+
+**Use BOTH patterns when**:
+
+- Resource supports multiple operations (get, set, delete)
+- Both simple and complex scenarios are relevant
+- Documentation needs to serve different user skill levels
+
+### README Template Structure
+
+````markdown
+# OpenDsc.<Area>/<ResourceName>
+
+## Synopsis
+
+Brief one-line description
+
+## Description
+
+Detailed explanation of resource purpose and capabilities
+
+## Requirements
+
+- Prerequisites
+- Permissions needed
+- Dependencies
+
+## Capabilities
+
+List of supported operations: get, set, test, delete, export
+
+## Properties
+
+Document all properties with types, requirements, descriptions
+
+## Examples
+
+### Simple Operations (Direct Commands)
+
+#### Get Current State
+
+\```yaml
+property1: value1
+property2: value2
+\```
+
+\```powershell
+dsc resource get -r ResourceType --input '{"property1":"value1"}'
+\```
+
+#### Apply Configuration
+
+\```yaml
+property1: value1
+property2: value2
+\```
+
+\```powershell
+dsc resource set -r ResourceType --input '{"property1":"value1","property2":"value2"}'
+\```
+
+### Complex Scenarios (Configuration Documents)
+
+#### Development Configuration
+
+\```yaml
+
+# dev-config.dsc.config.yaml
+
+$schema: https://aka.ms/dsc/schemas/v3/bundled/config/document.json
+resources:
+
+- name: Development setup
+  type: ResourceType
+  properties:
+  property1: value1
+  property2: value2
+  \```
+
+\```powershell
+dsc config set --file dev-config.dsc.config.yaml
+\```
+
+#### Production Configuration
+
+\```yaml
+
+# production-config.dsc.config.yaml
+
+$schema: https://aka.ms/dsc/schemas/v3/bundled/config/document.json
+resources:
+
+- name: Production deployment
+  type: ResourceType
+  properties:
+  property1: value1
+  property2: value2
+  property3: value3
+  \```
+
+\```powershell
+dsc config set --file production-config.dsc.config.yaml
+\```
+````
+
+**Reference Examples:**
+
+- **Direct Commands**: [ServerPermission/README.md](../src/OpenDsc.Resource.SqlServer/ServerPermission/README.md)
+- **Configuration Documents**: [Configuration/README.md](../src/OpenDsc.Resource.SqlServer/Configuration/README.md)
+
 ## Package Dependencies
 
 All resources depend on:
+
 - `OpenDsc.Resource.CommandLine` - Version 0.4.0 (provides DscResource base class, interfaces, and CLI framework)
 - `JsonSchema.Net.Generation` - Version 5.1.1 (JSON Schema generation attributes)
 
 Platform-specific dependencies:
+
 - `System.DirectoryServices.AccountManagement` - Version 9.0.0 for user/group management
 - `System.ServiceProcess.ServiceController` - Version 9.0.0 for service management
 - Windows COM/Win32 APIs - P/Invoke declarations for shortcut, service, and DISM operations
 
 **Target Frameworks:**
+
 - Libraries: .NET Standard 2.0, .NET 8, .NET 9, .NET 10 (multi-targeting)
 - Executables: .NET 10 (Windows executables use `net10.0-windows`)
