@@ -44,15 +44,6 @@ public sealed class Resource(JsonSerializerContext context)
         var guid = Guid.Parse(instance.SubcategoryGuid);
         var policyInfo = QueryAuditPolicy(guid);
 
-        if (policyInfo.AuditingInformation == POLICY_AUDIT_EVENT_NONE)
-        {
-            return new Schema
-            {
-                SubcategoryGuid = instance.SubcategoryGuid,
-                Exist = false
-            };
-        }
-
         return new Schema
         {
             SubcategoryGuid = instance.SubcategoryGuid,
@@ -250,7 +241,6 @@ public sealed class Resource(JsonSerializerContext context)
         };
     }
 
-    private const uint POLICY_AUDIT_EVENT_UNCHANGED = 0x00000000;
     private const uint POLICY_AUDIT_EVENT_SUCCESS = 0x00000001;
     private const uint POLICY_AUDIT_EVENT_FAILURE = 0x00000002;
     private const uint POLICY_AUDIT_EVENT_NONE = 0x00000004;
