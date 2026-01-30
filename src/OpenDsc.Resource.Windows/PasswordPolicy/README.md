@@ -32,7 +32,8 @@ immediately.
 |                           |         | Default is 42 days.        |
 | `minimumPasswordAgeDays`  | integer | Minimum password age in    |
 |                           |         | days (0-49710). Default is |
-|                           |         | 0 days.                    |
+|                           |         | 0 days (can change         |
+|                           |         | immediately).              |
 | `passwordHistoryLength`   | integer | Number of unique passwords |
 |                           |         | before reuse allowed       |
 |                           |         | (0-24). Default is 0 (no   |

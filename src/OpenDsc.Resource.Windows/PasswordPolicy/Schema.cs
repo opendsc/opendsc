@@ -23,7 +23,7 @@ public sealed class Schema
     [Nullable(false)]
     public uint? MaximumPasswordAgeDays { get; set; }
 
-    [Description("Minimum password age in days before password can be changed. Default is 1 day.")]
+    [Description("Minimum password age in days before password can be changed. Default Windows value is 0 days (passwords can be changed immediately).")]
     [Minimum(0)]
     [Maximum(49710)]
     [Nullable(false)]

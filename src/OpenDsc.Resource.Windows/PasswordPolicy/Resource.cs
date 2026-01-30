@@ -22,7 +22,6 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
     private const uint NERR_Success = 0;
     private const uint ERROR_ACCESS_DENIED = 5;
     private const uint ERROR_INVALID_PARAMETER = 87;
-    private const uint NERR_InvalidComputer = 2351;
     private const uint TIMEQ_FOREVER = 0xFFFFFFFF;
 
     public override string GetSchema()
@@ -81,6 +80,26 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         var current = Get(instance);
         bool changed = false;
 
+        IntPtr buffer = IntPtr.Zero;
+        uint currentForceLogoff = TIMEQ_FOREVER;
+
+        try
+        {
+            uint getResult = NetUserModalsGet(null, 0, out buffer);
+            if (getResult == NERR_Success)
+            {
+                var currentInfo = Marshal.PtrToStructure<USER_MODALS_INFO_0>(buffer);
+                currentForceLogoff = currentInfo.usrmod0_force_logoff;
+            }
+        }
+        finally
+        {
+            if (buffer != IntPtr.Zero)
+            {
+                NetApiBufferFree(buffer);
+            }
+        }
+
         var info = new USER_MODALS_INFO_0
         {
             usrmod0_min_passwd_len = instance.MinimumPasswordLength ?? current.MinimumPasswordLength!.Value,
@@ -88,7 +107,7 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
                 ? (instance.MaximumPasswordAgeDays.Value == 0 ? TIMEQ_FOREVER : instance.MaximumPasswordAgeDays.Value * 86400)
                 : (current.MaximumPasswordAgeDays == 0 ? TIMEQ_FOREVER : current.MaximumPasswordAgeDays!.Value * 86400),
             usrmod0_min_passwd_age = (instance.MinimumPasswordAgeDays ?? current.MinimumPasswordAgeDays!.Value) * 86400,
-            usrmod0_force_logoff = TIMEQ_FOREVER,
+            usrmod0_force_logoff = currentForceLogoff,
             usrmod0_password_hist_len = instance.PasswordHistoryLength ?? current.PasswordHistoryLength!.Value
         };
 

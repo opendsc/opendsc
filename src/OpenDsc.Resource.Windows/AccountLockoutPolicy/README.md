@@ -214,9 +214,13 @@ resources:
 The resource enforces the following validation:
 
 ```text
-If lockoutThreshold > 0:
+If lockoutThreshold > 0 AND lockoutDurationMinutes > 0:
     lockoutObservationWindowMinutes ≤ lockoutDurationMinutes
 ```
+
+**Note:** When `lockoutDurationMinutes` is 0 (administrator unlock
+required), the observation window can be any value since accounts remain
+locked until manually unlocked.
 
 If you violate this rule, the Set operation will fail with an error.
 

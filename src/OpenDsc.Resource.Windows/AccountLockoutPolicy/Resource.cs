@@ -84,12 +84,9 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         uint lockoutObservationWindow = instance.LockoutObservationWindowMinutes ?? current.LockoutObservationWindowMinutes!.Value;
         uint lockoutThreshold = instance.LockoutThreshold ?? current.LockoutThreshold!.Value;
 
-        if (lockoutThreshold > 0)
+        if (lockoutThreshold > 0 && lockoutDuration > 0 && lockoutObservationWindow > lockoutDuration)
         {
-            if (lockoutDuration > 0 && lockoutObservationWindow > lockoutDuration)
-            {
-                throw new ArgumentException("LockoutObservationWindowMinutes must be less than or equal to LockoutDurationMinutes when LockoutThreshold is set.");
-            }
+            throw new ArgumentException("LockoutObservationWindowMinutes must be less than or equal to LockoutDurationMinutes when LockoutThreshold is set.");
         }
 
         var info = new USER_MODALS_INFO_3
