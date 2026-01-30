@@ -30,9 +30,10 @@ Failure events, both, or none.
 |                   |        |          | `None`): `None`,           |
 |                   |        |          | `Success`, `Failure`, or   |
 |                   |        |          | `SuccessAndFailure`        |
-| `_exist`          | bool   | No       | Whether auditing is        |
-|                   |        |          | enabled (read-only,        |
-|                   |        |          | set based on `setting`)    |
+| `_exist`          | bool   | No       | Whether auditing should    |
+|                   |        |          | be configured (default:    |
+|                   |        |          | true; false resets to      |
+|                   |        |          | `None`)                    |
 
 ## Examples
 
@@ -285,5 +286,5 @@ auditpol /get /subcategory:{0cce921d-69ae-11d9-bed3-505054503030}
 
 <!-- -->
 [00]: https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/advanced-security-audit-policy-settings
-[01]: ttps://learn.microsoft.com/en-us/windows-server/identity/ad-ds/plan/security-best-practices/audit-policy-recommendations
+[01]: https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/plan/security-best-practices/audit-policy-recommendations
 [02]: https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/auditpol
