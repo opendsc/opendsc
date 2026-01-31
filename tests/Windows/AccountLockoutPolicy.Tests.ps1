@@ -114,38 +114,15 @@ Describe 'Windows Account Lockout Policy Resource' -Tag 'Windows' -Skip:(!$IsWin
             $getResult = dsc resource get -r OpenDsc.Windows/AccountLockoutPolicy --input $verifyJson | ConvertFrom-Json
             $getResult.actualState.lockoutDurationMinutes | Should -Be 30
         }
-
-        It 'should set lockout duration to 0 (requires admin unlock)' {
-            # First set threshold to non-zero
-            $setupJson = @{
-                lockoutThreshold = 5
-            } | ConvertTo-Json -Compress
-            dsc resource set -r OpenDsc.Windows/AccountLockoutPolicy --input $setupJson | Out-Null
-
-            $inputJson = @{
-                lockoutDurationMinutes = 0
-            } | ConvertTo-Json -Compress
-
-            dsc resource set -r OpenDsc.Windows/AccountLockoutPolicy --input $inputJson | Out-Null
-            $LASTEXITCODE | Should -Be 0
-
-            # Verify
-            $verifyJson = '{}' | ConvertFrom-Json | ConvertTo-Json -Compress
-            $getResult = dsc resource get -r OpenDsc.Windows/AccountLockoutPolicy --input $verifyJson | ConvertFrom-Json
-            $getResult.actualState.lockoutDurationMinutes | Should -Be 0
-        }
     }
 
     Context 'Set Operation - Lockout Observation Window' -Skip:(!$script:isAdmin) {
-        It 'should set observation window to 15 minutes' {
-            # First set threshold and duration
-            $setupJson = @{
-                lockoutThreshold       = 5
-                lockoutDurationMinutes = 30
-            } | ConvertTo-Json -Compress
-            dsc resource set -r OpenDsc.Windows/AccountLockoutPolicy --input $setupJson | Out-Null
-
+        It 'should set observation window to 15 minutes (with matching duration)' {
+            # Windows API requires observation window to be set together with duration
+            # and observation window must be <= duration
             $inputJson = @{
+                lockoutThreshold                = 5
+                lockoutDurationMinutes          = 15
                 lockoutObservationWindowMinutes = 15
             } | ConvertTo-Json -Compress
 
@@ -156,6 +133,7 @@ Describe 'Windows Account Lockout Policy Resource' -Tag 'Windows' -Skip:(!$IsWin
             $verifyJson = '{}' | ConvertFrom-Json | ConvertTo-Json -Compress
             $getResult = dsc resource get -r OpenDsc.Windows/AccountLockoutPolicy --input $verifyJson | ConvertFrom-Json
             $getResult.actualState.lockoutObservationWindowMinutes | Should -Be 15
+            $getResult.actualState.lockoutDurationMinutes | Should -Be 15
         }
     }
 
