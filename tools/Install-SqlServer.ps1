@@ -26,7 +26,8 @@
     Initialize-SqlServerForTests
 #>
 
-function Get-RandomPassword {
+function Get-RandomPassword
+{
     [CmdletBinding()]
     [OutputType([String])]
     Param
@@ -36,23 +37,28 @@ function Get-RandomPassword {
         [Switch][Bool]$Simple
     )
 
-    begin {
+    begin
+    {
         $SimpleChars = ('!ABCDEFGHKLMNPRSTUVWXYZ!abcdefghkmnprstuvwxyz!123456789!').ToCharArray()
-        $ComplexChars = (33..122 | ForEach-Object {([char]$_).ToString()}).ToCharArray()
+        $ComplexChars = (33..122 | ForEach-Object { ([char]$_).ToString() }).ToCharArray()
     }
 
-    process {
-        if ($Simple) {
+    process
+    {
+        if ($Simple)
+        {
             $Chars = $SimpleChars
         }
-        else {
+        else
+        {
             $Chars = $ComplexChars
         }
 
         Write-Output -InputObject ((Get-Random -Count $Length -InputObject $Chars) -join '')
     }
 
-    end {
+    end
+    {
     }
 }
 
@@ -134,6 +140,21 @@ function Install-SqlServerLinux
     if ($mssqlStatus -eq 'active')
     {
         Write-Host 'SQL Server is already running.'
+
+        # Reset SA password to ensure it matches our expected password
+        Write-Host 'Resetting SA password...'
+        $resetCmd = "sudo MSSQL_SA_PASSWORD='$SaPassword' /opt/mssql/bin/mssql-conf set-sa-password"
+        bash -c $resetCmd
+        
+        if ($LASTEXITCODE -eq 0)
+        {
+            Write-Host 'SA password reset successfully.'
+        }
+        else
+        {
+            Write-Warning 'Failed to reset SA password, but continuing anyway.'
+        }
+        
         return $true
     }
 

@@ -11,24 +11,28 @@ BeforeDiscovery {
     . $helperScript
 
     $script:sqlServerAvailable = Initialize-SqlServerForTests
-
-    Write-Verbose -Message "SQL server is not available: $($script:sqlServerAvailable)" -Verbose
 }
 
 Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerAvailable) {
     BeforeAll {
         . $helperScript
 
-        $script:sqlServerInstance = if ($env:SQLSERVER_INSTANCE) { 
+        $script:sqlServerInstance = if ($env:SQLSERVER_INSTANCE)
+        { 
             $env:SQLSERVER_INSTANCE 
-        } elseif ($IsLinux) { 
+        }
+        elseif ($IsLinux)
+        { 
             'localhost' 
-        } else { 
+        }
+        else
+        { 
             '.' 
         }
 
         # Set SQL Authentication for Linux
-        if ($IsLinux -and $env:SQLSERVER_SA_PASSWORD) {
+        if ($IsLinux -and $env:SQLSERVER_SA_PASSWORD)
+        {
             $script:sqlServerUsername = 'sa'
             $script:sqlServerPassword = $env:SQLSERVER_SA_PASSWORD
         }
@@ -155,9 +159,9 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
     Context 'Get Operation' -Tag 'Get' {
         It 'should return _exist=false for non-existent permission' {
             $inputJson = Get-SqlServerTestInput @{
-                databaseName   = $script:testDb
-                principal      = $script:testUser
-                permission     = 'Select'
+                databaseName = $script:testDb
+                principal    = $script:testUser
+                permission   = 'Select'
             } | ConvertTo-Json -Compress
 
             $result = dsc resource get -r OpenDsc.SqlServer/DatabasePermission --input $inputJson | ConvertFrom-Json
@@ -190,10 +194,10 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
 
         It 'should grant VIEW DEFINITION permission' {
             $inputJson = Get-SqlServerTestInput @{
-                databaseName   = $script:testDb
-                principal      = $script:testUser
-                permission     = 'ViewDefinition'
-                state          = 'Grant'
+                databaseName = $script:testDb
+                principal    = $script:testUser
+                permission   = 'ViewDefinition'
+                state        = 'Grant'
             } | ConvertTo-Json -Compress
 
             dsc resource set -r OpenDsc.SqlServer/DatabasePermission --input $inputJson | Out-Null
@@ -201,9 +205,9 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
 
             # Verify the permission was granted
             $verifyJson = Get-SqlServerTestInput @{
-                databaseName   = $script:testDb
-                principal      = $script:testUser
-                permission     = 'ViewDefinition'
+                databaseName = $script:testDb
+                principal    = $script:testUser
+                permission   = 'ViewDefinition'
             } | ConvertTo-Json -Compress
 
             $result = dsc resource get -r OpenDsc.SqlServer/DatabasePermission --input $verifyJson | ConvertFrom-Json
@@ -213,10 +217,10 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
 
         It 'should grant permission with GRANT option' {
             $inputJson = Get-SqlServerTestInput @{
-                databaseName   = $script:testDb
-                principal      = $script:testUser
-                permission     = 'ViewDefinition'
-                state          = 'GrantWithGrant'
+                databaseName = $script:testDb
+                principal    = $script:testUser
+                permission   = 'ViewDefinition'
+                state        = 'GrantWithGrant'
             } | ConvertTo-Json -Compress
 
             dsc resource set -r OpenDsc.SqlServer/DatabasePermission --input $inputJson | Out-Null
@@ -224,9 +228,9 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
 
             # Verify the permission was granted with grant option
             $verifyJson = Get-SqlServerTestInput @{
-                databaseName   = $script:testDb
-                principal      = $script:testUser
-                permission     = 'ViewDefinition'
+                databaseName = $script:testDb
+                principal    = $script:testUser
+                permission   = 'ViewDefinition'
             } | ConvertTo-Json -Compress
 
             $result = dsc resource get -r OpenDsc.SqlServer/DatabasePermission --input $verifyJson | ConvertFrom-Json
@@ -237,20 +241,20 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
         It 'should change permission state from Grant to Deny' {
             # First grant the permission (use database-level permission)
             $grantJson = Get-SqlServerTestInput @{
-                databaseName   = $script:testDb
-                principal      = $script:testUser
-                permission     = 'Showplan'
-                state          = 'Grant'
+                databaseName = $script:testDb
+                principal    = $script:testUser
+                permission   = 'Showplan'
+                state        = 'Grant'
             } | ConvertTo-Json -Compress
 
             dsc resource set -r OpenDsc.SqlServer/DatabasePermission --input $grantJson | Out-Null
 
             # Now deny the permission
             $denyJson = Get-SqlServerTestInput @{
-                databaseName   = $script:testDb
-                principal      = $script:testUser
-                permission     = 'Showplan'
-                state          = 'Deny'
+                databaseName = $script:testDb
+                principal    = $script:testUser
+                permission   = 'Showplan'
+                state        = 'Deny'
             } | ConvertTo-Json -Compress
 
             dsc resource set -r OpenDsc.SqlServer/DatabasePermission --input $denyJson | Out-Null
@@ -258,9 +262,9 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
 
             # Verify the permission state changed to Deny
             $verifyJson = Get-SqlServerTestInput @{
-                databaseName   = $script:testDb
-                principal      = $script:testUser
-                permission     = 'Showplan'
+                databaseName = $script:testDb
+                principal    = $script:testUser
+                permission   = 'Showplan'
             } | ConvertTo-Json -Compress
 
             $result = dsc resource get -r OpenDsc.SqlServer/DatabasePermission --input $verifyJson | ConvertFrom-Json
@@ -288,9 +292,9 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
 
         It 'should revoke/delete a permission' {
             $inputJson = Get-SqlServerTestInput @{
-                databaseName   = $script:testDb
-                principal      = $script:testUser
-                permission     = 'BackupDatabase'
+                databaseName = $script:testDb
+                principal    = $script:testUser
+                permission   = 'BackupDatabase'
             } | ConvertTo-Json -Compress
 
             dsc resource delete -r OpenDsc.SqlServer/DatabasePermission --input $inputJson | Out-Null
@@ -303,9 +307,9 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
 
         It 'should not fail when deleting non-existent permission' {
             $inputJson = Get-SqlServerTestInput @{
-                databaseName   = $script:testDb
-                principal      = $script:testUser
-                permission     = 'Control'
+                databaseName = $script:testDb
+                principal    = $script:testUser
+                permission   = 'Control'
             } | ConvertTo-Json -Compress
 
             { dsc resource delete -r OpenDsc.SqlServer/DatabasePermission --input $inputJson } | Should -Not -Throw
@@ -332,10 +336,10 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
 
         It 'should deny permission' {
             $inputJson = Get-SqlServerTestInput @{
-                databaseName   = $script:testDb
-                principal      = $script:testUser
-                permission     = 'Alter'
-                state          = 'Deny'
+                databaseName = $script:testDb
+                principal    = $script:testUser
+                permission   = 'Alter'
+                state        = 'Deny'
             } | ConvertTo-Json -Compress
 
             dsc resource set -r OpenDsc.SqlServer/DatabasePermission --input $inputJson | Out-Null
@@ -343,9 +347,9 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
 
             # Verify the permission was denied
             $verifyJson = Get-SqlServerTestInput @{
-                databaseName   = $script:testDb
-                principal      = $script:testUser
-                permission     = 'Alter'
+                databaseName = $script:testDb
+                principal    = $script:testUser
+                permission   = 'Alter'
             } | ConvertTo-Json -Compress
 
             $result = dsc resource get -r OpenDsc.SqlServer/DatabasePermission --input $verifyJson | ConvertFrom-Json
@@ -356,19 +360,19 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
         It 'should remove deny by deleting permission' {
             # First deny the permission
             $denyJson = Get-SqlServerTestInput @{
-                databaseName   = $script:testDb
-                principal      = $script:testUser
-                permission     = 'Alter'
-                state          = 'Deny'
+                databaseName = $script:testDb
+                principal    = $script:testUser
+                permission   = 'Alter'
+                state        = 'Deny'
             } | ConvertTo-Json -Compress
 
             dsc resource set -r OpenDsc.SqlServer/DatabasePermission --input $denyJson | Out-Null
 
             # Now delete (revoke) the permission
             $deleteJson = Get-SqlServerTestInput @{
-                databaseName   = $script:testDb
-                principal      = $script:testUser
-                permission     = 'Alter'
+                databaseName = $script:testDb
+                principal    = $script:testUser
+                permission   = 'Alter'
             } | ConvertTo-Json -Compress
 
             dsc resource delete -r OpenDsc.SqlServer/DatabasePermission --input $deleteJson | Out-Null
@@ -401,10 +405,10 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
         It 'should transition from GrantWithGrant to Grant' {
             # First grant with grant option
             $grantWithGrantJson = Get-SqlServerTestInput @{
-                databaseName   = $script:testDb
-                principal      = $script:testUser
-                permission     = 'References'
-                state          = 'GrantWithGrant'
+                databaseName = $script:testDb
+                principal    = $script:testUser
+                permission   = 'References'
+                state        = 'GrantWithGrant'
             } | ConvertTo-Json -Compress
 
             dsc resource set -r OpenDsc.SqlServer/DatabasePermission --input $grantWithGrantJson | Out-Null
@@ -412,9 +416,9 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
 
             # Verify GrantWithGrant state
             $verifyJson = Get-SqlServerTestInput @{
-                databaseName   = $script:testDb
-                principal      = $script:testUser
-                permission     = 'References'
+                databaseName = $script:testDb
+                principal    = $script:testUser
+                permission   = 'References'
             } | ConvertTo-Json -Compress
 
             $result = dsc resource get -r OpenDsc.SqlServer/DatabasePermission --input $verifyJson | ConvertFrom-Json
@@ -422,10 +426,10 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
 
             # Now change to just Grant (should revoke the grant option)
             $grantJson = Get-SqlServerTestInput @{
-                databaseName   = $script:testDb
-                principal      = $script:testUser
-                permission     = 'References'
-                state          = 'Grant'
+                databaseName = $script:testDb
+                principal    = $script:testUser
+                permission   = 'References'
+                state        = 'Grant'
             } | ConvertTo-Json -Compress
 
             dsc resource set -r OpenDsc.SqlServer/DatabasePermission --input $grantJson | Out-Null
@@ -480,10 +484,10 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
 
         It 'should grant permission to database role' {
             $inputJson = Get-SqlServerTestInput @{
-                databaseName   = $script:testDb
-                principal      = 'OpenDscTestRole'
-                permission     = 'Select'
-                state          = 'Grant'
+                databaseName = $script:testDb
+                principal    = 'OpenDscTestRole'
+                permission   = 'Select'
+                state        = 'Grant'
             } | ConvertTo-Json -Compress
 
             dsc resource set -r OpenDsc.SqlServer/DatabasePermission --input $inputJson | Out-Null
@@ -491,9 +495,9 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
 
             # Verify the permission was granted to the role
             $verifyJson = Get-SqlServerTestInput @{
-                databaseName   = $script:testDb
-                principal      = 'OpenDscTestRole'
-                permission     = 'Select'
+                databaseName = $script:testDb
+                principal    = 'OpenDscTestRole'
+                permission   = 'Select'
             } | ConvertTo-Json -Compress
 
             $result = dsc resource get -r OpenDsc.SqlServer/DatabasePermission --input $verifyJson | ConvertFrom-Json
@@ -522,10 +526,10 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
 
         It 'should be idempotent when granting same permission twice' {
             $inputJson = Get-SqlServerTestInput @{
-                databaseName   = $script:testDb
-                principal      = $script:testUser
-                permission     = 'Execute'
-                state          = 'Grant'
+                databaseName = $script:testDb
+                principal    = $script:testUser
+                permission   = 'Execute'
+                state        = 'Grant'
             } | ConvertTo-Json -Compress
 
             # First set
@@ -538,9 +542,9 @@ Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$scr
 
             # Verify the permission is still granted
             $verifyJson = Get-SqlServerTestInput @{
-                databaseName   = $script:testDb
-                principal      = $script:testUser
-                permission     = 'Execute'
+                databaseName = $script:testDb
+                principal    = $script:testUser
+                permission   = 'Execute'
             } | ConvertTo-Json -Compress
 
             $result = dsc resource get -r OpenDsc.SqlServer/DatabasePermission --input $verifyJson | ConvertFrom-Json
