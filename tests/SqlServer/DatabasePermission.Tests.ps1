@@ -11,6 +11,8 @@ BeforeDiscovery {
     . $helperScript
 
     $script:sqlServerAvailable = Initialize-SqlServerForTests
+
+    Write-Verbose -Message "SQL server is not available: $($script:sqlServerAvailable)" -Verbose
 }
 
 Describe 'SQL Server Database Permission Resource' -Tag 'SqlServer' -Skip:(!$script:sqlServerAvailable) {
