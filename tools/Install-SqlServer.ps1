@@ -143,12 +143,17 @@ function Install-SqlServerLinux
 
         # Reset SA password to ensure it matches our expected password
         Write-Host 'Resetting SA password...'
-        $resetCmd = "sudo MSSQL_SA_PASSWORD='$SaPassword' /opt/mssql/bin/mssql-conf set-sa-password"
+        # The set-sa-password command expects the password twice (for confirmation)
+        # We pipe it using printf to provide both values non-interactively
+        $resetCmd = "printf '%s\n%s\n' '$SaPassword' '$SaPassword' | sudo /opt/mssql/bin/mssql-conf set-sa-password"
         bash -c $resetCmd
         
         if ($LASTEXITCODE -eq 0)
         {
             Write-Host 'SA password reset successfully.'
+            # Restart SQL Server to ensure the password change takes effect
+            bash -c 'sudo systemctl restart mssql-server'
+            Start-Sleep -Seconds 5
         }
         else
         {
