@@ -143,27 +143,30 @@ function Install-SqlServerLinux
 
         # Reset SA password to ensure it matches our expected password
         Write-Host 'Resetting SA password...'
-        Write-Host "Expected password length: $($SaPassword.Length)"
+        
+        # Stop SQL Server (required for password reset)
+        Write-Host 'Stopping SQL Server...'
+        bash -c 'sudo systemctl stop mssql-server'
+        Start-Sleep -Seconds 3
+        
         # The set-sa-password command expects the password twice (for confirmation)
         # We pipe it using printf to provide both values non-interactively
         $resetCmd = "printf '%s\n%s\n' '$SaPassword' '$SaPassword' | sudo /opt/mssql/bin/mssql-conf set-sa-password 2>&1"
         $resetOutput = bash -c $resetCmd
         
-        Write-Host "Reset command output: $resetOutput"
-        Write-Host "Reset command exit code: $LASTEXITCODE"
-        
         if ($LASTEXITCODE -eq 0)
         {
             Write-Host 'SA password reset successfully.'
-            # Restart SQL Server to ensure the password change takes effect
-            Write-Host 'Restarting SQL Server...'
-            bash -c 'sudo systemctl restart mssql-server'
-            Start-Sleep -Seconds 5
         }
         else
         {
             Write-Warning "Failed to reset SA password. Error: $resetOutput"
         }
+        
+        # Start SQL Server
+        Write-Host 'Starting SQL Server...'
+        bash -c 'sudo systemctl start mssql-server'
+        Start-Sleep -Seconds 5
         
         return $true
     }
