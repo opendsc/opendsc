@@ -141,34 +141,50 @@ function Install-SqlServerLinux
     {
         Write-Host 'SQL Server is already running.'
 
-        # Reset SA password to ensure it matches our expected password
-        Write-Host 'Resetting SA password...'
+        # Test if we can connect with SA and the expected password
+        Write-Host 'Testing SA connection...'
+        $testConnectionString = "Server=localhost;Connection Timeout=10;User Id=sa;Password=$SaPassword;TrustServerCertificate=True"
         
-        # Stop SQL Server (required for password reset)
-        Write-Host 'Stopping SQL Server...'
-        bash -c 'sudo systemctl stop mssql-server'
-        Start-Sleep -Seconds 3
-        
-        # The set-sa-password command expects the password twice (for confirmation)
-        # We pipe it using printf to provide both values non-interactively
-        $resetCmd = "printf '%s\n%s\n' '$SaPassword' '$SaPassword' | sudo /opt/mssql/bin/mssql-conf set-sa-password 2>&1"
-        $resetOutput = bash -c $resetCmd
-        
-        if ($LASTEXITCODE -eq 0)
+        try
         {
-            Write-Host 'SA password reset successfully.'
+            $testConn = New-Object System.Data.SqlClient.SqlConnection
+            $testConn.ConnectionString = $testConnectionString
+            $testConn.Open()
+            $testConn.Close()
+            Write-Host 'SA connection successful - SQL Server is properly configured.'
+            return $true
         }
-        else
+        catch
         {
-            Write-Warning "Failed to reset SA password. Error: $resetOutput"
+            Write-Host "SA connection failed: $($_.Exception.Message)"
+            Write-Host 'Resetting SA password...'
+            
+            # Stop SQL Server (required for password reset)
+            Write-Host 'Stopping SQL Server...'
+            bash -c 'sudo systemctl stop mssql-server'
+            Start-Sleep -Seconds 3
+            
+            # The set-sa-password command expects the password twice (for confirmation)
+            # We pipe it using printf to provide both values non-interactively
+            $resetCmd = "printf '%s\n%s\n' '$SaPassword' '$SaPassword' | sudo /opt/mssql/bin/mssql-conf set-sa-password 2>&1"
+            $resetOutput = bash -c $resetCmd
+            
+            if ($LASTEXITCODE -eq 0)
+            {
+                Write-Host 'SA password reset successfully.'
+            }
+            else
+            {
+                Write-Warning "Failed to reset SA password. Error: $resetOutput"
+            }
+            
+            # Start SQL Server
+            Write-Host 'Starting SQL Server...'
+            bash -c 'sudo systemctl start mssql-server'
+            Start-Sleep -Seconds 5
+            
+            return $true
         }
-        
-        # Start SQL Server
-        Write-Host 'Starting SQL Server...'
-        bash -c 'sudo systemctl start mssql-server'
-        Start-Sleep -Seconds 5
-        
-        return $true
     }
 
     try
