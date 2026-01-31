@@ -181,9 +181,38 @@ function Install-SqlServerLinux
             # Start SQL Server
             Write-Host 'Starting SQL Server...'
             bash -c 'sudo systemctl start mssql-server'
-            Start-Sleep -Seconds 5
             
-            return $true
+            # Wait for SQL Server to be ready and accepting connections
+            $maxRetries = 12
+            $retryCount = 0
+            $connectionReady = $false
+            
+            while ($retryCount -lt $maxRetries -and -not $connectionReady)
+            {
+                Start-Sleep -Seconds 5
+                $retryCount++
+                
+                try
+                {
+                    $verifyConn = New-Object System.Data.SqlClient.SqlConnection
+                    $verifyConn.ConnectionString = $testConnectionString
+                    $verifyConn.Open()
+                    $verifyConn.Close()
+                    $connectionReady = $true
+                    Write-Host 'SQL Server is ready and accepting connections.'
+                }
+                catch
+                {
+                    Write-Host "Waiting for SQL Server to be ready... (attempt $retryCount/$maxRetries)"
+                }
+            }
+            
+            if (-not $connectionReady)
+            {
+                Write-Warning 'SQL Server started but is not accepting connections after password reset.'
+            }
+            
+            return $connectionReady
         }
     }
 
