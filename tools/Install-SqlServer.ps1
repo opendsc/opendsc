@@ -62,7 +62,16 @@ function Get-RandomPassword
     }
 }
 
-$script:SqlServerSaPassword = Get-RandomPassword -Simple
+
+if ($env:SQLSERVER_SA_PASSWORD)
+{
+    $script:SqlServerSaPassword = $env:SQLSERVER_SA_PASSWORD
+}
+else
+{
+    $script:SqlServerSaPassword = Get-RandomPassword -Simple
+    $env:SQLSERVER_SA_PASSWORD = $script:SqlServerSaPassword
+}
 
 function Install-SqlServerWindows
 {
