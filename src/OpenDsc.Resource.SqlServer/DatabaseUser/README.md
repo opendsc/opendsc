@@ -56,6 +56,15 @@ SQL Server supports different types of database users:
 - **databaseName** (string) - The name of the database containing the user.
 - **name** (string) - The name of the database user.
 
+### Connection Properties
+
+- **connectUsername** (string) - The username for SQL Server authentication
+  when connecting to the server. If not specified, Windows Authentication is
+  used. Write-only.
+- **connectPassword** (string) - The password for SQL Server authentication
+  when connecting to the server. Required when connectUsername is specified.
+  Write-only.
+
 ### Optional Properties
 
 - **userType** (string) - The type of user. Determines how the user
