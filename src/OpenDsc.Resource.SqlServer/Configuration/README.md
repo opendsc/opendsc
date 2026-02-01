@@ -310,8 +310,8 @@ See Microsoft's latest guidance:
   automatically.
 - Configuration changes via SMO use `sp_configure` internally. Some settings
   take effect immediately (dynamic), while others require a SQL Server restart.
-- Enable `optimizeAdhocWorkloads` on servers with many ad hoc queries to reduce
-  plan cache bloat.
+- Enable `optimizeAdhocWorkloads` on servers with many [ad hoc queries][03] to
+  reduce plan cache bloat.
 - Use `blockedProcessThreshold` to enable blocked process reports in Extended
   Events for deadlock troubleshooting.
 
@@ -319,3 +319,4 @@ See Microsoft's latest guidance:
 [00]: https://learn.microsoft.com/en-us/system-center/scom/plan-sqlserver-design?view=sc-om-2025
 [01]: https://learn.microsoft.com/en-us/system-center/scom/plan-sqlserver-design?view=sc-om-2025#reserve-memory
 [02]: https://learn.microsoft.com/en-us/sql/relational-databases/policy-based-management/set-the-max-degree-of-parallelism-option-for-optimal-performance
+[03]: https://learn.microsoft.com/en-us/sql/database-engine/configure-windows/optimize-for-ad-hoc-workloads-server-configuration-option
