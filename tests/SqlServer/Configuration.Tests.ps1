@@ -55,9 +55,8 @@ Describe 'SQL Server Configuration Resource' -Tag 'SqlServer' -Skip:(!$script:sq
             $result = dsc resource list OpenDsc.SqlServer/Configuration | ConvertFrom-Json
             $result.capabilities | Should -Contain 'get'
             $result.capabilities | Should -Contain 'set'
-            # Configuration is a singleton - no delete or export
+            $result.capabilities | Should -Contain 'export'
             $result.capabilities | Should -Not -Contain 'delete'
-            $result.capabilities | Should -Not -Contain 'export'
         }
     }
 
@@ -630,6 +629,22 @@ Describe 'SQL Server Configuration Resource' -Tag 'SqlServer' -Skip:(!$script:sq
             $result = dsc resource get -r OpenDsc.SqlServer/Configuration --input $verifyJson |
             ConvertFrom-Json
             $result.actualState.blockedProcessThreshold | Should -Be 0
+        }
+    }
+
+    Context 'Export Operation' -Tag 'Export' {
+        It 'should export server configuration' {
+            $result = dsc resource export -r OpenDsc.SqlServer/Configuration | ConvertFrom-Json
+            $result | Should -Not -BeNullOrEmpty
+            $result.resources | Should -Not -BeNullOrEmpty
+            $result.resources.Count | Should -Be 1
+            
+            $resource = $result.resources[0]
+            $resource.type | Should -Be 'OpenDsc.SqlServer/Configuration'
+            $resource.properties | Should -Not -BeNullOrEmpty
+            $resource.properties.serverInstance | Should -Not -BeNullOrEmpty
+            $resource.properties.maxServerMemory | Should -Not -BeNullOrEmpty
+            $resource.properties.maxDegreeOfParallelism | Should -Not -BeNullOrEmpty
         }
     }
 

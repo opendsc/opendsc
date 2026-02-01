@@ -25,7 +25,8 @@ namespace OpenDsc.Resource.SqlServer.Configuration;
 public sealed class Resource(JsonSerializerContext context)
     : DscResource<Schema>(context),
       IGettable<Schema>,
-      ISettable<Schema>
+      ISettable<Schema>,
+      IExportable<Schema>
 {
     public override string GetSchema()
     {
@@ -450,5 +451,11 @@ public sealed class Resource(JsonSerializerContext context)
                 server.ConnectionContext.Disconnect();
             }
         }
+    }
+
+    public IEnumerable<Schema> Export()
+    {
+        var instance = new Schema { ServerInstance = "." };
+        yield return Get(instance);
     }
 }

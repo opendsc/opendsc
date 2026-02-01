@@ -261,23 +261,61 @@ dsc config set --file set-production.dsc.config.yaml
 | 4    | Unauthorized access      |
 | 5    | Invalid operation        |
 
-## Notes
+## Best Practices
+
+For comprehensive SQL Server configuration best practices, refer to Microsoft's
+official guidance:
+
+- [SQL Server Design Considerations][00]
+
+### Memory Configuration
+
+**Reserve adequate memory for the OS and other processes:**
+
+- **Minimum server memory (`minServerMemory`)**: Microsoft recommends at least
+  4 GB for production SQL Server instances.
+- **Maximum server memory (`maxServerMemory`)**: Reserve memory for the OS and
+  other services. A typical formula is:
+  - 1 GB of RAM for the OS
+  - 1 GB per every 4 GB of RAM installed (up to 16 GB)
+  - 1 GB per every 8 GB of RAM installed (above 16 GB)
+  
+See Microsoft's latest guidance: [Reserve memory][01]
+
+### Parallelism Configuration
+
+**Configure max degree of parallelism appropriately:**
+
+- **MAXDOP (`maxDegreeOfParallelism`)**: Microsoft's recommendations:
+  - For servers with **more than 8 processors**: Use MAXDOP=8
+  - For servers with **8 or fewer processors**: Use MAXDOP=0 to N (where N =
+    number of processors)
+  - For **NUMA configured servers**: MAXDOP shouldn't exceed the number of CPUs
+    per NUMA node
+  - For **hyperthreading enabled servers**: MAXDOP shouldn't exceed the number
+    of physical processors
+- **Cost threshold (`costThresholdForParallelism`)**: The default value of 5 is
+  often too low for modern hardware. Values between 25-50 are commonly
+  recommended for production workloads.
+
+See Microsoft's latest guidance:
+[Set the max degree of parallelism option for optimal performance][02]
+
+### General Notes
 
 - This resource is a singleton - there is only one configuration per SQL Server
-  instance. It does not support `delete` or `export` operations.
+  instance.
 - Some configuration options require `show advanced options` to be enabled
   before they can be modified. The SMO library typically handles this
   automatically.
 - Configuration changes via SMO use `sp_configure` internally. Some settings
   take effect immediately (dynamic), while others require a SQL Server restart.
-- When setting `maxServerMemory`, leave adequate memory for the operating
-  system. A common guideline is to leave 4-6 GB or 10% of total RAM (whichever
-  is greater) for the OS.
-- For `maxDegreeOfParallelism`, Microsoft recommends setting this to the number
-  of physical cores per NUMA node, or 8, whichever is lower for OLTP workloads.
-- The `costThresholdForParallelism` default of 5 is often too low for modern
-  hardware. Values between 25-50 are commonly recommended.
 - Enable `optimizeAdhocWorkloads` on servers with many ad hoc queries to reduce
   plan cache bloat.
 - Use `blockedProcessThreshold` to enable blocked process reports in Extended
   Events for deadlock troubleshooting.
+
+<!-- Link reference definitions -->
+[00]: https://learn.microsoft.com/en-us/system-center/scom/plan-sqlserver-design?view=sc-om-2025
+[01]: https://learn.microsoft.com/en-us/system-center/scom/plan-sqlserver-design?view=sc-om-2025#reserve-memory
+[02]: https://learn.microsoft.com/en-us/sql/relational-databases/policy-based-management/set-the-max-degree-of-parallelism-option-for-optimal-performance
