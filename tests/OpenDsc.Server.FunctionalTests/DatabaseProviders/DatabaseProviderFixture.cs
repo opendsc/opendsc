@@ -32,13 +32,13 @@ public abstract class DatabaseProviderFixture : WebApplicationFactory<Program>, 
             {
                 ["Database:Provider"] = ProviderName,
                 ["Database:ConnectionString"] = ConnectionString,
-                ["Admin:ApiKey"] = "test-admin-key"
+                ["Server:InitialAdminKey"] = "test-admin-key"
             });
         });
 
         builder.ConfigureServices(services =>
         {
-            services.AddOptions<Microsoft.Extensions.Hosting.HostOptions>()
+            services.AddOptions<HostOptions>()
                 .Configure(options => options.ShutdownTimeout = TimeSpan.FromSeconds(30));
         });
 
