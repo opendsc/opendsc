@@ -25,7 +25,8 @@ public class ApiKeyAuthHandlerTests
 
         // Base64 encoded 32-byte hash should be 44 characters
         hash.Length.Should().Be(44);
-        salt.Length.Should().Be(44);
+        // Base64 encoded 16-byte salt should be 24 characters
+        salt.Length.Should().Be(24);
     }
 
     [Fact]
@@ -93,7 +94,7 @@ public class ApiKeyAuthHandlerTests
         hash.Should().NotBeNullOrEmpty();
         salt.Should().NotBeNullOrEmpty();
         hash.Length.Should().Be(44);
-        salt.Length.Should().Be(44);
+        salt.Length.Should().Be(24);
     }
 
     [Fact]
