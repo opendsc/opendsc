@@ -4,10 +4,10 @@
 
 using System.Security.Claims;
 using System.Security.Cryptography;
-using System.Text;
 using System.Text.Encodings.Web;
 
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Cryptography.KeyDerivation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -69,7 +69,7 @@ public sealed class ApiKeyAuthHandler(
             return AuthenticateResult.Fail("Admin API key not configured");
         }
 
-        var isValid = VerifyPasswordArgon2id(apiKey, settings.AdminApiKeySalt, settings.AdminApiKeyHash);
+        var isValid = VerifyPasswordPbkdf2(apiKey, settings.AdminApiKeySalt, settings.AdminApiKeyHash);
         if (!isValid)
         {
             return AuthenticateResult.Fail("Invalid admin API key");
@@ -90,50 +90,44 @@ public sealed class ApiKeyAuthHandler(
     }
 
     /// <summary>
-    /// Hashes a password using Argon2id.
+    /// Hashes a password using PBKDF2-HMAC-SHA256.
     /// </summary>
     /// <param name="password">The password to hash.</param>
     /// <param name="salt">The salt (output parameter).</param>
     /// <returns>The hashed password.</returns>
-    public static string HashPasswordArgon2id(string password, out string salt)
+    public static string HashPasswordPbkdf2(string password, out string salt)
     {
-        var saltBytes = RandomNumberGenerator.GetBytes(32);
+        var saltBytes = RandomNumberGenerator.GetBytes(16);
         salt = Convert.ToBase64String(saltBytes);
 
-        var passwordBytes = Encoding.UTF8.GetBytes(password);
-        var hashBytes = new byte[32];
-
-        Rfc2898DeriveBytes.Pbkdf2(
-            passwordBytes,
-            saltBytes,
-            hashBytes,
-            100000,
-            HashAlgorithmName.SHA256);
+        var hashBytes = KeyDerivation.Pbkdf2(
+            password: password,
+            salt: saltBytes,
+            prf: KeyDerivationPrf.HMACSHA256,
+            iterationCount: 100000,
+            numBytesRequested: 32);
 
         return Convert.ToBase64String(hashBytes);
     }
 
     /// <summary>
-    /// Verifies a password against an Argon2id hash.
+    /// Verifies a password against a PBKDF2-HMAC-SHA256 hash.
     /// </summary>
     /// <param name="password">The password to verify.</param>
     /// <param name="saltBase64">The salt (Base64-encoded).</param>
     /// <param name="hashBase64">The expected hash (Base64-encoded).</param>
     /// <returns>True if the password matches, false otherwise.</returns>
-    public static bool VerifyPasswordArgon2id(string password, string saltBase64, string hashBase64)
+    public static bool VerifyPasswordPbkdf2(string password, string saltBase64, string hashBase64)
     {
         var saltBytes = Convert.FromBase64String(saltBase64);
         var expectedHash = Convert.FromBase64String(hashBase64);
 
-        var passwordBytes = Encoding.UTF8.GetBytes(password);
-        var computedHash = new byte[32];
-
-        Rfc2898DeriveBytes.Pbkdf2(
-            passwordBytes,
-            saltBytes,
-            computedHash,
-            100000,
-            HashAlgorithmName.SHA256);
+        var computedHash = KeyDerivation.Pbkdf2(
+            password: password,
+            salt: saltBytes,
+            prf: KeyDerivationPrf.HMACSHA256,
+            iterationCount: 100000,
+            numBytesRequested: 32);
 
         return CryptographicOperations.FixedTimeEquals(computedHash, expectedHash);
     }

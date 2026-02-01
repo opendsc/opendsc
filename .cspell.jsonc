@@ -35,6 +35,8 @@
         "getpwnam",
         "getpwuid",
         "Hashtable",
+        "HMAC",
+        "HMACSHA",
         "INSTALLFOLDER",
         "Interruptible",
         "jdoe",

@@ -14,11 +14,11 @@ namespace OpenDsc.Server.Tests.Authentication;
 public class ApiKeyAuthHandlerTests
 {
     [Fact]
-    public void HashPasswordArgon2id_ProducesBase64Hash()
+    public void HashPasswordPbkdf2_ProducesBase64Hash()
     {
         var password = "test-admin-key-123";
 
-        var hash = ApiKeyAuthHandler.HashPasswordArgon2id(password, out var salt);
+        var hash = ApiKeyAuthHandler.HashPasswordPbkdf2(password, out var salt);
 
         hash.Should().NotBeNullOrEmpty();
         salt.Should().NotBeNullOrEmpty();
@@ -29,35 +29,35 @@ public class ApiKeyAuthHandlerTests
     }
 
     [Fact]
-    public void HashPasswordArgon2id_ProducesDifferentSaltsOnEachCall()
+    public void HashPasswordPbkdf2_ProducesDifferentSaltsOnEachCall()
     {
         var password = "test-password";
 
-        var hash1 = ApiKeyAuthHandler.HashPasswordArgon2id(password, out var salt1);
-        var hash2 = ApiKeyAuthHandler.HashPasswordArgon2id(password, out var salt2);
+        var hash1 = ApiKeyAuthHandler.HashPasswordPbkdf2(password, out var salt1);
+        var hash2 = ApiKeyAuthHandler.HashPasswordPbkdf2(password, out var salt2);
 
         salt1.Should().NotBe(salt2);
         hash1.Should().NotBe(hash2);
     }
 
     [Fact]
-    public void VerifyPasswordArgon2id_SucceedsWithCorrectPassword()
+    public void VerifyPasswordPbkdf2_SucceedsWithCorrectPassword()
     {
         var password = "correct-password";
-        var hash = ApiKeyAuthHandler.HashPasswordArgon2id(password, out var salt);
+        var hash = ApiKeyAuthHandler.HashPasswordPbkdf2(password, out var salt);
 
-        var result = ApiKeyAuthHandler.VerifyPasswordArgon2id(password, salt, hash);
+        var result = ApiKeyAuthHandler.VerifyPasswordPbkdf2(password, salt, hash);
 
         result.Should().BeTrue();
     }
 
     [Fact]
-    public void VerifyPasswordArgon2id_FailsWithIncorrectPassword()
+    public void VerifyPasswordPbkdf2_FailsWithIncorrectPassword()
     {
         var password = "correct-password";
-        var hash = ApiKeyAuthHandler.HashPasswordArgon2id(password, out var salt);
+        var hash = ApiKeyAuthHandler.HashPasswordPbkdf2(password, out var salt);
 
-        var result = ApiKeyAuthHandler.VerifyPasswordArgon2id("wrong-password", salt, hash);
+        var result = ApiKeyAuthHandler.VerifyPasswordPbkdf2("wrong-password", salt, hash);
 
         result.Should().BeFalse();
     }
@@ -86,9 +86,9 @@ public class ApiKeyAuthHandlerTests
     [InlineData("a")]
     [InlineData("short-password")]
     [InlineData("very-long-password-with-many-characters-for-testing")]
-    public void HashPasswordArgon2id_HandlesVariousPasswordLengths(string password)
+    public void HashPasswordPbkdf2_HandlesVariousPasswordLengths(string password)
     {
-        var hash = ApiKeyAuthHandler.HashPasswordArgon2id(password, out var salt);
+        var hash = ApiKeyAuthHandler.HashPasswordPbkdf2(password, out var salt);
 
         hash.Should().NotBeNullOrEmpty();
         salt.Should().NotBeNullOrEmpty();
@@ -97,14 +97,14 @@ public class ApiKeyAuthHandlerTests
     }
 
     [Fact]
-    public void VerifyPasswordArgon2id_IsTimingSafe()
+    public void VerifyPasswordPbkdf2_IsTimingSafe()
     {
         var password = "test-password";
-        var hash = ApiKeyAuthHandler.HashPasswordArgon2id(password, out var salt);
+        var hash = ApiKeyAuthHandler.HashPasswordPbkdf2(password, out var salt);
 
         // Both correct and incorrect passwords should take similar time (timing attack resistance)
-        var result1 = ApiKeyAuthHandler.VerifyPasswordArgon2id(password, salt, hash);
-        var result2 = ApiKeyAuthHandler.VerifyPasswordArgon2id("wrong", salt, hash);
+        var result1 = ApiKeyAuthHandler.VerifyPasswordPbkdf2(password, salt, hash);
+        var result2 = ApiKeyAuthHandler.VerifyPasswordPbkdf2("wrong", salt, hash);
 
         result1.Should().BeTrue();
         result2.Should().BeFalse();

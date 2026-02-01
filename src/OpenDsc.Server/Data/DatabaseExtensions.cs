@@ -54,11 +54,6 @@ public static class DatabaseExtensions
 
         try
         {
-            if (!environment.IsEnvironment("Testing"))
-            {
-                await context.Database.EnsureDeletedAsync();
-            }
-
             await context.Database.EnsureCreatedAsync();
             logger.LogInformation("Database initialized successfully");
 
@@ -134,7 +129,7 @@ public static class DatabaseExtensions
             return;
         }
 
-        var hash = ApiKeyAuthHandler.HashPasswordArgon2id(initialAdminKey, out var salt);
+        var hash = ApiKeyAuthHandler.HashPasswordPbkdf2(initialAdminKey, out var salt);
 
         if (existingSettings is null)
         {

@@ -103,7 +103,7 @@ public sealed class CertificateAuthHandler(
             }
         };
 
-        var isValid = chain.Build(certificate);
+        chain.Build(certificate);
 
         if (chain.ChainStatus.Length == 0)
         {

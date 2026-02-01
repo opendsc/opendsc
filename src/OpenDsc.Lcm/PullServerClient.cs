@@ -22,7 +22,6 @@ public partial class PullServerClient : IDisposable
     private readonly IOptionsMonitor<LcmConfig> _lcmMonitor;
     private readonly ICertificateManager _certificateManager;
     private readonly ILogger<PullServerClient> _logger;
-    private X509Certificate2? _clientCertificate;
 
     public PullServerClient(
         HttpClient httpClient,
@@ -34,19 +33,6 @@ public partial class PullServerClient : IDisposable
         _lcmMonitor = lcmMonitor;
         _certificateManager = certificateManager;
         _logger = logger;
-    }
-
-    /// <summary>
-    /// Ensures the HttpClient has the client certificate configured.
-    /// </summary>
-    private void EnsureClientCertificate()
-    {
-        if (_clientCertificate is not null)
-        {
-            return;
-        }
-
-        _clientCertificate = _certificateManager.GetClientCertificate();
     }
 
     /// <summary>
@@ -69,8 +55,6 @@ public partial class PullServerClient : IDisposable
             LogRegistrationKeyNotConfigured();
             return null;
         }
-
-        EnsureClientCertificate();
 
         var fqdn = Environment.MachineName;
         try
@@ -138,8 +122,6 @@ public partial class PullServerClient : IDisposable
             return false;
         }
 
-        EnsureClientCertificate();
-
         try
         {
             using var response = await _httpClient.GetAsync(
@@ -184,8 +166,6 @@ public partial class PullServerClient : IDisposable
             return null;
         }
 
-        EnsureClientCertificate();
-
         try
         {
             using var response = await _httpClient.GetAsync(
@@ -221,8 +201,6 @@ public partial class PullServerClient : IDisposable
         {
             return null;
         }
-
-        EnsureClientCertificate();
 
         try
         {
@@ -264,8 +242,6 @@ public partial class PullServerClient : IDisposable
         {
             return true;
         }
-
-        EnsureClientCertificate();
 
         try
         {
@@ -335,8 +311,6 @@ public partial class PullServerClient : IDisposable
             }
 
             LogCertificateRotatedOnServer();
-            _clientCertificate?.Dispose();
-            _clientCertificate = newCertificate;
             return true;
         }
         catch (Exception ex)
@@ -348,7 +322,6 @@ public partial class PullServerClient : IDisposable
 
     public void Dispose()
     {
-        _clientCertificate?.Dispose();
         _httpClient.Dispose();
     }
 

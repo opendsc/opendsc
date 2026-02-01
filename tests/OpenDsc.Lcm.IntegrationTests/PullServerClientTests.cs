@@ -315,4 +315,77 @@ public class PullServerClientTests : IClassFixture<LcmTestServerFactory>
         var cert = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(1));
         return cert;
     }
+
+    [Fact]
+    public void PullServerClient_HttpClient_ShouldBeConfiguredWithCertificate()
+    {
+        var testCert = GenerateTestCertificate();
+        var certManager = new TestCertificateManager(testCert);
+        var lcmConfig = new LcmConfig
+        {
+            PullServer = new PullServerSettings
+            {
+                ServerUrl = "https://localhost:5001",
+                RegistrationKey = "test-key",
+                CertificateSource = CertificateSource.Managed
+            }
+        };
+        var monitor = CreateMonitor(lcmConfig);
+
+        var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+        services.AddSingleton<ICertificateManager>(certManager);
+        services.AddSingleton<IOptionsMonitor<LcmConfig>>(monitor);
+        services.AddHttpClient<PullServerClient>((sp, client) =>
+        {
+            var lcmMonitor = sp.GetRequiredService<IOptionsMonitor<LcmConfig>>();
+            var pullServer = lcmMonitor.CurrentValue.PullServer;
+            if (pullServer is not null && !string.IsNullOrWhiteSpace(pullServer.ServerUrl))
+            {
+                client.BaseAddress = new Uri(pullServer.ServerUrl);
+            }
+        })
+        .ConfigurePrimaryHttpMessageHandler(sp =>
+        {
+            var certificateManager = sp.GetRequiredService<ICertificateManager>();
+            var cert = certificateManager.GetClientCertificate();
+
+            var handler = new HttpClientHandler();
+            if (cert is not null)
+            {
+                handler.ClientCertificates.Add(cert);
+            }
+            return handler;
+        });
+
+        var provider = services.BuildServiceProvider();
+        var factory = provider.GetRequiredService<IHttpClientFactory>();
+        var httpClient = factory.CreateClient(nameof(PullServerClient));
+
+        httpClient.Should().NotBeNull();
+        httpClient.BaseAddress.Should().Be(new Uri("https://localhost:5001"));
+
+        certManager.GetClientCertificateCalled.Should().BeTrue();
+    }
+
+    private sealed class TestCertificateManager : ICertificateManager
+    {
+        private readonly X509Certificate2 _certificate;
+
+        public TestCertificateManager(X509Certificate2 certificate)
+        {
+            _certificate = certificate;
+        }
+
+        public bool GetClientCertificateCalled { get; private set; }
+
+        public X509Certificate2? GetClientCertificate()
+        {
+            GetClientCertificateCalled = true;
+            return _certificate;
+        }
+
+        public X509Certificate2? RotateCertificate(PullServerSettings pullServer) => null;
+
+        public bool ShouldRotateCertificate(X509Certificate2? currentCertificate, PullServerSettings pullServer) => false;
+    }
 }

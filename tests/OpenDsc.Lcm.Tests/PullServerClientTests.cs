@@ -4,12 +4,14 @@
 
 using System.Net;
 using System.Net.Http.Json;
+using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
 
 using FluentAssertions;
 
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -368,5 +370,90 @@ public sealed class PullServerClientTests
             Times.Never(),
             ItExpr.IsAny<HttpRequestMessage>(),
             ItExpr.IsAny<CancellationToken>());
+    }
+
+    [Fact]
+    public void HttpClient_ShouldBeConfiguredWithClientCertificate_WhenCertificateIsAvailable()
+    {
+        var services = new ServiceCollection();
+        var testCert = GenerateTestCertificate();
+        var certManagerMock = new Mock<ICertificateManager>();
+        certManagerMock.Setup(x => x.GetClientCertificate()).Returns(testCert);
+
+        var config = new LcmConfig
+        {
+            PullServer = new PullServerSettings
+            {
+                ServerUrl = "https://localhost:5001",
+                CertificateSource = CertificateSource.Managed
+            }
+        };
+        var configMonitorMock = new Mock<IOptionsMonitor<LcmConfig>>();
+        configMonitorMock.Setup(x => x.CurrentValue).Returns(config);
+
+        services.AddSingleton(certManagerMock.Object);
+        services.AddSingleton(configMonitorMock.Object);
+        services.AddHttpClient<PullServerClient>((sp, client) =>
+        {
+            var lcmMonitor = sp.GetRequiredService<IOptionsMonitor<LcmConfig>>();
+            var pullServer = lcmMonitor.CurrentValue.PullServer;
+            if (pullServer is not null && !string.IsNullOrWhiteSpace(pullServer.ServerUrl))
+            {
+                client.BaseAddress = new Uri(pullServer.ServerUrl);
+            }
+        })
+        .ConfigurePrimaryHttpMessageHandler(sp =>
+        {
+            var certificateManager = sp.GetRequiredService<ICertificateManager>();
+            var cert = certificateManager.GetClientCertificate();
+
+            var handler = new HttpClientHandler();
+            if (cert is not null)
+            {
+                handler.ClientCertificates.Add(cert);
+            }
+            return handler;
+        });
+
+        var provider = services.BuildServiceProvider();
+        var httpClientFactory = provider.GetRequiredService<IHttpClientFactory>();
+        var httpClient = httpClientFactory.CreateClient(nameof(PullServerClient));
+
+        httpClient.Should().NotBeNull();
+        httpClient.BaseAddress.Should().Be(new Uri("https://localhost:5001"));
+
+        certManagerMock.Verify(x => x.GetClientCertificate(), Times.Once);
+    }
+
+    private static X509Certificate2 GenerateTestCertificate()
+    {
+        using var rsa = RSA.Create(2048);
+        var request = new CertificateRequest(
+            "CN=test-node",
+            rsa,
+            HashAlgorithmName.SHA256,
+            RSASignaturePadding.Pkcs1);
+
+        request.CertificateExtensions.Add(
+            new X509BasicConstraintsExtension(false, false, 0, false));
+
+        request.CertificateExtensions.Add(
+            new X509KeyUsageExtension(
+                X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.KeyEncipherment,
+                false));
+
+        request.CertificateExtensions.Add(
+            new X509EnhancedKeyUsageExtension(
+                [new Oid("1.3.6.1.5.5.7.3.2")],
+                false));
+
+        var cert = request.CreateSelfSigned(
+            DateTimeOffset.UtcNow.AddDays(-1),
+            DateTimeOffset.UtcNow.AddYears(1));
+
+        return X509CertificateLoader.LoadPkcs12(
+            cert.Export(X509ContentType.Pfx),
+            null,
+            X509KeyStorageFlags.Exportable);
     }
 }

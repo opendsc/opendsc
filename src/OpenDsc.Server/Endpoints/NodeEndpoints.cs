@@ -128,6 +128,17 @@ public static class NodeEndpoints
             return TypedResults.BadRequest(new ErrorResponse { Error = "Registration key has reached its maximum uses." });
         }
 
+        var thumbprintConflict = await db.Nodes
+            .FirstOrDefaultAsync(n => n.CertificateThumbprint == thumbprint && n.Fqdn != request.Fqdn, cancellationToken);
+
+        if (thumbprintConflict is not null)
+        {
+            return TypedResults.Conflict(new ErrorResponse
+            {
+                Error = $"Certificate thumbprint is already registered to another node: {thumbprintConflict.Fqdn}"
+            });
+        }
+
         var existingNode = await db.Nodes.FirstOrDefaultAsync(n => n.Fqdn == request.Fqdn, cancellationToken);
         if (existingNode is not null)
         {

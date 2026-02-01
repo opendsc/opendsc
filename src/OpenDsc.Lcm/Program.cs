@@ -28,7 +28,30 @@ builder.Services.AddOptionsWithValidateOnStart<LcmConfig>()
 
 builder.Services.AddSingleton<DscExecutor>();
 builder.Services.AddSingleton<ICertificateManager, CertificateManager>();
-builder.Services.AddHttpClient<PullServerClient>();
+
+var httpClientBuilder = builder.Services.AddHttpClient<PullServerClient>((sp, client) =>
+{
+    var lcmMonitor = sp.GetRequiredService<IOptionsMonitor<LcmConfig>>();
+    var pullServer = lcmMonitor.CurrentValue.PullServer;
+    if (pullServer is not null && !string.IsNullOrWhiteSpace(pullServer.ServerUrl))
+    {
+        client.BaseAddress = new Uri(pullServer.ServerUrl);
+    }
+});
+
+httpClientBuilder.ConfigurePrimaryHttpMessageHandler(sp =>
+{
+    var certificateManager = sp.GetRequiredService<ICertificateManager>();
+    var cert = certificateManager.GetClientCertificate();
+
+    var handler = new HttpClientHandler();
+    if (cert is not null)
+    {
+        handler.ClientCertificates.Add(cert);
+    }
+    return handler;
+});
+
 builder.Services.AddHostedService<LcmWorker>();
 
 if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))

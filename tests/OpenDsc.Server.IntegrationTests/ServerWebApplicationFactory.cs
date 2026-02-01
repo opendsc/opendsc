@@ -47,7 +47,7 @@ public class ServerWebApplicationFactory : WebApplicationFactory<Program>
 
             if (!db.ServerSettings.Any())
             {
-                var adminKeyHash = Authentication.ApiKeyAuthHandler.HashPasswordArgon2id("test-admin-key", out var adminSalt);
+                var adminKeyHash = Authentication.ApiKeyAuthHandler.HashPasswordPbkdf2("test-admin-key", out var adminSalt);
                 db.ServerSettings.Add(new Entities.ServerSettings
                 {
                     Id = 1,
