@@ -3,6 +3,7 @@
 // terms of the MIT license.
 
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
@@ -18,6 +19,7 @@ public partial class LcmWorker(
     IOptionsMonitor<LcmConfig> lcmMonitor,
     DscExecutor dscExecutor,
     PullServerClient pullServerClient,
+    ICertificateManager certificateManager,
     ILogger<LcmWorker> logger) : BackgroundService
 {
     private static string TimeSpanFormat => "c";
@@ -264,7 +266,7 @@ public partial class LcmWorker(
             return null;
         }
 
-        if (config.PullServer.NodeId is null || string.IsNullOrWhiteSpace(config.PullServer.ApiKey))
+        if (config.PullServer.NodeId is null)
         {
             var registrationResult = await pullServerClient.RegisterAsync(cancellationToken);
             if (registrationResult is null)
@@ -273,12 +275,10 @@ public partial class LcmWorker(
             }
 
             config.PullServer.NodeId = registrationResult.NodeId;
-            config.PullServer.ApiKey = registrationResult.ApiKey;
-            config.PullServer.KeyRotationInterval = registrationResult.KeyRotationInterval;
-            config.PullServer.LastKeyRotation = DateTimeOffset.UtcNow;
+            await PersistNodeIdAsync(config.PullServer.NodeId.Value, cancellationToken);
         }
 
-        await CheckAndRotateApiKeyAsync(config.PullServer, cancellationToken);
+        await CheckAndRotateCertificateAsync(config.PullServer, cancellationToken);
 
         var hasChanged = await pullServerClient.HasConfigurationChangedAsync(cancellationToken);
         if (!hasChanged && !string.IsNullOrWhiteSpace(config.ConfigurationPath) && File.Exists(config.ConfigurationPath))
@@ -311,28 +311,74 @@ public partial class LcmWorker(
     }
 
     /// <summary>
-    /// Checks if the API key needs rotation and rotates it if necessary.
+    /// Persists the NodeId to the configuration file.
     /// </summary>
-    private async Task CheckAndRotateApiKeyAsync(PullServerSettings pullServer, CancellationToken cancellationToken)
+    private async Task PersistNodeIdAsync(Guid nodeId, CancellationToken cancellationToken)
     {
-        if (pullServer.LastKeyRotation is null)
+        try
+        {
+            var configPath = ConfigPaths.GetLcmConfigPath();
+            var configDir = Path.GetDirectoryName(configPath);
+            if (!string.IsNullOrWhiteSpace(configDir) && !Directory.Exists(configDir))
+            {
+                Directory.CreateDirectory(configDir);
+            }
+
+            JsonNode configNode;
+            if (File.Exists(configPath))
+            {
+                var existingJson = await File.ReadAllTextAsync(configPath, cancellationToken);
+                configNode = JsonNode.Parse(existingJson) ?? new JsonObject();
+            }
+            else
+            {
+                configNode = new JsonObject();
+            }
+
+            var lcmNode = configNode["LCM"] as JsonObject ?? new JsonObject();
+            var pullServerNode = lcmNode["PullServer"] as JsonObject ?? new JsonObject();
+            pullServerNode["NodeId"] = nodeId.ToString();
+            lcmNode["PullServer"] = pullServerNode;
+            configNode["LCM"] = lcmNode;
+
+            var options = new JsonSerializerOptions { WriteIndented = true };
+            var updatedJson = configNode.ToJsonString(options);
+            await File.WriteAllTextAsync(configPath, updatedJson, cancellationToken);
+
+            LogNodeIdPersisted(nodeId);
+        }
+        catch (Exception ex)
+        {
+            LogFailedToPersistNodeId(ex);
+        }
+    }
+
+    /// <summary>
+    /// Checks if the certificate needs rotation and rotates it if necessary.
+    /// </summary>
+    private async Task CheckAndRotateCertificateAsync(PullServerSettings pullServer, CancellationToken cancellationToken)
+    {
+        var currentCert = certificateManager.GetClientCertificate();
+        if (currentCert is null)
         {
             return;
         }
 
-        var timeSinceRotation = DateTimeOffset.UtcNow - pullServer.LastKeyRotation.Value;
-        if (timeSinceRotation < pullServer.KeyRotationInterval)
+        if (!certificateManager.ShouldRotateCertificate(currentCert, pullServer))
         {
             return;
         }
 
-        var rotateResult = await pullServerClient.RotateApiKeyAsync(cancellationToken);
-        if (rotateResult is not null)
+        var newCert = certificateManager.RotateCertificate(pullServer);
+        if (newCert is null)
         {
-            pullServer.ApiKey = rotateResult.ApiKey;
-            pullServer.KeyRotationInterval = rotateResult.KeyRotationInterval;
-            pullServer.LastKeyRotation = DateTimeOffset.UtcNow;
-            LogApiKeyRotated();
+            return;
+        }
+
+        var rotated = await pullServerClient.RotateCertificateAsync(newCert, cancellationToken);
+        if (rotated)
+        {
+            LogCertificateRotated();
         }
     }
 
@@ -571,8 +617,14 @@ public partial class LcmWorker(
     [LoggerMessage(EventId = EventIds.ConfigurationDownloadedFromServer, Level = LogLevel.Information, Message = "Configuration downloaded from server: {ConfigurationPath}")]
     private partial void LogConfigurationDownloadedFromServer(string configurationPath);
 
-    [LoggerMessage(EventId = EventIds.ApiKeyRotated, Level = LogLevel.Information, Message = "API key rotated successfully")]
-    private partial void LogApiKeyRotated();
+    [LoggerMessage(EventId = EventIds.NodeIdPersisted, Level = LogLevel.Information, Message = "NodeId persisted to configuration: {NodeId}")]
+    private partial void LogNodeIdPersisted(Guid nodeId);
+
+    [LoggerMessage(EventId = EventIds.FailedToPersistNodeId, Level = LogLevel.Error, Message = "Failed to persist NodeId to configuration")]
+    private partial void LogFailedToPersistNodeId(Exception ex);
+
+    [LoggerMessage(EventId = EventIds.CertificateRotatedOnPullServer, Level = LogLevel.Information, Message = "Certificate rotated successfully")]
+    private partial void LogCertificateRotated();
 
     [LoggerMessage(EventId = 9999, Level = LogLevel.Debug, Message = "Trace level for DSC operations: {TraceLevel}")]
     private partial void LogTraceLevelForDsc(LogLevel traceLevel);

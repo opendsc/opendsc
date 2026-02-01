@@ -4,6 +4,7 @@
 
 using System.Net;
 using System.Net.Http.Json;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
 
@@ -26,6 +27,7 @@ public sealed class PullServerClientTests
     private readonly Mock<HttpMessageHandler> _httpMessageHandlerMock;
     private readonly Mock<ILogger<PullServerClient>> _loggerMock;
     private readonly Mock<IOptionsMonitor<LcmConfig>> _configMonitorMock;
+    private readonly Mock<ICertificateManager> _certificateManagerMock;
     private readonly HttpClient _httpClient;
     private readonly LcmConfig _config;
 
@@ -34,6 +36,7 @@ public sealed class PullServerClientTests
         _httpMessageHandlerMock = new Mock<HttpMessageHandler>();
         _loggerMock = new Mock<ILogger<PullServerClient>>();
         _configMonitorMock = new Mock<IOptionsMonitor<LcmConfig>>();
+        _certificateManagerMock = new Mock<ICertificateManager>();
 
         _config = new LcmConfig
         {
@@ -46,12 +49,14 @@ public sealed class PullServerClientTests
                 ServerUrl = "http://localhost:8080",
                 RegistrationKey = "test-registration-key",
                 NodeId = Guid.NewGuid(),
-                ApiKey = "test-api-key",
-                ConfigurationChecksum = "abc123"
+                ConfigurationChecksum = "abc123",
+                CertificateSource = CertificateSource.Managed
             }
         };
 
         _configMonitorMock.Setup(x => x.CurrentValue).Returns(_config);
+
+        _certificateManagerMock.Setup(x => x.GetClientCertificate()).Returns((X509Certificate2?)null);
 
         _httpClient = new HttpClient(_httpMessageHandlerMock.Object)
         {
@@ -64,9 +69,7 @@ public sealed class PullServerClientTests
     {
         var response = new RegisterNodeResponse
         {
-            NodeId = Guid.NewGuid(),
-            ApiKey = "new-api-key",
-            KeyRotationInterval = TimeSpan.FromDays(30)
+            NodeId = Guid.NewGuid()
         };
 
         _httpMessageHandlerMock.Protected()
@@ -85,14 +88,12 @@ public sealed class PullServerClientTests
                 })
             });
 
-        var client = new PullServerClient(_httpClient, _configMonitorMock.Object, _loggerMock.Object);
+        var client = new PullServerClient(_httpClient, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
 
         var result = await client.RegisterAsync();
 
         result.Should().NotBeNull();
         result!.NodeId.Should().Be(response.NodeId);
-        result.ApiKey.Should().Be(response.ApiKey);
-        result.KeyRotationInterval.Should().Be(response.KeyRotationInterval);
     }
 
     [Fact]
@@ -109,7 +110,7 @@ public sealed class PullServerClientTests
 
         _configMonitorMock.Setup(x => x.CurrentValue).Returns(configWithoutPullServer);
 
-        var client = new PullServerClient(_httpClient, _configMonitorMock.Object, _loggerMock.Object);
+        var client = new PullServerClient(_httpClient, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
 
         var result = await client.RegisterAsync();
 
@@ -130,7 +131,7 @@ public sealed class PullServerClientTests
                 Content = new StringContent("{\"error\":\"Invalid registration key\"}", Encoding.UTF8, "application/json")
             });
 
-        var client = new PullServerClient(_httpClient, _configMonitorMock.Object, _loggerMock.Object);
+        var client = new PullServerClient(_httpClient, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
 
         var result = await client.RegisterAsync();
 
@@ -138,58 +139,33 @@ public sealed class PullServerClientTests
     }
 
     [Fact]
-    public async Task RotateApiKeyAsync_WithValidCredentials_ReturnsNewKey()
+    public async Task RotateCertificateAsync_WithValidCertificate_ReturnsTrue()
     {
-        var response = new RotateKeyResponse
-        {
-            ApiKey = "rotated-api-key",
-            KeyRotationInterval = TimeSpan.FromDays(30)
-        };
-
         _httpMessageHandlerMock.Protected()
             .Setup<Task<HttpResponseMessage>>(
                 "SendAsync",
                 ItExpr.Is<HttpRequestMessage>(req =>
                     req.Method == HttpMethod.Post &&
-                    req.RequestUri!.AbsolutePath.Contains("/rotate-key")),
+                    req.RequestUri!.AbsolutePath.Contains("/rotate-certificate")),
                 ItExpr.IsAny<CancellationToken>())
             .ReturnsAsync(new HttpResponseMessage
             {
-                StatusCode = HttpStatusCode.OK,
-                Content = JsonContent.Create(response, options: new JsonSerializerOptions
-                {
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-                })
+                StatusCode = HttpStatusCode.OK
             });
 
-        var client = new PullServerClient(_httpClient, _configMonitorMock.Object, _loggerMock.Object);
+        var client = new PullServerClient(_httpClient, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
 
-        var result = await client.RotateApiKeyAsync();
+        // Create a test certificate for rotation
+        using var rsa = System.Security.Cryptography.RSA.Create(2048);
+        var request = new System.Security.Cryptography.X509Certificates.CertificateRequest(
+            $"CN={Environment.MachineName}",
+            rsa,
+            System.Security.Cryptography.HashAlgorithmName.SHA256,
+            System.Security.Cryptography.RSASignaturePadding.Pkcs1);
+        using var cert = request.CreateSelfSigned(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddDays(90));
+        var result = await client.RotateCertificateAsync(cert, CancellationToken.None);
 
-        result.Should().NotBeNull();
-        result!.ApiKey.Should().Be(response.ApiKey);
-        result.KeyRotationInterval.Should().Be(response.KeyRotationInterval);
-    }
-
-    [Fact]
-    public async Task RotateApiKeyAsync_WhenNotConfigured_ReturnsNull()
-    {
-        var configWithoutPullServer = new LcmConfig
-        {
-            ConfigurationMode = ConfigurationMode.Monitor,
-            ConfigurationModeInterval = TimeSpan.FromMinutes(15),
-            ConfigurationPath = "test.dsc.yaml",
-            ConfigurationSource = ConfigurationSource.Local,
-            PullServer = null
-        };
-
-        _configMonitorMock.Setup(x => x.CurrentValue).Returns(configWithoutPullServer);
-
-        var client = new PullServerClient(_httpClient, _configMonitorMock.Object, _loggerMock.Object);
-
-        var result = await client.RotateApiKeyAsync();
-
-        result.Should().BeNull();
+        result.Should().BeTrue();
     }
 
     [Fact]
@@ -210,7 +186,7 @@ public sealed class PullServerClientTests
                 Content = new StringContent(configContent, Encoding.UTF8, "application/yaml")
             });
 
-        var client = new PullServerClient(_httpClient, _configMonitorMock.Object, _loggerMock.Object);
+        var client = new PullServerClient(_httpClient, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
 
         var result = await client.GetConfigurationAsync();
 
@@ -231,7 +207,7 @@ public sealed class PullServerClientTests
 
         _configMonitorMock.Setup(x => x.CurrentValue).Returns(configWithoutPullServer);
 
-        var client = new PullServerClient(_httpClient, _configMonitorMock.Object, _loggerMock.Object);
+        var client = new PullServerClient(_httpClient, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
 
         var result = await client.GetConfigurationAsync();
 
@@ -262,7 +238,7 @@ public sealed class PullServerClientTests
                 })
             });
 
-        var client = new PullServerClient(_httpClient, _configMonitorMock.Object, _loggerMock.Object);
+        var client = new PullServerClient(_httpClient, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
 
         var result = await client.GetConfigurationChecksumAsync();
 
@@ -291,7 +267,7 @@ public sealed class PullServerClientTests
                 })
             });
 
-        var client = new PullServerClient(_httpClient, _configMonitorMock.Object, _loggerMock.Object);
+        var client = new PullServerClient(_httpClient, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
 
         var result = await client.HasConfigurationChangedAsync();
 
@@ -320,7 +296,7 @@ public sealed class PullServerClientTests
                 })
             });
 
-        var client = new PullServerClient(_httpClient, _configMonitorMock.Object, _loggerMock.Object);
+        var client = new PullServerClient(_httpClient, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
 
         var result = await client.HasConfigurationChangedAsync();
 
@@ -342,7 +318,7 @@ public sealed class PullServerClientTests
                 StatusCode = HttpStatusCode.OK
             });
 
-        var client = new PullServerClient(_httpClient, _configMonitorMock.Object, _loggerMock.Object);
+        var client = new PullServerClient(_httpClient, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
 
         var result = new DscResult
         {
@@ -376,7 +352,7 @@ public sealed class PullServerClientTests
 
         _configMonitorMock.Setup(x => x.CurrentValue).Returns(configWithoutPullServer);
 
-        var client = new PullServerClient(_httpClient, _configMonitorMock.Object, _loggerMock.Object);
+        var client = new PullServerClient(_httpClient, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
 
         var result = new DscResult
         {

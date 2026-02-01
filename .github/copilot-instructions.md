@@ -812,11 +812,43 @@ The Pull Server (`src/OpenDsc.Server/`) is a REST API-based centralized configur
 
 ### Key Features
 
-1. **Node Registration** - FQDN-based node identification with automatic API key generation
-2. **Configuration Distribution** - Store configurations and distribute to registered nodes
-3. **Compliance Reporting** - Collect and store reports from LCM agents
-4. **API Key Rotation** - Secure, atomic key rotation for node authentication
-5. **Pull Mode Integration** - LCM can operate in pull mode by connecting to the server
+1. **Node Registration** - FQDN-based node identification with mTLS certificate-based authentication
+2. **mTLS Authentication** - Mutual TLS using client certificates for secure node communication
+3. **Certificate Management** - Automatic certificate rotation with atomic updates
+4. **Configuration Distribution** - Store configurations and distribute to registered nodes
+5. **Compliance Reporting** - Collect and store reports from LCM agents
+6. **Pull Mode Integration** - LCM can operate in pull mode by connecting to the server
+
+### mTLS Architecture
+
+**Client Certificate Flow:**
+
+1. **Node Registration** - LCM connects with client certificate (self-signed or from platform store)
+   - Server validates registration key and stores certificate thumbprint, subject DN, expiration
+   - Node receives unique `NodeId` for subsequent operations
+2. **Subsequent Requests** - Server validates certificate thumbprint against database record
+3. **Certificate Rotation** - Nodes rotate certificates via `/api/v1/nodes/{nodeId}/rotate-certificate`
+   - Server atomically updates certificate information
+   - Old certificate immediately invalidated after successful rotation
+
+**Certificate Sources (LCM Configuration):**
+- `Managed` - LCM auto-generates and manages self-signed certificates (default)
+  - Stored in `{ConfigDir}/certs/client.pfx`
+  - Automatic rotation based on `CertificateRotationInterval`
+- `Platform` - Load from system certificate store by thumbprint
+  - Requires `CertificateThumbprint` configuration
+  - Useful for enterprise environments with PKI
+
+**Server Configuration:**
+- Kestrel configured with `ClientCertificateMode.RequireCertificate` (except in Testing environment)
+- `CertificateAuthHandler` validates certificate thumbprint against database
+- Chain validation includes CRL/OCSP checking for enterprise certificates
+
+**Key Files:**
+- `src/OpenDsc.Server/Authentication/CertificateAuthHandler.cs` - mTLS authentication handler
+- `src/OpenDsc.Lcm/CertificateManager.cs` - Client certificate management
+- `src/OpenDsc.Server/Entities/Node.cs` - Stores `CertificateThumbprint`, `CertificateSubject`, `CertificateNotAfter`
+- `src/OpenDsc.Server/Endpoints/NodeEndpoints.cs` - Registration and rotation endpoints
 
 ### API Endpoint Structure
 
@@ -839,10 +871,10 @@ app.MapSettingsEndpoints();         // /api/v1/settings/*
 
 ### Authentication Model
 
-**Two-tier authentication:**
+**Multi-tier authentication:**
 1. **Registration Key** - Used for initial node registration (shared secret)
-2. **Node API Key** - Generated per-node for ongoing operations (rotatable)
-3. **Admin Key** - For administrative operations (future enhancement)
+2. **mTLS (Mutual TLS)** - Certificate-based authentication for node operations after registration
+3. **Admin API Key** - For administrative operations
 
 **LCM Pull Mode Configuration:**
 ```json
@@ -851,10 +883,14 @@ app.MapSettingsEndpoints();         // /api/v1/settings/*
     "ConfigurationSource": "Pull",
     "PullServer": {
       "ServerUrl": "https://pull-server.example.com",
+      "RegistrationKey": "shared-secret-for-registration",
       "NodeId": null,            // Auto-assigned on registration
-      "ApiKey": null,            // Auto-generated on registration
       "ReportCompliance": true,  // Submit compliance reports
-      "KeyRotationInterval": "30.00:00:00"  // 30 days
+      "CertificateSource": "Managed",  // or "Platform" for enterprise PKI
+      "CertificateRotationInterval": "60.00:00:00",  // 60 days (Managed only)
+      "CertificatePath": "{ConfigDir}/certs/client.pfx",  // Managed source
+      "CertificatePassword": null,  // Optional password for certificate file
+      "CertificateThumbprint": null  // Required for Platform source
     }
   }
 }
@@ -901,19 +937,20 @@ docker-compose --profile sqlserver up -d # SQL Server
 The LCM integrates with the Pull Server via `PullServerClient.cs`:
 
 **Key Operations:**
-1. **Registration** - `RegisterAsync()` - Initial node registration with FQDN
+1. **Registration** - `RegisterAsync()` - Initial node registration with FQDN and client certificate
 2. **Configuration Download** - `GetConfigurationAsync()` - Fetch assigned configuration
 3. **Configuration Change Detection** - `HasConfigurationChangedAsync()` - Check checksum
 4. **Report Submission** - `SubmitReportAsync()` - Send compliance reports
-5. **API Key Rotation** - `RotateApiKeyAsync()` - Rotate node API key
+5. **Certificate Rotation** - `RotateCertificateAsync()` - Rotate node client certificate
 
 **LCM Worker Pull Mode Flow:**
 1. Check if configuration source is Pull mode
-2. Register node if not already registered (get NodeId and ApiKey)
-3. Check for key rotation and rotate if needed
-4. Download configuration if changed (checksum comparison)
-5. Execute DSC operations (test/set)
-6. Submit compliance report if enabled
+2. Load or generate client certificate based on `CertificateSource` setting
+3. Register node if not already registered (get NodeId, store certificate on server)
+4. Check for certificate rotation and rotate if needed
+5. Download configuration if changed (checksum comparison)
+6. Execute DSC operations (test/set)
+7. Submit compliance report if enabled
 
 ## Local Configuration Manager (LCM) Service
 

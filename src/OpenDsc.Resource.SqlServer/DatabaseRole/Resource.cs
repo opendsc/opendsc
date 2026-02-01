@@ -4,8 +4,10 @@
 
 using System.Text.Json;
 using System.Text.Json.Serialization;
+
 using Json.Schema;
 using Json.Schema.Generation;
+
 using SmoDatabase = Microsoft.SqlServer.Management.Smo.Database;
 using SmoDatabaseRole = Microsoft.SqlServer.Management.Smo.DatabaseRole;
 

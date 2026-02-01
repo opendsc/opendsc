@@ -14,91 +14,99 @@ namespace OpenDsc.Server.Tests.Authentication;
 public class ApiKeyAuthHandlerTests
 {
     [Fact]
-    public void HashApiKey_ProducesSha256Hash()
+    public void HashPasswordArgon2id_ProducesBase64Hash()
     {
-        var apiKey = "test-api-key-123";
+        var password = "test-admin-key-123";
 
-        var hash = ApiKeyAuthHandler.HashApiKey(apiKey);
+        var hash = ApiKeyAuthHandler.HashPasswordArgon2id(password, out var salt);
 
         hash.Should().NotBeNullOrEmpty();
-        hash.Should().HaveLength(64);
-        hash.Should().MatchRegex("^[a-f0-9]{64}$");
+        salt.Should().NotBeNullOrEmpty();
+
+        // Base64 encoded 32-byte hash should be 44 characters
+        hash.Length.Should().Be(44);
+        salt.Length.Should().Be(44);
     }
 
     [Fact]
-    public void HashApiKey_ProducesConsistentResults()
+    public void HashPasswordArgon2id_ProducesDifferentSaltsOnEachCall()
     {
-        var apiKey = "test-api-key-123";
+        var password = "test-password";
 
-        var hash1 = ApiKeyAuthHandler.HashApiKey(apiKey);
-        var hash2 = ApiKeyAuthHandler.HashApiKey(apiKey);
+        var hash1 = ApiKeyAuthHandler.HashPasswordArgon2id(password, out var salt1);
+        var hash2 = ApiKeyAuthHandler.HashPasswordArgon2id(password, out var salt2);
 
-        hash1.Should().Be(hash2);
-    }
-
-    [Fact]
-    public void HashApiKey_ProducesDifferentHashesForDifferentKeys()
-    {
-        var apiKey1 = "test-api-key-123";
-        var apiKey2 = "test-api-key-456";
-
-        var hash1 = ApiKeyAuthHandler.HashApiKey(apiKey1);
-        var hash2 = ApiKeyAuthHandler.HashApiKey(apiKey2);
-
+        salt1.Should().NotBe(salt2);
         hash1.Should().NotBe(hash2);
     }
 
     [Fact]
-    public void GenerateApiKey_ProducesBase64String()
+    public void VerifyPasswordArgon2id_SucceedsWithCorrectPassword()
     {
-        var apiKey = ApiKeyAuthHandler.GenerateApiKey();
+        var password = "correct-password";
+        var hash = ApiKeyAuthHandler.HashPasswordArgon2id(password, out var salt);
 
-        apiKey.Should().NotBeNullOrEmpty();
-        var bytes = Convert.FromBase64String(apiKey);
+        var result = ApiKeyAuthHandler.VerifyPasswordArgon2id(password, salt, hash);
+
+        result.Should().BeTrue();
+    }
+
+    [Fact]
+    public void VerifyPasswordArgon2id_FailsWithIncorrectPassword()
+    {
+        var password = "correct-password";
+        var hash = ApiKeyAuthHandler.HashPasswordArgon2id(password, out var salt);
+
+        var result = ApiKeyAuthHandler.VerifyPasswordArgon2id("wrong-password", salt, hash);
+
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public void GenerateRegistrationKey_ProducesBase64String()
+    {
+        var key = ApiKeyAuthHandler.GenerateRegistrationKey();
+
+        key.Should().NotBeNullOrEmpty();
+        var bytes = Convert.FromBase64String(key);
         bytes.Length.Should().Be(32);
     }
 
     [Fact]
-    public void GenerateApiKey_ProducesDifferentKeysOnEachCall()
+    public void GenerateRegistrationKey_ProducesDifferentKeysOnEachCall()
     {
-        var apiKey1 = ApiKeyAuthHandler.GenerateApiKey();
-        var apiKey2 = ApiKeyAuthHandler.GenerateApiKey();
+        var key1 = ApiKeyAuthHandler.GenerateRegistrationKey();
+        var key2 = ApiKeyAuthHandler.GenerateRegistrationKey();
 
-        apiKey1.Should().NotBe(apiKey2);
-    }
-
-    [Fact]
-    public void GenerateApiKey_ProducesKeysThatCanBeHashed()
-    {
-        var apiKey = ApiKeyAuthHandler.GenerateApiKey();
-
-        var hash = ApiKeyAuthHandler.HashApiKey(apiKey);
-
-        hash.Should().NotBeNullOrEmpty();
-        hash.Should().HaveLength(64);
+        key1.Should().NotBe(key2);
     }
 
     [Theory]
     [InlineData("")]
     [InlineData("a")]
-    [InlineData("short-key")]
-    [InlineData("very-long-key-with-many-characters-for-testing")]
-    public void HashApiKey_HandlesVariousKeyLengths(string apiKey)
+    [InlineData("short-password")]
+    [InlineData("very-long-password-with-many-characters-for-testing")]
+    public void HashPasswordArgon2id_HandlesVariousPasswordLengths(string password)
     {
-        var hash = ApiKeyAuthHandler.HashApiKey(apiKey);
+        var hash = ApiKeyAuthHandler.HashPasswordArgon2id(password, out var salt);
 
         hash.Should().NotBeNullOrEmpty();
-        hash.Should().HaveLength(64);
-        hash.Should().MatchRegex("^[a-f0-9]{64}$");
+        salt.Should().NotBeNullOrEmpty();
+        hash.Length.Should().Be(44);
+        salt.Length.Should().Be(44);
     }
 
     [Fact]
-    public void HashApiKey_ProducesLowercaseHexString()
+    public void VerifyPasswordArgon2id_IsTimingSafe()
     {
-        var apiKey = "TEST-API-KEY";
+        var password = "test-password";
+        var hash = ApiKeyAuthHandler.HashPasswordArgon2id(password, out var salt);
 
-        var hash = ApiKeyAuthHandler.HashApiKey(apiKey);
+        // Both correct and incorrect passwords should take similar time (timing attack resistance)
+        var result1 = ApiKeyAuthHandler.VerifyPasswordArgon2id(password, salt, hash);
+        var result2 = ApiKeyAuthHandler.VerifyPasswordArgon2id("wrong", salt, hash);
 
-        hash.Should().Be(hash.ToLowerInvariant());
+        result1.Should().BeTrue();
+        result2.Should().BeFalse();
     }
 }

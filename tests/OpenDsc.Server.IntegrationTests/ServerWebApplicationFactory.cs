@@ -2,6 +2,8 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
+using System.Net.Http.Headers;
+
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -45,18 +47,25 @@ public class ServerWebApplicationFactory : WebApplicationFactory<Program>
 
             if (!db.ServerSettings.Any())
             {
+                var adminKeyHash = Authentication.ApiKeyAuthHandler.HashPasswordArgon2id("test-admin-key", out var adminSalt);
                 db.ServerSettings.Add(new Entities.ServerSettings
                 {
                     Id = 1,
-                    RegistrationKey = "test-registration-key",
-                    AdminApiKeyHash = Authentication.ApiKeyAuthHandler.HashApiKey("test-admin-key"),
-                    KeyRotationInterval = TimeSpan.FromDays(30)
+                    AdminApiKeyHash = adminKeyHash,
+                    AdminApiKeySalt = adminSalt
                 });
                 db.SaveChanges();
             }
         }
 
         return host;
+    }
+
+    public HttpClient CreateAuthenticatedClient(string apiKey)
+    {
+        var client = CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+        return client;
     }
 
     protected override void Dispose(bool disposing)

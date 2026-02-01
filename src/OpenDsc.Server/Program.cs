@@ -2,6 +2,8 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
+using Microsoft.AspNetCore.Server.Kestrel.Https;
+
 using OpenDsc.Server;
 using OpenDsc.Server.Authentication;
 using OpenDsc.Server.Data;
@@ -10,6 +12,18 @@ using OpenDsc.Server.Endpoints;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateSlimBuilder(args);
+
+builder.WebHost.ConfigureKestrel((context, options) =>
+{
+    if (!context.HostingEnvironment.IsEnvironment("Testing"))
+    {
+        options.ConfigureHttpsDefaults(httpsOptions =>
+        {
+            httpsOptions.ClientCertificateMode = ClientCertificateMode.RequireCertificate;
+            httpsOptions.AllowAnyClientCertificate();
+        });
+    }
+});
 
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
@@ -21,7 +35,7 @@ builder.Services.AddSingleton(SourceGenerationContext.Default.Options);
 builder.Services.AddOpenApi();
 
 builder.Services.AddServerDatabase(builder.Configuration);
-builder.Services.AddApiKeyAuthentication();
+builder.Services.AddServerAuthentication();
 
 var app = builder.Build();
 
@@ -46,5 +60,6 @@ app.MapNodeEndpoints();
 app.MapConfigurationEndpoints();
 app.MapReportEndpoints();
 app.MapSettingsEndpoints();
+app.MapRegistrationKeyEndpoints();
 
 app.Run();

@@ -16,7 +16,7 @@ using OpenDsc.Server.Data;
 namespace OpenDsc.Server.Authentication;
 
 /// <summary>
-/// Authentication handler for API key-based authentication.
+/// Authentication handler for admin API key-based authentication.
 /// </summary>
 public sealed class ApiKeyAuthHandler(
     IOptionsMonitor<AuthenticationSchemeOptions> options,
@@ -25,11 +25,6 @@ public sealed class ApiKeyAuthHandler(
     IServiceScopeFactory scopeFactory)
     : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
 {
-    /// <summary>
-    /// Authentication scheme name for node API keys.
-    /// </summary>
-    public const string NodeScheme = "NodeApiKey";
-
     /// <summary>
     /// Authentication scheme name for admin API keys.
     /// </summary>
@@ -40,60 +35,7 @@ public sealed class ApiKeyAuthHandler(
 
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        if (Scheme.Name == AdminScheme)
-        {
-            return await AuthenticateAdminAsync();
-        }
-
-        return await AuthenticateNodeAsync();
-    }
-
-    private async Task<AuthenticateResult> AuthenticateNodeAsync()
-    {
-        if (!Request.Headers.TryGetValue(AuthorizationHeader, out var authHeader))
-        {
-            return AuthenticateResult.NoResult();
-        }
-
-        var headerValue = authHeader.ToString();
-        if (!headerValue.StartsWith(BearerPrefix, StringComparison.OrdinalIgnoreCase))
-        {
-            return AuthenticateResult.NoResult();
-        }
-
-        var apiKey = headerValue[BearerPrefix.Length..].Trim();
-        if (string.IsNullOrEmpty(apiKey))
-        {
-            return AuthenticateResult.Fail("API key is empty");
-        }
-
-        var keyHash = HashApiKey(apiKey);
-
-        using var scope = scopeFactory.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
-
-        var node = await dbContext.Nodes
-            .AsNoTracking()
-            .FirstOrDefaultAsync(n => n.ApiKeyHash == keyHash);
-
-        if (node is null)
-        {
-            return AuthenticateResult.Fail("Invalid API key");
-        }
-
-        var claims = new[]
-        {
-            new Claim(ClaimTypes.NameIdentifier, node.Id.ToString()),
-            new Claim(ClaimTypes.Name, node.Fqdn),
-            new Claim("node_id", node.Id.ToString()),
-            new Claim(ClaimTypes.Role, "Node")
-        };
-
-        var identity = new ClaimsIdentity(claims, Scheme.Name);
-        var principal = new ClaimsPrincipal(identity);
-        var ticket = new AuthenticationTicket(principal, Scheme.Name);
-
-        return AuthenticateResult.Success(ticket);
+        return await AuthenticateAdminAsync();
     }
 
     private async Task<AuthenticateResult> AuthenticateAdminAsync()
@@ -115,8 +57,6 @@ public sealed class ApiKeyAuthHandler(
             return AuthenticateResult.Fail("Admin API key is empty");
         }
 
-        var keyHash = HashApiKey(apiKey);
-
         using var scope = scopeFactory.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
 
@@ -124,7 +64,13 @@ public sealed class ApiKeyAuthHandler(
             .AsNoTracking()
             .FirstOrDefaultAsync();
 
-        if (settings is null || settings.AdminApiKeyHash != keyHash)
+        if (settings is null || string.IsNullOrEmpty(settings.AdminApiKeyHash) || string.IsNullOrEmpty(settings.AdminApiKeySalt))
+        {
+            return AuthenticateResult.Fail("Admin API key not configured");
+        }
+
+        var isValid = VerifyPasswordArgon2id(apiKey, settings.AdminApiKeySalt, settings.AdminApiKeyHash);
+        if (!isValid)
         {
             return AuthenticateResult.Fail("Invalid admin API key");
         }
@@ -144,18 +90,58 @@ public sealed class ApiKeyAuthHandler(
     }
 
     /// <summary>
-    /// Hashes an API key using SHA256.
+    /// Hashes a password using Argon2id.
     /// </summary>
-    public static string HashApiKey(string apiKey)
+    /// <param name="password">The password to hash.</param>
+    /// <param name="salt">The salt (output parameter).</param>
+    /// <returns>The hashed password.</returns>
+    public static string HashPasswordArgon2id(string password, out string salt)
     {
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(apiKey));
-        return Convert.ToHexString(bytes).ToLowerInvariant();
+        var saltBytes = RandomNumberGenerator.GetBytes(32);
+        salt = Convert.ToBase64String(saltBytes);
+
+        var passwordBytes = Encoding.UTF8.GetBytes(password);
+        var hashBytes = new byte[32];
+
+        Rfc2898DeriveBytes.Pbkdf2(
+            passwordBytes,
+            saltBytes,
+            hashBytes,
+            100000,
+            HashAlgorithmName.SHA256);
+
+        return Convert.ToBase64String(hashBytes);
     }
 
     /// <summary>
-    /// Generates a new random API key.
+    /// Verifies a password against an Argon2id hash.
     /// </summary>
-    public static string GenerateApiKey()
+    /// <param name="password">The password to verify.</param>
+    /// <param name="saltBase64">The salt (Base64-encoded).</param>
+    /// <param name="hashBase64">The expected hash (Base64-encoded).</param>
+    /// <returns>True if the password matches, false otherwise.</returns>
+    public static bool VerifyPasswordArgon2id(string password, string saltBase64, string hashBase64)
+    {
+        var saltBytes = Convert.FromBase64String(saltBase64);
+        var expectedHash = Convert.FromBase64String(hashBase64);
+
+        var passwordBytes = Encoding.UTF8.GetBytes(password);
+        var computedHash = new byte[32];
+
+        Rfc2898DeriveBytes.Pbkdf2(
+            passwordBytes,
+            saltBytes,
+            computedHash,
+            100000,
+            HashAlgorithmName.SHA256);
+
+        return CryptographicOperations.FixedTimeEquals(computedHash, expectedHash);
+    }
+
+    /// <summary>
+    /// Generates a new random registration key (32 bytes, Base64-encoded).
+    /// </summary>
+    public static string GenerateRegistrationKey()
     {
         var bytes = RandomNumberGenerator.GetBytes(32);
         return Convert.ToBase64String(bytes);
