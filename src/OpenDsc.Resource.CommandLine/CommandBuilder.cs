@@ -79,10 +79,9 @@ public sealed class CommandBuilder
     {
         var command = new Command("get", "Get the current state of a resource instance");
 
-        var inputOption = new Option<string>("--input", "-i")
+        var inputOption = new Option<string?>("--input", "-i")
         {
-            Description = "JSON input for the resource instance",
-            Required = true
+            Description = "JSON input for the resource instance"
         };
 
         if (!IsSingleResource)
@@ -96,7 +95,7 @@ public sealed class CommandBuilder
             try
             {
                 var resourceType = parseResult.GetValue(_requiredResourceOption);
-                var input = parseResult.GetValue(inputOption)!;
+                var input = parseResult.GetValue(inputOption);
                 var registration = ResolveResource(resourceType, IsSingleResource);
                 CommandExecutor.ExecuteGet(registration, input);
             }
@@ -114,10 +113,9 @@ public sealed class CommandBuilder
     {
         var command = new Command("set", "Set the desired state of a resource instance");
 
-        var inputOption = new Option<string>("--input", "-i")
+        var inputOption = new Option<string?>("--input", "-i")
         {
-            Description = "JSON input for the desired state",
-            Required = true
+            Description = "JSON input for the desired state"
         };
 
         if (!IsSingleResource)
@@ -131,7 +129,7 @@ public sealed class CommandBuilder
             try
             {
                 var resourceType = parseResult.GetValue(_requiredResourceOption);
-                var input = parseResult.GetValue(inputOption)!;
+                var input = parseResult.GetValue(inputOption);
                 var registration = ResolveResource(resourceType, IsSingleResource);
                 CommandExecutor.ExecuteSet(registration, input);
             }
@@ -149,10 +147,9 @@ public sealed class CommandBuilder
     {
         var command = new Command("test", "Test if a resource instance is in the desired state");
 
-        var inputOption = new Option<string>("--input", "-i")
+        var inputOption = new Option<string?>("--input", "-i")
         {
-            Description = "JSON input for the desired state",
-            Required = true
+            Description = "JSON input for the desired state"
         };
 
         if (!IsSingleResource)
@@ -166,7 +163,7 @@ public sealed class CommandBuilder
             try
             {
                 var resourceType = parseResult.GetValue(_requiredResourceOption);
-                var input = parseResult.GetValue(inputOption)!;
+                var input = parseResult.GetValue(inputOption);
                 var registration = ResolveResource(resourceType, IsSingleResource);
                 CommandExecutor.ExecuteTest(registration, input);
             }
@@ -184,10 +181,9 @@ public sealed class CommandBuilder
     {
         var command = new Command("delete", "Delete a resource instance");
 
-        var inputOption = new Option<string>("--input", "-i")
+        var inputOption = new Option<string?>("--input", "-i")
         {
-            Description = "JSON input identifying the resource instance",
-            Required = true
+            Description = "JSON input identifying the resource instance"
         };
 
         if (!IsSingleResource)
@@ -201,7 +197,7 @@ public sealed class CommandBuilder
             try
             {
                 var resourceType = parseResult.GetValue(_requiredResourceOption);
-                var input = parseResult.GetValue(inputOption)!;
+                var input = parseResult.GetValue(inputOption);
                 var registration = ResolveResource(resourceType, IsSingleResource);
                 CommandExecutor.ExecuteDelete(registration, input);
             }
@@ -219,18 +215,25 @@ public sealed class CommandBuilder
     {
         var command = new Command("export", "Export all instances of a resource");
 
+        var inputOption = new Option<string?>("--input", "-i")
+        {
+            Description = "Optional JSON filter to limit which resources are exported"
+        };
+
         if (!IsSingleResource)
         {
             command.Options.Add(_requiredResourceOption);
         }
+        command.Options.Add(inputOption);
 
         command.SetAction(parseResult =>
         {
             try
             {
                 var resourceType = parseResult.GetValue(_requiredResourceOption);
+                var input = parseResult.GetValue(inputOption);
                 var registration = ResolveResource(resourceType, IsSingleResource);
-                CommandExecutor.ExecuteExport(registration);
+                CommandExecutor.ExecuteExport(registration, input);
             }
             catch (Exception ex)
             {

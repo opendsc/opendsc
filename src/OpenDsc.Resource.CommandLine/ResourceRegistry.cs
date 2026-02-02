@@ -28,24 +28,24 @@ internal sealed class ResourceRegistry
             throw new ArgumentException($"Resource type '{attribute.Type}' is already registered.", nameof(TResource));
         }
 
-        Action<string>? getAction = resource is IGettable<TSchema>
-            ? (string input) => ResourceExecutor<TResource, TSchema>.ExecuteGet(resource, input)
+        Action<string?>? getAction = resource is IGettable<TSchema>
+            ? (string? input) => ResourceExecutor<TResource, TSchema>.ExecuteGet(resource, input)
             : null;
 
-        Action<string>? setAction = resource is ISettable<TSchema>
-            ? (string input) => ResourceExecutor<TResource, TSchema>.ExecuteSet(resource, input)
+        Action<string?>? setAction = resource is ISettable<TSchema>
+            ? (string? input) => ResourceExecutor<TResource, TSchema>.ExecuteSet(resource, input)
             : null;
 
-        Action<string>? testAction = resource is ITestable<TSchema>
-            ? (string input) => ResourceExecutor<TResource, TSchema>.ExecuteTest(resource, input)
+        Action<string?>? testAction = resource is ITestable<TSchema>
+            ? (string? input) => ResourceExecutor<TResource, TSchema>.ExecuteTest(resource, input)
             : null;
 
-        Action<string>? deleteAction = resource is IDeletable<TSchema>
-            ? (string input) => ResourceExecutor<TResource, TSchema>.ExecuteDelete(resource, input)
+        Action<string?>? deleteAction = resource is IDeletable<TSchema>
+            ? (string? input) => ResourceExecutor<TResource, TSchema>.ExecuteDelete(resource, input)
             : null;
 
-        Action? exportAction = resource is IExportable<TSchema>
-            ? () => ResourceExecutor<TResource, TSchema>.ExecuteExport(resource)
+        Action<string?>? exportAction = resource is IExportable<TSchema>
+            ? (string? input) => ResourceExecutor<TResource, TSchema>.ExecuteExport(resource, input)
             : null;
 
         Func<string> schemaFunc = resource.GetSchema;

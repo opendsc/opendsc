@@ -112,7 +112,7 @@ public sealed class Resource(JsonSerializerContext context)
     public Schema Get(Schema instance) { /* ... */ }
     public SetResult<Schema>? Set(Schema instance) { /* ... */ }
     public void Delete(Schema instance) { /* ... */ }
-    public IEnumerable<Schema> Export() { /* ... */ }
+    public IEnumerable<Schema> Export(Schema? filter) { /* ... */ }
 }
 ```
 
@@ -259,7 +259,7 @@ The embedded schema file must be added to the `.csproj` as an `EmbeddedResource`
 - `ISettable.Set(Schema)` → apply changes, return `null` or `SetResult<Schema>`
   - **Important:** Do NOT check `_exist` in `Set()` - the DSC engine calls `Set()` when `_exist=true` and `Delete()` when `_exist=false`
 - `IDeletable.Delete(Schema)` → remove resource
-- `IExportable.Export()` → yield all instances
+- `IExportable.Export(Schema? filter)` → yield all instances, optionally filtered by the provided filter instance
 
 **Best Practice:** Strive to implement all interfaces that make sense for your resource type.
 

@@ -18,8 +18,10 @@ public sealed class Resource(JsonSerializerOptions options) : DscResource<Schema
 public sealed class Resource(JsonSerializerContext context) : DscResource<Schema>(context), IGettable<Schema>
 #endif
 {
-    public Schema Get(Schema instance)
+    public Schema Get(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         return new Schema()
         {
             Name = "Test",

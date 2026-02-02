@@ -41,8 +41,10 @@ public sealed class Resource(JsonSerializerContext context)
         return JsonSerializer.Serialize(schema);
     }
 
-    public Schema Get(Schema instance)
+    public Schema Get(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         var server = SqlConnectionHelper.CreateConnection(instance.ServerInstance, instance.ConnectUsername, instance.ConnectPassword);
 
         try
@@ -98,8 +100,10 @@ public sealed class Resource(JsonSerializerContext context)
         }
     }
 
-    public SetResult<Schema>? Set(Schema instance)
+    public SetResult<Schema>? Set(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         var server = SqlConnectionHelper.CreateConnection(instance.ServerInstance, instance.ConnectUsername, instance.ConnectPassword);
 
         try
@@ -131,8 +135,10 @@ public sealed class Resource(JsonSerializerContext context)
         }
     }
 
-    public void Delete(Schema instance)
+    public void Delete(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         var server = SqlConnectionHelper.CreateConnection(instance.ServerInstance, instance.ConnectUsername, instance.ConnectPassword);
 
         try
@@ -167,7 +173,7 @@ public sealed class Resource(JsonSerializerContext context)
         }
     }
 
-    public IEnumerable<Schema> Export()
+    public IEnumerable<Schema> Export(Schema? filter)
     {
         var serverInstance = Environment.GetEnvironmentVariable("SQLSERVER_INSTANCE") ?? ".";
         var username = Environment.GetEnvironmentVariable("SQLSERVER_USERNAME");
