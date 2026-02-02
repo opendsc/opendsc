@@ -43,6 +43,7 @@ public sealed class Resource(JsonSerializerContext context)
     public Schema Get(Schema? instance)
     {
         ArgumentNullException.ThrowIfNull(instance);
+        ValidateName(instance.Name);
 
         var server = SqlConnectionHelper.CreateConnection(instance.ServerInstance, instance.ConnectUsername, instance.ConnectPassword);
 
@@ -75,6 +76,7 @@ public sealed class Resource(JsonSerializerContext context)
     public SetResult<Schema>? Set(Schema? instance)
     {
         ArgumentNullException.ThrowIfNull(instance);
+        ValidateName(instance.Name);
 
         var server = SqlConnectionHelper.CreateConnection(instance.ServerInstance, instance.ConnectUsername, instance.ConnectPassword);
 
@@ -106,6 +108,7 @@ public sealed class Resource(JsonSerializerContext context)
     public void Delete(Schema? instance)
     {
         ArgumentNullException.ThrowIfNull(instance);
+        ValidateName(instance.Name);
 
         var server = SqlConnectionHelper.CreateConnection(instance.ServerInstance, instance.ConnectUsername, instance.ConnectPassword);
 
@@ -149,6 +152,14 @@ public sealed class Resource(JsonSerializerContext context)
             {
                 server.ConnectionContext.Disconnect();
             }
+        }
+    }
+
+    private static void ValidateName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new ArgumentException("Job name is required and cannot be empty.", nameof(name));
         }
     }
 
