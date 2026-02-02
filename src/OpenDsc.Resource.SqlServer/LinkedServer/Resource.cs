@@ -19,10 +19,8 @@ namespace OpenDsc.Resource.SqlServer.LinkedServer;
 [ExitCode(1, Exception = typeof(Exception), Description = "Error")]
 [ExitCode(2, Exception = typeof(JsonException), Description = "Invalid JSON")]
 [ExitCode(3, Exception = typeof(ArgumentException), Description = "Invalid argument")]
-[ExitCode(4, Exception = typeof(UnauthorizedAccessException),
-    Description = "Unauthorized access")]
-[ExitCode(5, Exception = typeof(InvalidOperationException),
-    Description = "Invalid operation")]
+[ExitCode(4, Exception = typeof(UnauthorizedAccessException), Description = "Unauthorized access")]
+[ExitCode(5, Exception = typeof(InvalidOperationException), Description = "Invalid operation")]
 public sealed class Resource(JsonSerializerContext context)
     : DscResource<Schema>(context),
       IGettable<Schema>,
@@ -69,34 +67,7 @@ public sealed class Resource(JsonSerializerContext context)
                 };
             }
 
-            return new Schema
-            {
-                ServerInstance = instance.ServerInstance,
-                Name = linkedServer.Name,
-                ProductName = NullIfEmpty(linkedServer.ProductName),
-                ProviderName = NullIfEmpty(linkedServer.ProviderName),
-                DataSource = NullIfEmpty(linkedServer.DataSource),
-                Location = NullIfEmpty(linkedServer.Location),
-                Catalog = NullIfEmpty(linkedServer.Catalog),
-                ProviderString = NullIfEmpty(linkedServer.ProviderString),
-                DataAccess = linkedServer.DataAccess,
-                Rpc = linkedServer.Rpc,
-                RpcOut = linkedServer.RpcOut,
-                UseRemoteCollation = linkedServer.UseRemoteCollation,
-                CollationName = NullIfEmpty(linkedServer.CollationName),
-                CollationCompatible = linkedServer.CollationCompatible,
-                LazySchemaValidation = linkedServer.LazySchemaValidation,
-                ConnectTimeout = linkedServer.ConnectTimeout,
-                QueryTimeout = linkedServer.QueryTimeout,
-                IsPromotionofDistributedTransactionsForRPCEnabled =
-                    linkedServer.IsPromotionofDistributedTransactionsForRPCEnabled,
-                Id = linkedServer.ID,
-                DateLastModified = linkedServer.DateLastModified,
-                Distributor = linkedServer.Distributor,
-                DistPublisher = linkedServer.DistPublisher,
-                Publisher = linkedServer.Publisher,
-                Subscriber = linkedServer.Subscriber
-            };
+            return MapLinkedServerToSchema(linkedServer, instance.ServerInstance);
         }
         finally
         {
@@ -188,34 +159,7 @@ public sealed class Resource(JsonSerializerContext context)
             var linkedServers = new List<Schema>();
             foreach (Microsoft.SqlServer.Management.Smo.LinkedServer ls in server.LinkedServers)
             {
-                linkedServers.Add(new Schema
-                {
-                    ServerInstance = serverInstance,
-                    Name = ls.Name,
-                    ProductName = NullIfEmpty(ls.ProductName),
-                    ProviderName = NullIfEmpty(ls.ProviderName),
-                    DataSource = NullIfEmpty(ls.DataSource),
-                    Location = NullIfEmpty(ls.Location),
-                    Catalog = NullIfEmpty(ls.Catalog),
-                    ProviderString = NullIfEmpty(ls.ProviderString),
-                    DataAccess = ls.DataAccess,
-                    Rpc = ls.Rpc,
-                    RpcOut = ls.RpcOut,
-                    UseRemoteCollation = ls.UseRemoteCollation,
-                    CollationName = NullIfEmpty(ls.CollationName),
-                    CollationCompatible = ls.CollationCompatible,
-                    LazySchemaValidation = ls.LazySchemaValidation,
-                    ConnectTimeout = ls.ConnectTimeout,
-                    QueryTimeout = ls.QueryTimeout,
-                    IsPromotionofDistributedTransactionsForRPCEnabled =
-                        ls.IsPromotionofDistributedTransactionsForRPCEnabled,
-                    Id = ls.ID,
-                    DateLastModified = ls.DateLastModified,
-                    Distributor = ls.Distributor,
-                    DistPublisher = ls.DistPublisher,
-                    Publisher = ls.Publisher,
-                    Subscriber = ls.Subscriber
-                });
+                linkedServers.Add(MapLinkedServerToSchema(ls, serverInstance));
             }
 
             return linkedServers;
@@ -419,6 +363,40 @@ public sealed class Resource(JsonSerializerContext context)
         {
             linkedServer.Alter();
         }
+    }
+
+    private static Schema MapLinkedServerToSchema(
+        Microsoft.SqlServer.Management.Smo.LinkedServer linkedServer,
+        string serverInstance)
+    {
+        return new Schema
+        {
+            ServerInstance = serverInstance,
+            Name = linkedServer.Name,
+            ProductName = NullIfEmpty(linkedServer.ProductName),
+            ProviderName = NullIfEmpty(linkedServer.ProviderName),
+            DataSource = NullIfEmpty(linkedServer.DataSource),
+            Location = NullIfEmpty(linkedServer.Location),
+            Catalog = NullIfEmpty(linkedServer.Catalog),
+            ProviderString = NullIfEmpty(linkedServer.ProviderString),
+            DataAccess = linkedServer.DataAccess,
+            Rpc = linkedServer.Rpc,
+            RpcOut = linkedServer.RpcOut,
+            UseRemoteCollation = linkedServer.UseRemoteCollation,
+            CollationName = NullIfEmpty(linkedServer.CollationName),
+            CollationCompatible = linkedServer.CollationCompatible,
+            LazySchemaValidation = linkedServer.LazySchemaValidation,
+            ConnectTimeout = linkedServer.ConnectTimeout,
+            QueryTimeout = linkedServer.QueryTimeout,
+            IsPromotionofDistributedTransactionsForRPCEnabled =
+                linkedServer.IsPromotionofDistributedTransactionsForRPCEnabled,
+            Id = linkedServer.ID,
+            DateLastModified = linkedServer.DateLastModified,
+            Distributor = linkedServer.Distributor,
+            DistPublisher = linkedServer.DistPublisher,
+            Publisher = linkedServer.Publisher,
+            Subscriber = linkedServer.Subscriber
+        };
     }
 
     private static string? NullIfEmpty(string? value) =>
