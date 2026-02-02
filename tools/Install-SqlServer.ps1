@@ -160,6 +160,7 @@ function Install-SqlServerLinux
             $testConn.ConnectionString = $testConnectionString
             $testConn.Open()
             $testConn.Close()
+            $testConn.Dispose()
             Write-Host 'SA connection successful - SQL Server is properly configured.'
             return $true
         }
@@ -174,9 +175,8 @@ function Install-SqlServerLinux
             Start-Sleep -Seconds 3
             
             # The set-sa-password command expects the password twice (for confirmation)
-            # We pipe it using printf to provide both values non-interactively
-            $resetCmd = "printf '%s\n%s\n' '$SaPassword' '$SaPassword' | sudo /opt/mssql/bin/mssql-conf set-sa-password 2>&1"
-            $resetOutput = bash -c $resetCmd
+            # Pass password via stdin from PowerShell to avoid shell injection
+            $resetOutput = "$SaPassword`n$SaPassword" | bash -c 'sudo /opt/mssql/bin/mssql-conf set-sa-password 2>&1'
             
             if ($LASTEXITCODE -eq 0)
             {
@@ -207,6 +207,7 @@ function Install-SqlServerLinux
                     $verifyConn.ConnectionString = $testConnectionString
                     $verifyConn.Open()
                     $verifyConn.Close()
+                    $verifyConn.Dispose()
                     $connectionReady = $true
                     Write-Host 'SQL Server is ready and accepting connections.'
                 }
@@ -374,6 +375,7 @@ function Initialize-SqlServerForTests
         $conn.ConnectionString = $connectionString
         $conn.Open()
         $conn.Close()
+        $conn.Dispose()
         $script:sqlServerAvailable = $true
 
         # Set authentication variables for tests
