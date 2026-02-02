@@ -14,101 +14,79 @@ individual objects within a database.
 
 ## Supported Object Types
 
-| Object Type           | Description                       | Common Permissions      |
-|-----------------------|-----------------------------------|-------------------------|
-| `Table`               | Database tables                   | Select, Insert, Update, |
-|                       |                                   | Delete, References,     |
-|                       |                                   | Alter, Control,         |
-|                       |                                   | ViewDefinition,         |
-|                       |                                   | TakeOwnership           |
-| `View`                | Database views                    | Select, Insert, Update, |
-|                       |                                   | Delete, References,     |
-|                       |                                   | Alter, Control,         |
-|                       |                                   | ViewDefinition,         |
-|                       |                                   | TakeOwnership           |
-| `StoredProcedure`     | Stored procedures                 | Execute, Alter,         |
-|                       |                                   | Control,                |
-|                       |                                   | ViewDefinition,         |
-|                       |                                   | TakeOwnership           |
-| `UserDefinedFunction` | Scalar and table-valued functions | Execute, Select,        |
-|                       |                                   | References, Alter,      |
-|                       |                                   | Control,                |
-|                       |                                   | ViewDefinition,         |
-|                       |                                   | TakeOwnership           |
-| `Schema`              | Database schemas                  | Select, Insert, Update, |
-|                       |                                   | Delete, Execute, Alter, |
-|                       |                                   | Control,                |
-|                       |                                   | ViewDefinition,         |
-|                       |                                   | TakeOwnership,          |
-|                       |                                   | CreateSequence          |
-| `Sequence`            | Sequences                         | Update, Alter, Control, |
-|                       |                                   | ViewDefinition,         |
-|                       |                                   | TakeOwnership,          |
-|                       |                                   | References              |
-| `Synonym`             | Synonyms                          | Select, Insert, Update, |
-|                       |                                   | Delete, Execute,        |
-|                       |                                   | Control,                |
-|                       |                                   | ViewDefinition,         |
-|                       |                                   | TakeOwnership           |
+**Table** - Database tables. Common permissions: Select, Insert, Update, Delete,
+  References, Alter, Control, ViewDefinition, TakeOwnership.
+
+**View** - Database views. Common permissions: Select, Insert, Update, Delete,
+  References, Alter, Control, ViewDefinition, TakeOwnership.
+
+**StoredProcedure** - Stored procedures. Common permissions: Execute, Alter,
+  Control, ViewDefinition, TakeOwnership.
+
+**UserDefinedFunction** - Scalar and table-valued functions. Common permissions:
+  Execute, Select, References, Alter, Control, ViewDefinition, TakeOwnership.
+
+**Schema** - Database schemas. Common permissions: Select, Insert, Update,
+  Delete, Execute, Alter, Control, ViewDefinition, TakeOwnership,
+  CreateSequence.
+
+**Sequence** - Sequences. Common permissions: Update, Alter, Control,
+  ViewDefinition, TakeOwnership, References.
+
+**Synonym** - Synonyms. Common permissions: Select, Insert, Update, Delete,
+Execute, Control, ViewDefinition, TakeOwnership.
 
 ## Available Permissions
 
-The following permissions can be granted on database objects:
+**Select** - Read data from the object. Applicable to: Table, View, Function,
+Schema, Synonym.
 
-| Permission           | Description                           | Applicable Objects  |
-|----------------------|---------------------------------------|---------------------|
-| `Select`             | Read data from the object             | Table, View,        |
-|                      |                                       | Function, Schema,   |
-|                      |                                       | Synonym             |
-| `Insert`             | Insert rows into the object           | Table, View,        |
-|                      |                                       | Schema, Synonym     |
-| `Update`             | Modify data in the object             | Table, View,        |
-|                      |                                       | Sequence, Schema,   |
-|                      |                                       | Synonym             |
-| `Delete`             | Remove rows from the object           | Table, View,        |
-|                      |                                       | Schema, Synonym     |
-| `Execute`            | Execute the object                    | StoredProcedure,    |
-|                      |                                       | Function, Schema,   |
-|                      |                                       | Synonym             |
-| `References`         | Reference the object in a foreign key | Table, View,        |
-|                      |                                       | Function, Sequence  |
-| `Alter`              | Modify the definition of the object   | All objects         |
-| `Control`            | Full control over the object          | All objects         |
-| `ViewDefinition`     | View the definition of the object     | All objects         |
-| `TakeOwnership`      | Take ownership of the object          | All objects         |
-| `ViewChangeTracking` | View change tracking information      | Table, View         |
-| `CreateSequence`     | Create sequences in the schema        | Schema              |
+**Insert** - Insert rows into the object. Applicable to: Table, View, Schema,
+Synonym.
+
+**Update** - Modify data in the object. Applicable to: Table, View, Sequence,
+Schema, Synonym.
+
+**Delete** - Remove rows from the object. Applicable to: Table, View, Schema,
+Synonym.
+
+**Execute** - Execute the object. Applicable to: StoredProcedure, Function,
+Schema, Synonym.
+
+**References** - Reference the object in a foreign key. Applicable to: Table,
+View, Function, Sequence.
+
+**Alter** - Modify the definition of the object. Applicable to all object types.
+
+**Control** - Full control over the object. Applicable to all object types.
+
+**ViewDefinition** - View the definition of the object. Applicable to all object
+  types.
+
+**TakeOwnership** - Take ownership of the object. Applicable to all
+  object types.
+
+**ViewChangeTracking** - View change tracking information. Applicable to: Table,
+  View.
+
+**CreateSequence** - Create sequences in the schema. Applicable to: Schema.
 
 ## Properties
 
-| Property          | Type   | Required | Description                           |
-|-------------------|--------|----------|---------------------------------------|
-| `serverInstance`  | string | Yes      | SQL Server instance name (e.g., `.`,  |
-|                   |        |          | `localhost`, `server\instance`)       |
-| `connectUsername` | string | No       | Username for SQL authentication       |
-|                   |        |          | (write-only)                          |
-| `connectPassword` | string | No       | Password for SQL authentication       |
-|                   |        |          | (write-only)                          |
-| `databaseName`    | string | Yes      | Name of the database containing the   |
-|                   |        |          | object                                |
-| `schemaName`      | string | No       | Schema name of the object (defaults   |
-|                   |        |          | to `dbo`)                             |
-| `objectType`      | string | Yes      | Type of object: `Table`, `View`,      |
-|                   |        |          | `StoredProcedure`,                    |
-|                   |        |          | `UserDefinedFunction`, `Schema`,      |
-|                   |        |          | `Sequence`, `Synonym`                 |
-| `objectName`      | string | Yes      | Name of the database object           |
-| `principal`       | string | Yes      | Database principal (user or role) to  |
-|                   |        |          | manage permissions for                |
-| `permission`      | string | Yes      | Permission name (e.g., `Select`,      |
-|                   |        |          | `Execute`, `Insert`)                  |
-| `state`           | string | No       | Permission state: `Grant`,            |
-|                   |        |          | `GrantWithGrant`, or `Deny` (default: |
-|                   |        |          | `Grant`)                              |
-| `grantor`         | string | No       | Principal who granted the permission  |
-|                   |        |          | (read-only)                           |
-| `_exist`          | bool   | No       | Whether the permission should exist   |
-|                   |        |          | (default: `true`)                     |
+| Property          | Type   | Required | Description                                                                                                |
+|-------------------|--------|----------|------------------------------------------------------------------------------------------------------------|
+| `serverInstance`  | string | Yes      | SQL Server instance name (e.g., `.`, `localhost`, `server\instance`)                                       |
+| `connectUsername` | string | No       | Username for SQL authentication (write-only)                                                               |
+| `connectPassword` | string | No       | Password for SQL authentication (write-only)                                                               |
+| `databaseName`    | string | Yes      | Name of the database containing the object                                                                 |
+| `schemaName`      | string | No       | Schema name of the object (defaults to `dbo`)                                                              |
+| `objectType`      | string | Yes      | Type of object: `Table`, `View`, `StoredProcedure`, `UserDefinedFunction`, `Schema`, `Sequence`, `Synonym` |
+| `objectName`      | string | Yes      | Name of the database object                                                                                |
+| `principal`       | string | Yes      | Database principal (user or role) to manage permissions for                                                |
+| `permission`      | string | Yes      | Permission name (e.g., `Select`, `Execute`, `Insert`)                                                      |
+| `state`           | string | No       | Permission state: `Grant`, `GrantWithGrant`, or `Deny` (default: `Grant`)                                  |
+| `grantor`         | string | No       | Principal who granted the permission (read-only)                                                           |
+| `_exist`          | bool   | No       | Whether the permission should exist (default: `true`)                                                      |
 
 ## Examples
 
