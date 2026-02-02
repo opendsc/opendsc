@@ -26,7 +26,8 @@
     Initialize-SqlServerForTests
 #>
 
-function Get-RandomPassword {
+function Get-RandomPassword
+{
     [CmdletBinding()]
     [OutputType([String])]
     Param
@@ -36,27 +37,41 @@ function Get-RandomPassword {
         [Switch][Bool]$Simple
     )
 
-    begin {
+    begin
+    {
         $SimpleChars = ('!ABCDEFGHKLMNPRSTUVWXYZ!abcdefghkmnprstuvwxyz!123456789!').ToCharArray()
-        $ComplexChars = (33..122 | ForEach-Object {([char]$_).ToString()}).ToCharArray()
+        $ComplexChars = (33..122 | ForEach-Object { ([char]$_).ToString() }).ToCharArray()
     }
 
-    process {
-        if ($Simple) {
+    process
+    {
+        if ($Simple)
+        {
             $Chars = $SimpleChars
         }
-        else {
+        else
+        {
             $Chars = $ComplexChars
         }
 
         Write-Output -InputObject ((Get-Random -Count $Length -InputObject $Chars) -join '')
     }
 
-    end {
+    end
+    {
     }
 }
 
-$script:SqlServerSaPassword = Get-RandomPassword -Simple
+
+if ($env:SQLSERVER_SA_PASSWORD)
+{
+    $script:SqlServerSaPassword = $env:SQLSERVER_SA_PASSWORD
+}
+else
+{
+    $script:SqlServerSaPassword = Get-RandomPassword -Simple
+    $env:SQLSERVER_SA_PASSWORD = $script:SqlServerSaPassword
+}
 
 function Install-SqlServerWindows
 {
@@ -134,7 +149,81 @@ function Install-SqlServerLinux
     if ($mssqlStatus -eq 'active')
     {
         Write-Host 'SQL Server is already running.'
-        return $true
+
+        # Test if we can connect with SA and the expected password
+        Write-Host 'Testing SA connection...'
+        $testConnectionString = "Server=localhost;Connection Timeout=10;User Id=sa;Password=$SaPassword;TrustServerCertificate=True"
+        
+        try
+        {
+            $testConn = New-Object System.Data.SqlClient.SqlConnection
+            $testConn.ConnectionString = $testConnectionString
+            $testConn.Open()
+            $testConn.Close()
+            $testConn.Dispose()
+            Write-Host 'SA connection successful - SQL Server is properly configured.'
+            return $true
+        }
+        catch
+        {
+            Write-Host "SA connection failed: $($_.Exception.Message)"
+            Write-Host 'Resetting SA password...'
+            
+            # Stop SQL Server (required for password reset)
+            Write-Host 'Stopping SQL Server...'
+            bash -c 'sudo systemctl stop mssql-server'
+            Start-Sleep -Seconds 3
+            
+            # The set-sa-password command expects the password twice (for confirmation)
+            # Pass password via stdin from PowerShell to avoid shell injection
+            $resetOutput = "$SaPassword`n$SaPassword" | bash -c 'sudo /opt/mssql/bin/mssql-conf set-sa-password 2>&1'
+            
+            if ($LASTEXITCODE -eq 0)
+            {
+                Write-Host 'SA password reset successfully.'
+            }
+            else
+            {
+                Write-Warning "Failed to reset SA password. Error: $resetOutput"
+            }
+            
+            # Start SQL Server
+            Write-Host 'Starting SQL Server...'
+            bash -c 'sudo systemctl start mssql-server'
+            
+            # Wait for SQL Server to be ready and accepting connections
+            $maxRetries = 12
+            $retryCount = 0
+            $connectionReady = $false
+            
+            while ($retryCount -lt $maxRetries -and -not $connectionReady)
+            {
+                Start-Sleep -Seconds 5
+                $retryCount++
+                
+                try
+                {
+                    $verifyConn = New-Object System.Data.SqlClient.SqlConnection
+                    $verifyConn.ConnectionString = $testConnectionString
+                    $verifyConn.Open()
+                    $verifyConn.Close()
+                    $verifyConn.Dispose()
+                    $connectionReady = $true
+                    Write-Host 'SQL Server is ready and accepting connections.'
+                }
+                catch
+                {
+                    Write-Host "Waiting for SQL Server to be ready... (attempt $retryCount/$maxRetries)"
+                }
+            }
+            
+            if (-not $connectionReady)
+            {
+                Write-Warning 'SQL Server started but is not accepting connections after password reset.'
+            }
+            
+            return $connectionReady
+        }
     }
 
     try
@@ -286,6 +375,7 @@ function Initialize-SqlServerForTests
         $conn.ConnectionString = $connectionString
         $conn.Open()
         $conn.Close()
+        $conn.Dispose()
         $script:sqlServerAvailable = $true
 
         # Set authentication variables for tests
