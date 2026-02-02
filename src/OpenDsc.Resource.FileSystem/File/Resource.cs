@@ -34,8 +34,10 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         return JsonSerializer.Serialize(schema);
     }
 
-    public Schema Get(Schema instance)
+    public Schema Get(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         var fullPath = Path.GetFullPath(instance.Path);
         if (System.IO.File.Exists(fullPath))
         {
@@ -56,8 +58,10 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         }
     }
 
-    public SetResult<Schema>? Set(Schema instance)
+    public SetResult<Schema>? Set(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         var fullPath = Path.GetFullPath(instance.Path);
 
         if (instance.Content is not null)
@@ -72,8 +76,10 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         return null;
     }
 
-    public void Delete(Schema instance)
+    public void Delete(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         var fullPath = Path.GetFullPath(instance.Path);
         if (System.IO.File.Exists(fullPath))
         {

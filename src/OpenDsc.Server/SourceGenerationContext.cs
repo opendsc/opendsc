@@ -18,7 +18,8 @@ namespace OpenDsc.Server;
 // Node contracts
 [JsonSerializable(typeof(RegisterNodeRequest))]
 [JsonSerializable(typeof(RegisterNodeResponse))]
-[JsonSerializable(typeof(RotateKeyResponse))]
+[JsonSerializable(typeof(RotateCertificateRequest))]
+[JsonSerializable(typeof(RotateCertificateResponse))]
 [JsonSerializable(typeof(NodeSummary))]
 [JsonSerializable(typeof(List<NodeSummary>))]
 [JsonSerializable(typeof(AssignConfigurationRequest))]
@@ -37,7 +38,9 @@ namespace OpenDsc.Server;
 // Settings contracts
 [JsonSerializable(typeof(ServerSettingsResponse))]
 [JsonSerializable(typeof(UpdateServerSettingsRequest))]
-[JsonSerializable(typeof(RotateRegistrationKeyResponse))]
+[JsonSerializable(typeof(CreateRegistrationKeyRequest))]
+[JsonSerializable(typeof(RegistrationKeyResponse))]
+[JsonSerializable(typeof(List<RegistrationKeyResponse>))]
 [JsonSerializable(typeof(ErrorResponse))]
 // Health contracts
 [JsonSerializable(typeof(HealthResponse))]

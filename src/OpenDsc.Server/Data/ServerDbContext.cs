@@ -29,6 +29,11 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
     public DbSet<Report> Reports => Set<Report>();
 
     /// <summary>
+    /// Registration keys for node authorization.
+    /// </summary>
+    public DbSet<RegistrationKey> RegistrationKeys => Set<RegistrationKey>();
+
+    /// <summary>
     /// Server settings (singleton).
     /// </summary>
     public DbSet<ServerSettings> ServerSettings => Set<ServerSettings>();
@@ -41,9 +46,11 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
         {
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.Fqdn).IsUnique();
+            entity.HasIndex(e => e.CertificateThumbprint).IsUnique();
             entity.Property(e => e.Fqdn).HasMaxLength(255).IsRequired();
             entity.Property(e => e.ConfigurationName).HasMaxLength(255);
-            entity.Property(e => e.ApiKeyHash).HasMaxLength(64).IsRequired();
+            entity.Property(e => e.CertificateThumbprint).HasMaxLength(64).IsRequired();
+            entity.Property(e => e.CertificateSubject).HasMaxLength(500).IsRequired();
             entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
         });
 
@@ -70,11 +77,19 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
+        modelBuilder.Entity<RegistrationKey>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Key).IsUnique();
+            entity.HasIndex(e => e.ExpiresAt);
+            entity.Property(e => e.Key).HasMaxLength(64).IsRequired();
+        });
+
         modelBuilder.Entity<ServerSettings>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.RegistrationKey).HasMaxLength(64).IsRequired();
-            entity.Property(e => e.AdminApiKeyHash).HasMaxLength(64).IsRequired();
+            entity.Property(e => e.AdminApiKeyHash).HasMaxLength(128).IsRequired();
+            entity.Property(e => e.AdminApiKeySalt).HasMaxLength(64).IsRequired();
         });
     }
 }

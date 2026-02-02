@@ -12,12 +12,13 @@ public sealed class SqliteProviderFixture : DatabaseProviderFixture
 
     public override string ProviderName => "SQLite";
 
-    public override Task InitializeAsync()
+    public override async Task InitializeAsync()
     {
-        _connection = new SqliteConnection("DataSource=:memory:");
-        _connection.Open();
-        ConnectionString = _connection.ConnectionString;
-        return Task.CompletedTask;
+        var uniqueDbName = $"TestDb_{Guid.NewGuid():N}";
+        var connectionString = $"DataSource={uniqueDbName};Mode=Memory;Cache=Shared";
+        _connection = new SqliteConnection(connectionString);
+        await _connection.OpenAsync();
+        ConnectionString = connectionString;
     }
 
     protected override Task CleanupAsync()
