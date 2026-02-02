@@ -47,8 +47,10 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         return schemaObj?.ToJsonString() ?? JsonSerializer.Serialize(schema);
     }
 
-    public Schema Get(Schema instance)
+    public Schema Get(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         if (!File.Exists(instance.Path))
         {
             return new Schema()
@@ -92,8 +94,10 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         };
     }
 
-    public SetResult<Schema>? Set(Schema instance)
+    public SetResult<Schema>? Set(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         if (!File.Exists(instance.Path))
         {
             throw new FileNotFoundException($"JSON file not found: {instance.Path}");
@@ -123,8 +127,10 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         return null;
     }
 
-    public void Delete(Schema instance)
+    public void Delete(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         if (!File.Exists(instance.Path))
         {
             return;

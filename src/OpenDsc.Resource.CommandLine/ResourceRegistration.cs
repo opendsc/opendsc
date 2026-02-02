@@ -14,15 +14,15 @@ internal sealed class ResourceRegistration
 
     internal DscResourceAttribute Metadata { get; }
 
-    internal Action<string>? GetAction { get; }
+    internal Action<string?>? GetAction { get; }
 
-    internal Action<string>? SetAction { get; }
+    internal Action<string?>? SetAction { get; }
 
-    internal Action<string>? TestAction { get; }
+    internal Action<string?>? TestAction { get; }
 
-    internal Action<string>? DeleteAction { get; }
+    internal Action<string?>? DeleteAction { get; }
 
-    internal Action? ExportAction { get; }
+    internal Action<string?>? ExportAction { get; }
 
     internal Func<string>? SchemaFunc { get; }
 
@@ -33,11 +33,11 @@ internal sealed class ResourceRegistration
         Type resourceType,
         Type schemaType,
         DscResourceAttribute metadata,
-        Action<string>? getAction,
-        Action<string>? setAction,
-        Action<string>? testAction,
-        Action<string>? deleteAction,
-        Action? exportAction,
+        Action<string?>? getAction,
+        Action<string?>? setAction,
+        Action<string?>? testAction,
+        Action<string?>? deleteAction,
+        Action<string?>? exportAction,
         Func<string>? schemaFunc,
         Func<Type, int> exitCodeResolver)
     {

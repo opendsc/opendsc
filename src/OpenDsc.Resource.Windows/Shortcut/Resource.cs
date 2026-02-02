@@ -32,8 +32,10 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         return JsonSerializer.Serialize(schema);
     }
 
-    public Schema Get(Schema instance)
+    public Schema Get(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         if (!File.Exists(instance.Path))
         {
             return new Schema()
@@ -46,16 +48,20 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         return ShortcutHelper.ReadShortcut(instance.Path);
     }
 
-    public void Delete(Schema instance)
+    public void Delete(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         if (File.Exists(instance.Path))
         {
             File.Delete(instance.Path);
         }
     }
 
-    public SetResult<Schema>? Set(Schema instance)
+    public SetResult<Schema>? Set(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         string? directoryName = Path.GetDirectoryName(instance.Path);
         if (directoryName == null || !Directory.Exists(directoryName))
         {

@@ -27,8 +27,10 @@ public sealed class UserResource(JsonSerializerContext context) : DscResource<Us
         ["TestUser"] = "Test User"
     };
 
-    public UserSchema Get(UserSchema instance)
+    public UserSchema Get(UserSchema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         var exists = _users.TryGetValue(instance.Name, out var fullName);
         return new UserSchema
         {
@@ -38,8 +40,10 @@ public sealed class UserResource(JsonSerializerContext context) : DscResource<Us
         };
     }
 
-    public SetResult<UserSchema>? Set(UserSchema instance)
+    public SetResult<UserSchema>? Set(UserSchema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         var changedProperties = new List<string>();
 
         if (instance.Exist == false)
@@ -71,8 +75,10 @@ public sealed class UserResource(JsonSerializerContext context) : DscResource<Us
         };
     }
 
-    public TestResult<UserSchema> Test(UserSchema instance)
+    public TestResult<UserSchema> Test(UserSchema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         var current = Get(instance);
         var differingProperties = new List<string>();
 
