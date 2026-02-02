@@ -289,7 +289,8 @@ Describe 'SQL Server Agent Job Resource' -Tag 'SqlServer' -Skip:(!$script:sqlSer
         }
 
         It 'should export all agent jobs' {
-            $result = dsc resource export -r OpenDsc.SqlServer/AgentJob | ConvertFrom-Json
+            $filterJson = Get-SqlServerTestInput @{} | ConvertTo-Json -Compress
+            $result = dsc resource export -r OpenDsc.SqlServer/AgentJob --input $filterJson | ConvertFrom-Json
 
             $result | Should -Not -BeNullOrEmpty
             $result.resources | Should -Not -BeNullOrEmpty

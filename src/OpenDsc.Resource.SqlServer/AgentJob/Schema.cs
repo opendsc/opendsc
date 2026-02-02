@@ -30,7 +30,6 @@ public sealed class Schema
     [WriteOnly]
     public string? ConnectPassword { get; set; }
 
-    [Required]
     [Description("The name of the Agent job.")]
     [Pattern(@"^.+$")]
     public string Name { get; set; } = string.Empty;
