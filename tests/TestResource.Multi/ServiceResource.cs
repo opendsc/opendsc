@@ -34,8 +34,10 @@ public sealed class ServiceResource(JsonSerializerContext context) : DscResource
         ["TestService2"] = ServiceState.Stopped
     };
 
-    public ServiceSchema Get(ServiceSchema instance)
+    public ServiceSchema Get(ServiceSchema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         if (_services.TryGetValue(instance.Name, out var state))
         {
             return new ServiceSchema
@@ -55,8 +57,10 @@ public sealed class ServiceResource(JsonSerializerContext context) : DscResource
         }
     }
 
-    public TestResult<ServiceSchema> Test(ServiceSchema instance)
+    public TestResult<ServiceSchema> Test(ServiceSchema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         var current = Get(instance);
         var differingProperties = new List<string>();
 

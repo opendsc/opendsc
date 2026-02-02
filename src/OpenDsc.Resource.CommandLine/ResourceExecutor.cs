@@ -21,9 +21,9 @@ internal static class ResourceExecutor<TResource, TSchema> where TResource : IDs
         Console.WriteLine(json);
     }
 
-    internal static void ExecuteGet(IDscResource<TSchema> resource, string inputOption)
+    internal static void ExecuteGet(IDscResource<TSchema> resource, string? inputOption)
     {
-        var instance = resource.Parse(inputOption);
+        TSchema? instance = inputOption is not null ? resource.Parse(inputOption) : default;
 
         if (resource is not IGettable<TSchema> iGettable)
         {
@@ -34,9 +34,9 @@ internal static class ResourceExecutor<TResource, TSchema> where TResource : IDs
         Console.WriteLine(resource.ToJson(result));
     }
 
-    internal static void ExecuteSet(IDscResource<TSchema> resource, string inputOption)
+    internal static void ExecuteSet(IDscResource<TSchema> resource, string? inputOption)
     {
-        var instance = resource.Parse(inputOption);
+        TSchema? instance = inputOption is not null ? resource.Parse(inputOption) : default;
 
         if (resource is not ISettable<TSchema> iSettable)
         {
@@ -59,9 +59,9 @@ internal static class ResourceExecutor<TResource, TSchema> where TResource : IDs
         }
     }
 
-    internal static void ExecuteTest(IDscResource<TSchema> resource, string inputOption)
+    internal static void ExecuteTest(IDscResource<TSchema> resource, string? inputOption)
     {
-        var instance = resource.Parse(inputOption);
+        TSchema? instance = inputOption is not null ? resource.Parse(inputOption) : default;
 
         if (resource is not ITestable<TSchema> iTestable)
         {
@@ -81,9 +81,9 @@ internal static class ResourceExecutor<TResource, TSchema> where TResource : IDs
         }
     }
 
-    internal static void ExecuteDelete(IDscResource<TSchema> resource, string inputOption)
+    internal static void ExecuteDelete(IDscResource<TSchema> resource, string? inputOption)
     {
-        var instance = resource.Parse(inputOption);
+        TSchema? instance = inputOption is not null ? resource.Parse(inputOption) : default;
 
         if (resource is not IDeletable<TSchema> iTDeletable)
         {
@@ -93,14 +93,16 @@ internal static class ResourceExecutor<TResource, TSchema> where TResource : IDs
         iTDeletable.Delete(instance);
     }
 
-    internal static void ExecuteExport(IDscResource<TSchema> resource)
+    internal static void ExecuteExport(IDscResource<TSchema> resource, string? inputOption)
     {
+        TSchema? filter = inputOption is not null ? resource.Parse(inputOption) : default;
+
         if (resource is not IExportable<TSchema> iExportable)
         {
             throw new NotImplementedException("Resource does not support Export capability.");
         }
 
-        foreach (var item in iExportable.Export())
+        foreach (var item in iExportable.Export(filter))
         {
             Console.WriteLine(resource.ToJson(item));
         }

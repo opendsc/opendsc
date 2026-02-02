@@ -1,7 +1,7 @@
 Describe 'TestResource.Aot' {
     BeforeAll {
         $configuration = if ($env:BUILD_CONFIGURATION) { $env:BUILD_CONFIGURATION } else { 'Release' }
-        $publishPath = Join-Path $PSScriptRoot "..\..\artifacts\TestResource.Aot" | Resolve-Path | Select-Object -ExpandProperty ProviderPath
+        $publishPath = Join-Path $PSScriptRoot '..\..\artifacts\TestResource.Aot' | Resolve-Path | Select-Object -ExpandProperty ProviderPath
         $env:DSC_RESOURCE_PATH = $publishPath
         $script:tempTestFile = Join-Path $TestDrive 'test-file.txt'
         $exeSuffix = if ($IsWindows) { '.exe' } else { '' }
@@ -85,6 +85,13 @@ Describe 'TestResource.Aot' {
 
         It 'Should include export in manifest' {
             $script:aotResourceManifest.manifest.export | Should -Not -BeNullOrEmpty
+        }
+
+        It 'Should have input argument in export manifest' {
+            $exportArgs = $script:aotResourceManifest.manifest.export.args
+            $inputArg = $exportArgs | Where-Object { $_.jsonInputArg -eq '--input' }
+            $inputArg | Should -Not -BeNullOrEmpty
+            $inputArg.mandatory | Should -Be $false
         }
 
         It 'Should have manifest version' {
@@ -213,6 +220,67 @@ Describe 'TestResource.Aot' {
 
         It 'Should set _exist to null for exported files' {
             $script:exportResult.resources | ForEach-Object { $_.properties._exist | Should -BeNullOrEmpty }
+        }
+    }
+
+    Context 'Export with Filter' {
+        BeforeAll {
+            $env:TEST_EXPORT_DIR = $TestDrive
+            $script:filterTestFile1 = Join-Path $TestDrive 'test-filter1.txt'
+            $script:filterTestFile2 = Join-Path $TestDrive 'test-filter2.txt'
+            $script:filterTestFile3 = Join-Path $TestDrive 'test-other.txt'
+            Set-Content -Path $script:filterTestFile1 -Value 'filter test 1'
+            Set-Content -Path $script:filterTestFile2 -Value 'filter test 2'
+            Set-Content -Path $script:filterTestFile3 -Value 'other test'
+        }
+
+        AfterAll {
+            $env:TEST_EXPORT_DIR = $null
+        }
+
+        It 'Should filter by exact path match' {
+            $filterInput = @{ path = $script:filterTestFile1 } | ConvertTo-Json -Compress
+            $result = dsc resource export -r 'OpenDsc.Test/AotFile' --input $filterInput | ConvertFrom-Json
+            
+            $result.resources.Count | Should -Be 1
+            $result.resources[0].properties.path | Should -Be $script:filterTestFile1
+        }
+
+        It 'Should filter by wildcard pattern' {
+            $filterPattern = Join-Path $TestDrive 'test-filter*.txt'
+            $filterInput = @{ path = $filterPattern } | ConvertTo-Json -Compress
+            $result = dsc resource export -r 'OpenDsc.Test/AotFile' --input $filterInput | ConvertFrom-Json
+            
+            $result.resources.Count | Should -Be 2
+            $paths = $result.resources.properties.path
+            $paths | Should -Contain $script:filterTestFile1
+            $paths | Should -Contain $script:filterTestFile2
+            $paths | Should -Not -Contain $script:filterTestFile3
+        }
+
+        It 'Should return all files when no filter is provided' {
+            $result = dsc resource export -r 'OpenDsc.Test/AotFile' | ConvertFrom-Json
+            
+            $result.resources.Count | Should -BeGreaterOrEqual 3
+            $paths = $result.resources.properties.path
+            $paths | Should -Contain $script:filterTestFile1
+            $paths | Should -Contain $script:filterTestFile2
+            $paths | Should -Contain $script:filterTestFile3
+        }
+
+        It 'Should return empty result when filter matches no files' {
+            $filterInput = @{ path = Join-Path $TestDrive 'nonexistent*.txt' } | ConvertTo-Json -Compress
+            $result = dsc resource export -r 'OpenDsc.Test/AotFile' --input $filterInput | ConvertFrom-Json
+            
+            $result.resources.Count | Should -Be 0
+        }
+
+        It 'Should handle single character wildcard' {
+            $filterPattern = Join-Path $TestDrive 'test-filter?.txt'
+            $filterInput = @{ path = $filterPattern } | ConvertTo-Json -Compress
+            $result = dsc resource export -r 'OpenDsc.Test/AotFile' --input $filterInput | ConvertFrom-Json
+            
+            $result.resources.Count | Should -Be 2
         }
     }
 
