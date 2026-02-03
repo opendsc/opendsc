@@ -7,6 +7,9 @@ configuration management for distributed systems.
 
 - **Configuration Management**: Store and distribute DSC configurations
   to registered nodes
+- **Hierarchical Parameter Merging**: Merge parameters across multiple
+  scopes (global, environment, node) using
+  [OpenDsc.Parameters](../OpenDsc.Parameters/README.md)
 - **Node Registration**: FQDN-based node identification with mTLS
   authentication
 - **mTLS Security**: Mutual TLS authentication using client certificates
@@ -64,10 +67,12 @@ dotnet run
 | `/api/v1/nodes` | GET | Admin | List all nodes |
 | `/api/v1/nodes/{nodeId}` | GET | Admin | Get node details |
 | `/api/v1/nodes/{nodeId}` | DELETE | Admin | Delete a node |
-| `/api/v1/nodes/{nodeId}/configuration` | GET | Node | Download assigned configuration |
+| `/api/v1/nodes/{nodeId}/configuration` | GET | Node | Get assigned configuration info |
 | `/api/v1/nodes/{nodeId}/configuration` | PUT | Admin | Assign configuration to node |
 | `/api/v1/nodes/{nodeId}/configuration/checksum` | GET | Node | Get configuration checksum |
+| `/api/v1/nodes/{nodeId}/configuration/bundle` | GET | Node | Download configuration bundle with merged parameters |
 | `/api/v1/nodes/{nodeId}/rotate-certificate` | POST | Node | Rotate client certificate |
+| `/api/v1/nodes/{nodeId}/parameters/provenance` | GET | Admin | Get parameter provenance for node |
 
 ### Configurations
 
@@ -79,6 +84,26 @@ dotnet run
 | `/api/v1/configurations/{name}` | PUT | Admin | Update configuration content |
 | `/api/v1/configurations/{name}` | DELETE | Admin | Delete a configuration |
 
+### Scopes
+
+| Endpoint | Method | Auth | Description |
+| :-------- | :----- | :--- | :---------- |
+| `/api/v1/scopes` | GET | Admin | List all scopes ordered by precedence |
+| `/api/v1/scopes` | POST | Admin | Create a new scope |
+| `/api/v1/scopes/{name}` | GET | Admin | Get scope details |
+| `/api/v1/scopes/{name}` | PUT | Admin | Update scope properties |
+| `/api/v1/scopes/{name}` | DELETE | Admin | Delete a scope (only if unused) |
+| `/api/v1/scopes/reorder` | PUT | Admin | Atomically reorder all scopes |
+
+### Parameters
+
+| Endpoint | Method | Auth | Description |
+| :-------- | :----- | :--- | :---------- |
+| `/api/v1/parameters/{scopeName}/{configurationName}` | PUT | Admin | Create or update parameter version |
+| `/api/v1/parameters/{scopeName}/{configurationName}/versions` | GET | Admin | List parameter versions |
+| `/api/v1/parameters/{scopeName}/{configurationName}/versions/{version}/activate` | PUT | Admin | Activate a parameter version |
+| `/api/v1/parameters/{scopeName}/{configurationName}/versions/{version}` | DELETE | Admin | Delete parameter version (only if not active) |
+
 ### Reports
 
 | Endpoint | Method | Auth | Description |
@@ -87,6 +112,13 @@ dotnet run
 | `/api/v1/nodes/{nodeId}/reports` | GET | Admin | Get reports for a node |
 | `/api/v1/reports` | GET | Admin | List all reports |
 | `/api/v1/reports/{reportId}` | GET | Admin | Get report details |
+
+### Retention
+
+| Endpoint | Method | Auth | Description |
+| :-------- | :----- | :--- | :---------- |
+| `/api/v1/retention/configurations/cleanup` | POST | Admin | Cleanup old configuration versions |
+| `/api/v1/retention/parameters/cleanup` | POST | Admin | Cleanup old parameter versions |
 
 ### Settings
 
@@ -207,6 +239,222 @@ Configure the LCM to use pull mode by updating its configuration:
   }
 }
 ```
+
+## Parameter Merging
+
+The Pull Server supports hierarchical parameter merging across multiple
+scopes using [OpenDsc.Parameters](../OpenDsc.Parameters/README.md). This
+allows you to define parameters at different levels (global,
+environment, node) and automatically merge them with proper precedence.
+
+### How It Works
+
+1. **Scope Creation**: Create scopes with precedence values (e.g.,
+   "Global"=1, "Production"=2, "Node"=3)
+2. **Parameter Files**: Upload parameter files (YAML/JSON) for each
+   scope and configuration
+3. **Node Assignment**: Assign one or more scopes to a node
+4. **Automatic Merging**: When a node requests configuration, the server:
+   - Queries the node's assigned scopes
+   - Loads active parameter files for each scope
+   - Merges parameters based on scope precedence
+   - Bundles the merged parameters with the configuration files
+
+### Scope Management
+
+**Create a scope:**
+
+```sh
+curl -X POST https://server/api/v1/scopes \
+  -H "Authorization: Bearer $ADMIN_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Production",
+    "description": "Production environment settings",
+    "precedence": 2
+  }'
+```
+
+**List all scopes (ordered by precedence):**
+
+```sh
+curl https://server/api/v1/scopes \
+  -H "Authorization: Bearer $ADMIN_API_KEY"
+```
+
+**Reorder scopes atomically:**
+
+```sh
+curl -X PUT https://server/api/v1/scopes/reorder \
+  -H "Authorization: Bearer $ADMIN_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "scopes": [
+      {"name": "Global", "precedence": 1},
+      {"name": "Production", "precedence": 2},
+      {"name": "WebServer", "precedence": 3},
+      {"name": "Node-Specific", "precedence": 4}
+    ]
+  }'
+```
+
+### Parameter Version Management
+
+**Upload parameter version:**
+
+```sh
+curl -X PUT https://server/api/v1/parameters/Production/MyApp \
+  -H "Authorization: Bearer $ADMIN_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "version": "1.0.0",
+    "content": "logLevel: Warning\nserver: prod.example.com\n",
+    "contentType": "application/x-yaml",
+    "isDraft": false
+  }'
+```
+
+**Activate a parameter version:**
+
+```sh
+curl -X PUT https://server/api/v1/parameters/Production/MyApp/versions/1.0.0/activate \
+  -H "Authorization: Bearer $ADMIN_API_KEY"
+```
+
+**List parameter versions:**
+
+```sh
+curl https://server/api/v1/parameters/Production/MyApp/versions \
+  -H "Authorization: Bearer $ADMIN_API_KEY"
+```
+
+### Parameter Provenance
+
+View where each parameter value originated and what was overridden:
+
+```bash
+curl https://server/api/v1/nodes/{nodeId}/parameters/provenance?configurationName=MyApp \
+  -H "Authorization: Bearer $ADMIN_API_KEY"
+```
+
+Response shows the merged parameters and provenance information:
+
+```json
+{
+  "nodeId": "abc123...",
+  "configurationName": "MyApp",
+  "mergedContent": "logLevel: Warning\nserver: node1.prod.example.com\ntimeout: 30\n",
+  "provenance": {
+    "logLevel": {
+      "scopeName": "Production",
+      "precedence": 2,
+      "value": "Warning",
+      "overriddenBy": [
+        {
+          "scopeName": "Global",
+          "precedence": 1,
+          "value": "Info"
+        }
+      ]
+    },
+    "server": {
+      "scopeName": "Node-Specific",
+      "precedence": 4,
+      "value": "node1.prod.example.com",
+      "overriddenBy": [
+        {
+          "scopeName": "Production",
+          "precedence": 2,
+          "value": "prod.example.com"
+        }
+      ]
+    },
+    "timeout": {
+      "scopeName": "Global",
+      "precedence": 1,
+      "value": 30
+    }
+  }
+}
+```
+
+### Scope Precedence
+
+Scopes are merged in precedence order (higher precedence overrides
+lower):
+
+- **Global** (precedence 1) - Base parameters for all nodes
+- **Environment** (precedence 2) - Environment-specific overrides
+  (dev/staging/prod)
+- **Role** (precedence 3) - Role-specific settings (web server, database)
+- **Node** (precedence 4) - Node-specific overrides (highest priority)
+
+### Example Workflow
+
+1. **Create scopes:**
+
+   ```bash
+   # Global scope
+   curl -X POST https://server/api/v1/scopes \
+     -d '{"name": "Global", "precedence": 1}'
+
+   # Production environment
+   curl -X POST https://server/api/v1/scopes \
+     -d '{"name": "Production", "precedence": 2}'
+
+   # Specific node
+   curl -X POST https://server/api/v1/scopes \
+     -d '{"name": "Node-WebServer1", "precedence": 3}'
+   ```
+
+2. **Upload parameters for each scope:**
+
+   ```yaml
+   # Global (precedence 1)
+   logLevel: Info
+   timeout: 30
+   server: localhost
+   ```
+
+   ```yaml
+   # Production (precedence 2)
+   logLevel: Warning
+   server: prod.example.com
+   ```
+
+   ```yaml
+   # Node-WebServer1 (precedence 3)
+   server: webserver1.prod.example.com
+   ```
+
+3. **Result when node requests configuration:**
+
+   ```yaml
+   logLevel: Warning        # From Production (precedence 2)
+   timeout: 30              # From Global (precedence 1)
+   server: webserver1.prod.example.com  # From Node (precedence 3)
+   ```
+
+### Version Retention
+
+Clean up old parameter versions to save disk space:
+
+```bash
+curl -X POST https://server/api/v1/retention/parameters/cleanup \
+  -H "Authorization: Bearer $ADMIN_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "keepVersions": 5,
+    "keepDays": 30,
+    "dryRun": false
+  }'
+```
+
+This keeps the 5 most recent versions and any versions created in the
+last 30 days. Active versions are never deleted.
+
+For more details on parameter merging, see the
+[OpenDsc.Parameters README](../OpenDsc.Parameters/README.md).
 
 ## Security Considerations
 

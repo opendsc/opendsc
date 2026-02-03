@@ -10,7 +10,12 @@
     <Description>Parameter merging library for DSC configurations with support for hierarchical
       scope-based parameter composition</Description>
     <PackageTags>dsc;desired-state-configuration;parameters;merge;yaml;json</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="YamlDotNet" />
