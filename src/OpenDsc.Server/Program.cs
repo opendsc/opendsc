@@ -4,10 +4,12 @@
 
 using Microsoft.AspNetCore.Server.Kestrel.Https;
 
+using OpenDsc.Parameters;
 using OpenDsc.Server;
 using OpenDsc.Server.Authentication;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Endpoints;
+using OpenDsc.Server.Services;
 
 using Scalar.AspNetCore;
 
@@ -37,6 +39,10 @@ builder.Services.AddOpenApi();
 builder.Services.AddServerDatabase(builder.Configuration);
 builder.Services.AddServerAuthentication();
 
+builder.Services.AddSingleton<IParameterMerger, ParameterMerger>();
+builder.Services.AddScoped<IParameterMergeService, ParameterMergeService>();
+builder.Services.AddScoped<IVersionRetentionService, VersionRetentionService>();
+
 var app = builder.Build();
 
 await app.InitializeDatabaseAsync();
@@ -56,10 +62,13 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapHealthEndpoints();
+app.MapScopeEndpoints();
+app.MapParameterEndpoints();
 app.MapNodeEndpoints();
 app.MapConfigurationEndpoints();
 app.MapReportEndpoints();
 app.MapSettingsEndpoints();
 app.MapRegistrationKeyEndpoints();
+app.MapRetentionEndpoints();
 
 app.Run();

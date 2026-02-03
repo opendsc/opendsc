@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using OpenDsc.Server.Contracts;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
+using OpenDsc.Server.Services;
 
 namespace OpenDsc.Server.Endpoints;
 
@@ -53,6 +54,11 @@ public static class NodeEndpoints
             .RequireAuthorization("Node")
             .WithSummary("Get configuration checksum")
             .WithDescription("Returns the checksum of the assigned configuration for change detection.");
+
+        group.MapGet("/{nodeId:guid}/configuration/bundle", GetConfigurationBundle)
+            .RequireAuthorization("Node")
+            .WithSummary("Download configuration bundle")
+            .WithDescription("Downloads a ZIP bundle containing the configuration files and merged parameters.");
 
         group.MapPost("/{nodeId:guid}/rotate-certificate", RotateCertificate)
             .RequireAuthorization("Node")
@@ -253,32 +259,92 @@ public static class NodeEndpoints
             return TypedResults.Forbid();
         }
 
-        var node = await db.Nodes.FindAsync([nodeId], cancellationToken);
-        if (node is null)
-        {
-            return TypedResults.NotFound(new ErrorResponse { Error = "Node not found." });
-        }
+        var nodeConfig = await db.NodeConfigurations
+            .Include(nc => nc.Configuration)
+            .FirstOrDefaultAsync(nc => nc.NodeId == nodeId, cancellationToken);
 
-        node.LastCheckIn = DateTimeOffset.UtcNow;
-
-        if (string.IsNullOrWhiteSpace(node.ConfigurationName))
+        if (nodeConfig is null)
         {
-            await db.SaveChangesAsync(cancellationToken);
             return TypedResults.NotFound(new ErrorResponse { Error = "No configuration assigned." });
         }
 
-        var config = await db.Configurations
-            .AsNoTracking()
-            .FirstOrDefaultAsync(c => c.Name == node.ConfigurationName, cancellationToken);
-
-        if (config is null)
+        var node = await db.Nodes.FindAsync([nodeId], cancellationToken);
+        if (node is not null)
         {
+            node.LastCheckIn = DateTimeOffset.UtcNow;
             await db.SaveChangesAsync(cancellationToken);
-            return TypedResults.NotFound(new ErrorResponse { Error = "Assigned configuration not found." });
         }
 
+        return TypedResults.Ok($"Configuration '{nodeConfig.Configuration.Name}' is assigned. Use /configuration/bundle endpoint to download.");
+    }
+
+    private static async Task<Results<FileStreamHttpResult, NotFound<ErrorResponse>>> GetConfigurationBundle(
+        Guid nodeId,
+        ServerDbContext db,
+        IConfiguration config,
+        IParameterMergeService parameterMergeService,
+        CancellationToken cancellationToken)
+    {
+        var nodeConfig = await db.NodeConfigurations
+            .Include(nc => nc.Configuration)
+            .ThenInclude(c => c.Versions.Where(v => !v.IsDraft).OrderByDescending(v => v.CreatedAt))
+            .ThenInclude(v => v.Files)
+            .FirstOrDefaultAsync(nc => nc.NodeId == nodeId, cancellationToken);
+
+        if (nodeConfig is null)
+        {
+            return TypedResults.NotFound(new ErrorResponse { Error = "No configuration assigned." });
+        }
+
+        var activeVersion = nodeConfig.ActiveVersionId.HasValue
+            ? nodeConfig.Configuration.Versions.FirstOrDefault(v => v.Id == nodeConfig.ActiveVersionId.Value)
+            : nodeConfig.Configuration.Versions.FirstOrDefault();
+
+        if (activeVersion is null)
+        {
+            return TypedResults.NotFound(new ErrorResponse { Error = "No published version available." });
+        }
+
+        var node = await db.Nodes.FindAsync([nodeId], cancellationToken);
+        node!.LastCheckIn = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
-        return TypedResults.Ok(config.Content);
+
+        var dataDir = config["DataDirectory"] ?? "data";
+        var versionDir = Path.Combine(dataDir, "configurations", nodeConfig.Configuration.Name, $"v{activeVersion.Version}");
+
+        var bundleStream = new MemoryStream();
+        using (var archive = new System.IO.Compression.ZipArchive(bundleStream, System.IO.Compression.ZipArchiveMode.Create, true))
+        {
+            foreach (var file in activeVersion.Files)
+            {
+                var filePath = Path.Combine(versionDir, file.RelativePath);
+                if (!File.Exists(filePath))
+                {
+                    continue;
+                }
+
+                var entry = archive.CreateEntry(file.RelativePath);
+                using var entryStream = entry.Open();
+                using var fileStream = File.OpenRead(filePath);
+                await fileStream.CopyToAsync(entryStream, cancellationToken);
+            }
+
+            if (nodeConfig.UseServerManagedParameters)
+            {
+                var mergedParameters = await parameterMergeService.MergeParametersAsync(nodeId, nodeConfig.ConfigurationId, cancellationToken);
+                if (!string.IsNullOrWhiteSpace(mergedParameters))
+                {
+                    var paramFileName = nodeConfig.Configuration.IsServerManaged ? "parameters.yaml" : "parameters/default.yaml";
+                    var paramEntry = archive.CreateEntry(paramFileName);
+                    using var paramStream = paramEntry.Open();
+                    using var writer = new StreamWriter(paramStream);
+                    await writer.WriteAsync(mergedParameters);
+                }
+            }
+        }
+
+        bundleStream.Position = 0;
+        return TypedResults.File(bundleStream, "application/zip", $"{nodeConfig.Configuration.Name}-v{activeVersion.Version}.zip");
     }
 
     private static async Task<Results<NoContent, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> AssignConfiguration(
@@ -330,23 +396,41 @@ public static class NodeEndpoints
 
         node.LastCheckIn = DateTimeOffset.UtcNow;
 
-        if (string.IsNullOrWhiteSpace(node.ConfigurationName))
+        var nodeConfig = await db.NodeConfigurations
+            .Include(nc => nc.Configuration)
+            .ThenInclude(c => c.Versions.Where(v => !v.IsDraft).OrderByDescending(v => v.CreatedAt))
+            .ThenInclude(v => v.Files)
+            .FirstOrDefaultAsync(nc => nc.NodeId == nodeId, cancellationToken);
+
+        if (nodeConfig is null)
         {
             await db.SaveChangesAsync(cancellationToken);
             return TypedResults.NotFound(new ErrorResponse { Error = "No configuration assigned." });
         }
 
-        var checksum = await db.Configurations
-            .AsNoTracking()
-            .Where(c => c.Name == node.ConfigurationName)
-            .Select(c => c.Checksum)
-            .FirstOrDefaultAsync(cancellationToken);
+        var activeVersion = nodeConfig.ActiveVersionId.HasValue
+            ? nodeConfig.Configuration.Versions.FirstOrDefault(v => v.Id == nodeConfig.ActiveVersionId.Value)
+            : nodeConfig.Configuration.Versions.FirstOrDefault();
 
-        if (checksum is null)
+        if (activeVersion is null)
         {
             await db.SaveChangesAsync(cancellationToken);
-            return TypedResults.NotFound(new ErrorResponse { Error = "Assigned configuration not found." });
+            return TypedResults.NotFound(new ErrorResponse { Error = "No published version available." });
         }
+
+        var checksumParts = new List<string>
+        {
+            $"version:{activeVersion.Version}"
+        };
+
+        foreach (var file in activeVersion.Files.OrderBy(f => f.RelativePath))
+        {
+            checksumParts.Add($"{file.RelativePath}:{file.Checksum}");
+        }
+
+        var combined = string.Join("|", checksumParts);
+        var hash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(combined));
+        var checksum = Convert.ToHexString(hash).ToLowerInvariant();
 
         await db.SaveChangesAsync(cancellationToken);
         return TypedResults.Ok(new ConfigurationChecksumResponse { Checksum = checksum });

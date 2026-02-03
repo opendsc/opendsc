@@ -4,17 +4,15 @@
 
 namespace OpenDsc.Server.Entities;
 
-public sealed class Configuration
+public sealed class Scope
 {
     public Guid Id { get; set; }
     public required string Name { get; set; }
     public string? Description { get; set; }
-    public string EntryPoint { get; set; } = "main.dsc.yaml";
-    public bool IsServerManaged { get; set; } = true;
+    public int Precedence { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? UpdatedAt { get; set; }
 
-    public ICollection<ConfigurationVersion> Versions { get; set; } = [];
     public ICollection<ParameterVersion> ParameterVersions { get; set; } = [];
-    public ICollection<NodeConfiguration> NodeConfigurations { get; set; } = [];
+    public ICollection<NodeScopeAssignment> NodeAssignments { get; set; } = [];
 }

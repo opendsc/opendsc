@@ -21,6 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\OpenDsc.Parameters\OpenDsc.Parameters.csproj" />
     <ProjectReference Include="..\OpenDsc.Schema\OpenDsc.Schema.csproj" />
   </ItemGroup>
 

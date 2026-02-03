@@ -7,6 +7,7 @@ using System.Net;
 using FluentAssertions;
 
 using OpenDsc.Server.Contracts;
+using OpenDsc.Server.Endpoints;
 
 using Xunit;
 
@@ -204,12 +205,17 @@ public class NodeEndpointsTests : IClassFixture<ServerWebApplicationFactory>
 
         using var adminClient = _factory.CreateAuthenticatedClient("test-admin-key");
 
-        var createConfigRequest = new CreateConfigurationRequest
-        {
-            Name = "test-assign-config",
-            Content = "# Test configuration\n"
-        };
-        await adminClient.PostAsJsonAsync("/api/v1/configurations", createConfigRequest);
+        using var configContent = new MultipartFormDataContent();
+        configContent.Add(new StringContent("test-assign-config"), "name");
+        configContent.Add(new StringContent("Test configuration"), "description");
+        configContent.Add(new StringContent("main.dsc.yaml"), "entryPoint");
+        var configFile = new ByteArrayContent("# Test configuration\n"u8.ToArray());
+        configFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+        configContent.Add(configFile, "files", "main.dsc.yaml");
+        var createResponse = await adminClient.PostAsync("/api/v1/configurations", configContent);
+        var configDto = await createResponse.Content.ReadFromJsonAsync<ConfigurationDetailsDto>();
+
+        await adminClient.PutAsync($"/api/v1/configurations/test-assign-config/versions/{configDto!.LatestVersion}/publish", null);
 
         var assignRequest = new AssignConfigurationRequest
         {

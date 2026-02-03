@@ -72,18 +72,40 @@ public class LcmTestServerFactory : WebApplicationFactory<Program>
                 ExpiresAt = DateTimeOffset.UtcNow.AddDays(30)
             });
 
-            db.Configurations.Add(new OpenDsc.Server.Entities.Configuration
+            var config = new OpenDsc.Server.Entities.Configuration
             {
                 Id = Guid.NewGuid(),
                 Name = "test-config",
-                Content = @"
-$schema: https://raw.githubusercontent.com/PowerShell/DSC/main/schemas/2024/04/config/document.json
-resources: []
-",
+                Description = "Test configuration",
+                EntryPoint = "main.dsc.yaml",
+                IsServerManaged = true,
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+
+            db.Configurations.Add(config);
+
+            var version = new OpenDsc.Server.Entities.ConfigurationVersion
+            {
+                Id = Guid.NewGuid(),
+                ConfigurationId = config.Id,
+                Version = "1.0.0",
+                IsDraft = false,
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+
+            db.ConfigurationVersions.Add(version);
+
+            var configFile = new OpenDsc.Server.Entities.ConfigurationFile
+            {
+                Id = Guid.NewGuid(),
+                VersionId = version.Id,
+                RelativePath = "main.dsc.yaml",
+                ContentType = "text/yaml",
                 Checksum = "test-checksum",
-                CreatedAt = DateTimeOffset.UtcNow,
-                ModifiedAt = DateTimeOffset.UtcNow
-            });
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+
+            db.ConfigurationFiles.Add(configFile);
 
             db.SaveChanges();
         });

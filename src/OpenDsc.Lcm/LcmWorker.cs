@@ -286,8 +286,8 @@ public partial class LcmWorker(
             return config.ConfigurationPath;
         }
 
-        var content = await pullServerClient.GetConfigurationAsync(cancellationToken);
-        if (content is null)
+        var bundleStream = await pullServerClient.GetConfigurationBundleAsync(cancellationToken);
+        if (bundleStream is null)
         {
             return !string.IsNullOrWhiteSpace(config.ConfigurationPath) && File.Exists(config.ConfigurationPath)
                 ? config.ConfigurationPath
@@ -297,17 +297,50 @@ public partial class LcmWorker(
         var checksum = await pullServerClient.GetConfigurationChecksumAsync(cancellationToken);
         config.PullServer.ConfigurationChecksum = checksum;
 
-        var pullConfigPath = Path.Combine(ConfigPaths.GetLcmConfigDirectory(), "config", "pull-config.dsc.yaml");
-        var configDir = Path.GetDirectoryName(pullConfigPath);
-        if (!string.IsNullOrWhiteSpace(configDir) && !Directory.Exists(configDir))
+        var extractDir = Path.Combine(ConfigPaths.GetLcmConfigDirectory(), "config", "pull");
+        Directory.CreateDirectory(extractDir);
+
+        using (bundleStream)
+        using (var archive = new System.IO.Compression.ZipArchive(bundleStream, System.IO.Compression.ZipArchiveMode.Read))
         {
-            Directory.CreateDirectory(configDir);
+            foreach (var entry in archive.Entries)
+            {
+                var destPath = Path.Combine(extractDir, entry.FullName);
+                var destDir = Path.GetDirectoryName(destPath);
+                if (!string.IsNullOrEmpty(destDir) && !Directory.Exists(destDir))
+                {
+                    Directory.CreateDirectory(destDir);
+                }
+
+                if (entry.FullName.EndsWith('/') || entry.FullName.EndsWith('\\'))
+                {
+                    continue;
+                }
+
+                using var entryStream = entry.Open();
+                using var fileStream = File.Create(destPath);
+                await entryStream.CopyToAsync(fileStream, cancellationToken);
+            }
         }
 
-        await File.WriteAllTextAsync(pullConfigPath, content, cancellationToken);
-        LogConfigurationDownloadedFromServer(pullConfigPath);
+        var entryPointPath = Path.Combine(extractDir, "main.dsc.yaml");
+        if (!File.Exists(entryPointPath))
+        {
+            var yamlFiles = Directory.GetFiles(extractDir, "*.dsc.yaml", SearchOption.TopDirectoryOnly);
+            if (yamlFiles.Length > 0)
+            {
+                entryPointPath = yamlFiles[0];
+            }
+        }
 
-        return pullConfigPath;
+        if (!File.Exists(entryPointPath))
+        {
+            LogConfigurationEntryPointNotFound(entryPointPath);
+            return null;
+        }
+
+        LogConfigurationExtractedFromBundle(entryPointPath);
+        return entryPointPath;
     }
 
     /// <summary>
@@ -625,6 +658,12 @@ public partial class LcmWorker(
 
     [LoggerMessage(EventId = EventIds.CertificateRotatedOnPullServer, Level = LogLevel.Information, Message = "Certificate rotated successfully")]
     private partial void LogCertificateRotated();
+
+    [LoggerMessage(EventId = EventIds.ConfigurationEntryPointNotFound, Level = LogLevel.Error, Message = "Configuration entry point not found: {EntryPoint}")]
+    private partial void LogConfigurationEntryPointNotFound(string entryPoint);
+
+    [LoggerMessage(EventId = EventIds.ConfigurationExtractedFromBundle, Level = LogLevel.Information, Message = "Configuration extracted from bundle: {ConfigurationPath}")]
+    private partial void LogConfigurationExtractedFromBundle(string configurationPath);
 
     [LoggerMessage(EventId = 9999, Level = LogLevel.Debug, Message = "Trace level for DSC operations: {TraceLevel}")]
     private partial void LogTraceLevelForDsc(LogLevel traceLevel);
