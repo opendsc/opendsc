@@ -42,8 +42,10 @@ public sealed class Resource(JsonSerializerContext context)
         return JsonSerializer.Serialize(schema);
     }
 
-    public Schema Get(Schema instance)
+    public Schema Get(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         var server = SqlConnectionHelper.CreateConnection(
             instance.ServerInstance,
             instance.ConnectUsername,
@@ -124,8 +126,10 @@ public sealed class Resource(JsonSerializerContext context)
         }
     }
 
-    public SetResult<Schema>? Set(Schema instance)
+    public SetResult<Schema>? Set(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         var server = SqlConnectionHelper.CreateConnection(
             instance.ServerInstance,
             instance.ConnectUsername,
@@ -453,9 +457,19 @@ public sealed class Resource(JsonSerializerContext context)
         }
     }
 
-    public IEnumerable<Schema> Export()
+    public IEnumerable<Schema> Export(Schema? filter)
     {
-        var instance = new Schema { ServerInstance = "." };
+        var serverInstance = filter?.ServerInstance ?? ".";
+        var username = filter?.ConnectUsername;
+        var password = filter?.ConnectPassword;
+
+        var instance = new Schema
+        {
+            ServerInstance = serverInstance,
+            ConnectUsername = username,
+            ConnectPassword = password
+        };
+
         yield return Get(instance);
     }
 }

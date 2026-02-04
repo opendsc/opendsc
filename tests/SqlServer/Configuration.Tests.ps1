@@ -634,7 +634,8 @@ Describe 'SQL Server Configuration Resource' -Tag 'SqlServer' -Skip:(!$script:sq
 
     Context 'Export Operation' -Tag 'Export' {
         It 'should export server configuration' {
-            $result = dsc resource export -r OpenDsc.SqlServer/Configuration | ConvertFrom-Json
+            $filterJson = Get-SqlServerTestInput @{} | ConvertTo-Json -Compress
+            $result = dsc resource export -r OpenDsc.SqlServer/Configuration --input $filterJson | ConvertFrom-Json
             $result | Should -Not -BeNullOrEmpty
             $result.resources | Should -Not -BeNullOrEmpty
             $result.resources.Count | Should -Be 1

@@ -18,7 +18,6 @@ public sealed class Schema
     /// <summary>
     /// SQL Server instance name.
     /// </summary>
-    [Required]
     [Description("SQL Server instance name (e.g., '.', 'localhost', 'server\\instance').")]
     public string ServerInstance { get; set; } = string.Empty;
 
