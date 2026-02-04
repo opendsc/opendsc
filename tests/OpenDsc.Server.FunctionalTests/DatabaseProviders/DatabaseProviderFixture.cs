@@ -3,9 +3,6 @@
 // terms of the MIT license.
 
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.EntityFrameworkCore;
-
-using OpenDsc.Server.Data;
 
 using Xunit;
 
@@ -34,30 +31,15 @@ public abstract class DatabaseProviderFixture : WebApplicationFactory<Program>, 
             config.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Database:Provider"] = ProviderName,
-                ["Database:ConnectionString"] = ConnectionString
+                ["Database:ConnectionString"] = ConnectionString,
+                ["Server:InitialAdminKey"] = "test-admin-key"
             });
         });
 
         builder.ConfigureServices(services =>
         {
-            var sp = services.BuildServiceProvider();
-            using var scope = sp.CreateScope();
-            var scopedServices = scope.ServiceProvider;
-            var db = scopedServices.GetRequiredService<ServerDbContext>();
-
-            db.Database.EnsureCreated();
-
-            if (!db.ServerSettings.Any())
-            {
-                db.ServerSettings.Add(new Entities.ServerSettings
-                {
-                    Id = 1,
-                    RegistrationKey = "test-registration-key",
-                    AdminApiKeyHash = Authentication.ApiKeyAuthHandler.HashApiKey("test-admin-key"),
-                    KeyRotationInterval = TimeSpan.FromDays(30)
-                });
-                db.SaveChanges();
-            }
+            services.AddOptions<HostOptions>()
+                .Configure(options => options.ShutdownTimeout = TimeSpan.FromSeconds(30));
         });
 
         builder.UseEnvironment("Testing");

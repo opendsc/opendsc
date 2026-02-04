@@ -63,24 +63,29 @@ public class PullServerSettings
     public Guid? NodeId { get; set; }
 
     /// <summary>
-    /// The API key for authentication with the pull server.
+    /// The source of the client certificate for mTLS authentication.
     /// </summary>
-    public string? ApiKey { get; set; }
+    public CertificateSource CertificateSource { get; set; } = CertificateSource.Managed;
+
+    /// <summary>
+    /// The thumbprint of the certificate (for Platform source).
+    /// </summary>
+    public string? CertificateThumbprint { get; set; }
+
+    /// <summary>
+    /// The path to the certificate file (for Managed source).
+    /// </summary>
+    public string? CertificatePath { get; set; }
+
+    /// <summary>
+    /// The password for the certificate file (for Managed source).
+    /// </summary>
+    public string? CertificatePassword { get; set; }
 
     /// <summary>
     /// The registration key for initial node registration.
     /// </summary>
     public string? RegistrationKey { get; set; }
-
-    /// <summary>
-    /// Interval for rotating the API key. Set by the server during registration.
-    /// </summary>
-    public TimeSpan KeyRotationInterval { get; set; } = TimeSpan.FromDays(7);
-
-    /// <summary>
-    /// Last time the API key was rotated.
-    /// </summary>
-    public DateTimeOffset? LastKeyRotation { get; set; }
 
     /// <summary>
     /// The cached checksum of the current configuration.
@@ -91,6 +96,22 @@ public class PullServerSettings
     /// Whether to submit compliance reports to the server.
     /// </summary>
     public bool ReportCompliance { get; set; } = true;
+}
+
+/// <summary>
+/// The source of the client certificate.
+/// </summary>
+public enum CertificateSource
+{
+    /// <summary>
+    /// Certificate is auto-generated and managed by the LCM.
+    /// </summary>
+    Managed,
+
+    /// <summary>
+    /// Certificate is stored in the platform certificate store.
+    /// </summary>
+    Platform
 }
 
 /// <summary>

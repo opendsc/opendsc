@@ -36,16 +36,20 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         return JsonSerializer.Serialize(schema);
     }
 
-    public Schema Get(Schema instance)
+    public Schema Get(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         var fullPath = Path.GetFullPath(instance.Path);
         return System.IO.Directory.Exists(fullPath)
             ? new Schema { Path = instance.Path }
             : new Schema { Path = instance.Path, Exist = false };
     }
 
-    public TestResult<Schema> Test(Schema instance)
+    public TestResult<Schema> Test(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         var fullPath = Path.GetFullPath(instance.Path);
         bool inDesiredState;
         if (string.IsNullOrEmpty(instance.SourcePath))
@@ -62,8 +66,10 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         return new TestResult<Schema>(currentState);
     }
 
-    public SetResult<Schema>? Set(Schema instance)
+    public SetResult<Schema>? Set(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         var fullPath = Path.GetFullPath(instance.Path);
 
         if (!System.IO.Directory.Exists(fullPath))
@@ -83,8 +89,10 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         return null;
     }
 
-    public void Delete(Schema instance)
+    public void Delete(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         var fullPath = Path.GetFullPath(instance.Path);
         if (System.IO.Directory.Exists(fullPath))
         {
