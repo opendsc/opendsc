@@ -309,7 +309,8 @@ WHERE is_linked = 1 AND name LIKE '$($script:testLinkedServerPrefix)%'
         }
 
         It 'should export all linked servers' {
-            $result = dsc resource export -r OpenDsc.SqlServer/LinkedServer | ConvertFrom-Json
+            $filterJson = Get-SqlServerTestInput @{} | ConvertTo-Json -Compress
+            $result = dsc resource export -r OpenDsc.SqlServer/LinkedServer --input $filterJson | ConvertFrom-Json
 
             $result | Should -Not -BeNullOrEmpty
             $result.resources | Should -Not -BeNullOrEmpty

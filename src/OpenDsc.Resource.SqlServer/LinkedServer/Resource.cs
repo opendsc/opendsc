@@ -42,8 +42,11 @@ public sealed class Resource(JsonSerializerContext context)
         return JsonSerializer.Serialize(schema);
     }
 
-    public Schema Get(Schema instance)
+    public Schema Get(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+        ValidateName(instance.Name);
+
         var server = SqlConnectionHelper.CreateConnection(
             instance.ServerInstance,
             instance.ConnectUsername,
@@ -78,8 +81,11 @@ public sealed class Resource(JsonSerializerContext context)
         }
     }
 
-    public SetResult<Schema>? Set(Schema instance)
+    public SetResult<Schema>? Set(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+        ValidateName(instance.Name);
+
         var server = SqlConnectionHelper.CreateConnection(
             instance.ServerInstance,
             instance.ConnectUsername,
@@ -113,8 +119,11 @@ public sealed class Resource(JsonSerializerContext context)
         }
     }
 
-    public void Delete(Schema instance)
+    public void Delete(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+        ValidateName(instance.Name);
+
         var server = SqlConnectionHelper.CreateConnection(
             instance.ServerInstance,
             instance.ConnectUsername,
@@ -139,19 +148,12 @@ public sealed class Resource(JsonSerializerContext context)
         }
     }
 
-    public IEnumerable<Schema> Export()
+    public IEnumerable<Schema> Export(Schema? filter)
     {
-        var serverInstance = Environment.GetEnvironmentVariable("SQLSERVER_INSTANCE") ?? ".";
-        var username = Environment.GetEnvironmentVariable("SQLSERVER_USERNAME");
-        var password = Environment.GetEnvironmentVariable("SQLSERVER_PASSWORD");
-        return Export(serverInstance, username, password);
-    }
+        var serverInstance = filter?.ServerInstance ?? ".";
+        var username = filter?.ConnectUsername;
+        var password = filter?.ConnectPassword;
 
-    public IEnumerable<Schema> Export(
-        string serverInstance,
-        string? username = null,
-        string? password = null)
-    {
         var server = SqlConnectionHelper.CreateConnection(serverInstance, username, password);
 
         try
@@ -362,6 +364,14 @@ public sealed class Resource(JsonSerializerContext context)
         if (altered)
         {
             linkedServer.Alter();
+        }
+    }
+
+    private static void ValidateName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new ArgumentException("Linked server name is required and cannot be empty.", nameof(name));
         }
     }
 

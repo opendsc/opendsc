@@ -32,7 +32,6 @@ public sealed class Schema
     [WriteOnly]
     public string? ConnectPassword { get; set; }
 
-    [Required]
     [Description("The name of the linked server.")]
     [Pattern(@"^.+$")]
     public string Name { get; set; } = string.Empty;
