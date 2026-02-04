@@ -169,7 +169,7 @@ graph TD
 
 ### Merge Behavior Examples
 
-h4. Example 1: Object Deep Merge
+#### Example 1: Object Deep Merge
 
 ```yaml
 # Precedence 0 (Default)
@@ -192,7 +192,7 @@ server:
   ssl: true                    # Overridden by Region
 ```
 
-h4. Example 2: Array Replace
+#### Example 2: Array Replace
 
 ```yaml
 # Precedence 0 (Default)
@@ -215,7 +215,7 @@ features:
   - encryption
 ```
 
-h4. Example 3: Scalar Replace
+#### Example 3: Scalar Replace
 
 ```yaml
 # Precedence 0 (Default)

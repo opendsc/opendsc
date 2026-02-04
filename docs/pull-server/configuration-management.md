@@ -409,7 +409,7 @@ versions:
 
 ### Version Naming Strategies
 
-h4. Option 1: Date-based
+#### Option 1: Date-based
 
 ```text
 2026-02-03, 2026-02-04, ...
@@ -418,7 +418,7 @@ h4. Option 1: Date-based
 - Pro: Clear chronological ordering
 - Con: Doesn't convey change impact
 
-h4. Option 2: Semantic Versioning
+#### Option 2: Semantic Versioning
 
 ```text
 1.0.0, 1.1.0, 2.0.0, ...
@@ -427,7 +427,7 @@ h4. Option 2: Semantic Versioning
 - Pro: Conveys change impact (major/minor/patch)
 - Con: Requires discipline to follow rules
 
-h4. Option 3: Descriptive
+#### Option 3: Descriptive
 
 ```text
 baseline, add-monitoring, security-hardening, ...
