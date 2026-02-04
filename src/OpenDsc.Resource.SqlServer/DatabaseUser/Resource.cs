@@ -42,8 +42,11 @@ public sealed class Resource(JsonSerializerContext context)
         return JsonSerializer.Serialize(schema);
     }
 
-    public Schema Get(Schema instance)
+    public Schema Get(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+        ValidateRequiredFields(instance);
+
         var server = SqlConnectionHelper.CreateConnection(instance.ServerInstance, instance.ConnectUsername, instance.ConnectPassword);
 
         try
@@ -87,8 +90,11 @@ public sealed class Resource(JsonSerializerContext context)
         }
     }
 
-    public SetResult<Schema>? Set(Schema instance)
+    public SetResult<Schema>? Set(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+        ValidateRequiredFields(instance);
+
         var server = SqlConnectionHelper.CreateConnection(instance.ServerInstance, instance.ConnectUsername, instance.ConnectPassword);
 
         try
@@ -120,8 +126,11 @@ public sealed class Resource(JsonSerializerContext context)
         }
     }
 
-    public void Delete(Schema instance)
+    public void Delete(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+        ValidateRequiredFields(instance);
+
         var server = SqlConnectionHelper.CreateConnection(instance.ServerInstance, instance.ConnectUsername, instance.ConnectPassword);
 
         try
@@ -156,17 +165,13 @@ public sealed class Resource(JsonSerializerContext context)
         }
     }
 
-    public IEnumerable<Schema> Export()
+    public IEnumerable<Schema> Export(Schema? filter)
     {
-        var serverInstance = Environment.GetEnvironmentVariable("SQLSERVER_INSTANCE") ?? ".";
-        var username = Environment.GetEnvironmentVariable("SQLSERVER_USERNAME");
-        var password = Environment.GetEnvironmentVariable("SQLSERVER_PASSWORD");
-        var databaseName = Environment.GetEnvironmentVariable("SQLSERVER_DATABASE");
-        return Export(serverInstance, databaseName, username, password);
-    }
+        var serverInstance = filter?.ServerInstance ?? ".";
+        var username = filter?.ConnectUsername;
+        var password = filter?.ConnectPassword;
+        var databaseName = filter?.DatabaseName;
 
-    public IEnumerable<Schema> Export(string serverInstance, string? databaseName = null, string? username = null, string? password = null)
-    {
         var server = SqlConnectionHelper.CreateConnection(serverInstance, username, password);
 
         try
@@ -197,6 +202,19 @@ public sealed class Resource(JsonSerializerContext context)
             {
                 server.ConnectionContext.Disconnect();
             }
+        }
+    }
+
+    private static void ValidateRequiredFields(Schema instance)
+    {
+        if (string.IsNullOrWhiteSpace(instance.DatabaseName))
+        {
+            throw new ArgumentException("DatabaseName is required and cannot be empty.", nameof(instance));
+        }
+
+        if (string.IsNullOrWhiteSpace(instance.Name))
+        {
+            throw new ArgumentException("Name is required and cannot be empty.", nameof(instance));
         }
     }
 

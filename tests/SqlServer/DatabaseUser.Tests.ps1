@@ -390,16 +390,10 @@ Describe 'SQL Server Database User Resource' -Tag 'SqlServer' -Skip:(!$script:sq
         }
 
         It 'should export database users from specific database' {
-            $env:SQLSERVER_INSTANCE = $script:sqlServerInstance
-            $env:SQLSERVER_DATABASE = $script:testDatabase
-
-            if ($script:sqlServerUsername)
-            {
-                $env:SQLSERVER_USERNAME = $script:sqlServerUsername
-                $env:SQLSERVER_PASSWORD = $script:sqlServerPassword
-            }
-
-            $result = dsc resource export -r OpenDsc.SqlServer/DatabaseUser | ConvertFrom-Json
+            $filterJson = Get-SqlServerTestInput @{
+                databaseName = $script:testDatabase
+            } | ConvertTo-Json -Compress
+            $result = dsc resource export -r OpenDsc.SqlServer/DatabaseUser --input $filterJson | ConvertFrom-Json
 
             $result | Should -Not -BeNullOrEmpty
             $result.resources | Should -Not -BeNullOrEmpty

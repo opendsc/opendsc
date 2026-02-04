@@ -15,7 +15,6 @@ namespace OpenDsc.Resource.SqlServer.DatabaseUser;
 [AdditionalProperties(false)]
 public sealed class Schema
 {
-    [Required]
     [Description("The name of the SQL Server instance to connect to. Use '.' or '(local)' for the default local instance, or 'servername\\instancename' for named instances.")]
     [Pattern(@"^.+$")]
     public string ServerInstance { get; set; } = string.Empty;
@@ -30,12 +29,10 @@ public sealed class Schema
     [WriteOnly]
     public string? ConnectPassword { get; set; }
 
-    [Required]
     [Description("The name of the database containing the user.")]
     [Pattern(@"^[^\[\]]+$")]
     public string DatabaseName { get; set; } = string.Empty;
 
-    [Required]
     [Description("The name of the database user.")]
     [Pattern(@"^.+$")]
     public string Name { get; set; } = string.Empty;
