@@ -10,10 +10,6 @@ Describe 'Windows Audit Policy Resource' -Tag 'Windows' -Skip:(!$IsWindows) {
         {
             $env:DSC_RESOURCE_PATH = $publishDir
         }
-
-        # Common audit subcategory GUIDs for testing
-        $script:FileSystemSubcategoryGuid = '0cce921d-69ae-11d9-bed3-505054503030'  # Audit_ObjectAccess_FileSystem
-        $script:LogonSubcategoryGuid = '0cce9215-69ae-11d9-bed3-505054503030'       # Audit_Logon_Logon
     }
 
     Context 'Discovery' -Tag 'Discovery' {
@@ -27,24 +23,24 @@ Describe 'Windows Audit Policy Resource' -Tag 'Windows' -Skip:(!$IsWindows) {
             $result = dsc resource list OpenDsc.Windows/AuditPolicy | ConvertFrom-Json
             $result.capabilities | Should -Contain 'get'
             $result.capabilities | Should -Contain 'set'
-            $result.capabilities | Should -Contain 'delete'
         }
     }
 
     Context 'Get Operation' -Tag 'Get' -Skip:(!$script:isAdmin) {
         It 'should read current audit policy setting' {
             $inputJson = @{
-                subcategoryGuid = $script:FileSystemSubcategoryGuid
+                subcategory = 'File System'
             } | ConvertTo-Json -Compress
 
             $result = dsc resource get -r OpenDsc.Windows/AuditPolicy --input $inputJson | ConvertFrom-Json
-            $result.actualState.subcategoryGuid | Should -Be $script:FileSystemSubcategoryGuid
+            $result.actualState.subcategory | Should -Be 'File System'
+            # Setting should be enum string values
             $result.actualState.setting | Should -BeIn @('None', 'Success', 'Failure', 'SuccessAndFailure')
         }
 
-        It 'should handle different subcategory GUIDs' {
+        It 'should handle different subcategory names' {
             $inputJson = @{
-                subcategoryGuid = $script:LogonSubcategoryGuid
+                subcategory = 'Logon'
             } | ConvertTo-Json -Compress
 
             $result = dsc resource get -r OpenDsc.Windows/AuditPolicy --input $inputJson | ConvertFrom-Json
@@ -55,18 +51,26 @@ Describe 'Windows Audit Policy Resource' -Tag 'Windows' -Skip:(!$IsWindows) {
 
     Context 'Set Operation' -Tag 'Set' -Skip:(!$script:isAdmin) {
         BeforeEach {
+            # Save original setting
             $inputJson = @{
-                subcategoryGuid = $script:FileSystemSubcategoryGuid
+                subcategory = 'File System'
             } | ConvertTo-Json -Compress
             $script:originalSetting = (dsc resource get -r OpenDsc.Windows/AuditPolicy --input $inputJson | ConvertFrom-Json).actualState.setting
+
+            # Set to a known state (None) before each test
+            $resetJson = @{
+                subcategory = 'File System'
+                setting     = 'None'
+            } | ConvertTo-Json -Compress
+            dsc resource set -r OpenDsc.Windows/AuditPolicy --input $resetJson | Out-Null
         }
 
         AfterEach {
             if ($null -ne $script:originalSetting)
             {
                 $restoreJson = @{
-                    subcategoryGuid = $script:FileSystemSubcategoryGuid
-                    setting         = $script:originalSetting
+                    subcategory = 'File System'
+                    setting     = $script:originalSetting
                 } | ConvertTo-Json -Compress
                 dsc resource set -r OpenDsc.Windows/AuditPolicy --input $restoreJson | Out-Null
             }
@@ -74,15 +78,15 @@ Describe 'Windows Audit Policy Resource' -Tag 'Windows' -Skip:(!$IsWindows) {
 
         It 'should set audit policy to Success' {
             $inputJson = @{
-                subcategoryGuid = $script:FileSystemSubcategoryGuid
-                setting         = 'Success'
+                subcategory = 'File System'
+                setting     = 'Success'
             } | ConvertTo-Json -Compress
 
             dsc resource set -r OpenDsc.Windows/AuditPolicy --input $inputJson | Out-Null
             $LASTEXITCODE | Should -Be 0
 
             $verifyJson = @{
-                subcategoryGuid = $script:FileSystemSubcategoryGuid
+                subcategory = 'File System'
             } | ConvertTo-Json -Compress
 
             $getResult = dsc resource get -r OpenDsc.Windows/AuditPolicy --input $verifyJson | ConvertFrom-Json
@@ -91,92 +95,49 @@ Describe 'Windows Audit Policy Resource' -Tag 'Windows' -Skip:(!$IsWindows) {
 
         It 'should set audit policy to Failure' {
             $inputJson = @{
-                subcategoryGuid = $script:FileSystemSubcategoryGuid
-                setting         = 'Failure'
+                subcategory = 'File System'
+                setting     = 'Failure'
             } | ConvertTo-Json -Compress
 
             dsc resource set -r OpenDsc.Windows/AuditPolicy --input $inputJson | Out-Null
             $LASTEXITCODE | Should -Be 0
 
             $verifyJson = @{
-                subcategoryGuid = $script:FileSystemSubcategoryGuid
+                subcategory = 'File System'
             } | ConvertTo-Json -Compress
 
             $getResult = dsc resource get -r OpenDsc.Windows/AuditPolicy --input $verifyJson | ConvertFrom-Json
             $getResult.actualState.setting | Should -Be 'Failure'
         }
 
-        It 'should set audit policy to SuccessAndFailure' {
+        It 'should set audit policy to Success and Failure' {
             $inputJson = @{
-                subcategoryGuid = $script:FileSystemSubcategoryGuid
-                setting         = 'SuccessAndFailure'
+                subcategory = 'File System'
+                setting     = 'SuccessAndFailure'
             } | ConvertTo-Json -Compress
 
             dsc resource set -r OpenDsc.Windows/AuditPolicy --input $inputJson | Out-Null
             $LASTEXITCODE | Should -Be 0
 
             $verifyJson = @{
-                subcategoryGuid = $script:FileSystemSubcategoryGuid
+                subcategory = 'File System'
             } | ConvertTo-Json -Compress
 
             $getResult = dsc resource get -r OpenDsc.Windows/AuditPolicy --input $verifyJson | ConvertFrom-Json
             $getResult.actualState.setting | Should -Be 'SuccessAndFailure'
         }
 
-        It 'should set audit policy to None' {
+        It 'should disable audit policy (None)' {
             $inputJson = @{
-                subcategoryGuid = $script:FileSystemSubcategoryGuid
-                setting         = 'None'
+                subcategory = 'File System'
+                setting     = 'None'
             } | ConvertTo-Json -Compress
 
             dsc resource set -r OpenDsc.Windows/AuditPolicy --input $inputJson | Out-Null
             $LASTEXITCODE | Should -Be 0
 
             $verifyJson = @{
-                subcategoryGuid = $script:FileSystemSubcategoryGuid
-            } | ConvertTo-Json -Compress
-
-            $getResult = dsc resource get -r OpenDsc.Windows/AuditPolicy --input $verifyJson | ConvertFrom-Json
-            $getResult.actualState.setting | Should -Be 'None'
-        }
-    }
-
-    Context 'Delete Operation' -Tag 'Delete' -Skip:(!$script:isAdmin) {
-        BeforeEach {
-            $setJson = @{
-                subcategoryGuid = $script:FileSystemSubcategoryGuid
-                setting         = 'Success'
-            } | ConvertTo-Json -Compress
-            dsc resource set -r OpenDsc.Windows/AuditPolicy --input $setJson | Out-Null
-
-            $inputJson = @{
-                subcategoryGuid = $script:FileSystemSubcategoryGuid
-            } | ConvertTo-Json -Compress
-            $script:originalSetting = (dsc resource get -r OpenDsc.Windows/AuditPolicy --input $inputJson | ConvertFrom-Json).actualState.setting
-        }
-
-        AfterEach {
-            if ($null -ne $script:originalSetting)
-            {
-                $restoreJson = @{
-                    subcategoryGuid = $script:FileSystemSubcategoryGuid
-                    setting         = $script:originalSetting
-                } | ConvertTo-Json -Compress
-                dsc resource set -r OpenDsc.Windows/AuditPolicy --input $restoreJson | Out-Null
-            }
-        }
-
-        It 'should reset audit policy to None' {
-            $inputJson = @{
-                subcategoryGuid = $script:FileSystemSubcategoryGuid
-                _exist          = $false
-            } | ConvertTo-Json -Compress
-
-            dsc resource delete -r OpenDsc.Windows/AuditPolicy --input $inputJson | Out-Null
-            $LASTEXITCODE | Should -Be 0
-
-            $verifyJson = @{
-                subcategoryGuid = $script:FileSystemSubcategoryGuid
+                subcategory = 'File System'
             } | ConvertTo-Json -Compress
 
             $getResult = dsc resource get -r OpenDsc.Windows/AuditPolicy --input $verifyJson | ConvertFrom-Json
@@ -185,17 +146,17 @@ Describe 'Windows Audit Policy Resource' -Tag 'Windows' -Skip:(!$IsWindows) {
     }
 
     Context 'Schema Validation' -Tag 'Schema' {
-        It 'should validate subcategoryGuid format' {
+        It 'should reject invalid subcategory name' {
             $invalidInput = @{
-                subcategoryGuid = 'not-a-guid'
-                setting         = 'Success'
+                subcategory = 'Invalid Subcategory Name'
+                setting     = 'Success'
             } | ConvertTo-Json -Compress
 
             dsc resource set -r OpenDsc.Windows/AuditPolicy --input $invalidInput 2>&1 | Out-Null
             $LASTEXITCODE | Should -Not -Be 0
         }
 
-        It 'should require subcategoryGuid' {
+        It 'should require subcategory' {
             $invalidInput = @{
                 setting = 'Success'
             } | ConvertTo-Json -Compress
@@ -204,10 +165,10 @@ Describe 'Windows Audit Policy Resource' -Tag 'Windows' -Skip:(!$IsWindows) {
             $LASTEXITCODE | Should -Not -Be 0
         }
 
-        It 'should accept valid GUID format' {
+        It 'should accept valid subcategory name' {
             $validInput = @{
-                subcategoryGuid = '0CCE921D-69AE-11D9-BED3-505054503030'
-                setting         = 'Success'
+                subcategory = 'File System'
+                setting     = 'Success'
             } | ConvertTo-Json -Compress
 
             # Should not fail on schema validation (may fail on permissions if not admin)
@@ -223,7 +184,7 @@ Describe 'Windows Audit Policy Resource' -Tag 'Windows' -Skip:(!$IsWindows) {
     Context 'Non-Elevated Access' -Tag 'NonElevated' -Skip:($script:isAdmin) {
         It 'should fail gracefully when not running as administrator' {
             $inputJson = @{
-                subcategoryGuid = $script:FileSystemSubcategoryGuid
+                subcategory = 'File System'
             } | ConvertTo-Json -Compress
 
             dsc resource get -r OpenDsc.Windows/AuditPolicy --input $inputJson 2>&1 | Out-Null

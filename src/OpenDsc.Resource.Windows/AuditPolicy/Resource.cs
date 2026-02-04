@@ -3,7 +3,6 @@
 // terms of the MIT license.
 
 using System.ComponentModel;
-using System.Runtime.InteropServices;
 using System.Security;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -19,12 +18,75 @@ namespace OpenDsc.Resource.Windows.AuditPolicy;
 [ExitCode(2, Exception = typeof(SecurityException), Description = "Access denied - requires SeSecurityPrivilege or AUDIT_SET_SYSTEM_POLICY access")]
 [ExitCode(3, Exception = typeof(ArgumentException), Description = "Invalid parameter")]
 [ExitCode(4, Exception = typeof(Win32Exception), Description = "Win32 API error")]
+[ExitCode(5, Exception = typeof(UnknownSubcategoryException), Description = "Unknown audit subcategory name")]
 public sealed class Resource(JsonSerializerContext context)
     : DscResource<Schema>(context),
       IGettable<Schema>,
-      ISettable<Schema>,
-      IDeletable<Schema>
+      ISettable<Schema>
 {
+    private static readonly Dictionary<string, Guid> SubcategoryToGuid = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Security State Change"] = new Guid("0cce9210-69ae-11d9-bed3-505054503030"),
+        ["Security System Extension"] = new Guid("0cce9211-69ae-11d9-bed3-505054503030"),
+        ["System Integrity"] = new Guid("0cce9212-69ae-11d9-bed3-505054503030"),
+        ["IPsec Driver"] = new Guid("0cce9213-69ae-11d9-bed3-505054503030"),
+        ["Other System Events"] = new Guid("0cce9214-69ae-11d9-bed3-505054503030"),
+        ["Logon"] = new Guid("0cce9215-69ae-11d9-bed3-505054503030"),
+        ["Logoff"] = new Guid("0cce9216-69ae-11d9-bed3-505054503030"),
+        ["Account Lockout"] = new Guid("0cce9217-69ae-11d9-bed3-505054503030"),
+        ["IPsec Main Mode"] = new Guid("0cce9218-69ae-11d9-bed3-505054503030"),
+        ["IPsec Quick Mode"] = new Guid("0cce9219-69ae-11d9-bed3-505054503030"),
+        ["IPsec Extended Mode"] = new Guid("0cce921a-69ae-11d9-bed3-505054503030"),
+        ["Special Logon"] = new Guid("0cce921b-69ae-11d9-bed3-505054503030"),
+        ["Other Logon/Logoff Events"] = new Guid("0cce921c-69ae-11d9-bed3-505054503030"),
+        ["File System"] = new Guid("0cce921d-69ae-11d9-bed3-505054503030"),
+        ["Registry"] = new Guid("0cce921e-69ae-11d9-bed3-505054503030"),
+        ["Kernel Object"] = new Guid("0cce921f-69ae-11d9-bed3-505054503030"),
+        ["SAM"] = new Guid("0cce9220-69ae-11d9-bed3-505054503030"),
+        ["Certification Services"] = new Guid("0cce9221-69ae-11d9-bed3-505054503030"),
+        ["Application Generated"] = new Guid("0cce9222-69ae-11d9-bed3-505054503030"),
+        ["Handle Manipulation"] = new Guid("0cce9223-69ae-11d9-bed3-505054503030"),
+        ["File Share"] = new Guid("0cce9224-69ae-11d9-bed3-505054503030"),
+        ["Filtering Platform Packet Drop"] = new Guid("0cce9225-69ae-11d9-bed3-505054503030"),
+        ["Filtering Platform Connection"] = new Guid("0cce9226-69ae-11d9-bed3-505054503030"),
+        ["Other Object Access Events"] = new Guid("0cce9227-69ae-11d9-bed3-505054503030"),
+        ["Sensitive Privilege Use"] = new Guid("0cce9228-69ae-11d9-bed3-505054503030"),
+        ["Non Sensitive Privilege Use"] = new Guid("0cce9229-69ae-11d9-bed3-505054503030"),
+        ["Other Privilege Use Events"] = new Guid("0cce922a-69ae-11d9-bed3-505054503030"),
+        ["Process Creation"] = new Guid("0cce922b-69ae-11d9-bed3-505054503030"),
+        ["Process Termination"] = new Guid("0cce922c-69ae-11d9-bed3-505054503030"),
+        ["DPAPI Activity"] = new Guid("0cce922d-69ae-11d9-bed3-505054503030"),
+        ["RPC Events"] = new Guid("0cce922e-69ae-11d9-bed3-505054503030"),
+        ["Audit Policy Change"] = new Guid("0cce922f-69ae-11d9-bed3-505054503030"),
+        ["Authentication Policy Change"] = new Guid("0cce9230-69ae-11d9-bed3-505054503030"),
+        ["Authorization Policy Change"] = new Guid("0cce9231-69ae-11d9-bed3-505054503030"),
+        ["MPSSVC Rule-Level Policy Change"] = new Guid("0cce9232-69ae-11d9-bed3-505054503030"),
+        ["Filtering Platform Policy Change"] = new Guid("0cce9233-69ae-11d9-bed3-505054503030"),
+        ["Other Policy Change Events"] = new Guid("0cce9234-69ae-11d9-bed3-505054503030"),
+        ["User Account Management"] = new Guid("0cce9235-69ae-11d9-bed3-505054503030"),
+        ["Computer Account Management"] = new Guid("0cce9236-69ae-11d9-bed3-505054503030"),
+        ["Security Group Management"] = new Guid("0cce9237-69ae-11d9-bed3-505054503030"),
+        ["Distribution Group Management"] = new Guid("0cce9238-69ae-11d9-bed3-505054503030"),
+        ["Application Group Management"] = new Guid("0cce9239-69ae-11d9-bed3-505054503030"),
+        ["Other Account Management Events"] = new Guid("0cce923a-69ae-11d9-bed3-505054503030"),
+        ["Directory Service Access"] = new Guid("0cce923b-69ae-11d9-bed3-505054503030"),
+        ["Directory Service Changes"] = new Guid("0cce923c-69ae-11d9-bed3-505054503030"),
+        ["Directory Service Replication"] = new Guid("0cce923d-69ae-11d9-bed3-505054503030"),
+        ["Detailed Directory Service Replication"] = new Guid("0cce923e-69ae-11d9-bed3-505054503030"),
+        ["Credential Validation"] = new Guid("0cce923f-69ae-11d9-bed3-505054503030"),
+        ["Kerberos Service Ticket Operations"] = new Guid("0cce9240-69ae-11d9-bed3-505054503030"),
+        ["Other Account Logon Events"] = new Guid("0cce9241-69ae-11d9-bed3-505054503030"),
+        ["Kerberos Authentication Service"] = new Guid("0cce9242-69ae-11d9-bed3-505054503030"),
+        ["Network Policy Server"] = new Guid("0cce9243-69ae-11d9-bed3-505054503030"),
+        ["Detailed File Share"] = new Guid("0cce9244-69ae-11d9-bed3-505054503030"),
+        ["Removable Storage"] = new Guid("0cce9245-69ae-11d9-bed3-505054503030"),
+        ["Central Policy Staging"] = new Guid("0cce9246-69ae-11d9-bed3-505054503030"),
+        ["User / Device Claims"] = new Guid("0cce9247-69ae-11d9-bed3-505054503030"),
+        ["Plug and Play Events"] = new Guid("0cce9248-69ae-11d9-bed3-505054503030"),
+        ["Group Membership"] = new Guid("0cce9249-69ae-11d9-bed3-505054503030"),
+        ["Token Right Adjusted Events"] = new Guid("0cce924a-69ae-11d9-bed3-505054503030")
+    };
+
     public override string GetSchema()
     {
         var config = new SchemaGeneratorConfiguration()
@@ -39,288 +101,85 @@ public sealed class Resource(JsonSerializerContext context)
         return JsonSerializer.Serialize(schema);
     }
 
-    public Schema Get(Schema instance)
+    public Schema Get(Schema? instance)
     {
-        var guid = Guid.Parse(instance.SubcategoryGuid);
-        var policyInfo = QueryAuditPolicy(guid);
+        ArgumentNullException.ThrowIfNull(instance);
+
+        var guid = GetSubcategoryGuid(instance.Subcategory);
+        var policyInfo = AuditPolicyApi.QueryAuditPolicy(guid);
 
         return new Schema
         {
-            SubcategoryGuid = instance.SubcategoryGuid,
+            Subcategory = instance.Subcategory,
             Setting = ConvertToAuditSetting(policyInfo.AuditingInformation)
         };
     }
 
-    public SetResult<Schema>? Set(Schema instance)
+    public SetResult<Schema>? Set(Schema? instance)
     {
-        var guid = Guid.Parse(instance.SubcategoryGuid);
-        var currentPolicy = QueryAuditPolicy(guid);
+        ArgumentNullException.ThrowIfNull(instance);
+
+        var guid = GetSubcategoryGuid(instance.Subcategory);
+        var currentPolicy = AuditPolicyApi.QueryAuditPolicy(guid);
 
         var desiredFlags = ConvertToAuditFlags(instance.Setting ?? AuditSetting.None);
 
         if (currentPolicy.AuditingInformation != desiredFlags)
         {
-            SetAuditPolicy(guid, currentPolicy.AuditCategoryGuid, desiredFlags);
+            AuditPolicyApi.SetAuditPolicy(guid, currentPolicy.AuditCategoryGuid, desiredFlags);
         }
 
         return null;
     }
 
-    public void Delete(Schema instance)
+    private static Guid GetSubcategoryGuid(string subcategory)
     {
-        var guid = Guid.Parse(instance.SubcategoryGuid);
-        var currentPolicy = QueryAuditPolicy(guid);
-        SetAuditPolicy(guid, currentPolicy.AuditCategoryGuid, POLICY_AUDIT_EVENT_NONE);
-    }
-
-    private static AUDIT_POLICY_INFORMATION QueryAuditPolicy(Guid subcategoryGuid)
-    {
-        IntPtr policyPtr = IntPtr.Zero;
-
-        try
+        if (!SubcategoryToGuid.TryGetValue(subcategory, out var guid))
         {
-            var guidArray = new[] { subcategoryGuid };
-
-            var result = AuditQuerySystemPolicy(guidArray, 1, out policyPtr);
-
-            var error = Marshal.GetLastWin32Error();
-
-            if (!result || policyPtr == IntPtr.Zero)
-            {
-                if (error == ERROR_ACCESS_DENIED || error == ERROR_PRIVILEGE_NOT_HELD)
-                {
-                    throw new SecurityException("Access denied. Requires SeSecurityPrivilege or administrative privileges to query audit policy.");
-                }
-                if (error != 0)
-                {
-                    throw new Win32Exception(error, "Failed to query audit policy.");
-                }
-                throw new InvalidOperationException("AuditQuerySystemPolicy failed with unknown error.");
-            }
-
-            var buffer = new byte[36];
-            Marshal.Copy(policyPtr, buffer, 0, 36);
-
-            var policy = new AUDIT_POLICY_INFORMATION
-            {
-                AuditSubCategoryGuid = new Guid(buffer.AsSpan(0, 16)),
-                AuditingInformation = BitConverter.ToUInt32(buffer, 16),
-                AuditCategoryGuid = new Guid(buffer.AsSpan(20, 16))
-            };
-
-            return policy;
+            throw new UnknownSubcategoryException($"Unknown audit subcategory: '{subcategory}'. Valid subcategories are: {string.Join(", ", SubcategoryToGuid.Keys)}");
         }
-        finally
-        {
-            if (policyPtr != IntPtr.Zero)
-            {
-                AuditFree(policyPtr);
-            }
-        }
-    }
 
-    private static void SetAuditPolicy(Guid subcategoryGuid, Guid categoryGuid, uint flags)
-    {
-        EnablePrivilege(SE_SECURITY_NAME);
-
-        var policy = new AUDIT_POLICY_INFORMATION
-        {
-            AuditSubCategoryGuid = subcategoryGuid,
-            AuditingInformation = flags,
-            AuditCategoryGuid = categoryGuid
-        };
-
-        IntPtr policyPtr = IntPtr.Zero;
-        try
-        {
-            int structSize = Marshal.SizeOf<AUDIT_POLICY_INFORMATION>();
-            policyPtr = Marshal.AllocHGlobal(structSize);
-            Marshal.StructureToPtr(policy, policyPtr, false);
-
-            var result = AuditSetSystemPolicyPtr(policyPtr, 1);
-            var error = Marshal.GetLastWin32Error();
-
-            if (!result || error != 0)
-            {
-                if (error == ERROR_ACCESS_DENIED || error == ERROR_PRIVILEGE_NOT_HELD)
-                {
-                    throw new SecurityException("Access denied. Requires administrative privileges to set audit policy.");
-                }
-                if (error == ERROR_INVALID_PARAMETER)
-                {
-                    throw new ArgumentException("Invalid audit policy parameter.");
-                }
-                if (error != 0)
-                {
-                    throw new Win32Exception(error, "Failed to set audit policy.");
-                }
-            }
-        }
-        finally
-        {
-            if (policyPtr != IntPtr.Zero)
-            {
-                Marshal.FreeHGlobal(policyPtr);
-            }
-        }
-    }
-
-    private static void EnablePrivilege(string privilegeName)
-    {
-        IntPtr tokenHandle = IntPtr.Zero;
-
-        try
-        {
-            if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, out tokenHandle))
-            {
-                throw new Win32Exception(Marshal.GetLastWin32Error(), "Failed to open process token.");
-            }
-
-            if (!LookupPrivilegeValue(null, privilegeName, out var luid))
-            {
-                throw new Win32Exception(Marshal.GetLastWin32Error(), $"Failed to lookup privilege: {privilegeName}");
-            }
-
-            var tokenPrivileges = new TOKEN_PRIVILEGES
-            {
-                PrivilegeCount = 1,
-                Luid = luid,
-                Attributes = SE_PRIVILEGE_ENABLED
-            };
-
-            if (!AdjustTokenPrivileges(tokenHandle, false, ref tokenPrivileges, 0, IntPtr.Zero, IntPtr.Zero))
-            {
-                throw new Win32Exception(Marshal.GetLastWin32Error(), $"Failed to adjust token privileges: {privilegeName}");
-            }
-
-            var adjustError = Marshal.GetLastWin32Error();
-            if (adjustError == ERROR_PRIVILEGE_NOT_HELD)
-            {
-                throw new SecurityException($"Process does not have {privilegeName}. Run as administrator.");
-            }
-        }
-        finally
-        {
-            if (tokenHandle != IntPtr.Zero)
-            {
-                CloseHandle(tokenHandle);
-            }
-        }
+        return guid;
     }
 
     private static AuditSetting ConvertToAuditSetting(uint flags)
     {
-        var hasSuccess = (flags & POLICY_AUDIT_EVENT_SUCCESS) != 0;
-        var hasFailure = (flags & POLICY_AUDIT_EVENT_FAILURE) != 0;
+        var setting = AuditSetting.None;
 
-        if (hasSuccess && hasFailure)
+        if ((flags & AuditPolicyApi.POLICY_AUDIT_EVENT_SUCCESS) != 0)
         {
-            return AuditSetting.SuccessAndFailure;
+            setting |= AuditSetting.Success;
         }
-        if (hasSuccess)
+        if ((flags & AuditPolicyApi.POLICY_AUDIT_EVENT_FAILURE) != 0)
         {
-            return AuditSetting.Success;
-        }
-        if (hasFailure)
-        {
-            return AuditSetting.Failure;
+            setting |= AuditSetting.Failure;
         }
 
-        return AuditSetting.None;
+        return setting;
     }
 
     private static uint ConvertToAuditFlags(AuditSetting setting)
     {
-        return setting switch
+        if (setting == AuditSetting.None)
         {
-            AuditSetting.None => POLICY_AUDIT_EVENT_NONE,
-            AuditSetting.Success => POLICY_AUDIT_EVENT_SUCCESS,
-            AuditSetting.Failure => POLICY_AUDIT_EVENT_FAILURE,
-            AuditSetting.SuccessAndFailure => POLICY_AUDIT_EVENT_SUCCESS | POLICY_AUDIT_EVENT_FAILURE,
-            _ => POLICY_AUDIT_EVENT_NONE
-        };
+            return AuditPolicyApi.POLICY_AUDIT_EVENT_NONE;
+        }
+
+        uint flags = 0;
+        if (setting.HasFlag(AuditSetting.Success))
+        {
+            flags |= AuditPolicyApi.POLICY_AUDIT_EVENT_SUCCESS;
+        }
+        if (setting.HasFlag(AuditSetting.Failure))
+        {
+            flags |= AuditPolicyApi.POLICY_AUDIT_EVENT_FAILURE;
+        }
+
+        return flags;
     }
+}
 
-    private const uint POLICY_AUDIT_EVENT_SUCCESS = 0x00000001;
-    private const uint POLICY_AUDIT_EVENT_FAILURE = 0x00000002;
-    private const uint POLICY_AUDIT_EVENT_NONE = 0x00000004;
-
-    private const int ERROR_ACCESS_DENIED = 5;
-    private const int ERROR_PRIVILEGE_NOT_HELD = 1314;
-    private const int ERROR_INVALID_PARAMETER = 87;
-
-    private const int SE_PRIVILEGE_ENABLED = 0x00000002;
-    private const string SE_SECURITY_NAME = "SeSecurityPrivilege";
-    private const uint TOKEN_ADJUST_PRIVILEGES = 0x0020;
-    private const uint TOKEN_QUERY = 0x0008;
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct LUID
-    {
-        public uint LowPart;
-        public int HighPart;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct TOKEN_PRIVILEGES
-    {
-        public uint PrivilegeCount;
-        public LUID Luid;
-        public uint Attributes;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct AUDIT_POLICY_INFORMATION
-    {
-        public Guid AuditSubCategoryGuid;
-        public uint AuditingInformation;
-        public Guid AuditCategoryGuid;
-    }
-
-    [DllImport("advapi32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool AuditQuerySystemPolicy(
-        [In] Guid[] pSubCategoryGuids,
-        uint dwPolicyCount,
-        out IntPtr ppAuditPolicy);
-
-    [DllImport("advapi32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool OpenProcessToken(IntPtr ProcessHandle, uint DesiredAccess, out IntPtr TokenHandle);
-
-    [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool LookupPrivilegeValue(string? lpSystemName, string lpName, out LUID lpLuid);
-
-    [DllImport("advapi32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool AdjustTokenPrivileges(
-        IntPtr TokenHandle,
-        [MarshalAs(UnmanagedType.Bool)] bool DisableAllPrivileges,
-        ref TOKEN_PRIVILEGES NewState,
-        uint BufferLength,
-        IntPtr PreviousState,
-        IntPtr ReturnLength);
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool CloseHandle(IntPtr hObject);
-
-    [DllImport("kernel32.dll")]
-    private static extern IntPtr GetCurrentProcess();
-
-    [DllImport("advapi32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool AuditSetSystemPolicy(
-        [In] AUDIT_POLICY_INFORMATION[] pAuditPolicy,
-        uint dwPolicyCount);
-
-    [DllImport("advapi32.dll", EntryPoint = "AuditSetSystemPolicy", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool AuditSetSystemPolicyPtr(
-        IntPtr pAuditPolicy,
-        uint dwPolicyCount);
-
-    [DllImport("advapi32.dll")]
-    private static extern void AuditFree(IntPtr buffer);
+public sealed class UnknownSubcategoryException : Exception
+{
+    public UnknownSubcategoryException(string message) : base(message) { }
 }

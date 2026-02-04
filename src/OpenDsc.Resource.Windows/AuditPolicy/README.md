@@ -21,19 +21,27 @@ Failure events, both, or none.
   `SeSecurityPrivilege`)
 - Elevated PowerShell session
 
+<!-- markdownlint-disable MD052 -->
+> [!NOTE]
+> **Why SeSecurityPrivilege is required**
+>
+> The Windows API functions `AuditQuerySystemPolicy` and `AuditSetSystemPolicy`
+> require the `SeSecurityPrivilege` (also known as "Manage auditing and security
+> log") to access and modify system audit policy settings.
+> This privilege controls access to the Security event log and audit
+> configuration.
+>
+> The resource automatically enables this privilege before making API calls, but
+> the process must have the privilege available (typically by running as
+> Administrator). Without it, operations will fail with "Access denied" errors.
+<!-- markdownlint-enable MD052 -->
+
 ## Properties
 
-| Property          | Type   | Required | Description                |
-|-------------------|--------|----------|----------------------------|
-| `subcategoryGuid` | string | Yes      | GUID of the subcategory    |
-| `setting`         | string | No       | Audit setting (default:    |
-|                   |        |          | `None`): `None`,           |
-|                   |        |          | `Success`, `Failure`, or   |
-|                   |        |          | `SuccessAndFailure`        |
-| `_exist`          | bool   | No       | Whether auditing should    |
-|                   |        |          | be configured (default:    |
-|                   |        |          | true; false resets to      |
-|                   |        |          | `None`)                    |
+| Property      | Type   | Required | Description                                                                                              |
+|---------------|--------|----------|----------------------------------------------------------------------------------------------------------|
+| `subcategory` | string | Yes      | Name of the audit subcategory (e.g., 'File System', 'Logon', 'Security State Change'). Case-insensitive. |
+| `setting`     | enum   | No       | Audit setting (default: `None`). Flags enum: `None`, `Success`, `Failure`, or `SuccessAndFailure`.       |
 
 ## Examples
 
@@ -43,7 +51,7 @@ Failure events, both, or none.
 resources:
   - type: OpenDsc.Windows/AuditPolicy
     properties:
-      subcategoryGuid: 0cce921d-69ae-11d9-bed3-505054503030
+      subcategory: File System
       setting: Success
 ```
 
@@ -53,7 +61,7 @@ resources:
 resources:
   - type: OpenDsc.Windows/AuditPolicy
     properties:
-      subcategoryGuid: 0cce9215-69ae-11d9-bed3-505054503030
+      subcategory: Logon
       setting: SuccessAndFailure
 ```
 
@@ -63,21 +71,15 @@ resources:
 resources:
   - type: OpenDsc.Windows/AuditPolicy
     properties:
-      subcategoryGuid: 0cce921d-69ae-11d9-bed3-505054503030
+      subcategory: File System
       setting: None
 ```
 
-Or using the delete operation:
+## Audit Policy Subcategories
 
-```yaml
-resources:
-  - type: OpenDsc.Windows/AuditPolicy
-    properties:
-      subcategoryGuid: 0cce921d-69ae-11d9-bed3-505054503030
-      _exist: false
-```
-
-## Audit Policy Subcategory GUIDs
+The following subcategory names are recognized by the resource. Use the exact
+names (case-insensitive) shown in the **Subcategory** column. GUIDs are provided
+for reference only and are not required in resource configurations.
 
 ### Account Logon
 
@@ -276,7 +278,7 @@ auditpol /get /subcategory:{0cce921d-69ae-11d9-bed3-505054503030}
 - Consider disk space and performance impact when enabling verbose auditing
 - The resource automatically enables `SeSecurityPrivilege` when setting audit
   policies
-- Deleting or setting to `None` disables auditing for that subcategory
+- Setting uses flags enum: `None`, `Success`, `Failure`, or `SuccessAndFailure`
 
 ## See Also
 
