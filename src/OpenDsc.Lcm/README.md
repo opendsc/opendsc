@@ -14,10 +14,12 @@ remediates DSC configurations, ensuring systems remain in their desired state.
   intervals without restart
 - **Pull Server Integration** - Download configurations from OpenDSC Pull
   Server with automatic updates
+- **mTLS Authentication** - Secure mutual TLS authentication with the pull
+  server using managed or platform certificates
+- **Automatic Certificate Rotation** - Self-managed certificate lifecycle with
+  seamless rotation
 - **Compliance Reporting** - Submit test/set results to pull server for
   centralized monitoring
-- **API Key Rotation** - Automatic rotation of authentication keys for
-  enhanced security
 - **Cross-Platform** - Windows, Linux, and macOS support
 - **Platform-Native Logging** - Windows Event Log, systemd journal, and macOS
   Unified Logging
@@ -141,7 +143,10 @@ When using `ConfigurationSource: Pull`, configure the pull server settings:
 | `PullServer.RegistrationKey` | string | - | Pre-shared key for node registration |
 | `PullServer.ReportCompliance` | bool | `false` | Submit compliance reports to the server |
 | `PullServer.NodeId` | string | `null` | Assigned node ID (auto-populated on registration) |
-| `PullServer.ApiKey` | string | `null` | Authentication key (auto-populated on registration) |
+| `PullServer.CertificateSource` | string | `Managed` | Certificate source: `Managed` (auto-generated) or `Platform` (system store) |
+| `PullServer.CertificateThumbprint` | string | `null` | Certificate thumbprint (required for Platform source) |
+| `PullServer.CertificatePath` | string | `{ConfigDir}/certs/client.pfx` | Path to certificate file (Managed source) |
+| `PullServer.CertificatePassword` | string | `null` | Password for certificate file (Managed source) |
 
 **Example pull server configuration:**
 
@@ -154,11 +159,55 @@ When using `ConfigurationSource: Pull`, configure the pull server settings:
     "PullServer": {
       "ServerUrl": "https://dsc-server.example.com",
       "RegistrationKey": "your-registration-key-here",
-      "ReportCompliance": true
+      "ReportCompliance": true,
+      "CertificateSource": "Managed"
     }
   }
 }
 ```
+
+### mTLS Certificate Configuration
+
+The LCM uses mutual TLS (mTLS) for secure authentication with the pull
+server. You can configure certificates in two ways:
+
+**Managed Certificates (Default):**
+
+The LCM automatically generates and manages self-signed client certificates:
+
+```json
+{
+  "PullServer": {
+    "CertificateSource": "Managed",
+    "CertificatePath": "C:\\ProgramData\\OpenDSC\\LCM\\certs\\client.pfx",
+    "CertificatePassword": "optional-password"
+  }
+}
+```
+
+- Certificates are auto-generated on first run if they don't exist
+- Stored as password-protected PFX files
+- Automatically rotated when 2/3 of their lifetime has elapsed
+  (90-day validity)
+- Certificate rotation is coordinated with the pull server
+
+**Platform Certificate Store:**
+
+Use a certificate from the platform's certificate store:
+
+```json
+{
+  "PullServer": {
+    "CertificateSource": "Platform",
+    "CertificateThumbprint": "ABC123..."
+  }
+}
+```
+
+- Load certificate from `CurrentUser\My` store (Windows) or equivalent
+  platform store
+- Certificate must have private key with client authentication EKU
+- No automatic rotation - certificate lifecycle is managed externally
 
 ### Configuration Examples
 
@@ -354,19 +403,32 @@ using a local file.
 
 On first run, the LCM automatically:
 
-1. Registers with the pull server using the FQDN and registration key
-2. Receives a unique `NodeId` and `ApiKey`
-3. Stores these credentials for future authentication
-4. Downloads the configuration assigned to the node
+1. Generates or loads a client certificate for mTLS authentication
+2. Registers with the pull server using the FQDN, registration key, and
+   certificate
+3. Receives a unique `NodeId`
+4. Stores the NodeId and certificate for future authentication
+5. Downloads the configuration assigned to the node
 
-### API Key Rotation
+The server validates the client certificate during registration and stores
+the certificate thumbprint, subject, and expiration date for the node.
 
-API keys are automatically rotated based on the server's rotation policy:
+### Certificate Rotation
 
-- The server specifies the rotation interval during registration
-- LCM tracks when the last rotation occurred
-- Automatically requests a new key when the interval expires
-- Rotation is atomic - the new key is activated before the old one is revoked
+For managed certificates, the LCM automatically rotates certificates to
+maintain security:
+
+- Certificates are valid for 90 days from creation
+- Rotation occurs automatically when 2/3 of the certificate lifetime has
+  elapsed (after 60 days)
+- The LCM generates a new self-signed certificate
+- The new certificate is registered with the pull server via the
+  `/rotate-certificate` endpoint
+- The server updates the stored certificate thumbprint, subject, and
+  expiration date
+- Rotation is seamless - no service interruption occurs
+
+For platform store certificates, rotation must be managed externally.
 
 ### Compliance Reporting
 

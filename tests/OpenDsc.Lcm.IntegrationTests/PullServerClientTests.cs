@@ -2,8 +2,13 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
+
 using FluentAssertions;
 
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 using OpenDsc.Schema;
@@ -22,88 +27,59 @@ public class PullServerClientTests : IClassFixture<LcmTestServerFactory>
         _factory = factory;
     }
 
-    [Fact]
-    public async Task RegisterAsync_WithValidRegistrationKey_ReturnsNodeIdAndApiKey()
+    private static IOptionsMonitor<LcmConfig> CreateMonitor(LcmConfig config)
     {
-        using var scope = _factory.Services.CreateScope();
-        var httpClient = _factory.CreateClient();
-        var serverAddress = httpClient.BaseAddress!.ToString().TrimEnd('/');
+        var monitor = new TestOptionsMonitor<LcmConfig>(config);
+        return monitor;
+    }
 
+    [Fact]
+    public async Task RegisterAsync_WithValidRegistrationKey_ReturnsNodeIdOnly()
+    {
+        var httpClient = _factory.CreateClient();
         var lcmConfig = new LcmConfig
         {
-            ConfigurationMode = ConfigurationMode.Monitor,
-            ConfigurationPath = "test.yaml",
-            ConfigurationModeInterval = TimeSpan.FromMinutes(15),
-            ConfigurationSource = ConfigurationSource.Pull,
             PullServer = new PullServerSettings
             {
-                ServerUrl = serverAddress,
+                ServerUrl = httpClient.BaseAddress!.ToString().TrimEnd('/'),
                 RegistrationKey = "test-lcm-registration-key"
             }
         };
+        var monitor = CreateMonitor(lcmConfig);
+        var certManager = new NullCertificateManager();
 
-        var optionsMonitor = new TestOptionsMonitor<LcmConfig>(lcmConfig);
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<PullServerClient>>();
-
-        var client = new PullServerClient(httpClient, optionsMonitor, logger);
+        var client = new PullServerClient(
+            httpClient,
+            monitor,
+            certManager,
+            NullLogger<PullServerClient>.Instance);
 
         var result = await client.RegisterAsync();
 
         result.Should().NotBeNull();
         result!.NodeId.Should().NotBeEmpty();
-        result.ApiKey.Should().NotBeNullOrEmpty();
-        result.KeyRotationInterval.Should().BeGreaterThan(TimeSpan.Zero);
     }
 
     [Fact]
     public async Task RegisterAsync_WithInvalidRegistrationKey_ReturnsNull()
     {
-        using var scope = _factory.Services.CreateScope();
         var httpClient = _factory.CreateClient();
-        var serverAddress = httpClient.BaseAddress!.ToString().TrimEnd('/');
-
         var lcmConfig = new LcmConfig
         {
-            ConfigurationMode = ConfigurationMode.Monitor,
-            ConfigurationPath = "test.yaml",
-            ConfigurationModeInterval = TimeSpan.FromMinutes(15),
-            ConfigurationSource = ConfigurationSource.Pull,
             PullServer = new PullServerSettings
             {
-                ServerUrl = serverAddress,
+                ServerUrl = httpClient.BaseAddress!.ToString().TrimEnd('/'),
                 RegistrationKey = "invalid-key"
             }
         };
+        var monitor = CreateMonitor(lcmConfig);
+        var certificateManager = new NullCertificateManager();
 
-        var optionsMonitor = new TestOptionsMonitor<LcmConfig>(lcmConfig);
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<PullServerClient>>();
-
-        var client = new PullServerClient(httpClient, optionsMonitor, logger);
-
-        var result = await client.RegisterAsync();
-
-        result.Should().BeNull();
-    }
-
-    [Fact]
-    public async Task RegisterAsync_WithNullPullServer_ReturnsNull()
-    {
-        using var scope = _factory.Services.CreateScope();
-        var httpClient = _factory.CreateClient();
-
-        var lcmConfig = new LcmConfig
-        {
-            ConfigurationMode = ConfigurationMode.Monitor,
-            ConfigurationPath = "test.yaml",
-            ConfigurationModeInterval = TimeSpan.FromMinutes(15),
-            ConfigurationSource = ConfigurationSource.Local,
-            PullServer = null
-        };
-
-        var optionsMonitor = new TestOptionsMonitor<LcmConfig>(lcmConfig);
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<PullServerClient>>();
-
-        var client = new PullServerClient(httpClient, optionsMonitor, logger);
+        var client = new PullServerClient(
+            httpClient,
+            monitor,
+            certificateManager,
+            NullLogger<PullServerClient>.Instance);
 
         var result = await client.RegisterAsync();
 
@@ -111,93 +87,55 @@ public class PullServerClientTests : IClassFixture<LcmTestServerFactory>
     }
 
     [Fact]
-    public async Task RegisterAsync_WithEmptyRegistrationKey_ReturnsNull()
+    public async Task RegisterAsync_UpdatesNodeIdInSettings()
     {
-        using var scope = _factory.Services.CreateScope();
         var httpClient = _factory.CreateClient();
-        var serverAddress = httpClient.BaseAddress!.ToString().TrimEnd('/');
-
+        var pullServerSettings = new PullServerSettings
+        {
+            ServerUrl = httpClient.BaseAddress!.ToString().TrimEnd('/'),
+            RegistrationKey = "test-lcm-registration-key"
+        };
         var lcmConfig = new LcmConfig
         {
-            ConfigurationMode = ConfigurationMode.Monitor,
-            ConfigurationPath = "test.yaml",
-            ConfigurationModeInterval = TimeSpan.FromMinutes(15),
-            ConfigurationSource = ConfigurationSource.Pull,
-            PullServer = new PullServerSettings
-            {
-                ServerUrl = serverAddress,
-                RegistrationKey = ""
-            }
+            PullServer = pullServerSettings
         };
+        var monitor = CreateMonitor(lcmConfig);
+        var certificateManager = new NullCertificateManager();
 
-        var optionsMonitor = new TestOptionsMonitor<LcmConfig>(lcmConfig);
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<PullServerClient>>();
-
-        var client = new PullServerClient(httpClient, optionsMonitor, logger);
+        var client = new PullServerClient(
+            httpClient,
+            monitor,
+            certificateManager,
+            NullLogger<PullServerClient>.Instance);
 
         var result = await client.RegisterAsync();
 
-        result.Should().BeNull();
+        pullServerSettings.NodeId.Should().Be(result!.NodeId);
     }
 
     [Fact]
-    public async Task HasConfigurationChangedAsync_WithNoConfiguration_ReturnsFalse()
+    public async Task GetConfigurationAsync_WithoutRegistration_ReturnsNull()
     {
-        using var scope = _factory.Services.CreateScope();
         var httpClient = _factory.CreateClient();
-        var serverAddress = httpClient.BaseAddress!.ToString().TrimEnd('/');
-
-        var registrationResult = await RegisterTestNode(httpClient, serverAddress, scope);
-
         var lcmConfig = new LcmConfig
         {
-            ConfigurationMode = ConfigurationMode.Monitor,
-            ConfigurationPath = "test.yaml",
-            ConfigurationModeInterval = TimeSpan.FromMinutes(15),
-            ConfigurationSource = ConfigurationSource.Pull,
             PullServer = new PullServerSettings
             {
-                ServerUrl = serverAddress,
-                NodeId = registrationResult.NodeId,
-                ApiKey = registrationResult.ApiKey
+                ServerUrl = httpClient.BaseAddress!.ToString(),
+                RegistrationKey = "test-lcm-registration-key",
+                NodeId = null
             }
         };
+        var monitor = CreateMonitor(lcmConfig);
+        var certificateManager = new CertificateManager(
+            monitor,
+            NullLogger<CertificateManager>.Instance);
 
-        var optionsMonitor = new TestOptionsMonitor<LcmConfig>(lcmConfig);
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<PullServerClient>>();
-
-        var client = new PullServerClient(httpClient, optionsMonitor, logger);
-
-        var result = await client.HasConfigurationChangedAsync();
-
-        result.Should().BeFalse();
-    }
-
-    [Fact]
-    public async Task GetConfigurationAsync_WithNoNodeId_ReturnsNull()
-    {
-        using var scope = _factory.Services.CreateScope();
-        var httpClient = _factory.CreateClient();
-        var serverAddress = httpClient.BaseAddress!.ToString().TrimEnd('/');
-
-        var lcmConfig = new LcmConfig
-        {
-            ConfigurationMode = ConfigurationMode.Monitor,
-            ConfigurationPath = "test.yaml",
-            ConfigurationModeInterval = TimeSpan.FromMinutes(15),
-            ConfigurationSource = ConfigurationSource.Pull,
-            PullServer = new PullServerSettings
-            {
-                ServerUrl = serverAddress,
-                NodeId = null,
-                ApiKey = null
-            }
-        };
-
-        var optionsMonitor = new TestOptionsMonitor<LcmConfig>(lcmConfig);
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<PullServerClient>>();
-
-        var client = new PullServerClient(httpClient, optionsMonitor, logger);
+        var client = new PullServerClient(
+            httpClient,
+            monitor,
+            certificateManager,
+            NullLogger<PullServerClient>.Instance);
 
         var result = await client.GetConfigurationAsync();
 
@@ -205,205 +143,249 @@ public class PullServerClientTests : IClassFixture<LcmTestServerFactory>
     }
 
     [Fact]
-    public async Task GetConfigurationChecksumAsync_WithNoNodeId_ReturnsNull()
+    public async Task GetConfigurationAsync_WithValidNodeId_ReturnsConfiguration()
     {
-        using var scope = _factory.Services.CreateScope();
         var httpClient = _factory.CreateClient();
-        var serverAddress = httpClient.BaseAddress!.ToString().TrimEnd('/');
-
         var lcmConfig = new LcmConfig
         {
-            ConfigurationMode = ConfigurationMode.Monitor,
-            ConfigurationPath = "test.yaml",
-            ConfigurationModeInterval = TimeSpan.FromMinutes(15),
-            ConfigurationSource = ConfigurationSource.Pull,
             PullServer = new PullServerSettings
             {
-                ServerUrl = serverAddress,
-                NodeId = null,
-                ApiKey = null
+                ServerUrl = httpClient.BaseAddress!.ToString().TrimEnd('/'),
+                RegistrationKey = "test-lcm-registration-key"
             }
         };
+        var monitor = CreateMonitor(lcmConfig);
+        var certificateManager = new NullCertificateManager();
 
-        var optionsMonitor = new TestOptionsMonitor<LcmConfig>(lcmConfig);
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<PullServerClient>>();
+        var client = new PullServerClient(
+            httpClient,
+            monitor,
+            certificateManager,
+            NullLogger<PullServerClient>.Instance);
 
-        var client = new PullServerClient(httpClient, optionsMonitor, logger);
+        var registerResult = await client.RegisterAsync();
+        registerResult.Should().NotBeNull();
 
-        var result = await client.GetConfigurationChecksumAsync();
+        var db = _factory.Services.GetRequiredService<OpenDsc.Server.Data.ServerDbContext>();
+        var node = await db.Nodes.FirstOrDefaultAsync(n => n.Id == registerResult!.NodeId);
+        node.Should().NotBeNull();
+        node!.ConfigurationName = "test-config";
+        await db.SaveChangesAsync();
 
-        result.Should().BeNull();
+        var result = await client.GetConfigurationAsync();
+
+        result.Should().NotBeNullOrEmpty();
+        result.Should().Contain("resources: []");
     }
 
     [Fact]
-    public async Task SubmitReportAsync_WithNoNodeId_ReturnsFalse()
+    public async Task HasConfigurationChangedAsync_WithSameChecksum_ReturnsFalse()
     {
-        using var scope = _factory.Services.CreateScope();
         var httpClient = _factory.CreateClient();
-        var serverAddress = httpClient.BaseAddress!.ToString().TrimEnd('/');
-
         var lcmConfig = new LcmConfig
         {
-            ConfigurationMode = ConfigurationMode.Monitor,
-            ConfigurationPath = "test.yaml",
-            ConfigurationModeInterval = TimeSpan.FromMinutes(15),
-            ConfigurationSource = ConfigurationSource.Pull,
             PullServer = new PullServerSettings
             {
-                ServerUrl = serverAddress,
-                NodeId = null,
-                ApiKey = null,
-                ReportCompliance = true
+                ServerUrl = httpClient.BaseAddress!.ToString().TrimEnd('/'),
+                RegistrationKey = "test-lcm-registration-key",
+                ConfigurationChecksum = "test-checksum"
             }
         };
+        var monitor = CreateMonitor(lcmConfig);
+        var certificateManager = new NullCertificateManager();
 
-        var optionsMonitor = new TestOptionsMonitor<LcmConfig>(lcmConfig);
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<PullServerClient>>();
+        var client = new PullServerClient(
+            httpClient,
+            monitor,
+            certificateManager,
+            NullLogger<PullServerClient>.Instance);
 
-        var client = new PullServerClient(httpClient, optionsMonitor, logger);
+        var registerResult = await client.RegisterAsync();
+        registerResult.Should().NotBeNull();
 
-        var result = await client.SubmitReportAsync(DscOperation.Test, new DscResult());
+        var db = _factory.Services.GetRequiredService<OpenDsc.Server.Data.ServerDbContext>();
+        var node = await db.Nodes.FirstOrDefaultAsync(n => n.Id == registerResult!.NodeId);
+        node.Should().NotBeNull();
+        node!.ConfigurationName = "test-config";
+        await db.SaveChangesAsync();
+
+        var result = await client.HasConfigurationChangedAsync();
 
         result.Should().BeFalse();
     }
 
     [Fact]
-    public async Task SubmitReportAsync_WithReportComplianceDisabled_ReturnsTrue()
+    public async Task RotateCertificateAsync_WithValidCertificate_ReturnsTrue()
     {
-        using var scope = _factory.Services.CreateScope();
         var httpClient = _factory.CreateClient();
-        var serverAddress = httpClient.BaseAddress!.ToString().TrimEnd('/');
-
-        var registrationResult = await RegisterTestNode(httpClient, serverAddress, scope);
-
         var lcmConfig = new LcmConfig
         {
-            ConfigurationMode = ConfigurationMode.Monitor,
-            ConfigurationPath = "test.yaml",
-            ConfigurationModeInterval = TimeSpan.FromMinutes(15),
-            ConfigurationSource = ConfigurationSource.Pull,
             PullServer = new PullServerSettings
             {
-                ServerUrl = serverAddress,
-                NodeId = registrationResult.NodeId,
-                ApiKey = registrationResult.ApiKey,
-                ReportCompliance = false
+                ServerUrl = httpClient.BaseAddress!.ToString().TrimEnd('/'),
+                RegistrationKey = "test-lcm-registration-key"
             }
         };
+        var monitor = CreateMonitor(lcmConfig);
+        var certificateManager = new NullCertificateManager();
 
-        var optionsMonitor = new TestOptionsMonitor<LcmConfig>(lcmConfig);
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<PullServerClient>>();
+        var client = new PullServerClient(
+            httpClient,
+            monitor,
+            certificateManager,
+            NullLogger<PullServerClient>.Instance);
 
-        var client = new PullServerClient(httpClient, optionsMonitor, logger);
+        var registerResult = await client.RegisterAsync();
+        registerResult.Should().NotBeNull();
 
-        var result = await client.SubmitReportAsync(DscOperation.Test, new DscResult());
+        using var newCert = GenerateTestCertificate();
+
+        var result = await client.RotateCertificateAsync(newCert);
 
         result.Should().BeTrue();
     }
 
     [Fact]
-    public async Task RotateApiKeyAsync_WithNoNodeId_ReturnsNull()
+    public async Task SubmitReportAsync_WithoutNodeId_DoesNotThrow()
     {
-        using var scope = _factory.Services.CreateScope();
         var httpClient = _factory.CreateClient();
-        var serverAddress = httpClient.BaseAddress!.ToString().TrimEnd('/');
-
         var lcmConfig = new LcmConfig
         {
-            ConfigurationMode = ConfigurationMode.Monitor,
-            ConfigurationPath = "test.yaml",
-            ConfigurationModeInterval = TimeSpan.FromMinutes(15),
-            ConfigurationSource = ConfigurationSource.Pull,
             PullServer = new PullServerSettings
             {
-                ServerUrl = serverAddress,
-                NodeId = null,
-                ApiKey = null
+                ServerUrl = httpClient.BaseAddress!.ToString(),
+                RegistrationKey = "test-lcm-registration-key",
+                NodeId = null
             }
         };
+        var monitor = CreateMonitor(lcmConfig);
+        var certificateManager = new CertificateManager(
+            monitor,
+            NullLogger<CertificateManager>.Instance);
 
-        var optionsMonitor = new TestOptionsMonitor<LcmConfig>(lcmConfig);
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<PullServerClient>>();
+        var client = new PullServerClient(
+            httpClient,
+            monitor,
+            certificateManager,
+            NullLogger<PullServerClient>.Instance);
+        var result = new DscResult();
 
-        var client = new PullServerClient(httpClient, optionsMonitor, logger);
+        var act = async () => await client.SubmitReportAsync(DscOperation.Test, result);
 
-        var result = await client.RotateApiKeyAsync();
+        await act.Should().NotThrowAsync();
+    }
 
-        result.Should().BeNull();
+    private sealed class TestOptionsMonitor<T> : IOptionsMonitor<T>
+    {
+        public TestOptionsMonitor(T currentValue)
+        {
+            CurrentValue = currentValue;
+        }
+
+        public T CurrentValue { get; }
+
+        public T Get(string? name) => CurrentValue;
+
+        public IDisposable? OnChange(Action<T, string?> listener) => null;
+    }
+
+    private sealed class NullCertificateManager : ICertificateManager
+    {
+        public X509Certificate2? GetClientCertificate() => null;
+
+        public X509Certificate2? RotateCertificate(PullServerSettings pullServer) => null;
+
+        public bool ShouldRotateCertificate(X509Certificate2? currentCertificate, PullServerSettings pullServer) => false;
+    }
+
+    private static X509Certificate2 GenerateTestCertificate()
+    {
+        using var rsa = RSA.Create(2048);
+        var subject = new X500DistinguishedName($"CN=TestCertificate-{Guid.NewGuid()}");
+        var request = new CertificateRequest(subject, rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+
+        request.CertificateExtensions.Add(
+            new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.KeyEncipherment, false));
+
+        request.CertificateExtensions.Add(
+            new X509EnhancedKeyUsageExtension(
+                [new Oid("1.3.6.1.5.5.7.3.2")],
+                false));
+
+        var cert = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(1));
+        return cert;
     }
 
     [Fact]
-    public async Task RotateApiKeyAsync_WithValidNode_ReturnsNewApiKey()
+    public void PullServerClient_HttpClient_ShouldBeConfiguredWithCertificate()
     {
-        using var scope = _factory.Services.CreateScope();
-        var httpClient = _factory.CreateClient();
-        var serverAddress = httpClient.BaseAddress!.ToString().TrimEnd('/');
-
-        var registrationResult = await RegisterTestNode(httpClient, serverAddress, scope);
-
+        var testCert = GenerateTestCertificate();
+        var certManager = new TestCertificateManager(testCert);
         var lcmConfig = new LcmConfig
         {
-            ConfigurationMode = ConfigurationMode.Monitor,
-            ConfigurationPath = "test.yaml",
-            ConfigurationModeInterval = TimeSpan.FromMinutes(15),
-            ConfigurationSource = ConfigurationSource.Pull,
             PullServer = new PullServerSettings
             {
-                ServerUrl = serverAddress,
-                NodeId = registrationResult.NodeId,
-                ApiKey = registrationResult.ApiKey
+                ServerUrl = "https://localhost:5001",
+                RegistrationKey = "test-key",
+                CertificateSource = CertificateSource.Managed
             }
         };
+        var monitor = CreateMonitor(lcmConfig);
 
-        var optionsMonitor = new TestOptionsMonitor<LcmConfig>(lcmConfig);
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<PullServerClient>>();
-
-        var client = new PullServerClient(httpClient, optionsMonitor, logger);
-
-        var result = await client.RotateApiKeyAsync();
-
-        result.Should().NotBeNull();
-        result!.ApiKey.Should().NotBeNullOrEmpty();
-        result.ApiKey.Should().NotBe(registrationResult.ApiKey);
-        result.KeyRotationInterval.Should().BeGreaterThan(TimeSpan.Zero);
-    }
-
-    private static async Task<RegisterNodeResult> RegisterTestNode(HttpClient httpClient, string serverAddress, IServiceScope scope)
-    {
-        var lcmConfig = new LcmConfig
+        var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+        services.AddSingleton<ICertificateManager>(certManager);
+        services.AddSingleton<IOptionsMonitor<LcmConfig>>(monitor);
+        services.AddHttpClient<PullServerClient>((sp, client) =>
         {
-            ConfigurationMode = ConfigurationMode.Monitor,
-            ConfigurationPath = "test.yaml",
-            ConfigurationModeInterval = TimeSpan.FromMinutes(15),
-            ConfigurationSource = ConfigurationSource.Pull,
-            PullServer = new PullServerSettings
+            var lcmMonitor = sp.GetRequiredService<IOptionsMonitor<LcmConfig>>();
+            var pullServer = lcmMonitor.CurrentValue.PullServer;
+            if (pullServer is not null && !string.IsNullOrWhiteSpace(pullServer.ServerUrl))
             {
-                ServerUrl = serverAddress,
-                RegistrationKey = "test-lcm-registration-key"
+                client.BaseAddress = new Uri(pullServer.ServerUrl);
             }
-        };
+        })
+        .ConfigurePrimaryHttpMessageHandler(sp =>
+        {
+            var certificateManager = sp.GetRequiredService<ICertificateManager>();
+            var cert = certificateManager.GetClientCertificate();
 
-        var optionsMonitor = new TestOptionsMonitor<LcmConfig>(lcmConfig);
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<PullServerClient>>();
-        var client = new PullServerClient(httpClient, optionsMonitor, logger);
+            var handler = new HttpClientHandler();
+            if (cert is not null)
+            {
+                handler.ClientCertificates.Add(cert);
+            }
+            return handler;
+        });
 
-        var result = await client.RegisterAsync();
-        return result!;
+        var provider = services.BuildServiceProvider();
+        var factory = provider.GetRequiredService<IHttpClientFactory>();
+        var httpClient = factory.CreateClient(nameof(PullServerClient));
+
+        httpClient.Should().NotBeNull();
+        httpClient.BaseAddress.Should().Be(new Uri("https://localhost:5001"));
+
+        certManager.GetClientCertificateCalled.Should().BeTrue();
     }
-}
 
-public class TestOptionsMonitor<T> : IOptionsMonitor<T>
-{
-    private readonly T _currentValue;
-
-    public TestOptionsMonitor(T currentValue)
+    private sealed class TestCertificateManager : ICertificateManager
     {
-        _currentValue = currentValue;
+        private readonly X509Certificate2 _certificate;
+
+        public TestCertificateManager(X509Certificate2 certificate)
+        {
+            _certificate = certificate;
+        }
+
+        public bool GetClientCertificateCalled { get; private set; }
+
+        public X509Certificate2? GetClientCertificate()
+        {
+            GetClientCertificateCalled = true;
+            return _certificate;
+        }
+
+        public X509Certificate2? RotateCertificate(PullServerSettings pullServer) => null;
+
+        public bool ShouldRotateCertificate(X509Certificate2? currentCertificate, PullServerSettings pullServer) => false;
     }
-
-    public T CurrentValue => _currentValue;
-
-    public T Get(string? name) => _currentValue;
-
-    public IDisposable? OnChange(Action<T, string?> listener) => null;
 }

@@ -42,7 +42,7 @@ public interface IGettable<T> : IDscResource<T>
     /// </summary>
     /// <param name="instance">The desired state instance containing identifying properties.</param>
     /// <returns>The actual current state of the resource.</returns>
-    T Get(T instance);
+    T Get(T? instance);
 }
 
 /// <summary>
@@ -56,7 +56,7 @@ public interface ISettable<T> : IDscResource<T>
     /// </summary>
     /// <param name="instance">The desired state to apply.</param>
     /// <returns>A <see cref="SetResult{T}"/> containing the actual state after changes and optionally the list of changed properties, or null if no changes were made.</returns>
-    SetResult<T>? Set(T instance);
+    SetResult<T>? Set(T? instance);
 }
 
 /// <summary>
@@ -83,7 +83,7 @@ public interface IDeletable<T> : IDscResource<T>
     /// Deletes or removes the resource.
     /// </summary>
     /// <param name="instance">The instance containing identifying properties of the resource to delete.</param>
-    void Delete(T instance);
+    void Delete(T? instance);
 }
 
 /// <summary>
@@ -97,7 +97,7 @@ public interface ITestable<T> : IDscResource<T>
     /// </summary>
     /// <param name="instance">The desired state to test against.</param>
     /// <returns>A <see cref="TestResult{T}"/> containing the actual state and optionally the list of differing properties.</returns>
-    TestResult<T> Test(T instance);
+    TestResult<T> Test(T? instance);
 }
 
 /// <summary>
@@ -109,6 +109,7 @@ public interface IExportable<T> : IDscResource<T>
     /// <summary>
     /// Exports all instances of the resource.
     /// </summary>
+    /// <param name="filter">Optional filter instance to limit which resources are exported.</param>
     /// <returns>An enumerable collection of resource instances representing the current configuration.</returns>
-    IEnumerable<T> Export();
+    IEnumerable<T> Export(T? filter);
 }

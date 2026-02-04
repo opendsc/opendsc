@@ -62,8 +62,6 @@ public sealed class PullServerIntegrationTests(ServerFixture serverFixture) : IA
 
         result.Should().NotBeNull();
         result!.NodeId.Should().NotBeEmpty();
-        result.ApiKey.Should().NotBeNullOrEmpty();
-        result.KeyRotationInterval.Should().BeGreaterThan(TimeSpan.Zero);
 
         await host.StopAsync();
     }
@@ -98,7 +96,6 @@ public sealed class PullServerIntegrationTests(ServerFixture serverFixture) : IA
         registrationResult.Should().NotBeNull();
 
         config.PullServer!.NodeId = registrationResult!.NodeId;
-        config.PullServer.ApiKey = registrationResult.ApiKey;
 
         var configContent = await pullServerClient.GetConfigurationAsync();
         configContent.Should().NotBeNullOrEmpty();
@@ -118,7 +115,6 @@ public sealed class PullServerIntegrationTests(ServerFixture serverFixture) : IA
         var pullServerClient = host.Services.GetRequiredService<PullServerClient>();
         var registrationResult = await pullServerClient.RegisterAsync();
         config.PullServer!.NodeId = registrationResult!.NodeId;
-        config.PullServer.ApiKey = registrationResult.ApiKey;
 
         var checksum1 = await pullServerClient.GetConfigurationChecksumAsync();
         checksum1.Should().NotBeNullOrEmpty();
@@ -139,7 +135,7 @@ public sealed class PullServerIntegrationTests(ServerFixture serverFixture) : IA
     }
 
     [Fact]
-    public async Task ApiKeyRotation_WithValidCredentials_Succeeds()
+    public async Task CertificateRotation_WithManagedCertificate_Succeeds()
     {
         var config = CreateLcmConfig(ConfigurationMode.Monitor, _configId!);
 
@@ -147,14 +143,17 @@ public sealed class PullServerIntegrationTests(ServerFixture serverFixture) : IA
         await host.StartAsync();
 
         var pullServerClient = host.Services.GetRequiredService<PullServerClient>();
+        var certificateManager = host.Services.GetRequiredService<CertificateManager>();
+
         var registrationResult = await pullServerClient.RegisterAsync();
         config.PullServer!.NodeId = registrationResult!.NodeId;
-        config.PullServer.ApiKey = registrationResult.ApiKey;
-        config.PullServer.LastKeyRotation = DateTimeOffset.UtcNow.AddDays(-8);
 
-        var rotateResult = await pullServerClient.RotateApiKeyAsync();
-        rotateResult.Should().NotBeNull();
-        rotateResult!.ApiKey.Should().NotBe(registrationResult.ApiKey);
+        // Force certificate rotation by creating a new certificate
+        var newCert = certificateManager.RotateCertificate(config.PullServer);
+        newCert.Should().NotBeNull();
+
+        var rotateResult = await pullServerClient.RotateCertificateAsync(newCert!, CancellationToken.None);
+        rotateResult.Should().BeTrue();
 
         await host.StopAsync();
     }
@@ -261,7 +260,8 @@ resources:
             ["LCM:ConfigurationSource"] = lcmConfig.ConfigurationSource.ToString(),
             ["LCM:PullServer:ServerUrl"] = lcmConfig.PullServer?.ServerUrl,
             ["LCM:PullServer:RegistrationKey"] = lcmConfig.PullServer?.RegistrationKey,
-            ["LCM:PullServer:ReportCompliance"] = lcmConfig.PullServer?.ReportCompliance.ToString()
+            ["LCM:PullServer:ReportCompliance"] = lcmConfig.PullServer?.ReportCompliance.ToString(),
+            ["LCM:PullServer:CertificateSource"] = "Managed"
         };
 
         return Host.CreateDefaultBuilder()
@@ -274,6 +274,7 @@ resources:
                 services.Configure<LcmConfig>(context.Configuration.GetSection("LCM"));
                 services.AddSingleton<IValidateOptions<LcmConfig>, LcmConfigValidator>();
                 services.AddSingleton<DscExecutor>();
+                services.AddSingleton<CertificateManager>();
                 services.AddSingleton<PullServerClient>();
                 services.AddHostedService<LcmWorker>();
             })

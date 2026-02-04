@@ -10,14 +10,9 @@ namespace OpenDsc.Server.Contracts;
 public sealed class ServerSettingsResponse
 {
     /// <summary>
-    /// The registration key for new nodes.
+    /// How often nodes should rotate their certificates (informational).
     /// </summary>
-    public string RegistrationKey { get; set; } = string.Empty;
-
-    /// <summary>
-    /// How often nodes should rotate their API keys.
-    /// </summary>
-    public TimeSpan KeyRotationInterval { get; set; }
+    public TimeSpan CertificateRotationInterval { get; set; }
 }
 
 /// <summary>
@@ -26,20 +21,66 @@ public sealed class ServerSettingsResponse
 public sealed class UpdateServerSettingsRequest
 {
     /// <summary>
-    /// How often nodes should rotate their API keys.
+    /// How often nodes should rotate their certificates (informational).
     /// </summary>
-    public TimeSpan? KeyRotationInterval { get; set; }
+    public TimeSpan? CertificateRotationInterval { get; set; }
 }
 
 /// <summary>
-/// Response after rotating a key.
+/// Request to create a registration key.
 /// </summary>
-public sealed class RotateRegistrationKeyResponse
+public sealed class CreateRegistrationKeyRequest
 {
     /// <summary>
-    /// The new registration key.
+    /// When the key should expire (optional, defaults to 7 days from now).
     /// </summary>
-    public string RegistrationKey { get; set; } = string.Empty;
+    public DateTimeOffset? ExpiresAt { get; set; }
+
+    /// <summary>
+    /// Maximum number of times this key can be used (null = unlimited).
+    /// </summary>
+    public int? MaxUses { get; set; }
+}
+
+/// <summary>
+/// Response with registration key details.
+/// </summary>
+public sealed class RegistrationKeyResponse
+{
+    /// <summary>
+    /// The unique identifier for the key.
+    /// </summary>
+    public Guid Id { get; set; }
+
+    /// <summary>
+    /// The registration key value (only returned on creation).
+    /// </summary>
+    public string? Key { get; set; }
+
+    /// <summary>
+    /// When the key expires.
+    /// </summary>
+    public DateTimeOffset ExpiresAt { get; set; }
+
+    /// <summary>
+    /// When the key was created.
+    /// </summary>
+    public DateTimeOffset CreatedAt { get; set; }
+
+    /// <summary>
+    /// Maximum number of uses (null = unlimited).
+    /// </summary>
+    public int? MaxUses { get; set; }
+
+    /// <summary>
+    /// Current number of uses.
+    /// </summary>
+    public int CurrentUses { get; set; }
+
+    /// <summary>
+    /// Whether the key is revoked.
+    /// </summary>
+    public bool IsRevoked { get; set; }
 }
 
 /// <summary>

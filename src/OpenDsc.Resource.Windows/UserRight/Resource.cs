@@ -38,8 +38,10 @@ public sealed class Resource(JsonSerializerContext context)
         return JsonSerializer.Serialize(schema);
     }
 
-    public Schema Get(Schema instance)
+    public Schema Get(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         var principalSid = LsaHelper.ResolvePrincipalToSid(instance.Principal).Value;
         var hasRights = new List<UserRight>();
 
@@ -65,8 +67,10 @@ public sealed class Resource(JsonSerializerContext context)
         };
     }
 
-    public SetResult<Schema>? Set(Schema instance)
+    public SetResult<Schema>? Set(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         var principalSid = LsaHelper.ResolvePrincipalToSid(instance.Principal).Value;
 
         foreach (var right in instance.Rights)
@@ -102,7 +106,7 @@ public sealed class Resource(JsonSerializerContext context)
         return null;
     }
 
-    public IEnumerable<Schema> Export()
+    public IEnumerable<Schema> Export(Schema? filter)
     {
         var knownRights = Enum.GetValues<UserRight>();
 

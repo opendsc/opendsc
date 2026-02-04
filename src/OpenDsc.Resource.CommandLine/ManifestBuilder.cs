@@ -44,7 +44,7 @@ public static class ManifestBuilder
             manifest.Get = new ManifestMethod
             {
                 Executable = fileName,
-                Args = ["config", "get", new JsonInputArg { Arg = "--input", Mandatory = true }]
+                Args = ["config", "get", new JsonInputArg { Arg = "--input", Mandatory = false }]
             };
         }
 
@@ -60,7 +60,7 @@ public static class ManifestBuilder
             manifest.Set = new ManifestSetMethod
             {
                 Executable = fileName,
-                Args = ["config", "set", new JsonInputArg { Arg = "--input", Mandatory = true }],
+                Args = ["config", "set", new JsonInputArg { Arg = "--input", Mandatory = false }],
                 Return = setReturn
             };
         }
@@ -73,7 +73,7 @@ public static class ManifestBuilder
             manifest.Test = new ManifestTestMethod
             {
                 Executable = fileName,
-                Args = ["config", "test", new JsonInputArg { Arg = "--input", Mandatory = true }],
+                Args = ["config", "test", new JsonInputArg { Arg = "--input", Mandatory = false }],
                 Return = testReturn
             };
         }
@@ -83,7 +83,7 @@ public static class ManifestBuilder
             manifest.Delete = new ManifestMethod
             {
                 Executable = fileName,
-                Args = ["config", "delete", new JsonInputArg { Arg = "--input", Mandatory = true }]
+                Args = ["config", "delete", new JsonInputArg { Arg = "--input", Mandatory = false }]
             };
         }
 
@@ -92,7 +92,7 @@ public static class ManifestBuilder
             manifest.Export = new ManifestExportMethod
             {
                 Executable = fileName,
-                Args = ["config", "export"]
+                Args = ["config", "export", new JsonInputArg { Arg = "--input", Mandatory = false }]
             };
         }
 
