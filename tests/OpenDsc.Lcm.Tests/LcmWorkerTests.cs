@@ -188,35 +188,6 @@ public class LcmWorkerTests
     }
 
     [Fact]
-    public void RegisterNodeResult_StoresValuesCorrectly()
-    {
-        var nodeId = Guid.NewGuid();
-        var result = new RegisterNodeResult
-        {
-            NodeId = nodeId,
-            ApiKey = "test-key",
-            KeyRotationInterval = TimeSpan.FromDays(30)
-        };
-
-        result.NodeId.Should().Be(nodeId);
-        result.ApiKey.Should().Be("test-key");
-        result.KeyRotationInterval.Should().Be(TimeSpan.FromDays(30));
-    }
-
-    [Fact]
-    public void RotateKeyResult_StoresValuesCorrectly()
-    {
-        var result = new RotateKeyResult
-        {
-            ApiKey = "new-key",
-            KeyRotationInterval = TimeSpan.FromDays(7)
-        };
-
-        result.ApiKey.Should().Be("new-key");
-        result.KeyRotationInterval.Should().Be(TimeSpan.FromDays(7));
-    }
-
-    [Fact]
     public void PullServerSettings_WithAllValues_StoresCorrectly()
     {
         var settings = new PullServerSettings
@@ -224,21 +195,17 @@ public class LcmWorkerTests
             ServerUrl = "https://test.com",
             RegistrationKey = "key123",
             NodeId = Guid.NewGuid(),
-            ApiKey = "apikey",
             ReportCompliance = false,
-            KeyRotationInterval = TimeSpan.FromDays(7),
-            LastKeyRotation = DateTimeOffset.UtcNow,
-            ConfigurationChecksum = "abc123"
+            ConfigurationChecksum = "abc123",
+            CertificateSource = CertificateSource.Managed
         };
 
         settings.ServerUrl.Should().Be("https://test.com");
         settings.RegistrationKey.Should().Be("key123");
         settings.NodeId.Should().NotBeNull();
-        settings.ApiKey.Should().Be("apikey");
         settings.ReportCompliance.Should().BeFalse();
-        settings.KeyRotationInterval.Should().Be(TimeSpan.FromDays(7));
-        settings.LastKeyRotation.Should().NotBeNull();
         settings.ConfigurationChecksum.Should().Be("abc123");
+        settings.CertificateSource.Should().Be(CertificateSource.Managed);
     }
 
     [Fact]
@@ -281,6 +248,7 @@ public class LcmWorkerTests
             var optionsMonitor = CreateOptionsMonitor(lcmConfig);
             var dscExecutorMock = new Mock<DscExecutor>(MockBehavior.Strict, Mock.Of<ILogger<DscExecutor>>(), Mock.Of<ILoggerFactory>());
             PullServerClient pullServerClient = null!;
+            var certificateManagerMock = new Mock<CertificateManager>(optionsMonitor, new Mock<ILogger<CertificateManager>>().Object);
             var loggerMock = new Mock<ILogger<LcmWorker>>();
 
             var dscResult = new OpenDsc.Schema.DscResult { HadErrors = false };
@@ -290,7 +258,7 @@ public class LcmWorkerTests
                     ItExpr.IsAny<LogLevel>(), ItExpr.IsAny<CancellationToken>())
                 .ReturnsAsync((dscResult, 0));
 
-            var worker = new LcmWorker(configMock.Object, optionsMonitor, dscExecutorMock.Object, pullServerClient, loggerMock.Object);
+            var worker = new LcmWorker(configMock.Object, optionsMonitor, dscExecutorMock.Object, pullServerClient, certificateManagerMock.Object, loggerMock.Object);
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
 
             await worker.StartAsync(cts.Token);
@@ -355,7 +323,8 @@ public class LcmWorkerTests
                 .ReturnsAsync((string op, string path, LcmConfig cfg, LogLevel level, CancellationToken ct) =>
                     op == "test" ? (testResult, 0) : (setResult, 0));
 
-            var worker = new LcmWorker(configMock.Object, optionsMonitor, dscExecutorMock.Object, pullServerClient, loggerMock.Object);
+            var certificateManagerMock = new Mock<CertificateManager>(optionsMonitor, Mock.Of<ILogger<CertificateManager>>());
+            var worker = new LcmWorker(configMock.Object, optionsMonitor, dscExecutorMock.Object, pullServerClient, certificateManagerMock.Object, loggerMock.Object);
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
 
             await worker.StartAsync(cts.Token);
@@ -421,7 +390,8 @@ public class LcmWorkerTests
                     ItExpr.IsAny<LcmConfig>(), ItExpr.IsAny<LogLevel>(), ItExpr.IsAny<CancellationToken>())
                 .ReturnsAsync((testResult, 0));
 
-            var worker = new LcmWorker(configMock.Object, optionsMonitor, dscExecutorMock.Object, pullServerClient, loggerMock.Object);
+            var certificateManagerMock = new Mock<CertificateManager>(optionsMonitor, Mock.Of<ILogger<CertificateManager>>());
+            var worker = new LcmWorker(configMock.Object, optionsMonitor, dscExecutorMock.Object, pullServerClient, certificateManagerMock.Object, loggerMock.Object);
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
 
             await worker.StartAsync(cts.Token);
@@ -475,7 +445,8 @@ public class LcmWorkerTests
                 ItExpr.IsAny<LcmConfig>(), ItExpr.IsAny<LogLevel>(), ItExpr.IsAny<CancellationToken>())
             .ReturnsAsync((dscResult, 0));
 
-        var worker = new LcmWorker(configMock.Object, optionsMonitorMock.Object, dscExecutorMock.Object, pullServerClient, loggerMock.Object);
+        var certificateManagerMock = new Mock<CertificateManager>(optionsMonitorMock.Object, new Mock<ILogger<CertificateManager>>().Object);
+        var worker = new LcmWorker(configMock.Object, optionsMonitorMock.Object, dscExecutorMock.Object, pullServerClient, certificateManagerMock.Object, loggerMock.Object);
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
 
         await worker.StartAsync(cts.Token);
@@ -531,7 +502,8 @@ public class LcmWorkerTests
                     return Task.FromResult<(OpenDsc.Schema.DscResult, int)>((new OpenDsc.Schema.DscResult { HadErrors = false }, 0));
                 });
 
-            var worker = new LcmWorker(configMock.Object, optionsMonitor, dscExecutorMock.Object, pullServerClient, loggerMock.Object);
+            var certificateManagerMock = new Mock<CertificateManager>(optionsMonitor, Mock.Of<ILogger<CertificateManager>>());
+            var worker = new LcmWorker(configMock.Object, optionsMonitor, dscExecutorMock.Object, pullServerClient, certificateManagerMock.Object, loggerMock.Object);
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
 
             await worker.StartAsync(cts.Token);
@@ -564,7 +536,8 @@ public class LcmWorkerTests
         PullServerClient pullServerClient = null!;
         var loggerMock = new Mock<ILogger<LcmWorker>>();
 
-        var worker = new LcmWorker(configMock.Object, optionsMonitor, dscExecutorMock.Object, pullServerClient, loggerMock.Object);
+        var certificateManagerMock = new Mock<CertificateManager>(optionsMonitor, new Mock<ILogger<CertificateManager>>().Object);
+        var worker = new LcmWorker(configMock.Object, optionsMonitor, dscExecutorMock.Object, pullServerClient, certificateManagerMock.Object, loggerMock.Object);
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
 
         await worker.StartAsync(cts.Token);
@@ -612,7 +585,8 @@ public class LcmWorkerTests
                     ItExpr.IsAny<LogLevel>(), ItExpr.IsAny<CancellationToken>())
                 .ReturnsAsync((dscResult, 0));
 
-            var worker = new LcmWorker(configMock.Object, optionsMonitorMock.Object, dscExecutorMock.Object, pullServerClient, loggerMock.Object);
+            var certificateManagerMock = new Mock<CertificateManager>(optionsMonitorMock.Object, new Mock<ILogger<CertificateManager>>().Object);
+            var worker = new LcmWorker(configMock.Object, optionsMonitorMock.Object, dscExecutorMock.Object, pullServerClient, certificateManagerMock.Object, loggerMock.Object);
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
 
             await worker.StartAsync(cts.Token);

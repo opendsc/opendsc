@@ -41,8 +41,10 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         return JsonSerializer.Serialize(schema);
     }
 
-    public Schema Get(Schema instance)
+    public Schema Get(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         if (!File.Exists(instance.Path) && !Directory.Exists(instance.Path))
         {
             throw new FileNotFoundException($"The file or directory '{instance.Path}' does not exist.");
@@ -96,8 +98,10 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         };
     }
 
-    public SetResult<Schema>? Set(Schema instance)
+    public SetResult<Schema>? Set(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         if (!File.Exists(instance.Path) && !Directory.Exists(instance.Path))
         {
             throw new FileNotFoundException($"The file or directory '{instance.Path}' does not exist.");

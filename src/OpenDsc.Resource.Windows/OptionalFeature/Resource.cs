@@ -39,14 +39,18 @@ public sealed class Resource(JsonSerializerContext context)
         return JsonSerializer.Serialize(schema);
     }
 
-    public Schema Get(Schema instance)
+    public Schema Get(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         var (schema, _) = DismHelper.GetFeature(instance.Name, instance.IncludeAllSubFeatures, instance.Source);
         return schema;
     }
 
-    public SetResult<Schema>? Set(Schema instance)
+    public SetResult<Schema>? Set(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         var beforeState = Get(instance);
         var desiredExist = instance.Exist ?? true;
 
@@ -82,12 +86,14 @@ public sealed class Resource(JsonSerializerContext context)
         return new SetResult<Schema>(actualState);
     }
 
-    public void Delete(Schema instance)
+    public void Delete(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         _ = DismHelper.DisableFeature(instance.Name);
     }
 
-    public IEnumerable<Schema> Export()
+    public IEnumerable<Schema> Export(Schema? filter)
     {
         return DismHelper.EnumerateFeatures();
     }

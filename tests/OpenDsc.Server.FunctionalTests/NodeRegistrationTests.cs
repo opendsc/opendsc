@@ -26,7 +26,7 @@ public abstract class NodeRegistrationTests
     }
 
     [Fact]
-    public async Task RegisterNode_WithValidRegistrationKey_ReturnsNodeIdAndApiKey()
+    public async Task RegisterNode_WithValidRegistrationKey_ReturnsNodeIdOnly()
     {
         var request = new RegisterNodeRequest
         {
@@ -40,9 +40,6 @@ public abstract class NodeRegistrationTests
         var result = await response.Content.ReadFromJsonAsync<RegisterNodeResponse>();
         result.Should().NotBeNull();
         result!.NodeId.Should().NotBeEmpty();
-        result.ApiKey.Should().NotBeNullOrEmpty();
-        result.ApiKey.Length.Should().BeGreaterThan(20);
-        result.KeyRotationInterval.Should().BeGreaterThan(TimeSpan.Zero);
     }
 
     [Fact]
@@ -60,7 +57,7 @@ public abstract class NodeRegistrationTests
     }
 
     [Fact]
-    public async Task RegisterNode_ReRegistrationOfExistingNode_ReturnsNewApiKey()
+    public async Task RegisterNode_ReRegistrationOfExistingNode_ReturnsSameNodeId()
     {
         var fqdn = $"test-node-{Guid.NewGuid()}.example.com";
         var request = new RegisterNodeRequest
@@ -77,7 +74,6 @@ public abstract class NodeRegistrationTests
 
         secondResult.Should().NotBeNull();
         secondResult!.NodeId.Should().Be(firstResult!.NodeId);
-        secondResult.ApiKey.Should().NotBe(firstResult.ApiKey);
     }
 
     [Fact]
