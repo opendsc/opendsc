@@ -11,6 +11,7 @@
   "fenced-code-language": {
     "allowed_languages": [
       "csharp",
+      "http",
       "powershell",
       "mermaid",
       "sh",

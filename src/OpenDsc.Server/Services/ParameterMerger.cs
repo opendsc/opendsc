@@ -7,11 +7,12 @@ using System.Text.Json;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
-namespace OpenDsc.Parameters;
+namespace OpenDsc.Server.Services;
 
 internal interface IParameterSource
 {
-    string ScopeName { get; }
+    string ScopeTypeName { get; }
+    string? ScopeValue { get; }
     int Precedence { get; }
 }
 
@@ -28,12 +29,6 @@ public sealed class ParameterMerger : IParameterMerger
         .WithNamingConvention(CamelCaseNamingConvention.Instance)
         .Build();
 
-    /// <summary>
-    /// Merges multiple parameter files with precedence-based replacement.
-    /// </summary>
-    /// <param name="parameterFiles">Parameter file contents to merge.</param>
-    /// <param name="options">Merge options.</param>
-    /// <returns>Merged parameter content in the specified format.</returns>
     public string Merge(IEnumerable<string> parameterFiles, MergeOptions? options = null)
     {
         options ??= new MergeOptions();
@@ -49,12 +44,6 @@ public sealed class ParameterMerger : IParameterMerger
             : SerializeToJson(merged);
     }
 
-    /// <summary>
-    /// Merges multiple parameter files with precedence-based replacement and provenance tracking.
-    /// </summary>
-    /// <param name="parameterFiles">Parameter files with scope information.</param>
-    /// <param name="options">Merge options.</param>
-    /// <returns>Merge result with content and provenance information.</returns>
     public MergeResult MergeWithProvenance(IEnumerable<ParameterSource> parameterFiles, MergeOptions? options = null)
     {
         options ??= new MergeOptions();
@@ -62,7 +51,8 @@ public sealed class ParameterMerger : IParameterMerger
         var sources = parameterFiles.OrderBy(p => p.Precedence).ToList();
         var parsedParameters = sources.Select(s => new ParameterSourceInternal
         {
-            ScopeName = s.ScopeName,
+            ScopeTypeName = s.ScopeTypeName,
+            ScopeValue = s.ScopeValue,
             Precedence = s.Precedence,
             Parameters = ParseParameterFile(s.Content)
         }).ToList();
@@ -83,7 +73,8 @@ public sealed class ParameterMerger : IParameterMerger
 
     private sealed class ParameterSourceInternal : IParameterSource
     {
-        public string ScopeName { get; set; } = string.Empty;
+        public string ScopeTypeName { get; set; } = string.Empty;
+        public string? ScopeValue { get; set; }
         public int Precedence { get; set; }
         public Dictionary<string, object?> Parameters { get; set; } = new();
     }
@@ -234,7 +225,8 @@ public sealed class ParameterMerger : IParameterMerger
                 target[kvp.Key] = kvp.Value;
                 provenance[currentPath] = new ParameterProvenance
                 {
-                    ScopeName = sources[currentIndex].ScopeName,
+                    ScopeTypeName = sources[currentIndex].ScopeTypeName,
+                    ScopeValue = sources[currentIndex].ScopeValue,
                     Precedence = sources[currentIndex].Precedence,
                     Value = kvp.Value
                 };
@@ -248,13 +240,14 @@ public sealed class ParameterMerger : IParameterMerger
             }
             else
             {
-                var overriddenValues = new List<ScopeValue>();
+                var overriddenValues = new List<ScopeValueInfo>();
 
                 if (provenance.TryGetValue(currentPath, out var existing))
                 {
-                    overriddenValues.Add(new ScopeValue
+                    overriddenValues.Add(new ScopeValueInfo
                     {
-                        ScopeName = existing.ScopeName,
+                        ScopeTypeName = existing.ScopeTypeName,
+                        ScopeValue = existing.ScopeValue,
                         Precedence = existing.Precedence,
                         Value = existing.Value
                     });
@@ -268,7 +261,8 @@ public sealed class ParameterMerger : IParameterMerger
                 target[kvp.Key] = kvp.Value;
                 provenance[currentPath] = new ParameterProvenance
                 {
-                    ScopeName = sources[currentIndex].ScopeName,
+                    ScopeTypeName = sources[currentIndex].ScopeTypeName,
+                    ScopeValue = sources[currentIndex].ScopeValue,
                     Precedence = sources[currentIndex].Precedence,
                     Value = kvp.Value,
                     OverriddenValues = overriddenValues.Count > 0 ? overriddenValues : null

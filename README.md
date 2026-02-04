@@ -23,12 +23,10 @@ for continuous monitoring and remediation.
 | Library | Description |
 | --- | --- |
 | [OpenDsc.Templates][t] | DSC project templates |
-| [OpenDsc.Parameters][p] | Hierarchical parameter merging with scope-based precedence |
 | [OpenDsc.Resource][r] | Core DSC resource implementation |
 | [OpenDsc.Resource.CommandLine][c] | CLI and resource manifest generator |
 
 [t]: https://www.nuget.org/packages/OpenDsc.Templates
-[p]: https://www.nuget.org/packages/OpenDsc.Parameters
 [r]: https://www.nuget.org/packages/OpenDsc.Resource
 [c]: https://www.nuget.org/packages/OpenDsc.Resource.CommandLine
 
@@ -255,14 +253,16 @@ dsc resource set -r OpenDsc.Archive.Zip/Expand --input '{"path":"archive.zip","d
 For detailed documentation on each library, see their respective README files:
 
 - [OpenDsc.Templates][td]
-- [OpenDsc.Parameters][pd]
 - [OpenDsc.Resource][rd]
 - [OpenDsc.Resource.CommandLine][cd]
+- [OpenDsc.Server][sd]
+- [OpenDsc.Lcm][ld]
 
 [td]: src/OpenDsc.Templates/README.md
-[pd]: src/OpenDsc.Parameters/README.md
 [rd]: src/OpenDsc.Resource/README.md
 [cd]: src/OpenDsc.Resource.CommandLine/README.md
+[sd]: src/OpenDsc.Server/README.md
+[ld]: src/OpenDsc.Lcm/README.md
 
 ## License
 

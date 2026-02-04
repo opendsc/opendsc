@@ -34,24 +34,29 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
     public DbSet<ConfigurationFile> ConfigurationFiles => Set<ConfigurationFile>();
 
     /// <summary>
-    /// Parameter scopes.
+    /// Scope types for parameter layering.
     /// </summary>
-    public DbSet<Scope> Scopes => Set<Scope>();
+    public DbSet<ScopeType> ScopeTypes => Set<ScopeType>();
 
     /// <summary>
-    /// Parameter versions.
+    /// Scope values within scope types.
     /// </summary>
-    public DbSet<ParameterVersion> ParameterVersions => Set<ParameterVersion>();
+    public DbSet<ScopeValue> ScopeValues => Set<ScopeValue>();
+
+    /// <summary>
+    /// Node tags assigning scope values to nodes.
+    /// </summary>
+    public DbSet<NodeTag> NodeTags => Set<NodeTag>();
+
+    /// <summary>
+    /// Parameter files for configurations.
+    /// </summary>
+    public DbSet<ParameterFile> ParameterFiles => Set<ParameterFile>();
 
     /// <summary>
     /// Node configuration assignments.
     /// </summary>
     public DbSet<NodeConfiguration> NodeConfigurations => Set<NodeConfiguration>();
-
-    /// <summary>
-    /// Node scope assignments.
-    /// </summary>
-    public DbSet<NodeScopeAssignment> NodeScopeAssignments => Set<NodeScopeAssignment>();
 
     /// <summary>
     /// Compliance reports from nodes.
@@ -120,32 +125,61 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        modelBuilder.Entity<Scope>(entity =>
+        modelBuilder.Entity<ScopeType>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.Name).IsUnique();
-            entity.HasIndex(e => e.Precedence);
+            entity.HasIndex(e => e.Precedence).IsUnique();
             entity.Property(e => e.Name).HasMaxLength(100).IsRequired();
             entity.Property(e => e.Description).HasMaxLength(500);
         });
 
-        modelBuilder.Entity<ParameterVersion>(entity =>
+        modelBuilder.Entity<ScopeValue>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.HasIndex(e => new { e.ScopeId, e.ConfigurationId, e.Version }).IsUnique();
-            entity.HasIndex(e => new { e.ScopeId, e.ConfigurationId, e.IsActive });
+            entity.HasIndex(e => new { e.ScopeTypeId, e.Value }).IsUnique();
+            entity.Property(e => e.Value).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.Description).HasMaxLength(500);
+
+            entity.HasOne(e => e.ScopeType)
+                .WithMany(st => st.ScopeValues)
+                .HasForeignKey(e => e.ScopeTypeId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<NodeTag>(entity =>
+        {
+            entity.HasKey(e => new { e.NodeId, e.ScopeValueId });
+
+            entity.HasOne(e => e.Node)
+                .WithMany()
+                .HasForeignKey(e => e.NodeId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.ScopeValue)
+                .WithMany(sv => sv.NodeTags)
+                .HasForeignKey(e => e.ScopeValueId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ParameterFile>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.ConfigurationId, e.ScopeTypeId, e.ScopeValue, e.Version }).IsUnique();
+            entity.HasIndex(e => new { e.ConfigurationId, e.ScopeTypeId, e.ScopeValue, e.IsActive });
             entity.Property(e => e.Version).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.ScopeValue).HasMaxLength(255);
             entity.Property(e => e.ContentType).HasMaxLength(100);
             entity.Property(e => e.Checksum).HasMaxLength(64).IsRequired();
             entity.Property(e => e.CreatedBy).HasMaxLength(255);
 
-            entity.HasOne(e => e.Scope)
-                .WithMany(s => s.ParameterVersions)
-                .HasForeignKey(e => e.ScopeId)
+            entity.HasOne(e => e.ScopeType)
+                .WithMany(st => st.ParameterFiles)
+                .HasForeignKey(e => e.ScopeTypeId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasOne(e => e.Configuration)
-                .WithMany(c => c.ParameterVersions)
+                .WithMany(c => c.ParameterFiles)
                 .HasForeignKey(e => e.ConfigurationId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
@@ -169,21 +203,6 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
                 .WithMany(v => v.NodeConfigurations)
                 .HasForeignKey(e => e.ActiveVersionId)
                 .OnDelete(DeleteBehavior.Restrict);
-        });
-
-        modelBuilder.Entity<NodeScopeAssignment>(entity =>
-        {
-            entity.HasKey(e => new { e.NodeId, e.ScopeId });
-
-            entity.HasOne(e => e.Node)
-                .WithMany()
-                .HasForeignKey(e => e.NodeId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            entity.HasOne(e => e.Scope)
-                .WithMany(s => s.NodeAssignments)
-                .HasForeignKey(e => e.ScopeId)
-                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Report>(entity =>
@@ -215,60 +234,32 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
             entity.Property(e => e.AdminApiKeySalt).HasMaxLength(64).IsRequired();
         });
 
-        SeedDefaultScopes(modelBuilder);
+        SeedDefaultScopeTypes(modelBuilder);
     }
 
-    private static void SeedDefaultScopes(ModelBuilder modelBuilder)
+    private static void SeedDefaultScopeTypes(ModelBuilder modelBuilder)
     {
         var now = DateTimeOffset.UtcNow;
 
-        modelBuilder.Entity<Scope>().HasData(
-            new Scope
+        modelBuilder.Entity<ScopeType>().HasData(
+            new ScopeType
             {
                 Id = Guid.Parse("00000000-0000-0000-0000-000000000001"),
                 Name = "Default",
                 Description = "Default parameters applied to all configurations",
                 Precedence = 0,
+                IsSystem = true,
+                AllowsValues = false,
                 CreatedAt = now
             },
-            new Scope
+            new ScopeType
             {
                 Id = Guid.Parse("00000000-0000-0000-0000-000000000002"),
-                Name = "Role",
-                Description = "Role-specific parameter overrides",
-                Precedence = 10,
-                CreatedAt = now
-            },
-            new Scope
-            {
-                Id = Guid.Parse("00000000-0000-0000-0000-000000000003"),
-                Name = "Region",
-                Description = "Regional parameter overrides",
-                Precedence = 20,
-                CreatedAt = now
-            },
-            new Scope
-            {
-                Id = Guid.Parse("00000000-0000-0000-0000-000000000004"),
-                Name = "Customer",
-                Description = "Customer-specific parameter overrides",
-                Precedence = 30,
-                CreatedAt = now
-            },
-            new Scope
-            {
-                Id = Guid.Parse("00000000-0000-0000-0000-000000000005"),
-                Name = "Environment",
-                Description = "Environment-specific parameter overrides (dev/staging/prod)",
-                Precedence = 40,
-                CreatedAt = now
-            },
-            new Scope
-            {
-                Id = Guid.Parse("00000000-0000-0000-0000-000000000006"),
                 Name = "Node",
-                Description = "Node-specific parameter overrides",
-                Precedence = 50,
+                Description = "Node-specific parameter overrides matched by FQDN",
+                Precedence = 1,
+                IsSystem = true,
+                AllowsValues = true,
                 CreatedAt = now
             }
         );

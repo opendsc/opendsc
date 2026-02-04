@@ -4,7 +4,6 @@
 
 using Microsoft.AspNetCore.Server.Kestrel.Https;
 
-using OpenDsc.Parameters;
 using OpenDsc.Server;
 using OpenDsc.Server.Authentication;
 using OpenDsc.Server.Data;
@@ -62,7 +61,9 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapHealthEndpoints();
-app.MapScopeEndpoints();
+app.MapScopeTypeEndpoints();
+app.MapScopeValueEndpoints();
+app.MapNodeTagEndpoints();
 app.MapParameterEndpoints();
 app.MapNodeEndpoints();
 app.MapConfigurationEndpoints();

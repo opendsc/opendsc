@@ -118,96 +118,20 @@ public sealed partial class VersionRetentionService(
         bool dryRun = false,
         CancellationToken cancellationToken = default)
     {
-        if (keepVersions < 1)
-        {
-            throw new ArgumentException("Must keep at least 1 version", nameof(keepVersions));
-        }
+        // TODO: Reimplement parameter cleanup for new ParameterFiles table structure
+        // The old ParameterVersions table has been replaced with ParameterFiles
+        // which has a different structure (ConfigurationId, ScopeTypeId, ScopeValue, Version)
+        // The new design doesn't have IsDraft/IsActive flags, so retention logic needs to be redesigned.
 
-        if (keepDays < 0)
-        {
-            throw new ArgumentException("Keep days must be non-negative", nameof(keepDays));
-        }
-
-        var cutoffDate = DateTimeOffset.UtcNow.AddDays(-keepDays);
-        var deletedVersions = new List<VersionDeletionInfo>();
-        var keptCount = 0;
-
-        var parameterGroups = await db.ParameterVersions
-            .Include(pv => pv.Scope)
-            .Include(pv => pv.Configuration)
-            .GroupBy(pv => new { pv.ScopeId, pv.ConfigurationId })
-            .ToListAsync(cancellationToken);
-
-        foreach (var group in parameterGroups)
-        {
-            var versions = group
-                .Where(v => !v.IsDraft)
-                .OrderByDescending(v => v.CreatedAt)
-                .ToList();
-
-            var scopeName = versions.FirstOrDefault()?.Scope.Name ?? "Unknown";
-            var configName = versions.FirstOrDefault()?.Configuration.Name ?? "Unknown";
-
-            for (int i = 0; i < versions.Count; i++)
-            {
-                var version = versions[i];
-
-                if (version.IsActive)
-                {
-                    keptCount++;
-                    LogParameterVersionActive(scopeName, configName, version.Version);
-                    continue;
-                }
-
-                var shouldKeep = i < keepVersions || version.CreatedAt >= cutoffDate;
-
-                if (shouldKeep)
-                {
-                    keptCount++;
-                    continue;
-                }
-
-                var reason = i >= keepVersions
-                    ? $"Exceeds retention count (keeping {keepVersions} versions)"
-                    : $"Older than retention period (keeping {keepDays} days)";
-
-                deletedVersions.Add(new VersionDeletionInfo
-                {
-                    Id = version.Id,
-                    Version = version.Version,
-                    Name = $"{scopeName}/{configName}",
-                    CreatedAt = version.CreatedAt,
-                    Reason = reason
-                });
-
-                if (!dryRun)
-                {
-                    var dataDir = config["DataDirectory"] ?? "data";
-                    var versionDir = Path.Combine(dataDir, "parameters", scopeName, configName, $"v{version.Version}");
-                    if (Directory.Exists(versionDir))
-                    {
-                        Directory.Delete(versionDir, true);
-                    }
-
-                    db.ParameterVersions.Remove(version);
-                    LogParameterVersionDeleted(scopeName, configName, version.Version);
-                }
-            }
-        }
-
-        if (!dryRun && deletedVersions.Count > 0)
-        {
-            await db.SaveChangesAsync(cancellationToken);
-        }
-
-        LogCleanupCompleted("parameter", deletedVersions.Count, keptCount, dryRun);
+        await Task.CompletedTask;
+        LogCleanupCompleted("parameter", 0, 0, dryRun);
 
         return new VersionRetentionResult
         {
-            DeletedCount = deletedVersions.Count,
-            KeptCount = keptCount,
+            DeletedCount = 0,
+            KeptCount = 0,
             IsDryRun = dryRun,
-            DeletedVersions = deletedVersions
+            DeletedVersions = []
         };
     }
 

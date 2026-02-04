@@ -18,10 +18,10 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="Scalar.AspNetCore" />
+    <PackageReference Include="YamlDotNet" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\OpenDsc.Parameters\OpenDsc.Parameters.csproj" />
     <ProjectReference Include="..\OpenDsc.Schema\OpenDsc.Schema.csproj" />
   </ItemGroup>
 

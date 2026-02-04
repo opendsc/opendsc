@@ -2,7 +2,7 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
-namespace OpenDsc.Parameters;
+namespace OpenDsc.Server.Services;
 
 /// <summary>
 /// Defines a service for merging parameter files across multiple scopes.
@@ -64,12 +64,17 @@ public enum ParameterFormat
 public sealed class ParameterSource
 {
     /// <summary>
-    /// The scope name.
+    /// The scope type name.
     /// </summary>
-    public required string ScopeName { get; set; }
+    public required string ScopeTypeName { get; set; }
 
     /// <summary>
-    /// The precedence value for this scope.
+    /// The scope value (null for Default scope type).
+    /// </summary>
+    public string? ScopeValue { get; set; }
+
+    /// <summary>
+    /// The precedence value for this scope type.
     /// </summary>
     public required int Precedence { get; set; }
 
@@ -101,12 +106,17 @@ public sealed class MergeResult
 public sealed class ParameterProvenance
 {
     /// <summary>
-    /// The scope name where this value comes from.
+    /// The scope type name where this value comes from.
     /// </summary>
-    public required string ScopeName { get; set; }
+    public required string ScopeTypeName { get; set; }
 
     /// <summary>
-    /// The precedence of this scope.
+    /// The scope value where this value comes from (null for Default scope).
+    /// </summary>
+    public string? ScopeValue { get; set; }
+
+    /// <summary>
+    /// The precedence of this scope type.
     /// </summary>
     public required int Precedence { get; set; }
 
@@ -118,21 +128,26 @@ public sealed class ParameterProvenance
     /// <summary>
     /// Values that were overridden by this value.
     /// </summary>
-    public List<ScopeValue>? OverriddenValues { get; set; }
+    public List<ScopeValueInfo>? OverriddenValues { get; set; }
 }
 
 /// <summary>
 /// Represents a parameter value from a specific scope.
 /// </summary>
-public sealed class ScopeValue
+public sealed class ScopeValueInfo
 {
     /// <summary>
-    /// The scope name where this value comes from.
+    /// The scope type name where this value comes from.
     /// </summary>
-    public required string ScopeName { get; set; }
+    public required string ScopeTypeName { get; set; }
 
     /// <summary>
-    /// The precedence of this scope.
+    /// The scope value where this value comes from (null for Default scope).
+    /// </summary>
+    public string? ScopeValue { get; set; }
+
+    /// <summary>
+    /// The precedence of this scope type.
     /// </summary>
     public required int Precedence { get; set; }
 
@@ -141,4 +156,3 @@ public sealed class ScopeValue
     /// </summary>
     public required object? Value { get; set; }
 }
-

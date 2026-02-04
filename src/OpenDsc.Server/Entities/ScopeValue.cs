@@ -4,15 +4,15 @@
 
 namespace OpenDsc.Server.Entities;
 
-public sealed class Scope
+public sealed class ScopeValue
 {
     public Guid Id { get; set; }
-    public required string Name { get; set; }
+    public required Guid ScopeTypeId { get; set; }
+    public required string Value { get; set; }
     public string? Description { get; set; }
-    public int Precedence { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? UpdatedAt { get; set; }
 
-    public ICollection<ParameterVersion> ParameterVersions { get; set; } = [];
-    public ICollection<NodeScopeAssignment> NodeAssignments { get; set; } = [];
+    public ScopeType ScopeType { get; set; } = null!;
+    public ICollection<NodeTag> NodeTags { get; set; } = [];
 }

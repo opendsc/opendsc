@@ -4,12 +4,12 @@
 
 namespace OpenDsc.Server.Entities;
 
-public sealed class NodeScopeAssignment
+public sealed class NodeTag
 {
     public required Guid NodeId { get; set; }
-    public required Guid ScopeId { get; set; }
+    public required Guid ScopeValueId { get; set; }
     public DateTimeOffset AssignedAt { get; set; }
 
     public Node Node { get; set; } = null!;
-    public Scope Scope { get; set; } = null!;
+    public ScopeValue ScopeValue { get; set; } = null!;
 }
