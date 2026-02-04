@@ -170,10 +170,10 @@ networkSettings:
 
 ### US-West Region
 
-**Scope Value:** `US-West` (GUID: `11111111-2222-3333-4444-555555555555`)
+**Scope Value:** `US-West`
 
 **File:** `data/parameters/global-app-config/Region/
-11111111-2222-3333-4444-555555555555/parameters.yaml`
+US-West/parameters.yaml`
 
 US-West has higher capacity and CCPA compliance:
 
@@ -251,10 +251,10 @@ networking:
 
 ### EU-Central Region
 
-**Scope Value:** `EU-Central` (GUID: `22222222-3333-4444-5555-666666666666`)
+**Scope Value:** `EU-Central`
 
 **File:** `data/parameters/global-app-config/Region/
-22222222-3333-4444-5555-666666666666/parameters.yaml`
+EU-Central/parameters.yaml`
 
 EU-Central has GDPR compliance and strict data residency:
 
@@ -349,10 +349,10 @@ networking:
 
 ### Asia-Pacific Region
 
-**Scope Value:** `Asia-Pacific` (GUID: `33333333-4444-5555-6666-777777777777`)
+**Scope Value:** `Asia-Pacific`
 
 **File:** `data/parameters/global-app-config/Region/
-33333333-4444-5555-6666-777777777777/parameters.yaml`
+Asia-Pacific/parameters.yaml`
 
 Asia-Pacific has regional data regulations and performance optimization:
 
@@ -466,7 +466,7 @@ localization:
 
 **Tags:**
 
-- Region: `US-West` (GUID 11111111-2222-3333-4444-555555555555)
+- Region: `US-West`
 
 **Final Merged Parameters:**
 
@@ -555,7 +555,7 @@ networking:                             # From US-West
 
 **Tags:**
 
-- Region: `EU-Central` (GUID 22222222-3333-4444-5555-666666666666)
+- Region: `EU-Central`
 
 **Key Differences from US-West:**
 
@@ -600,7 +600,7 @@ networking:
 
 **Tags:**
 
-- Region: `Asia-Pacific` (GUID 33333333-4444-5555-6666-777777777777)
+- Region: `Asia-Pacific`
 
 **Key Differences:**
 
@@ -642,7 +642,7 @@ localization:                           # APAC-specific localization
 
 Use the Scalar API documentation at `/scalar/v1` to:
 
-- Create scope type "Region" with precedence 10
+- Create scope type "Region" with precedence 1
 - Create scope values: `US-West`, `EU-Central`, `Asia-Pacific`
 
 ### Step 2: Upload Regional Parameters

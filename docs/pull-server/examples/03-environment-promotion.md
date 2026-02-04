@@ -72,8 +72,8 @@ Environment-focused scope hierarchy:
 | Scope Type | Precedence | Purpose |
 | ---------- | ---------- | ------- |
 | Default | 0 | Base configuration defaults |
-| Environment | 15 | Environment-specific settings |
-| Node | 20 | Server-specific overrides |
+| Environment | 1 | Environment-specific settings |
+| Node | 2 | Server-specific overrides |
 
 ## Base Configuration
 
@@ -151,8 +151,7 @@ resources:
 
 ## Default Scope Parameters
 
-**File:** `data/parameters/app-service-config/Default/
-00000000-0000-0000-0000-000000000001/parameters.yaml`
+**File:** `data/parameters/app-service-config/Default/parameters.yaml`
 
 Conservative defaults for all environments:
 
@@ -201,10 +200,10 @@ features:
 
 ### Development Environment
 
-**Scope Value:** `Development` (GUID: `aaaaaaaa-bbbb-cccc-dddd-111111111111`)
+**Scope Value:** `Development`
 
 **File:** `data/parameters/app-service-config/Environment/
-aaaaaaaa-bbbb-cccc-dddd-111111111111/parameters.yaml`
+Development/parameters.yaml`
 
 Development has verbose logging and feature flags enabled:
 
@@ -267,10 +266,10 @@ database:
 
 ### Staging Environment
 
-**Scope Value:** `Staging` (GUID: `bbbbbbbb-cccc-dddd-eeee-222222222222`)
+**Scope Value:** `Staging`
 
 **File:** `data/parameters/app-service-config/Environment/
-bbbbbbbb-cccc-dddd-eeee-222222222222/parameters.yaml`
+Staging/parameters.yaml`
 
 Staging mirrors production settings but with additional testing features:
 
@@ -346,10 +345,10 @@ monitoring:
 
 ### Production Environment
 
-**Scope Value:** `Production` (GUID: `cccccccc-dddd-eeee-ffff-333333333333`)
+**Scope Value:** `Production`
 
 **File:** `data/parameters/app-service-config/Environment/
-cccccccc-dddd-eeee-ffff-333333333333/parameters.yaml`
+Production/parameters.yaml`
 
 Production has maximum performance and minimal logging:
 
@@ -460,7 +459,7 @@ security:
 
 **Tags:**
 
-- Environment: `Development` (GUID aaaaaaaa-bbbb-cccc-dddd-111111111111)
+- Environment: `Development`
 
 **Key Merged Settings:**
 
@@ -498,7 +497,7 @@ debugging:
 
 **Tags:**
 
-- Environment: `Staging` (GUID bbbbbbbb-cccc-dddd-eeee-222222222222)
+- Environment: `Staging`
 
 **Key Merged Settings:**
 
@@ -543,7 +542,7 @@ monitoring:
 
 **Tags:**
 
-- Environment: `Production` (GUID cccccccc-dddd-eeee-ffff-333333333333)
+- Environment: `Production`
 
 **Key Merged Settings:**
 

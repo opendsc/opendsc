@@ -502,8 +502,8 @@ The provenance API shows which scope contributed each parameter value.
 **Merge Order** (lowest to highest precedence):
 
 1. Default (precedence 0) - base values
-2. Region:US-West (precedence 10) - regional overrides
-3. Environment:Production (precedence 15) - environment overrides (wins)
+2. Region:US-West (precedence 1) - regional overrides
+3. Environment:Production (precedence 2) - environment overrides (wins)
 
 ## Step 6: Download Configuration Bundle
 

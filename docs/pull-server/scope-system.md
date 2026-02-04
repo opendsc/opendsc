@@ -240,7 +240,7 @@ incremented.
 
 **Example:**
 
-```
+```text
 Before:
 - Default (precedence 0)
 - Node (precedence 1)
@@ -372,13 +372,13 @@ implicitly created when you store a parameter file for a node's FQDN.
 
    **Option A: Environment-First**
 
-   ```
+   ```text
    Default → Environment → Region → Team → Node
    ```
 
    **Option B: Region-First**
 
-   ```
+   ```text
    Default → Region → Environment → Role → Node
    ```
 

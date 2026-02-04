@@ -51,10 +51,10 @@ graph TD
 | Scope Type | Precedence | Purpose | Owner |
 | ---------- | ---------- | ------- | ----- |
 | Default | 0 | Global defaults for all servers | Platform Team |
-| Team | 5 | Team-specific application settings | IIS/Security Teams |
-| Region | 10 | Regional compliance requirements | Operations Team |
-| Environment | 15 | Environment-specific limits | Operations Team |
-| Node | 20 | Server-specific overrides | Individual server owner |
+| Team | 1 | Team-specific application settings | IIS/Security Teams |
+| Region | 2 | Regional compliance requirements | Operations Team |
+| Environment | 3 | Environment-specific limits | Operations Team |
+| Node | 4 | Server-specific overrides | Individual server owner |
 
 ## Configuration Structure
 
@@ -147,8 +147,7 @@ resources:
 
 ### Default Scope Parameters
 
-**File:** `data/parameters/webserver-config/Default/
-00000000-0000-0000-0000-000000000001/parameters.yaml`
+**File:** `data/parameters/webserver-config/Default/parameters.yaml`
 
 Platform team sets conservative global defaults:
 
@@ -183,10 +182,10 @@ resourceLimits:
 
 ### Team Scope - IIS Team
 
-**Scope Value:** `IIS-Team` (GUID: `a1b2c3d4-e5f6-7890-abcd-ef1234567890`)
+**Scope Value:** `IIS-Team`
 
 **File:** `data/parameters/webserver-config/Team/
-a1b2c3d4-e5f6-7890-abcd-ef1234567890/parameters.yaml`
+IIS-Team/parameters.yaml`
 
 IIS team customizes application pool and site settings:
 
@@ -231,10 +230,10 @@ loggingSettings:
 
 ### Team Scope - Security Team
 
-**Scope Value:** `Security-Team` (GUID: `b2c3d4e5-f6a7-8901-bcde-f12345678901`)
+**Scope Value:** `Security-Team`
 
 **File:** `data/parameters/webserver-config/Team/
-b2c3d4e5-f6a7-8901-bcde-f12345678901/parameters.yaml`
+Security-Team/parameters.yaml`
 
 Security team manages firewall and hardening:
 
@@ -282,10 +281,10 @@ securityHeaders:
 
 ### Region Scope - US-West
 
-**Scope Value:** `US-West` (GUID: `c3d4e5f6-a7b8-9012-cdef-123456789012`)
+**Scope Value:** `US-West`
 
 **File:** `data/parameters/webserver-config/Region/
-c3d4e5f6-a7b8-9012-cdef-123456789012/parameters.yaml`
+US-West/parameters.yaml`
 
 US-West region has specific compliance requirements:
 
@@ -320,10 +319,10 @@ tlsSettings:
 
 ### Region Scope - EU-Central
 
-**Scope Value:** `EU-Central` (GUID: `d4e5f6a7-b8c9-0123-def0-123456789abc`)
+**Scope Value:** `EU-Central`
 
 **File:** `data/parameters/webserver-config/Region/
-d4e5f6a7-b8c9-0123-def0-123456789abc/parameters.yaml`
+EU-Central/parameters.yaml`
 
 EU-Central region has GDPR requirements:
 
@@ -360,10 +359,10 @@ firewallRules:
 
 ### Environment Scope - Production
 
-**Scope Value:** `Production` (GUID: `e5f6a7b8-c9d0-1234-ef01-23456789abcd`)
+**Scope Value:** `Production`
 
 **File:** `data/parameters/webserver-config/Environment/
-e5f6a7b8-c9d0-1234-ef01-23456789abcd/parameters.yaml`
+Production/parameters.yaml`
 
 Production environment has strict resource limits:
 
@@ -393,10 +392,10 @@ monitoring:
 
 ### Environment Scope - Staging
 
-**Scope Value:** `Staging` (GUID: `f6a7b8c9-d0e1-2345-f012-3456789abcde`)
+**Scope Value:** `Staging`
 
 **File:** `data/parameters/webserver-config/Environment/
-f6a7b8c9-d0e1-2345-f012-3456789abcde/parameters.yaml`
+Staging/parameters.yaml`
 
 Staging environment matches production but with lower limits:
 
@@ -448,11 +447,11 @@ For a node `webserver01.example.com` in **US-West** region,
 **Merge Order:**
 
 1. Default scope (precedence 0)
-2. Team scope - IIS-Team (precedence 5)
-3. Team scope - Security-Team (precedence 5)
-4. Region scope - US-West (precedence 10)
-5. Environment scope - Production (precedence 15)
-6. Node scope - webserver01.example.com (precedence 20)
+2. Team scope - IIS-Team (precedence 1)
+3. Team scope - Security-Team (precedence 1)
+4. Region scope - US-West (precedence 2)
+5. Environment scope - Production (precedence 3)
+6. Node scope - webserver01.example.com (precedence 4)
 
 **Final Merged Parameters:**
 
@@ -569,18 +568,17 @@ Each web server needs to be tagged with appropriate scope values:
 
 **webserver01.example.com** (Production, US-West):
 
-- **Team** scope: `IIS-Team` (GUID a1b2c3d4-e5f6-7890-abcd-ef1234567890)
-- **Team** scope: `Security-Team` (GUID b2c3d4e5-f6a7-8901-bcde-f12345678901)
-- **Region** scope: `US-West` (GUID c3d4e5f6-a7b8-9012-cdef-123456789012)
+- **Team** scope: `IIS-Team`
+- **Team** scope: `Security-Team`
+- **Region** scope: `US-West`
 - **Environment** scope: `Production`
-  (GUID e5f6a7b8-c9d0-1234-ef01-23456789abcd)
 
 **webserver02.example.com** (Staging, EU-Central):
 
-- **Team** scope: `IIS-Team` (GUID a1b2c3d4-e5f6-7890-abcd-ef1234567890)
-- **Team** scope: `Security-Team` (GUID b2c3d4e5-f6a7-8901-bcde-f12345678901)
-- **Region** scope: `EU-Central` (GUID d4e5f6a7-b8c9-0123-def0-123456789abc)
-- **Environment** scope: `Staging` (GUID f6a7b8c9-d0e1-2345-f012-3456789abcde)
+- **Team** scope: `IIS-Team`
+- **Team** scope: `Security-Team`
+- **Region** scope: `EU-Central`
+- **Environment** scope: `Staging`
 
 ## Team Workflow
 
@@ -589,7 +587,7 @@ Each web server needs to be tagged with appropriate scope values:
 1. **Update Application Settings** (no coordination with Security team needed):
 
    ```text
-   Update: data/parameters/webserver-config/Team/a1b2c3d4-e5f6-7890-abcd-ef1234567890/parameters.yaml
+   Update: data/parameters/webserver-config/Team/IIS-Team/parameters.yaml
    Changes: applicationPoolSettings, siteBindings, defaultDocuments, loggingSettings
    ```
 
@@ -603,7 +601,7 @@ Each web server needs to be tagged with appropriate scope values:
 1. **Update Firewall Rules** (no coordination with IIS team needed):
 
    ```text
-   Update: data/parameters/webserver-config/Team/b2c3d4e5-f6a7-8901-bcde-f12345678901/parameters.yaml
+   Update: data/parameters/webserver-config/Team/Security-Team/parameters.yaml
    Changes: firewallRules, tlsSettings, securityHeaders
    ```
 
@@ -617,14 +615,14 @@ Each web server needs to be tagged with appropriate scope values:
 1. **Regional Compliance Update** (affects only US-West servers):
 
    ```text
-   Update: data/parameters/webserver-config/Region/c3d4e5f6-a7b8-9012-cdef-123456789012/parameters.yaml
+   Update: data/parameters/webserver-config/Region/US-West/parameters.yaml
    Changes: CCPA logging requirements
    ```
 
 2. **Environment Resource Tuning** (affects only Production):
 
    ```text
-   Update: data/parameters/webserver-config/Environment/e5f6a7b8-c9d0-1234-ef01-23456789abcd/parameters.yaml
+   Update: data/parameters/webserver-config/Environment/Production/parameters.yaml
    Changes: resourceLimits, monitoring thresholds
    ```
 
