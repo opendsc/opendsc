@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using OpenDsc.Server.Authentication;
 using OpenDsc.Server.Contracts;
 using OpenDsc.Server.Data;
+using OpenDsc.Server.Entities;
 
 namespace OpenDsc.Server.Endpoints;
 
@@ -25,11 +26,11 @@ public static class SettingsEndpoints
 
         group.MapPut("/", UpdateSettings)
             .WithSummary("Update server settings")
-            .WithDescription("Updates server settings like key rotation interval.");
+            .WithDescription("Updates server settings like certificate rotation interval.");
 
-        group.MapPost("/registration-key/rotate", RotateRegistrationKey)
+        group.MapPost("/registration-keys", RotateRegistrationKey)
             .WithSummary("Rotate registration key")
-            .WithDescription("Generates a new registration key, invalidating the old one.");
+            .WithDescription("Generates a new registration key for node registration.");
     }
 
     private static async Task<Results<Ok<ServerSettingsResponse>, NotFound<ErrorResponse>>> GetSettings(
@@ -44,8 +45,7 @@ public static class SettingsEndpoints
 
         return TypedResults.Ok(new ServerSettingsResponse
         {
-            RegistrationKey = settings.RegistrationKey,
-            KeyRotationInterval = settings.KeyRotationInterval
+            CertificateRotationInterval = settings.CertificateRotationInterval
         });
     }
 
@@ -60,36 +60,47 @@ public static class SettingsEndpoints
             return TypedResults.NotFound(new ErrorResponse { Error = "Server settings not found." });
         }
 
-        if (request.KeyRotationInterval.HasValue)
+        if (request.CertificateRotationInterval.HasValue)
         {
-            settings.KeyRotationInterval = request.KeyRotationInterval.Value;
+            settings.CertificateRotationInterval = request.CertificateRotationInterval.Value;
         }
 
         await db.SaveChangesAsync(cancellationToken);
 
         return TypedResults.Ok(new ServerSettingsResponse
         {
-            RegistrationKey = settings.RegistrationKey,
-            KeyRotationInterval = settings.KeyRotationInterval
+            CertificateRotationInterval = settings.CertificateRotationInterval
         });
     }
 
-    private static async Task<Results<Ok<RotateRegistrationKeyResponse>, NotFound<ErrorResponse>>> RotateRegistrationKey(
+    private static async Task<Ok<RegistrationKeyResponse>> RotateRegistrationKey(
         ServerDbContext db,
         CancellationToken cancellationToken)
     {
-        var settings = await db.ServerSettings.FirstOrDefaultAsync(cancellationToken);
-        if (settings is null)
-        {
-            return TypedResults.NotFound(new ErrorResponse { Error = "Server settings not found." });
-        }
+        var key = ApiKeyAuthHandler.GenerateRegistrationKey();
+        var expiresAt = DateTimeOffset.UtcNow.AddDays(30);
 
-        settings.RegistrationKey = ApiKeyAuthHandler.GenerateApiKey();
+        var registrationKey = new RegistrationKey
+        {
+            Id = Guid.NewGuid(),
+            Key = key,
+            ExpiresAt = expiresAt,
+            CreatedAt = DateTimeOffset.UtcNow,
+            MaxUses = null,
+            CurrentUses = 0,
+            IsRevoked = false
+        };
+
+        db.RegistrationKeys.Add(registrationKey);
         await db.SaveChangesAsync(cancellationToken);
 
-        return TypedResults.Ok(new RotateRegistrationKeyResponse
+        return TypedResults.Ok(new RegistrationKeyResponse
         {
-            RegistrationKey = settings.RegistrationKey
+            Id = registrationKey.Id,
+            Key = key,
+            ExpiresAt = expiresAt,
+            MaxUses = null,
+            CurrentUses = 0
         });
     }
 }

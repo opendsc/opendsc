@@ -38,8 +38,10 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         return JsonSerializer.Serialize(schema);
     }
 
-    public Schema Get(Schema instance)
+    public Schema Get(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         try
         {
             using var service = new ServiceController(instance.Name);
@@ -68,8 +70,10 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         }
     }
 
-    public SetResult<Schema>? Set(Schema instance)
+    public SetResult<Schema>? Set(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         if (instance.Status is not null &&
             instance.Status != ServiceControllerStatus.Stopped &&
             instance.Status != ServiceControllerStatus.Running &&
@@ -145,8 +149,10 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         return null;
     }
 
-    public void Delete(Schema instance)
+    public void Delete(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         using var service = new ServiceController(instance.Name);
         service.Refresh();
 
@@ -159,7 +165,7 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         ServiceHelper.DeleteWindowsService(service.ServiceName);
     }
 
-    public IEnumerable<Schema> Export()
+    public IEnumerable<Schema> Export(Schema? filter)
     {
         foreach (var service in ServiceController.GetServices())
         {

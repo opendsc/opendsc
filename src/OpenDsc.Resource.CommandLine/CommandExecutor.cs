@@ -9,7 +9,7 @@ namespace OpenDsc.Resource.CommandLine;
 
 internal static class CommandExecutor
 {
-    internal static void ExecuteGet(ResourceRegistration registration, string input)
+    internal static void ExecuteGet(ResourceRegistration registration, string? input)
     {
         if (registration.GetAction == null)
         {
@@ -19,7 +19,7 @@ internal static class CommandExecutor
         registration.GetAction(input);
     }
 
-    internal static void ExecuteSet(ResourceRegistration registration, string input)
+    internal static void ExecuteSet(ResourceRegistration registration, string? input)
     {
         if (registration.SetAction == null)
         {
@@ -29,7 +29,7 @@ internal static class CommandExecutor
         registration.SetAction(input);
     }
 
-    internal static void ExecuteTest(ResourceRegistration registration, string input)
+    internal static void ExecuteTest(ResourceRegistration registration, string? input)
     {
         if (registration.TestAction == null)
         {
@@ -39,7 +39,7 @@ internal static class CommandExecutor
         registration.TestAction(input);
     }
 
-    internal static void ExecuteDelete(ResourceRegistration registration, string input)
+    internal static void ExecuteDelete(ResourceRegistration registration, string? input)
     {
         if (registration.DeleteAction == null)
         {
@@ -49,14 +49,14 @@ internal static class CommandExecutor
         registration.DeleteAction(input);
     }
 
-    internal static void ExecuteExport(ResourceRegistration registration)
+    internal static void ExecuteExport(ResourceRegistration registration, string? input)
     {
         if (registration.ExportAction == null)
         {
             throw new NotImplementedException($"Resource '{registration.Type}' does not support Export capability.");
         }
 
-        registration.ExportAction();
+        registration.ExportAction(input);
     }
 
     internal static void ExecuteSchema(ResourceRegistration registration)
@@ -238,8 +238,8 @@ internal static class CommandExecutor
         {
             Executable = exeName,
             Args = isMultiResourceExe
-                ? ["export", "--resource", registration.Type]
-                : ["export"]
+                ? ["export", "--resource", registration.Type, new JsonInputArg { Arg = "--input", Mandatory = false }]
+                : ["export", new JsonInputArg { Arg = "--input", Mandatory = false }]
         };
     }
 

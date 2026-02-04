@@ -62,4 +62,19 @@ internal static class EventIds
     public const int PullServerNotConfigured = 6000;
     public const int ConfigurationDownloadedFromServer = 6001;
     public const int ApiKeyRotated = 6002;
+    public const int NodeIdPersisted = 6003;
+    public const int FailedToPersistNodeId = 6004;
+    public const int CertificateRotatedOnPullServer = 6005;
+
+    // Certificate Management Events: 7000-7099
+    public const int CertificateLoaded = 7000;
+    public const int CertificateExpiringSoon = 7001;
+    public const int FailedToLoadCertificate = 7002;
+    public const int CertificateGenerated = 7003;
+    public const int CertificateThumbprintNotConfigured = 7004;
+    public const int CertificateNotFoundInStore = 7005;
+    public const int CertificateLoadedFromStore = 7006;
+    public const int CertificateRotated = 7007;
+    public const int CertificateRotationNotSupported = 7008;
+    public const int CertificatePathNotConfigured = 7009;
 }

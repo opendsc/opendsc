@@ -43,5 +43,6 @@
     <PackageVersion Include="Testcontainers" Version="3.10.0" />
     <PackageVersion Include="Testcontainers.MsSql" Version="3.10.0" />
     <PackageVersion Include="Testcontainers.PostgreSql" Version="3.10.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.Cryptography.KeyDerivation" Version="10.0.0" />
   </ItemGroup>
 </Project>

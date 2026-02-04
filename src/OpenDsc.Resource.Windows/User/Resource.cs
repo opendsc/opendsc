@@ -36,8 +36,10 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         return JsonSerializer.Serialize(schema);
     }
 
-    public Schema Get(Schema instance)
+    public Schema Get(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         using var context = new PrincipalContext(ContextType.Machine);
         var user = UserPrincipal.FindByIdentity(context, IdentityType.SamAccountName, instance.UserName);
 
@@ -64,8 +66,10 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         }
     }
 
-    public SetResult<Schema>? Set(Schema instance)
+    public SetResult<Schema>? Set(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         using var context = new PrincipalContext(ContextType.Machine);
         var user = UserPrincipal.FindByIdentity(context, IdentityType.SamAccountName, instance.UserName);
 
@@ -149,8 +153,10 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         return null;
     }
 
-    public void Delete(Schema instance)
+    public void Delete(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         using var context = new PrincipalContext(ContextType.Machine);
         var user = UserPrincipal.FindByIdentity(context, IdentityType.SamAccountName, instance.UserName);
 
@@ -163,7 +169,7 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         }
     }
 
-    public IEnumerable<Schema> Export()
+    public IEnumerable<Schema> Export(Schema? filter)
     {
         using var context = new PrincipalContext(ContextType.Machine);
         using var searcher = new PrincipalSearcher(new UserPrincipal(context));

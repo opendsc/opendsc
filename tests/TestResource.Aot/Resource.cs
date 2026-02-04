@@ -18,8 +18,10 @@ namespace TestResource.Aot;
 [ExitCode(5, Exception = typeof(UnauthorizedAccessException), Description = "Access denied")]
 public sealed class Resource(JsonSerializerContext context) : DscResource<Schema>(context), IGettable<Schema>, ISettable<Schema>, IDeletable<Schema>, ITestable<Schema>, IExportable<Schema>
 {
-    public Schema Get(Schema instance)
+    public Schema Get(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         if (instance.Path.Contains("trigger-json-exception", StringComparison.OrdinalIgnoreCase))
         {
             throw new JsonException("Simulated JSON parsing error");
@@ -53,8 +55,10 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         };
     }
 
-    public SetResult<Schema>? Set(Schema instance)
+    public SetResult<Schema>? Set(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         var desiredExist = instance.Exist ?? true;
         var currentState = Get(instance);
         var currentExist = currentState.Exist ?? true;
@@ -92,16 +96,20 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         return result;
     }
 
-    public void Delete(Schema instance)
+    public void Delete(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         if (File.Exists(instance.Path))
         {
             File.Delete(instance.Path);
         }
     }
 
-    public TestResult<Schema> Test(Schema instance)
+    public TestResult<Schema> Test(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         var actual = Get(instance);
 
         var desiredExist = instance.Exist ?? true;
@@ -122,18 +130,44 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         return result;
     }
 
-    public IEnumerable<Schema> Export()
+    public IEnumerable<Schema> Export(Schema? filter)
     {
         var searchPath = Environment.GetEnvironmentVariable("TEST_EXPORT_DIR") ?? Directory.GetCurrentDirectory();
         var files = Directory.GetFiles(searchPath, "test-*.txt", SearchOption.TopDirectoryOnly);
 
         foreach (var file in files)
         {
+            if (filter != null && !string.IsNullOrEmpty(filter.Path))
+            {
+                var filterPath = filter.Path;
+                if (filterPath.Contains('*') || filterPath.Contains('?'))
+                {
+                    var fileName = System.IO.Path.GetFileName(file);
+                    var pattern = System.IO.Path.GetFileName(filterPath);
+                    if (!MatchesPattern(fileName, pattern))
+                    {
+                        continue;
+                    }
+                }
+                else if (!file.Equals(filterPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+            }
+
             yield return new Schema
             {
                 Path = file,
                 Exist = null
             };
         }
+    }
+
+    private static bool MatchesPattern(string input, string pattern)
+    {
+        var regexPattern = "^" + System.Text.RegularExpressions.Regex.Escape(pattern)
+            .Replace("\\*", ".*")
+            .Replace("\\?", ".") + "$";
+        return System.Text.RegularExpressions.Regex.IsMatch(input, regexPattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
     }
 }

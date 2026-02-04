@@ -26,4 +26,9 @@ public static class ConfigPaths
 
         throw new PlatformNotSupportedException("Unsupported platform");
     }
+
+    public static string GetLcmConfigPath()
+    {
+        return Path.Combine(GetLcmConfigDirectory(), "appsettings.json");
+    }
 }
