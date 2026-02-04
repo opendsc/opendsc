@@ -137,7 +137,7 @@ public class ManifestExportMethod
     /// <summary>
     /// Gets or sets the command-line arguments for the method.
     /// </summary>
-    public string[]? Args { get; set; }
+    public object[]? Args { get; set; }
 }
 
 /// <summary>

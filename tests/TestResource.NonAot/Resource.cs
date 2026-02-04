@@ -24,8 +24,10 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
     IExportable<Schema>
 {
 
-    public Schema Get(Schema instance)
+    public Schema Get(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         if (instance.Path.Contains("trigger-json-exception", StringComparison.OrdinalIgnoreCase))
         {
             throw new JsonException("Simulated JSON parsing error");
@@ -59,8 +61,10 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         };
     }
 
-    public SetResult<Schema>? Set(Schema instance)
+    public SetResult<Schema>? Set(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         var desiredExist = instance.Exist ?? true;
         var currentState = Get(instance);
         var currentExist = currentState.Exist ?? true;
@@ -98,16 +102,20 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         return result;
     }
 
-    public void Delete(Schema instance)
+    public void Delete(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         if (File.Exists(instance.Path))
         {
             File.Delete(instance.Path);
         }
     }
 
-    public TestResult<Schema> Test(Schema instance)
+    public TestResult<Schema> Test(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         var actual = Get(instance);
 
         var desiredExist = instance.Exist ?? true;
@@ -128,7 +136,7 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         return result;
     }
 
-    public IEnumerable<Schema> Export()
+    public IEnumerable<Schema> Export(Schema? filter)
     {
         var searchPath = Environment.GetEnvironmentVariable("TEST_EXPORT_DIR") ?? Directory.GetCurrentDirectory();
         var files = Directory.GetFiles(searchPath, "test-*.txt", SearchOption.TopDirectoryOnly);

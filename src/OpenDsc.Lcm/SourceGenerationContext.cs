@@ -19,7 +19,8 @@ namespace OpenDsc.Lcm;
 // Pull server client types
 [JsonSerializable(typeof(RegisterNodeRequest))]
 [JsonSerializable(typeof(RegisterNodeResponse))]
-[JsonSerializable(typeof(RotateKeyResponse))]
+[JsonSerializable(typeof(RotateCertificateRequest))]
+[JsonSerializable(typeof(RotateCertificateResponse))]
 [JsonSerializable(typeof(ConfigurationChecksumResponse))]
 [JsonSerializable(typeof(SubmitReportRequest))]
 // Schema types for DSC result parsing (also include here for HTTP client usage)
