@@ -303,18 +303,24 @@ public partial class LcmWorker(
         using (bundleStream)
         using (var archive = new System.IO.Compression.ZipArchive(bundleStream, System.IO.Compression.ZipArchiveMode.Read))
         {
+            var fullExtractDirPath = Path.GetFullPath(extractDir + Path.DirectorySeparatorChar);
             foreach (var entry in archive.Entries)
             {
-                var destPath = Path.Combine(extractDir, entry.FullName);
-                var destDir = Path.GetDirectoryName(destPath);
-                if (!string.IsNullOrEmpty(destDir) && !Directory.Exists(destDir))
+                var destPath = Path.GetFullPath(Path.Combine(extractDir, entry.FullName));
+                if (!destPath.StartsWith(fullExtractDirPath, StringComparison.OrdinalIgnoreCase))
                 {
-                    Directory.CreateDirectory(destDir);
+                    throw new InvalidOperationException($"Entry is outside the target dir: {entry.FullName}");
                 }
 
                 if (entry.FullName.EndsWith('/') || entry.FullName.EndsWith('\\'))
                 {
                     continue;
+                }
+
+                var destDir = Path.GetDirectoryName(destPath);
+                if (!string.IsNullOrEmpty(destDir) && !Directory.Exists(destDir))
+                {
+                    Directory.CreateDirectory(destDir);
                 }
 
                 using var entryStream = entry.Open();

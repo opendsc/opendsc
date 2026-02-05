@@ -277,7 +277,6 @@ public class ConfigurationEndpointsTests : IDisposable
         configFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         configContent.Add(configFile, "files", "main.dsc.yaml");
         var createResponse = await client.PostAsync("/api/v1/configurations", configContent);
-        var configDto = await createResponse.Content.ReadFromJsonAsync<ConfigurationDetailsDto>();
 
         using var v2Content = new MultipartFormDataContent();
         v2Content.Add(new StringContent("2.0.0"), "version");

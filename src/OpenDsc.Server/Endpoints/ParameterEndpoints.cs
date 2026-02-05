@@ -105,16 +105,9 @@ public static class ParameterEndpoints
                 pf.Version == request.Version);
 
         var dataDir = config["DataDirectory"] ?? "data";
-        string filePath;
-
-        if (scopeType.AllowsValues && !string.IsNullOrWhiteSpace(request.ScopeValue))
-        {
-            filePath = Path.Combine(dataDir, "parameters", configuration.Name, scopeType.Name, request.ScopeValue, "parameters.yaml");
-        }
-        else
-        {
-            filePath = Path.Combine(dataDir, "parameters", configuration.Name, scopeType.Name, "parameters.yaml");
-        }
+        var filePath = scopeType.AllowsValues && !string.IsNullOrWhiteSpace(request.ScopeValue)
+            ? Path.Combine(dataDir, "parameters", configuration.Name, scopeType.Name, request.ScopeValue, "parameters.yaml")
+            : Path.Combine(dataDir, "parameters", configuration.Name, scopeType.Name, "parameters.yaml");
 
         var fileDir = Path.GetDirectoryName(filePath);
         if (!string.IsNullOrEmpty(fileDir) && !Directory.Exists(fileDir))

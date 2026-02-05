@@ -332,7 +332,7 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
         modelBuilder.Entity<ValidationSettings>().HasData(
             new ValidationSettings
             {
-                Id = Guid.NewGuid(),
+                Id = new Guid("00000000-0000-0000-0000-000000000001"),
                 EnforceSemverCompliance = true,
                 DefaultParameterValidation = ParameterValidationMode.Strict,
                 AutoCopyParametersOnMinor = true,

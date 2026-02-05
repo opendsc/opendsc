@@ -113,9 +113,9 @@ public static class ScopeValueEndpoints
             return TypedResults.BadRequest("Scope value is required");
         }
 
-        if (!System.Text.RegularExpressions.Regex.IsMatch(request.Value, "^[a-zA-Z0-9_.-]+$"))
+        if (!System.Text.RegularExpressions.Regex.IsMatch(request.Value, "^[a-zA-Z0-9_-]+$"))
         {
-            return TypedResults.BadRequest("Scope value can only contain alphanumeric characters, hyphens, underscores, and periods");
+            return TypedResults.BadRequest("Scope value can only contain alphanumeric characters, hyphens, and underscores");
         }
 
         if (await db.ScopeValues.AnyAsync(sv => sv.ScopeTypeId == scopeTypeId && sv.Value == request.Value))

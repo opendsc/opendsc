@@ -967,7 +967,7 @@ public class CompositeConfigurationEndpointsTests : IDisposable
 
         var compositeName = "test-composite-remove-published";
         var version = "1.0.0";
-        var configName = await CreateTestConfigurationAsync(client, "child-config-remove-published");
+        await CreateTestConfigurationAsync(client, "child-config-remove-published");
 
         // Create composite
         var createRequest = new CreateCompositeConfigurationRequest

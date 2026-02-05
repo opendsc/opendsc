@@ -24,6 +24,8 @@ public sealed class CertificateAuthHandler(
     IServiceScopeFactory scopeFactory)
     : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
 {
+    private readonly ILogger _logger = logger.CreateLogger<CertificateAuthHandler>();
+
     /// <summary>
     /// Authentication scheme name for node certificates.
     /// </summary>
@@ -31,7 +33,7 @@ public sealed class CertificateAuthHandler(
 
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        Console.WriteLine("CertificateAuthHandler.HandleAuthenticateAsync called");
+        _logger.LogDebug("CertificateAuthHandler.HandleAuthenticateAsync called");
         var clientCert = Context.Connection.ClientCertificate;
 
         // In testing environment, authenticate without certificate
@@ -39,25 +41,25 @@ public sealed class CertificateAuthHandler(
         {
             // Extract node ID from URL for testing
             var path = Context.Request.Path;
-            Console.WriteLine($"Testing auth: Path = {path}");
+            _logger.LogDebug("Testing auth: Path = {Path}", path);
             var nodeIdMatch = System.Text.RegularExpressions.Regex.Match(path, @"/api/v1/nodes/(?<nodeId>[a-f0-9\-]+)");
-            Console.WriteLine($"Testing auth: Regex match success = {nodeIdMatch.Success}");
+            _logger.LogDebug("Testing auth: Regex match success = {Success}", nodeIdMatch.Success);
             if (nodeIdMatch.Success)
             {
-                Console.WriteLine($"Testing auth: Captured nodeId = {nodeIdMatch.Groups["nodeId"].Value}");
+                _logger.LogDebug("Testing auth: Captured nodeId = {NodeId}", nodeIdMatch.Groups["nodeId"].Value);
                 if (Guid.TryParse(nodeIdMatch.Groups["nodeId"].Value, out var testNodeId))
                 {
-                    Console.WriteLine($"Testing auth: Parsed GUID = {testNodeId}");
+                    _logger.LogDebug("Testing auth: Parsed GUID = {Guid}", testNodeId);
                     using var testScope = scopeFactory.CreateScope();
                     var testDbContext = testScope.ServiceProvider.GetRequiredService<ServerDbContext>();
 
                     var testNode = await testDbContext.Nodes
                         .AsNoTracking()
                         .FirstOrDefaultAsync(n => n.Id == testNodeId);
-                    Console.WriteLine($"Testing auth: Node found = {testNode is not null}");
+                    _logger.LogDebug("Testing auth: Node found = {Found}", testNode is not null);
                     if (testNode is not null)
                     {
-                        Console.WriteLine("Testing auth: Creating test claims");
+                        _logger.LogDebug("Testing auth: Creating test claims");
                         var testClaims = new[]
                         {
                             new Claim(ClaimTypes.NameIdentifier, testNode.Id.ToString()),
@@ -75,7 +77,7 @@ public sealed class CertificateAuthHandler(
                     }
                 }
             }
-            Console.WriteLine("Testing auth: Falling back to certificate auth");
+            _logger.LogDebug("Testing auth: Falling back to certificate auth");
 
             return AuthenticateResult.NoResult();
         }

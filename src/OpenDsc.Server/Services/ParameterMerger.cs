@@ -190,14 +190,14 @@ public sealed class ParameterMerger : IParameterMerger
     {
         foreach (var kvp in source)
         {
-            if (!target.ContainsKey(kvp.Key))
+            if (!target.TryGetValue(kvp.Key, out var existingValue))
             {
                 target[kvp.Key] = kvp.Value;
                 continue;
             }
 
             if (kvp.Value is Dictionary<string, object?> sourceDict &&
-                target[kvp.Key] is Dictionary<string, object?> targetDict)
+                existingValue is Dictionary<string, object?> targetDict)
             {
                 MergeInto(targetDict, sourceDict);
             }
@@ -220,7 +220,7 @@ public sealed class ParameterMerger : IParameterMerger
         {
             var currentPath = string.IsNullOrEmpty(parentPath) ? kvp.Key : $"{parentPath}.{kvp.Key}";
 
-            if (!target.ContainsKey(kvp.Key))
+            if (!target.TryGetValue(kvp.Key, out var existingValue))
             {
                 target[kvp.Key] = kvp.Value;
                 provenance[currentPath] = new ParameterProvenance
@@ -234,7 +234,7 @@ public sealed class ParameterMerger : IParameterMerger
             }
 
             if (kvp.Value is Dictionary<string, object?> sourceDict &&
-                target[kvp.Key] is Dictionary<string, object?> targetDict)
+                existingValue is Dictionary<string, object?> targetDict)
             {
                 MergeIntoWithProvenance(targetDict, sourceDict, sources, currentIndex, currentPath, provenance);
             }
