@@ -54,6 +54,11 @@ public static class DatabaseExtensions
 
         try
         {
+            if (environment.IsEnvironment("Testing"))
+            {
+                await context.Database.EnsureDeletedAsync();
+            }
+
             await context.Database.EnsureCreatedAsync();
             logger.LogInformation("Database initialized successfully");
 

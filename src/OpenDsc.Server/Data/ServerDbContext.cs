@@ -34,6 +34,21 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
     public DbSet<ConfigurationFile> ConfigurationFiles => Set<ConfigurationFile>();
 
     /// <summary>
+    /// Composite configurations.
+    /// </summary>
+    public DbSet<CompositeConfiguration> CompositeConfigurations => Set<CompositeConfiguration>();
+
+    /// <summary>
+    /// Composite configuration versions.
+    /// </summary>
+    public DbSet<CompositeConfigurationVersion> CompositeConfigurationVersions => Set<CompositeConfigurationVersion>();
+
+    /// <summary>
+    /// Composite configuration items (children).
+    /// </summary>
+    public DbSet<CompositeConfigurationItem> CompositeConfigurationItems => Set<CompositeConfigurationItem>();
+
+    /// <summary>
     /// Scope types for parameter layering.
     /// </summary>
     public DbSet<ScopeType> ScopeTypes => Set<ScopeType>();
@@ -186,7 +201,7 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
 
         modelBuilder.Entity<NodeConfiguration>(entity =>
         {
-            entity.HasKey(e => new { e.NodeId, e.ConfigurationId });
+            entity.HasKey(e => e.NodeId);
             entity.Property(e => e.PrereleaseChannel).HasMaxLength(50);
 
             entity.HasOne(e => e.Node)
@@ -201,6 +216,59 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
 
             entity.HasOne(e => e.ActiveVersion)
                 .WithMany(v => v.NodeConfigurations)
+                .HasForeignKey(e => e.ActiveVersionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.CompositeConfiguration)
+                .WithMany(c => c.NodeConfigurations)
+                .HasForeignKey(e => e.CompositeConfigurationId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.ActiveCompositeVersion)
+                .WithMany(v => v.NodeConfigurations)
+                .HasForeignKey(e => e.ActiveCompositeVersionId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<CompositeConfiguration>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Name).IsUnique();
+            entity.Property(e => e.Name).HasMaxLength(255).IsRequired();
+            entity.Property(e => e.EntryPoint).HasMaxLength(500).IsRequired();
+        });
+
+        modelBuilder.Entity<CompositeConfigurationVersion>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.CompositeConfigurationId, e.Version }).IsUnique();
+            entity.Property(e => e.Version).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.PrereleaseChannel).HasMaxLength(50);
+            entity.Property(e => e.CreatedBy).HasMaxLength(255);
+
+            entity.HasOne(e => e.CompositeConfiguration)
+                .WithMany(c => c.Versions)
+                .HasForeignKey(e => e.CompositeConfigurationId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CompositeConfigurationItem>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.CompositeConfigurationVersionId, e.Order }).IsUnique();
+
+            entity.HasOne(e => e.CompositeConfigurationVersion)
+                .WithMany(v => v.Items)
+                .HasForeignKey(e => e.CompositeConfigurationVersionId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.ChildConfiguration)
+                .WithMany()
+                .HasForeignKey(e => e.ChildConfigurationId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.ActiveVersion)
+                .WithMany()
                 .HasForeignKey(e => e.ActiveVersionId)
                 .OnDelete(DeleteBehavior.Restrict);
         });

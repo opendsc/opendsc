@@ -5,6 +5,7 @@
 using Microsoft.EntityFrameworkCore;
 
 using OpenDsc.Server.Data;
+using OpenDsc.Server.Entities;
 
 namespace OpenDsc.Server.Services;
 
@@ -53,7 +54,10 @@ public sealed partial class VersionRetentionService(
                 var isInActiveUse = await db.NodeConfigurations
                     .AnyAsync(nc => nc.ActiveVersionId == version.Id, cancellationToken);
 
-                if (isInActiveUse)
+                var isUsedInComposite = await db.Set<CompositeConfigurationItem>()
+                    .AnyAsync(cci => cci.ActiveVersionId == version.Id, cancellationToken);
+
+                if (isInActiveUse || isUsedInComposite)
                 {
                     keptCount++;
                     LogVersionInActiveUse(configuration.Name, version.Version);

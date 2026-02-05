@@ -275,7 +275,7 @@ public static class NodeEndpoints
             await db.SaveChangesAsync(cancellationToken);
         }
 
-        return TypedResults.Ok($"Configuration '{nodeConfig.Configuration.Name}' is assigned. Use /configuration/bundle endpoint to download.");
+        return TypedResults.Ok($"Configuration '{nodeConfig.Configuration!.Name}' is assigned. Use /configuration/bundle endpoint to download.");
     }
 
     private static async Task<Results<FileStreamHttpResult, NotFound<ErrorResponse>>> GetConfigurationBundle(
@@ -287,8 +287,14 @@ public static class NodeEndpoints
     {
         var nodeConfig = await db.NodeConfigurations
             .Include(nc => nc.Configuration)
-            .ThenInclude(c => c.Versions.Where(v => !v.IsDraft).OrderByDescending(v => v.CreatedAt))
+            .ThenInclude(c => c!.Versions.Where(v => !v.IsDraft).OrderByDescending(v => v.CreatedAt))
             .ThenInclude(v => v.Files)
+            .Include(nc => nc.CompositeConfiguration)
+            .ThenInclude(c => c!.Versions.Where(v => !v.IsDraft).OrderByDescending(v => v.CreatedAt))
+            .ThenInclude(v => v.Items.OrderBy(i => i.Order))
+            .ThenInclude(i => i.ChildConfiguration)
+            .ThenInclude(c => c!.Versions.Where(v => !v.IsDraft).OrderByDescending(v => v.CreatedAt))
+            .ThenInclude(v => v!.Files)
             .FirstOrDefaultAsync(nc => nc.NodeId == nodeId, cancellationToken);
 
         if (nodeConfig is null)
@@ -296,20 +302,28 @@ public static class NodeEndpoints
             return TypedResults.NotFound(new ErrorResponse { Error = "No configuration assigned." });
         }
 
+        var node = await db.Nodes.FindAsync([nodeId], cancellationToken);
+        node!.LastCheckIn = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync(cancellationToken);
+
+        var dataDir = config["DataDirectory"] ?? "data";
+
+        // Handle composite configuration
+        if (nodeConfig.CompositeConfigurationId.HasValue)
+        {
+            return await GenerateCompositeBundle(nodeId, nodeConfig, dataDir, parameterMergeService, db, cancellationToken);
+        }
+
+        // Handle regular configuration
         var activeVersion = nodeConfig.ActiveVersionId.HasValue
-            ? nodeConfig.Configuration.Versions.FirstOrDefault(v => v.Id == nodeConfig.ActiveVersionId.Value)
-            : nodeConfig.Configuration.Versions.FirstOrDefault();
+            ? nodeConfig.Configuration!.Versions.FirstOrDefault(v => v.Id == nodeConfig.ActiveVersionId.Value)
+            : nodeConfig.Configuration!.Versions.FirstOrDefault();
 
         if (activeVersion is null)
         {
             return TypedResults.NotFound(new ErrorResponse { Error = "No published version available." });
         }
 
-        var node = await db.Nodes.FindAsync([nodeId], cancellationToken);
-        node!.LastCheckIn = DateTimeOffset.UtcNow;
-        await db.SaveChangesAsync(cancellationToken);
-
-        var dataDir = config["DataDirectory"] ?? "data";
         var versionDir = Path.Combine(dataDir, "configurations", nodeConfig.Configuration.Name, $"v{activeVersion.Version}");
 
         var bundleStream = new MemoryStream();
@@ -331,7 +345,7 @@ public static class NodeEndpoints
 
             if (nodeConfig.UseServerManagedParameters)
             {
-                var mergedParameters = await parameterMergeService.MergeParametersAsync(nodeId, nodeConfig.ConfigurationId, cancellationToken);
+                var mergedParameters = await parameterMergeService.MergeParametersAsync(nodeId, nodeConfig.ConfigurationId!.Value, cancellationToken);
                 if (!string.IsNullOrWhiteSpace(mergedParameters))
                 {
                     var paramFileName = nodeConfig.Configuration.IsServerManaged ? "parameters.yaml" : "parameters/default.yaml";
@@ -345,6 +359,93 @@ public static class NodeEndpoints
 
         bundleStream.Position = 0;
         return TypedResults.File(bundleStream, "application/zip", $"{nodeConfig.Configuration.Name}-v{activeVersion.Version}.zip");
+    }
+
+    private static async Task<FileStreamHttpResult> GenerateCompositeBundle(
+        Guid nodeId,
+        NodeConfiguration nodeConfig,
+        string dataDir,
+        IParameterMergeService parameterMergeService,
+        ServerDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var activeCompositeVersion = nodeConfig.ActiveCompositeVersionId.HasValue
+            ? nodeConfig.CompositeConfiguration!.Versions.FirstOrDefault(v => v.Id == nodeConfig.ActiveCompositeVersionId.Value)
+            : nodeConfig.CompositeConfiguration!.Versions.FirstOrDefault();
+
+        if (activeCompositeVersion is null)
+        {
+            throw new InvalidOperationException("No published composite version available.");
+        }
+
+        var bundleStream = new MemoryStream();
+        using (var archive = new System.IO.Compression.ZipArchive(bundleStream, System.IO.Compression.ZipArchiveMode.Create, true))
+        {
+            var includeResources = new List<string>();
+
+            // Process each child configuration
+            foreach (var item in activeCompositeVersion.Items)
+            {
+                // Resolve child version using ActiveVersionId pattern
+                var childVersion = item.ActiveVersionId.HasValue
+                    ? item.ChildConfiguration.Versions.FirstOrDefault(v => v.Id == item.ActiveVersionId.Value)
+                    : item.ChildConfiguration.Versions.FirstOrDefault();
+
+                if (childVersion is null)
+                {
+                    continue;
+                }
+
+                var childVersionDir = Path.Combine(dataDir, "configurations", item.ChildConfiguration.Name, $"v{childVersion.Version}");
+                var childFolderName = item.ChildConfiguration.Name;
+
+                // Copy all child configuration files into {childName}/ folder
+                foreach (var file in childVersion.Files)
+                {
+                    var sourcePath = Path.Combine(childVersionDir, file.RelativePath);
+                    if (!File.Exists(sourcePath))
+                    {
+                        continue;
+                    }
+
+                    var entryPath = $"{childFolderName}/{file.RelativePath}";
+                    var entry = archive.CreateEntry(entryPath);
+                    using var entryStream = entry.Open();
+                    using var fileStream = File.OpenRead(sourcePath);
+                    await fileStream.CopyToAsync(entryStream, cancellationToken);
+                }
+
+                // Merge parameters per child if server-managed
+                if (nodeConfig.UseServerManagedParameters)
+                {
+                    var mergedParameters = await parameterMergeService.MergeParametersAsync(nodeId, item.ChildConfigurationId, cancellationToken);
+                    if (!string.IsNullOrWhiteSpace(mergedParameters))
+                    {
+                        var paramEntryPath = $"{childFolderName}/parameters.yaml";
+                        var paramEntry = archive.CreateEntry(paramEntryPath);
+                        using var paramStream = paramEntry.Open();
+                        using var writer = new StreamWriter(paramStream);
+                        await writer.WriteAsync(mergedParameters);
+                    }
+                }
+
+                // Add to include list for main.dsc.yaml
+                var childEntryPoint = item.ChildConfiguration.EntryPoint;
+                includeResources.Add($"  - name: {item.ChildConfiguration.Name}\n    type: Microsoft.DSC/Include\n    properties:\n      configurationFile: {childFolderName}/{childEntryPoint}");
+            }
+
+            // Generate main.dsc.yaml orchestrator
+            var mainContent = $"$schema: https://aka.ms/dsc/schemas/v3/bundled/config/document.json\nresources:\n{string.Join("\n", includeResources)}\n";
+            var mainEntry = archive.CreateEntry(nodeConfig.CompositeConfiguration.EntryPoint);
+            using (var mainStream = mainEntry.Open())
+            using (var writer = new StreamWriter(mainStream))
+            {
+                await writer.WriteAsync(mainContent);
+            }
+        }
+
+        bundleStream.Position = 0;
+        return TypedResults.File(bundleStream, "application/zip", $"{nodeConfig.CompositeConfiguration.Name}-v{activeCompositeVersion.Version}.zip");
     }
 
     private static async Task<Results<NoContent, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> AssignConfiguration(
@@ -364,13 +465,95 @@ public static class NodeEndpoints
             return TypedResults.NotFound(new ErrorResponse { Error = "Node not found." });
         }
 
-        var configExists = await db.Configurations.AnyAsync(c => c.Name == request.ConfigurationName, cancellationToken);
-        if (!configExists)
+        if (request.IsComposite)
         {
-            return TypedResults.NotFound(new ErrorResponse { Error = "Configuration not found." });
+            var composite = await db.CompositeConfigurations
+                .Include(c => c.Versions.Where(v => !v.IsDraft))
+                .FirstOrDefaultAsync(c => c.Name == request.ConfigurationName, cancellationToken);
+
+            if (composite is null)
+            {
+                return TypedResults.NotFound(new ErrorResponse { Error = "Composite configuration not found." });
+            }
+
+            if (request.VersionId.HasValue)
+            {
+                if (!composite.Versions.Any(v => v.Id == request.VersionId.Value))
+                {
+                    return TypedResults.BadRequest(new ErrorResponse { Error = "Specified version not found or is a draft." });
+                }
+            }
+            else if (!composite.Versions.Any())
+            {
+                return TypedResults.BadRequest(new ErrorResponse { Error = "No published versions available." });
+            }
+
+            var nodeConfig = await db.NodeConfigurations.FindAsync([nodeId], cancellationToken);
+            if (nodeConfig is null)
+            {
+                nodeConfig = new NodeConfiguration
+                {
+                    NodeId = nodeId,
+                    CompositeConfigurationId = composite.Id,
+                    ActiveCompositeVersionId = request.VersionId
+                };
+                db.NodeConfigurations.Add(nodeConfig);
+            }
+            else
+            {
+                nodeConfig.ConfigurationId = null;
+                nodeConfig.ActiveVersionId = null;
+                nodeConfig.CompositeConfigurationId = composite.Id;
+                nodeConfig.ActiveCompositeVersionId = request.VersionId;
+            }
+
+            node.ConfigurationName = request.ConfigurationName;
+        }
+        else
+        {
+            var config = await db.Configurations
+                .Include(c => c.Versions.Where(v => !v.IsDraft))
+                .FirstOrDefaultAsync(c => c.Name == request.ConfigurationName, cancellationToken);
+
+            if (config is null)
+            {
+                return TypedResults.NotFound(new ErrorResponse { Error = "Configuration not found." });
+            }
+
+            if (request.VersionId.HasValue)
+            {
+                if (!config.Versions.Any(v => v.Id == request.VersionId.Value))
+                {
+                    return TypedResults.BadRequest(new ErrorResponse { Error = "Specified version not found or is a draft." });
+                }
+            }
+            else if (!config.Versions.Any())
+            {
+                return TypedResults.BadRequest(new ErrorResponse { Error = "No published versions available." });
+            }
+
+            var nodeConfig = await db.NodeConfigurations.FindAsync([nodeId], cancellationToken);
+            if (nodeConfig is null)
+            {
+                nodeConfig = new NodeConfiguration
+                {
+                    NodeId = nodeId,
+                    ConfigurationId = config.Id,
+                    ActiveVersionId = request.VersionId
+                };
+                db.NodeConfigurations.Add(nodeConfig);
+            }
+            else
+            {
+                nodeConfig.CompositeConfigurationId = null;
+                nodeConfig.ActiveCompositeVersionId = null;
+                nodeConfig.ConfigurationId = config.Id;
+                nodeConfig.ActiveVersionId = request.VersionId;
+            }
+
+            node.ConfigurationName = request.ConfigurationName;
         }
 
-        node.ConfigurationName = request.ConfigurationName;
         await db.SaveChangesAsync(cancellationToken);
 
         return TypedResults.NoContent();
@@ -398,7 +581,13 @@ public static class NodeEndpoints
 
         var nodeConfig = await db.NodeConfigurations
             .Include(nc => nc.Configuration)
-            .ThenInclude(c => c.Versions.Where(v => !v.IsDraft).OrderByDescending(v => v.CreatedAt))
+            .ThenInclude(c => c!.Versions.Where(v => !v.IsDraft).OrderByDescending(v => v.CreatedAt))
+            .ThenInclude(v => v.Files)
+            .Include(nc => nc.CompositeConfiguration)
+            .ThenInclude(c => c!.Versions.Where(v => !v.IsDraft).OrderByDescending(v => v.CreatedAt))
+            .ThenInclude(v => v.Items.OrderBy(i => i.Order))
+            .ThenInclude(i => i.ChildConfiguration)
+            .ThenInclude(c => c!.Versions.Where(v => !v.IsDraft).OrderByDescending(v => v.CreatedAt))
             .ThenInclude(v => v.Files)
             .FirstOrDefaultAsync(nc => nc.NodeId == nodeId, cancellationToken);
 
@@ -408,29 +597,72 @@ public static class NodeEndpoints
             return TypedResults.NotFound(new ErrorResponse { Error = "No configuration assigned." });
         }
 
-        var activeVersion = nodeConfig.ActiveVersionId.HasValue
-            ? nodeConfig.Configuration.Versions.FirstOrDefault(v => v.Id == nodeConfig.ActiveVersionId.Value)
-            : nodeConfig.Configuration.Versions.FirstOrDefault();
+        string checksum;
 
-        if (activeVersion is null)
+        if (nodeConfig.CompositeConfigurationId.HasValue)
         {
-            await db.SaveChangesAsync(cancellationToken);
-            return TypedResults.NotFound(new ErrorResponse { Error = "No published version available." });
+            var activeCompositeVersion = nodeConfig.ActiveCompositeVersionId.HasValue
+                ? nodeConfig.CompositeConfiguration!.Versions.FirstOrDefault(v => v.Id == nodeConfig.ActiveCompositeVersionId.Value)
+                : nodeConfig.CompositeConfiguration!.Versions.FirstOrDefault();
+
+            if (activeCompositeVersion is null)
+            {
+                await db.SaveChangesAsync(cancellationToken);
+                return TypedResults.NotFound(new ErrorResponse { Error = "No published composite version available." });
+            }
+
+            var checksumParts = new List<string>
+            {
+                $"composite:{activeCompositeVersion.Version}"
+            };
+
+            foreach (var item in activeCompositeVersion.Items.OrderBy(i => i.Order))
+            {
+                var childVersion = item.ActiveVersionId.HasValue
+                    ? item.ChildConfiguration!.Versions.FirstOrDefault(v => v.Id == item.ActiveVersionId.Value)
+                    : item.ChildConfiguration!.Versions.FirstOrDefault();
+
+                if (childVersion is not null)
+                {
+                    checksumParts.Add($"child:{item.ChildConfiguration!.Name}:{childVersion.Version}");
+
+                    foreach (var file in childVersion.Files.OrderBy(f => f.RelativePath))
+                    {
+                        checksumParts.Add($"{item.ChildConfiguration.Name}/{file.RelativePath}:{file.Checksum}");
+                    }
+                }
+            }
+
+            var combined = string.Join("|", checksumParts);
+            var hash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(combined));
+            checksum = Convert.ToHexString(hash).ToLowerInvariant();
         }
-
-        var checksumParts = new List<string>
+        else
         {
-            $"version:{activeVersion.Version}"
-        };
+            var activeVersion = nodeConfig.ActiveVersionId.HasValue
+                ? nodeConfig.Configuration!.Versions.FirstOrDefault(v => v.Id == nodeConfig.ActiveVersionId.Value)
+                : nodeConfig.Configuration!.Versions.FirstOrDefault();
 
-        foreach (var file in activeVersion.Files.OrderBy(f => f.RelativePath))
-        {
-            checksumParts.Add($"{file.RelativePath}:{file.Checksum}");
+            if (activeVersion is null)
+            {
+                await db.SaveChangesAsync(cancellationToken);
+                return TypedResults.NotFound(new ErrorResponse { Error = "No published version available." });
+            }
+
+            var checksumParts = new List<string>
+            {
+                $"version:{activeVersion.Version}"
+            };
+
+            foreach (var file in activeVersion.Files.OrderBy(f => f.RelativePath))
+            {
+                checksumParts.Add($"{file.RelativePath}:{file.Checksum}");
+            }
+
+            var combined = string.Join("|", checksumParts);
+            var hash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(combined));
+            checksum = Convert.ToHexString(hash).ToLowerInvariant();
         }
-
-        var combined = string.Join("|", checksumParts);
-        var hash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(combined));
-        var checksum = Convert.ToHexString(hash).ToLowerInvariant();
 
         await db.SaveChangesAsync(cancellationToken);
         return TypedResults.Ok(new ConfigurationChecksumResponse { Checksum = checksum });

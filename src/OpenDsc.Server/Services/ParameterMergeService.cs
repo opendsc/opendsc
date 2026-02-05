@@ -22,8 +22,8 @@ public sealed class ParameterMergeService(ServerDbContext db, IParameterMerger m
             return null;
         }
 
-        var configName = nodeConfig.Configuration.Name;
-        var nodeFqdn = nodeConfig.Node.Fqdn;
+        var configName = nodeConfig.Configuration!.Name;
+        var nodeFqdn = nodeConfig.Node!.Fqdn;
         var dataDir = config["DataDirectory"] ?? "data";
 
         var parameterSources = new List<ParameterSource>();

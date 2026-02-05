@@ -315,7 +315,7 @@ public static class ParameterEndpoints
             configurationId = nodeConfig.ConfigurationId;
         }
 
-        var configuration = await db.Configurations.FindAsync(configurationId.Value);
+        var configuration = await db.Configurations.FindAsync([configurationId!.Value]);
         if (configuration is null)
         {
             return TypedResults.NotFound();

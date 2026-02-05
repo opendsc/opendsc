@@ -116,6 +116,16 @@ public sealed class AssignConfigurationRequest
     /// </summary>
     [JsonRequired]
     public string ConfigurationName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Whether this is a composite configuration.
+    /// </summary>
+    public bool IsComposite { get; set; }
+
+    /// <summary>
+    /// The specific version ID to pin (optional, defaults to latest published version).
+    /// </summary>
+    public Guid? VersionId { get; set; }
 }
 
 /// <summary>

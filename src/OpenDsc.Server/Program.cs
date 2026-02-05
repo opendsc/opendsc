@@ -67,6 +67,7 @@ app.MapNodeTagEndpoints();
 app.MapParameterEndpoints();
 app.MapNodeEndpoints();
 app.MapConfigurationEndpoints();
+app.MapCompositeConfigurationEndpoints();
 app.MapReportEndpoints();
 app.MapSettingsEndpoints();
 app.MapRegistrationKeyEndpoints();

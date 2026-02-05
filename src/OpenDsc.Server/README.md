@@ -7,6 +7,8 @@ configuration management for distributed systems.
 
 - **Configuration Management**: Store and distribute DSC configurations
   to registered nodes
+- **Composite Configurations**: Combine multiple configurations into
+  single deployment units with version pinning and ordering
 - **Hierarchical Parameter Merging**: Merge parameters across multiple
   scope types (Default, Region, Environment, Node) with precedence-based
   ordering and node tagging
@@ -62,6 +64,7 @@ For conceptual guides and real-world examples, see:
 - [Scope System Guide](../../docs/pull-server/scope-system.md) - Understanding scope types, values, and node tagging
 - [Parameter Merging](../../docs/pull-server/parameter-merging.md) - How parameters are merged and version management
 - [Configuration Management](../../docs/pull-server/configuration-management.md) - Version lifecycle and bundle generation
+- [Composite Configurations](../../docs/pull-server/composite-configurations.md) - Combining multiple configurations into deployable units
 - [Quick Start Tutorial](../../docs/pull-server/quickstart.md) - Step-by-step walkthrough
 - [Real-World Examples](../../docs/pull-server/examples/) - Multi-team collaboration scenarios
 
@@ -103,6 +106,29 @@ For conceptual guides and real-world examples, see:
 | `/api/v1/configurations/{name}/versions/{version}` | GET | Admin | Get version details |
 | `/api/v1/configurations/{name}/versions/{version}/publish` | PUT | Admin | Publish a draft version |
 | `/api/v1/configurations/{name}/versions/{version}` | DELETE | Admin | Delete a version (if not in use) |
+
+### Composite Configurations
+
+Composite configurations (also called meta configurations) allow you to
+combine multiple existing configurations into a single deployment unit.
+Composites do not contain their own files or parameters but reference
+other configurations as children.
+
+| Endpoint | Method | Auth | Description |
+| :-------- | :----- | :--- | :---------- |
+| `/api/v1/composite-configurations` | GET | Admin | List all composite configurations |
+| `/api/v1/composite-configurations` | POST | Admin | Create a composite configuration |
+| `/api/v1/composite-configurations/{name}` | GET | Admin | Get composite details |
+| `/api/v1/composite-configurations/{name}` | PUT | Admin | Update composite properties |
+| `/api/v1/composite-configurations/{name}` | DELETE | Admin | Delete composite |
+| `/api/v1/composite-configurations/{name}/versions` | GET | Admin | List all versions |
+| `/api/v1/composite-configurations/{name}/versions` | POST | Admin | Create a new version |
+| `/api/v1/composite-configurations/{name}/versions/{version}` | GET | Admin | Get version details |
+| `/api/v1/composite-configurations/{name}/versions/{version}/publish` | PUT | Admin | Publish a draft version |
+| `/api/v1/composite-configurations/{name}/versions/{version}` | DELETE | Admin | Delete version |
+| `/api/v1/composite-configurations/{name}/versions/{version}/children` | POST | Admin | Add child configuration |
+| `/api/v1/composite-configurations/{name}/versions/{version}/children/{id}` | PUT | Admin | Update child configuration |
+| `/api/v1/composite-configurations/{name}/versions/{version}/children/{id}` | DELETE | Admin | Remove child configuration |
 
 ### Scope Types
 
@@ -296,23 +322,6 @@ Configure the LCM to use pull mode by updating its configuration:
   }
 }
 ```
-
-## Additional Documentation
-
-For detailed conceptual guides and real-world usage examples:
-
-- **[Scope System Guide](../../docs/pull-server/scope-system.md)** -
-  Understanding scope types, values, node tagging, and precedence rules
-- **[Parameter Merging](../../docs/pull-server/parameter-merging.md)** -
-  Deep dive into hierarchical parameter merging, versioning, and
-  provenance tracking
-- **[Configuration Management](../../docs/pull-server/configuration-management.md)** -
-  Version lifecycle, bundle generation, and retention policies
-- **[Quick Start Tutorial](../../docs/pull-server/quickstart.md)** -
-  Step-by-step walkthrough of the complete workflow
-- **[Real-World Examples](../../docs/pull-server/examples/)** -
-  Multi-team collaboration, multi-region deployment, and environment
-  promotion scenarios
 
 ## Security Considerations
 

@@ -39,6 +39,18 @@ namespace OpenDsc.Server;
 [JsonSerializable(typeof(ConfigurationSummary))]
 [JsonSerializable(typeof(List<ConfigurationSummary>))]
 [JsonSerializable(typeof(ConfigurationDetails))]
+// Composite configuration contracts
+[JsonSerializable(typeof(CreateCompositeConfigurationRequest))]
+[JsonSerializable(typeof(CreateCompositeConfigurationVersionRequest))]
+[JsonSerializable(typeof(AddChildConfigurationRequest))]
+[JsonSerializable(typeof(UpdateChildConfigurationRequest))]
+[JsonSerializable(typeof(CompositeConfigurationSummaryDto))]
+[JsonSerializable(typeof(List<CompositeConfigurationSummaryDto>))]
+[JsonSerializable(typeof(CompositeConfigurationDetailsDto))]
+[JsonSerializable(typeof(CompositeConfigurationVersionDto))]
+[JsonSerializable(typeof(List<CompositeConfigurationVersionDto>))]
+[JsonSerializable(typeof(CompositeConfigurationItemDto))]
+[JsonSerializable(typeof(List<CompositeConfigurationItemDto>))]
 // Report contracts
 [JsonSerializable(typeof(SubmitReportRequest))]
 [JsonSerializable(typeof(ReportSummary))]
