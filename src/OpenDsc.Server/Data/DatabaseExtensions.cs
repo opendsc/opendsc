@@ -84,27 +84,37 @@ public static class DatabaseExtensions
         ServerDbContext context,
         ILogger logger)
     {
-        var existing = await context.RegistrationKeys
-            .Where(k => k.Key == "test-lcm-registration-key")
-            .FirstOrDefaultAsync();
+        var lcmKeyExists = await context.RegistrationKeys
+            .AnyAsync(k => k.Key == "test-lcm-registration-key");
 
-        if (existing is not null)
+        if (!lcmKeyExists)
         {
-            existing.ExpiresAt = DateTimeOffset.UtcNow.AddYears(100);
-            await context.SaveChangesAsync();
-            logger.LogInformation("Test registration key expiry updated");
-            return;
+            context.RegistrationKeys.Add(new RegistrationKey
+            {
+                Key = "test-lcm-registration-key",
+                CreatedAt = DateTimeOffset.UtcNow,
+                ExpiresAt = DateTimeOffset.UtcNow.AddYears(100)
+            });
         }
 
-        context.RegistrationKeys.Add(new RegistrationKey
-        {
-            Key = "test-lcm-registration-key",
-            CreatedAt = DateTimeOffset.UtcNow,
-            ExpiresAt = DateTimeOffset.UtcNow.AddYears(100)
-        });
+        var testKeyExists = await context.RegistrationKeys
+            .AnyAsync(k => k.Key == "test-registration-key");
 
-        await context.SaveChangesAsync();
-        logger.LogInformation("Test registration key seeded successfully");
+        if (!testKeyExists)
+        {
+            context.RegistrationKeys.Add(new RegistrationKey
+            {
+                Key = "test-registration-key",
+                CreatedAt = DateTimeOffset.UtcNow,
+                ExpiresAt = DateTimeOffset.UtcNow.AddYears(100)
+            });
+        }
+
+        if (!lcmKeyExists || !testKeyExists)
+        {
+            await context.SaveChangesAsync();
+            logger.LogInformation("Test registration key seeded successfully");
+        }
     }
 
     /// <summary>
@@ -115,12 +125,11 @@ public static class DatabaseExtensions
         ILogger logger)
     {
         var existingConfig = await context.Configurations
-            .Where(c => c.Name == "test-config")
-            .FirstOrDefaultAsync();
+            .AnyAsync(c => c.Name == "test-config");
 
-        if (existingConfig is not null)
+        if (existingConfig)
         {
-            logger.LogInformation("Test config already exists");
+            logger.LogInformation("Test data already exists");
             return;
         }
 
@@ -154,6 +163,7 @@ public static class DatabaseExtensions
             RelativePath = "main.dsc.yaml",
             ContentType = "text/yaml",
             Checksum = "test-checksum",
+
             CreatedAt = DateTimeOffset.UtcNow
         };
 

@@ -285,7 +285,7 @@ public static class NodeEndpoints
                 {
                     var activeVersion = !string.IsNullOrWhiteSpace(nodeConfig.ActiveVersion)
                         ? configuration.Versions.FirstOrDefault(v => v.Version == nodeConfig.ActiveVersion)
-                        : configuration.Versions.FirstOrDefault();
+                        : configuration.Versions.OrderByDescending(v => v.CreatedAt).FirstOrDefault();
 
                     if (activeVersion is not null)
                     {
@@ -366,13 +366,13 @@ public static class NodeEndpoints
     {
         var nodeConfig = await db.NodeConfigurations
             .Include(nc => nc.Configuration)
-            .ThenInclude(c => c!.Versions.Where(v => !v.IsDraft).OrderByDescending(v => v.CreatedAt))
+            .ThenInclude(c => c!.Versions.Where(v => !v.IsDraft))
             .ThenInclude(v => v.Files)
             .Include(nc => nc.CompositeConfiguration)
-            .ThenInclude(c => c!.Versions.Where(v => !v.IsDraft).OrderByDescending(v => v.CreatedAt))
-            .ThenInclude(v => v.Items.OrderBy(i => i.Order))
+            .ThenInclude(c => c!.Versions.Where(v => !v.IsDraft))
+            .ThenInclude(v => v.Items)
             .ThenInclude(i => i.ChildConfiguration)
-            .ThenInclude(c => c!.Versions.Where(v => !v.IsDraft).OrderByDescending(v => v.CreatedAt))
+            .ThenInclude(c => c!.Versions.Where(v => !v.IsDraft))
             .ThenInclude(v => v!.Files)
             .FirstOrDefaultAsync(nc => nc.NodeId == nodeId, cancellationToken);
 
@@ -396,7 +396,7 @@ public static class NodeEndpoints
         // Handle regular configuration
         var activeVersion = !string.IsNullOrWhiteSpace(nodeConfig.ActiveVersion)
             ? nodeConfig.Configuration!.Versions.FirstOrDefault(v => v.Version == nodeConfig.ActiveVersion)
-            : nodeConfig.Configuration!.Versions.FirstOrDefault();
+            : nodeConfig.Configuration!.Versions.OrderByDescending(v => v.CreatedAt).FirstOrDefault();
 
         if (activeVersion is null)
         {
@@ -450,7 +450,7 @@ public static class NodeEndpoints
     {
         var activeCompositeVersion = !string.IsNullOrWhiteSpace(nodeConfig.ActiveCompositeVersion)
             ? nodeConfig.CompositeConfiguration!.Versions.FirstOrDefault(v => v.Version == nodeConfig.ActiveCompositeVersion)
-            : nodeConfig.CompositeConfiguration!.Versions.FirstOrDefault();
+            : nodeConfig.CompositeConfiguration!.Versions.OrderByDescending(v => v.CreatedAt).FirstOrDefault();
 
         if (activeCompositeVersion is null)
         {
@@ -468,7 +468,7 @@ public static class NodeEndpoints
                 // Resolve child version using ActiveVersion pattern
                 var childVersion = !string.IsNullOrWhiteSpace(item.ActiveVersion)
                     ? item.ChildConfiguration.Versions.FirstOrDefault(v => v.Version == item.ActiveVersion)
-                    : item.ChildConfiguration.Versions.FirstOrDefault();
+                    : item.ChildConfiguration.Versions.OrderByDescending(v => v.CreatedAt).FirstOrDefault();
 
                 if (childVersion is null)
                 {
@@ -660,13 +660,13 @@ public static class NodeEndpoints
 
         var nodeConfig = await db.NodeConfigurations
             .Include(nc => nc.Configuration)
-            .ThenInclude(c => c!.Versions.Where(v => !v.IsDraft).OrderByDescending(v => v.CreatedAt))
+            .ThenInclude(c => c!.Versions.Where(v => !v.IsDraft))
             .ThenInclude(v => v.Files)
             .Include(nc => nc.CompositeConfiguration)
-            .ThenInclude(c => c!.Versions.Where(v => !v.IsDraft).OrderByDescending(v => v.CreatedAt))
-            .ThenInclude(v => v.Items.OrderBy(i => i.Order))
+            .ThenInclude(c => c!.Versions.Where(v => !v.IsDraft))
+            .ThenInclude(v => v.Items)
             .ThenInclude(i => i.ChildConfiguration)
-            .ThenInclude(c => c!.Versions.Where(v => !v.IsDraft).OrderByDescending(v => v.CreatedAt))
+            .ThenInclude(c => c!.Versions.Where(v => !v.IsDraft))
             .ThenInclude(v => v.Files)
             .FirstOrDefaultAsync(nc => nc.NodeId == nodeId, cancellationToken);
 
@@ -682,7 +682,7 @@ public static class NodeEndpoints
         {
             var activeCompositeVersion = !string.IsNullOrWhiteSpace(nodeConfig.ActiveCompositeVersion)
                 ? nodeConfig.CompositeConfiguration!.Versions.FirstOrDefault(v => v.Version == nodeConfig.ActiveCompositeVersion)
-                : nodeConfig.CompositeConfiguration!.Versions.FirstOrDefault();
+                : nodeConfig.CompositeConfiguration!.Versions.OrderByDescending(v => v.CreatedAt).FirstOrDefault();
 
             if (activeCompositeVersion is null)
             {
@@ -699,7 +699,7 @@ public static class NodeEndpoints
             {
                 var childVersion = !string.IsNullOrWhiteSpace(item.ActiveVersion)
                     ? item.ChildConfiguration!.Versions.FirstOrDefault(v => v.Version == item.ActiveVersion)
-                    : item.ChildConfiguration!.Versions.FirstOrDefault();
+                    : item.ChildConfiguration!.Versions.OrderByDescending(v => v.CreatedAt).FirstOrDefault();
 
                 if (childVersion is not null)
                 {
@@ -720,7 +720,7 @@ public static class NodeEndpoints
         {
             var activeVersion = !string.IsNullOrWhiteSpace(nodeConfig.ActiveVersion)
                 ? nodeConfig.Configuration!.Versions.FirstOrDefault(v => v.Version == nodeConfig.ActiveVersion)
-                : nodeConfig.Configuration!.Versions.FirstOrDefault();
+                : nodeConfig.Configuration!.Versions.OrderByDescending(v => v.CreatedAt).FirstOrDefault();
 
             if (activeVersion is null)
             {

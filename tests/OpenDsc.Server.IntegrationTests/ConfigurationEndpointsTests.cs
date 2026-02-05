@@ -50,7 +50,8 @@ public class ConfigurationEndpointsTests : IDisposable
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var configs = await response.Content.ReadFromJsonAsync<List<ConfigurationSummaryDto>>();
         configs.Should().NotBeNull();
-        configs.Should().BeEmpty();
+        configs.Should().HaveCount(1);
+        configs![0].Name.Should().Be("test-config");
     }
 
     [Fact]
@@ -59,7 +60,7 @@ public class ConfigurationEndpointsTests : IDisposable
         using var client = CreateAuthenticatedClient();
 
         using var content = new MultipartFormDataContent();
-        content.Add(new StringContent("test-config"), "name");
+        content.Add(new StringContent("create-test-config"), "name");
         content.Add(new StringContent("Test configuration"), "description");
         content.Add(new StringContent("main.dsc.yaml"), "entryPoint");
 
@@ -71,7 +72,7 @@ public class ConfigurationEndpointsTests : IDisposable
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         response.Headers.Location.Should().NotBeNull();
-        response.Headers.Location!.ToString().Should().Contain("/api/v1/configurations/test-config");
+        response.Headers.Location!.ToString().Should().Contain("/api/v1/configurations/create-test-config");
     }
 
     [Fact]

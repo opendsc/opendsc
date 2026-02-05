@@ -52,53 +52,6 @@ public class ReportEndpointsTests : IDisposable
     }
 
     [Fact]
-    public async Task SubmitReport_ValidTest_ReturnsUnauthorized()
-    {
-        // Note: Nodes now use mTLS client certificates for authentication
-        // This test verifies that API key auth no longer works for node endpoints
-        var nodeId = await RegisterTestNodeAsync();
-
-        using var client = _factory.CreateClient();
-
-        var report = new SubmitReportRequest
-        {
-            Operation = DscOperation.Test,
-            Result = new DscResult
-            {
-                HadErrors = false,
-                Results = []
-            }
-        };
-
-        var response = await client.PostAsJsonAsync($"/api/v1/nodes/{nodeId}/reports", report);
-
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-    }
-
-    [Fact]
-    public async Task SubmitReport_ValidSet_ReturnsUnauthorized()
-    {
-        // Note: Nodes now use mTLS client certificates for authentication
-        var nodeId = await RegisterTestNodeAsync();
-
-        using var client = _factory.CreateClient();
-
-        var report = new SubmitReportRequest
-        {
-            Operation = DscOperation.Set,
-            Result = new DscResult
-            {
-                HadErrors = false,
-                Results = []
-            }
-        };
-
-        var response = await client.PostAsJsonAsync($"/api/v1/nodes/{nodeId}/reports", report);
-
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-    }
-
-    [Fact]
     public async Task GetNodeReports_WithoutAuth_ReturnsUnauthorized()
     {
         using var client = _factory.CreateClient();

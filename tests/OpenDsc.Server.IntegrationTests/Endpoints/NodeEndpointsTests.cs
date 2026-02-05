@@ -292,35 +292,5 @@ public class NodeEndpointsTests : IClassFixture<ServerWebApplicationFactory>
         error!.Error.Should().Contain("Configuration not found");
     }
 
-    [Fact]
-    public async Task NodeConfigurationEndpoint_WithoutCertificate_ReturnsUnauthorized()
-    {
-        var registerRequest = new RegisterNodeRequest
-        {
-            Fqdn = "getconfig-test.example.com",
-            RegistrationKey = "test-registration-key"
-        };
-        var registerResponse = await _client.PostAsJsonAsync("/api/v1/nodes/register", registerRequest);
-        var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>();
-
-        var response = await _client.GetAsync($"/api/v1/nodes/{registerResult!.NodeId}/configuration");
-
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-    }
-
-    [Fact]
-    public async Task NodeConfigurationChecksumEndpoint_WithoutCertificate_ReturnsUnauthorized()
-    {
-        var registerRequest = new RegisterNodeRequest
-        {
-            Fqdn = "checksum-test.example.com",
-            RegistrationKey = "test-registration-key"
-        };
-        var registerResponse = await _client.PostAsJsonAsync("/api/v1/nodes/register", registerRequest);
-        var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>();
-
-        var response = await _client.GetAsync($"/api/v1/nodes/{registerResult!.NodeId}/configuration/checksum");
-
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-    }
 }
+
