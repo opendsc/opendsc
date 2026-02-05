@@ -71,8 +71,8 @@ public abstract class CompositeConfigurationTests
         var versionDto = await versionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDto>();
         versionDto!.IsDraft.Should().BeTrue();
 
-        var publishResponse = await Client.PostAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto.Version}/publish", null);
-        publishResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var publishResponse = await Client.PutAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto.Version}/publish", null);
+        publishResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var getVersionResponse = await Client.GetAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto.Version}");
         var publishedVersion = await getVersionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDto>();
@@ -85,18 +85,13 @@ public abstract class CompositeConfigurationTests
         var compositeName = $"composite-child-{Guid.NewGuid()}";
         var childName = $"child-config-{Guid.NewGuid()}";
 
-        var createChildRequest = new CreateConfigurationRequest
-        {
-            Name = childName,
-            Content = @"$schema: https://raw.githubusercontent.com/PowerShell/DSC/main/schemas/2024/04/config/document.json
-resources:
-  - type: OpenDsc.Windows/Environment
-    properties:
-      name: TEST_VAR
-      value: test_value
-"
-        };
-        await Client.PostAsJsonAsync("/api/v1/configurations", createChildRequest);
+        using var childContent = new MultipartFormDataContent();
+        childContent.Add(new StringContent(childName), "name");
+        childContent.Add(new StringContent("main.dsc.yaml"), "entryPoint");
+        var childFile = new ByteArrayContent("$schema: https://raw.githubusercontent.com/PowerShell/DSC/main/schemas/2024/04/config/document.json\nresources:\n  - type: OpenDsc.Windows/Environment\n    properties:\n      name: TEST_VAR\n      value: test_value\n"u8.ToArray());
+        childFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+        childContent.Add(childFile, "files", "main.dsc.yaml");
+        await Client.PostAsync("/api/v1/configurations", childContent);
 
         var createCompositeRequest = new CreateCompositeConfigurationRequest
         {
@@ -115,7 +110,7 @@ resources:
         {
             ChildConfigurationName = childName
         };
-        var addChildResponse = await Client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto!.Id}/children", addChildRequest);
+        var addChildResponse = await Client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto!.Version}/children", addChildRequest);
         addChildResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
         var childDto = await addChildResponse.Content.ReadFromJsonAsync<CompositeConfigurationItemDto>();
@@ -130,31 +125,21 @@ resources:
         var childName1 = $"child1-{Guid.NewGuid()}";
         var childName2 = $"child2-{Guid.NewGuid()}";
 
-        var createChild1Request = new CreateConfigurationRequest
-        {
-            Name = childName1,
-            Content = @"$schema: https://raw.githubusercontent.com/PowerShell/DSC/main/schemas/2024/04/config/document.json
-resources:
-  - type: OpenDsc.Windows/Environment
-    properties:
-      name: CHILD1_VAR
-      value: child1_value
-"
-        };
-        await Client.PostAsJsonAsync("/api/v1/configurations", createChild1Request);
+        using var child1Content = new MultipartFormDataContent();
+        child1Content.Add(new StringContent(childName1), "name");
+        child1Content.Add(new StringContent("main.dsc.yaml"), "entryPoint");
+        var child1File = new ByteArrayContent("$schema: https://raw.githubusercontent.com/PowerShell/DSC/main/schemas/2024/04/config/document.json\nresources:\n  - type: OpenDsc.Windows/Environment\n    properties:\n      name: CHILD1_VAR\n      value: child1_value\n"u8.ToArray());
+        child1File.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+        child1Content.Add(child1File, "files", "main.dsc.yaml");
+        await Client.PostAsync("/api/v1/configurations", child1Content);
 
-        var createChild2Request = new CreateConfigurationRequest
-        {
-            Name = childName2,
-            Content = @"$schema: https://raw.githubusercontent.com/PowerShell/DSC/main/schemas/2024/04/config/document.json
-resources:
-  - type: OpenDsc.Windows/Environment
-    properties:
-      name: CHILD2_VAR
-      value: child2_value
-"
-        };
-        await Client.PostAsJsonAsync("/api/v1/configurations", createChild2Request);
+        using var child2Content = new MultipartFormDataContent();
+        child2Content.Add(new StringContent(childName2), "name");
+        child2Content.Add(new StringContent("main.dsc.yaml"), "entryPoint");
+        var child2File = new ByteArrayContent("$schema: https://raw.githubusercontent.com/PowerShell/DSC/main/schemas/2024/04/config/document.json\nresources:\n  - type: OpenDsc.Windows/Environment\n    properties:\n      name: CHILD2_VAR\n      value: child2_value\n"u8.ToArray());
+        child2File.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+        child2Content.Add(child2File, "files", "main.dsc.yaml");
+        await Client.PostAsync("/api/v1/configurations", child2Content);
 
         var createCompositeRequest = new CreateCompositeConfigurationRequest
         {
@@ -171,17 +156,19 @@ resources:
 
         var addChild1Request = new AddChildConfigurationRequest
         {
-            ChildConfigurationName = childName1
+            ChildConfigurationName = childName1,
+            Order = 0
         };
         await Client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto!.Version}/children", addChild1Request);
 
         var addChild2Request = new AddChildConfigurationRequest
         {
-            ChildConfigurationName = childName2
+            ChildConfigurationName = childName2,
+            Order = 1
         };
         await Client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto.Version}/children", addChild2Request);
 
-        await Client.PostAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto.Version}/publish", null);
+        await Client.PutAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto.Version}/publish", null);
 
         var fqdn = $"bundle-test-{Guid.NewGuid()}.example.com";
         var registerRequest = new RegisterNodeRequest
@@ -219,8 +206,9 @@ resources:
         using var mainReader = new StreamReader(mainStream);
         var mainContent = await mainReader.ReadToEndAsync();
 
-        mainContent.Should().Contain($"- !include {childName1}/main.dsc.yaml");
-        mainContent.Should().Contain($"- !include {childName2}/main.dsc.yaml");
+        mainContent.Should().Contain("type: Microsoft.DSC/Include");
+        mainContent.Should().Contain($"configurationFile: {childName1}/main.dsc.yaml");
+        mainContent.Should().Contain($"configurationFile: {childName2}/main.dsc.yaml");
     }
 
     [Fact]
@@ -229,14 +217,13 @@ resources:
         var compositeName = $"composite-checksum-{Guid.NewGuid()}";
         var childName = $"child-checksum-{Guid.NewGuid()}";
 
-        var createChildRequest = new CreateConfigurationRequest
-        {
-            Name = childName,
-            Content = @"$schema: https://raw.githubusercontent.com/PowerShell/DSC/main/schemas/2024/04/config/document.json
-resources: []
-"
-        };
-        await Client.PostAsJsonAsync("/api/v1/configurations", createChildRequest);
+        using var childContent = new MultipartFormDataContent();
+        childContent.Add(new StringContent(childName), "name");
+        childContent.Add(new StringContent("main.dsc.yaml"), "entryPoint");
+        var childFile = new ByteArrayContent("$schema: https://raw.githubusercontent.com/PowerShell/DSC/main/schemas/2024/04/config/document.json\nresources: []\n"u8.ToArray());
+        childFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+        childContent.Add(childFile, "files", "main.dsc.yaml");
+        await Client.PostAsync("/api/v1/configurations", childContent);
 
         var createCompositeRequest = new CreateCompositeConfigurationRequest
         {
@@ -257,7 +244,7 @@ resources: []
         };
         await Client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto!.Version}/children", addChildRequest);
 
-        await Client.PostAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto.Version}/publish", null);
+        await Client.PutAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto.Version}/publish", null);
 
         var fqdn = $"checksum-test-{Guid.NewGuid()}.example.com";
         var registerRequest = new RegisterNodeRequest
@@ -291,12 +278,13 @@ resources: []
         var compositeName = $"composite-delete-{Guid.NewGuid()}";
         var childName = $"child-delete-{Guid.NewGuid()}";
 
-        var createChildRequest = new CreateConfigurationRequest
-        {
-            Name = childName,
-            Content = "test content"
-        };
-        await Client.PostAsJsonAsync("/api/v1/configurations", createChildRequest);
+        using var childContent = new MultipartFormDataContent();
+        childContent.Add(new StringContent(childName), "name");
+        childContent.Add(new StringContent("main.dsc.yaml"), "entryPoint");
+        var childFile = new ByteArrayContent("test content"u8.ToArray());
+        childFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+        childContent.Add(childFile, "files", "main.dsc.yaml");
+        await Client.PostAsync("/api/v1/configurations", childContent);
 
         var createCompositeRequest = new CreateCompositeConfigurationRequest
         {
@@ -315,7 +303,7 @@ resources: []
         {
             ChildConfigurationName = childName
         };
-        await Client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto!.Id}/children", addChildRequest);
+        await Client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto!.Version}/children", addChildRequest);
 
         var deleteResponse = await Client.DeleteAsync($"/api/v1/composite-configurations/{compositeName}");
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
