@@ -67,6 +67,7 @@ public static class DatabaseExtensions
             if (environment.IsEnvironment("Testing"))
             {
                 await SeedTestRegistrationKeyAsync(context, logger);
+                await SeedTestDataAsync(context, logger);
             }
         }
         catch (Exception ex)
@@ -84,7 +85,7 @@ public static class DatabaseExtensions
         ILogger logger)
     {
         var existing = await context.RegistrationKeys
-            .Where(k => k.Key == "test-registration-key")
+            .Where(k => k.Key == "test-lcm-registration-key")
             .FirstOrDefaultAsync();
 
         if (existing is not null)
@@ -97,13 +98,69 @@ public static class DatabaseExtensions
 
         context.RegistrationKeys.Add(new RegistrationKey
         {
-            Key = "test-registration-key",
+            Key = "test-lcm-registration-key",
             CreatedAt = DateTimeOffset.UtcNow,
             ExpiresAt = DateTimeOffset.UtcNow.AddYears(100)
         });
 
         await context.SaveChangesAsync();
         logger.LogInformation("Test registration key seeded successfully");
+    }
+
+    /// <summary>
+    /// Seeds test data for test environments.
+    /// </summary>
+    private static async Task SeedTestDataAsync(
+        ServerDbContext context,
+        ILogger logger)
+    {
+        var existingConfig = await context.Configurations
+            .Where(c => c.Name == "test-config")
+            .FirstOrDefaultAsync();
+
+        if (existingConfig is not null)
+        {
+            logger.LogInformation("Test config already exists");
+            return;
+        }
+
+        var config = new Configuration
+        {
+            Id = Guid.NewGuid(),
+            Name = "test-config",
+            Description = "Test configuration",
+            EntryPoint = "main.dsc.yaml",
+            IsServerManaged = true,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+
+        context.Configurations.Add(config);
+
+        var version = new ConfigurationVersion
+        {
+            Id = Guid.NewGuid(),
+            ConfigurationId = config.Id,
+            Version = "1.0.0",
+            IsDraft = false,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+
+        context.ConfigurationVersions.Add(version);
+
+        var configFile = new ConfigurationFile
+        {
+            Id = Guid.NewGuid(),
+            VersionId = version.Id,
+            RelativePath = "main.dsc.yaml",
+            ContentType = "text/yaml",
+            Checksum = "test-checksum",
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+
+        context.ConfigurationFiles.Add(configFile);
+
+        await context.SaveChangesAsync();
+        logger.LogInformation("Test data seeded successfully");
     }
 
     /// <summary>

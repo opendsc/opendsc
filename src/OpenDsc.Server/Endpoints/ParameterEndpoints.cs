@@ -210,6 +210,9 @@ public static class ParameterEndpoints
                 pf.ScopeTypeId == scopeTypeId &&
                 pf.ParameterSchema!.ConfigurationId == configurationId &&
                 pf.ScopeValue == scopeValue)
+            .ToListAsync();
+
+        var orderedVersions = versions
             .OrderByDescending(pf => pf.CreatedAt)
             .Select(pf => new ParameterFileDto
             {
@@ -223,9 +226,9 @@ public static class ParameterEndpoints
                 IsDraft = pf.IsDraft,
                 CreatedAt = pf.CreatedAt
             })
-            .ToListAsync();
+            .ToList();
 
-        return TypedResults.Ok(versions);
+        return TypedResults.Ok(orderedVersions);
     }
 
     private static async Task<Results<Ok<ParameterFileDto>, NotFound, Conflict<string>>> ActivateParameterVersion(

@@ -22,6 +22,8 @@ public class LcmTestServerFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        builder.UseEnvironment("Testing");
+
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<DbContextOptions<ServerDbContext>>();
@@ -72,41 +74,6 @@ public class LcmTestServerFactory : WebApplicationFactory<Program>
                 ExpiresAt = DateTimeOffset.UtcNow.AddDays(30)
             });
 
-            var config = new OpenDsc.Server.Entities.Configuration
-            {
-                Id = Guid.NewGuid(),
-                Name = "test-config",
-                Description = "Test configuration",
-                EntryPoint = "main.dsc.yaml",
-                IsServerManaged = true,
-                CreatedAt = DateTimeOffset.UtcNow
-            };
-
-            db.Configurations.Add(config);
-
-            var version = new OpenDsc.Server.Entities.ConfigurationVersion
-            {
-                Id = Guid.NewGuid(),
-                ConfigurationId = config.Id,
-                Version = "1.0.0",
-                IsDraft = false,
-                CreatedAt = DateTimeOffset.UtcNow
-            };
-
-            db.ConfigurationVersions.Add(version);
-
-            var configFile = new OpenDsc.Server.Entities.ConfigurationFile
-            {
-                Id = Guid.NewGuid(),
-                VersionId = version.Id,
-                RelativePath = "main.dsc.yaml",
-                ContentType = "text/yaml",
-                Checksum = "test-checksum",
-                CreatedAt = DateTimeOffset.UtcNow
-            };
-
-            db.ConfigurationFiles.Add(configFile);
-
             db.SaveChanges();
         });
 
@@ -130,6 +97,7 @@ public class LcmTestServerFactory : WebApplicationFactory<Program>
     {
         protected override Task<AuthenticateResult> HandleAuthenticateAsync()
         {
+            Console.WriteLine("TestAuthHandler.HandleAuthenticateAsync called");
             var claims = new List<Claim> { new(ClaimTypes.Role, "Node") };
 
             var path = Request.Path.Value ?? string.Empty;
