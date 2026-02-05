@@ -51,8 +51,9 @@ public sealed class ParameterMergeService(ServerDbContext db, IParameterMerger m
         if (defaultScopeType != null && !scopeTypes.Contains(defaultScopeType.Id))
         {
             var defaultParamFile = await db.ParameterFiles
+                .Include(pf => pf.ParameterSchema)
                 .FirstOrDefaultAsync(pf =>
-                    pf.ConfigurationId == configurationId &&
+                    pf.ParameterSchema!.ConfigurationId == configurationId &&
                     pf.ScopeTypeId == defaultScopeType.Id &&
                     pf.IsActive,
                     cancellationToken);
@@ -78,8 +79,9 @@ public sealed class ParameterMergeService(ServerDbContext db, IParameterMerger m
         foreach (var tag in nodeTags)
         {
             var paramFile = await db.ParameterFiles
+                .Include(pf => pf.ParameterSchema)
                 .FirstOrDefaultAsync(pf =>
-                    pf.ConfigurationId == configurationId &&
+                    pf.ParameterSchema!.ConfigurationId == configurationId &&
                     pf.ScopeTypeId == tag.ScopeTypeId &&
                     pf.ScopeValue == tag.ScopeValue &&
                     pf.IsActive,
@@ -113,8 +115,9 @@ public sealed class ParameterMergeService(ServerDbContext db, IParameterMerger m
         if (nodeScopeType != null)
         {
             var nodeParamFile = await db.ParameterFiles
+                .Include(pf => pf.ParameterSchema)
                 .FirstOrDefaultAsync(pf =>
-                    pf.ConfigurationId == configurationId &&
+                    pf.ParameterSchema!.ConfigurationId == configurationId &&
                     pf.ScopeTypeId == nodeScopeType.Id &&
                     pf.ScopeValue == nodeFqdn &&
                     pf.IsActive,

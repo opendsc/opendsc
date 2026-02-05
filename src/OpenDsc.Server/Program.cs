@@ -40,6 +40,7 @@ builder.Services.AddServerAuthentication();
 
 builder.Services.AddSingleton<IParameterMerger, ParameterMerger>();
 builder.Services.AddScoped<IParameterMergeService, ParameterMergeService>();
+builder.Services.AddScoped<IParameterSchemaService, ParameterSchemaService>();
 builder.Services.AddScoped<IVersionRetentionService, VersionRetentionService>();
 
 var app = builder.Build();
@@ -70,6 +71,8 @@ app.MapConfigurationEndpoints();
 app.MapCompositeConfigurationEndpoints();
 app.MapReportEndpoints();
 app.MapSettingsEndpoints();
+app.MapValidationSettingsEndpoints();
+app.MapConfigurationSettingsEndpoints();
 app.MapRegistrationKeyEndpoints();
 app.MapRetentionEndpoints();
 

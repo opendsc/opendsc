@@ -115,7 +115,7 @@ generation and contains references to all child configurations.
 ```json
 {
   "childConfigurationName": "WebServer",
-  "activeVersionId": null,
+  "activeVersion": null,
   "order": 1
 }
 ```
@@ -123,7 +123,7 @@ generation and contains references to all child configurations.
 **Parameters:**
 
 - `childConfigurationName` - Name of the regular configuration to add
-- `activeVersionId` - (Optional) Pin to specific version GUID, or `null` for
+- `activeVersion` - (Optional) Pin to specific version string (e.g., "1.0.0"), or `null` for
   latest published
 - `order` - Execution order (1-based)
 
@@ -135,16 +135,16 @@ generation and contains references to all child configurations.
   "compositeConfigurationVersionId": "87654321-4321-4321-4321-210987654321",
   "childConfigurationId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
   "childConfigurationName": "WebServer",
-  "activeVersionId": null,
+  "activeVersion": null,
   "order": 1
 }
 ```
 
 **Notes:**
 
-- When `activeVersionId` is `null`, the child will automatically use the
+- When `activeVersion` is `null`, the child will automatically use the
   latest published version
-- When `activeVersionId` is set to a specific version GUID, the child is
+- When `activeVersion` is set to a specific version string (e.g., "1.2.0"), the child is
   pinned to that version
 - `order` determines the sequence in which child configurations are applied
 
@@ -155,7 +155,7 @@ generation and contains references to all child configurations.
 
 ```json
 {
-  "activeVersionId": "ffffffff-eeee-dddd-cccc-bbbbbbbbbbbb",
+  "activeVersion": "1.2.0",
   "order": 1
 }
 ```
@@ -163,7 +163,7 @@ generation and contains references to all child configurations.
 Use this to:
 
 - Pin a child to a specific version
-- Unpin a child (set `activeVersionId` to `null`)
+- Unpin a child (set `activeVersion` to `null`)
 - Reorder children
 
 ### Remove a Child Configuration
@@ -212,7 +212,7 @@ Publishes a draft version, making it available for node assignment.
 {
   "compositeConfigurationName": "FullWebStack",
   "isComposite": true,
-  "activeVersionId": null
+  "activeVersion": null
 }
 ```
 
@@ -220,14 +220,14 @@ Publishes a draft version, making it available for node assignment.
 
 - `compositeConfigurationName` - Name of the composite configuration
 - `isComposite` - Must be `true` for composite configurations
-- `activeVersionId` - (Optional) Pin to specific composite version GUID, or
+- `activeVersion` - (Optional) Pin to specific composite version string (e.g., "1.0.0"), or
   `null` for latest published
 
 **Mutual Exclusivity:** A node can be assigned either:
 
-- A regular configuration (`configurationName` + `activeVersionId`)
+- A regular configuration (`configurationName` + `activeVersion`)
 - OR a composite configuration (`compositeConfigurationName` +
-  `activeCompositeVersionId`)
+  `activeVersion`)
 
 But not both. Assigning one clears the other.
 
@@ -299,8 +299,8 @@ the node's scope tags and node-specific parameters. The server:
 
 For each child configuration:
 
-- If `activeVersionId` is set on the composite item → uses that specific version
-- If `activeVersionId` is `null` → uses the latest published version of the
+- If `activeVersion` is set on the composite item → uses that specific version
+- If `activeVersion` is `null` → uses the latest published version of the
   child configuration
 
 This allows flexible version management where some children are pinned and
@@ -377,7 +377,7 @@ POST /api/v1/composite-configurations/FullWebStack/versions
 POST /api/v1/composite-configurations/FullWebStack/versions/1.0.0/children
 {
   "childConfigurationName": "WebServer",
-  "activeVersionId": null,
+  "activeVersion": null,
   "order": 1
 }
 
@@ -385,7 +385,7 @@ POST /api/v1/composite-configurations/FullWebStack/versions/1.0.0/children
 POST /api/v1/composite-configurations/FullWebStack/versions/1.0.0/children
 {
   "childConfigurationName": "Database",
-  "activeVersionId": null,
+  "activeVersion": null,
   "order": 2
 }
 ```
@@ -403,7 +403,7 @@ PUT /api/v1/nodes/{nodeId}/configuration
 {
   "compositeConfigurationName": "FullWebStack",
   "isComposite": true,
-  "activeVersionId": null
+  "activeVersion": null
 }
 ```
 
@@ -431,12 +431,12 @@ The server generates and returns a ZIP bundle containing:
   "items": [
     {
       "childConfigurationName": "WebServer",
-      "activeVersionId": null,
+      "activeVersion": null,
       "order": 1
     },
     {
       "childConfigurationName": "Database",
-      "activeVersionId": null,
+      "activeVersion": null,
       "order": 2
     }
   ]
@@ -454,12 +454,12 @@ automatically receive the latest versions through the composite.
   "items": [
     {
       "childConfigurationName": "WebServer",
-      "activeVersionId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+      "activeVersion": "1.2.0",
       "order": 1
     },
     {
       "childConfigurationName": "Database",
-      "activeVersionId": null,
+      "activeVersion": null,
       "order": 2
     }
   ]
@@ -476,11 +476,11 @@ PUT /api/v1/nodes/{nodeId}/configuration
 {
   "compositeConfigurationName": "FullWebStack",
   "isComposite": true,
-  "activeVersionId": "12345678-1234-1234-1234-123456789012"
+  "activeVersion": "1.0.0"
 }
 ```
 
-**Behavior:** The node is pinned to a specific composite version. Child
+**Behavior:** The node is pinned to a specific composite version ("1.0.0"). Child
 configurations use whatever versions were defined in that composite version.
 
 ## API Endpoints Reference

@@ -165,8 +165,7 @@ public static class CompositeConfigurationEndpoints
                     Id = i.Id,
                     ChildConfigurationId = i.ChildConfigurationId,
                     ChildConfigurationName = i.ChildConfiguration.Name,
-                    ActiveVersionId = i.ActiveVersionId,
-                    ActiveVersionString = i.ActiveVersion?.Version,
+                    ActiveVersion = i.ActiveVersion,
                     Order = i.Order
                 }).ToList(),
                 CreatedAt = v.CreatedAt,
@@ -285,8 +284,7 @@ public static class CompositeConfigurationEndpoints
                 Id = i.Id,
                 ChildConfigurationId = i.ChildConfigurationId,
                 ChildConfigurationName = i.ChildConfiguration.Name,
-                ActiveVersionId = i.ActiveVersionId,
-                ActiveVersionString = i.ActiveVersion?.Version,
+                ActiveVersion = i.ActiveVersion,
                 Order = i.Order
             }).ToList(),
             CreatedAt = v.CreatedAt,
@@ -305,8 +303,6 @@ public static class CompositeConfigurationEndpoints
             .Include(v => v.CompositeConfiguration)
             .Include(v => v.Items)
             .ThenInclude(i => i.ChildConfiguration)
-            .Include(v => v.Items)
-            .ThenInclude(i => i.ActiveVersion)
             .FirstOrDefaultAsync(v => v.CompositeConfiguration.Name == name && v.Version == version);
 
         if (compositeVersion is null)
@@ -326,8 +322,7 @@ public static class CompositeConfigurationEndpoints
                 Id = i.Id,
                 ChildConfigurationId = i.ChildConfigurationId,
                 ChildConfigurationName = i.ChildConfiguration.Name,
-                ActiveVersionId = i.ActiveVersionId,
-                ActiveVersionString = i.ActiveVersion?.Version,
+                ActiveVersion = i.ActiveVersion,
                 Order = i.Order
             }).ToList(),
             CreatedAt = compositeVersion.CreatedAt,
@@ -439,15 +434,15 @@ public static class CompositeConfigurationEndpoints
             return TypedResults.Conflict(new ErrorResponse { Error = $"Child configuration '{request.ChildConfigurationName}' is already in this composite version" });
         }
 
-        // Validate ActiveVersionId if provided
-        if (request.ActiveVersionId.HasValue)
+        // Validate ActiveVersion if provided
+        if (!string.IsNullOrWhiteSpace(request.ActiveVersion))
         {
             var versionExists = await db.ConfigurationVersions
-                .AnyAsync(v => v.Id == request.ActiveVersionId.Value && v.ConfigurationId == childConfig.Id);
+                .AnyAsync(v => v.Version == request.ActiveVersion && v.ConfigurationId == childConfig.Id);
 
             if (!versionExists)
             {
-                return TypedResults.BadRequest(new ErrorResponse { Error = $"Invalid ActiveVersionId for configuration '{request.ChildConfigurationName}'" });
+                return TypedResults.BadRequest(new ErrorResponse { Error = $"Invalid ActiveVersion for configuration '{request.ChildConfigurationName}'" });
             }
         }
 
@@ -456,7 +451,7 @@ public static class CompositeConfigurationEndpoints
             Id = Guid.NewGuid(),
             CompositeConfigurationVersionId = compositeVersion.Id,
             ChildConfigurationId = childConfig.Id,
-            ActiveVersionId = request.ActiveVersionId,
+            ActiveVersion = request.ActiveVersion,
             Order = request.Order
         };
 
@@ -467,15 +462,13 @@ public static class CompositeConfigurationEndpoints
 
         // Reload to get navigation properties
         await db.Entry(item).Reference(i => i.ChildConfiguration).LoadAsync();
-        await db.Entry(item).Reference(i => i.ActiveVersion).LoadAsync();
 
         var dto = new CompositeConfigurationItemDto
         {
             Id = item.Id,
             ChildConfigurationId = item.ChildConfigurationId,
             ChildConfigurationName = item.ChildConfiguration.Name,
-            ActiveVersionId = item.ActiveVersionId,
-            ActiveVersionString = item.ActiveVersion?.Version,
+            ActiveVersion = item.ActiveVersion,
             Order = item.Order
         };
 
@@ -507,34 +500,30 @@ public static class CompositeConfigurationEndpoints
             return TypedResults.BadRequest(new ErrorResponse { Error = "Cannot modify published version" });
         }
 
-        // Validate ActiveVersionId if provided
-        if (request.ActiveVersionId.HasValue)
+        // Validate ActiveVersion if provided
+        if (!string.IsNullOrWhiteSpace(request.ActiveVersion))
         {
             var versionExists = await db.ConfigurationVersions
-                .AnyAsync(v => v.Id == request.ActiveVersionId.Value && v.ConfigurationId == item.ChildConfigurationId);
+                .AnyAsync(v => v.Version == request.ActiveVersion && v.ConfigurationId == item.ChildConfigurationId);
 
             if (!versionExists)
             {
-                return TypedResults.BadRequest(new ErrorResponse { Error = "Invalid ActiveVersionId for this configuration" });
+                return TypedResults.BadRequest(new ErrorResponse { Error = "Invalid ActiveVersion for this configuration" });
             }
         }
 
-        item.ActiveVersionId = request.ActiveVersionId;
+        item.ActiveVersion = request.ActiveVersion;
         item.Order = request.Order;
         item.CompositeConfigurationVersion.CompositeConfiguration.UpdatedAt = DateTimeOffset.UtcNow;
 
         await db.SaveChangesAsync();
-
-        // Reload to get navigation properties
-        await db.Entry(item).Reference(i => i.ActiveVersion).LoadAsync();
 
         var dto = new CompositeConfigurationItemDto
         {
             Id = item.Id,
             ChildConfigurationId = item.ChildConfigurationId,
             ChildConfigurationName = item.ChildConfiguration.Name,
-            ActiveVersionId = item.ActiveVersionId,
-            ActiveVersionString = item.ActiveVersion?.Version,
+            ActiveVersion = item.ActiveVersion,
             Order = item.Order
         };
 

@@ -7,7 +7,7 @@ namespace OpenDsc.Server.Entities;
 public sealed class ParameterFile
 {
     public Guid Id { get; set; }
-    public required Guid ConfigurationId { get; set; }
+    public required Guid ParameterSchemaId { get; set; }
     public required Guid ScopeTypeId { get; set; }
     public string? ScopeValue { get; set; }
     public required string Version { get; set; }
@@ -19,6 +19,6 @@ public sealed class ParameterFile
     public DateTimeOffset CreatedAt { get; set; }
     public string? CreatedBy { get; set; }
 
-    public Configuration Configuration { get; set; } = null!;
+    public ParameterSchema ParameterSchema { get; set; } = null!;
     public ScopeType ScopeType { get; set; } = null!;
 }

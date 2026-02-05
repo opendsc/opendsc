@@ -52,10 +52,10 @@ public sealed partial class VersionRetentionService(
             {
                 var version = versions[i];
                 var isInActiveUse = await db.NodeConfigurations
-                    .AnyAsync(nc => nc.ActiveVersionId == version.Id, cancellationToken);
+                    .AnyAsync(nc => nc.ActiveVersion == version.Version, cancellationToken);
 
                 var isUsedInComposite = await db.Set<CompositeConfigurationItem>()
-                    .AnyAsync(cci => cci.ActiveVersionId == version.Id, cancellationToken);
+                    .AnyAsync(cci => cci.ActiveVersion == version.Version, cancellationToken);
 
                 if (isInActiveUse || isUsedInComposite)
                 {

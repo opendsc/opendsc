@@ -97,9 +97,10 @@ public static class ParameterEndpoints
         var checksum = ComputeChecksum(request.Content);
 
         var existingVersion = await db.ParameterFiles
+            .Include(pf => pf.ParameterSchema)
             .FirstOrDefaultAsync(pf =>
                 pf.ScopeTypeId == scopeTypeId &&
-                pf.ConfigurationId == configurationId &&
+                pf.ParameterSchema!.ConfigurationId == configurationId &&
                 pf.ScopeValue == request.ScopeValue &&
                 pf.Version == request.Version);
 
@@ -132,7 +133,7 @@ public static class ParameterEndpoints
             {
                 Id = existingVersion.Id,
                 ScopeTypeId = existingVersion.ScopeTypeId,
-                ConfigurationId = existingVersion.ConfigurationId,
+                ConfigurationId = existingVersion.ParameterSchema!.ConfigurationId,
                 ScopeValue = existingVersion.ScopeValue,
                 Version = existingVersion.Version,
                 Checksum = existingVersion.Checksum,
@@ -142,11 +143,29 @@ public static class ParameterEndpoints
             });
         }
 
+        // Find or create ParameterSchema for this configuration
+        var parameterSchema = await db.ParameterSchemas
+            .FirstOrDefaultAsync(ps => ps.ConfigurationId == configurationId);
+
+        if (parameterSchema is null)
+        {
+            parameterSchema = new ParameterSchema
+            {
+                Id = Guid.NewGuid(),
+                ConfigurationId = configurationId,
+                SchemaHash = string.Empty,
+                SchemaDefinition = "{}",
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+            db.ParameterSchemas.Add(parameterSchema);
+            await db.SaveChangesAsync();
+        }
+
         var parameterFile = new ParameterFile
         {
             Id = Guid.NewGuid(),
             ScopeTypeId = scopeTypeId,
-            ConfigurationId = configurationId,
+            ParameterSchemaId = parameterSchema.Id,
             ScopeValue = request.ScopeValue,
             Version = request.Version,
             ContentType = request.ContentType ?? "application/x-yaml",
@@ -163,7 +182,7 @@ public static class ParameterEndpoints
         {
             Id = parameterFile.Id,
             ScopeTypeId = parameterFile.ScopeTypeId,
-            ConfigurationId = parameterFile.ConfigurationId,
+            ConfigurationId = parameterFile.ParameterSchema!.ConfigurationId,
             ScopeValue = parameterFile.ScopeValue,
             Version = parameterFile.Version,
             Checksum = parameterFile.Checksum,
@@ -186,16 +205,17 @@ public static class ParameterEndpoints
         }
 
         var versions = await db.ParameterFiles
+            .Include(pf => pf.ParameterSchema)
             .Where(pf =>
                 pf.ScopeTypeId == scopeTypeId &&
-                pf.ConfigurationId == configurationId &&
+                pf.ParameterSchema!.ConfigurationId == configurationId &&
                 pf.ScopeValue == scopeValue)
             .OrderByDescending(pf => pf.CreatedAt)
             .Select(pf => new ParameterFileDto
             {
                 Id = pf.Id,
                 ScopeTypeId = pf.ScopeTypeId,
-                ConfigurationId = pf.ConfigurationId,
+                ConfigurationId = pf.ParameterSchema!.ConfigurationId,
                 ScopeValue = pf.ScopeValue,
                 Version = pf.Version,
                 Checksum = pf.Checksum,
@@ -216,9 +236,10 @@ public static class ParameterEndpoints
         ServerDbContext db)
     {
         var parameterFile = await db.ParameterFiles
+            .Include(pf => pf.ParameterSchema)
             .FirstOrDefaultAsync(pf =>
                 pf.ScopeTypeId == scopeTypeId &&
-                pf.ConfigurationId == configurationId &&
+                pf.ParameterSchema!.ConfigurationId == configurationId &&
                 pf.ScopeValue == scopeValue &&
                 pf.Version == version);
 
@@ -228,9 +249,10 @@ public static class ParameterEndpoints
         }
 
         var currentlyActive = await db.ParameterFiles
+            .Include(pf => pf.ParameterSchema)
             .Where(pf =>
                 pf.ScopeTypeId == scopeTypeId &&
-                pf.ConfigurationId == configurationId &&
+                pf.ParameterSchema!.ConfigurationId == configurationId &&
                 pf.ScopeValue == scopeValue &&
                 pf.IsActive)
             .ToListAsync();
@@ -248,7 +270,7 @@ public static class ParameterEndpoints
         {
             Id = parameterFile.Id,
             ScopeTypeId = parameterFile.ScopeTypeId,
-            ConfigurationId = parameterFile.ConfigurationId,
+            ConfigurationId = parameterFile.ParameterSchema!.ConfigurationId,
             ScopeValue = parameterFile.ScopeValue,
             Version = parameterFile.Version,
             Checksum = parameterFile.Checksum,
@@ -266,9 +288,10 @@ public static class ParameterEndpoints
         ServerDbContext db)
     {
         var parameterFile = await db.ParameterFiles
+            .Include(pf => pf.ParameterSchema)
             .FirstOrDefaultAsync(pf =>
                 pf.ScopeTypeId == scopeTypeId &&
-                pf.ConfigurationId == configurationId &&
+                pf.ParameterSchema!.ConfigurationId == configurationId &&
                 pf.ScopeValue == scopeValue &&
                 pf.Version == version);
 
@@ -339,8 +362,9 @@ public static class ParameterEndpoints
         if (defaultScopeType != null && !scopeTypes.Contains(defaultScopeType.Id))
         {
             var defaultParamFile = await db.ParameterFiles
+                .Include(pf => pf.ParameterSchema)
                 .FirstOrDefaultAsync(pf =>
-                    pf.ConfigurationId == configurationId &&
+                    pf.ParameterSchema!.ConfigurationId == configurationId &&
                     pf.ScopeTypeId == defaultScopeType.Id &&
                     pf.IsActive);
 
@@ -365,11 +389,12 @@ public static class ParameterEndpoints
         foreach (var tag in nodeTags)
         {
             var paramFile = await db.ParameterFiles
-                .FirstOrDefaultAsync(pf =>
-                    pf.ConfigurationId == configurationId &&
+                .Where(pf =>
+                    pf.ParameterSchema!.ConfigurationId == configurationId &&
                     pf.ScopeTypeId == tag.ScopeValue.ScopeTypeId &&
                     pf.ScopeValue == tag.ScopeValue.Value &&
-                    pf.IsActive);
+                    pf.IsActive)
+                .FirstOrDefaultAsync();
 
             if (paramFile is null)
             {
@@ -399,11 +424,12 @@ public static class ParameterEndpoints
         if (nodeScopeType != null)
         {
             var nodeParamFile = await db.ParameterFiles
-                .FirstOrDefaultAsync(pf =>
-                    pf.ConfigurationId == configurationId &&
+                .Where(pf =>
+                    pf.ParameterSchema!.ConfigurationId == configurationId &&
                     pf.ScopeTypeId == nodeScopeType.Id &&
                     pf.ScopeValue == node.Fqdn &&
-                    pf.IsActive);
+                    pf.IsActive)
+                .FirstOrDefaultAsync();
 
             if (nodeParamFile != null)
             {

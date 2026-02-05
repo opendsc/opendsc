@@ -629,7 +629,7 @@ public class CompositeConfigurationEndpointsTests : IDisposable
     }
 
     [Fact]
-    public async Task AddChild_WithInvalidActiveVersionId_ReturnsBadRequest()
+    public async Task AddChild_WithInvalidActiveVersion_ReturnsBadRequest()
     {
         using var client = CreateAuthenticatedClient();
 
@@ -646,17 +646,17 @@ public class CompositeConfigurationEndpointsTests : IDisposable
         {
             ChildConfigurationName = childConfigName,
             Order = 0,
-            ActiveVersionId = Guid.NewGuid()
+            ActiveVersion = "99.99.99"
         };
         var response = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/children", addChildRequest);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
-        error!.Error.Should().Contain("ActiveVersionId");
+        error!.Error.Should().Contain("version");
     }
 
     [Fact]
-    public async Task UpdateChild_WithInvalidActiveVersionId_ReturnsBadRequest()
+    public async Task UpdateChild_WithInvalidActiveVersion_ReturnsBadRequest()
     {
         using var client = CreateAuthenticatedClient();
 
@@ -673,12 +673,12 @@ public class CompositeConfigurationEndpointsTests : IDisposable
         var addResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/children", addChildRequest);
         var childItem = await addResponse.Content.ReadFromJsonAsync<CompositeConfigurationItemDto>();
 
-        var updateRequest = new UpdateChildConfigurationRequest { Order = 5, ActiveVersionId = Guid.NewGuid() };
+        var updateRequest = new UpdateChildConfigurationRequest { Order = 5, ActiveVersion = "99.99.99" };
         var response = await client.PutAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/children/{childItem!.Id}", updateRequest);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
-        error!.Error.Should().Contain("ActiveVersionId");
+        error!.Error.Should().Contain("version");
     }
 
     [Fact]

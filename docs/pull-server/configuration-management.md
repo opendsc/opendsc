@@ -187,7 +187,7 @@ PUT /api/v1/nodes/{nodeId}/configuration
 The Pull Server also supports advanced assignment via the
 `NodeConfiguration` entity, which allows:
 
-- Assigning a specific version by GUID
+- Assigning a specific version by string (e.g., "1.2.0")
 - Enabling/disabling server-managed parameters
 - Filtering by prerelease channels
 

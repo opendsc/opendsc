@@ -62,10 +62,11 @@ public sealed class AddChildConfigurationRequest
     public string ChildConfigurationName { get; set; } = string.Empty;
 
     /// <summary>
-    /// Optional specific version ID to pin this child configuration to.
+    /// Optional specific version string to pin this child configuration to.
     /// If null, will use the latest published version.
+    /// Example: "1.0.0", "2.1.3"
     /// </summary>
-    public Guid? ActiveVersionId { get; set; }
+    public string? ActiveVersion { get; set; }
 
     /// <summary>
     /// The order/sequence number for this child in the composite.
@@ -79,10 +80,11 @@ public sealed class AddChildConfigurationRequest
 public sealed class UpdateChildConfigurationRequest
 {
     /// <summary>
-    /// Optional specific version ID to pin this child configuration to.
+    /// Optional specific version string to pin this child configuration to.
     /// If null, will use the latest published version.
+    /// Example: "1.0.0", "2.1.3"
     /// </summary>
-    public Guid? ActiveVersionId { get; set; }
+    public string? ActiveVersion { get; set; }
 
     /// <summary>
     /// The order/sequence number for this child in the composite.
@@ -244,14 +246,10 @@ public sealed class CompositeConfigurationItemDto
     public string ChildConfigurationName { get; set; } = string.Empty;
 
     /// <summary>
-    /// The pinned version ID, or null for latest.
-    /// </summary>
-    public Guid? ActiveVersionId { get; set; }
-
-    /// <summary>
     /// The pinned version string, or null for latest.
+    /// Example: "1.0.0", "2.1.3"
     /// </summary>
-    public string? ActiveVersionString { get; set; }
+    public string? ActiveVersion { get; set; }
 
     /// <summary>
     /// The order/sequence number.

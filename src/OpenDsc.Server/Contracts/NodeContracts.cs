@@ -123,9 +123,10 @@ public sealed class AssignConfigurationRequest
     public bool IsComposite { get; set; }
 
     /// <summary>
-    /// The specific version ID to pin (optional, defaults to latest published version).
+    /// The specific version string to pin (optional, defaults to latest published version).
+    /// Example: "1.0.0", "2.1.3-beta"
     /// </summary>
-    public Guid? VersionId { get; set; }
+    public string? Version { get; set; }
 }
 
 /// <summary>

@@ -49,6 +49,11 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
     public DbSet<CompositeConfigurationItem> CompositeConfigurationItems => Set<CompositeConfigurationItem>();
 
     /// <summary>
+    /// Parameter schemas.
+    /// </summary>
+    public DbSet<ParameterSchema> ParameterSchemas => Set<ParameterSchema>();
+
+    /// <summary>
     /// Scope types for parameter layering.
     /// </summary>
     public DbSet<ScopeType> ScopeTypes => Set<ScopeType>();
@@ -180,8 +185,8 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
         modelBuilder.Entity<ParameterFile>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.HasIndex(e => new { e.ConfigurationId, e.ScopeTypeId, e.ScopeValue, e.Version }).IsUnique();
-            entity.HasIndex(e => new { e.ConfigurationId, e.ScopeTypeId, e.ScopeValue, e.IsActive });
+            entity.HasIndex(e => new { e.ParameterSchemaId, e.ScopeTypeId, e.ScopeValue, e.Version }).IsUnique();
+            entity.HasIndex(e => new { e.ParameterSchemaId, e.ScopeTypeId, e.ScopeValue, e.IsActive });
             entity.Property(e => e.Version).HasMaxLength(50).IsRequired();
             entity.Property(e => e.ScopeValue).HasMaxLength(255);
             entity.Property(e => e.ContentType).HasMaxLength(100);
@@ -193,9 +198,9 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
                 .HasForeignKey(e => e.ScopeTypeId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            entity.HasOne(e => e.Configuration)
-                .WithMany(c => c.ParameterFiles)
-                .HasForeignKey(e => e.ConfigurationId)
+            entity.HasOne(e => e.ParameterSchema)
+                .WithMany(ps => ps.ParameterFiles)
+                .HasForeignKey(e => e.ParameterSchemaId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
@@ -214,20 +219,10 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
                 .HasForeignKey(e => e.ConfigurationId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            entity.HasOne(e => e.ActiveVersion)
-                .WithMany(v => v.NodeConfigurations)
-                .HasForeignKey(e => e.ActiveVersionId)
-                .OnDelete(DeleteBehavior.Restrict);
-
             entity.HasOne(e => e.CompositeConfiguration)
                 .WithMany(c => c.NodeConfigurations)
                 .HasForeignKey(e => e.CompositeConfigurationId)
                 .OnDelete(DeleteBehavior.Cascade);
-
-            entity.HasOne(e => e.ActiveCompositeVersion)
-                .WithMany(v => v.NodeConfigurations)
-                .HasForeignKey(e => e.ActiveCompositeVersionId)
-                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<CompositeConfiguration>(entity =>
@@ -266,11 +261,6 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
                 .WithMany()
                 .HasForeignKey(e => e.ChildConfigurationId)
                 .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasOne(e => e.ActiveVersion)
-                .WithMany()
-                .HasForeignKey(e => e.ActiveVersionId)
-                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<Report>(entity =>
@@ -302,7 +292,58 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
             entity.Property(e => e.AdminApiKeySalt).HasMaxLength(64).IsRequired();
         });
 
+        modelBuilder.Entity<ParameterSchema>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.ConfigurationId, e.SchemaHash });
+            entity.Property(e => e.SchemaHash).HasMaxLength(64).IsRequired();
+            entity.Property(e => e.SchemaDefinition).IsRequired();
+
+            entity.HasOne(e => e.Configuration)
+                .WithMany()
+                .HasForeignKey(e => e.ConfigurationId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ValidationSettings>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.DefaultParameterValidation).HasConversion<string>().HasMaxLength(20);
+        });
+
+        modelBuilder.Entity<ConfigurationSettings>(entity =>
+        {
+            entity.HasKey(e => e.ConfigurationId);
+            entity.Property(e => e.ParameterValidation).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.UpdatedBy).HasMaxLength(255);
+
+            entity.HasOne(e => e.Configuration)
+                .WithMany()
+                .HasForeignKey(e => e.ConfigurationId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         SeedDefaultScopeTypes(modelBuilder);
+        SeedDefaultValidationSettings(modelBuilder);
+    }
+
+    private static void SeedDefaultValidationSettings(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<ValidationSettings>().HasData(
+            new ValidationSettings
+            {
+                Id = Guid.NewGuid(),
+                EnforceSemverCompliance = true,
+                DefaultParameterValidation = ParameterValidationMode.Strict,
+                AutoCopyParametersOnMinor = true,
+                AutoCopyParametersOnMajor = true,
+                AllowPreReleaseVersions = true,
+                RequireApprovalForPublish = false,
+                AllowSemverComplianceOverride = true,
+                AllowParameterValidationOverride = true,
+                AllowAutoCopyOverride = true
+            }
+        );
     }
 
     private static void SeedDefaultScopeTypes(ModelBuilder modelBuilder)

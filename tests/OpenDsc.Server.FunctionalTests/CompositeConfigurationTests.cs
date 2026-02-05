@@ -71,10 +71,10 @@ public abstract class CompositeConfigurationTests
         var versionDto = await versionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDto>();
         versionDto!.IsDraft.Should().BeTrue();
 
-        var publishResponse = await Client.PostAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto.Id}/publish", null);
+        var publishResponse = await Client.PostAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto.Version}/publish", null);
         publishResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var getVersionResponse = await Client.GetAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto.Id}");
+        var getVersionResponse = await Client.GetAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto.Version}");
         var publishedVersion = await getVersionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDto>();
         publishedVersion!.IsDraft.Should().BeFalse();
     }
@@ -173,15 +173,15 @@ resources:
         {
             ChildConfigurationName = childName1
         };
-        await Client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto!.Id}/children", addChild1Request);
+        await Client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto!.Version}/children", addChild1Request);
 
         var addChild2Request = new AddChildConfigurationRequest
         {
             ChildConfigurationName = childName2
         };
-        await Client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto.Id}/children", addChild2Request);
+        await Client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto.Version}/children", addChild2Request);
 
-        await Client.PostAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto.Id}/publish", null);
+        await Client.PostAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto.Version}/publish", null);
 
         var fqdn = $"bundle-test-{Guid.NewGuid()}.example.com";
         var registerRequest = new RegisterNodeRequest
@@ -255,9 +255,9 @@ resources: []
         {
             ChildConfigurationName = childName
         };
-        await Client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto!.Id}/children", addChildRequest);
+        await Client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto!.Version}/children", addChildRequest);
 
-        await Client.PostAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto.Id}/publish", null);
+        await Client.PostAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto.Version}/publish", null);
 
         var fqdn = $"checksum-test-{Guid.NewGuid()}.example.com";
         var registerRequest = new RegisterNodeRequest

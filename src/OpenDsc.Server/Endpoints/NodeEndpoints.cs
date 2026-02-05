@@ -315,8 +315,8 @@ public static class NodeEndpoints
         }
 
         // Handle regular configuration
-        var activeVersion = nodeConfig.ActiveVersionId.HasValue
-            ? nodeConfig.Configuration!.Versions.FirstOrDefault(v => v.Id == nodeConfig.ActiveVersionId.Value)
+        var activeVersion = !string.IsNullOrWhiteSpace(nodeConfig.ActiveVersion)
+            ? nodeConfig.Configuration!.Versions.FirstOrDefault(v => v.Version == nodeConfig.ActiveVersion)
             : nodeConfig.Configuration!.Versions.FirstOrDefault();
 
         if (activeVersion is null)
@@ -369,8 +369,8 @@ public static class NodeEndpoints
         ServerDbContext db,
         CancellationToken cancellationToken)
     {
-        var activeCompositeVersion = nodeConfig.ActiveCompositeVersionId.HasValue
-            ? nodeConfig.CompositeConfiguration!.Versions.FirstOrDefault(v => v.Id == nodeConfig.ActiveCompositeVersionId.Value)
+        var activeCompositeVersion = !string.IsNullOrWhiteSpace(nodeConfig.ActiveCompositeVersion)
+            ? nodeConfig.CompositeConfiguration!.Versions.FirstOrDefault(v => v.Version == nodeConfig.ActiveCompositeVersion)
             : nodeConfig.CompositeConfiguration!.Versions.FirstOrDefault();
 
         if (activeCompositeVersion is null)
@@ -386,9 +386,9 @@ public static class NodeEndpoints
             // Process each child configuration
             foreach (var item in activeCompositeVersion.Items)
             {
-                // Resolve child version using ActiveVersionId pattern
-                var childVersion = item.ActiveVersionId.HasValue
-                    ? item.ChildConfiguration.Versions.FirstOrDefault(v => v.Id == item.ActiveVersionId.Value)
+                // Resolve child version using ActiveVersion pattern
+                var childVersion = !string.IsNullOrWhiteSpace(item.ActiveVersion)
+                    ? item.ChildConfiguration.Versions.FirstOrDefault(v => v.Version == item.ActiveVersion)
                     : item.ChildConfiguration.Versions.FirstOrDefault();
 
                 if (childVersion is null)
@@ -476,9 +476,9 @@ public static class NodeEndpoints
                 return TypedResults.NotFound(new ErrorResponse { Error = "Composite configuration not found." });
             }
 
-            if (request.VersionId.HasValue)
+            if (!string.IsNullOrWhiteSpace(request.Version))
             {
-                if (!composite.Versions.Any(v => v.Id == request.VersionId.Value))
+                if (!composite.Versions.Any(v => v.Version == request.Version))
                 {
                     return TypedResults.BadRequest(new ErrorResponse { Error = "Specified version not found or is a draft." });
                 }
@@ -495,16 +495,16 @@ public static class NodeEndpoints
                 {
                     NodeId = nodeId,
                     CompositeConfigurationId = composite.Id,
-                    ActiveCompositeVersionId = request.VersionId
+                    ActiveCompositeVersion = request.Version
                 };
                 db.NodeConfigurations.Add(nodeConfig);
             }
             else
             {
                 nodeConfig.ConfigurationId = null;
-                nodeConfig.ActiveVersionId = null;
+                nodeConfig.ActiveVersion = null;
                 nodeConfig.CompositeConfigurationId = composite.Id;
-                nodeConfig.ActiveCompositeVersionId = request.VersionId;
+                nodeConfig.ActiveCompositeVersion = request.Version;
             }
 
             node.ConfigurationName = request.ConfigurationName;
@@ -520,9 +520,9 @@ public static class NodeEndpoints
                 return TypedResults.NotFound(new ErrorResponse { Error = "Configuration not found." });
             }
 
-            if (request.VersionId.HasValue)
+            if (!string.IsNullOrWhiteSpace(request.Version))
             {
-                if (!config.Versions.Any(v => v.Id == request.VersionId.Value))
+                if (!config.Versions.Any(v => v.Version == request.Version))
                 {
                     return TypedResults.BadRequest(new ErrorResponse { Error = "Specified version not found or is a draft." });
                 }
@@ -539,16 +539,16 @@ public static class NodeEndpoints
                 {
                     NodeId = nodeId,
                     ConfigurationId = config.Id,
-                    ActiveVersionId = request.VersionId
+                    ActiveVersion = request.Version
                 };
                 db.NodeConfigurations.Add(nodeConfig);
             }
             else
             {
                 nodeConfig.CompositeConfigurationId = null;
-                nodeConfig.ActiveCompositeVersionId = null;
+                nodeConfig.ActiveCompositeVersion = null;
                 nodeConfig.ConfigurationId = config.Id;
-                nodeConfig.ActiveVersionId = request.VersionId;
+                nodeConfig.ActiveVersion = request.Version;
             }
 
             node.ConfigurationName = request.ConfigurationName;
@@ -601,8 +601,8 @@ public static class NodeEndpoints
 
         if (nodeConfig.CompositeConfigurationId.HasValue)
         {
-            var activeCompositeVersion = nodeConfig.ActiveCompositeVersionId.HasValue
-                ? nodeConfig.CompositeConfiguration!.Versions.FirstOrDefault(v => v.Id == nodeConfig.ActiveCompositeVersionId.Value)
+            var activeCompositeVersion = !string.IsNullOrWhiteSpace(nodeConfig.ActiveCompositeVersion)
+                ? nodeConfig.CompositeConfiguration!.Versions.FirstOrDefault(v => v.Version == nodeConfig.ActiveCompositeVersion)
                 : nodeConfig.CompositeConfiguration!.Versions.FirstOrDefault();
 
             if (activeCompositeVersion is null)
@@ -618,8 +618,8 @@ public static class NodeEndpoints
 
             foreach (var item in activeCompositeVersion.Items.OrderBy(i => i.Order))
             {
-                var childVersion = item.ActiveVersionId.HasValue
-                    ? item.ChildConfiguration!.Versions.FirstOrDefault(v => v.Id == item.ActiveVersionId.Value)
+                var childVersion = !string.IsNullOrWhiteSpace(item.ActiveVersion)
+                    ? item.ChildConfiguration!.Versions.FirstOrDefault(v => v.Version == item.ActiveVersion)
                     : item.ChildConfiguration!.Versions.FirstOrDefault();
 
                 if (childVersion is not null)
@@ -639,8 +639,8 @@ public static class NodeEndpoints
         }
         else
         {
-            var activeVersion = nodeConfig.ActiveVersionId.HasValue
-                ? nodeConfig.Configuration!.Versions.FirstOrDefault(v => v.Id == nodeConfig.ActiveVersionId.Value)
+            var activeVersion = !string.IsNullOrWhiteSpace(nodeConfig.ActiveVersion)
+                ? nodeConfig.Configuration!.Versions.FirstOrDefault(v => v.Version == nodeConfig.ActiveVersion)
                 : nodeConfig.Configuration!.Versions.FirstOrDefault();
 
             if (activeVersion is null)
