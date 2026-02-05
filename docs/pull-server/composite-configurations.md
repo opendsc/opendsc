@@ -1,25 +1,24 @@
 # Composite Configuration Guide
 
-The OpenDSC Pull Server supports **composite configurations** (also called
-meta configurations) that allow you to combine multiple existing
-configurations into a single logical unit. Composite configurations provide
-orchestration and composition capabilities without containing their own
-configuration files or parameters.
+The OpenDSC Pull Server supports **composite configurations** (also called meta
+configurations) that allow you to combine multiple existing configurations into
+a single logical unit. Composite configurations provide orchestration and
+composition capabilities without containing their own configuration files or
+parameters.
 
 ## Overview
 
 A **composite configuration** is a container that references other
 configurations (called child configurations). This enables:
 
-- **Configuration Composition** - Combine multiple configurations into a
-  single deployment unit
+- **Configuration Composition** - Combine multiple configurations into a single
+  deployment unit
 - **Modular Architecture** - Build configurations from reusable components
-- **Version Pinning** - Lock child configurations to specific versions or
-  allow automatic updates
+- **Version Pinning** - Lock child configurations to specific versions or allow
+  automatic updates
 - **Ordered Execution** - Control the sequence of child configuration
   application
-- **Centralized Management** - Manage related configurations as a single
-  entity
+- **Centralized Management** - Manage related configurations as a single entity
 
 ## Key Concepts
 
@@ -36,16 +35,16 @@ configurations (called child configurations). This enables:
 
 ### Nesting Rules
 
-**Composites cannot contain other composites** - only regular configurations
-can be added as children. This prevents circular dependencies and keeps the
+**Composites cannot contain other composites** - only regular configurations can
+be added as children. This prevents circular dependencies and keeps the
 composition structure simple.
 
 ### Entry Point
 
 Composite configurations have an `EntryPoint` property (default:
-`main.dsc.yaml`) which defines the name of the orchestrator file that the
-server generates. This file is automatically created during bundle
-generation and contains references to all child configurations.
+`main.dsc.yaml`) which defines the name of the orchestrator file that the server
+generates. This file is automatically created during bundle generation and
+contains references to all child configurations.
 
 ## Creating Composite Configurations
 
@@ -123,8 +122,8 @@ generation and contains references to all child configurations.
 **Parameters:**
 
 - `childConfigurationName` - Name of the regular configuration to add
-- `activeVersion` - (Optional) Pin to specific version string (e.g., "1.0.0"), or `null` for
-  latest published
+- `activeVersion` - (Optional) Pin to specific version string (e.g., "1.0.0"),
+  or `null` for latest published
 - `order` - Execution order (1-based)
 
 **Response:**
@@ -142,10 +141,10 @@ generation and contains references to all child configurations.
 
 **Notes:**
 
-- When `activeVersion` is `null`, the child will automatically use the
-  latest published version
-- When `activeVersion` is set to a specific version string (e.g., "1.2.0"), the child is
-  pinned to that version
+- When `activeVersion` is `null`, the child will automatically use the latest
+  published version
+- When `activeVersion` is set to a specific version string (e.g., "1.2.0"), the
+  child is pinned to that version
 - `order` determines the sequence in which child configurations are applied
 
 ### Update a Child Configuration
@@ -220,21 +219,20 @@ Publishes a draft version, making it available for node assignment.
 
 - `compositeConfigurationName` - Name of the composite configuration
 - `isComposite` - Must be `true` for composite configurations
-- `activeVersion` - (Optional) Pin to specific composite version string (e.g., "1.0.0"), or
-  `null` for latest published
+- `activeVersion` - (Optional) Pin to specific composite version string (e.g.,
+  "1.0.0"), or `null` for latest published
 
 **Mutual Exclusivity:** A node can be assigned either:
 
 - A regular configuration (`configurationName` + `activeVersion`)
-- OR a composite configuration (`compositeConfigurationName` +
-  `activeVersion`)
+- OR a composite configuration (`compositeConfigurationName` + `activeVersion`)
 
 But not both. Assigning one clears the other.
 
 ## Bundle Generation
 
-When a node requests a configuration bundle for a composite configuration,
-the Pull Server automatically generates a ZIP bundle containing:
+When a node requests a configuration bundle for a composite configuration, the
+Pull Server automatically generates a ZIP bundle containing:
 
 ### Bundle Structure
 
@@ -287,8 +285,8 @@ resources:
 
 ### Parameter Merging
 
-Each child configuration's parameters are merged individually according to
-the node's scope tags and node-specific parameters. The server:
+Each child configuration's parameters are merged individually according to the
+node's scope tags and node-specific parameters. The server:
 
 1. Resolves the child configuration version (pinned or latest published)
 2. Merges parameters for that specific child configuration
@@ -300,8 +298,8 @@ the node's scope tags and node-specific parameters. The server:
 For each child configuration:
 
 - If `activeVersion` is set on the composite item → uses that specific version
-- If `activeVersion` is `null` → uses the latest published version of the
-  child configuration
+- If `activeVersion` is `null` → uses the latest published version of the child
+  configuration
 
 This allows flexible version management where some children are pinned and
 others automatically track the latest version.
@@ -310,8 +308,8 @@ others automatically track the latest version.
 
 The Pull Server calculates a checksum for composite configurations by:
 
-1. Generating the complete bundle (orchestrator + all child configurations
-   with merged parameters)
+1. Generating the complete bundle (orchestrator + all child configurations with
+   merged parameters)
 2. Computing SHA256 hash of the entire ZIP bundle
 3. Returning the checksum to the node
 
@@ -480,8 +478,9 @@ PUT /api/v1/nodes/{nodeId}/configuration
 }
 ```
 
-**Behavior:** The node is pinned to a specific composite version ("1.0.0"). Child
-configurations use whatever versions were defined in that composite version.
+**Behavior:** The node is pinned to a specific composite version ("1.0.0").
+Child configurations use whatever versions were defined in that composite
+version.
 
 ## API Endpoints Reference
 
@@ -557,7 +556,7 @@ POST /api/v1/composite-configurations/FullWebStack/versions/2.0.0/children
 
 # Test on non-production nodes
 PUT /api/v1/nodes/{testNodeId}/configuration
-{"compositeConfigurationName": "FullWebStack", "activeVersionId": "{v2.0.0-guid}"}
+{"compositeConfigurationName": "FullWebStack", "activeVersion": "2.0.0"}
 
 # Publish when ready
 PUT /api/v1/composite-configurations/FullWebStack/versions/2.0.0/publish
@@ -570,8 +569,8 @@ PUT /api/v1/composite-configurations/FullWebStack/versions/2.0.0/publish
 **Cause:** Attempting to add a composite configuration as a child of another
 composite.
 
-**Solution:** Only regular configurations can be children of composites.
-Flatten your composition structure.
+**Solution:** Only regular configurations can be children of composites. Flatten
+your composition structure.
 
 ### Error: "Child configuration not found"
 
@@ -586,23 +585,23 @@ GET /api/v1/configurations/{childName}
 
 ### Bundle Contains No Child Configurations
 
-**Cause:** Composite version has no child configurations added, or all
-children were removed.
+**Cause:** Composite version has no child configurations added, or all children
+were removed.
 
 **Solution:** Add at least one child configuration to the composite version
 before publishing.
 
 ### Checksum Changes Frequently
 
-**Cause:** Child configurations using `activeVersionId: null` track latest
+**Cause:** Child configurations using `activeVersion: null` track latest
 versions. Each new publish changes the bundle.
 
-**Solution:** Pin stable versions using `activeVersionId` to prevent
-automatic updates:
+**Solution:** Pin stable versions using `activeVersion` to prevent automatic
+updates:
 
 ```json
 {
-  "activeVersionId": "specific-version-guid"
+  "activeVersion": "1.2.0"
 }
 ```
 

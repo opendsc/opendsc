@@ -5,7 +5,6 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
-using OpenDsc.Server.Authentication;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
 
