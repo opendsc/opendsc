@@ -38,10 +38,10 @@ Failure events, both, or none.
 
 ## Properties
 
-| Property      | Type   | Required | Description                                                                                              |
-|---------------|--------|----------|----------------------------------------------------------------------------------------------------------|
-| `subcategory` | string | Yes      | Name of the audit subcategory (e.g., 'File System', 'Logon', 'Security State Change'). Case-insensitive. |
-| `setting`     | enum   | No       | Audit setting (default: `None`). Flags enum: `None`, `Success`, `Failure`, or `SuccessAndFailure`.       |
+| Property      | Type     | Required | Description                                                                                                    |
+|---------------|----------|----------|----------------------------------------------------------------------------------------------------------------|
+| `subcategory` | string   | Yes      | Name of the audit subcategory (e.g., 'File System', 'Logon', 'Security State Change'). Case-insensitive.       |
+| `setting`     | string[] | No       | Audit setting values (default: `[]`). Array of: `Success`, `Failure`, or both. Empty array disables auditing. |
 
 ## Examples
 
@@ -52,7 +52,7 @@ resources:
   - type: OpenDsc.Windows/AuditPolicy
     properties:
       subcategory: File System
-      setting: Success
+      setting: [Success]
 ```
 
 ### Enable both success and failure auditing for logon events
@@ -62,7 +62,7 @@ resources:
   - type: OpenDsc.Windows/AuditPolicy
     properties:
       subcategory: Logon
-      setting: SuccessAndFailure
+      setting: [Success, Failure]
 ```
 
 ### Disable auditing for a subcategory
@@ -72,7 +72,7 @@ resources:
   - type: OpenDsc.Windows/AuditPolicy
     properties:
       subcategory: File System
-      setting: None
+      setting: []
 ```
 
 ## Audit Policy Subcategories
@@ -227,14 +227,14 @@ auditpol /get /subcategory:{0cce921d-69ae-11d9-bed3-505054503030}
 # Track file access for sensitive directories
 - type: OpenDsc.Windows/AuditPolicy
   properties:
-    subcategoryGuid: 0cce921d-69ae-11d9-bed3-505054503030  # File System
-    setting: SuccessAndFailure
+    subcategory: File System
+    setting: [Success, Failure]
 
 # Track user logon/logoff
 - type: OpenDsc.Windows/AuditPolicy
   properties:
-    subcategoryGuid: 0cce9215-69ae-11d9-bed3-505054503030  # Logon
-    setting: SuccessAndFailure
+    subcategory: Logon
+    setting: [Success, Failure]
 ```
 
 ### Security Monitoring
@@ -243,14 +243,14 @@ auditpol /get /subcategory:{0cce921d-69ae-11d9-bed3-505054503030}
 # Track privilege escalation attempts
 - type: OpenDsc.Windows/AuditPolicy
   properties:
-    subcategoryGuid: 0cce9228-69ae-11d9-bed3-505054503030  # Sensitive Privilege Use
-    setting: Failure
+    subcategory: Sensitive Privilege Use
+    setting: [Failure]
 
 # Track process creation for threat detection
 - type: OpenDsc.Windows/AuditPolicy
   properties:
-    subcategoryGuid: 0cce922b-69ae-11d9-bed3-505054503030  # Process Creation
-    setting: Success
+    subcategory: Process Creation
+    setting: [Success]
 ```
 
 ### Active Directory Monitoring
@@ -259,14 +259,14 @@ auditpol /get /subcategory:{0cce921d-69ae-11d9-bed3-505054503030}
 # Track directory service changes
 - type: OpenDsc.Windows/AuditPolicy
   properties:
-    subcategoryGuid: 0cce923c-69ae-11d9-bed3-505054503030  # Directory Service Changes
-    setting: SuccessAndFailure
+    subcategory: Directory Service Changes
+    setting: [Success, Failure]
 
 # Track security group modifications
 - type: OpenDsc.Windows/AuditPolicy
   properties:
-    subcategoryGuid: 0cce9237-69ae-11d9-bed3-505054503030  # Security Group Management
-    setting: Success
+    subcategory: Security Group Management
+    setting: [Success]
 ```
 
 ## Notes
@@ -278,7 +278,7 @@ auditpol /get /subcategory:{0cce921d-69ae-11d9-bed3-505054503030}
 - Consider disk space and performance impact when enabling verbose auditing
 - The resource automatically enables `SeSecurityPrivilege` when setting audit
   policies
-- Setting uses flags enum: `None`, `Success`, `Failure`, or `SuccessAndFailure`
+- Setting accepts an array of values: `[Success]`, `[Failure]`, `[Success, Failure]`, or `[]` (disabled)
 
 ## See Also
 
