@@ -3,7 +3,6 @@
 // terms of the MIT license.
 
 using System.Net;
-using System.Net.Http.Headers;
 
 using FluentAssertions;
 
@@ -29,9 +28,7 @@ public sealed class RetentionEndpointsTests : IDisposable
 
     private HttpClient CreateAuthenticatedClient()
     {
-        var client = _factory.CreateClient();
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "test-admin-key");
-        return client;
+        return _factory.CreateAuthenticatedClient();
     }
     [Fact]
     public async Task CleanupConfigurationVersions_WithDryRun_ReturnsPreview()

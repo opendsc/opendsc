@@ -2,8 +2,6 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
-using System.Net.Http.Headers;
-
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -68,19 +66,25 @@ public class ServerWebApplicationFactory : WebApplicationFactory<Program>
             throw new InvalidOperationException("Failed to authenticate test client");
         }
 
-        // Create a PAT for API calls
-        var tokenRequest = new { name = "Integration Test Token", expiresAt = (DateTimeOffset?)null };
-        var tokenResponse = await client.PostAsJsonAsync("/api/v1/auth/tokens", tokenRequest);
-        var tokenResult = await tokenResponse.Content.ReadFromJsonAsync<PersonalAccessTokenResponse>();
-
-        var authenticatedClient = CreateClient();
-        authenticatedClient.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", tokenResult!.Token);
-
-        return authenticatedClient;
+        return client;
     }
 
-    private record PersonalAccessTokenResponse(string Token, string Name, DateTimeOffset? ExpiresAt);
+    /// <summary>
+    /// Creates an authenticated client for testing (synchronous wrapper).
+    /// </summary>
+    public HttpClient CreateAuthenticatedClient()
+    {
+        return CreateAuthenticatedClientAsync().GetAwaiter().GetResult();
+    }
+
+    /// <summary>
+    /// Creates an authenticated client for testing (synchronous wrapper with API key - deprecated).
+    /// </summary>
+    public HttpClient CreateAuthenticatedClient(string apiKey)
+    {
+        // For backward compatibility, ignore the API key and use the new auth system
+        return CreateAuthenticatedClient();
+    }
 
     protected override void Dispose(bool disposing)
     {

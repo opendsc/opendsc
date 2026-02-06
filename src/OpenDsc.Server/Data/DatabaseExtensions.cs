@@ -68,6 +68,8 @@ public static class DatabaseExtensions
             var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
 
             await DatabaseSeeder.SeedRolesAsync(context, logger);
+            await DatabaseSeeder.SeedDefaultGroupsAsync(context, logger);
+            await DatabaseSeeder.SeedSystemScopeTypesAsync(context, logger);
             await DatabaseSeeder.SeedInitialAdminAsync(context, passwordHasher, logger);
 
             if (environment.IsEnvironment("Testing"))
@@ -75,6 +77,35 @@ public static class DatabaseExtensions
                 await SeedTestRegistrationKeyAsync(context, logger);
                 await SeedTestDataAsync(context, logger);
             }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to initialize database");
+            throw;
+        }
+    }
+    /// <summary>
+    /// Ensures the database is created and migrations are applied for testing.
+    /// </summary>
+    public static async Task EnsureDatabaseInitialized(
+        ServerDbContext context,
+        ILogger logger)
+    {
+        try
+        {
+            await context.Database.EnsureDeletedAsync();
+            await context.Database.EnsureCreatedAsync();
+
+            logger.LogInformation("Database initialized successfully");
+
+            var passwordHasher = new PasswordHasher();
+
+            await DatabaseSeeder.SeedRolesAsync(context, logger);
+            await DatabaseSeeder.SeedDefaultGroupsAsync(context, logger);
+            await DatabaseSeeder.SeedSystemScopeTypesAsync(context, logger);
+            await DatabaseSeeder.SeedInitialAdminAsync(context, passwordHasher, logger);
+            await SeedTestRegistrationKeyAsync(context, logger);
+            await SeedTestDataAsync(context, logger);
         }
         catch (Exception ex)
         {
@@ -137,6 +168,17 @@ public static class DatabaseExtensions
         {
             logger.LogInformation("Test data already exists");
             return;
+        }
+
+        // Seed server settings
+        var serverSettingsExists = await context.ServerSettings.AnyAsync();
+        if (!serverSettingsExists)
+        {
+            context.ServerSettings.Add(new ServerSettings
+            {
+                Id = 1,
+                CertificateRotationInterval = TimeSpan.FromDays(60)
+            });
         }
 
         var config = new Configuration

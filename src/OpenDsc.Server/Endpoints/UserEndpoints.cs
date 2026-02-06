@@ -181,7 +181,7 @@ public static class UserEndpoints
         });
     }
 
-    private static async Task<Results<Ok, NotFound, BadRequest<string>>> UpdateUser(
+    private static async Task<Results<Ok<UserDto>, NotFound, BadRequest<string>>> UpdateUser(
         Guid id,
         [FromBody] UpdateUserRequest request,
         ServerDbContext db)
@@ -205,10 +205,21 @@ public static class UserEndpoints
 
         await db.SaveChangesAsync();
 
-        return TypedResults.Ok();
+        return TypedResults.Ok(new UserDto
+        {
+            Id = user.Id,
+            Username = user.Username,
+            Email = user.Email,
+            AccountType = user.AccountType.ToString(),
+            IsActive = user.IsActive,
+            RequirePasswordChange = user.RequirePasswordChange,
+            LockoutEnd = user.LockoutEnd,
+            CreatedAt = user.CreatedAt,
+            ModifiedAt = user.ModifiedAt
+        });
     }
 
-    private static async Task<Results<Ok, NotFound>> DeleteUser(
+    private static async Task<Results<NoContent, NotFound>> DeleteUser(
         Guid id,
         ServerDbContext db)
     {
@@ -221,10 +232,10 @@ public static class UserEndpoints
         db.Users.Remove(user);
         await db.SaveChangesAsync();
 
-        return TypedResults.Ok();
+        return TypedResults.NoContent();
     }
 
-    private static async Task<Results<Ok, NotFound>> ResetPassword(
+    private static async Task<Results<NoContent, NotFound>> ResetPassword(
         Guid id,
         [FromBody] ResetPasswordRequest request,
         ServerDbContext db,
@@ -244,7 +255,7 @@ public static class UserEndpoints
 
         await db.SaveChangesAsync();
 
-        return TypedResults.Ok();
+        return TypedResults.NoContent();
     }
 
     private static async Task<Results<Ok, NotFound>> UnlockUser(

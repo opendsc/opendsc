@@ -85,8 +85,8 @@ public sealed class ServerFixture : IAsyncLifetime
             "..", "..", "..", "..", ".."));
 
         _serverImage = new ImageFromDockerfileBuilder()
-            .WithDockerfileDirectory(new CommonDirectoryPath(solutionDir), "src/OpenDsc.Server")
-            .WithDockerfile("Dockerfile")
+            .WithDockerfileDirectory(solutionDir)
+            .WithDockerfile("src/OpenDsc.Server/Dockerfile")
             .WithName($"opendsc-server-test:{Guid.NewGuid():N}")
             .WithCleanUp(true)
             .Build();

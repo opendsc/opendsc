@@ -22,11 +22,11 @@ public class PasswordHasherTests
     [InlineData("very-long-password-with-special-characters-123!@#$%^&*()")]
     public void HashPassword_CreatesValidHash(string password)
     {
-        var hash = _hasher.HashPassword(password, out var salt);
+        var (hash, salt) = _hasher.HashPassword(password);
 
         hash.Should().NotBeNullOrEmpty();
         salt.Should().NotBeNullOrEmpty();
-        hash.Should().HaveLength(88); // Base64 encoded 64-byte hash
+        hash.Should().HaveLength(44); // Base64 encoded 32-byte hash
         salt.Should().HaveLength(24); // Base64 encoded 16-byte salt
     }
 
@@ -35,54 +35,54 @@ public class PasswordHasherTests
     {
         var password = "test-password";
 
-        var hash1 = _hasher.HashPassword(password, out var salt1);
-        var hash2 = _hasher.HashPassword(password, out var salt2);
+        var (hash1, salt1) = _hasher.HashPassword(password);
+        var (hash2, salt2) = _hasher.HashPassword(password);
 
         salt1.Should().NotBe(salt2);
         hash1.Should().NotBe(hash2);
     }
 
     [Fact]
-    public void VerifyPassword_WithCorrectPassword_ReturnsTrue()
+    public void ValidatePassword_WithCorrectPassword_ReturnsTrue()
     {
         var password = "correct-password";
-        var hash = _hasher.HashPassword(password, out var salt);
+        var (hash, salt) = _hasher.HashPassword(password);
 
-        var result = _hasher.VerifyPassword(password, hash, salt);
+        var result = _hasher.ValidatePassword(password, hash, salt);
 
         result.Should().BeTrue();
     }
 
     [Fact]
-    public void VerifyPassword_WithIncorrectPassword_ReturnsFalse()
+    public void ValidatePassword_WithIncorrectPassword_ReturnsFalse()
     {
         var password = "correct-password";
-        var hash = _hasher.HashPassword(password, out var salt);
+        var (hash, salt) = _hasher.HashPassword(password);
 
-        var result = _hasher.VerifyPassword("wrong-password", hash, salt);
+        var result = _hasher.ValidatePassword("wrong-password", hash, salt);
 
         result.Should().BeFalse();
     }
 
     [Fact]
-    public void VerifyPassword_WithWrongSalt_ReturnsFalse()
+    public void ValidatePassword_WithWrongSalt_ReturnsFalse()
     {
         var password = "test-password";
-        var hash = _hasher.HashPassword(password, out var _);
-        var wrongHash = _hasher.HashPassword(password, out var wrongSalt);
+        var (hash, _) = _hasher.HashPassword(password);
+        var (wrongHash, wrongSalt) = _hasher.HashPassword(password);
 
-        var result = _hasher.VerifyPassword(password, hash, wrongSalt);
+        var result = _hasher.ValidatePassword(password, hash, wrongSalt);
 
         result.Should().BeFalse();
     }
 
     [Fact]
-    public void VerifyPassword_WithEmptyPassword_WorksCorrectly()
+    public void ValidatePassword_WithEmptyPassword_WorksCorrectly()
     {
         var password = "";
-        var hash = _hasher.HashPassword(password, out var salt);
+        var (hash, salt) = _hasher.HashPassword(password);
 
-        var result = _hasher.VerifyPassword(password, hash, salt);
+        var result = _hasher.ValidatePassword(password, hash, salt);
 
         result.Should().BeTrue();
     }

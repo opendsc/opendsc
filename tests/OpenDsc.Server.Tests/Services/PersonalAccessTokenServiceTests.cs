@@ -2,10 +2,11 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
+using System.Text.Json;
+
 using FluentAssertions;
 
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging.Abstractions;
 
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
@@ -28,8 +29,9 @@ public class PersonalAccessTokenServiceTests : IDisposable
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
 
-        _dbContext = new ServerDbContext(options, NullLogger<ServerDbContext>.Instance);
-        _tokenService = new PersonalAccessTokenService(_dbContext);
+        _dbContext = new ServerDbContext(options);
+        var passwordHasher = new PasswordHasher();
+        _tokenService = new PersonalAccessTokenService(_dbContext, passwordHasher);
 
         // Seed test user
         _dbContext.Users.Add(new User
@@ -51,13 +53,20 @@ public class PersonalAccessTokenServiceTests : IDisposable
     public async Task CreateTokenAsync_CreatesValidToken()
     {
         var name = "Test Token";
+        var scopes = new[] { "read", "write" };
         var expiresAt = DateTimeOffset.UtcNow.AddDays(30);
 
-        var token = await _tokenService.CreateTokenAsync(_testUserId, name, expiresAt);
+        var (token, metadata) = await _tokenService.CreateTokenAsync(_testUserId, name, scopes, expiresAt);
 
         token.Should().NotBeNullOrEmpty();
         token.Should().StartWith("pat_");
         token.Length.Should().Be(44); // "pat_" + 40 characters
+
+        metadata.Should().NotBeNull();
+        metadata.Name.Should().Be(name);
+        metadata.ExpiresAt.Should().Be(expiresAt);
+        var deserializedScopes = JsonSerializer.Deserialize<string[]>(metadata.Scopes);
+        deserializedScopes.Should().BeEquivalentTo(scopes);
 
         var savedToken = await _dbContext.PersonalAccessTokens
             .FirstOrDefaultAsync(t => t.UserId == _testUserId && t.Name == name);
@@ -66,14 +75,17 @@ public class PersonalAccessTokenServiceTests : IDisposable
         savedToken!.Name.Should().Be(name);
         savedToken.ExpiresAt.Should().Be(expiresAt);
         savedToken.LastUsedAt.Should().BeNull();
+        var savedScopes = JsonSerializer.Deserialize<string[]>(savedToken.Scopes);
+        savedScopes.Should().BeEquivalentTo(scopes);
     }
 
     [Fact]
     public async Task CreateTokenAsync_WithoutExpiry_CreatesNonExpiringToken()
     {
         var name = "Non-Expiring Token";
+        var scopes = new[] { "read" };
 
-        var token = await _tokenService.CreateTokenAsync(_testUserId, name, null);
+        var (token, metadata) = await _tokenService.CreateTokenAsync(_testUserId, name, scopes, null);
 
         token.Should().NotBeNullOrEmpty();
 
@@ -87,78 +99,55 @@ public class PersonalAccessTokenServiceTests : IDisposable
     [Fact]
     public async Task ValidateTokenAsync_WithValidToken_ReturnsUserId()
     {
-        var token = await _tokenService.CreateTokenAsync(_testUserId, "Valid Token", null);
+        var (token, _) = await _tokenService.CreateTokenAsync(_testUserId, "Valid Token", new[] { "read" }, null);
 
-        var userId = await _tokenService.ValidateTokenAsync(token);
+        var result = await _tokenService.ValidateTokenAsync(token);
 
-        userId.Should().Be(_testUserId);
+        result.Should().NotBeNull();
+        result!.Value.UserId.Should().Be(_testUserId);
+        result!.Value.Scopes.Should().BeEquivalentTo(new[] { "read" });
     }
 
     [Fact]
     public async Task ValidateTokenAsync_WithInvalidToken_ReturnsNull()
     {
-        var userId = await _tokenService.ValidateTokenAsync("pat_invalidtoken123456789012345678901234");
+        var result = await _tokenService.ValidateTokenAsync("pat_invalidtoken123456789012345678901234");
 
-        userId.Should().BeNull();
+        result.Should().BeNull();
     }
 
     [Fact]
     public async Task ValidateTokenAsync_WithExpiredToken_ReturnsNull()
     {
-        var token = await _tokenService.CreateTokenAsync(_testUserId, "Expired Token", DateTimeOffset.UtcNow.AddDays(-1));
+        var (token, _) = await _tokenService.CreateTokenAsync(_testUserId, "Expired Token", new[] { "read" }, DateTimeOffset.UtcNow.AddDays(-1));
 
-        var userId = await _tokenService.ValidateTokenAsync(token);
+        var result = await _tokenService.ValidateTokenAsync(token);
 
-        userId.Should().BeNull();
-    }
-
-    [Fact]
-    public async Task ValidateTokenAsync_UpdatesLastUsedAt()
-    {
-        var token = await _tokenService.CreateTokenAsync(_testUserId, "Usage Token", null);
-        var beforeValidation = DateTimeOffset.UtcNow;
-
-        await _tokenService.ValidateTokenAsync(token);
-
-        var savedToken = await _dbContext.PersonalAccessTokens
-            .FirstOrDefaultAsync(t => t.Name == "Usage Token");
-
-        savedToken.Should().NotBeNull();
-        savedToken!.LastUsedAt.Should().NotBeNull();
-        savedToken.LastUsedAt.Should().BeOnOrAfter(beforeValidation);
+        result.Should().BeNull();
     }
 
     [Fact]
     public async Task RevokeTokenAsync_RevokesToken()
     {
-        var token = await _tokenService.CreateTokenAsync(_testUserId, "Revoke Token", null);
+        var (token, _) = await _tokenService.CreateTokenAsync(_testUserId, "Revoke Token", new[] { "read" }, null);
         var tokenId = (await _dbContext.PersonalAccessTokens.FirstAsync(t => t.Name == "Revoke Token")).Id;
 
-        var result = await _tokenService.RevokeTokenAsync(tokenId, _testUserId);
+        await _tokenService.RevokeTokenAsync(tokenId);
 
-        result.Should().BeTrue();
+        var revokedToken = await _dbContext.PersonalAccessTokens.FindAsync(tokenId);
+        revokedToken.Should().NotBeNull();
+        revokedToken!.IsRevoked.Should().BeTrue();
+        revokedToken.RevokedAt.Should().NotBeNull();
 
-        var userId = await _tokenService.ValidateTokenAsync(token);
-        userId.Should().BeNull();
-    }
-
-    [Fact]
-    public async Task RevokeTokenAsync_WithWrongUser_ReturnsFalse()
-    {
-        var token = await _tokenService.CreateTokenAsync(_testUserId, "Other User Token", null);
-        var tokenId = (await _dbContext.PersonalAccessTokens.FirstAsync(t => t.Name == "Other User Token")).Id;
-        var otherUserId = Guid.NewGuid();
-
-        var result = await _tokenService.RevokeTokenAsync(tokenId, otherUserId);
-
-        result.Should().BeFalse();
+        var result = await _tokenService.ValidateTokenAsync(token);
+        result.Should().BeNull();
     }
 
     [Fact]
     public async Task GetUserTokensAsync_ReturnsUserTokens()
     {
-        await _tokenService.CreateTokenAsync(_testUserId, "Token 1", null);
-        await _tokenService.CreateTokenAsync(_testUserId, "Token 2", DateTimeOffset.UtcNow.AddDays(7));
+        await _tokenService.CreateTokenAsync(_testUserId, "Token 1", Array.Empty<string>(), null);
+        await _tokenService.CreateTokenAsync(_testUserId, "Token 2", Array.Empty<string>(), DateTimeOffset.UtcNow.AddDays(7));
 
         var tokens = await _tokenService.GetUserTokensAsync(_testUserId);
 

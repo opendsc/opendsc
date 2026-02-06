@@ -540,7 +540,7 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
             entity.Property(e => e.PrincipalType).HasConversion<string>().HasMaxLength(20);
             entity.Property(e => e.PermissionLevel).HasConversion<string>().HasMaxLength(20);
 
-            entity.HasOne<ParameterFile>()
+            entity.HasOne<ParameterSchema>()
                 .WithMany()
                 .HasForeignKey(e => e.ParameterId)
                 .OnDelete(DeleteBehavior.Cascade);

@@ -108,10 +108,12 @@ public class AuthenticationEndpointsTests : IAsyncLifetime, IDisposable
 
         revokeResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        // Verify token is gone
+        // Verify token is revoked (should still exist but be marked as revoked)
         var verifyResponse = await _client.GetAsync("/api/v1/auth/tokens");
         var remainingTokens = await verifyResponse.Content.ReadFromJsonAsync<List<TokenSummary>>();
-        remainingTokens!.Should().NotContain(t => t.Name == "Revoke Test Token");
+        var revokedToken = remainingTokens!.FirstOrDefault(t => t.Id == tokenToRevoke.Id);
+        revokedToken.Should().NotBeNull();
+        revokedToken!.IsRevoked.Should().BeTrue();
     }
 
     [Fact]
@@ -127,7 +129,7 @@ public class AuthenticationEndpointsTests : IAsyncLifetime, IDisposable
 
         // Change password
         var changeRequest = new { currentPassword = "admin", newPassword = "NewPassword123!" };
-        var response = await cookieClient.PutAsJsonAsync("/api/v1/auth/password", changeRequest);
+        var response = await cookieClient.PostAsJsonAsync("/api/v1/auth/change-password", changeRequest);
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
@@ -160,5 +162,5 @@ public class AuthenticationEndpointsTests : IAsyncLifetime, IDisposable
 
     private record LoginResponse(string Username, string Email, bool RequirePasswordChange);
     private record TokenResponse(string Token, string Name, DateTimeOffset? ExpiresAt);
-    private record TokenSummary(Guid Id, string Name, DateTimeOffset CreatedAt, DateTimeOffset? ExpiresAt, DateTimeOffset? LastUsedAt);
+    private record TokenSummary(Guid Id, string Name, DateTimeOffset CreatedAt, DateTimeOffset? ExpiresAt, DateTimeOffset? LastUsedAt, bool IsRevoked);
 }

@@ -178,7 +178,7 @@ public static class GroupEndpoints
         });
     }
 
-    private static async Task<Results<Ok, NotFound, BadRequest<string>>> UpdateGroup(
+    private static async Task<Results<Ok<GroupSummaryDto>, NotFound, BadRequest<string>>> UpdateGroup(
         Guid id,
         [FromBody] UpdateGroupRequest request,
         ServerDbContext db)
@@ -201,10 +201,17 @@ public static class GroupEndpoints
 
         await db.SaveChangesAsync();
 
-        return TypedResults.Ok();
+        return TypedResults.Ok(new GroupSummaryDto
+        {
+            Id = group.Id,
+            Name = group.Name,
+            Description = group.Description,
+            CreatedAt = group.CreatedAt,
+            ModifiedAt = group.ModifiedAt
+        });
     }
 
-    private static async Task<Results<Ok, NotFound>> DeleteGroup(
+    private static async Task<Results<NoContent, NotFound>> DeleteGroup(
         Guid id,
         ServerDbContext db)
     {
@@ -217,7 +224,7 @@ public static class GroupEndpoints
         db.Groups.Remove(group);
         await db.SaveChangesAsync();
 
-        return TypedResults.Ok();
+        return TypedResults.NoContent();
     }
 
     private static async Task<Results<Ok<List<UserDto>>, NotFound>> GetGroupMembers(

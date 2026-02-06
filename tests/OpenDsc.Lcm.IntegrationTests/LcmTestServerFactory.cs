@@ -58,14 +58,6 @@ public class LcmTestServerFactory : WebApplicationFactory<Program>
 
             db.Database.EnsureCreated();
 
-            var adminKeyHash = OpenDsc.Server.Authentication.ApiKeyAuthHandler.HashPasswordPbkdf2("test-lcm-admin-key", out var adminSalt);
-            db.ServerSettings.Add(new OpenDsc.Server.Entities.ServerSettings
-            {
-                Id = 1,
-                AdminApiKeyHash = adminKeyHash,
-                AdminApiKeySalt = adminSalt
-            });
-
             db.RegistrationKeys.Add(new OpenDsc.Server.Entities.RegistrationKey
             {
                 Id = Guid.NewGuid(),

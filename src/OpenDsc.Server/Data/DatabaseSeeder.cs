@@ -147,6 +147,82 @@ public static class DatabaseSeeder
             username,
             defaultPassword);
     }
+    public static async Task SeedDefaultGroupsAsync(ServerDbContext db, ILogger logger)
+    {
+        var now = DateTimeOffset.UtcNow;
+
+        var groups = new[]
+        {
+            new Group
+            {
+                Id = Guid.NewGuid(),
+                Name = "Administrators",
+                Description = "Default group for administrators",
+                CreatedAt = now
+            },
+            new Group
+            {
+                Id = Guid.NewGuid(),
+                Name = "Operators",
+                Description = "Default group for operators",
+                CreatedAt = now
+            }
+        };
+
+        foreach (var group in groups)
+        {
+            if (!await db.Groups.AnyAsync(g => g.Name == group.Name))
+            {
+                db.Groups.Add(group);
+                logger.LogInformation("Seeded group: {GroupName}", group.Name);
+            }
+        }
+
+        await db.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Seeds system scope types.
+    /// </summary>
+    public static async Task SeedSystemScopeTypesAsync(ServerDbContext db, ILogger logger)
+    {
+        var now = DateTimeOffset.UtcNow;
+
+        var scopeTypes = new[]
+        {
+            new ScopeType
+            {
+                Id = Guid.Parse("00000000-0000-0000-0000-000000000001"), // Fixed ID for Default scope
+                Name = "Default",
+                Description = "Default scope type for global parameters",
+                Precedence = 0,
+                IsSystem = true,
+                AllowsValues = false,
+                CreatedAt = now
+            },
+            new ScopeType
+            {
+                Id = Guid.Parse("00000000-0000-0000-0000-000000000002"), // Fixed ID for Node scope
+                Name = "Node",
+                Description = "Node-specific scope type for per-node parameters",
+                Precedence = 100,
+                IsSystem = true,
+                AllowsValues = false,
+                CreatedAt = now
+            }
+        };
+
+        foreach (var scopeType in scopeTypes)
+        {
+            if (!await db.ScopeTypes.AnyAsync(st => st.Name == scopeType.Name))
+            {
+                db.ScopeTypes.Add(scopeType);
+                logger.LogInformation("Seeded system scope type: {ScopeTypeName}", scopeType.Name);
+            }
+        }
+
+        await db.SaveChangesAsync();
+    }
 
     /// <summary>
     /// Seeds all default data.
@@ -154,6 +230,8 @@ public static class DatabaseSeeder
     public static async Task SeedDefaultDataAsync(ServerDbContext db, IPasswordHasher passwordHasher, ILogger logger)
     {
         await SeedRolesAsync(db, logger);
+        await SeedDefaultGroupsAsync(db, logger);
+        await SeedSystemScopeTypesAsync(db, logger);
         await SeedInitialAdminAsync(db, passwordHasher, logger);
     }
 }

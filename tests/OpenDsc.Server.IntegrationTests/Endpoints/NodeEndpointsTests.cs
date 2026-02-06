@@ -112,7 +112,7 @@ public class NodeEndpointsTests : IClassFixture<ServerWebApplicationFactory>
         };
         await _client.PostAsJsonAsync("/api/v1/nodes/register", registerRequest);
 
-        using var adminClient = _factory.CreateAuthenticatedClient("test-admin-key");
+        using var adminClient = _factory.CreateAuthenticatedClient();
 
         var response = await adminClient.GetAsync("/api/v1/nodes/");
 
@@ -134,7 +134,7 @@ public class NodeEndpointsTests : IClassFixture<ServerWebApplicationFactory>
         var registerResponse = await _client.PostAsJsonAsync("/api/v1/nodes/register", registerRequest);
         var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>();
 
-        using var adminClient = _factory.CreateAuthenticatedClient("test-admin-key");
+        using var adminClient = _factory.CreateAuthenticatedClient();
 
         var response = await adminClient.GetAsync($"/api/v1/nodes/{registerResult!.NodeId}");
 
@@ -148,7 +148,7 @@ public class NodeEndpointsTests : IClassFixture<ServerWebApplicationFactory>
     [Fact]
     public async Task GetNode_WithNonExistentNode_ReturnsNotFound()
     {
-        using var adminClient = _factory.CreateAuthenticatedClient("test-admin-key");
+        using var adminClient = _factory.CreateAuthenticatedClient();
 
         var response = await adminClient.GetAsync($"/api/v1/nodes/{Guid.NewGuid()}");
 
@@ -169,7 +169,7 @@ public class NodeEndpointsTests : IClassFixture<ServerWebApplicationFactory>
         var registerResponse = await _client.PostAsJsonAsync("/api/v1/nodes/register", registerRequest);
         var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>();
 
-        using var adminClient = _factory.CreateAuthenticatedClient("test-admin-key");
+        using var adminClient = _factory.CreateAuthenticatedClient();
 
         var response = await adminClient.DeleteAsync($"/api/v1/nodes/{registerResult!.NodeId}");
 
@@ -182,7 +182,7 @@ public class NodeEndpointsTests : IClassFixture<ServerWebApplicationFactory>
     [Fact]
     public async Task DeleteNode_WithNonExistentNode_ReturnsNotFound()
     {
-        using var adminClient = _factory.CreateAuthenticatedClient("test-admin-key");
+        using var adminClient = _factory.CreateAuthenticatedClient();
 
         var response = await adminClient.DeleteAsync($"/api/v1/nodes/{Guid.NewGuid()}");
 
@@ -203,7 +203,7 @@ public class NodeEndpointsTests : IClassFixture<ServerWebApplicationFactory>
         var registerResponse = await _client.PostAsJsonAsync("/api/v1/nodes/register", registerRequest);
         var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>();
 
-        using var adminClient = _factory.CreateAuthenticatedClient("test-admin-key");
+        using var adminClient = _factory.CreateAuthenticatedClient();
 
         using var configContent = new MultipartFormDataContent();
         configContent.Add(new StringContent("test-assign-config"), "name");
@@ -241,7 +241,7 @@ public class NodeEndpointsTests : IClassFixture<ServerWebApplicationFactory>
         var registerResponse = await _client.PostAsJsonAsync("/api/v1/nodes/register", registerRequest);
         var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>();
 
-        using var adminClient = _factory.CreateAuthenticatedClient("test-admin-key");
+        using var adminClient = _factory.CreateAuthenticatedClient();
 
         var assignRequest = new AssignConfigurationRequest
         {
@@ -255,7 +255,7 @@ public class NodeEndpointsTests : IClassFixture<ServerWebApplicationFactory>
     [Fact]
     public async Task AssignConfiguration_WithNonExistentNode_ReturnsNotFound()
     {
-        using var adminClient = _factory.CreateAuthenticatedClient("test-admin-key");
+        using var adminClient = _factory.CreateAuthenticatedClient();
 
         var assignRequest = new AssignConfigurationRequest
         {
@@ -279,7 +279,7 @@ public class NodeEndpointsTests : IClassFixture<ServerWebApplicationFactory>
         var registerResponse = await _client.PostAsJsonAsync("/api/v1/nodes/register", registerRequest);
         var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>();
 
-        using var adminClient = _factory.CreateAuthenticatedClient("test-admin-key");
+        using var adminClient = _factory.CreateAuthenticatedClient();
 
         var assignRequest = new AssignConfigurationRequest
         {

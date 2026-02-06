@@ -120,7 +120,7 @@ public static class RoleEndpoints
         });
     }
 
-    private static async Task<Results<Ok, NotFound, BadRequest<string>>> UpdateRole(
+    private static async Task<Results<Ok<RoleSummaryDto>, NotFound, BadRequest<string>>> UpdateRole(
         Guid id,
         [FromBody] UpdateRoleRequest request,
         ServerDbContext db)
@@ -149,10 +149,18 @@ public static class RoleEndpoints
 
         await db.SaveChangesAsync();
 
-        return TypedResults.Ok();
+        return TypedResults.Ok(new RoleSummaryDto
+        {
+            Id = role.Id,
+            Name = role.Name,
+            Description = role.Description,
+            IsSystemRole = role.IsSystemRole,
+            CreatedAt = role.CreatedAt,
+            ModifiedAt = role.ModifiedAt
+        });
     }
 
-    private static async Task<Results<Ok, NotFound, BadRequest<string>>> DeleteRole(
+    private static async Task<Results<NoContent, NotFound, BadRequest<string>>> DeleteRole(
         Guid id,
         ServerDbContext db)
     {
@@ -170,7 +178,7 @@ public static class RoleEndpoints
         db.Roles.Remove(role);
         await db.SaveChangesAsync();
 
-        return TypedResults.Ok();
+        return TypedResults.NoContent();
     }
 }
 

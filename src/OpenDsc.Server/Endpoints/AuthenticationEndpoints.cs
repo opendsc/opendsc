@@ -31,7 +31,7 @@ public static class AuthenticationEndpoints
             .WithDescription("Authenticates a user and creates a session cookie.")
             .AllowAnonymous();
 
-        group.MapPost("/logout", Logout)
+        group.MapPost("/logout", (Delegate)Logout)
             .WithSummary("Logout")
             .WithDescription("Ends the current session.")
             .RequireAuthorization();
@@ -129,9 +129,10 @@ public static class AuthenticationEndpoints
         });
     }
 
-    private static async Task Logout(HttpContext httpContext)
+    private static async Task<NoContent> Logout(HttpContext httpContext)
     {
         await httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        return TypedResults.NoContent();
     }
 
     private static async Task<Results<Ok<CurrentUserResponse>, UnauthorizedHttpResult>> GetCurrentUser(
@@ -170,7 +171,7 @@ public static class AuthenticationEndpoints
         });
     }
 
-    private static async Task<Results<Ok, BadRequest<string>, UnauthorizedHttpResult>> ChangePassword(
+    private static async Task<Results<NoContent, BadRequest<string>, UnauthorizedHttpResult>> ChangePassword(
         [FromBody] ChangePasswordRequest request,
         ServerDbContext db,
         IPasswordHasher passwordHasher,
@@ -201,10 +202,10 @@ public static class AuthenticationEndpoints
 
         await db.SaveChangesAsync();
 
-        return TypedResults.Ok();
+        return TypedResults.NoContent();
     }
 
-    private static async Task<Results<Ok<CreateTokenResponse>, UnauthorizedHttpResult>> CreateToken(
+    private static async Task<Results<Created<CreateTokenResponse>, UnauthorizedHttpResult>> CreateToken(
         [FromBody] CreateTokenRequest request,
         IPersonalAccessTokenService patService,
         IUserContextService userContext)
@@ -221,7 +222,7 @@ public static class AuthenticationEndpoints
             request.Scopes,
             request.ExpiresAt);
 
-        return TypedResults.Ok(new CreateTokenResponse
+        return TypedResults.Created($"/api/v1/auth/tokens/{metadata.Id}", new CreateTokenResponse
         {
             Token = token,
             TokenId = metadata.Id,
@@ -259,7 +260,7 @@ public static class AuthenticationEndpoints
         return TypedResults.Ok(metadata);
     }
 
-    private static async Task<Results<Ok, UnauthorizedHttpResult, NotFound>> RevokeToken(
+    private static async Task<Results<NoContent, UnauthorizedHttpResult, NotFound>> RevokeToken(
         Guid id,
         IPersonalAccessTokenService patService,
         IUserContextService userContext,
@@ -284,7 +285,7 @@ public static class AuthenticationEndpoints
 
         await patService.RevokeTokenAsync(id);
 
-        return TypedResults.Ok();
+        return TypedResults.NoContent();
     }
 }
 
