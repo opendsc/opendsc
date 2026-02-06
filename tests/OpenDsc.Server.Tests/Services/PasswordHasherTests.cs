@@ -69,7 +69,7 @@ public class PasswordHasherTests
     {
         var password = "test-password";
         var (hash, _) = _hasher.HashPassword(password);
-        var (wrongHash, wrongSalt) = _hasher.HashPassword(password);
+        var (_, wrongSalt) = _hasher.HashPassword(password);
 
         var result = _hasher.ValidatePassword(password, hash, wrongSalt);
 

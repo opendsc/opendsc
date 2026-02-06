@@ -148,6 +148,12 @@ public static class UserEndpoints
             return TypedResults.BadRequest("Username already exists");
         }
 
+        if (!Enum.TryParse<AccountType>(request.AccountType, ignoreCase: true, out var accountType))
+        {
+            var validValues = string.Join(", ", Enum.GetNames(typeof(AccountType)));
+            return TypedResults.BadRequest($"Invalid account type '{request.AccountType}'. Valid values are: {validValues}.");
+        }
+
         var (hash, salt) = passwordHasher.HashPassword(request.Password);
 
         var user = new User
@@ -155,7 +161,7 @@ public static class UserEndpoints
             Id = Guid.NewGuid(),
             Username = request.Username,
             Email = request.Email,
-            AccountType = Enum.Parse<AccountType>(request.AccountType),
+            AccountType = accountType,
             PasswordHash = hash,
             PasswordSalt = salt,
             IsActive = true,

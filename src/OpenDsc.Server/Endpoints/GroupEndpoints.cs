@@ -362,12 +362,9 @@ public static class GroupEndpoints
         var groupIds = mappings.Select(m => m.GroupId).Distinct().ToList();
         var groups = await db.Groups.Where(g => groupIds.Contains(g.Id)).ToDictionaryAsync(g => g.Id, g => g.Name);
 
-        foreach (var mapping in mappings)
+        foreach (var mapping in mappings.Where(m => groups.ContainsKey(m.GroupId)))
         {
-            if (groups.TryGetValue(mapping.GroupId, out var groupName))
-            {
-                mapping.GroupName = groupName ?? string.Empty;
-            }
+            mapping.GroupName = groups[mapping.GroupId] ?? string.Empty;
         }
 
         return TypedResults.Ok(mappings);

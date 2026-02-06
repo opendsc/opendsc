@@ -96,7 +96,6 @@ public class AuthenticationEndpointsTests : IAsyncLifetime, IDisposable
         // Create a token
         var createResponse = await _client.PostAsJsonAsync("/api/v1/auth/tokens",
             new { name = "Revoke Test Token", expiresAt = (DateTimeOffset?)null });
-        var createResult = await createResponse.Content.ReadFromJsonAsync<TokenResponse>();
 
         // Get tokens to find the ID
         var listResponse = await _client.GetAsync("/api/v1/auth/tokens");

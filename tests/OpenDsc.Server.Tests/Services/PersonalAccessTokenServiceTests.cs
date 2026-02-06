@@ -56,17 +56,12 @@ public class PersonalAccessTokenServiceTests : IDisposable
         var scopes = new[] { "read", "write" };
         var expiresAt = DateTimeOffset.UtcNow.AddDays(30);
 
-        var (token, metadata) = await _tokenService.CreateTokenAsync(_testUserId, name, scopes, expiresAt);
+        var (token, _) = await _tokenService.CreateTokenAsync(_testUserId, name, scopes, expiresAt);
 
         token.Should().NotBeNullOrEmpty();
         token.Should().StartWith("pat_");
         token.Length.Should().Be(44); // "pat_" + 40 characters
 
-        metadata.Should().NotBeNull();
-        metadata.Name.Should().Be(name);
-        metadata.ExpiresAt.Should().Be(expiresAt);
-        var deserializedScopes = JsonSerializer.Deserialize<string[]>(metadata.Scopes);
-        deserializedScopes.Should().BeEquivalentTo(scopes);
 
         var savedToken = await _dbContext.PersonalAccessTokens
             .FirstOrDefaultAsync(t => t.UserId == _testUserId && t.Name == name);

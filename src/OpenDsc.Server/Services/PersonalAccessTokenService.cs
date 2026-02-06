@@ -79,22 +79,23 @@ public class PersonalAccessTokenService(
         // Base64 encoding: 3 bytes = 4 characters, but we remove +, /, and =
         // Generate extra bytes to account for removed characters
         var tokenBytes = RandomNumberGenerator.GetBytes(TokenBodyLength);
-        var tokenBody = Convert.ToBase64String(tokenBytes)
-            .Replace("+", "")
-            .Replace("/", "")
-            .Replace("=", "");
-
-        // Ensure we have exactly TokenBodyLength characters
-        while (tokenBody.Length < TokenBodyLength)
-        {
-            var extraBytes = RandomNumberGenerator.GetBytes(TokenBodyLength - tokenBody.Length);
-            tokenBody += Convert.ToBase64String(extraBytes)
+        var tokenBodyBuilder = new System.Text.StringBuilder(
+            Convert.ToBase64String(tokenBytes)
                 .Replace("+", "")
                 .Replace("/", "")
-                .Replace("=", "");
+                .Replace("=", ""));
+
+        // Ensure we have exactly TokenBodyLength characters
+        while (tokenBodyBuilder.Length < TokenBodyLength)
+        {
+            var extraBytes = RandomNumberGenerator.GetBytes(TokenBodyLength - tokenBodyBuilder.Length);
+            tokenBodyBuilder.Append(Convert.ToBase64String(extraBytes)
+                .Replace("+", "")
+                .Replace("/", "")
+                .Replace("=", ""));
         }
 
-        tokenBody = tokenBody[..TokenBodyLength];
+        var tokenBody = tokenBodyBuilder.ToString()[..TokenBodyLength];
         var token = TokenPrefix + tokenBody;
         var (hash, salt) = passwordHasher.HashPassword(token);
 
@@ -125,8 +126,10 @@ public class PersonalAccessTokenService(
         }
 
         var now = DateTimeOffset.UtcNow;
+        var tokenPrefixValue = token[..Math.Min(8, token.Length)];
+
         var tokens = await db.PersonalAccessTokens
-            .Where(t => !t.IsRevoked)
+            .Where(t => !t.IsRevoked && t.TokenPrefix == tokenPrefixValue)
             .ToListAsync();
 
         foreach (var pat in tokens)
@@ -166,12 +169,10 @@ public class PersonalAccessTokenService(
 
     public async Task<List<PersonalAccessToken>> GetUserTokensAsync(Guid userId)
     {
-        return await Task.FromResult(
-            db.PersonalAccessTokens
-                .Where(t => t.UserId == userId)
-                .AsEnumerable()
-                .OrderByDescending(t => t.CreatedAt)
-                .ToList());
+        return await db.PersonalAccessTokens
+            .Where(t => t.UserId == userId)
+            .OrderByDescending(t => t.CreatedAt)
+            .ToListAsync();
     }
 
     public async Task UpdateLastUsedAsync(Guid tokenId, string ipAddress)

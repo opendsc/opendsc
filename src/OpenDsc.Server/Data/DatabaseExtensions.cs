@@ -60,7 +60,8 @@ public static class DatabaseExtensions
             }
             else
             {
-                await context.Database.MigrateAsync();
+                // Use EnsureCreatedAsync until migrations are added
+                await context.Database.EnsureCreatedAsync();
             }
 
             logger.LogInformation("Database initialized successfully");

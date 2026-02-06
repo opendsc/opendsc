@@ -94,6 +94,14 @@ public static class ParameterEndpoints
                 return TypedResults.Forbid();
             }
         }
+        else
+        {
+            // No parameter schema exists yet; require permission to modify the parent configuration
+            if (!await authService.CanModifyConfigurationAsync(userId.Value, configurationId))
+            {
+                return TypedResults.Forbid();
+            }
+        }
 
         if (scopeType.AllowsValues && string.IsNullOrWhiteSpace(request.ScopeValue))
         {

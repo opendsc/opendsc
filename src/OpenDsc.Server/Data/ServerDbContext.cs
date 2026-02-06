@@ -422,7 +422,7 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => new { e.Provider, e.ExternalGroupId }).IsUnique();
             entity.Property(e => e.ExternalGroupId).HasMaxLength(256).IsRequired();
-            entity.Property(e => e.ExternalGroupName).HasMaxLength(256).IsRequired();
+            entity.Property(e => e.ExternalGroupName).HasMaxLength(256);
             entity.Property(e => e.Provider).HasMaxLength(50).IsRequired();
 
             entity.HasOne<Group>()

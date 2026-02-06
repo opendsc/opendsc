@@ -44,7 +44,7 @@ public class ServerWebApplicationFactory : WebApplicationFactory<Program>
             var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
             var logger = scope.ServiceProvider.GetRequiredService<ILogger<ServerDbContext>>();
 
-            DatabaseExtensions.EnsureDatabaseInitialized(db, logger).Wait();
+            DatabaseExtensions.EnsureDatabaseInitialized(db, logger).GetAwaiter().GetResult();
         }
 
         return host;

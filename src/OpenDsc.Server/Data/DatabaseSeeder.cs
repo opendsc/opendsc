@@ -85,13 +85,18 @@ public static class DatabaseSeeder
             }
         };
 
-        foreach (var role in roles)
+        var roleNames = roles.Select(r => r.Name).ToArray();
+        var existingRoleNames = await db.Roles
+            .Where(r => roleNames.Contains(r.Name))
+            .Select(r => r.Name)
+            .ToListAsync();
+
+        var missingRoles = roles.Where(r => !existingRoleNames.Contains(r.Name));
+
+        foreach (var role in missingRoles)
         {
-            if (!await db.Roles.AnyAsync(r => r.Name == role.Name))
-            {
-                db.Roles.Add(role);
-                logger.LogInformation("Seeded role: {RoleName}", role.Name);
-            }
+            db.Roles.Add(role);
+            logger.LogInformation("Seeded role: {RoleName}", role.Name);
         }
 
         await db.SaveChangesAsync();
@@ -189,13 +194,18 @@ public static class DatabaseSeeder
             }
         };
 
-        foreach (var group in groups)
+        var groupNames = groups.Select(g => g.Name).ToArray();
+        var existingGroupNames = await db.Groups
+            .Where(g => groupNames.Contains(g.Name))
+            .Select(g => g.Name)
+            .ToListAsync();
+
+        var missingGroups = groups.Where(g => !existingGroupNames.Contains(g.Name));
+
+        foreach (var group in missingGroups)
         {
-            if (!await db.Groups.AnyAsync(g => g.Name == group.Name))
-            {
-                db.Groups.Add(group);
-                logger.LogInformation("Seeded group: {GroupName}", group.Name);
-            }
+            db.Groups.Add(group);
+            logger.LogInformation("Seeded group: {GroupName}", group.Name);
         }
 
         await db.SaveChangesAsync();
@@ -232,13 +242,18 @@ public static class DatabaseSeeder
             }
         };
 
-        foreach (var scopeType in scopeTypes)
+        var scopeTypeNames = scopeTypes.Select(st => st.Name).ToArray();
+        var existingScopeTypeNames = await db.ScopeTypes
+            .Where(st => scopeTypeNames.Contains(st.Name))
+            .Select(st => st.Name)
+            .ToListAsync();
+
+        var missingScopeTypes = scopeTypes.Where(st => !existingScopeTypeNames.Contains(st.Name));
+
+        foreach (var scopeType in missingScopeTypes)
         {
-            if (!await db.ScopeTypes.AnyAsync(st => st.Name == scopeType.Name))
-            {
-                db.ScopeTypes.Add(scopeType);
-                logger.LogInformation("Seeded system scope type: {ScopeTypeName}", scopeType.Name);
-            }
+            db.ScopeTypes.Add(scopeType);
+            logger.LogInformation("Seeded system scope type: {ScopeTypeName}", scopeType.Name);
         }
 
         await db.SaveChangesAsync();

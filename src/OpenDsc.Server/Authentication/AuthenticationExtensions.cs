@@ -45,6 +45,18 @@ public static class AuthenticationExtensions
                     ? CookieSecurePolicy.SameAsRequest
                     : CookieSecurePolicy.Always;
                 options.Cookie.SameSite = SameSiteMode.Strict;
+
+                // Suppress redirects for API requests - return 401/403 instead
+                options.Events.OnRedirectToLogin = context =>
+                {
+                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    return Task.CompletedTask;
+                };
+                options.Events.OnRedirectToAccessDenied = context =>
+                {
+                    context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                    return Task.CompletedTask;
+                };
             })
             .AddScheme<PersonalAccessTokenOptions, PersonalAccessTokenHandler>(
                 PersonalAccessTokenHandler.SchemeName, null)

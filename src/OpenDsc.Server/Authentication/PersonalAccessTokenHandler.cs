@@ -85,13 +85,11 @@ public sealed class PersonalAccessTokenHandler(
         var principal = new ClaimsPrincipal(identity);
         var ticket = new AuthenticationTicket(principal, Scheme.Name);
 
+        var ipAddress = userContextService.GetIpAddress() ?? "unknown";
         _ = Task.Run(async () =>
         {
             using var updateScope = scopeFactory.CreateScope();
             var updatePatService = updateScope.ServiceProvider.GetRequiredService<IPersonalAccessTokenService>();
-            var updateUserContextService = updateScope.ServiceProvider.GetRequiredService<IUserContextService>();
-
-            var ipAddress = updateUserContextService.GetIpAddress() ?? "unknown";
 
             await updatePatService.UpdateLastUsedAsync(tokenId, ipAddress);
         });
