@@ -32,11 +32,11 @@ public interface IPersonalAccessTokenService
         DateTimeOffset? expiresAt);
 
     /// <summary>
-    /// Validates a token and returns the associated user ID and scopes.
+    /// Validates a token and returns the associated token ID, user ID and scopes.
     /// </summary>
     /// <param name="token">Plaintext token to validate.</param>
-    /// <returns>User ID and scopes if valid, null otherwise.</returns>
-    Task<(Guid UserId, string[] Scopes)?> ValidateTokenAsync(string token);
+    /// <returns>Token ID, User ID and scopes if valid, null otherwise.</returns>
+    Task<(Guid TokenId, Guid UserId, string[] Scopes)?> ValidateTokenAsync(string token);
 
     /// <summary>
     /// Revokes a token.
@@ -117,7 +117,7 @@ public class PersonalAccessTokenService(
         return (token, patEntity);
     }
 
-    public async Task<(Guid UserId, string[] Scopes)?> ValidateTokenAsync(string token)
+    public async Task<(Guid TokenId, Guid UserId, string[] Scopes)?> ValidateTokenAsync(string token)
     {
         if (!token.StartsWith(TokenPrefix))
         {
@@ -146,7 +146,7 @@ public class PersonalAccessTokenService(
             if (passwordHasher.ValidatePassword(token, parts[0], parts[1]))
             {
                 var scopes = JsonSerializer.Deserialize<string[]>(pat.Scopes) ?? [];
-                return (pat.UserId, scopes);
+                return (pat.Id, pat.UserId, scopes);
             }
         }
 

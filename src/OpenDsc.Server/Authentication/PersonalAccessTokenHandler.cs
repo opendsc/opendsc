@@ -67,7 +67,7 @@ public sealed class PersonalAccessTokenHandler(
             return AuthenticateResult.Fail("Invalid or expired token");
         }
 
-        var (userId, scopes) = result.Value;
+        var (tokenId, userId, scopes) = result.Value;
 
         var claims = new List<Claim>
         {
@@ -92,7 +92,6 @@ public sealed class PersonalAccessTokenHandler(
             var updateUserContextService = updateScope.ServiceProvider.GetRequiredService<IUserContextService>();
 
             var ipAddress = updateUserContextService.GetIpAddress() ?? "unknown";
-            var tokenId = Guid.Empty;
 
             await updatePatService.UpdateLastUsedAsync(tokenId, ipAddress);
         });

@@ -99,11 +99,12 @@ public class PersonalAccessTokenServiceTests : IDisposable
     [Fact]
     public async Task ValidateTokenAsync_WithValidToken_ReturnsUserId()
     {
-        var (token, _) = await _tokenService.CreateTokenAsync(_testUserId, "Valid Token", new[] { "read" }, null);
+        var (token, metadata) = await _tokenService.CreateTokenAsync(_testUserId, "Valid Token", new[] { "read" }, null);
 
         var result = await _tokenService.ValidateTokenAsync(token);
 
         result.Should().NotBeNull();
+        result!.Value.TokenId.Should().Be(metadata.Id);
         result!.Value.UserId.Should().Be(_testUserId);
         result!.Value.Scopes.Should().BeEquivalentTo(new[] { "read" });
     }

@@ -165,10 +165,7 @@ public static class DatabaseSeeder
 
         logger.LogWarning(
             "Initial admin account created with default credentials. " +
-            "Username: {Username}, Password: {Password}. " +
-            "CHANGE THIS PASSWORD IMMEDIATELY!",
-            username,
-            defaultPassword);
+            "CHANGE THIS PASSWORD IMMEDIATELY!");
     }
     public static async Task SeedDefaultGroupsAsync(ServerDbContext db, ILogger logger)
     {
