@@ -53,6 +53,19 @@ managing Windows and cross-platform systems:
 - **[OpenDsc.Windows.FileSystem/AccessControlList][acl]** - Manage file and
   directory permissions (ACLs)
 
+### SQL Server Resources
+
+- **[OpenDsc.SqlServer/Login][login]** - Manage SQL Server logins
+- **[OpenDsc.SqlServer/Database][database]** - Manage SQL Server databases
+- **[OpenDsc.SqlServer/DatabaseRole][databaserole]** - Manage SQL Server
+  database roles
+- **[OpenDsc.SqlServer/ServerRole][serverrole]** - Manage SQL Server server
+  roles
+- **[OpenDsc.SqlServer/DatabasePermission][databasepermission]** - Manage SQL
+  Server database permissions
+- **[OpenDsc.SqlServer/ServerPermission][serverpermission]** - Manage SQL
+  Server server permissions
+
 ### Cross-Platform Resources
 
 - **[OpenDsc.FileSystem/File][file]** - Manage files
@@ -84,6 +97,12 @@ resources provide Unix-specific functionality not available on Windows.
 [shortcut]: src/OpenDsc.Resource.Windows/Shortcut/README.md
 [optionalfeature]: src/OpenDsc.Resource.Windows/OptionalFeature/README.md
 [acl]: src/OpenDsc.Resource.Windows/FileSystem/Acl/README.md
+[login]: src/OpenDsc.Resource.SqlServer/Login/README.md
+[database]: src/OpenDsc.Resource.SqlServer/Database/README.md
+[databaserole]: src/OpenDsc.Resource.SqlServer/DatabaseRole/README.md
+[serverrole]: src/OpenDsc.Resource.SqlServer/ServerRole/README.md
+[databasepermission]: src/OpenDsc.Resource.SqlServer/DatabasePermission/README.md
+[serverpermission]: src/OpenDsc.Resource.SqlServer/ServerPermission/README.md
 [file]: src/OpenDsc.Resource.FileSystem/File/README.md
 [directory]: src/OpenDsc.Resource.FileSystem/Directory/README.md
 [symlink]: src/OpenDsc.Resource.FileSystem/SymbolicLink/README.md
