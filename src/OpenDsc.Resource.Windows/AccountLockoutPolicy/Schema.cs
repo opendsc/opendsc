@@ -18,13 +18,13 @@ public sealed class Schema
     [Nullable(false)]
     public uint? LockoutThreshold { get; set; }
 
-    [Description("Number of minutes a locked account remains locked before automatically unlocking. Use 0 to lock accounts until administrator unlocks. If specified, must be greater than or equal to LockoutObservationWindowMinutes.")]
+    [Description("Number of minutes a locked account remains locked before automatically unlocking. Use 0 to lock accounts until administrator unlocks.")]
     [Minimum(0)]
     [Maximum(99999)]
     [Nullable(false)]
     public uint? LockoutDurationMinutes { get; set; }
 
-    [Description("Number of minutes after a failed logon attempt before the failed logon counter is reset to 0. If specified, must be less than or equal to LockoutDurationMinutes.")]
+    [Description("Number of minutes after a failed logon attempt before the failed logon counter is reset to 0. Must be less than or equal to LockoutDurationMinutes.")]
     [Minimum(0)]
     [Maximum(99999)]
     [Nullable(false)]
