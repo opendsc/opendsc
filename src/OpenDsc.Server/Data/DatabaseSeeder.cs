@@ -140,6 +140,29 @@ public static class DatabaseSeeder
             await db.SaveChangesAsync();
         }
 
+        // Add admin user to Administrators group
+        var adminGroup = await db.Groups.FirstOrDefaultAsync(g => g.Name == "Administrators");
+        if (adminGroup != null)
+        {
+            db.UserGroups.Add(new UserGroup
+            {
+                UserId = adminUser.Id,
+                GroupId = adminGroup.Id
+            });
+            await db.SaveChangesAsync();
+        }
+
+        // Assign Administrator role to Administrators group
+        if (adminRole != null && adminGroup != null)
+        {
+            db.GroupRoles.Add(new GroupRole
+            {
+                GroupId = adminGroup.Id,
+                RoleId = adminRole.Id
+            });
+            await db.SaveChangesAsync();
+        }
+
         logger.LogWarning(
             "Initial admin account created with default credentials. " +
             "Username: {Username}, Password: {Password}. " +

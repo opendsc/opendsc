@@ -143,4 +143,73 @@ public class UserEndpointsTests : IClassFixture<ServerWebApplicationFactory>
 
         resetResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
+
+    [Fact]
+    public async Task UnlockUser_WithValidUser_UnlocksUser()
+    {
+        // Create a test user first
+        var createRequest = new CreateUserRequest
+        {
+            Username = "lockuser",
+            Email = "lock@example.com",
+            Password = "TestPassword123!"
+        };
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/users", createRequest);
+        var createdUser = await createResponse.Content.ReadFromJsonAsync<UserDto>();
+
+        // Unlock user (should work even if not locked)
+        var unlockResponse = await _client.PostAsync($"/api/v1/users/{createdUser!.Id}/unlock", null);
+
+        unlockResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task GetUserRoles_WithValidUser_ReturnsUserRoles()
+    {
+        // Get the admin user
+        var listResponse = await _client.GetAsync("/api/v1/users");
+        var users = await listResponse.Content.ReadFromJsonAsync<List<UserDto>>();
+        var adminUser = users!.First(u => u.Username == "admin");
+
+        var response = await _client.GetAsync($"/api/v1/users/{adminUser.Id}/roles");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var roles = await response.Content.ReadFromJsonAsync<List<RoleDto>>();
+        roles.Should().NotBeNull();
+        roles!.Should().Contain(r => r.Name == "Administrator");
+    }
+
+    [Fact]
+    public async Task SetUserRoles_WithValidData_SetsUserRoles()
+    {
+        // Create a test user first
+        var createRequest = new CreateUserRequest
+        {
+            Username = "roleuser",
+            Email = "role@example.com",
+            Password = "TestPassword123!"
+        };
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/users", createRequest);
+        var createdUser = await createResponse.Content.ReadFromJsonAsync<UserDto>();
+
+        // Get a role to assign
+        var rolesResponse = await _client.GetAsync("/api/v1/roles");
+        var roles = await rolesResponse.Content.ReadFromJsonAsync<List<RoleSummaryDto>>();
+        var viewerRole = roles!.First(r => r.Name == "Viewer");
+
+        // Set user roles
+        var setRolesRequest = new SetRolesRequest
+        {
+            RoleIds = [viewerRole.Id]
+        };
+        var setResponse = await _client.PutAsJsonAsync($"/api/v1/users/{createdUser!.Id}/roles", setRolesRequest);
+
+        setResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // Verify roles were set
+        var getRolesResponse = await _client.GetAsync($"/api/v1/users/{createdUser.Id}/roles");
+        var userRoles = await getRolesResponse.Content.ReadFromJsonAsync<List<RoleDto>>();
+        userRoles.Should().NotBeNull();
+        userRoles!.Should().Contain(r => r.Name == "Viewer");
+    }
 }

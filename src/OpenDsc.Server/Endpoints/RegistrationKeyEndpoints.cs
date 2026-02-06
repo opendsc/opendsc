@@ -5,11 +5,11 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
-using OpenDsc.Server.Authentication;
 using OpenDsc.Server.Authorization;
 using OpenDsc.Server.Contracts;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
+using OpenDsc.Server.Services;
 
 namespace OpenDsc.Server.Endpoints;
 
@@ -41,7 +41,7 @@ public static class RegistrationKeyEndpoints
     {
         var expiresAt = request.ExpiresAt ?? DateTimeOffset.UtcNow.AddDays(7);
 
-        var key = ApiKeyAuthHandler.GenerateRegistrationKey();
+        var key = KeyGenerator.GenerateRegistrationKey();
         var registrationKey = new RegistrationKey
         {
             Id = Guid.NewGuid(),
