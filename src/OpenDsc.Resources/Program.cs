@@ -21,9 +21,14 @@ using AccountLockoutPolicyNs = OpenDsc.Resource.Windows.AccountLockoutPolicy;
 using SqlServerLoginNs = OpenDsc.Resource.SqlServer.Login;
 using SqlServerDatabaseNs = OpenDsc.Resource.SqlServer.Database;
 using SqlServerDatabaseRoleNs = OpenDsc.Resource.SqlServer.DatabaseRole;
+using SqlServerDatabaseUserNs = OpenDsc.Resource.SqlServer.DatabaseUser;
 using SqlServerServerRoleNs = OpenDsc.Resource.SqlServer.ServerRole;
 using SqlServerDatabasePermissionNs = OpenDsc.Resource.SqlServer.DatabasePermission;
 using SqlServerServerPermissionNs = OpenDsc.Resource.SqlServer.ServerPermission;
+using SqlServerObjectPermissionNs = OpenDsc.Resource.SqlServer.ObjectPermission;
+using SqlServerLinkedServerNs = OpenDsc.Resource.SqlServer.LinkedServer;
+using SqlServerConfigurationNs = OpenDsc.Resource.SqlServer.Configuration;
+using SqlServerAgentJobNs = OpenDsc.Resource.SqlServer.AgentJob;
 
 #if !WINDOWS
 using PosixPermissionNs = OpenDsc.Resource.Posix.FileSystem.Permission;
@@ -54,9 +59,15 @@ var accountLockoutPolicyResource = new AccountLockoutPolicyNs.Resource(OpenDsc.R
 var sqlServerLoginResource = new SqlServerLoginNs.Resource(OpenDsc.Resource.SqlServer.SourceGenerationContext.Default);
 var sqlServerDatabaseResource = new SqlServerDatabaseNs.Resource(OpenDsc.Resource.SqlServer.SourceGenerationContext.Default);
 var sqlServerDatabaseRoleResource = new SqlServerDatabaseRoleNs.Resource(OpenDsc.Resource.SqlServer.SourceGenerationContext.Default);
+var sqlServerDatabaseUserResource = new SqlServerDatabaseUserNs.Resource(OpenDsc.Resource.SqlServer.SourceGenerationContext.Default);
 var sqlServerServerRoleResource = new SqlServerServerRoleNs.Resource(OpenDsc.Resource.SqlServer.SourceGenerationContext.Default);
 var sqlServerDatabasePermissionResource = new SqlServerDatabasePermissionNs.Resource(OpenDsc.Resource.SqlServer.SourceGenerationContext.Default);
 var sqlServerServerPermissionResource = new SqlServerServerPermissionNs.Resource(OpenDsc.Resource.SqlServer.SourceGenerationContext.Default);
+var sqlServerObjectPermissionResource = new SqlServerObjectPermissionNs.Resource(OpenDsc.Resource.SqlServer.SourceGenerationContext.Default);
+var sqlServerLinkedServerResource = new SqlServerLinkedServerNs.Resource(OpenDsc.Resource.SqlServer.SourceGenerationContext.Default);
+
+var sqlServerConfigurationResource = new SqlServerConfigurationNs.Resource(OpenDsc.Resource.SqlServer.SourceGenerationContext.Default);
+var sqlServerAgentJobResource = new SqlServerAgentJobNs.Resource(OpenDsc.Resource.SqlServer.SourceGenerationContext.Default);
 
 #if !WINDOWS
 #pragma warning disable CA1416 // 'Resource' is only supported on: 'linux', 'macOS'
@@ -96,9 +107,14 @@ command
 command.AddResource<SqlServerLoginNs.Resource, SqlServerLoginNs.Schema>(sqlServerLoginResource);
 command.AddResource<SqlServerDatabaseNs.Resource, SqlServerDatabaseNs.Schema>(sqlServerDatabaseResource);
 command.AddResource<SqlServerDatabaseRoleNs.Resource, SqlServerDatabaseRoleNs.Schema>(sqlServerDatabaseRoleResource);
+command.AddResource<SqlServerDatabaseUserNs.Resource, SqlServerDatabaseUserNs.Schema>(sqlServerDatabaseUserResource);
 command.AddResource<SqlServerServerRoleNs.Resource, SqlServerServerRoleNs.Schema>(sqlServerServerRoleResource);
 command.AddResource<SqlServerDatabasePermissionNs.Resource, SqlServerDatabasePermissionNs.Schema>(sqlServerDatabasePermissionResource);
 command.AddResource<SqlServerServerPermissionNs.Resource, SqlServerServerPermissionNs.Schema>(sqlServerServerPermissionResource);
+command.AddResource<SqlServerObjectPermissionNs.Resource, SqlServerObjectPermissionNs.Schema>(sqlServerObjectPermissionResource);
+command.AddResource<SqlServerLinkedServerNs.Resource, SqlServerLinkedServerNs.Schema>(sqlServerLinkedServerResource);
+command.AddResource<SqlServerConfigurationNs.Resource, SqlServerConfigurationNs.Schema>(sqlServerConfigurationResource);
+command.AddResource<SqlServerAgentJobNs.Resource, SqlServerAgentJobNs.Schema>(sqlServerAgentJobResource);
 
 #if !WINDOWS
 #pragma warning disable CA1416 // 'Resource' is only supported on: 'linux', 'macOS'

@@ -3,12 +3,11 @@
 // terms of the MIT license.
 
 using System.Security.Cryptography;
-using System.Text;
 
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
-using OpenDsc.Server.Contracts;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
 
@@ -23,163 +22,499 @@ public static class ConfigurationEndpoints
             .WithTags("Configurations");
 
         group.MapGet("/", GetConfigurations)
-            .WithSummary("List configurations")
-            .WithDescription("Returns a list of all DSC configurations.");
+            .WithName("GetConfigurations")
+            .WithDescription("Get all configurations");
 
         group.MapPost("/", CreateConfiguration)
-            .WithSummary("Create configuration")
-            .WithDescription("Creates a new DSC configuration.");
+            .WithName("CreateConfiguration")
+            .WithDescription("Create a new configuration")
+            .DisableAntiforgery();
 
-        group.MapGet("/{name}", GetConfiguration)
-            .WithSummary("Get configuration")
-            .WithDescription("Returns the content of a specific configuration.");
+        group.MapGet("/{name}", GetConfigurationDetails)
+            .WithName("GetConfigurationDetails")
+            .WithDescription("Get configuration details");
 
-        group.MapPut("/{name}", UpdateConfiguration)
-            .WithSummary("Update configuration")
-            .WithDescription("Updates the content of an existing configuration.");
+        group.MapGet("/{name}/versions", GetConfigurationVersions)
+            .WithName("GetConfigurationVersions")
+            .WithDescription("Get all versions of a configuration");
+
+        group.MapPost("/{name}/versions", CreateConfigurationVersion)
+            .WithName("CreateConfigurationVersion")
+            .WithDescription("Create a new version of a configuration")
+            .DisableAntiforgery();
+
+        group.MapPut("/{name}/versions/{version}/publish", PublishConfigurationVersion)
+            .WithName("PublishConfigurationVersion")
+            .WithDescription("Publish a draft configuration version");
 
         group.MapDelete("/{name}", DeleteConfiguration)
-            .WithSummary("Delete configuration")
-            .WithDescription("Deletes a configuration and unassigns it from any nodes.");
+            .WithName("DeleteConfiguration")
+            .WithDescription("Delete a configuration and all its versions");
+
+        group.MapDelete("/{name}/versions/{version}", DeleteConfigurationVersion)
+            .WithName("DeleteConfigurationVersion")
+            .WithDescription("Delete a specific version (only if draft and not active)");
     }
 
-    private static async Task<Ok<List<ConfigurationSummary>>> GetConfigurations(
-        ServerDbContext db,
-        CancellationToken cancellationToken)
+    private static async Task<Ok<List<ConfigurationSummaryDto>>> GetConfigurations(
+        ServerDbContext db)
     {
         var configs = await db.Configurations
-            .AsNoTracking()
-            .Select(c => new ConfigurationSummary
-            {
-                Id = c.Id,
-                Name = c.Name,
-                Checksum = c.Checksum,
-                CreatedAt = c.CreatedAt,
-                ModifiedAt = c.ModifiedAt
-            })
-            .ToListAsync(cancellationToken);
+            .Include(c => c.Versions)
+            .ToListAsync();
 
-        return TypedResults.Ok(configs);
+        var result = configs.Select(c => new ConfigurationSummaryDto
+        {
+            Name = c.Name,
+            Description = c.Description,
+            EntryPoint = c.EntryPoint,
+            IsServerManaged = c.IsServerManaged,
+            VersionCount = c.Versions.Count,
+            LatestVersion = c.Versions.OrderByDescending(v => v.CreatedAt).Select(v => v.Version).FirstOrDefault(),
+            CreatedAt = c.CreatedAt
+        }).ToList();
+
+        return TypedResults.Ok(result);
     }
 
-    private static async Task<Results<Created<ConfigurationSummary>, BadRequest<ErrorResponse>, Conflict<ErrorResponse>>> CreateConfiguration(
-        CreateConfigurationRequest request,
+    private static async Task<Results<Created<ConfigurationDetailsDto>, BadRequest<string>, Conflict<string>>> CreateConfiguration(
+        [FromForm] CreateConfigurationDto request,
+        IFormFileCollection files,
         ServerDbContext db,
-        CancellationToken cancellationToken)
+        IConfiguration config)
     {
         if (string.IsNullOrWhiteSpace(request.Name))
         {
-            return TypedResults.BadRequest(new ErrorResponse { Error = "Configuration name is required." });
+            return TypedResults.BadRequest("Configuration name is required");
         }
 
-        if (string.IsNullOrWhiteSpace(request.Content))
+        if (files.Count == 0)
         {
-            return TypedResults.BadRequest(new ErrorResponse { Error = "Configuration content is required." });
+            return TypedResults.BadRequest("At least one file is required");
         }
 
-        var exists = await db.Configurations.AnyAsync(c => c.Name == request.Name, cancellationToken);
-        if (exists)
+        if (await db.Configurations.AnyAsync(c => c.Name == request.Name))
         {
-            return TypedResults.Conflict(new ErrorResponse { Error = "Configuration with this name already exists." });
+            return TypedResults.Conflict($"Configuration '{request.Name}' already exists");
         }
 
-        var config = new Configuration
+        var entryPoint = request.EntryPoint ?? "main.dsc.yaml";
+        if (!files.Any(f => f.FileName == entryPoint))
+        {
+            return TypedResults.BadRequest($"Entry point file '{entryPoint}' not found in uploaded files");
+        }
+
+        var configuration = new Configuration
         {
             Id = Guid.NewGuid(),
             Name = request.Name,
-            Content = request.Content,
-            Checksum = ComputeChecksum(request.Content),
+            Description = request.Description,
+            EntryPoint = entryPoint,
+            IsServerManaged = request.IsServerManaged,
             CreatedAt = DateTimeOffset.UtcNow
         };
 
-        db.Configurations.Add(config);
-        await db.SaveChangesAsync(cancellationToken);
+        db.Configurations.Add(configuration);
 
-        var summary = new ConfigurationSummary
+        var version = new ConfigurationVersion
         {
-            Id = config.Id,
-            Name = config.Name,
-            Checksum = config.Checksum,
-            CreatedAt = config.CreatedAt,
-            ModifiedAt = config.ModifiedAt
+            Id = Guid.NewGuid(),
+            ConfigurationId = configuration.Id,
+            Version = request.Version ?? "1.0.0",
+            IsDraft = request.IsDraft,
+            CreatedAt = DateTimeOffset.UtcNow
         };
 
-        return TypedResults.Created($"/api/v1/configurations/{config.Name}", summary);
+        db.ConfigurationVersions.Add(version);
+
+        var dataDir = config["DataDirectory"] ?? "data";
+        var versionDir = Path.Combine(dataDir, "configurations", request.Name, $"v{version.Version}");
+        Directory.CreateDirectory(versionDir);
+
+        foreach (var file in files)
+        {
+            var relativePath = file.FileName;
+            if (relativePath.Contains("../", StringComparison.Ordinal) || relativePath.Contains("..\\", StringComparison.Ordinal))
+            {
+                return TypedResults.BadRequest($"Invalid file path: {relativePath}");
+            }
+
+            var filePath = Path.Combine(versionDir, relativePath);
+            var fileDir = Path.GetDirectoryName(filePath);
+            if (!string.IsNullOrEmpty(fileDir) && !Directory.Exists(fileDir))
+            {
+                Directory.CreateDirectory(fileDir);
+            }
+
+            using (var stream = File.Create(filePath))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            var checksum = await ComputeFileChecksumAsync(filePath);
+
+            var configFile = new ConfigurationFile
+            {
+                Id = Guid.NewGuid(),
+                VersionId = version.Id,
+                RelativePath = relativePath,
+                ContentType = file.ContentType,
+                Checksum = checksum,
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+
+            db.ConfigurationFiles.Add(configFile);
+        }
+
+        await db.SaveChangesAsync();
+
+        var details = new ConfigurationDetailsDto
+        {
+            Name = configuration.Name,
+            Description = configuration.Description,
+            EntryPoint = configuration.EntryPoint,
+            IsServerManaged = configuration.IsServerManaged,
+            LatestVersion = version.Version,
+            CreatedAt = configuration.CreatedAt
+        };
+
+        return TypedResults.Created($"/api/v1/configurations/{configuration.Name}", details);
     }
 
-    private static async Task<Results<Ok<ConfigurationDetails>, NotFound<ErrorResponse>>> GetConfiguration(
+    private static async Task<Results<Ok<ConfigurationDetailsDto>, NotFound>> GetConfigurationDetails(
         string name,
-        ServerDbContext db,
-        CancellationToken cancellationToken)
+        ServerDbContext db)
     {
         var config = await db.Configurations
-            .AsNoTracking()
-            .Where(c => c.Name == name)
-            .Select(c => new ConfigurationDetails
+            .Include(c => c.Versions)
+            .FirstOrDefaultAsync(c => c.Name == name);
+
+        if (config is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        var latestVersion = config.Versions
+            .OrderByDescending(v => v.CreatedAt)
+            .Select(v => v.Version)
+            .FirstOrDefault();
+
+        var details = new ConfigurationDetailsDto
+        {
+            Name = config.Name,
+            Description = config.Description,
+            EntryPoint = config.EntryPoint,
+            IsServerManaged = config.IsServerManaged,
+            LatestVersion = latestVersion,
+            CreatedAt = config.CreatedAt,
+            UpdatedAt = config.UpdatedAt
+        };
+
+        return TypedResults.Ok(details);
+    }
+
+    private static async Task<Results<Ok<List<ConfigurationVersionDto>>, NotFound>> GetConfigurationVersions(
+        string name,
+        ServerDbContext db)
+    {
+        var config = await db.Configurations
+            .Include(c => c.Versions)
+            .ThenInclude(v => v.Files)
+            .FirstOrDefaultAsync(c => c.Name == name);
+
+        if (config is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        var versions = config.Versions
+            .OrderByDescending(v => v.CreatedAt)
+            .Select(v => new ConfigurationVersionDto
             {
-                Id = c.Id,
-                Name = c.Name,
-                Content = c.Content,
-                Checksum = c.Checksum,
-                CreatedAt = c.CreatedAt,
-                ModifiedAt = c.ModifiedAt
+                Version = v.Version,
+                IsDraft = v.IsDraft,
+                PrereleaseChannel = v.PrereleaseChannel,
+                FileCount = v.Files.Count,
+                CreatedAt = v.CreatedAt,
+                CreatedBy = v.CreatedBy
             })
-            .FirstOrDefaultAsync(cancellationToken);
+            .ToList();
 
-        if (config is null)
-        {
-            return TypedResults.NotFound(new ErrorResponse { Error = "Configuration not found." });
-        }
-
-        return TypedResults.Ok(config);
+        return TypedResults.Ok(versions);
     }
 
-    private static async Task<Results<NoContent, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> UpdateConfiguration(
+    private static async Task<Results<Created<ConfigurationVersionDto>, NotFound, BadRequest<string>>> CreateConfigurationVersion(
         string name,
-        UpdateConfigurationRequest request,
+        [FromForm] CreateConfigurationVersionDto request,
+        IFormFileCollection files,
         ServerDbContext db,
-        CancellationToken cancellationToken)
+        IConfiguration config)
     {
-        if (string.IsNullOrWhiteSpace(request.Content))
+        var configuration = await db.Configurations.FirstOrDefaultAsync(c => c.Name == name);
+        if (configuration is null)
         {
-            return TypedResults.BadRequest(new ErrorResponse { Error = "Configuration content is required." });
+            return TypedResults.NotFound();
         }
 
-        var config = await db.Configurations.FirstOrDefaultAsync(c => c.Name == name, cancellationToken);
+        if (files.Count == 0)
+        {
+            return TypedResults.BadRequest("At least one file is required");
+        }
+
+        if (!files.Any(f => f.FileName == configuration.EntryPoint))
+        {
+            return TypedResults.BadRequest($"Entry point file '{configuration.EntryPoint}' not found in uploaded files");
+        }
+
+        var versionNumber = request.Version ?? "1.0.0";
+
+        if (await db.ConfigurationVersions.AnyAsync(v => v.ConfigurationId == configuration.Id && v.Version == versionNumber))
+        {
+            return TypedResults.BadRequest($"Version '{versionNumber}' already exists for configuration '{name}'");
+        }
+
+        var version = new ConfigurationVersion
+        {
+            Id = Guid.NewGuid(),
+            ConfigurationId = configuration.Id,
+            Version = versionNumber,
+            IsDraft = request.IsDraft,
+            PrereleaseChannel = request.PrereleaseChannel,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+
+        db.ConfigurationVersions.Add(version);
+
+        var dataDir = config["DataDirectory"] ?? "data";
+        var versionDir = Path.Combine(dataDir, "configurations", name, $"v{version.Version}");
+        Directory.CreateDirectory(versionDir);
+
+        foreach (var file in files)
+        {
+            var relativePath = file.FileName;
+            if (relativePath.Contains("../", StringComparison.Ordinal) || relativePath.Contains("..\\", StringComparison.Ordinal))
+            {
+                return TypedResults.BadRequest($"Invalid file path: {relativePath}");
+            }
+
+            var filePath = Path.Combine(versionDir, relativePath);
+            var fileDir = Path.GetDirectoryName(filePath);
+            if (!string.IsNullOrEmpty(fileDir) && !Directory.Exists(fileDir))
+            {
+                Directory.CreateDirectory(fileDir);
+            }
+
+            using (var stream = File.Create(filePath))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            var checksum = await ComputeFileChecksumAsync(filePath);
+
+            var configFile = new ConfigurationFile
+            {
+                Id = Guid.NewGuid(),
+                VersionId = version.Id,
+                RelativePath = relativePath,
+                ContentType = file.ContentType,
+                Checksum = checksum,
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+
+            db.ConfigurationFiles.Add(configFile);
+        }
+
+        await db.SaveChangesAsync();
+
+        var versionDto = new ConfigurationVersionDto
+        {
+            Version = version.Version,
+            IsDraft = version.IsDraft,
+            PrereleaseChannel = version.PrereleaseChannel,
+            FileCount = files.Count,
+            CreatedAt = version.CreatedAt,
+            CreatedBy = version.CreatedBy
+        };
+
+        return TypedResults.Created($"/api/v1/configurations/{name}/versions/{version.Version}", versionDto);
+    }
+
+    private static async Task<Results<Ok<ConfigurationVersionDto>, NotFound, BadRequest<string>>> PublishConfigurationVersion(
+        string name,
+        string version,
+        ServerDbContext db)
+    {
+        var config = await db.Configurations.FirstOrDefaultAsync(c => c.Name == name);
         if (config is null)
         {
-            return TypedResults.NotFound(new ErrorResponse { Error = "Configuration not found." });
+            return TypedResults.NotFound();
         }
 
-        config.Content = request.Content;
-        config.Checksum = ComputeChecksum(request.Content);
-        config.ModifiedAt = DateTimeOffset.UtcNow;
-        await db.SaveChangesAsync(cancellationToken);
+        var configVersion = await db.ConfigurationVersions
+            .Include(v => v.Files)
+            .FirstOrDefaultAsync(v => v.ConfigurationId == config.Id && v.Version == version);
+
+        if (configVersion is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        if (!configVersion.IsDraft)
+        {
+            return TypedResults.BadRequest("Version is already published");
+        }
+
+        if (configVersion.Files.Count == 0)
+        {
+            return TypedResults.BadRequest("Cannot publish version with no files");
+        }
+
+        configVersion.IsDraft = false;
+        await db.SaveChangesAsync();
+
+        var versionDto = new ConfigurationVersionDto
+        {
+            Version = configVersion.Version,
+            IsDraft = configVersion.IsDraft,
+            PrereleaseChannel = configVersion.PrereleaseChannel,
+            FileCount = configVersion.Files.Count,
+            CreatedAt = configVersion.CreatedAt,
+            CreatedBy = configVersion.CreatedBy
+        };
+
+        return TypedResults.Ok(versionDto);
+    }
+
+    private static async Task<Results<NoContent, NotFound, Conflict<string>>> DeleteConfiguration(
+        string name,
+        ServerDbContext db,
+        IConfiguration config)
+    {
+        var configuration = await db.Configurations
+            .Include(c => c.Versions)
+            .Include(c => c.NodeConfigurations)
+            .FirstOrDefaultAsync(c => c.Name == name);
+
+        if (configuration is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        if (configuration.NodeConfigurations.Count > 0)
+        {
+            return TypedResults.Conflict($"Cannot delete configuration assigned to {configuration.NodeConfigurations.Count} nodes");
+        }
+
+        var dataDir = config["DataDirectory"] ?? "data";
+        var configDir = Path.Combine(dataDir, "configurations", name);
+        if (Directory.Exists(configDir))
+        {
+            Directory.Delete(configDir, true);
+        }
+
+        db.Configurations.Remove(configuration);
+        await db.SaveChangesAsync();
 
         return TypedResults.NoContent();
     }
 
-    private static async Task<Results<NoContent, NotFound<ErrorResponse>>> DeleteConfiguration(
+    private static async Task<Results<NoContent, NotFound, Conflict<string>>> DeleteConfigurationVersion(
         string name,
+        string version,
         ServerDbContext db,
-        CancellationToken cancellationToken)
+        IConfiguration config)
     {
-        var config = await db.Configurations.FirstOrDefaultAsync(c => c.Name == name, cancellationToken);
-        if (config is null)
+        var configuration = await db.Configurations.FirstOrDefaultAsync(c => c.Name == name);
+        if (configuration is null)
         {
-            return TypedResults.NotFound(new ErrorResponse { Error = "Configuration not found." });
+            return TypedResults.NotFound();
         }
 
-        db.Configurations.Remove(config);
-        await db.SaveChangesAsync(cancellationToken);
+        var configVersion = await db.ConfigurationVersions
+            .Include(v => v.NodeConfigurations)
+            .FirstOrDefaultAsync(v => v.ConfigurationId == configuration.Id && v.Version == version);
+
+        if (configVersion is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        if (!configVersion.IsDraft)
+        {
+            return TypedResults.Conflict("Cannot delete published version");
+        }
+
+        if (configVersion.NodeConfigurations.Count > 0)
+        {
+            return TypedResults.Conflict($"Cannot delete version assigned to {configVersion.NodeConfigurations.Count} nodes");
+        }
+
+        var dataDir = config["DataDirectory"] ?? "data";
+        var versionDir = Path.Combine(dataDir, "configurations", name, $"v{version}");
+        if (Directory.Exists(versionDir))
+        {
+            Directory.Delete(versionDir, true);
+        }
+
+        db.ConfigurationVersions.Remove(configVersion);
+        await db.SaveChangesAsync();
 
         return TypedResults.NoContent();
     }
 
-    private static string ComputeChecksum(string content)
+    private static async Task<string> ComputeFileChecksumAsync(string filePath)
     {
-        var bytes = Encoding.UTF8.GetBytes(content);
-        var hash = SHA256.HashData(bytes);
-        return Convert.ToHexStringLower(hash);
+        using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+        var hash = await SHA256.HashDataAsync(stream);
+        return Convert.ToHexString(hash).ToLowerInvariant();
     }
+}
+
+public sealed class ConfigurationSummaryDto
+{
+    public required string Name { get; init; }
+    public string? Description { get; init; }
+    public required string EntryPoint { get; init; }
+    public required bool IsServerManaged { get; init; }
+    public required int VersionCount { get; init; }
+    public string? LatestVersion { get; init; }
+    public required DateTimeOffset CreatedAt { get; init; }
+}
+
+public sealed class ConfigurationDetailsDto
+{
+    public required string Name { get; init; }
+    public string? Description { get; init; }
+    public required string EntryPoint { get; init; }
+    public required bool IsServerManaged { get; init; }
+    public string? LatestVersion { get; init; }
+    public required DateTimeOffset CreatedAt { get; init; }
+    public DateTimeOffset? UpdatedAt { get; init; }
+}
+
+public sealed class CreateConfigurationDto
+{
+    public required string Name { get; init; }
+    public string? Description { get; init; }
+    public string? EntryPoint { get; init; }
+    public bool IsServerManaged { get; init; } = true;
+    public string? Version { get; init; }
+    public bool IsDraft { get; init; } = true;
+}
+
+public sealed class ConfigurationVersionDto
+{
+    public required string Version { get; init; }
+    public required bool IsDraft { get; init; }
+    public string? PrereleaseChannel { get; init; }
+    public required int FileCount { get; init; }
+    public required DateTimeOffset CreatedAt { get; init; }
+    public string? CreatedBy { get; init; }
+}
+
+public sealed class CreateConfigurationVersionDto
+{
+    public required string Version { get; init; }
+    public bool IsDraft { get; init; } = true;
+    public string? PrereleaseChannel { get; init; }
 }

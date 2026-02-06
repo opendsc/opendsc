@@ -226,6 +226,47 @@ public partial class PullServerClient : IDisposable
     }
 
     /// <summary>
+    /// Downloads the configuration bundle as a ZIP file.
+    /// </summary>
+    /// <returns>Stream containing the ZIP bundle, or null if not available.</returns>
+    public async Task<Stream?> GetConfigurationBundleAsync(CancellationToken cancellationToken = default)
+    {
+        var config = _lcmMonitor.CurrentValue;
+        var pullServer = config.PullServer;
+
+        if (pullServer is null || pullServer.NodeId is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            using var response = await _httpClient.GetAsync(
+                $"{pullServer.ServerUrl}/api/v1/nodes/{pullServer.NodeId}/configuration/bundle",
+                HttpCompletionOption.ResponseHeadersRead,
+                cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                LogBundleDownloadFailed(response.StatusCode.ToString());
+                return null;
+            }
+
+            var memoryStream = new MemoryStream();
+            await response.Content.CopyToAsync(memoryStream, cancellationToken);
+            memoryStream.Position = 0;
+
+            LogBundleDownloadSucceeded(memoryStream.Length);
+            return memoryStream;
+        }
+        catch (Exception ex)
+        {
+            LogBundleDownloadException(ex);
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Submits a compliance report to the server.
     /// </summary>
     public async Task<bool> SubmitReportAsync(DscOperation operation, DscResult result, CancellationToken cancellationToken = default)
@@ -375,4 +416,13 @@ public partial class PullServerClient : IDisposable
 
     [LoggerMessage(EventId = 1017, Level = LogLevel.Debug, Message = "Failed to resolve fully qualified domain name; using machine name '{MachineName}' instead.")]
     private partial void LogFqdnResolutionFailed(Exception ex, string machineName);
+
+    [LoggerMessage(EventId = 1018, Level = LogLevel.Error, Message = "Bundle download failed: {StatusCode}")]
+    private partial void LogBundleDownloadFailed(string statusCode);
+
+    [LoggerMessage(EventId = 1019, Level = LogLevel.Information, Message = "Bundle downloaded successfully: {Bytes} bytes")]
+    private partial void LogBundleDownloadSucceeded(long bytes);
+
+    [LoggerMessage(EventId = 1020, Level = LogLevel.Error, Message = "Bundle download error")]
+    private partial void LogBundleDownloadException(Exception ex);
 }

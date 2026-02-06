@@ -65,6 +65,8 @@ internal static class EventIds
     public const int NodeIdPersisted = 6003;
     public const int FailedToPersistNodeId = 6004;
     public const int CertificateRotatedOnPullServer = 6005;
+    public const int ConfigurationEntryPointNotFound = 6006;
+    public const int ConfigurationExtractedFromBundle = 6007;
 
     // Certificate Management Events: 7000-7099
     public const int CertificateLoaded = 7000;

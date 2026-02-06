@@ -452,13 +452,28 @@ function Get-SqlServerConnectionString
         Returns a connection string using either Windows Authentication or SQL Authentication
         based on the current test environment configuration.
 
+    .PARAMETER Database
+        Optional database name to include in the connection string.
+
     .EXAMPLE
         $conn = New-Object System.Data.SqlClient.SqlConnection
         $conn.ConnectionString = Get-SqlServerConnectionString
+
+    .EXAMPLE
+        $conn = New-Object System.Data.SqlClient.SqlConnection
+        $conn.ConnectionString = Get-SqlServerConnectionString -Database 'MyDatabase'
     #>
-    param()
+    param(
+        [Parameter(Mandatory = $false)]
+        [string]$Database
+    )
 
     $connectionString = "Server=$script:sqlServerInstance;Connection Timeout=30"
+
+    if ($Database)
+    {
+        $connectionString += ";Database=$Database"
+    }
 
     if ($script:sqlServerUsername -and $script:sqlServerPassword)
     {

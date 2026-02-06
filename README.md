@@ -20,10 +20,10 @@ for continuous monitoring and remediation.
 
 ## Libraries
 
-| Library | Description |
-| --- | --- |
-| [OpenDsc.Templates][t] | DSC project templates |
-| [OpenDsc.Resource][r] | Core DSC resource implementation |
+| Library                           | Description                         |
+|-----------------------------------|-------------------------------------|
+| [OpenDsc.Templates][t]            | DSC project templates               |
+| [OpenDsc.Resource][r]             | Core DSC resource implementation    |
 | [OpenDsc.Resource.CommandLine][c] | CLI and resource manifest generator |
 
 [t]: https://www.nuget.org/packages/OpenDsc.Templates
@@ -52,6 +52,19 @@ managing Windows and cross-platform systems:
   optional features via DISM
 - **[OpenDsc.Windows.FileSystem/AccessControlList][acl]** - Manage file and
   directory permissions (ACLs)
+
+### SQL Server Resources
+
+- **[OpenDsc.SqlServer/Login][login]** - Manage SQL Server logins
+- **[OpenDsc.SqlServer/Database][database]** - Manage SQL Server databases
+- **[OpenDsc.SqlServer/DatabaseRole][databaserole]** - Manage SQL Server
+  database roles
+- **[OpenDsc.SqlServer/ServerRole][serverrole]** - Manage SQL Server server
+  roles
+- **[OpenDsc.SqlServer/DatabasePermission][databasepermission]** - Manage SQL
+  Server database permissions
+- **[OpenDsc.SqlServer/ServerPermission][serverpermission]** - Manage SQL
+  Server server permissions
 
 ### Cross-Platform Resources
 
@@ -84,6 +97,12 @@ resources provide Unix-specific functionality not available on Windows.
 [shortcut]: src/OpenDsc.Resource.Windows/Shortcut/README.md
 [optionalfeature]: src/OpenDsc.Resource.Windows/OptionalFeature/README.md
 [acl]: src/OpenDsc.Resource.Windows/FileSystem/Acl/README.md
+[login]: src/OpenDsc.Resource.SqlServer/Login/README.md
+[database]: src/OpenDsc.Resource.SqlServer/Database/README.md
+[databaserole]: src/OpenDsc.Resource.SqlServer/DatabaseRole/README.md
+[serverrole]: src/OpenDsc.Resource.SqlServer/ServerRole/README.md
+[databasepermission]: src/OpenDsc.Resource.SqlServer/DatabasePermission/README.md
+[serverpermission]: src/OpenDsc.Resource.SqlServer/ServerPermission/README.md
 [file]: src/OpenDsc.Resource.FileSystem/File/README.md
 [directory]: src/OpenDsc.Resource.FileSystem/Directory/README.md
 [symlink]: src/OpenDsc.Resource.FileSystem/SymbolicLink/README.md
@@ -199,6 +218,7 @@ The OpenDSC Pull Server is a REST API-based centralized configuration server
 that integrates with the LCM for pull mode operations. It provides:
 
 - Configuration storage and distribution
+- Composite configurations for combining multiple configurations
 - Node registration and management with mTLS authentication
 - Automatic certificate rotation
 - Compliance reporting
@@ -255,10 +275,14 @@ For detailed documentation on each library, see their respective README files:
 - [OpenDsc.Templates][td]
 - [OpenDsc.Resource][rd]
 - [OpenDsc.Resource.CommandLine][cd]
+- [OpenDsc.Server][sd]
+- [OpenDsc.Lcm][ld]
 
 [td]: src/OpenDsc.Templates/README.md
 [rd]: src/OpenDsc.Resource/README.md
 [cd]: src/OpenDsc.Resource.CommandLine/README.md
+[sd]: src/OpenDsc.Server/README.md
+[ld]: src/OpenDsc.Lcm/README.md
 
 ## License
 

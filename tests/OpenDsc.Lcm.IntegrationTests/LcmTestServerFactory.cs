@@ -22,6 +22,8 @@ public class LcmTestServerFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        builder.UseEnvironment("Testing");
+
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<DbContextOptions<ServerDbContext>>();
@@ -72,19 +74,6 @@ public class LcmTestServerFactory : WebApplicationFactory<Program>
                 ExpiresAt = DateTimeOffset.UtcNow.AddDays(30)
             });
 
-            db.Configurations.Add(new OpenDsc.Server.Entities.Configuration
-            {
-                Id = Guid.NewGuid(),
-                Name = "test-config",
-                Content = @"
-$schema: https://raw.githubusercontent.com/PowerShell/DSC/main/schemas/2024/04/config/document.json
-resources: []
-",
-                Checksum = "test-checksum",
-                CreatedAt = DateTimeOffset.UtcNow,
-                ModifiedAt = DateTimeOffset.UtcNow
-            });
-
             db.SaveChanges();
         });
 
@@ -108,6 +97,7 @@ resources: []
     {
         protected override Task<AuthenticateResult> HandleAuthenticateAsync()
         {
+            Console.WriteLine("TestAuthHandler.HandleAuthenticateAsync called");
             var claims = new List<Claim> { new(ClaimTypes.Role, "Node") };
 
             var path = Request.Path.Value ?? string.Empty;
