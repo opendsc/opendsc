@@ -199,6 +199,7 @@ The OpenDSC Pull Server is a REST API-based centralized configuration server
 that integrates with the LCM for pull mode operations. It provides:
 
 - Configuration storage and distribution
+- Composite configurations for combining multiple configurations
 - Node registration and management with mTLS authentication
 - Automatic certificate rotation
 - Compliance reporting
@@ -255,10 +256,14 @@ For detailed documentation on each library, see their respective README files:
 - [OpenDsc.Templates][td]
 - [OpenDsc.Resource][rd]
 - [OpenDsc.Resource.CommandLine][cd]
+- [OpenDsc.Server][sd]
+- [OpenDsc.Lcm][ld]
 
 [td]: src/OpenDsc.Templates/README.md
 [rd]: src/OpenDsc.Resource/README.md
 [cd]: src/OpenDsc.Resource.CommandLine/README.md
+[sd]: src/OpenDsc.Server/README.md
+[ld]: src/OpenDsc.Lcm/README.md
 
 ## License
 

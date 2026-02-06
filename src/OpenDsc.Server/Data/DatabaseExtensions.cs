@@ -54,6 +54,11 @@ public static class DatabaseExtensions
 
         try
         {
+            if (environment.IsEnvironment("Testing"))
+            {
+                await context.Database.EnsureDeletedAsync();
+            }
+
             await context.Database.EnsureCreatedAsync();
             logger.LogInformation("Database initialized successfully");
 
@@ -62,6 +67,7 @@ public static class DatabaseExtensions
             if (environment.IsEnvironment("Testing"))
             {
                 await SeedTestRegistrationKeyAsync(context, logger);
+                await SeedTestDataAsync(context, logger);
             }
         }
         catch (Exception ex)
@@ -78,27 +84,93 @@ public static class DatabaseExtensions
         ServerDbContext context,
         ILogger logger)
     {
-        var existing = await context.RegistrationKeys
-            .Where(k => k.Key == "test-registration-key")
-            .FirstOrDefaultAsync();
+        var lcmKeyExists = await context.RegistrationKeys
+            .AnyAsync(k => k.Key == "test-lcm-registration-key");
 
-        if (existing is not null)
+        if (!lcmKeyExists)
         {
-            existing.ExpiresAt = DateTimeOffset.UtcNow.AddYears(100);
+            context.RegistrationKeys.Add(new RegistrationKey
+            {
+                Key = "test-lcm-registration-key",
+                CreatedAt = DateTimeOffset.UtcNow,
+                ExpiresAt = DateTimeOffset.UtcNow.AddYears(100)
+            });
+        }
+
+        var testKeyExists = await context.RegistrationKeys
+            .AnyAsync(k => k.Key == "test-registration-key");
+
+        if (!testKeyExists)
+        {
+            context.RegistrationKeys.Add(new RegistrationKey
+            {
+                Key = "test-registration-key",
+                CreatedAt = DateTimeOffset.UtcNow,
+                ExpiresAt = DateTimeOffset.UtcNow.AddYears(100)
+            });
+        }
+
+        if (!lcmKeyExists || !testKeyExists)
+        {
             await context.SaveChangesAsync();
-            logger.LogInformation("Test registration key expiry updated");
+            logger.LogInformation("Test registration key seeded successfully");
+        }
+    }
+
+    /// <summary>
+    /// Seeds test data for test environments.
+    /// </summary>
+    private static async Task SeedTestDataAsync(
+        ServerDbContext context,
+        ILogger logger)
+    {
+        var existingConfig = await context.Configurations
+            .AnyAsync(c => c.Name == "test-config");
+
+        if (existingConfig)
+        {
+            logger.LogInformation("Test data already exists");
             return;
         }
 
-        context.RegistrationKeys.Add(new RegistrationKey
+        var config = new Configuration
         {
-            Key = "test-registration-key",
-            CreatedAt = DateTimeOffset.UtcNow,
-            ExpiresAt = DateTimeOffset.UtcNow.AddYears(100)
-        });
+            Id = Guid.NewGuid(),
+            Name = "test-config",
+            Description = "Test configuration",
+            EntryPoint = "main.dsc.yaml",
+            IsServerManaged = true,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+
+        context.Configurations.Add(config);
+
+        var version = new ConfigurationVersion
+        {
+            Id = Guid.NewGuid(),
+            ConfigurationId = config.Id,
+            Version = "1.0.0",
+            IsDraft = false,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+
+        context.ConfigurationVersions.Add(version);
+
+        var configFile = new ConfigurationFile
+        {
+            Id = Guid.NewGuid(),
+            VersionId = version.Id,
+            RelativePath = "main.dsc.yaml",
+            ContentType = "text/yaml",
+            Checksum = "test-checksum",
+
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+
+        context.ConfigurationFiles.Add(configFile);
 
         await context.SaveChangesAsync();
-        logger.LogInformation("Test registration key seeded successfully");
+        logger.LogInformation("Test data seeded successfully");
     }
 
     /// <summary>
