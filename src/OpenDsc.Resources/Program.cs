@@ -23,6 +23,9 @@ using SqlServerDatabaseUserNs = OpenDsc.Resource.SqlServer.DatabaseUser;
 using SqlServerServerRoleNs = OpenDsc.Resource.SqlServer.ServerRole;
 using SqlServerDatabasePermissionNs = OpenDsc.Resource.SqlServer.DatabasePermission;
 using SqlServerServerPermissionNs = OpenDsc.Resource.SqlServer.ServerPermission;
+using SqlServerLinkedServerNs = OpenDsc.Resource.SqlServer.LinkedServer;
+using SqlServerConfigurationNs = OpenDsc.Resource.SqlServer.Configuration;
+using SqlServerAgentJobNs = OpenDsc.Resource.SqlServer.AgentJob;
 
 #if !WINDOWS
 using PosixPermissionNs = OpenDsc.Resource.Posix.FileSystem.Permission;
@@ -55,6 +58,10 @@ var sqlServerDatabaseUserResource = new SqlServerDatabaseUserNs.Resource(OpenDsc
 var sqlServerServerRoleResource = new SqlServerServerRoleNs.Resource(OpenDsc.Resource.SqlServer.SourceGenerationContext.Default);
 var sqlServerDatabasePermissionResource = new SqlServerDatabasePermissionNs.Resource(OpenDsc.Resource.SqlServer.SourceGenerationContext.Default);
 var sqlServerServerPermissionResource = new SqlServerServerPermissionNs.Resource(OpenDsc.Resource.SqlServer.SourceGenerationContext.Default);
+var sqlServerLinkedServerResource = new SqlServerLinkedServerNs.Resource(OpenDsc.Resource.SqlServer.SourceGenerationContext.Default);
+
+var sqlServerConfigurationResource = new SqlServerConfigurationNs.Resource(OpenDsc.Resource.SqlServer.SourceGenerationContext.Default);
+var sqlServerAgentJobResource = new SqlServerAgentJobNs.Resource(OpenDsc.Resource.SqlServer.SourceGenerationContext.Default);
 
 #if !WINDOWS
 #pragma warning disable CA1416 // 'Resource' is only supported on: 'linux', 'macOS'
@@ -96,6 +103,9 @@ command.AddResource<SqlServerDatabaseUserNs.Resource, SqlServerDatabaseUserNs.Sc
 command.AddResource<SqlServerServerRoleNs.Resource, SqlServerServerRoleNs.Schema>(sqlServerServerRoleResource);
 command.AddResource<SqlServerDatabasePermissionNs.Resource, SqlServerDatabasePermissionNs.Schema>(sqlServerDatabasePermissionResource);
 command.AddResource<SqlServerServerPermissionNs.Resource, SqlServerServerPermissionNs.Schema>(sqlServerServerPermissionResource);
+command.AddResource<SqlServerLinkedServerNs.Resource, SqlServerLinkedServerNs.Schema>(sqlServerLinkedServerResource);
+command.AddResource<SqlServerConfigurationNs.Resource, SqlServerConfigurationNs.Schema>(sqlServerConfigurationResource);
+command.AddResource<SqlServerAgentJobNs.Resource, SqlServerAgentJobNs.Schema>(sqlServerAgentJobResource);
 
 #if !WINDOWS
 #pragma warning disable CA1416 // 'Resource' is only supported on: 'linux', 'macOS'
