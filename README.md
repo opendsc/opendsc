@@ -20,10 +20,10 @@ for continuous monitoring and remediation.
 
 ## Libraries
 
-| Library | Description |
-| --- | --- |
-| [OpenDsc.Templates][t] | DSC project templates |
-| [OpenDsc.Resource][r] | Core DSC resource implementation |
+| Library                           | Description                         |
+|-----------------------------------|-------------------------------------|
+| [OpenDsc.Templates][t]            | DSC project templates               |
+| [OpenDsc.Resource][r]             | Core DSC resource implementation    |
 | [OpenDsc.Resource.CommandLine][c] | CLI and resource manifest generator |
 
 [t]: https://www.nuget.org/packages/OpenDsc.Templates
