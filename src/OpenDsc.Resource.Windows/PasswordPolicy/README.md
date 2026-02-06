@@ -27,11 +27,11 @@ immediately.
 |                           |         | (0-14). Default is 0 (no   |
 |                           |         | minimum).                  |
 | `maximumPasswordAgeDays`  | integer | Maximum password age in    |
-|                           |         | days (0-49710). Use 0 for  |
+|                           |         | days (0-999). Use 0 for    |
 |                           |         | unlimited (never expires). |
 |                           |         | Default is 42 days.        |
 | `minimumPasswordAgeDays`  | integer | Minimum password age in    |
-|                           |         | days (0-49710). Default is |
+|                           |         | days (0-998). Default is   |
 |                           |         | 0 days (can change         |
 |                           |         | immediately).              |
 | `passwordHistoryLength`   | integer | Number of unique passwords |
