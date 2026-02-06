@@ -15,16 +15,6 @@ public sealed class ServerSettings
     public int Id { get; set; } = 1;
 
     /// <summary>
-    /// Argon2id hash of the admin API key.
-    /// </summary>
-    public string AdminApiKeyHash { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Salt used for Argon2id hashing of the admin API key.
-    /// </summary>
-    public string AdminApiKeySalt { get; set; } = string.Empty;
-
-    /// <summary>
     /// Default interval for certificate rotation (informational).
     /// </summary>
     public TimeSpan CertificateRotationInterval { get; set; } = TimeSpan.FromDays(60);

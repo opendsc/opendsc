@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 using OpenDsc.Server.Authentication;
+using OpenDsc.Server.Authorization;
 using OpenDsc.Server.Contracts;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
@@ -17,7 +18,7 @@ public static class RegistrationKeyEndpoints
     public static void MapRegistrationKeyEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/v1/admin/registration-keys")
-            .RequireAuthorization("Admin")
+            .RequireAuthorization(Permissions.RegistrationKeys_Manage)
             .WithTags("Registration Keys");
 
         group.MapPost("/", CreateRegistrationKey)

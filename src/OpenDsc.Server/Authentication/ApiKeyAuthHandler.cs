@@ -2,16 +2,12 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
-using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text.Encodings.Web;
 
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Cryptography.KeyDerivation;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-
-using OpenDsc.Server.Data;
 
 namespace OpenDsc.Server.Authentication;
 
@@ -21,8 +17,7 @@ namespace OpenDsc.Server.Authentication;
 public sealed class ApiKeyAuthHandler(
     IOptionsMonitor<AuthenticationSchemeOptions> options,
     ILoggerFactory logger,
-    UrlEncoder encoder,
-    IServiceScopeFactory scopeFactory)
+    UrlEncoder encoder)
     : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
 {
     /// <summary>
@@ -35,58 +30,8 @@ public sealed class ApiKeyAuthHandler(
 
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        return await AuthenticateAdminAsync();
-    }
-
-    private async Task<AuthenticateResult> AuthenticateAdminAsync()
-    {
-        if (!Request.Headers.TryGetValue(AuthorizationHeader, out var authHeader))
-        {
-            return AuthenticateResult.NoResult();
-        }
-
-        var headerValue = authHeader.ToString();
-        if (!headerValue.StartsWith(BearerPrefix, StringComparison.OrdinalIgnoreCase))
-        {
-            return AuthenticateResult.NoResult();
-        }
-
-        var apiKey = headerValue[BearerPrefix.Length..].Trim();
-        if (string.IsNullOrEmpty(apiKey))
-        {
-            return AuthenticateResult.Fail("Admin API key is empty");
-        }
-
-        using var scope = scopeFactory.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
-
-        var settings = await dbContext.ServerSettings
-            .AsNoTracking()
-            .FirstOrDefaultAsync();
-
-        if (settings is null || string.IsNullOrEmpty(settings.AdminApiKeyHash) || string.IsNullOrEmpty(settings.AdminApiKeySalt))
-        {
-            return AuthenticateResult.Fail("Admin API key not configured");
-        }
-
-        var isValid = VerifyPasswordPbkdf2(apiKey, settings.AdminApiKeySalt, settings.AdminApiKeyHash);
-        if (!isValid)
-        {
-            return AuthenticateResult.Fail("Invalid admin API key");
-        }
-
-        var claims = new[]
-        {
-            new Claim(ClaimTypes.NameIdentifier, "admin"),
-            new Claim(ClaimTypes.Name, "Administrator"),
-            new Claim(ClaimTypes.Role, "Admin")
-        };
-
-        var identity = new ClaimsIdentity(claims, Scheme.Name);
-        var principal = new ClaimsPrincipal(identity);
-        var ticket = new AuthenticationTicket(principal, Scheme.Name);
-
-        return AuthenticateResult.Success(ticket);
+        await Task.CompletedTask;
+        return AuthenticateResult.NoResult();
     }
 
     /// <summary>

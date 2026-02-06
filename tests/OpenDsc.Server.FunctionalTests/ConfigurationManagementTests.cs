@@ -29,8 +29,7 @@ public abstract class ConfigurationManagementTests
     [Fact]
     public async Task CreateAndRetrieveConfiguration_WorksAcrossAllProviders()
     {
-        using var adminClient = Fixture.CreateClient();
-        adminClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", "test-admin-key");
+        using var adminClient = await AuthenticationHelper.CreateAuthenticatedClientAsync(Fixture);
 
         var configName = $"test-config-{Guid.NewGuid()}";
         var configContent = @"
@@ -73,8 +72,7 @@ resources:
         var registerResponse = await Client.PostAsJsonAsync("/api/v1/nodes/register", registerRequest);
         var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>();
 
-        using var adminClient = Fixture.CreateClient();
-        adminClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", "test-admin-key");
+        using var adminClient = await AuthenticationHelper.CreateAuthenticatedClientAsync(Fixture);
 
         var configName = $"node-config-{Guid.NewGuid()}";
         var configContent = @"
@@ -105,8 +103,7 @@ resources: []
     [Fact]
     public async Task ConfigurationChecksum_ConsistentAcrossProviders()
     {
-        using var adminClient = Fixture.CreateClient();
-        adminClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", "test-admin-key");
+        using var adminClient = await AuthenticationHelper.CreateAuthenticatedClientAsync(Fixture);
 
         var configName = $"checksum-test-{Guid.NewGuid()}";
         var configContent = "test content for checksum";

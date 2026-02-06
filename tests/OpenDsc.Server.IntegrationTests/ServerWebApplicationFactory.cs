@@ -44,29 +44,43 @@ public class ServerWebApplicationFactory : WebApplicationFactory<Program>
         using (var scope = host.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
+            var logger = scope.ServiceProvider.GetRequiredService<ILogger<ServerDbContext>>();
 
-            if (!db.ServerSettings.Any())
-            {
-                var adminKeyHash = Authentication.ApiKeyAuthHandler.HashPasswordPbkdf2("test-admin-key", out var adminSalt);
-                db.ServerSettings.Add(new Entities.ServerSettings
-                {
-                    Id = 1,
-                    AdminApiKeyHash = adminKeyHash,
-                    AdminApiKeySalt = adminSalt
-                });
-                db.SaveChanges();
-            }
+            DatabaseExtensions.EnsureDatabaseInitialized(db, logger).Wait();
         }
 
         return host;
     }
 
-    public HttpClient CreateAuthenticatedClient(string apiKey)
+    public async Task<HttpClient> CreateAuthenticatedClientAsync()
     {
-        var client = CreateClient();
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-        return client;
+        var client = CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+
+        // Login with default admin credentials
+        var loginRequest = new { username = "admin", password = "admin" };
+        var loginResponse = await client.PostAsJsonAsync("/api/v1/auth/login", loginRequest);
+
+        if (!loginResponse.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException("Failed to authenticate test client");
+        }
+
+        // Create a PAT for API calls
+        var tokenRequest = new { name = "Integration Test Token", expiresAt = (DateTimeOffset?)null };
+        var tokenResponse = await client.PostAsJsonAsync("/api/v1/auth/tokens", tokenRequest);
+        var tokenResult = await tokenResponse.Content.ReadFromJsonAsync<PersonalAccessTokenResponse>();
+
+        var authenticatedClient = CreateClient();
+        authenticatedClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", tokenResult!.Token);
+
+        return authenticatedClient;
     }
+
+    private record PersonalAccessTokenResponse(string Token, string Name, DateTimeOffset? ExpiresAt);
 
     protected override void Dispose(bool disposing)
     {

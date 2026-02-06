@@ -5,6 +5,7 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
+using OpenDsc.Server.Authorization;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
 
@@ -16,7 +17,7 @@ internal static class ConfigurationSettingsEndpoints
     {
         var group = routes.MapGroup("/api/v1/configurations/{configName}/settings")
             .WithTags("Settings")
-            .RequireAuthorization("Admin");
+            .RequireAuthorization(Permissions.Retention_Manage);
 
         group.MapGet("", GetConfigurationSettings)
             .WithName("GetConfigurationSettings");

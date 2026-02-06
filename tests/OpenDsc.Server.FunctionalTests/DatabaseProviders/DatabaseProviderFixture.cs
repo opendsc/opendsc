@@ -31,8 +31,7 @@ public abstract class DatabaseProviderFixture : WebApplicationFactory<Program>, 
             config.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Database:Provider"] = ProviderName,
-                ["Database:ConnectionString"] = ConnectionString,
-                ["Server:InitialAdminKey"] = "test-admin-key"
+                ["Database:ConnectionString"] = ConnectionString
             });
         });
 

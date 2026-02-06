@@ -86,8 +86,7 @@ public abstract class NodeRegistrationTests
         };
         await Client.PostAsJsonAsync("/api/v1/nodes/register", registerRequest);
 
-        using var adminClient = Fixture.CreateClient();
-        adminClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", "test-admin-key");
+        using var adminClient = await AuthenticationHelper.CreateAuthenticatedClientAsync(Fixture);
 
         var response = await adminClient.GetAsync("/api/v1/nodes/");
 

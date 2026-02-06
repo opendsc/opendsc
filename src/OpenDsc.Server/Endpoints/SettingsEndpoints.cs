@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 using OpenDsc.Server.Authentication;
+using OpenDsc.Server.Authorization;
 using OpenDsc.Server.Contracts;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
@@ -17,7 +18,7 @@ public static class SettingsEndpoints
     public static void MapSettingsEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/v1/settings")
-            .RequireAuthorization("Admin")
+            .RequireAuthorization(Permissions.ServerSettings_Write)
             .WithTags("Settings");
 
         group.MapGet("/", GetSettings)

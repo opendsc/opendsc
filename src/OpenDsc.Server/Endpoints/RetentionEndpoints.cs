@@ -5,6 +5,7 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 
+using OpenDsc.Server.Authorization;
 using OpenDsc.Server.Services;
 
 namespace OpenDsc.Server.Endpoints;
@@ -14,7 +15,7 @@ public static class RetentionEndpoints
     public static void MapRetentionEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/v1/retention")
-            .RequireAuthorization("Admin")
+            .RequireAuthorization(Permissions.Retention_Manage)
             .WithTags("Retention");
 
         group.MapPost("/configurations/cleanup", CleanupConfigurationVersions)
