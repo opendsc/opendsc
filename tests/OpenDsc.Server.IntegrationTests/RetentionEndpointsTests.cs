@@ -6,8 +6,6 @@ using System.Net;
 
 using FluentAssertions;
 
-using Microsoft.EntityFrameworkCore;
-
 using OpenDsc.Server.Endpoints;
 using OpenDsc.Server.Services;
 
