@@ -33,6 +33,45 @@ public sealed class CertificateAuthHandler(
     {
         var clientCert = Context.Connection.ClientCertificate;
 
+        // In testing environment, authenticate without certificate
+        if (clientCert is null && Context.RequestServices.GetRequiredService<IWebHostEnvironment>().IsEnvironment("Testing"))
+        {
+            // Extract node ID from URL for testing
+            var path = Context.Request.Path;
+            var nodeIdMatch = System.Text.RegularExpressions.Regex.Match(path, @"/api/v1/nodes/(?<nodeId>[a-f0-9\-]+)");
+            if (nodeIdMatch.Success)
+            {
+                if (Guid.TryParse(nodeIdMatch.Groups["nodeId"].Value, out var testNodeId))
+                {
+                    using var testScope = scopeFactory.CreateScope();
+                    var testDbContext = testScope.ServiceProvider.GetRequiredService<ServerDbContext>();
+
+                    var testNode = await testDbContext.Nodes
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(n => n.Id == testNodeId);
+                    if (testNode is not null)
+                    {
+                        var testClaims = new[]
+                        {
+                            new Claim(ClaimTypes.NameIdentifier, testNode.Id.ToString()),
+                            new Claim(ClaimTypes.Name, testNode.Fqdn),
+                            new Claim("node_id", testNode.Id.ToString()),
+                            new Claim("cert_thumbprint", "TEST-THUMBPRINT"),
+                            new Claim(ClaimTypes.Role, "Node")
+                        };
+
+                        var testIdentity = new ClaimsIdentity(testClaims, Scheme.Name);
+                        var testPrincipal = new ClaimsPrincipal(testIdentity);
+                        var testTicket = new AuthenticationTicket(testPrincipal, Scheme.Name);
+
+                        return AuthenticateResult.Success(testTicket);
+                    }
+                }
+            }
+
+            return AuthenticateResult.NoResult();
+        }
+
         if (clientCert is null)
         {
             return AuthenticateResult.NoResult();

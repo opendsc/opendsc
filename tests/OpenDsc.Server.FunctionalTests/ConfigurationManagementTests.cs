@@ -7,6 +7,7 @@ using System.Net;
 using FluentAssertions;
 
 using OpenDsc.Server.Contracts;
+using OpenDsc.Server.Endpoints;
 using OpenDsc.Server.FunctionalTests.DatabaseProviders;
 
 using Xunit;
@@ -41,21 +42,22 @@ resources:
       value: test_value
 ";
 
-        var createRequest = new CreateConfigurationRequest
-        {
-            Name = configName,
-            Content = configContent
-        };
+        using var content = new MultipartFormDataContent();
+        content.Add(new StringContent(configName), "name");
+        content.Add(new StringContent("main.dsc.yaml"), "entryPoint");
+        var file = new ByteArrayContent(System.Text.Encoding.UTF8.GetBytes(configContent));
+        file.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+        content.Add(file, "files", "main.dsc.yaml");
 
-        var createResponse = await adminClient.PostAsJsonAsync("/api/v1/configurations", createRequest);
+        var createResponse = await adminClient.PostAsync("/api/v1/configurations", content);
         createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
         var getResponse = await adminClient.GetAsync($"/api/v1/configurations/{configName}");
         getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var configDetails = await getResponse.Content.ReadFromJsonAsync<ConfigurationDetails>();
+        var configDetails = await getResponse.Content.ReadFromJsonAsync<ConfigurationDetailsDto>();
         configDetails.Should().NotBeNull();
-        configDetails!.Content.Trim().Should().Be(configContent.Trim());
+        configDetails!.LatestVersion.Should().Be("1.0.0");
     }
 
     [Fact]
@@ -80,12 +82,13 @@ $schema: https://raw.githubusercontent.com/PowerShell/DSC/main/schemas/2024/04/c
 resources: []
 ";
 
-        var createConfigRequest = new CreateConfigurationRequest
-        {
-            Name = configName,
-            Content = configContent
-        };
-        await adminClient.PostAsJsonAsync("/api/v1/configurations", createConfigRequest);
+        using var configContent2 = new MultipartFormDataContent();
+        configContent2.Add(new StringContent(configName), "name");
+        configContent2.Add(new StringContent("main.dsc.yaml"), "entryPoint");
+        var configFile = new ByteArrayContent(System.Text.Encoding.UTF8.GetBytes(configContent));
+        configFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+        configContent2.Add(configFile, "files", "main.dsc.yaml");
+        await adminClient.PostAsync("/api/v1/configurations", configContent2);
 
         var assignRequest = new AssignConfigurationRequest
         {

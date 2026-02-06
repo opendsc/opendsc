@@ -10,21 +10,29 @@ remediates DSC configurations, ensuring systems remain in their desired state.
     desired state
   - **Remediate Mode** - Automatically applies corrections when drift is
     detected using `dsc config set`
+- **Dual Configuration Sources**:
+  - **Local Mode** - Read configuration from local file path
+  - **Pull Mode** - Download configuration from OpenDSC Pull Server with
+    automatic updates and parameter merging
 - **Dynamic Configuration Reload** - Seamlessly switches modes and updates
   intervals without restart
-- **Pull Server Integration** - Download configurations from OpenDSC Pull
-  Server with automatic updates
+- **Pull Server Integration**:
+  - Automatic node registration with FQDN-based identification
+  - Configuration checksum-based change detection
+  - Download configuration bundles with merged parameters
+  - Server-managed parameter merging across scopes (global, environment, node)
+  - Compliance reporting to centralized server
 - **mTLS Authentication** - Secure mutual TLS authentication with the pull
   server using managed or platform certificates
 - **Automatic Certificate Rotation** - Self-managed certificate lifecycle with
-  seamless rotation
+  seamless rotation (90-day validity, rotates after 60 days)
 - **Compliance Reporting** - Submit test/set results to pull server for
-  centralized monitoring
+  centralized monitoring and audit trails
 - **Cross-Platform** - Windows, Linux, and macOS support
 - **Platform-Native Logging** - Windows Event Log, systemd journal, and macOS
-  Unified Logging
+  Unified Logging with configurable log levels
 - **Flexible Configuration** - Environment variables, JSON files, or
-  command-line arguments
+  command-line arguments with platform-specific paths
 
 ## Quick Start
 
@@ -451,6 +459,48 @@ The LCM checks for configuration updates before each operation:
 2. Compares with the local configuration checksum
 3. Downloads the new configuration if changed
 4. Applies the new configuration immediately
+
+### Parameter Merging
+
+When using the OpenDSC Pull Server, configurations can leverage
+hierarchical parameter merging across multiple scopes. The server
+automatically merges parameters from assigned scopes (global,
+environment, role, node) before delivering the configuration to the LCM.
+
+This enables centralized parameter management with environment and
+node-specific overrides. The server uses
+[OpenDsc.Parameters](../OpenDsc.Parameters/README.md) to merge
+parameters based on scope precedence.
+
+**Example parameter flow:**
+
+1. **Server-side scopes** (defined on the pull server):
+   - Global scope (precedence 1): `logLevel: Info, timeout: 30`
+   - Production scope (precedence 2): `logLevel: Warning, server:
+     prod.example.com`
+   - Node scope (precedence 3): `server: node1.prod.example.com`
+
+2. **Server merges** parameters automatically:
+
+   ```yaml
+   logLevel: Warning        # From Production
+   timeout: 30              # From Global
+   server: node1.prod.example.com  # From Node (highest precedence)
+   ```
+
+3. **LCM downloads** the configuration bundle containing:
+   - Configuration files (YAML/JSON)
+   - Merged parameters file (`parameters.yaml` or
+     `parameters/default.yaml`)
+
+4. **LCM applies** the configuration with the merged parameters
+
+The parameter merging is fully transparent to the LCM - it simply
+downloads and applies the final configuration bundle.
+
+See the [Pull Server
+documentation](../OpenDsc.Server/README.md#parameter-merging) for
+details on configuring scopes and parameters.
 
 ## Advanced Usage
 

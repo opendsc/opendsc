@@ -8,6 +8,7 @@ using OpenDsc.Server;
 using OpenDsc.Server.Authentication;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Endpoints;
+using OpenDsc.Server.Services;
 
 using Scalar.AspNetCore;
 
@@ -37,6 +38,11 @@ builder.Services.AddOpenApi();
 builder.Services.AddServerDatabase(builder.Configuration);
 builder.Services.AddServerAuthentication();
 
+builder.Services.AddSingleton<IParameterMerger, ParameterMerger>();
+builder.Services.AddScoped<IParameterMergeService, ParameterMergeService>();
+builder.Services.AddScoped<IParameterSchemaService, ParameterSchemaService>();
+builder.Services.AddScoped<IVersionRetentionService, VersionRetentionService>();
+
 var app = builder.Build();
 
 await app.InitializeDatabaseAsync();
@@ -56,10 +62,18 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapHealthEndpoints();
+app.MapScopeTypeEndpoints();
+app.MapScopeValueEndpoints();
+app.MapNodeTagEndpoints();
+app.MapParameterEndpoints();
 app.MapNodeEndpoints();
 app.MapConfigurationEndpoints();
+app.MapCompositeConfigurationEndpoints();
 app.MapReportEndpoints();
 app.MapSettingsEndpoints();
+app.MapValidationSettingsEndpoints();
+app.MapConfigurationSettingsEndpoints();
 app.MapRegistrationKeyEndpoints();
+app.MapRetentionEndpoints();
 
 app.Run();

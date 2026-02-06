@@ -7,6 +7,11 @@ configuration management for distributed systems.
 
 - **Configuration Management**: Store and distribute DSC configurations
   to registered nodes
+- **Composite Configurations**: Combine multiple configurations into
+  single deployment units with version pinning and ordering
+- **Hierarchical Parameter Merging**: Merge parameters across multiple
+  scope types (Default, Region, Environment, Node) with precedence-based
+  ordering and node tagging
 - **Node Registration**: FQDN-based node identification with mTLS
   authentication
 - **mTLS Security**: Mutual TLS authentication using client certificates
@@ -47,6 +52,22 @@ dotnet build
 dotnet run
 ```
 
+## API Documentation
+
+For interactive API testing and detailed endpoint documentation, visit the
+**Scalar API Reference** at `/scalar/v1` when running the server. The Scalar
+interface provides complete request/response schemas, authentication examples,
+and the ability to test endpoints directly in your browser.
+
+For conceptual guides and real-world examples, see:
+
+- [Scope System Guide](../../docs/pull-server/scope-system.md) - Understanding scope types, values, and node tagging
+- [Parameter Merging](../../docs/pull-server/parameter-merging.md) - How parameters are merged and version management
+- [Configuration Management](../../docs/pull-server/configuration-management.md) - Version lifecycle and bundle generation
+- [Composite Configurations](../../docs/pull-server/composite-configurations.md) - Combining multiple configurations into deployable units
+- [Quick Start Tutorial](../../docs/pull-server/quickstart.md) - Step-by-step walkthrough
+- [Real-World Examples](../../docs/pull-server/examples/) - Multi-team collaboration scenarios
+
 ## API Endpoints
 
 ### Health
@@ -64,20 +85,108 @@ dotnet run
 | `/api/v1/nodes` | GET | Admin | List all nodes |
 | `/api/v1/nodes/{nodeId}` | GET | Admin | Get node details |
 | `/api/v1/nodes/{nodeId}` | DELETE | Admin | Delete a node |
-| `/api/v1/nodes/{nodeId}/configuration` | GET | Node | Download assigned configuration |
+| `/api/v1/nodes/{nodeId}/configuration` | GET | Node | Get assigned configuration info |
 | `/api/v1/nodes/{nodeId}/configuration` | PUT | Admin | Assign configuration to node |
 | `/api/v1/nodes/{nodeId}/configuration/checksum` | GET | Node | Get configuration checksum |
+| `/api/v1/nodes/{nodeId}/configuration/bundle` | GET | Node | Download configuration bundle with merged parameters |
 | `/api/v1/nodes/{nodeId}/rotate-certificate` | POST | Node | Rotate client certificate |
+| `/api/v1/nodes/{nodeId}/parameters/provenance` | GET | Admin | Get parameter provenance for node |
+| `/api/v1/nodes/{nodeId}/tags` | GET | Admin | List node tags (scope value assignments) |
 
 ### Configurations
 
 | Endpoint | Method | Auth | Description |
 | :-------- | :----- | :--- | :---------- |
 | `/api/v1/configurations` | GET | Admin | List all configurations |
-| `/api/v1/configurations` | POST | Admin | Create a new configuration |
+| `/api/v1/configurations` | POST | Admin | Create a new configuration (multipart/form-data upload) |
 | `/api/v1/configurations/{name}` | GET | Admin | Get configuration details |
-| `/api/v1/configurations/{name}` | PUT | Admin | Update configuration content |
 | `/api/v1/configurations/{name}` | DELETE | Admin | Delete a configuration |
+| `/api/v1/configurations/{name}/versions` | GET | Admin | List all versions for a configuration |
+| `/api/v1/configurations/{name}/versions` | POST | Admin | Create new version (multipart/form-data upload) |
+| `/api/v1/configurations/{name}/versions/{version}` | GET | Admin | Get version details |
+| `/api/v1/configurations/{name}/versions/{version}/publish` | PUT | Admin | Publish a draft version |
+| `/api/v1/configurations/{name}/versions/{version}` | DELETE | Admin | Delete a version (if not in use) |
+
+### Composite Configurations
+
+Composite configurations (also called meta configurations) allow you to
+combine multiple existing configurations into a single deployment unit.
+Composites do not contain their own files or parameters but reference
+other configurations as children.
+
+| Endpoint | Method | Auth | Description |
+| :-------- | :----- | :--- | :---------- |
+| `/api/v1/composite-configurations` | GET | Admin | List all composite configurations |
+| `/api/v1/composite-configurations` | POST | Admin | Create a composite configuration |
+| `/api/v1/composite-configurations/{name}` | GET | Admin | Get composite details |
+| `/api/v1/composite-configurations/{name}` | PUT | Admin | Update composite properties |
+| `/api/v1/composite-configurations/{name}` | DELETE | Admin | Delete composite |
+| `/api/v1/composite-configurations/{name}/versions` | GET | Admin | List all versions |
+| `/api/v1/composite-configurations/{name}/versions` | POST | Admin | Create a new version |
+| `/api/v1/composite-configurations/{name}/versions/{version}` | GET | Admin | Get version details |
+| `/api/v1/composite-configurations/{name}/versions/{version}/publish` | PUT | Admin | Publish a draft version |
+| `/api/v1/composite-configurations/{name}/versions/{version}` | DELETE | Admin | Delete version |
+| `/api/v1/composite-configurations/{name}/versions/{version}/children` | POST | Admin | Add child configuration |
+| `/api/v1/composite-configurations/{name}/versions/{version}/children/{id}` | PUT | Admin | Update child configuration |
+| `/api/v1/composite-configurations/{name}/versions/{version}/children/{id}` | DELETE | Admin | Remove child configuration |
+
+### Scope Types
+
+Scope types define categories for parameter organization with
+precedence-based ordering. Two system scope types are pre-configured:
+**Default** (precedence 0, no values) and **Node** (precedence 1,
+FQDN-based). You can create custom scope types like Region, Environment,
+or Team.
+
+| Endpoint | Method | Auth | Description |
+| :-------- | :----- | :--- | :---------- |
+| `/api/v1/scope-types` | GET | Admin | List all scope types ordered by precedence |
+| `/api/v1/scope-types` | POST | Admin | Create a new scope type |
+| `/api/v1/scope-types/{id}` | GET | Admin | Get scope type details by GUID |
+| `/api/v1/scope-types/{id}` | PUT | Admin | Update scope type properties |
+| `/api/v1/scope-types/{id}` | DELETE | Admin | Delete a scope type (only if unused) |
+| `/api/v1/scope-types/reorder` | PUT | Admin | Atomically reorder scope types by GUID array |
+
+### Scope Values
+
+Scope values are specific instances within a scope type (e.g.,
+"Production" for Environment scope type). The Default scope type does
+not allow values. The Node scope type values are implicitly assigned based
+on node FQDN.
+
+| Endpoint | Method | Auth | Description |
+| :-------- | :----- | :--- | :---------- |
+| `/api/v1/scope-types/{scopeTypeId}/values` | GET | Admin | List all values for a scope type |
+| `/api/v1/scope-types/{scopeTypeId}/values` | POST | Admin | Create a new scope value |
+| `/api/v1/scope-types/{scopeTypeId}/values/{id}` | GET | Admin | Get scope value by GUID |
+| `/api/v1/scope-types/{scopeTypeId}/values/{id}` | PUT | Admin | Update scope value properties |
+| `/api/v1/scope-types/{scopeTypeId}/values/{id}` | DELETE | Admin | Delete a scope value (only if unused) |
+
+### Node Tags
+
+Node tags associate nodes with specific scope values for parameter
+merging. Nodes can have one tag per scope type. Admin-only to prevent
+self-escalation.
+
+| Endpoint | Method | Auth | Description |
+| :-------- | :----- | :--- | :---------- |
+| `/api/v1/nodes/{nodeId}/tags` | GET | Admin | List all tags for a node |
+| `/api/v1/nodes/{nodeId}/tags` | POST | Admin | Assign a scope value to a node (body: `{scopeValueId: guid}`) |
+| `/api/v1/nodes/{nodeId}/tags/{scopeValueId}` | DELETE | Admin | Remove a specific tag by scope value GUID |
+
+### Parameters
+
+Parameters are YAML files (JSON also supported) stored per configuration
+and scope type/value combination. Parameter files support versioning with
+draft/active states.
+
+| Endpoint | Method | Auth | Description |
+| :-------- | :----- | :--- | :---------- |
+| `/api/v1/parameters/{scopeTypeId}/{configurationId}` | PUT | Admin | Create/update parameter version (use `?scopeValue=xyz` for non-Default scopes) |
+| `/api/v1/parameters/{scopeTypeId}/{configurationId}/versions` | GET | Admin | List parameter versions (use `?scopeValue=xyz` for non-Default scopes) |
+| `/api/v1/parameters/{scopeTypeId}/{configurationId}/versions/{version}/activate` | PUT | Admin | Activate a parameter version (use `?scopeValue=xyz` for non-Default scopes) |
+| `/api/v1/parameters/{scopeTypeId}/{configurationId}/versions/{version}` | DELETE | Admin | Delete parameter version (use `?scopeValue=xyz` for non-Default scopes) |
+| `/api/v1/nodes/{nodeId}/parameters/provenance` | GET | Admin | Get parameter provenance for node (use `?configurationId=guid`) |
 
 ### Reports
 
@@ -88,13 +197,19 @@ dotnet run
 | `/api/v1/reports` | GET | Admin | List all reports |
 | `/api/v1/reports/{reportId}` | GET | Admin | Get report details |
 
+### Retention
+
+| Endpoint | Method | Auth | Description |
+| :-------- | :----- | :--- | :---------- |
+| `/api/v1/retention/configurations/cleanup` | POST | Admin | Cleanup old configuration versions |
+| `/api/v1/retention/parameters/cleanup` | POST | Admin | Cleanup old parameter versions |
+
 ### Settings
 
 | Endpoint | Method | Auth | Description |
 | :-------- | :----- | :--- | :---------- |
 | `/api/v1/settings` | GET | Admin | Get server settings |
 | `/api/v1/settings` | PUT | Admin | Update server settings |
-| `/api/v1/settings/registration-keys` | POST | Admin | Create new registration key |
 
 ### Registration Keys
 
