@@ -25,9 +25,19 @@ public sealed class Node
     public string? ConfigurationName { get; set; }
 
     /// <summary>
-    /// SHA256 hash of the node's API key.
+    /// SHA256 thumbprint of the node's client certificate.
     /// </summary>
-    public string ApiKeyHash { get; set; } = string.Empty;
+    public string CertificateThumbprint { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Subject DN of the node's client certificate.
+    /// </summary>
+    public string CertificateSubject { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Expiration date of the node's client certificate.
+    /// </summary>
+    public DateTimeOffset CertificateNotAfter { get; set; }
 
     /// <summary>
     /// Last time the node checked in with the server.

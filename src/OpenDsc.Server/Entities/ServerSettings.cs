@@ -15,17 +15,17 @@ public sealed class ServerSettings
     public int Id { get; set; } = 1;
 
     /// <summary>
-    /// Registration key for new nodes to register.
-    /// </summary>
-    public string RegistrationKey { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Admin API key for management operations.
+    /// Argon2id hash of the admin API key.
     /// </summary>
     public string AdminApiKeyHash { get; set; } = string.Empty;
 
     /// <summary>
-    /// How often nodes should rotate their API keys.
+    /// Salt used for Argon2id hashing of the admin API key.
     /// </summary>
-    public TimeSpan KeyRotationInterval { get; set; } = TimeSpan.FromDays(7);
+    public string AdminApiKeySalt { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Default interval for certificate rotation (informational).
+    /// </summary>
+    public TimeSpan CertificateRotationInterval { get; set; } = TimeSpan.FromDays(60);
 }

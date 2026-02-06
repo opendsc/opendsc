@@ -36,8 +36,7 @@ public class LcmWorkerIntegrationTests
                     .ValidateOnStart();
 
                 services.AddHttpClient();
-                services.AddSingleton<DscExecutor>();
-                services.AddSingleton<PullServerClient>();
+                services.AddSingleton<DscExecutor>(); services.AddSingleton<ICertificateManager, CertificateManager>(); services.AddSingleton<PullServerClient>();
                 services.AddHostedService<LcmWorker>();
             })
             .ConfigureLogging(logging =>
@@ -237,6 +236,7 @@ resources: []
 
                 services.AddHttpClient();
                 services.AddSingleton<DscExecutor>();
+                services.AddSingleton<ICertificateManager, CertificateManager>();
                 services.AddSingleton<PullServerClient>();
             })
             .ConfigureLogging(logging =>
@@ -369,6 +369,7 @@ resources:
 
                 services.AddHttpClient();
                 services.AddSingleton<DscExecutor>();
+                services.AddSingleton<ICertificateManager, CertificateManager>();
                 services.AddSingleton<PullServerClient>();
                 services.AddHostedService<LcmWorker>();
             })
@@ -423,6 +424,7 @@ resources: []
 
                     services.AddHttpClient();
                     services.AddSingleton<DscExecutor>();
+                    services.AddSingleton<ICertificateManager, CertificateManager>();
                     services.AddSingleton<PullServerClient>();
                     services.AddHostedService<LcmWorker>();
                 })

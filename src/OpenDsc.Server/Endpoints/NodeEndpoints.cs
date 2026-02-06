@@ -7,7 +7,6 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
-using OpenDsc.Server.Authentication;
 using OpenDsc.Server.Contracts;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
@@ -23,7 +22,7 @@ public static class NodeEndpoints
 
         group.MapPost("/register", RegisterNode)
             .WithSummary("Register a node")
-            .WithDescription("Registers a new node or re-registers an existing node with the server.");
+            .WithDescription("Registers a new node or re-registers an existing node with the server using mTLS.");
 
         group.MapGet("/", GetNodes)
             .RequireAuthorization("Admin")
@@ -55,14 +54,16 @@ public static class NodeEndpoints
             .WithSummary("Get configuration checksum")
             .WithDescription("Returns the checksum of the assigned configuration for change detection.");
 
-        group.MapPost("/{nodeId:guid}/rotate-key", RotateKey)
+        group.MapPost("/{nodeId:guid}/rotate-certificate", RotateCertificate)
             .RequireAuthorization("Node")
-            .WithSummary("Rotate API key")
-            .WithDescription("Generates a new API key for the node, invalidating the old one.");
+            .WithSummary("Rotate certificate")
+            .WithDescription("Updates the node's certificate to a new one.");
     }
 
     private static async Task<Results<Ok<RegisterNodeResponse>, BadRequest<ErrorResponse>, Conflict<ErrorResponse>>> RegisterNode(
         RegisterNodeRequest request,
+        HttpContext httpContext,
+        IWebHostEnvironment env,
         ServerDbContext db,
         CancellationToken cancellationToken)
     {
@@ -76,47 +77,103 @@ public static class NodeEndpoints
             return TypedResults.BadRequest(new ErrorResponse { Error = "Registration key is required." });
         }
 
-        var settings = await db.ServerSettings.FirstOrDefaultAsync(cancellationToken);
-        if (settings is null || settings.RegistrationKey != request.RegistrationKey)
+        var clientCert = httpContext.Connection.ClientCertificate;
+        string thumbprint;
+        string subject;
+        DateTime notAfter;
+
+        if (env.IsEnvironment("Testing") && clientCert is null)
+        {
+            thumbprint = $"TEST-{Guid.NewGuid():N}";
+            subject = $"CN={request.Fqdn}";
+            notAfter = DateTime.UtcNow.AddYears(1);
+        }
+        else
+        {
+            if (clientCert is null)
+            {
+                return TypedResults.BadRequest(new ErrorResponse { Error = "Client certificate is required." });
+            }
+
+            thumbprint = clientCert.Thumbprint;
+            if (string.IsNullOrEmpty(thumbprint))
+            {
+                return TypedResults.BadRequest(new ErrorResponse { Error = "Certificate thumbprint is invalid." });
+            }
+
+            subject = clientCert.Subject;
+            notAfter = clientCert.NotAfter;
+        }
+
+        var registrationKey = await db.RegistrationKeys
+            .FirstOrDefaultAsync(k => k.Key == request.RegistrationKey, cancellationToken);
+
+        if (registrationKey is null)
         {
             return TypedResults.BadRequest(new ErrorResponse { Error = "Invalid registration key." });
+        }
+
+        if (registrationKey.IsRevoked)
+        {
+            return TypedResults.BadRequest(new ErrorResponse { Error = "Registration key has been revoked." });
+        }
+
+        if (DateTimeOffset.UtcNow > registrationKey.ExpiresAt)
+        {
+            return TypedResults.BadRequest(new ErrorResponse { Error = "Registration key has expired." });
+        }
+
+        if (registrationKey.MaxUses.HasValue && registrationKey.CurrentUses >= registrationKey.MaxUses.Value)
+        {
+            return TypedResults.BadRequest(new ErrorResponse { Error = "Registration key has reached its maximum uses." });
+        }
+
+        var thumbprintConflict = await db.Nodes
+            .FirstOrDefaultAsync(n => n.CertificateThumbprint == thumbprint && n.Fqdn != request.Fqdn, cancellationToken);
+
+        if (thumbprintConflict is not null)
+        {
+            return TypedResults.Conflict(new ErrorResponse
+            {
+                Error = $"Certificate thumbprint is already registered to another node: {thumbprintConflict.Fqdn}"
+            });
         }
 
         var existingNode = await db.Nodes.FirstOrDefaultAsync(n => n.Fqdn == request.Fqdn, cancellationToken);
         if (existingNode is not null)
         {
-            var newApiKey = ApiKeyAuthHandler.GenerateApiKey();
-            existingNode.ApiKeyHash = ApiKeyAuthHandler.HashApiKey(newApiKey);
+            existingNode.CertificateThumbprint = thumbprint;
+            existingNode.CertificateSubject = subject;
+            existingNode.CertificateNotAfter = notAfter;
             existingNode.LastCheckIn = DateTimeOffset.UtcNow;
+            registrationKey.CurrentUses++;
             await db.SaveChangesAsync(cancellationToken);
 
             return TypedResults.Ok(new RegisterNodeResponse
             {
-                NodeId = existingNode.Id,
-                ApiKey = newApiKey,
-                KeyRotationInterval = settings.KeyRotationInterval
+                NodeId = existingNode.Id
             });
         }
 
-        var apiKey = ApiKeyAuthHandler.GenerateApiKey();
         var node = new Node
         {
             Id = Guid.NewGuid(),
             Fqdn = request.Fqdn,
-            ApiKeyHash = ApiKeyAuthHandler.HashApiKey(apiKey),
+            CertificateThumbprint = thumbprint,
+            CertificateSubject = subject,
+            CertificateNotAfter = notAfter,
             Status = NodeStatus.Unknown,
             CreatedAt = DateTimeOffset.UtcNow,
             LastCheckIn = DateTimeOffset.UtcNow
         };
 
         db.Nodes.Add(node);
+        registrationKey.CurrentUses++;
         await db.SaveChangesAsync(cancellationToken);
 
         return TypedResults.Ok(new RegisterNodeResponse
         {
-            NodeId = node.Id,
-            ApiKey = apiKey,
-            KeyRotationInterval = settings.KeyRotationInterval
+            NodeId = node.Id
         });
     }
 
@@ -295,8 +352,9 @@ public static class NodeEndpoints
         return TypedResults.Ok(new ConfigurationChecksumResponse { Checksum = checksum });
     }
 
-    private static async Task<Results<Ok<RotateKeyResponse>, NotFound<ErrorResponse>, ForbidHttpResult>> RotateKey(
+    private static async Task<Results<Ok<RotateCertificateResponse>, NotFound<ErrorResponse>, BadRequest<ErrorResponse>, ForbidHttpResult>> RotateCertificate(
         Guid nodeId,
+        RotateCertificateRequest request,
         ClaimsPrincipal user,
         ServerDbContext db,
         CancellationToken cancellationToken)
@@ -307,24 +365,31 @@ public static class NodeEndpoints
             return TypedResults.Forbid();
         }
 
+        if (string.IsNullOrWhiteSpace(request.CertificateThumbprint))
+        {
+            return TypedResults.BadRequest(new ErrorResponse { Error = "Certificate thumbprint is required." });
+        }
+
+        if (string.IsNullOrWhiteSpace(request.CertificateSubject))
+        {
+            return TypedResults.BadRequest(new ErrorResponse { Error = "Certificate subject is required." });
+        }
+
         var node = await db.Nodes.FindAsync([nodeId], cancellationToken);
         if (node is null)
         {
             return TypedResults.NotFound(new ErrorResponse { Error = "Node not found." });
         }
 
-        var newApiKey = ApiKeyAuthHandler.GenerateApiKey();
-        node.ApiKeyHash = ApiKeyAuthHandler.HashApiKey(newApiKey);
+        node.CertificateThumbprint = request.CertificateThumbprint;
+        node.CertificateSubject = request.CertificateSubject;
+        node.CertificateNotAfter = request.CertificateNotAfter;
         node.LastCheckIn = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
 
-        var settings = await db.ServerSettings.FirstOrDefaultAsync(cancellationToken);
-        var interval = settings?.KeyRotationInterval ?? TimeSpan.FromDays(7);
-
-        return TypedResults.Ok(new RotateKeyResponse
+        return TypedResults.Ok(new RotateCertificateResponse
         {
-            ApiKey = newApiKey,
-            KeyRotationInterval = interval
+            Message = "Certificate updated successfully"
         });
     }
 }

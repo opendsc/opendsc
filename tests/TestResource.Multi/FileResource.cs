@@ -25,8 +25,10 @@ public sealed class FileSchema
 public sealed class FileResource(JsonSerializerContext context) : DscResource<FileSchema>(context),
     IGettable<FileSchema>, ISettable<FileSchema>, ITestable<FileSchema>, IDeletable<FileSchema>
 {
-    public FileSchema Get(FileSchema instance)
+    public FileSchema Get(FileSchema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         if (instance.Path.Contains("trigger-generic-exception", StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException("Simulated generic error");
@@ -56,8 +58,10 @@ public sealed class FileResource(JsonSerializerContext context) : DscResource<Fi
         };
     }
 
-    public SetResult<FileSchema>? Set(FileSchema instance)
+    public SetResult<FileSchema>? Set(FileSchema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         var current = Get(instance);
         var changedProperties = new List<string>();
 
@@ -89,8 +93,10 @@ public sealed class FileResource(JsonSerializerContext context) : DscResource<Fi
         };
     }
 
-    public TestResult<FileSchema> Test(FileSchema instance)
+    public TestResult<FileSchema> Test(FileSchema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         var current = Get(instance);
         var differingProperties = new List<string>();
 
@@ -110,8 +116,10 @@ public sealed class FileResource(JsonSerializerContext context) : DscResource<Fi
         };
     }
 
-    public void Delete(FileSchema instance)
+    public void Delete(FileSchema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         if (File.Exists(instance.Path))
         {
             File.Delete(instance.Path);

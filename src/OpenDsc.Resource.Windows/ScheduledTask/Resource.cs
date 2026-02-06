@@ -31,8 +31,10 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         return reader.ReadToEnd();
     }
 
-    public Schema Get(Schema instance)
+    public Schema Get(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         using var ts = new TaskService();
         var task = ts.GetTask($"{instance.TaskPath.TrimEnd('\\')}{(instance.TaskPath == Schema.DefaultTaskPath ? "" : "\\")}{instance.TaskName}");
 
@@ -116,8 +118,10 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         };
     }
 
-    public SetResult<Schema>? Set(Schema instance)
+    public SetResult<Schema>? Set(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         using var ts = new TaskService();
         var taskFullPath = $"{instance.TaskPath.TrimEnd('\\')}{(instance.TaskPath == Schema.DefaultTaskPath ? "" : "\\")}{instance.TaskName}";
         var task = ts.GetTask(taskFullPath);
@@ -288,8 +292,10 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         return null;
     }
 
-    public void Delete(Schema instance)
+    public void Delete(Schema? instance)
     {
+        ArgumentNullException.ThrowIfNull(instance);
+
         using var ts = new TaskService();
         var taskFullPath = $"{instance.TaskPath.TrimEnd('\\')}{(instance.TaskPath == Schema.DefaultTaskPath ? "" : "\\")}{instance.TaskName}";
         var task = ts.GetTask(taskFullPath);
@@ -300,7 +306,7 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         }
     }
 
-    public IEnumerable<Schema> Export()
+    public IEnumerable<Schema> Export(Schema? filter)
     {
         using var ts = new TaskService();
         return ExportTasksFromFolder(ts.RootFolder);
