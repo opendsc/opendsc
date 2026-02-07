@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
+using OpenDsc.Server.Authorization;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
 
@@ -17,7 +18,7 @@ public static class ScopeValueEndpoints
     {
         var group = app.MapGroup("/api/v1/scope-types/{scopeTypeId:guid}/values")
             .WithTags("Scope Values")
-            .RequireAuthorization("Admin");
+            .RequireAuthorization(Permissions.Scopes_AdminOverride);
 
         group.MapGet("/", GetScopeValues)
             .WithName("GetScopeValues")

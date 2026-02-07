@@ -66,7 +66,7 @@ public class ReportEndpointsTests : IDisposable
     {
         var nodeId = await RegisterTestNodeAsync();
 
-        using var client = _factory.CreateAuthenticatedClient("test-admin-key");
+        using var client = _factory.CreateAuthenticatedClient();
 
         var response = await client.GetAsync($"/api/v1/nodes/{nodeId}/reports");
 
@@ -87,7 +87,7 @@ public class ReportEndpointsTests : IDisposable
     [Fact]
     public async Task GetAllReports_WithAuth_ReturnsAllReports()
     {
-        using var client = _factory.CreateAuthenticatedClient("test-admin-key");
+        using var client = _factory.CreateAuthenticatedClient();
 
         var response = await client.GetAsync("/api/v1/reports");
 
@@ -109,7 +109,7 @@ public class ReportEndpointsTests : IDisposable
     [Fact]
     public async Task GetReport_NotFound_ReturnsNotFound()
     {
-        using var client = _factory.CreateAuthenticatedClient("test-admin-key");
+        using var client = _factory.CreateAuthenticatedClient();
 
         var response = await client.GetAsync($"/api/v1/reports/{Guid.NewGuid()}");
 
@@ -133,7 +133,7 @@ public class ReportEndpointsTests : IDisposable
         // Note: Nodes now use mTLS for authentication, this tests admin access
         var nodeId = await RegisterTestNodeAsync();
 
-        using var adminClient = _factory.CreateAuthenticatedClient("test-admin-key");
+        using var adminClient = _factory.CreateAuthenticatedClient();
         var getResponse = await adminClient.GetAsync($"/api/v1/nodes/{nodeId}/reports");
 
         getResponse.StatusCode.Should().Be(HttpStatusCode.OK);

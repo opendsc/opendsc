@@ -93,6 +93,71 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
     /// </summary>
     public DbSet<ServerSettings> ServerSettings => Set<ServerSettings>();
 
+    /// <summary>
+    /// Users and service accounts.
+    /// </summary>
+    public DbSet<User> Users => Set<User>();
+
+    /// <summary>
+    /// Roles with permissions.
+    /// </summary>
+    public DbSet<Role> Roles => Set<Role>();
+
+    /// <summary>
+    /// Internal groups.
+    /// </summary>
+    public DbSet<Group> Groups => Set<Group>();
+
+    /// <summary>
+    /// External group mappings.
+    /// </summary>
+    public DbSet<ExternalGroupMapping> ExternalGroupMappings => Set<ExternalGroupMapping>();
+
+    /// <summary>
+    /// User-role associations.
+    /// </summary>
+    public DbSet<UserRole> UserRoles => Set<UserRole>();
+
+    /// <summary>
+    /// User-group associations.
+    /// </summary>
+    public DbSet<UserGroup> UserGroups => Set<UserGroup>();
+
+    /// <summary>
+    /// Group-role associations.
+    /// </summary>
+    public DbSet<GroupRole> GroupRoles => Set<GroupRole>();
+
+    /// <summary>
+    /// Personal access tokens.
+    /// </summary>
+    public DbSet<PersonalAccessToken> PersonalAccessTokens => Set<PersonalAccessToken>();
+
+    /// <summary>
+    /// External login providers.
+    /// </summary>
+    public DbSet<ExternalLogin> ExternalLogins => Set<ExternalLogin>();
+
+    /// <summary>
+    /// Configuration permissions.
+    /// </summary>
+    public DbSet<ConfigurationPermission> ConfigurationPermissions => Set<ConfigurationPermission>();
+
+    /// <summary>
+    /// Composite configuration permissions.
+    /// </summary>
+    public DbSet<CompositeConfigurationPermission> CompositeConfigurationPermissions => Set<CompositeConfigurationPermission>();
+
+    /// <summary>
+    /// Parameter permissions.
+    /// </summary>
+    public DbSet<ParameterPermission> ParameterPermissions => Set<ParameterPermission>();
+
+    /// <summary>
+    /// Audit log.
+    /// </summary>
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -288,8 +353,6 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
         modelBuilder.Entity<ServerSettings>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.AdminApiKeyHash).HasMaxLength(128).IsRequired();
-            entity.Property(e => e.AdminApiKeySalt).HasMaxLength(64).IsRequired();
         });
 
         modelBuilder.Entity<ParameterSchema>(entity =>
@@ -321,6 +384,178 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
                 .WithMany()
                 .HasForeignKey(e => e.ConfigurationId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // User management entities
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Username).IsUnique();
+            entity.HasIndex(e => e.Email).IsUnique();
+            entity.Property(e => e.Username).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.Email).HasMaxLength(256).IsRequired();
+            entity.Property(e => e.PasswordHash).HasMaxLength(128);
+            entity.Property(e => e.PasswordSalt).HasMaxLength(64);
+            entity.Property(e => e.AccountType).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.Description).HasMaxLength(500);
+        });
+
+        modelBuilder.Entity<Role>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Name).IsUnique();
+            entity.Property(e => e.Name).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.Description).HasMaxLength(500);
+            entity.Property(e => e.Permissions).IsRequired();
+        });
+
+        modelBuilder.Entity<Group>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Name).IsUnique();
+            entity.Property(e => e.Name).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.Description).HasMaxLength(500);
+        });
+
+        modelBuilder.Entity<ExternalGroupMapping>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.Provider, e.ExternalGroupId }).IsUnique();
+            entity.Property(e => e.ExternalGroupId).HasMaxLength(256).IsRequired();
+            entity.Property(e => e.ExternalGroupName).HasMaxLength(256);
+            entity.Property(e => e.Provider).HasMaxLength(50).IsRequired();
+
+            entity.HasOne<Group>()
+                .WithMany()
+                .HasForeignKey(e => e.GroupId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<UserRole>(entity =>
+        {
+            entity.HasKey(e => new { e.UserId, e.RoleId });
+
+            entity.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne<Role>()
+                .WithMany()
+                .HasForeignKey(e => e.RoleId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<UserGroup>(entity =>
+        {
+            entity.HasKey(e => new { e.UserId, e.GroupId });
+
+            entity.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne<Group>()
+                .WithMany()
+                .HasForeignKey(e => e.GroupId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<GroupRole>(entity =>
+        {
+            entity.HasKey(e => new { e.GroupId, e.RoleId });
+
+            entity.HasOne<Group>()
+                .WithMany()
+                .HasForeignKey(e => e.GroupId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne<Role>()
+                .WithMany()
+                .HasForeignKey(e => e.RoleId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PersonalAccessToken>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.TokenHash);
+            entity.HasIndex(e => e.UserId);
+            entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.TokenHash).HasMaxLength(128).IsRequired();
+            entity.Property(e => e.TokenPrefix).HasMaxLength(20).IsRequired();
+            entity.Property(e => e.Scopes).IsRequired();
+            entity.Property(e => e.LastUsedIpAddress).HasMaxLength(45);
+
+            entity.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ExternalLogin>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.Provider, e.ProviderKey }).IsUnique();
+            entity.Property(e => e.Provider).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.ProviderKey).HasMaxLength(256).IsRequired();
+            entity.Property(e => e.ProviderDisplayName).HasMaxLength(100);
+
+            entity.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ConfigurationPermission>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.ConfigurationId, e.PrincipalType, e.PrincipalId }).IsUnique();
+            entity.Property(e => e.PrincipalType).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.PermissionLevel).HasConversion<string>().HasMaxLength(20);
+
+            entity.HasOne<Configuration>()
+                .WithMany()
+                .HasForeignKey(e => e.ConfigurationId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CompositeConfigurationPermission>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.CompositeConfigurationId, e.PrincipalType, e.PrincipalId }).IsUnique();
+            entity.Property(e => e.PrincipalType).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.PermissionLevel).HasConversion<string>().HasMaxLength(20);
+
+            entity.HasOne<CompositeConfiguration>()
+                .WithMany()
+                .HasForeignKey(e => e.CompositeConfigurationId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ParameterPermission>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.ParameterId, e.PrincipalType, e.PrincipalId }).IsUnique();
+            entity.Property(e => e.PrincipalType).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.PermissionLevel).HasConversion<string>().HasMaxLength(20);
+
+            entity.HasOne<ParameterSchema>()
+                .WithMany()
+                .HasForeignKey(e => e.ParameterId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AuditLog>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Timestamp);
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => new { e.ResourceType, e.ResourceId });
+            entity.Property(e => e.Username).HasMaxLength(100);
+            entity.Property(e => e.Action).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.ResourceType).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.IpAddress).HasMaxLength(45);
         });
 
         SeedDefaultScopeTypes(modelBuilder);

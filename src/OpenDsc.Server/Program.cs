@@ -36,7 +36,7 @@ builder.Services.AddSingleton(SourceGenerationContext.Default.Options);
 builder.Services.AddOpenApi();
 
 builder.Services.AddServerDatabase(builder.Configuration);
-builder.Services.AddServerAuthentication();
+builder.Services.AddServerAuthentication(builder.Environment);
 
 builder.Services.AddSingleton<IParameterMerger, ParameterMerger>();
 builder.Services.AddScoped<IParameterMergeService, ParameterMergeService>();
@@ -61,6 +61,10 @@ if (app.Environment.IsDevelopment())
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapAuthenticationEndpoints();
+app.MapUserEndpoints();
+app.MapGroupEndpoints();
+app.MapRoleEndpoints();
 app.MapHealthEndpoints();
 app.MapScopeTypeEndpoints();
 app.MapScopeValueEndpoints();

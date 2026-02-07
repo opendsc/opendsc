@@ -5,10 +5,12 @@
 using System.Security.Cryptography;
 using System.Text;
 
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
+using OpenDsc.Server.Authentication;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
 using OpenDsc.Server.Services;
@@ -21,7 +23,11 @@ public static class ParameterEndpoints
     {
         var group = app.MapGroup("/api/v1/parameters")
             .WithTags("Parameters")
-            .RequireAuthorization("Admin");
+            .RequireAuthorization(policy => policy
+                .RequireAuthenticatedUser()
+                .AddAuthenticationSchemes(
+                    CookieAuthenticationDefaults.AuthenticationScheme,
+                    PersonalAccessTokenHandler.SchemeName));
 
         group.MapPut("/{scopeTypeId:guid}/{configurationId:guid}", CreateOrUpdateParameter)
             .WithName("CreateOrUpdateParameter")
@@ -49,12 +55,14 @@ public static class ParameterEndpoints
         return app;
     }
 
-    private static async Task<Results<Ok<ParameterFileDto>, BadRequest<string>, NotFound>> CreateOrUpdateParameter(
+    private static async Task<Results<Ok<ParameterFileDto>, BadRequest<string>, NotFound, ForbidHttpResult>> CreateOrUpdateParameter(
         Guid scopeTypeId,
         Guid configurationId,
         [FromBody] CreateParameterRequest request,
         ServerDbContext db,
-        IConfiguration config)
+        IConfiguration config,
+        IResourceAuthorizationService authService,
+        IUserContextService userContext)
     {
         var scopeType = await db.ScopeTypes.FindAsync(scopeTypeId);
         if (scopeType is null)
@@ -66,6 +74,33 @@ public static class ParameterEndpoints
         if (configuration is null)
         {
             return TypedResults.NotFound();
+        }
+
+        // Find or create ParameterSchema to check permissions
+        var parameterSchema = await db.ParameterSchemas
+            .FirstOrDefaultAsync(ps => ps.ConfigurationId == configurationId);
+
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null)
+        {
+            return TypedResults.Forbid();
+        }
+
+        // For existing parameter schemas, check Modify permission
+        if (parameterSchema is not null)
+        {
+            if (!await authService.CanModifyParameterAsync(userId.Value, parameterSchema.Id))
+            {
+                return TypedResults.Forbid();
+            }
+        }
+        else
+        {
+            // No parameter schema exists yet; require permission to modify the parent configuration
+            if (!await authService.CanModifyConfigurationAsync(userId.Value, configurationId))
+            {
+                return TypedResults.Forbid();
+            }
         }
 
         if (scopeType.AllowsValues && string.IsNullOrWhiteSpace(request.ScopeValue))
@@ -136,10 +171,7 @@ public static class ParameterEndpoints
             });
         }
 
-        // Find or create ParameterSchema for this configuration
-        var parameterSchema = await db.ParameterSchemas
-            .FirstOrDefaultAsync(ps => ps.ConfigurationId == configurationId);
-
+        // Create ParameterSchema if it doesn't exist
         if (parameterSchema is null)
         {
             parameterSchema = new ParameterSchema
@@ -152,6 +184,14 @@ public static class ParameterEndpoints
             };
             db.ParameterSchemas.Add(parameterSchema);
             await db.SaveChangesAsync();
+
+            // Auto-grant Manage permission to creator
+            await authService.GrantParameterPermissionAsync(
+                parameterSchema.Id,
+                userId.Value,
+                PrincipalType.User,
+                ResourcePermission.Manage,
+                userId.Value);
         }
 
         var parameterFile = new ParameterFile
@@ -185,16 +225,32 @@ public static class ParameterEndpoints
         });
     }
 
-    private static async Task<Results<Ok<List<ParameterFileDto>>, NotFound>> GetParameterVersions(
+    private static async Task<Results<Ok<List<ParameterFileDto>>, NotFound, ForbidHttpResult>> GetParameterVersions(
         Guid scopeTypeId,
         Guid configurationId,
         [FromQuery] string? scopeValue,
-        ServerDbContext db)
+        ServerDbContext db,
+        IResourceAuthorizationService authService,
+        IUserContextService userContext)
     {
         var scopeType = await db.ScopeTypes.FindAsync(scopeTypeId);
         if (scopeType is null)
         {
             return TypedResults.NotFound();
+        }
+
+        var parameterSchema = await db.ParameterSchemas
+            .FirstOrDefaultAsync(ps => ps.ConfigurationId == configurationId);
+
+        if (parameterSchema is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null || !await authService.CanReadParameterAsync(userId.Value, parameterSchema.Id))
+        {
+            return TypedResults.Forbid();
         }
 
         var versions = await db.ParameterFiles
@@ -224,12 +280,14 @@ public static class ParameterEndpoints
         return TypedResults.Ok(orderedVersions);
     }
 
-    private static async Task<Results<Ok<ParameterFileDto>, NotFound, Conflict<string>>> ActivateParameterVersion(
+    private static async Task<Results<Ok<ParameterFileDto>, NotFound, Conflict<string>, ForbidHttpResult>> ActivateParameterVersion(
         Guid scopeTypeId,
         Guid configurationId,
         string version,
         [FromQuery] string? scopeValue,
-        ServerDbContext db)
+        ServerDbContext db,
+        IResourceAuthorizationService authService,
+        IUserContextService userContext)
     {
         var parameterFile = await db.ParameterFiles
             .Include(pf => pf.ParameterSchema)
@@ -242,6 +300,12 @@ public static class ParameterEndpoints
         if (parameterFile is null)
         {
             return TypedResults.NotFound();
+        }
+
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null || !await authService.CanModifyParameterAsync(userId.Value, parameterFile.ParameterSchemaId))
+        {
+            return TypedResults.Forbid();
         }
 
         var currentlyActive = await db.ParameterFiles
@@ -276,12 +340,14 @@ public static class ParameterEndpoints
         });
     }
 
-    private static async Task<Results<NoContent, NotFound, Conflict<string>>> DeleteParameterVersion(
+    private static async Task<Results<NoContent, NotFound, Conflict<string>, ForbidHttpResult>> DeleteParameterVersion(
         Guid scopeTypeId,
         Guid configurationId,
         string version,
         [FromQuery] string? scopeValue,
-        ServerDbContext db)
+        ServerDbContext db,
+        IResourceAuthorizationService authService,
+        IUserContextService userContext)
     {
         var parameterFile = await db.ParameterFiles
             .Include(pf => pf.ParameterSchema)
@@ -294,6 +360,12 @@ public static class ParameterEndpoints
         if (parameterFile is null)
         {
             return TypedResults.NotFound();
+        }
+
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null || !await authService.CanManageParameterAsync(userId.Value, parameterFile.ParameterSchemaId))
+        {
+            return TypedResults.Forbid();
         }
 
         if (parameterFile.IsActive)

@@ -4,12 +4,15 @@
 
 using System.Security.Cryptography;
 
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
+using OpenDsc.Server.Authentication;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
+using OpenDsc.Server.Services;
 
 namespace OpenDsc.Server.Endpoints;
 
@@ -18,7 +21,11 @@ public static class ConfigurationEndpoints
     public static void MapConfigurationEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/v1/configurations")
-            .RequireAuthorization("Admin")
+            .RequireAuthorization(policy => policy
+                .RequireAuthenticatedUser()
+                .AddAuthenticationSchemes(
+                    CookieAuthenticationDefaults.AuthenticationScheme,
+                    PersonalAccessTokenHandler.SchemeName))
             .WithTags("Configurations");
 
         group.MapGet("/", GetConfigurations)
@@ -57,9 +64,20 @@ public static class ConfigurationEndpoints
     }
 
     private static async Task<Ok<List<ConfigurationSummaryDto>>> GetConfigurations(
-        ServerDbContext db)
+        ServerDbContext db,
+        IResourceAuthorizationService authService,
+        IUserContextService userContext)
     {
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null)
+        {
+            return TypedResults.Ok(new List<ConfigurationSummaryDto>());
+        }
+
+        var readableIds = await authService.GetReadableConfigurationIdsAsync(userId.Value);
+
         var configs = await db.Configurations
+            .Where(c => readableIds.Contains(c.Id))
             .Include(c => c.Versions)
             .ToListAsync();
 
@@ -81,7 +99,9 @@ public static class ConfigurationEndpoints
         [FromForm] CreateConfigurationDto request,
         IFormFileCollection files,
         ServerDbContext db,
-        IConfiguration config)
+        IConfiguration config,
+        IResourceAuthorizationService authService,
+        IUserContextService userContext)
     {
         if (string.IsNullOrWhiteSpace(request.Name))
         {
@@ -168,6 +188,17 @@ public static class ConfigurationEndpoints
 
         await db.SaveChangesAsync();
 
+        var userId = userContext.GetCurrentUserId();
+        if (userId.HasValue)
+        {
+            await authService.GrantConfigurationPermissionAsync(
+                configuration.Id,
+                userId.Value,
+                PrincipalType.User,
+                ResourcePermission.Manage,
+                userId.Value);
+        }
+
         var details = new ConfigurationDetailsDto
         {
             Name = configuration.Name,
@@ -181,9 +212,11 @@ public static class ConfigurationEndpoints
         return TypedResults.Created($"/api/v1/configurations/{configuration.Name}", details);
     }
 
-    private static async Task<Results<Ok<ConfigurationDetailsDto>, NotFound>> GetConfigurationDetails(
+    private static async Task<Results<Ok<ConfigurationDetailsDto>, NotFound, ForbidHttpResult>> GetConfigurationDetails(
         string name,
-        ServerDbContext db)
+        ServerDbContext db,
+        IResourceAuthorizationService authService,
+        IUserContextService userContext)
     {
         var config = await db.Configurations
             .Include(c => c.Versions)
@@ -192,6 +225,12 @@ public static class ConfigurationEndpoints
         if (config is null)
         {
             return TypedResults.NotFound();
+        }
+
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null || !await authService.CanReadConfigurationAsync(userId.Value, config.Id))
+        {
+            return TypedResults.Forbid();
         }
 
         var latestVersion = config.Versions
@@ -213,9 +252,11 @@ public static class ConfigurationEndpoints
         return TypedResults.Ok(details);
     }
 
-    private static async Task<Results<Ok<List<ConfigurationVersionDto>>, NotFound>> GetConfigurationVersions(
+    private static async Task<Results<Ok<List<ConfigurationVersionDto>>, NotFound, ForbidHttpResult>> GetConfigurationVersions(
         string name,
-        ServerDbContext db)
+        ServerDbContext db,
+        IResourceAuthorizationService authService,
+        IUserContextService userContext)
     {
         var config = await db.Configurations
             .Include(c => c.Versions)
@@ -225,6 +266,12 @@ public static class ConfigurationEndpoints
         if (config is null)
         {
             return TypedResults.NotFound();
+        }
+
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null || !await authService.CanReadConfigurationAsync(userId.Value, config.Id))
+        {
+            return TypedResults.Forbid();
         }
 
         var versions = config.Versions
@@ -243,17 +290,25 @@ public static class ConfigurationEndpoints
         return TypedResults.Ok(versions);
     }
 
-    private static async Task<Results<Created<ConfigurationVersionDto>, NotFound, BadRequest<string>>> CreateConfigurationVersion(
+    private static async Task<Results<Created<ConfigurationVersionDto>, NotFound, BadRequest<string>, ForbidHttpResult>> CreateConfigurationVersion(
         string name,
         [FromForm] CreateConfigurationVersionDto request,
         IFormFileCollection files,
         ServerDbContext db,
-        IConfiguration config)
+        IConfiguration config,
+        IResourceAuthorizationService authService,
+        IUserContextService userContext)
     {
         var configuration = await db.Configurations.FirstOrDefaultAsync(c => c.Name == name);
         if (configuration is null)
         {
             return TypedResults.NotFound();
+        }
+
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null || !await authService.CanModifyConfigurationAsync(userId.Value, configuration.Id))
+        {
+            return TypedResults.Forbid();
         }
 
         if (files.Count == 0)
@@ -339,15 +394,23 @@ public static class ConfigurationEndpoints
         return TypedResults.Created($"/api/v1/configurations/{name}/versions/{version.Version}", versionDto);
     }
 
-    private static async Task<Results<Ok<ConfigurationVersionDto>, NotFound, BadRequest<string>>> PublishConfigurationVersion(
+    private static async Task<Results<Ok<ConfigurationVersionDto>, NotFound, BadRequest<string>, ForbidHttpResult>> PublishConfigurationVersion(
         string name,
         string version,
-        ServerDbContext db)
+        ServerDbContext db,
+        IResourceAuthorizationService authService,
+        IUserContextService userContext)
     {
         var config = await db.Configurations.FirstOrDefaultAsync(c => c.Name == name);
         if (config is null)
         {
             return TypedResults.NotFound();
+        }
+
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null || !await authService.CanModifyConfigurationAsync(userId.Value, config.Id))
+        {
+            return TypedResults.Forbid();
         }
 
         var configVersion = await db.ConfigurationVersions
@@ -385,10 +448,12 @@ public static class ConfigurationEndpoints
         return TypedResults.Ok(versionDto);
     }
 
-    private static async Task<Results<NoContent, NotFound, Conflict<string>>> DeleteConfiguration(
+    private static async Task<Results<NoContent, NotFound, Conflict<string>, ForbidHttpResult>> DeleteConfiguration(
         string name,
         ServerDbContext db,
-        IConfiguration config)
+        IConfiguration config,
+        IResourceAuthorizationService authService,
+        IUserContextService userContext)
     {
         var configuration = await db.Configurations
             .Include(c => c.Versions)
@@ -398,6 +463,12 @@ public static class ConfigurationEndpoints
         if (configuration is null)
         {
             return TypedResults.NotFound();
+        }
+
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null || !await authService.CanManageConfigurationAsync(userId.Value, configuration.Id))
+        {
+            return TypedResults.Forbid();
         }
 
         if (configuration.NodeConfigurations.Count > 0)
@@ -418,16 +489,24 @@ public static class ConfigurationEndpoints
         return TypedResults.NoContent();
     }
 
-    private static async Task<Results<NoContent, NotFound, Conflict<string>>> DeleteConfigurationVersion(
+    private static async Task<Results<NoContent, NotFound, Conflict<string>, ForbidHttpResult>> DeleteConfigurationVersion(
         string name,
         string version,
         ServerDbContext db,
-        IConfiguration config)
+        IConfiguration config,
+        IResourceAuthorizationService authService,
+        IUserContextService userContext)
     {
         var configuration = await db.Configurations.FirstOrDefaultAsync(c => c.Name == name);
         if (configuration is null)
         {
             return TypedResults.NotFound();
+        }
+
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null || !await authService.CanManageConfigurationAsync(userId.Value, configuration.Id))
+        {
+            return TypedResults.Forbid();
         }
 
         var configVersion = await db.ConfigurationVersions

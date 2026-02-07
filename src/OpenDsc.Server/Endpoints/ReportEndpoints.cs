@@ -8,6 +8,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
+using OpenDsc.Server.Authorization;
 using OpenDsc.Server.Contracts;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
@@ -27,12 +28,12 @@ public static class ReportEndpoints
             .WithDescription("Submits a compliance report from a node.");
 
         nodeGroup.MapGet("/", GetNodeReports)
-            .RequireAuthorization("Admin")
+            .RequireAuthorization(Permissions.Reports_Read)
             .WithSummary("Get node reports")
             .WithDescription("Returns all compliance reports for a specific node.");
 
         var reportGroup = app.MapGroup("/api/v1/reports")
-            .RequireAuthorization("Admin")
+            .RequireAuthorization(Permissions.Reports_ReadAll)
             .WithTags("Reports");
 
         reportGroup.MapGet("/", GetAllReports)

@@ -5,6 +5,7 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
+using OpenDsc.Server.Authorization;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
 
@@ -16,7 +17,7 @@ internal static class ValidationSettingsEndpoints
     {
         var group = routes.MapGroup("/api/v1/settings/validation")
             .WithTags("Settings")
-            .RequireAuthorization("Admin");
+            .RequireAuthorization(Permissions.ServerSettings_Write);
 
         group.MapGet("", GetValidationSettings)
             .WithName("GetValidationSettings");

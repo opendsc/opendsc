@@ -29,9 +29,7 @@ public class ParameterEndpointsTests : IDisposable
 
     private HttpClient CreateAuthenticatedClient()
     {
-        var client = _factory.CreateClient();
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "test-admin-key");
-        return client;
+        return _factory.CreateAuthenticatedClient();
     }
 
     private async Task<Guid> CreateTestConfigurationAsync(HttpClient client, string name)

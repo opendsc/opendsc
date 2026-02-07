@@ -5,10 +5,11 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
-using OpenDsc.Server.Authentication;
+using OpenDsc.Server.Authorization;
 using OpenDsc.Server.Contracts;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
+using OpenDsc.Server.Services;
 
 namespace OpenDsc.Server.Endpoints;
 
@@ -17,7 +18,7 @@ public static class SettingsEndpoints
     public static void MapSettingsEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/v1/settings")
-            .RequireAuthorization("Admin")
+            .RequireAuthorization(Permissions.ServerSettings_Write)
             .WithTags("Settings");
 
         group.MapGet("/", GetSettings)
@@ -77,7 +78,7 @@ public static class SettingsEndpoints
         ServerDbContext db,
         CancellationToken cancellationToken)
     {
-        var key = ApiKeyAuthHandler.GenerateRegistrationKey();
+        var key = KeyGenerator.GenerateRegistrationKey();
         var expiresAt = DateTimeOffset.UtcNow.AddDays(30);
 
         var registrationKey = new RegistrationKey

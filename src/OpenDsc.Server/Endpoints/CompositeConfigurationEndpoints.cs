@@ -2,12 +2,15 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
+using OpenDsc.Server.Authentication;
 using OpenDsc.Server.Contracts;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
+using OpenDsc.Server.Services;
 
 namespace OpenDsc.Server.Endpoints;
 
@@ -16,7 +19,11 @@ public static class CompositeConfigurationEndpoints
     public static void MapCompositeConfigurationEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/v1/composite-configurations")
-            .RequireAuthorization("Admin")
+            .RequireAuthorization(policy => policy
+                .RequireAuthenticatedUser()
+                .AddAuthenticationSchemes(
+                    CookieAuthenticationDefaults.AuthenticationScheme,
+                    PersonalAccessTokenHandler.SchemeName))
             .WithTags("Composite Configurations");
 
         group.MapGet("/", GetCompositeConfigurations)
@@ -69,9 +76,20 @@ public static class CompositeConfigurationEndpoints
     }
 
     private static async Task<Ok<List<CompositeConfigurationSummaryDto>>> GetCompositeConfigurations(
-        ServerDbContext db)
+        ServerDbContext db,
+        IResourceAuthorizationService authService,
+        IUserContextService userContext)
     {
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null)
+        {
+            return TypedResults.Ok(new List<CompositeConfigurationSummaryDto>());
+        }
+
+        var readableIds = await authService.GetReadableCompositeConfigurationIdsAsync(userId.Value);
+
         var composites = await db.CompositeConfigurations
+            .Where(c => readableIds.Contains(c.Id))
             .Include(c => c.Versions)
             .ToListAsync();
 
@@ -91,7 +109,9 @@ public static class CompositeConfigurationEndpoints
 
     private static async Task<Results<Created<CompositeConfigurationDetailsDto>, BadRequest<ErrorResponse>, Conflict<ErrorResponse>>> CreateCompositeConfiguration(
         CreateCompositeConfigurationRequest request,
-        ServerDbContext db)
+        ServerDbContext db,
+        IResourceAuthorizationService authService,
+        IUserContextService userContext)
     {
         if (string.IsNullOrWhiteSpace(request.Name))
         {
@@ -116,6 +136,17 @@ public static class CompositeConfigurationEndpoints
         db.CompositeConfigurations.Add(composite);
         await db.SaveChangesAsync();
 
+        var userId = userContext.GetCurrentUserId();
+        if (userId.HasValue)
+        {
+            await authService.GrantCompositeConfigurationPermissionAsync(
+                composite.Id,
+                userId.Value,
+                PrincipalType.User,
+                ResourcePermission.Manage,
+                userId.Value);
+        }
+
         var details = new CompositeConfigurationDetailsDto
         {
             Id = composite.Id,
@@ -131,9 +162,11 @@ public static class CompositeConfigurationEndpoints
         return TypedResults.Created($"/api/v1/composite-configurations/{composite.Name}", details);
     }
 
-    private static async Task<Results<Ok<CompositeConfigurationDetailsDto>, NotFound>> GetCompositeConfigurationDetails(
+    private static async Task<Results<Ok<CompositeConfigurationDetailsDto>, NotFound, ForbidHttpResult>> GetCompositeConfigurationDetails(
         string name,
-        ServerDbContext db)
+        ServerDbContext db,
+        IResourceAuthorizationService authService,
+        IUserContextService userContext)
     {
         var composite = await db.CompositeConfigurations
             .Include(c => c.Versions)
@@ -144,6 +177,12 @@ public static class CompositeConfigurationEndpoints
         if (composite is null)
         {
             return TypedResults.NotFound();
+        }
+
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null || !await authService.CanReadCompositeConfigurationAsync(userId.Value, composite.Id))
+        {
+            return TypedResults.Forbid();
         }
 
         var details = new CompositeConfigurationDetailsDto
@@ -178,9 +217,11 @@ public static class CompositeConfigurationEndpoints
         return TypedResults.Ok(details);
     }
 
-    private static async Task<Results<NoContent, NotFound, BadRequest<ErrorResponse>>> DeleteCompositeConfiguration(
+    private static async Task<Results<NoContent, NotFound, BadRequest<ErrorResponse>, ForbidHttpResult>> DeleteCompositeConfiguration(
         string name,
-        ServerDbContext db)
+        ServerDbContext db,
+        IResourceAuthorizationService authService,
+        IUserContextService userContext)
     {
         var composite = await db.CompositeConfigurations
             .Include(c => c.NodeConfigurations)
@@ -189,6 +230,12 @@ public static class CompositeConfigurationEndpoints
         if (composite is null)
         {
             return TypedResults.NotFound();
+        }
+
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null || !await authService.CanManageCompositeConfigurationAsync(userId.Value, composite.Id))
+        {
+            return TypedResults.Forbid();
         }
 
         if (composite.NodeConfigurations.Count > 0)
@@ -202,10 +249,12 @@ public static class CompositeConfigurationEndpoints
         return TypedResults.NoContent();
     }
 
-    private static async Task<Results<Created<CompositeConfigurationVersionDto>, NotFound, BadRequest<ErrorResponse>, Conflict<ErrorResponse>>> CreateCompositeConfigurationVersion(
+    private static async Task<Results<Created<CompositeConfigurationVersionDto>, NotFound, BadRequest<ErrorResponse>, Conflict<ErrorResponse>, ForbidHttpResult>> CreateCompositeConfigurationVersion(
         string name,
         CreateCompositeConfigurationVersionRequest request,
-        ServerDbContext db)
+        ServerDbContext db,
+        IResourceAuthorizationService authService,
+        IUserContextService userContext)
     {
         var composite = await db.CompositeConfigurations
             .Include(c => c.Versions)
@@ -214,6 +263,12 @@ public static class CompositeConfigurationEndpoints
         if (composite is null)
         {
             return TypedResults.NotFound();
+        }
+
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null || !await authService.CanModifyCompositeConfigurationAsync(userId.Value, composite.Id))
+        {
+            return TypedResults.Forbid();
         }
 
         if (string.IsNullOrWhiteSpace(request.Version))
@@ -257,9 +312,11 @@ public static class CompositeConfigurationEndpoints
         return TypedResults.Created($"/api/v1/composite-configurations/{name}/versions/{version.Version}", dto);
     }
 
-    private static async Task<Results<Ok<List<CompositeConfigurationVersionDto>>, NotFound>> GetCompositeConfigurationVersions(
+    private static async Task<Results<Ok<List<CompositeConfigurationVersionDto>>, NotFound, ForbidHttpResult>> GetCompositeConfigurationVersions(
         string name,
-        ServerDbContext db)
+        ServerDbContext db,
+        IResourceAuthorizationService authService,
+        IUserContextService userContext)
     {
         var composite = await db.CompositeConfigurations
             .Include(c => c.Versions)
@@ -270,6 +327,12 @@ public static class CompositeConfigurationEndpoints
         if (composite is null)
         {
             return TypedResults.NotFound();
+        }
+
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null || !await authService.CanReadCompositeConfigurationAsync(userId.Value, composite.Id))
+        {
+            return TypedResults.Forbid();
         }
 
         var versions = composite.Versions.OrderByDescending(v => v.CreatedAt).Select(v => new CompositeConfigurationVersionDto
@@ -294,10 +357,12 @@ public static class CompositeConfigurationEndpoints
         return TypedResults.Ok(versions);
     }
 
-    private static async Task<Results<Ok<CompositeConfigurationVersionDto>, NotFound>> GetCompositeConfigurationVersionDetails(
+    private static async Task<Results<Ok<CompositeConfigurationVersionDto>, NotFound, ForbidHttpResult>> GetCompositeConfigurationVersionDetails(
         string name,
         string version,
-        ServerDbContext db)
+        ServerDbContext db,
+        IResourceAuthorizationService authService,
+        IUserContextService userContext)
     {
         var compositeVersion = await db.CompositeConfigurationVersions
             .Include(v => v.CompositeConfiguration)
@@ -308,6 +373,12 @@ public static class CompositeConfigurationEndpoints
         if (compositeVersion is null)
         {
             return TypedResults.NotFound();
+        }
+
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null || !await authService.CanReadCompositeConfigurationAsync(userId.Value, compositeVersion.CompositeConfigurationId))
+        {
+            return TypedResults.Forbid();
         }
 
         var dto = new CompositeConfigurationVersionDto
@@ -332,10 +403,12 @@ public static class CompositeConfigurationEndpoints
         return TypedResults.Ok(dto);
     }
 
-    private static async Task<Results<Ok, NotFound, BadRequest<ErrorResponse>>> PublishCompositeConfigurationVersion(
+    private static async Task<Results<Ok, NotFound, BadRequest<ErrorResponse>, ForbidHttpResult>> PublishCompositeConfigurationVersion(
         string name,
         string version,
-        ServerDbContext db)
+        ServerDbContext db,
+        IResourceAuthorizationService authService,
+        IUserContextService userContext)
     {
         var compositeVersion = await db.CompositeConfigurationVersions
             .Include(v => v.CompositeConfiguration)
@@ -344,6 +417,12 @@ public static class CompositeConfigurationEndpoints
         if (compositeVersion is null)
         {
             return TypedResults.NotFound();
+        }
+
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null || !await authService.CanModifyCompositeConfigurationAsync(userId.Value, compositeVersion.CompositeConfigurationId))
+        {
+            return TypedResults.Forbid();
         }
 
         if (!compositeVersion.IsDraft)
@@ -359,10 +438,12 @@ public static class CompositeConfigurationEndpoints
         return TypedResults.Ok();
     }
 
-    private static async Task<Results<NoContent, NotFound, BadRequest<ErrorResponse>>> DeleteCompositeConfigurationVersion(
+    private static async Task<Results<NoContent, NotFound, BadRequest<ErrorResponse>, ForbidHttpResult>> DeleteCompositeConfigurationVersion(
         string name,
         string version,
-        ServerDbContext db)
+        ServerDbContext db,
+        IResourceAuthorizationService authService,
+        IUserContextService userContext)
     {
         var compositeVersion = await db.CompositeConfigurationVersions
             .Include(v => v.CompositeConfiguration)
@@ -372,6 +453,12 @@ public static class CompositeConfigurationEndpoints
         if (compositeVersion is null)
         {
             return TypedResults.NotFound();
+        }
+
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null || !await authService.CanManageCompositeConfigurationAsync(userId.Value, compositeVersion.CompositeConfigurationId))
+        {
+            return TypedResults.Forbid();
         }
 
         if (!compositeVersion.IsDraft)
@@ -390,11 +477,13 @@ public static class CompositeConfigurationEndpoints
         return TypedResults.NoContent();
     }
 
-    private static async Task<Results<Created<CompositeConfigurationItemDto>, NotFound, BadRequest<ErrorResponse>, Conflict<ErrorResponse>>> AddChildConfiguration(
+    private static async Task<Results<Created<CompositeConfigurationItemDto>, NotFound, BadRequest<ErrorResponse>, Conflict<ErrorResponse>, ForbidHttpResult>> AddChildConfiguration(
         string name,
         string version,
         AddChildConfigurationRequest request,
-        ServerDbContext db)
+        ServerDbContext db,
+        IResourceAuthorizationService authService,
+        IUserContextService userContext)
     {
         var compositeVersion = await db.CompositeConfigurationVersions
             .Include(v => v.CompositeConfiguration)
@@ -404,6 +493,12 @@ public static class CompositeConfigurationEndpoints
         if (compositeVersion is null)
         {
             return TypedResults.NotFound();
+        }
+
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null || !await authService.CanModifyCompositeConfigurationAsync(userId.Value, compositeVersion.CompositeConfigurationId))
+        {
+            return TypedResults.Forbid();
         }
 
         if (!compositeVersion.IsDraft)
@@ -475,12 +570,14 @@ public static class CompositeConfigurationEndpoints
         return TypedResults.Created($"/api/v1/composite-configurations/{name}/versions/{version}/children/{item.Id}", dto);
     }
 
-    private static async Task<Results<Ok<CompositeConfigurationItemDto>, NotFound, BadRequest<ErrorResponse>>> UpdateChildConfiguration(
+    private static async Task<Results<Ok<CompositeConfigurationItemDto>, NotFound, BadRequest<ErrorResponse>, ForbidHttpResult>> UpdateChildConfiguration(
         string name,
         string version,
         Guid childId,
         UpdateChildConfigurationRequest request,
-        ServerDbContext db)
+        ServerDbContext db,
+        IResourceAuthorizationService authService,
+        IUserContextService userContext)
     {
         var item = await db.CompositeConfigurationItems
             .Include(i => i.CompositeConfigurationVersion)
@@ -493,6 +590,12 @@ public static class CompositeConfigurationEndpoints
         if (item is null)
         {
             return TypedResults.NotFound();
+        }
+
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null || !await authService.CanModifyCompositeConfigurationAsync(userId.Value, item.CompositeConfigurationVersion.CompositeConfigurationId))
+        {
+            return TypedResults.Forbid();
         }
 
         if (!item.CompositeConfigurationVersion.IsDraft)
@@ -530,11 +633,13 @@ public static class CompositeConfigurationEndpoints
         return TypedResults.Ok(dto);
     }
 
-    private static async Task<Results<NoContent, NotFound, BadRequest<ErrorResponse>>> RemoveChildConfiguration(
+    private static async Task<Results<NoContent, NotFound, BadRequest<ErrorResponse>, ForbidHttpResult>> RemoveChildConfiguration(
         string name,
         string version,
         Guid childId,
-        ServerDbContext db)
+        ServerDbContext db,
+        IResourceAuthorizationService authService,
+        IUserContextService userContext)
     {
         var item = await db.CompositeConfigurationItems
             .Include(i => i.CompositeConfigurationVersion)
@@ -546,6 +651,12 @@ public static class CompositeConfigurationEndpoints
         if (item is null)
         {
             return TypedResults.NotFound();
+        }
+
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null || !await authService.CanModifyCompositeConfigurationAsync(userId.Value, item.CompositeConfigurationVersion.CompositeConfigurationId))
+        {
+            return TypedResults.Forbid();
         }
 
         if (!item.CompositeConfigurationVersion.IsDraft)

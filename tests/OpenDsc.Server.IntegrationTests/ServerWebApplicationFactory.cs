@@ -2,8 +2,6 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
-using System.Net.Http.Headers;
-
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -44,28 +42,48 @@ public class ServerWebApplicationFactory : WebApplicationFactory<Program>
         using (var scope = host.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
+            var logger = scope.ServiceProvider.GetRequiredService<ILogger<ServerDbContext>>();
 
-            if (!db.ServerSettings.Any())
-            {
-                var adminKeyHash = Authentication.ApiKeyAuthHandler.HashPasswordPbkdf2("test-admin-key", out var adminSalt);
-                db.ServerSettings.Add(new Entities.ServerSettings
-                {
-                    Id = 1,
-                    AdminApiKeyHash = adminKeyHash,
-                    AdminApiKeySalt = adminSalt
-                });
-                db.SaveChanges();
-            }
+            DatabaseExtensions.EnsureDatabaseInitialized(db, logger).GetAwaiter().GetResult();
         }
 
         return host;
     }
 
+    public async Task<HttpClient> CreateAuthenticatedClientAsync()
+    {
+        var client = CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+
+        // Login with default admin credentials
+        var loginRequest = new { username = "admin", password = "admin" };
+        var loginResponse = await client.PostAsJsonAsync("/api/v1/auth/login", loginRequest);
+
+        if (!loginResponse.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException("Failed to authenticate test client");
+        }
+
+        return client;
+    }
+
+    /// <summary>
+    /// Creates an authenticated client for testing (synchronous wrapper).
+    /// </summary>
+    public HttpClient CreateAuthenticatedClient()
+    {
+        return CreateAuthenticatedClientAsync().GetAwaiter().GetResult();
+    }
+
+    /// <summary>
+    /// Creates an authenticated client for testing (synchronous wrapper with API key - deprecated).
+    /// </summary>
     public HttpClient CreateAuthenticatedClient(string apiKey)
     {
-        var client = CreateClient();
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-        return client;
+        // For backward compatibility, ignore the API key and use the new auth system
+        return CreateAuthenticatedClient();
     }
 
     protected override void Dispose(bool disposing)

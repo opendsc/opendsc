@@ -4,9 +4,12 @@
 
 using System.Security.Claims;
 
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
+using OpenDsc.Server.Authentication;
+using OpenDsc.Server.Authorization;
 using OpenDsc.Server.Contracts;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
@@ -19,24 +22,31 @@ public static class NodeEndpoints
     public static void MapNodeEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/v1/nodes")
+            .RequireAuthorization(policy => policy
+                .RequireAuthenticatedUser()
+                .AddAuthenticationSchemes(
+                    CookieAuthenticationDefaults.AuthenticationScheme,
+                    PersonalAccessTokenHandler.SchemeName,
+                    CertificateAuthHandler.NodeScheme))
             .WithTags("Nodes");
 
         group.MapPost("/register", RegisterNode)
+            .AllowAnonymous()
             .WithSummary("Register a node")
             .WithDescription("Registers a new node or re-registers an existing node with the server using mTLS.");
 
         group.MapGet("/", GetNodes)
-            .RequireAuthorization("Admin")
+            .RequireAuthorization(Permissions.Nodes_Read)
             .WithSummary("List all nodes")
             .WithDescription("Returns a list of all registered nodes.");
 
         group.MapGet("/{nodeId:guid}", GetNode)
-            .RequireAuthorization("Admin")
+            .RequireAuthorization(Permissions.Nodes_Read)
             .WithSummary("Get node details")
             .WithDescription("Returns details for a specific node.");
 
         group.MapDelete("/{nodeId:guid}", DeleteNode)
-            .RequireAuthorization("Admin")
+            .RequireAuthorization(Permissions.Nodes_Delete)
             .WithSummary("Delete a node")
             .WithDescription("Deletes a node and its associated reports.");
 
@@ -46,7 +56,7 @@ public static class NodeEndpoints
             .WithDescription("Downloads the configuration assigned to the node.");
 
         group.MapPut("/{nodeId:guid}/configuration", AssignConfiguration)
-            .RequireAuthorization("Admin")
+            .RequireAuthorization(Permissions.Nodes_AssignConfiguration)
             .WithSummary("Assign configuration")
             .WithDescription("Assigns a configuration to a node by name.");
 
@@ -272,6 +282,7 @@ public static class NodeEndpoints
                 .Include(nc => nc.Configuration)
                 .ThenInclude(c => c.Versions.Where(v => !v.IsDraft))
                 .ThenInclude(v => v.Files)
+                .AsSplitQuery()
                 .FirstOrDefaultAsync(nc => nc.NodeId == nodeId, cancellationToken);
 
             string? configContent = null;
@@ -310,6 +321,7 @@ public static class NodeEndpoints
                     var config = await db.Configurations
                         .Include(c => c.Versions.Where(v => !v.IsDraft))
                         .ThenInclude(v => v.Files)
+                        .AsSplitQuery()
                         .FirstOrDefaultAsync(c => c.Name == configName, cancellationToken);
 
                     Console.WriteLine($"Config found: {config is not null}");
@@ -374,6 +386,7 @@ public static class NodeEndpoints
             .ThenInclude(i => i.ChildConfiguration)
             .ThenInclude(c => c!.Versions.Where(v => !v.IsDraft))
             .ThenInclude(v => v!.Files)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(nc => nc.NodeId == nodeId, cancellationToken);
 
         if (nodeConfig is null)
