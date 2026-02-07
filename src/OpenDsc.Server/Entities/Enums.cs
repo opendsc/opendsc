@@ -56,3 +56,19 @@ public enum ResourcePermission
     /// </summary>
     Manage = 2
 }
+
+/// <summary>
+/// Controls how scope values are handled for a scope type.
+/// </summary>
+public enum ScopeValueMode
+{
+    /// <summary>
+    /// Any value can be entered (free-form text input).
+    /// </summary>
+    Unrestricted = 0,
+
+    /// <summary>
+    /// Only predefined scope values are allowed (must select from list).
+    /// </summary>
+    Restricted = 1
+}

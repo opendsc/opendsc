@@ -1,18 +1,39 @@
 @using Microsoft.EntityFrameworkCore
 @using MudBlazor
+@using OpenDsc.Server.Entities
 @inject ServerDbContext Db
 @inject ISnackbar Snackbar
 
 <MudDialog>
     <DialogContent>
-        <MudTextField @bind-Value="scopeTypeId" Label="Scope Type" Variant="Variant.Outlined" ReadOnly="true" Disabled="true" Class="d-none" />
-        <MudSelect @bind-Value="scopeTypeId" Label="Scope Type" Variant="Variant.Outlined" Required="true" Class="mb-3" T="Guid?">
-            @foreach (var scopeType in ScopeTypes)
-            {
-                <MudSelectItem Value="@((Guid?)scopeType.Id)">@scopeType.Name</MudSelectItem>
-            }
-        </MudSelect>
-        <MudTextField @bind-Value="value" Label="Value" Variant="Variant.Outlined" Required="true" Class="mb-3" />
+        @if (ScopeTypeId == null)
+        {
+            <MudSelect @bind-Value="scopeTypeId" Label="Scope Type" Variant="Variant.Outlined" Required="true" Class="mb-3" T="Guid?">
+                @foreach (var scopeType in ScopeTypes)
+                {
+                    <MudSelectItem Value="@((Guid?)scopeType.Id)">@scopeType.Name</MudSelectItem>
+                }
+            </MudSelect>
+        }
+        else
+        {
+            var selectedScope = ScopeTypes.FirstOrDefault(st => st.Id == ScopeTypeId.Value);
+            <MudText Typo="Typo.subtitle2" Class="mb-3">Scope Type: <strong>@selectedScope?.Name</strong></MudText>
+        }
+        @if (isNodeScope)
+        {
+            <MudSelect @bind-Value="value" Label="Node" Variant="Variant.Outlined" Required="true" Class="mb-3" T="string">
+                @foreach (var node in nodes)
+                {
+                    <MudSelectItem Value="@node.Fqdn">@node.Fqdn</MudSelectItem>
+                }
+            </MudSelect>
+            <MudText Typo="Typo.caption" Class="mb-3">Select a node from the registered nodes in the system.</MudText>
+        }
+        else
+        {
+            <MudTextField @bind-Value="value" Label="Value" Variant="Variant.Outlined" Required="true" Class="mb-3" />
+        }
         <MudTextField @bind-Value="description" Label="Description" Variant="Variant.Outlined" Lines="3" />
     </DialogContent>
     <DialogActions>
@@ -29,15 +50,36 @@
     public List<ScopeType> ScopeTypes { get; set; } = [];
 
     [Parameter]
+    public Guid? ScopeTypeId { get; set; }
+
+    [Parameter]
     public EventCallback OnScopeValueCreated { get; set; }
 
     private Guid? scopeTypeId;
     private string value = string.Empty;
     private string? description;
+    private bool isNodeScope;
+    private List<Node> nodes = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (ScopeTypeId.HasValue)
+        {
+            scopeTypeId = ScopeTypeId.Value;
+            var scopeType = ScopeTypes.FirstOrDefault(st => st.Id == ScopeTypeId.Value);
+            isNodeScope = scopeType?.Name == "Node";
+
+            if (isNodeScope)
+            {
+                nodes = await Db.Nodes.OrderBy(n => n.Fqdn).ToListAsync();
+            }
+        }
+    }
 
     private bool IsValid()
     {
-        return scopeTypeId.HasValue && !string.IsNullOrWhiteSpace(value);
+        var effectiveScopeTypeId = ScopeTypeId ?? scopeTypeId;
+        return effectiveScopeTypeId.HasValue && !string.IsNullOrWhiteSpace(value);
     }
 
     private void Cancel()
@@ -52,10 +94,11 @@
 
         try
         {
+            var effectiveScopeTypeId = ScopeTypeId ?? scopeTypeId;
             var scopeValue = new ScopeValue
             {
                 Id = Guid.NewGuid(),
-                ScopeTypeId = scopeTypeId!.Value,
+                ScopeTypeId = effectiveScopeTypeId!.Value,
                 Value = value,
                 Description = string.IsNullOrWhiteSpace(description) ? null : description,
                 CreatedAt = DateTimeOffset.UtcNow
@@ -65,6 +108,7 @@
             await Db.SaveChangesAsync();
 
             Snackbar.Add("Scope value created successfully", Severity.Success);
+            MudDialog.Close();
             await OnScopeValueCreated.InvokeAsync();
         }
         catch (Exception ex)

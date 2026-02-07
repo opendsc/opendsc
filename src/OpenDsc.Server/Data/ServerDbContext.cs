@@ -593,7 +593,7 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
                 Description = "Default parameters applied to all configurations",
                 Precedence = 0,
                 IsSystem = true,
-                AllowsValues = false,
+                ValueMode = ScopeValueMode.Unrestricted,
                 CreatedAt = now
             },
             new ScopeType
@@ -603,7 +603,7 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
                 Description = "Node-specific parameter overrides matched by FQDN",
                 Precedence = 1,
                 IsSystem = true,
-                AllowsValues = true,
+                ValueMode = ScopeValueMode.Unrestricted,
                 CreatedAt = now
             }
         );

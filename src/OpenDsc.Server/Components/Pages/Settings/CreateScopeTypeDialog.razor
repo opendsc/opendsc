@@ -1,5 +1,6 @@
 @using Microsoft.EntityFrameworkCore
 @using MudBlazor
+@using OpenDsc.Server.Entities
 @inject ServerDbContext Db
 @inject ISnackbar Snackbar
 
@@ -7,8 +8,21 @@
     <DialogContent>
         <MudTextField @bind-Value="name" Label="Name" Variant="Variant.Outlined" Required="true" Class="mb-3"
                       HelperText="e.g., Environment, Location, Department" />
-        <MudCheckBox @bind-Value="allowsValues" Label="Allows Multiple Values" Class="mb-3" />
-        <MudText Typo="Typo.caption" Class="mb-3">If checked, nodes can have multiple values for this scope type</MudText>
+        <MudTextField @bind-Value="description" Label="Description" Variant="Variant.Outlined" Lines="2" Class="mb-3" />
+        <MudSelect @bind-Value="valueMode" Label="Value Mode" Variant="Variant.Outlined" Class="mb-3" T="ScopeValueMode">
+            <MudSelectItem Value="@ScopeValueMode.Unrestricted">Unrestricted (Free text)</MudSelectItem>
+            <MudSelectItem Value="@ScopeValueMode.Restricted">Restricted (Predefined values only)</MudSelectItem>
+        </MudSelect>
+        <MudText Typo="Typo.caption" Class="mb-3">
+            @if (valueMode == ScopeValueMode.Restricted)
+            {
+                <text>Restricted: Users must select from predefined values you configure.</text>
+            }
+            else
+            {
+                <text>Unrestricted: Users can enter any value when creating parameters.</text>
+            }
+        </MudText>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Cancel</MudButton>
@@ -26,7 +40,8 @@
     public EventCallback OnScopeTypeCreated { get; set; }
 
     private string name = string.Empty;
-    private bool allowsValues = true;
+    private string description = string.Empty;
+    private ScopeValueMode valueMode = ScopeValueMode.Unrestricted;
 
     private async Task Create()
     {
@@ -45,7 +60,8 @@
             {
                 Id = Guid.NewGuid(),
                 Name = name,
-                AllowsValues = allowsValues,
+                Description = string.IsNullOrWhiteSpace(description) ? null : description,
+                ValueMode = valueMode,
                 Precedence = 0, // Temporary value
                 CreatedAt = now
             };

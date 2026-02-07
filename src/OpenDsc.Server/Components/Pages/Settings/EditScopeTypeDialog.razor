@@ -1,0 +1,87 @@
+@using Microsoft.EntityFrameworkCore
+@using MudBlazor
+@using OpenDsc.Server.Entities
+@inject ServerDbContext Db
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="name" Label="Name" Variant="Variant.Outlined" Required="true" ReadOnly="true" Disabled="true" Class="mb-3" />
+        <MudTextField @bind-Value="description" Label="Description" Variant="Variant.Outlined" Lines="2" Class="mb-3" />
+        <MudSelect @bind-Value="valueMode" Label="Value Mode" Variant="Variant.Outlined" Class="mb-3" T="ScopeValueMode" Disabled="@(ScopeType.IsSystem)">
+            <MudSelectItem Value="@ScopeValueMode.Unrestricted">Unrestricted (Free text)</MudSelectItem>
+            <MudSelectItem Value="@ScopeValueMode.Restricted">Restricted (Predefined values only)</MudSelectItem>
+        </MudSelect>
+        <MudText Typo="Typo.caption" Class="mb-3">
+            @if (valueMode == ScopeValueMode.Restricted)
+            {
+                <text>Restricted: Users must select from predefined values you configure.</text>
+            }
+            else
+            {
+                <text>Unrestricted: Users can enter any value when creating parameters.</text>
+            }
+        </MudText>
+        @if (ScopeType.IsSystem)
+        {
+            <MudAlert Severity="Severity.Info" Dense="true">System scope types cannot change their value mode.</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save">
+            Save
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public ScopeType ScopeType { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback OnScopeTypeUpdated { get; set; }
+
+    private string name = string.Empty;
+    private string description = string.Empty;
+    private ScopeValueMode valueMode = ScopeValueMode.Unrestricted;
+
+    protected override void OnInitialized()
+    {
+        name = ScopeType.Name;
+        description = ScopeType.Description ?? string.Empty;
+        valueMode = ScopeType.ValueMode;
+    }
+
+    private async Task Save()
+    {
+        try
+        {
+            ScopeType.Description = string.IsNullOrWhiteSpace(description) ? null : description;
+
+            if (!ScopeType.IsSystem)
+            {
+                ScopeType.ValueMode = valueMode;
+            }
+
+            ScopeType.UpdatedAt = DateTimeOffset.UtcNow;
+            await Db.SaveChangesAsync();
+
+            Snackbar.Add($"Scope type '{name}' updated successfully", Severity.Success);
+            MudDialog.Close();
+            await OnScopeTypeUpdated.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error updating scope type: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+}

@@ -7,6 +7,7 @@ using System.Text.Json.Serialization;
 using OpenDsc.Schema;
 using OpenDsc.Server.Contracts;
 using OpenDsc.Server.Endpoints;
+using OpenDsc.Server.Entities;
 using OpenDsc.Server.Services;
 
 namespace OpenDsc.Server;
@@ -136,6 +137,8 @@ namespace OpenDsc.Server;
 // Schema types
 [JsonSerializable(typeof(DscResult))]
 [JsonSerializable(typeof(DscOperation))]
+// Enums
+[JsonSerializable(typeof(ScopeValueMode))]
 public partial class SourceGenerationContext : JsonSerializerContext
 {
 }

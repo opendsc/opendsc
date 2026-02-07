@@ -227,7 +227,7 @@ public static class DatabaseSeeder
                 Description = "Default scope type for global parameters",
                 Precedence = 0,
                 IsSystem = true,
-                AllowsValues = false,
+                ValueMode = ScopeValueMode.Unrestricted,
                 CreatedAt = now
             },
             new ScopeType
@@ -237,7 +237,7 @@ public static class DatabaseSeeder
                 Description = "Node-specific scope type for per-node parameters",
                 Precedence = 100,
                 IsSystem = true,
-                AllowsValues = false,
+                ValueMode = ScopeValueMode.Unrestricted,
                 CreatedAt = now
             }
         };

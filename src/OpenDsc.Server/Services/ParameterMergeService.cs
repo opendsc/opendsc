@@ -39,7 +39,7 @@ public sealed class ParameterMergeService(ServerDbContext db, IParameterMerger m
                 ScopeTypeName = nt.ScopeValue.ScopeType.Name,
                 ScopeValue = nt.ScopeValue.Value,
                 Precedence = nt.ScopeValue.ScopeType.Precedence,
-                AllowsValues = nt.ScopeValue.ScopeType.AllowsValues
+                ValueMode = nt.ScopeValue.ScopeType.ValueMode
             })
             .ToListAsync(cancellationToken);
 

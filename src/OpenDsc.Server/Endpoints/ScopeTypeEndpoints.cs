@@ -58,7 +58,7 @@ public static class ScopeTypeEndpoints
                 Description = st.Description,
                 Precedence = st.Precedence,
                 IsSystem = st.IsSystem,
-                AllowsValues = st.AllowsValues,
+                ValueMode = st.ValueMode,
                 CreatedAt = st.CreatedAt,
                 UpdatedAt = st.UpdatedAt
             })
@@ -80,7 +80,7 @@ public static class ScopeTypeEndpoints
                 Description = st.Description,
                 Precedence = st.Precedence,
                 IsSystem = st.IsSystem,
-                AllowsValues = st.AllowsValues,
+                ValueMode = st.ValueMode,
                 CreatedAt = st.CreatedAt,
                 UpdatedAt = st.UpdatedAt
             })
@@ -135,7 +135,7 @@ public static class ScopeTypeEndpoints
             Description = request.Description,
             Precedence = newPrecedence,
             IsSystem = false,
-            AllowsValues = request.AllowsValues ?? true,
+            ValueMode = request.ValueMode ?? ScopeValueMode.Unrestricted,
             CreatedAt = DateTimeOffset.UtcNow
         };
 
@@ -149,7 +149,7 @@ public static class ScopeTypeEndpoints
             Description = scopeType.Description,
             Precedence = scopeType.Precedence,
             IsSystem = scopeType.IsSystem,
-            AllowsValues = scopeType.AllowsValues,
+            ValueMode = scopeType.ValueMode,
             CreatedAt = scopeType.CreatedAt,
             UpdatedAt = scopeType.UpdatedAt
         };
@@ -188,7 +188,7 @@ public static class ScopeTypeEndpoints
             Description = scopeType.Description,
             Precedence = scopeType.Precedence,
             IsSystem = scopeType.IsSystem,
-            AllowsValues = scopeType.AllowsValues,
+            ValueMode = scopeType.ValueMode,
             CreatedAt = scopeType.CreatedAt,
             UpdatedAt = scopeType.UpdatedAt
         };
@@ -255,7 +255,7 @@ public static class ScopeTypeEndpoints
                 Description = st.Description,
                 Precedence = st.Precedence,
                 IsSystem = st.IsSystem,
-                AllowsValues = st.AllowsValues,
+                ValueMode = st.ValueMode,
                 CreatedAt = st.CreatedAt,
                 UpdatedAt = st.UpdatedAt
             })
@@ -317,7 +317,7 @@ public sealed class ScopeTypeDto
     public string? Description { get; init; }
     public required int Precedence { get; init; }
     public required bool IsSystem { get; init; }
-    public required bool AllowsValues { get; init; }
+    public required ScopeValueMode ValueMode { get; init; }
     public required DateTimeOffset CreatedAt { get; init; }
     public DateTimeOffset? UpdatedAt { get; init; }
 }
@@ -326,7 +326,7 @@ public sealed class CreateScopeTypeRequest
 {
     public required string Name { get; init; }
     public string? Description { get; init; }
-    public bool? AllowsValues { get; init; }
+    public ScopeValueMode? ValueMode { get; init; }
 }
 
 public sealed class UpdateScopeTypeRequest

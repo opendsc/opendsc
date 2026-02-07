@@ -103,24 +103,19 @@ public static class ParameterEndpoints
             }
         }
 
-        if (scopeType.AllowsValues && string.IsNullOrWhiteSpace(request.ScopeValue))
+        if (scopeType.ValueMode == ScopeValueMode.Restricted && string.IsNullOrWhiteSpace(request.ScopeValue))
         {
-            return TypedResults.BadRequest($"Scope type '{scopeType.Name}' requires a scope value");
+            return TypedResults.BadRequest($"Scope type '{scopeType.Name}' is restricted and requires a scope value");
         }
 
-        if (!scopeType.AllowsValues && !string.IsNullOrWhiteSpace(request.ScopeValue))
-        {
-            return TypedResults.BadRequest($"Scope type '{scopeType.Name}' does not allow scope values");
-        }
-
-        if (scopeType.AllowsValues && !string.IsNullOrWhiteSpace(request.ScopeValue))
+        if (scopeType.ValueMode == ScopeValueMode.Restricted && !string.IsNullOrWhiteSpace(request.ScopeValue))
         {
             var scopeValueExists = await db.ScopeValues
                 .AnyAsync(sv => sv.ScopeTypeId == scopeTypeId && sv.Value == request.ScopeValue);
 
             if (!scopeValueExists)
             {
-                return TypedResults.BadRequest($"Scope value '{request.ScopeValue}' does not exist for scope type '{scopeType.Name}'");
+                return TypedResults.BadRequest($"Scope value '{request.ScopeValue}' does not exist for scope type '{scopeType.Name}'. Only predefined values are allowed.");
             }
         }
 
@@ -140,7 +135,7 @@ public static class ParameterEndpoints
                 pf.Version == request.Version);
 
         var dataDir = config["DataDirectory"] ?? "data";
-        var filePath = scopeType.AllowsValues && !string.IsNullOrWhiteSpace(request.ScopeValue)
+        var filePath = !string.IsNullOrWhiteSpace(request.ScopeValue)
             ? Path.Combine(dataDir, "parameters", configuration.Name, scopeType.Name, request.ScopeValue, "parameters.yaml")
             : Path.Combine(dataDir, "parameters", configuration.Name, scopeType.Name, "parameters.yaml");
 
