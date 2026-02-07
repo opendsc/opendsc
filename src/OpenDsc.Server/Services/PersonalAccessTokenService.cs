@@ -169,10 +169,11 @@ public class PersonalAccessTokenService(
 
     public async Task<List<PersonalAccessToken>> GetUserTokensAsync(Guid userId)
     {
-        return await db.PersonalAccessTokens
+        return (await db.PersonalAccessTokens
             .Where(t => t.UserId == userId)
+            .ToListAsync())
             .OrderByDescending(t => t.CreatedAt)
-            .ToListAsync();
+            .ToList();
     }
 
     public async Task UpdateLastUsedAsync(Guid tokenId, string ipAddress)

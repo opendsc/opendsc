@@ -282,6 +282,7 @@ public static class NodeEndpoints
                 .Include(nc => nc.Configuration)
                 .ThenInclude(c => c.Versions.Where(v => !v.IsDraft))
                 .ThenInclude(v => v.Files)
+                .AsSplitQuery()
                 .FirstOrDefaultAsync(nc => nc.NodeId == nodeId, cancellationToken);
 
             string? configContent = null;
@@ -320,6 +321,7 @@ public static class NodeEndpoints
                     var config = await db.Configurations
                         .Include(c => c.Versions.Where(v => !v.IsDraft))
                         .ThenInclude(v => v.Files)
+                        .AsSplitQuery()
                         .FirstOrDefaultAsync(c => c.Name == configName, cancellationToken);
 
                     Console.WriteLine($"Config found: {config is not null}");
@@ -384,6 +386,7 @@ public static class NodeEndpoints
             .ThenInclude(i => i.ChildConfiguration)
             .ThenInclude(c => c!.Versions.Where(v => !v.IsDraft))
             .ThenInclude(v => v!.Files)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(nc => nc.NodeId == nodeId, cancellationToken);
 
         if (nodeConfig is null)
