@@ -1,0 +1,162 @@
+@using Microsoft.EntityFrameworkCore
+@inject ServerDbContext Db
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+
+<MudCard Class="mt-4">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">Groups</MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateGroup" StartIcon="@Icons.Material.Filled.Add">
+                Create Group
+            </MudButton>
+        </CardHeaderActions>
+    </MudCardHeader>
+    <MudCardContent>
+        <MudTable Items="@groups" Hover="true" Dense="true" Loading="@loading">
+            <HeaderContent>
+                <MudTh>Name</MudTh>
+                <MudTh>Description</MudTh>
+                <MudTh>System</MudTh>
+                <MudTh>Members</MudTh>
+                <MudTh>Roles</MudTh>
+                <MudTh>Created</MudTh>
+                <MudTh>Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@context.Name</MudTd>
+                <MudTd>@context.Description</MudTd>
+                <MudTd>
+                    @if (context.IsSystemGroup)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Info">System</MudChip>
+                    }
+                </MudTd>
+                <MudTd>@GetGroupMemberCount(context.Id)</MudTd>
+                <MudTd>@GetGroupRoleCount(context.Id)</MudTd>
+                <MudTd>@context.CreatedAt.LocalDateTime.ToString("g")</MudTd>
+                <MudTd>
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                   Size="Size.Small"
+                                   OnClick="@(() => EditGroup(context))"
+                                   Disabled="@context.IsSystemGroup" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                   Size="Size.Small"
+                                   Color="Color.Error"
+                                   OnClick="@(() => DeleteGroup(context))"
+                                   Disabled="@context.IsSystemGroup" />
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    private List<Group> groups = [];
+    private Dictionary<Guid, int> groupMemberCounts = new();
+    private Dictionary<Guid, int> groupRoleCounts = new();
+    private bool loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadGroupsAsync();
+    }
+
+    private async Task LoadGroupsAsync()
+    {
+        loading = true;
+        try
+        {
+            groups = await Db.Groups
+                .OrderBy(g => g.Name)
+                .ToListAsync();
+
+            var memberCountsQuery = await Db.Set<UserGroup>()
+                .GroupBy(ug => ug.GroupId)
+                .Select(g => new { GroupId = g.Key, Count = g.Count() })
+                .ToListAsync();
+            groupMemberCounts = memberCountsQuery.ToDictionary(x => x.GroupId, x => x.Count);
+
+            var roleCountsQuery = await Db.Set<GroupRole>()
+                .GroupBy(gr => gr.GroupId)
+                .Select(g => new { GroupId = g.Key, Count = g.Count() })
+                .ToListAsync();
+            groupRoleCounts = roleCountsQuery.ToDictionary(x => x.GroupId, x => x.Count);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private int GetGroupMemberCount(Guid groupId)
+    {
+        return groupMemberCounts.TryGetValue(groupId, out var count) ? count : 0;
+    }
+
+    private int GetGroupRoleCount(Guid groupId)
+    {
+        return groupRoleCounts.TryGetValue(groupId, out var count) ? count : 0;
+    }
+
+    private async Task CreateGroup()
+    {
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var parameters = new DialogParameters<CreateGroupDialog>
+        {
+            { x => x.OnGroupCreated, EventCallback.Factory.Create(this, LoadGroupsAsync) }
+        };
+
+        await Dialog.ShowAsync<CreateGroupDialog>("Create Group", parameters, options);
+    }
+
+    private async Task EditGroup(Group group)
+    {
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Large, FullWidth = true };
+        var parameters = new DialogParameters<EditGroupDialog>
+        {
+            { x => x.GroupId, group.Id },
+            { x => x.OnGroupUpdated, EventCallback.Factory.Create(this, LoadGroupsAsync) }
+        };
+
+        await Dialog.ShowAsync<EditGroupDialog>("Edit Group", parameters, options);
+    }
+
+    private async Task DeleteGroup(Group group)
+    {
+        if (group.IsSystemGroup)
+        {
+            Snackbar.Add("Cannot delete system groups", Severity.Warning);
+            return;
+        }
+
+        var memberCount = GetGroupMemberCount(group.Id);
+        var roleCount = GetGroupRoleCount(group.Id);
+        var message = memberCount > 0 || roleCount > 0
+            ? $"Delete group '{group.Name}'? This will remove {memberCount} member(s) and {roleCount} role assignment(s)."
+            : $"Delete group '{group.Name}'?";
+
+        var confirmed = await Dialog.ShowMessageBox(
+            "Confirm Delete",
+            message,
+            yesText: "Delete",
+            cancelText: "Cancel");
+
+        if (confirmed == true)
+        {
+            try
+            {
+                Db.Groups.Remove(group);
+                await Db.SaveChangesAsync();
+                await LoadGroupsAsync();
+                Snackbar.Add($"Group '{group.Name}' deleted successfully", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error deleting group: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+}

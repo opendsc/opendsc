@@ -1,0 +1,127 @@
+@page "/login"
+@rendermode InteractiveServer
+@using System.Text.Json
+@using Microsoft.EntityFrameworkCore
+@using MudBlazor
+@using OpenDsc.Server.Data
+@using OpenDsc.Server.Entities
+@using OpenDsc.Server.Services
+@inject IJSRuntime JSRuntime
+
+<MudContainer MaxWidth="MaxWidth.Small" Style="display: flex; align-items: center; justify-content: center; min-height: 100vh;">
+    <MudCard Style="width: 100%; max-width: 400px;">
+        <MudCardContent>
+            <MudStack AlignItems="AlignItems.Center" Class="mb-4">
+                <MudText Typo="Typo.h4">OpenDSC Server</MudText>
+                <MudText Typo="Typo.body1" Color="Color.Secondary">Sign in to continue</MudText>
+            </MudStack>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-3">@errorMessage</MudAlert>
+            }
+
+            <EditForm Model="@loginModel" OnValidSubmit="HandleLogin">
+                <DataAnnotationsValidator />
+
+                <MudTextField @bind-Value="loginModel!.Username"
+                              Label="Username"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              Class="mb-3" />
+
+                <MudTextField @bind-Value="loginModel!.Password"
+                              Label="Password"
+                              InputType="InputType.Password"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              Class="mb-4" />
+
+                <MudButton ButtonType="ButtonType.Submit"
+                           Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           FullWidth="true"
+                           Disabled="@isLoading">
+                    @if (isLoading)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        <span>Signing in...</span>
+                    }
+                    else
+                    {
+                        <span>Sign In</span>
+                    }
+                </MudButton>
+            </EditForm>
+        </MudCardContent>
+    </MudCard>
+</MudContainer>
+
+@code {
+    private LoginModel loginModel = new();
+    private bool isLoading = false;
+    private string? errorMessage;
+
+    private async Task HandleLogin()
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            // Use JavaScript to call login API and handle the response
+            await JSRuntime.InvokeVoidAsync("eval", $@"
+                (async function() {{
+                    try {{
+                        const response = await fetch('/api/v1/auth/login', {{
+                            method: 'POST',
+                            headers: {{ 'Content-Type': 'application/json' }},
+                            body: JSON.stringify({{
+                                username: {System.Text.Json.JsonSerializer.Serialize(loginModel.Username)},
+                                password: {System.Text.Json.JsonSerializer.Serialize(loginModel.Password)}
+                            }})
+                        }});
+
+                        if (!response.ok) {{
+                            throw new Error('Invalid username or password');
+                        }}
+
+                        const data = await response.json();
+                        if (data.requirePasswordChange) {{
+                            window.location.href = '/change-password';
+                        }} else {{
+                            window.location.href = '/';
+                        }}
+                    }} catch (error) {{
+                        window.loginError = error.message;
+                    }}
+                }})();
+            ");
+
+            // Wait a bit for the redirect or error
+            await Task.Delay(500);
+
+            // Check if there was an error
+            var error = await JSRuntime.InvokeAsync<string>("eval", "window.loginError || ''");
+            if (!string.IsNullOrEmpty(error))
+            {
+                errorMessage = error;
+                await JSRuntime.InvokeVoidAsync("eval", "window.loginError = null");
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Login failed: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private class LoginModel
+    {
+        public string Username { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+    }
+}

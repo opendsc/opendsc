@@ -1,0 +1,36 @@
+@page "/settings"
+@attribute [Authorize(Policy = "settings.read")]
+
+<PageTitle>Settings</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Server Settings</MudText>
+
+<MudTabs Elevation="4" Rounded="true" Color="Color.Primary">
+    <MudTabPanel Text="Registration Keys" Icon="@Icons.Material.Filled.Key">
+        <RegistrationKeys />
+    </MudTabPanel>
+    <MudTabPanel Text="Server Settings" Icon="@Icons.Material.Filled.Settings">
+        <MudCard Class="mt-4">
+            <MudCardContent>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Server settings management coming soon.
+                </MudText>
+            </MudCardContent>
+        </MudCard>
+    </MudTabPanel>
+    <MudTabPanel Text="Scope Types" Icon="@Icons.Material.Filled.Category">
+        <ScopeTypes />
+    </MudTabPanel>
+    <MudTabPanel Text="Scope Values" Icon="@Icons.Material.Filled.Label">
+        <ScopeValues />
+    </MudTabPanel>
+    <MudTabPanel Text="Retention Policies" Icon="@Icons.Material.Filled.History">
+        <MudCard Class="mt-4">
+            <MudCardContent>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    Retention policy management coming soon.
+                </MudText>
+            </MudCardContent>
+        </MudCard>
+    </MudTabPanel>
+</MudTabs>

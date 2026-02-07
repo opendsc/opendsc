@@ -47,14 +47,29 @@ public static class AuthenticationExtensions
                 options.Cookie.SameSite = SameSiteMode.Strict;
 
                 // Suppress redirects for API requests - return 401/403 instead
+                // For UI requests, redirect to login/access-denied pages
                 options.Events.OnRedirectToLogin = context =>
                 {
-                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    if (context.Request.Path.StartsWithSegments("/api"))
+                    {
+                        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    }
+                    else
+                    {
+                        context.Response.Redirect($"/login?returnUrl={Uri.EscapeDataString(context.Request.Path + context.Request.QueryString)}");
+                    }
                     return Task.CompletedTask;
                 };
                 options.Events.OnRedirectToAccessDenied = context =>
                 {
-                    context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                    if (context.Request.Path.StartsWithSegments("/api"))
+                    {
+                        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                    }
+                    else
+                    {
+                        context.Response.Redirect("/access-denied");
+                    }
                     return Task.CompletedTask;
                 };
             })

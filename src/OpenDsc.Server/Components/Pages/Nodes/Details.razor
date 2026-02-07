@@ -1,0 +1,385 @@
+@page "/nodes/{id:guid}"
+@attribute [Authorize(Policy = "nodes.read")]
+@inject ServerDbContext Db
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Node Details</PageTitle>
+
+@if (node == null)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+else
+{
+    <MudText Typo="Typo.h4" Class="mb-4">Node: @node.Fqdn</MudText>
+
+    <MudTabs Elevation="4" Rounded="true" Color="Color.Primary">
+        <MudTabPanel Text="Info" Icon="@Icons.Material.Filled.Info">
+            <MudCard Class="mt-4">
+                <MudCardContent>
+                    <MudSimpleTable Dense="true">
+                        <tbody>
+                            <tr>
+                                <td><strong>FQDN:</strong></td>
+                                <td>@node.Fqdn</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Status:</strong></td>
+                                <td>
+                                    <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(node.Status)">
+                                        @node.Status
+                                    </MudChip>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Configuration:</strong></td>
+                                <td>@(node.ConfigurationName ?? "Not assigned")</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Certificate Thumbprint:</strong></td>
+                                <td><code>@node.CertificateThumbprint</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Certificate Subject:</strong></td>
+                                <td>@node.CertificateSubject</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Certificate Expiration:</strong></td>
+                                <td>@node.CertificateNotAfter.LocalDateTime.ToString("g")</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Last Check-In:</strong></td>
+                                <td>@(node.LastCheckIn?.LocalDateTime.ToString("g") ?? "Never")</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Created:</strong></td>
+                                <td>@node.CreatedAt.LocalDateTime.ToString("g")</td>
+                            </tr>
+                        </tbody>
+                    </MudSimpleTable>
+                </MudCardContent>
+            </MudCard>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Configuration" Icon="@Icons.Material.Filled.Settings">
+            <MudCard Class="mt-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Assigned Configuration</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    @if (!string.IsNullOrEmpty(node.ConfigurationName))
+                    {
+                        <MudAlert Severity="Severity.Info" Class="mb-4">
+                            Currently assigned: <strong>@node.ConfigurationName</strong>
+                        </MudAlert>
+                    }
+                    else
+                    {
+                        <MudAlert Severity="Severity.Warning" Class="mb-4">
+                            No configuration assigned to this node.
+                        </MudAlert>
+                    }
+
+                    <MudSelect @bind-Value="selectedConfigurationName" Label="Select Configuration" Variant="Variant.Outlined" Class="mb-3" Clearable="true">
+                        @foreach (var config in configurations)
+                        {
+                            <MudSelectItem Value="@config.Name">@config.Name (v@config.Version)</MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               OnClick="AssignConfiguration"
+                               Disabled="@(selectedConfigurationName == node.ConfigurationName)">
+                        @(string.IsNullOrEmpty(selectedConfigurationName) ? "Unassign Configuration" : "Assign Configuration")
+                    </MudButton>
+                </MudCardContent>
+            </MudCard>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Tags" Icon="@Icons.Material.Filled.Label">
+            <MudCard Class="mt-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Node Tags</MudText>
+                    </CardHeaderContent>
+                    <CardHeaderActions>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => showAddTag = !showAddTag)" StartIcon="@Icons.Material.Filled.Add">
+                            Add Tag
+                        </MudButton>
+                    </CardHeaderActions>
+                </MudCardHeader>
+                <MudCardContent>
+                    @if (showAddTag)
+                    {
+                        <MudCard Class="mb-4" Outlined="true">
+                            <MudCardContent>
+                                <MudText Typo="Typo.h6" Class="mb-3">Add New Tag</MudText>
+                                <MudSelect @bind-Value="selectedScopeTypeId" Label="Scope Type" Variant="Variant.Outlined" Class="mb-3" T="Guid?">
+                                    @foreach (var scopeType in availableScopeTypes)
+                                    {
+                                        <MudSelectItem Value="@((Guid?)scopeType.Id)">@scopeType.Name</MudSelectItem>
+                                    }
+                                </MudSelect>
+
+                                @if (selectedScopeTypeId.HasValue)
+                                {
+                                    <MudSelect @bind-Value="selectedScopeValueId" Label="Scope Value" Variant="Variant.Outlined" Class="mb-3" T="Guid?">
+                                        @foreach (var scopeValue in GetScopeValuesForType(selectedScopeTypeId.Value))
+                                        {
+                                            <MudSelectItem Value="@((Guid?)scopeValue.Id)">@scopeValue.Value</MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                }
+
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="AddTag" Disabled="@(!selectedScopeValueId.HasValue)">
+                                    Add
+                                </MudButton>
+                                <MudButton Variant="Variant.Outlined" OnClick="@(() => showAddTag = false)">
+                                    Cancel
+                                </MudButton>
+                            </MudCardContent>
+                        </MudCard>
+                    }
+
+                    @if (nodeTags.Any())
+                    {
+                        <MudTable Items="@nodeTags" Hover="true" Dense="true">
+                            <HeaderContent>
+                                <MudTh>Scope Type</MudTh>
+                                <MudTh>Value</MudTh>
+                                <MudTh>Assigned</MudTh>
+                                <MudTh>Actions</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd>@context.ScopeValue.ScopeType.Name</MudTd>
+                                <MudTd>@context.ScopeValue.Value</MudTd>
+                                <MudTd>@context.AssignedAt.LocalDateTime.ToString("g")</MudTd>
+                                <MudTd>
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                   Size="Size.Small"
+                                                   Color="Color.Error"
+                                                   OnClick="@(() => RemoveTag(context))" />
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+                    else
+                    {
+                        <MudAlert Severity="Severity.Info">No tags assigned to this node.</MudAlert>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Reports" Icon="@Icons.Material.Filled.Assessment">
+            <MudCard Class="mt-4">
+                <MudCardContent>
+                    @if (reports.Any())
+                    {
+                        <MudTable Items="@reports" Hover="true" Dense="true">
+                            <HeaderContent>
+                                <MudTh>Timestamp</MudTh>
+                                <MudTh>Operation</MudTh>
+                                <MudTh>Status</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd>@context.Timestamp.LocalDateTime.ToString("g")</MudTd>
+                                <MudTd>@context.Operation</MudTd>
+                                <MudTd>
+                                    @if (context.HadErrors)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Error">Error</MudChip>
+                                    }
+                                    else if (context.InDesiredState)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Success">Compliant</MudChip>
+                                    }
+                                    else
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Warning">Non-Compliant</MudChip>
+                                    }
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+                    else
+                    {
+                        <MudText Align="Align.Center" Class="pa-4">No reports yet</MudText>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudTabPanel>
+    </MudTabs>
+
+    <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" Class="mt-4" OnClick="@(() => Navigation.NavigateTo("/nodes"))">
+        Back to Nodes
+    </MudButton>
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private Node? node;
+    private List<Report> reports = [];
+    private List<Configuration> configurations = [];
+    private string? selectedConfigurationName;
+    private List<NodeTag> nodeTags = [];
+    private List<ScopeType> availableScopeTypes = [];
+    private List<ScopeValue> availableScopeValues = [];
+    private bool showAddTag;
+    private Guid? selectedScopeTypeId;
+    private Guid? selectedScopeValueId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            node = await Db.Nodes.FindAsync(Id);
+            if (node != null)
+            {
+                selectedConfigurationName = node.ConfigurationName;
+
+                var nodeReports = await Db.Reports
+                    .Where(r => r.NodeId == Id)
+                    .ToListAsync();
+
+                reports = nodeReports
+                    .OrderByDescending(r => r.Timestamp)
+                    .Take(20)
+                    .ToList();
+
+                configurations = await Db.Configurations
+                    .OrderBy(c => c.Name)
+                    .ToListAsync();
+
+                await LoadTagsAsync();
+                await LoadScopeDataAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading node: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task LoadTagsAsync()
+    {
+        nodeTags = await Db.NodeTags
+            .Where(nt => nt.NodeId == Id)
+            .Include(nt => nt.ScopeValue)
+                .ThenInclude(sv => sv.ScopeType)
+            .OrderBy(nt => nt.ScopeValue.ScopeType.Precedence)
+            .ThenBy(nt => nt.ScopeValue.Value)
+            .ToListAsync();
+    }
+
+    private async Task LoadScopeDataAsync()
+    {
+        availableScopeTypes = await Db.ScopeTypes
+            .OrderByDescending(st => st.Precedence)
+            .ToListAsync();
+
+        availableScopeValues = await Db.ScopeValues
+            .Include(sv => sv.ScopeType)
+            .OrderBy(sv => sv.Value)
+            .ToListAsync();
+    }
+
+    private async Task AssignConfiguration()
+    {
+        if (node == null) return;
+
+        try
+        {
+            node.ConfigurationName = string.IsNullOrEmpty(selectedConfigurationName) ? null : selectedConfigurationName;
+            await Db.SaveChangesAsync();
+
+            var message = string.IsNullOrEmpty(selectedConfigurationName)
+                ? "Configuration unassigned"
+                : $"Configuration '{selectedConfigurationName}' assigned";
+
+            Snackbar.Add(message, Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error updating configuration assignment: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private Color GetStatusColor(NodeStatus status) => status switch
+    {
+        NodeStatus.Compliant => Color.Success,
+        NodeStatus.NonCompliant => Color.Warning,
+        NodeStatus.Error => Color.Error,
+        _ => Color.Default
+    };
+
+    private List<ScopeValue> GetScopeValuesForType(Guid scopeTypeId)
+    {
+        return availableScopeValues
+            .Where(sv => sv.ScopeTypeId == scopeTypeId)
+            .ToList();
+    }
+
+    private async Task AddTag()
+    {
+        if (!selectedScopeValueId.HasValue || node == null)
+            return;
+
+        try
+        {
+            var existingTag = await Db.NodeTags
+                .FirstOrDefaultAsync(nt => nt.NodeId == Id && nt.ScopeValueId == selectedScopeValueId.Value);
+
+            if (existingTag != null)
+            {
+                Snackbar.Add("This tag is already assigned to this node.", Severity.Warning);
+                return;
+            }
+
+            var nodeTag = new NodeTag
+            {
+                NodeId = Id,
+                ScopeValueId = selectedScopeValueId.Value,
+                AssignedAt = DateTimeOffset.UtcNow
+            };
+
+            Db.NodeTags.Add(nodeTag);
+            await Db.SaveChangesAsync();
+
+            await LoadTagsAsync();
+
+            selectedScopeTypeId = null;
+            selectedScopeValueId = null;
+            showAddTag = false;
+
+            Snackbar.Add("Tag added successfully", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error adding tag: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task RemoveTag(NodeTag tag)
+    {
+        try
+        {
+            Db.NodeTags.Remove(tag);
+            await Db.SaveChangesAsync();
+
+            await LoadTagsAsync();
+
+            Snackbar.Add("Tag removed successfully", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error removing tag: {ex.Message}", Severity.Error);
+        }
+    }
+}

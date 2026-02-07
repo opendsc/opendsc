@@ -1,0 +1,73 @@
+@inherits LayoutComponentBase
+@inject IJSRuntime JSRuntime
+
+<MudThemeProvider />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="1">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" />
+        <MudText Typo="Typo.h6" Class="ml-3">OpenDSC Server</MudText>
+        <MudSpacer />
+        <AuthorizeView>
+            <Authorized>
+                <MudText Typo="Typo.body2" Class="mr-4">@context.User.Identity?.Name</MudText>
+                <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit" OnClick="HandleLogout" />
+            </Authorized>
+        </AuthorizeView>
+    </MudAppBar>
+
+    <AuthorizeView>
+        <Authorized>
+            <MudDrawer @bind-Open="_drawerOpen" Elevation="1" ClipMode="DrawerClipMode.Always">
+                <MudNavMenu>
+                    <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">Dashboard</MudNavLink>
+                    <MudNavLink Href="/nodes" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Computer">Nodes</MudNavLink>
+                    <MudNavLink Href="/configurations" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Settings">Configurations</MudNavLink>
+                    <MudNavLink Href="/parameters" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Tune">Parameters</MudNavLink>
+                    <MudNavLink Href="/reports" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Assessment">Reports</MudNavLink>
+
+                    <AuthorizeView Policy="settings.read" Context="settingsAuth">
+                        <Authorized>
+                            <MudDivider Class="my-2" />
+                            <MudNavLink Href="/settings" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.AdminPanelSettings">Settings</MudNavLink>
+                        </Authorized>
+                    </AuthorizeView>
+
+                    <AuthorizeView Policy="users.manage" Context="adminAuth">
+                        <Authorized>
+                            <MudNavLink Href="/admin" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.SupervisorAccount">Administration</MudNavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                </MudNavMenu>
+            </MudDrawer>
+        </Authorized>
+    </AuthorizeView>
+
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4 mb-4">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private bool _drawerOpen = true;
+
+    private void ToggleDrawer()
+    {
+        _drawerOpen = !_drawerOpen;
+    }
+
+    private async Task HandleLogout()
+    {
+        await JSRuntime.InvokeVoidAsync("eval", @"
+            (async function() {
+                await fetch('/api/v1/auth/logout', { method: 'POST' });
+                window.location.href = '/login';
+            })();
+        ");
+    }
+}

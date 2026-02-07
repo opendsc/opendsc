@@ -1,0 +1,213 @@
+@page "/"
+@attribute [Authorize(Policy = "nodes.read")]
+@inject ServerDbContext Db
+@inject ISnackbar Snackbar
+
+<PageTitle>Dashboard</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Dashboard</MudText>
+
+@if (isLoading)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+else
+{
+    <MudGrid>
+        <MudItem xs="12" md="3">
+            <MudCard>
+                <MudCardContent>
+                    <MudText Typo="Typo.h6" Color="Color.Secondary">Total Nodes</MudText>
+                    <MudText Typo="Typo.h3">@totalNodes</MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <MudCard>
+                <MudCardContent>
+                    <MudText Typo="Typo.h6" Color="Color.Success">Compliant</MudText>
+                    <MudText Typo="Typo.h3">@compliantCount</MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <MudCard>
+                <MudCardContent>
+                    <MudText Typo="Typo.h6" Color="Color.Warning">Non-Compliant</MudText>
+                    <MudText Typo="Typo.h3">@nonCompliantCount</MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <MudCard>
+                <MudCardContent>
+                    <MudText Typo="Typo.h6" Color="Color.Error">Error</MudText>
+                    <MudText Typo="Typo.h3">@errorCount</MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Node Compliance Status</MudText>
+                    </CardHeaderContent>
+                    <CardHeaderActions>
+                        <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadDataAsync" />
+                    </CardHeaderActions>
+                </MudCardHeader>
+                <MudCardContent>
+                    @if (chartData.Any())
+                    {
+                        <MudChart ChartType="ChartType.Pie"
+                                  InputData="@chartData"
+                                  InputLabels="@chartLabels"
+                                  Width="100%"
+                                  Height="350px" />
+                    }
+                    else
+                    {
+                        <MudText Align="Align.Center" Class="pa-4">No nodes registered</MudText>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Recent Reports</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    @if (recentReports.Any())
+                    {
+                        <MudTable Items="@recentReports" Hover="true" Dense="true">
+                            <HeaderContent>
+                                <MudTh>Node</MudTh>
+                                <MudTh>Time</MudTh>
+                                <MudTh>Status</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd DataLabel="Node">@context.NodeFqdn</MudTd>
+                                <MudTd DataLabel="Time">@context.Timestamp.LocalDateTime.ToString("g")</MudTd>
+                                <MudTd DataLabel="Status">
+                                    @if (context.HadErrors)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Error">Error</MudChip>
+                                    }
+                                    else if (context.InDesiredState)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Success">Compliant</MudChip>
+                                    }
+                                    else
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Warning">Non-Compliant</MudChip>
+                                    }
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+                    else
+                    {
+                        <MudText Align="Align.Center" Class="pa-4">No reports yet</MudText>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    private bool isLoading = true;
+    private int totalNodes = 0;
+    private int compliantCount = 0;
+    private int nonCompliantCount = 0;
+    private int errorCount = 0;
+    private int unknownCount = 0;
+    private double[] chartData = [];
+    private string[] chartLabels = [];
+    private List<ReportSummary> recentReports = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        isLoading = true;
+        try
+        {
+            var nodes = await Db.Nodes.ToListAsync();
+            totalNodes = nodes.Count;
+            compliantCount = nodes.Count(n => n.Status == NodeStatus.Compliant);
+            nonCompliantCount = nodes.Count(n => n.Status == NodeStatus.NonCompliant);
+            errorCount = nodes.Count(n => n.Status == NodeStatus.Error);
+            unknownCount = nodes.Count(n => n.Status == NodeStatus.Unknown);
+
+            // Build chart data
+            var dataList = new List<double>();
+            var labelList = new List<string>();
+
+            if (unknownCount > 0)
+            {
+                dataList.Add(unknownCount);
+                labelList.Add($"Unknown ({unknownCount})");
+            }
+            if (compliantCount > 0)
+            {
+                dataList.Add(compliantCount);
+                labelList.Add($"Compliant ({compliantCount})");
+            }
+            if (nonCompliantCount > 0)
+            {
+                dataList.Add(nonCompliantCount);
+                labelList.Add($"NonCompliant ({nonCompliantCount})");
+            }
+            if (errorCount > 0)
+            {
+                dataList.Add(errorCount);
+                labelList.Add($"Error ({errorCount})");
+            }
+
+            chartData = [.. dataList];
+            chartLabels = [.. labelList];
+
+            // Get recent reports (load and sort in memory due to SQLite DateTimeOffset limitation)
+            var allReports = await Db.Reports
+                .Include(r => r.Node)
+                .ToListAsync();
+
+            recentReports = allReports
+                .OrderByDescending(r => r.Timestamp)
+                .Take(10)
+                .Select(r => new ReportSummary
+                {
+                    NodeFqdn = r.Node.Fqdn,
+                    Timestamp = r.Timestamp,
+                    InDesiredState = r.InDesiredState,
+                    HadErrors = r.HadErrors
+                })
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading dashboard: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private class ReportSummary
+    {
+        public string NodeFqdn { get; set; } = string.Empty;
+        public DateTimeOffset Timestamp { get; set; }
+        public bool InDesiredState { get; set; }
+        public bool HadErrors { get; set; }
+    }
+}

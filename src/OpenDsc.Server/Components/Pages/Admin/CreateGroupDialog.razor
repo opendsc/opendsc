@@ -1,0 +1,65 @@
+@using Microsoft.EntityFrameworkCore
+@using MudBlazor
+@inject ServerDbContext Db
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="name" Label="Group Name" Variant="Variant.Outlined" Required="true" Class="mb-3" />
+        <MudTextField @bind-Value="description" Label="Description" Variant="Variant.Outlined" Lines="3" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@string.IsNullOrWhiteSpace(name)">Create</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter]
+    public EventCallback OnGroupCreated { get; set; }
+
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private string name = string.Empty;
+    private string? description;
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private async Task Submit()
+    {
+        try
+        {
+            var existingGroup = await Db.Groups
+                .FirstOrDefaultAsync(g => g.Name == name);
+
+            if (existingGroup != null)
+            {
+                Snackbar.Add("Group name already exists", Severity.Error);
+                return;
+            }
+
+            var group = new Group
+            {
+                Id = Guid.NewGuid(),
+                Name = name,
+                Description = string.IsNullOrWhiteSpace(description) ? null : description,
+                IsSystemGroup = false,
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+
+            Db.Groups.Add(group);
+            await Db.SaveChangesAsync();
+
+            Snackbar.Add($"Group '{name}' created successfully", Severity.Success);
+            await OnGroupCreated.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error creating group: {ex.Message}", Severity.Error);
+        }
+    }
+}

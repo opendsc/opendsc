@@ -1,0 +1,169 @@
+@using Microsoft.EntityFrameworkCore
+@inject ServerDbContext Db
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+
+<MudCard Class="mt-4">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">Users</MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateUser" StartIcon="@Icons.Material.Filled.Add">
+                Create User
+            </MudButton>
+        </CardHeaderActions>
+    </MudCardHeader>
+    <MudCardContent>
+        <MudTable Items="@users" Hover="true" Dense="true" Loading="@loading">
+            <HeaderContent>
+                <MudTh>Username</MudTh>
+                <MudTh>Email</MudTh>
+                <MudTh>Account Type</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh>Roles</MudTh>
+                <MudTh>Groups</MudTh>
+                <MudTh>Created</MudTh>
+                <MudTh>Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@context.Username</MudTd>
+                <MudTd>@context.Email</MudTd>
+                <MudTd>@context.AccountType</MudTd>
+                <MudTd>
+                    @if (!context.IsActive)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Default">Inactive</MudChip>
+                    }
+                    else if (context.LockoutEnd.HasValue && context.LockoutEnd.Value > DateTimeOffset.UtcNow)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Error">Locked</MudChip>
+                    }
+                    else if (context.RequirePasswordChange)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Warning">Password Reset Required</MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Success">Active</MudChip>
+                    }
+                </MudTd>
+                <MudTd>@GetUserRoleCount(context.Id)</MudTd>
+                <MudTd>@GetUserGroupCount(context.Id)</MudTd>
+                <MudTd>@context.CreatedAt.LocalDateTime.ToString("g")</MudTd>
+                <MudTd>
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                   Size="Size.Small"
+                                   OnClick="@(() => EditUser(context))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                   Size="Size.Small"
+                                   Color="Color.Error"
+                                   OnClick="@(() => DeleteUser(context))"
+                                   Disabled="@context.Username.Equals("admin", StringComparison.OrdinalIgnoreCase)" />
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    private List<User> users = [];
+    private Dictionary<Guid, int> userRoleCounts = new();
+    private Dictionary<Guid, int> userGroupCounts = new();
+    private bool loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsersAsync();
+    }
+
+    private async Task LoadUsersAsync()
+    {
+        loading = true;
+        try
+        {
+            users = await Db.Users
+                .OrderBy(u => u.Username)
+                .ToListAsync();
+
+            var roleCountsQuery = await Db.Set<UserRole>()
+                .GroupBy(ur => ur.UserId)
+                .Select(g => new { UserId = g.Key, Count = g.Count() })
+                .ToListAsync();
+            userRoleCounts = roleCountsQuery.ToDictionary(x => x.UserId, x => x.Count);
+
+            var groupCountsQuery = await Db.Set<UserGroup>()
+                .GroupBy(ug => ug.UserId)
+                .Select(g => new { UserId = g.Key, Count = g.Count() })
+                .ToListAsync();
+            userGroupCounts = groupCountsQuery.ToDictionary(x => x.UserId, x => x.Count);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private int GetUserRoleCount(Guid userId)
+    {
+        return userRoleCounts.TryGetValue(userId, out var count) ? count : 0;
+    }
+
+    private int GetUserGroupCount(Guid userId)
+    {
+        return userGroupCounts.TryGetValue(userId, out var count) ? count : 0;
+    }
+
+    private async Task CreateUser()
+    {
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var parameters = new DialogParameters<CreateUserDialog>
+        {
+            { x => x.OnUserCreated, EventCallback.Factory.Create(this, LoadUsersAsync) }
+        };
+
+        await Dialog.ShowAsync<CreateUserDialog>("Create User", parameters, options);
+    }
+
+    private async Task EditUser(User user)
+    {
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var parameters = new DialogParameters<EditUserDialog>
+        {
+            { x => x.UserId, user.Id },
+            { x => x.OnUserUpdated, EventCallback.Factory.Create(this, LoadUsersAsync) }
+        };
+
+        await Dialog.ShowAsync<EditUserDialog>("Edit User", parameters, options);
+    }
+
+    private async Task DeleteUser(User user)
+    {
+        if (user.Username.Equals("admin", StringComparison.OrdinalIgnoreCase))
+        {
+            Snackbar.Add("Cannot delete the admin user", Severity.Warning);
+            return;
+        }
+
+        var confirmed = await Dialog.ShowMessageBox(
+            "Confirm Delete",
+            $"Delete user '{user.Username}'? This will remove all role and group assignments.",
+            yesText: "Delete",
+            cancelText: "Cancel");
+
+        if (confirmed == true)
+        {
+            try
+            {
+                Db.Users.Remove(user);
+                await Db.SaveChangesAsync();
+                await LoadUsersAsync();
+                Snackbar.Add($"User '{user.Username}' deleted successfully", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error deleting user: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+}

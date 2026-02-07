@@ -1,0 +1,41 @@
+@using MudBlazor
+@inject IJSRuntime JSRuntime
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudAlert Severity="Severity.Warning" Class="mb-3">
+            <MudText Typo="Typo.body2">Save this key now! You won't be able to see it again.</MudText>
+        </MudAlert>
+
+        <MudTextField @bind-Value="Key"
+                      Label="Registration Key"
+                      Variant="Variant.Outlined"
+                      ReadOnly="true"
+                      Lines="3"
+                      HelperText="Copy this key and store it securely" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="CopyToClipboard" Color="Color.Secondary" Variant="Variant.Filled" StartIcon="@Icons.Material.Filled.ContentCopy">Copy</MudButton>
+        <MudButton OnClick="Close" Color="Color.Primary" Variant="Variant.Filled">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance? MudDialog { get; set; }
+
+    [Parameter]
+    public string Key { get; set; } = string.Empty;
+
+    private async Task CopyToClipboard()
+    {
+        await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", Key);
+        Snackbar.Add("Registration key copied to clipboard", Severity.Success);
+    }
+
+    private void Close()
+    {
+        MudDialog?.Close();
+    }
+}

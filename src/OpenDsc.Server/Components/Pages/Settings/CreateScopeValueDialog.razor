@@ -1,0 +1,75 @@
+@using Microsoft.EntityFrameworkCore
+@using MudBlazor
+@inject ServerDbContext Db
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="scopeTypeId" Label="Scope Type" Variant="Variant.Outlined" ReadOnly="true" Disabled="true" Class="d-none" />
+        <MudSelect @bind-Value="scopeTypeId" Label="Scope Type" Variant="Variant.Outlined" Required="true" Class="mb-3" T="Guid?">
+            @foreach (var scopeType in ScopeTypes)
+            {
+                <MudSelectItem Value="@((Guid?)scopeType.Id)">@scopeType.Name</MudSelectItem>
+            }
+        </MudSelect>
+        <MudTextField @bind-Value="value" Label="Value" Variant="Variant.Outlined" Required="true" Class="mb-3" />
+        <MudTextField @bind-Value="description" Label="Description" Variant="Variant.Outlined" Lines="3" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(!IsValid())">Create</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public List<ScopeType> ScopeTypes { get; set; } = [];
+
+    [Parameter]
+    public EventCallback OnScopeValueCreated { get; set; }
+
+    private Guid? scopeTypeId;
+    private string value = string.Empty;
+    private string? description;
+
+    private bool IsValid()
+    {
+        return scopeTypeId.HasValue && !string.IsNullOrWhiteSpace(value);
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private async Task Submit()
+    {
+        if (!IsValid())
+            return;
+
+        try
+        {
+            var scopeValue = new ScopeValue
+            {
+                Id = Guid.NewGuid(),
+                ScopeTypeId = scopeTypeId!.Value,
+                Value = value,
+                Description = string.IsNullOrWhiteSpace(description) ? null : description,
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+
+            Db.ScopeValues.Add(scopeValue);
+            await Db.SaveChangesAsync();
+
+            Snackbar.Add("Scope value created successfully", Severity.Success);
+            await OnScopeValueCreated.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error creating scope value: {ex.Message}", Severity.Error);
+        }
+    }
+}

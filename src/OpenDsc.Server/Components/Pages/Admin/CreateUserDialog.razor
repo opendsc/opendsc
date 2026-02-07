@@ -1,0 +1,97 @@
+@using Microsoft.EntityFrameworkCore
+@using MudBlazor
+@inject ServerDbContext Db
+@inject ISnackbar Snackbar
+@inject IPasswordHasher PasswordHasher
+
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="username" Label="Username" Variant="Variant.Outlined" Required="true" Class="mb-3" />
+        <MudTextField @bind-Value="email" Label="Email" Variant="Variant.Outlined" InputType="InputType.Email" Required="true" Class="mb-3" />
+        <MudTextField @bind-Value="password" Label="Password" Variant="Variant.Outlined" InputType="InputType.Password" Required="true" Class="mb-3" />
+        <MudSelect @bind-Value="accountType" Label="Account Type" Variant="Variant.Outlined" Class="mb-3" T="AccountType">
+            <MudSelectItem Value="@AccountType.User">User</MudSelectItem>
+            <MudSelectItem Value="@AccountType.ServiceAccount">Service Account</MudSelectItem>
+        </MudSelect>
+        <MudTextField @bind-Value="description" Label="Description" Variant="Variant.Outlined" Lines="2" Class="mb-3" />
+        <MudCheckBox @bind-Value="requirePasswordChange" Label="Require Password Change" />
+        <MudText Typo="Typo.caption" Class="mb-3">User must change password on first login</MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(!IsValid())">Create</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter]
+    public EventCallback OnUserCreated { get; set; }
+
+    private string username = string.Empty;
+    private string email = string.Empty;
+    private string password = string.Empty;
+    private string? description;
+    private AccountType accountType = AccountType.User;
+    private bool requirePasswordChange = true;
+
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private bool IsValid()
+    {
+        return !string.IsNullOrWhiteSpace(username) &&
+               !string.IsNullOrWhiteSpace(email) &&
+               !string.IsNullOrWhiteSpace(password);
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private async Task Submit()
+    {
+        if (!IsValid())
+            return;
+
+        try
+        {
+            var existingUser = await Db.Users
+                .FirstOrDefaultAsync(u => u.Username == username);
+
+            if (existingUser != null)
+            {
+                Snackbar.Add("Username already exists", Severity.Error);
+                return;
+            }
+
+            var (hash, salt) = PasswordHasher.HashPassword(password);
+
+            var user = new User
+            {
+                Id = Guid.NewGuid(),
+                Username = username,
+                Email = email,
+                PasswordHash = hash,
+                PasswordSalt = salt,
+                AccountType = accountType,
+                Description = string.IsNullOrWhiteSpace(description) ? null : description,
+                RequirePasswordChange = requirePasswordChange,
+                EmailConfirmed = false,
+                IsActive = true,
+                AccessFailedCount = 0,
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+
+            Db.Users.Add(user);
+            await Db.SaveChangesAsync();
+
+            Snackbar.Add($"User '{username}' created successfully", Severity.Success);
+            await OnUserCreated.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error creating user: {ex.Message}", Severity.Error);
+        }
+    }
+}

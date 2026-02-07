@@ -1,0 +1,157 @@
+@using Microsoft.EntityFrameworkCore
+@using System.Text.Json
+@using System.Reflection
+@using MudBlazor
+@using OpenDsc.Server.Authorization
+@inject ServerDbContext Db
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        @if (role != null)
+        {
+            <MudTextField @bind-Value="role.Name" Label="Role Name" Variant="Variant.Outlined" Required="true" Class="mb-3" />
+            <MudTextField @bind-Value="role.Description" Label="Description" Variant="Variant.Outlined" Lines="2" Class="mb-3" />
+
+            <MudText Typo="Typo.subtitle2" Class="mb-2">Groups:</MudText>
+            <MudPaper Class="pa-3 mb-3" Style="max-height: 200px; overflow-y: auto;">
+                @if (availableGroups.Count == 0)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">No groups available</MudText>
+                }
+                else
+                {
+                    @foreach (var group in availableGroups)
+                    {
+                        <MudCheckBox @bind-Value="@selectedGroups[group.Id]"
+                                     Label="@group.Name"
+                                     Dense="true" />
+                    }
+                }
+            </MudPaper>
+
+            <MudText Typo="Typo.subtitle2" Class="mb-2">Permissions:</MudText>
+            <MudPaper Class="pa-3" Style="max-height: 400px; overflow-y: auto;">
+                @foreach (var permission in availablePermissions)
+                {
+                    <MudCheckBox @bind-Value="@selectedPermissions[permission]" Label="@permission" Dense="true" />
+                }
+            </MudPaper>
+        }
+        else
+        {
+            <MudProgressCircular Indeterminate="true" />
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(role == null || string.IsNullOrWhiteSpace(role.Name))">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter]
+    public Guid RoleId { get; set; }
+
+    [Parameter]
+    public EventCallback OnRoleUpdated { get; set; }
+
+    private Role? role;
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private List<Group> availableGroups = [];
+    private List<string> availablePermissions = [];
+    private Dictionary<Guid, bool> selectedGroups = new();
+    private Dictionary<string, bool> selectedPermissions = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        role = await Db.Roles.FindAsync(RoleId);
+
+        availableGroups = await Db.Groups
+            .OrderBy(g => g.Name)
+            .ToListAsync();
+
+        var existingGroupIds = await Db.GroupRoles
+            .Where(gr => gr.RoleId == RoleId)
+            .Select(gr => gr.GroupId)
+            .ToListAsync();
+
+        foreach (var group in availableGroups)
+        {
+            selectedGroups[group.Id] = existingGroupIds.Contains(group.Id);
+        }
+
+        var permissionsType = typeof(Permissions);
+        var fields = permissionsType.GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy);
+
+        availablePermissions = fields
+            .Where(f => f.IsLiteral && !f.IsInitOnly && f.FieldType == typeof(string))
+            .Select(f => f.GetValue(null)?.ToString() ?? "")
+            .Where(v => !string.IsNullOrEmpty(v))
+            .OrderBy(v => v)
+            .ToList();
+
+        var existingPermissions = new List<string>();
+        if (role != null && !string.IsNullOrWhiteSpace(role.Permissions))
+        {
+            try
+            {
+                existingPermissions = JsonSerializer.Deserialize<List<string>>(role.Permissions) ?? [];
+            }
+            catch { }
+        }
+
+        foreach (var permission in availablePermissions)
+        {
+            selectedPermissions[permission] = existingPermissions.Contains(permission);
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private async Task Submit()
+    {
+        if (role == null)
+            return;
+
+        try
+        {
+            // Update groups
+            var currentGroups = await Db.GroupRoles
+                .Where(gr => gr.RoleId == RoleId)
+                .ToListAsync();
+
+            var selectedGroupIds = selectedGroups.Where(kvp => kvp.Value).Select(kvp => kvp.Key).ToHashSet();
+            var currentGroupIds = currentGroups.Select(gr => gr.GroupId).ToHashSet();
+
+            var groupsToAdd = selectedGroupIds.Except(currentGroupIds).Select(groupId => new GroupRole { GroupId = groupId, RoleId = RoleId });
+            var groupsToRemove = currentGroups.Where(gr => !selectedGroupIds.Contains(gr.GroupId));
+
+            Db.GroupRoles.AddRange(groupsToAdd);
+            Db.GroupRoles.RemoveRange(groupsToRemove);
+
+            // Update permissions
+            var permissions = selectedPermissions
+                .Where(kvp => kvp.Value)
+                .Select(kvp => kvp.Key)
+                .ToArray();
+
+            role.Permissions = JsonSerializer.Serialize(permissions);
+            role.ModifiedAt = DateTimeOffset.UtcNow;
+
+            await Db.SaveChangesAsync();
+
+            Snackbar.Add($"Role '{role.Name}' updated successfully", Severity.Success);
+            await OnRoleUpdated.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error updating role: {ex.Message}", Severity.Error);
+        }
+    }
+}

@@ -1,0 +1,119 @@
+@page "/reports/{id:guid}"
+@attribute [Authorize(Policy = "reports.read")]
+@inject ServerDbContext Db
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Report Details</PageTitle>
+
+@if (report == null)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+else
+{
+    <MudText Typo="Typo.h4" Class="mb-4">Report Details</MudText>
+
+    <MudGrid>
+        <MudItem xs="12" md="6">
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Report Information</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudSimpleTable Dense="true">
+                        <tbody>
+                            <tr>
+                                <td><strong>Node:</strong></td>
+                                <td>@nodeFqdn</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Operation:</strong></td>
+                                <td>@report.Operation</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Timestamp:</strong></td>
+                                <td>@report.Timestamp.LocalDateTime.ToString("g")</td>
+                            </tr>
+                            <tr>
+                                <td><strong>In Desired State:</strong></td>
+                                <td>
+                                    @if (report.InDesiredState)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Success">Yes</MudChip>
+                                    }
+                                    else
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Warning">No</MudChip>
+                                    }
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Had Errors:</strong></td>
+                                <td>
+                                    @if (report.HadErrors)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Error">Yes</MudChip>
+                                    }
+                                    else
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Success">No</MudChip>
+                                    }
+                                </td>
+                            </tr>
+                        </tbody>
+                    </MudSimpleTable>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12">
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Full Report JSON</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudTextField T="string"
+                                  @bind-Value="@report.ResultJson"
+                                  Lines="20"
+                                  Variant="Variant.Outlined"
+                                  ReadOnly="true"
+                                  Class="mud-input-monospace" />
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+
+    <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" Class="mt-4" OnClick="@(() => Navigation.NavigateTo("/reports"))">
+        Back to Reports
+    </MudButton>
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private Report? report;
+    private string nodeFqdn = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            report = await Db.Reports.FindAsync(Id);
+            if (report != null)
+            {
+                var node = await Db.Nodes.FindAsync(report.NodeId);
+                nodeFqdn = node?.Fqdn ?? "Unknown";
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading report: {ex.Message}", Severity.Error);
+        }
+    }
+}

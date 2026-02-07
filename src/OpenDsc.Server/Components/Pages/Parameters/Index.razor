@@ -1,0 +1,226 @@
+@page "/parameters"
+@attribute [Authorize(Policy = "parameters.read")]
+@using Microsoft.EntityFrameworkCore
+@inject ServerDbContext Db
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>Parameters</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Parameter Schemas</MudText>
+
+<MudCard>
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">Parameter Schemas by Configuration</MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadDataAsync">
+                Refresh
+            </MudButton>
+        </CardHeaderActions>
+    </MudCardHeader>
+    <MudCardContent>
+        @if (loading)
+        {
+            <MudProgressLinear Indeterminate="true" />
+        }
+        else if (groupedSchemas.Any())
+        {
+            @foreach (var group in groupedSchemas)
+            {
+                <MudCard Class="mb-3" Outlined="true">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">@group.ConfigurationName</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudTable Items="@group.Schemas" Hover="true" Dense="true">
+                            <HeaderContent>
+                                <MudTh>Schema Hash</MudTh>
+                                <MudTh>Parameter Files</MudTh>
+                                <MudTh>Created</MudTh>
+                                <MudTh>Actions</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd>
+                                    <MudText Typo="Typo.caption">@context.SchemaHash[..Math.Min(16, context.SchemaHash.Length)]...</MudText>
+                                </MudTd>
+                                <MudTd>
+                                    <MudChip T="string" Size="Size.Small">@context.ParameterFiles.Count</MudChip>
+                                </MudTd>
+                                <MudTd>@context.CreatedAt.LocalDateTime.ToString("g")</MudTd>
+                                <MudTd>
+                                    <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => ViewSchema(context))">
+                                        View Schema
+                                    </MudButton>
+                                    <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => ViewFiles(context))">
+                                        View Files
+                                    </MudButton>
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    </MudCardContent>
+                </MudCard>
+            }
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Info">No parameter schemas found.</MudAlert>
+        }
+
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-4">
+            Note: Full parameter schema editor with Monaco and file management coming soon. Use API endpoints for managing parameter files.
+        </MudText>
+    </MudCardContent>
+</MudCard>
+
+@if (selectedSchema != null && showSchemaDialog)
+{
+    <MudDialog @bind-Visible="showSchemaDialog" Options="new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Large, FullWidth = true }">
+        <DialogContent>
+            <MudText Typo="Typo.h6" Class="mb-3">Schema Definition</MudText>
+            <MudCard Outlined="true">
+                <MudCardContent>
+                    <MudText Typo="Typo.caption" Class="mb-2">Configuration: @selectedConfiguration?.Name</MudText>
+                    <MudText Typo="Typo.caption" Class="mb-2">Schema Hash: @selectedSchema.SchemaHash</MudText>
+                    <MudTextField T="string"
+                                  Value="@selectedSchema.SchemaDefinition"
+                                  Lines="20"
+                                  Variant="Variant.Outlined"
+                                  ReadOnly="true"
+                                  Label="JSON Schema" />
+                </MudCardContent>
+            </MudCard>
+        </DialogContent>
+        <DialogActions>
+            <MudButton OnClick="@(() => showSchemaDialog = false)">Close</MudButton>
+        </DialogActions>
+    </MudDialog>
+}
+
+@if (selectedSchema != null && showFilesDialog)
+{
+    <MudDialog @bind-Visible="showFilesDialog" Options="new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Large, FullWidth = true }">
+        <DialogContent>
+            <MudText Typo="Typo.h6" Class="mb-3">Parameter Files</MudText>
+            <MudText Typo="Typo.caption" Class="mb-3">Configuration: @selectedConfiguration?.Name</MudText>
+
+            @if (selectedSchemaFiles.Any())
+            {
+                <MudTable Items="@selectedSchemaFiles" Hover="true" Dense="true">
+                    <HeaderContent>
+                        <MudTh>Scope Type</MudTh>
+                        <MudTh>Scope Value</MudTh>
+                        <MudTh>Version</MudTh>
+                        <MudTh>Status</MudTh>
+                        <MudTh>Created</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.ScopeType.Name</MudTd>
+                        <MudTd>@(context.ScopeValue ?? "-")</MudTd>
+                        <MudTd>@context.Version</MudTd>
+                        <MudTd>
+                            @if (context.IsActive)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Success">Active</MudChip>
+                            }
+                            @if (context.IsDraft)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Info">Draft</MudChip>
+                            }
+                            @if (context.IsArchived)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Default">Archived</MudChip>
+                            }
+                        </MudTd>
+                        <MudTd>@context.CreatedAt.LocalDateTime.ToString("g")</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Info">No parameter files for this schema.</MudAlert>
+            }
+        </DialogContent>
+        <DialogActions>
+            <MudButton OnClick="@(() => showFilesDialog = false)">Close</MudButton>
+        </DialogActions>
+    </MudDialog>
+}
+
+@code {
+    private List<SchemaGroup> groupedSchemas = [];
+    private ParameterSchema? selectedSchema;
+    private Configuration? selectedConfiguration;
+    private List<ParameterFile> selectedSchemaFiles = [];
+    private bool showSchemaDialog;
+    private bool showFilesDialog;
+    private bool loading = true;
+
+    public class SchemaGroup
+    {
+        public string ConfigurationName { get; set; } = string.Empty;
+        public List<ParameterSchema> Schemas { get; set; } = [];
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        loading = true;
+        try
+        {
+            var schemas = await Db.ParameterSchemas
+                .Include(ps => ps.Configuration)
+                .Include(ps => ps.ParameterFiles)
+                .ToListAsync();
+
+            schemas = schemas
+                .OrderBy(ps => ps.Configuration.Name)
+                .ThenBy(ps => ps.CreatedAt)
+                .ToList();
+
+            groupedSchemas = schemas
+                .GroupBy(ps => ps.Configuration.Name)
+                .Select(g => new SchemaGroup
+                {
+                    ConfigurationName = g.Key,
+                    Schemas = g.ToList()
+                })
+                .ToList();
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private void ViewSchema(ParameterSchema schema)
+    {
+        selectedSchema = schema;
+        selectedConfiguration = schema.Configuration;
+        showSchemaDialog = true;
+    }
+
+    private async Task ViewFiles(ParameterSchema schema)
+    {
+        selectedSchema = schema;
+        selectedConfiguration = schema.Configuration;
+
+        selectedSchemaFiles = await Db.ParameterFiles
+            .Where(pf => pf.ParameterSchemaId == schema.Id)
+            .Include(pf => pf.ScopeType)
+            .OrderBy(pf => pf.ScopeType.Precedence)
+            .ThenBy(pf => pf.ScopeValue)
+            .ThenBy(pf => pf.Version)
+            .ToListAsync();
+
+        showFilesDialog = true;
+    }
+}
+

@@ -1,0 +1,84 @@
+@page "/configurations"
+@attribute [Authorize(Policy = "configurations.read")]
+@inject ServerDbContext Db
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Configurations</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">DSC Configurations</MudText>
+
+<MudCard>
+    <MudCardContent>
+        @if (isLoading)
+        {
+            <MudProgressLinear Indeterminate="true" />
+        }
+        else
+        {
+            <MudDataGrid T="Configuration" Items="@configurations" Hover="true" Dense="true">
+                <Columns>
+                    <PropertyColumn Property="x => x.Name" Title="Name" />
+                    <PropertyColumn Property="x => x.Description" Title="Description" />
+                    <PropertyColumn Property="x => x.EntryPoint" Title="Entry Point" />
+                    <TemplateColumn Title="Versions">
+                        <CellTemplate>
+                            <MudChip T="string" Size="Size.Small">@context.Item.Versions.Count</MudChip>
+                        </CellTemplate>
+                    </TemplateColumn>
+                    <PropertyColumn Property="x => x.CreatedAt" Title="Created">
+                        <CellTemplate>
+                            @context.Item.CreatedAt.LocalDateTime.ToString("g")
+                        </CellTemplate>
+                    </PropertyColumn>
+                    <TemplateColumn Title="Updated">
+                        <CellTemplate>
+                            @(context.Item.UpdatedAt?.LocalDateTime.ToString("g") ?? "Never")
+                        </CellTemplate>
+                    </TemplateColumn>
+                </Columns>
+            </MudDataGrid>
+        }
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-4">
+            Configuration editor with Monaco and version management coming soon.
+        </MudText>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    private List<Configuration> configurations = [];
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadConfigurationsAsync();
+    }
+
+    private async Task LoadConfigurationsAsync()
+    {
+        isLoading = true;
+        try
+        {
+            var configs = await Db.Configurations
+                .Include(c => c.Versions)
+                .ToListAsync();
+
+            configurations = configs
+                .OrderByDescending(c => c.UpdatedAt ?? c.CreatedAt)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading configurations: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ViewConfiguration(string name)
+    {
+        Navigation.NavigateTo($"/configurations/{name}");
+    }
+}

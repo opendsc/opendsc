@@ -1,0 +1,185 @@
+@page "/reports"
+@attribute [Authorize(Policy = "reports.read")]
+@inject ServerDbContext Db
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Compliance Reports</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Compliance Reports</MudText>
+
+<MudCard>
+    <MudCardContent>
+        <MudGrid Class="mb-4">
+            <MudItem xs="12" md="4">
+                <MudSelect T="Guid?" Label="Filter by Node" Value="@selectedNodeId" Clearable="true" ValueChanged="@((Guid? value) => OnNodeFilterChanged(value))">
+                    @foreach (var node in nodes)
+                    {
+                        <MudSelectItem Value="@node.Id">@node.Fqdn</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudSelect T="string" Label="Filter by Status" Value="@selectedStatus" Clearable="true" ValueChanged="@((string value) => OnStatusFilterChanged(value))">
+                    <MudSelectItem Value="@("Compliant")">Compliant</MudSelectItem>
+                    <MudSelectItem Value="@("NonCompliant")">Non-Compliant</MudSelectItem>
+                    <MudSelectItem Value="@("Error")">Error</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="4" Class="d-flex align-end">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ApplyFilters">
+                    Apply Filters
+                </MudButton>
+                <MudButton Variant="Variant.Text" Color="Color.Secondary" OnClick="ClearFilters" Class="ml-2">
+                    Clear
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+
+        <MudDataGrid T="ReportViewModel" Items="@filteredReports" Loading="@isLoading" Hover="true" Dense="true">
+            <Columns>
+                <PropertyColumn Property="x => x.NodeFqdn" Title="Node" />
+                <PropertyColumn Property="x => x.Operation" Title="Operation" />
+                <PropertyColumn Property="x => x.Timestamp" Title="Timestamp">
+                    <CellTemplate>
+                        @context.Item.Timestamp.LocalDateTime.ToString("g")
+                    </CellTemplate>
+                </PropertyColumn>
+                <TemplateColumn Title="Status">
+                    <CellTemplate>
+                        @if (context.Item.HadErrors)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Error">Error</MudChip>
+                        }
+                        else if (context.Item.InDesiredState)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Success">Compliant</MudChip>
+                        }
+                        else
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Warning">Non-Compliant</MudChip>
+                        }
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn>
+                    <CellTemplate>
+                        <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => ViewDetails(context.Item.Id))">
+                            View Details
+                        </MudButton>
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+        </MudDataGrid>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    private List<Node> nodes = [];
+    private List<ReportViewModel> allReports = [];
+    private List<ReportViewModel> filteredReports = [];
+    private bool isLoading = true;
+    private Guid? selectedNodeId;
+    private string? selectedStatus;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        isLoading = true;
+        try
+        {
+            nodes = await Db.Nodes.OrderBy(n => n.Fqdn).ToListAsync();
+
+            var reports = await Db.Reports
+                .Include(r => r.Node)
+                .ToListAsync();
+
+            allReports = reports
+                .OrderByDescending(r => r.Timestamp)
+                .Take(100)
+                .Select(r => new ReportViewModel
+                {
+                    Id = r.Id,
+                    NodeId = r.NodeId,
+                    NodeFqdn = r.Node.Fqdn,
+                    Operation = r.Operation,
+                    Timestamp = r.Timestamp,
+                    InDesiredState = r.InDesiredState,
+                    HadErrors = r.HadErrors
+                })
+                .ToList();
+
+            filteredReports = allReports;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading reports: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ApplyFilters()
+    {
+        filteredReports = allReports.Where(r =>
+        {
+            if (selectedNodeId.HasValue && r.NodeId != selectedNodeId.Value)
+                return false;
+
+            if (!string.IsNullOrEmpty(selectedStatus))
+            {
+                var matchesStatus = selectedStatus switch
+                {
+                    "Compliant" => r.InDesiredState && !r.HadErrors,
+                    "NonCompliant" => !r.InDesiredState && !r.HadErrors,
+                    "Error" => r.HadErrors,
+                    _ => true
+                };
+                if (!matchesStatus)
+                    return false;
+            }
+
+            return true;
+        }).ToList();
+    }
+
+    private void OnNodeFilterChanged(Guid? value)
+    {
+        selectedNodeId = value;
+        ApplyFilters();
+    }
+
+    private void OnStatusFilterChanged(string? value)
+    {
+        selectedStatus = value;
+        ApplyFilters();
+    }
+
+    private void ClearFilters()
+    {
+        selectedNodeId = null;
+        selectedStatus = null;
+        filteredReports = allReports;
+    }
+
+    private void ViewDetails(Guid id)
+    {
+        Navigation.NavigateTo($"/reports/{id}");
+    }
+
+    private class ReportViewModel
+    {
+        public Guid Id { get; set; }
+        public Guid NodeId { get; set; }
+        public string NodeFqdn { get; set; } = string.Empty;
+        public DscOperation Operation { get; set; }
+        public DateTimeOffset Timestamp { get; set; }
+        public bool InDesiredState { get; set; }
+        public bool HadErrors { get; set; }
+    }
+}

@@ -1,0 +1,50 @@
+/* Global styles for OpenDSC Server */
+
+html,
+body {
+    font-family: 'Roboto', sans-serif;
+}
+
+.mud-table-toolbar {
+    padding: 16px;
+}
+
+/* Custom spacing utilities */
+.gap-2 {
+    gap: 8px;
+}
+
+.gap-4 {
+    gap: 16px;
+}
+
+/* Flexbox utilities */
+.d-flex {
+    display: flex;
+}
+
+.flex-column {
+    flex-direction: column;
+}
+
+.align-center {
+    align-items: center;
+}
+
+.justify-center {
+    justify-content: center;
+}
+
+/* Text utilities */
+.text-center {
+    text-align: center;
+}
+
+.text-muted {
+    color: #6c757d;
+}
+
+/* Layout utilities */
+.w-100 {
+    width: 100%;
+}

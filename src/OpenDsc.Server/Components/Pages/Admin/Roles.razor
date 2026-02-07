@@ -1,0 +1,219 @@
+@using Microsoft.EntityFrameworkCore
+@using System.Text.Json
+@inject ServerDbContext Db
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+
+<MudCard Class="mt-4">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">Roles</MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateRole" StartIcon="@Icons.Material.Filled.Add">
+                Create Role
+            </MudButton>
+        </CardHeaderActions>
+    </MudCardHeader>
+    <MudCardContent>
+        <MudTable Items="@roles" Hover="true" Dense="true" Loading="@loading">
+            <HeaderContent>
+                <MudTh>Name</MudTh>
+                <MudTh>Description</MudTh>
+                <MudTh>System</MudTh>
+                <MudTh>Permissions</MudTh>
+                <MudTh>Users</MudTh>
+                <MudTh>Groups</MudTh>
+                <MudTh>Created</MudTh>
+                <MudTh>Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@context.Name</MudTd>
+                <MudTd>@context.Description</MudTd>
+                <MudTd>
+                    @if (context.IsSystemRole)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Info">System</MudChip>
+                    }
+                </MudTd>
+                <MudTd>@GetPermissionCount(context.Permissions)</MudTd>
+                <MudTd>@GetRoleUserCount(context.Id)</MudTd>
+                <MudTd>@GetRoleGroupCount(context.Id)</MudTd>
+                <MudTd>@context.CreatedAt.LocalDateTime.ToString("g")</MudTd>
+                <MudTd>
+                    <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                                   Size="Size.Small"
+                                   OnClick="@(() => ViewRole(context))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                   Size="Size.Small"
+                                   OnClick="@(() => EditRole(context))"
+                                   Disabled="@context.IsSystemRole" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                   Size="Size.Small"
+                                   Color="Color.Error"
+                                   OnClick="@(() => DeleteRole(context))"
+                                   Disabled="@context.IsSystemRole" />
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudCardContent>
+</MudCard>
+
+@if (selectedRole != null && showViewDialog)
+{
+    <MudDialog @bind-Visible="showViewDialog" Options="new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true }">
+        <DialogContent>
+            <MudText Typo="Typo.h6" Class="mb-3">@selectedRole.Name</MudText>
+            <MudText Typo="Typo.body2" Class="mb-4">@selectedRole.Description</MudText>
+            <MudText Typo="Typo.subtitle2" Class="mb-2">Permissions:</MudText>
+            @foreach (var permission in GetPermissions(selectedRole.Permissions))
+            {
+                <MudChip T="string" Size="Size.Small" Class="mb-1">@permission</MudChip>
+            }
+        </DialogContent>
+        <DialogActions>
+            <MudButton OnClick="@(() => showViewDialog = false)">Close</MudButton>
+        </DialogActions>
+    </MudDialog>
+}
+
+@code {
+    private List<Role> roles = [];
+    private Dictionary<Guid, int> roleUserCounts = new();
+    private Dictionary<Guid, int> roleGroupCounts = new();
+    private Role? selectedRole;
+    private bool showViewDialog;
+    private bool loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRolesAsync();
+    }
+
+    private async Task LoadRolesAsync()
+    {
+        loading = true;
+        try
+        {
+            roles = await Db.Roles
+                .OrderBy(r => r.Name)
+                .ToListAsync();
+
+            var userCountsQuery = await Db.Set<UserRole>()
+                .GroupBy(ur => ur.RoleId)
+                .Select(g => new { RoleId = g.Key, Count = g.Count() })
+                .ToListAsync();
+            roleUserCounts = userCountsQuery.ToDictionary(x => x.RoleId, x => x.Count);
+
+            var groupCountsQuery = await Db.Set<GroupRole>()
+                .GroupBy(gr => gr.RoleId)
+                .Select(g => new { RoleId = g.Key, Count = g.Count() })
+                .ToListAsync();
+            roleGroupCounts = groupCountsQuery.ToDictionary(x => x.RoleId, x => x.Count);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private int GetPermissionCount(string permissionsJson)
+    {
+        try
+        {
+            var permissions = JsonSerializer.Deserialize<string[]>(permissionsJson);
+            return permissions?.Length ?? 0;
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
+    private string[] GetPermissions(string permissionsJson)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<string[]>(permissionsJson) ?? [];
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    private int GetRoleUserCount(Guid roleId)
+    {
+        return roleUserCounts.TryGetValue(roleId, out var count) ? count : 0;
+    }
+
+    private int GetRoleGroupCount(Guid roleId)
+    {
+        return roleGroupCounts.TryGetValue(roleId, out var count) ? count : 0;
+    }
+
+    private void ViewRole(Role role)
+    {
+        selectedRole = role;
+        showViewDialog = true;
+    }
+
+    private async Task CreateRole()
+    {
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var parameters = new DialogParameters<CreateRoleDialog>
+        {
+            { x => x.OnRoleCreated, EventCallback.Factory.Create(this, LoadRolesAsync) }
+        };
+
+        await Dialog.ShowAsync<CreateRoleDialog>("Create Role", parameters, options);
+    }
+
+    private async Task EditRole(Role role)
+    {
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var parameters = new DialogParameters<EditRoleDialog>
+        {
+            { x => x.RoleId, role.Id },
+            { x => x.OnRoleUpdated, EventCallback.Factory.Create(this, LoadRolesAsync) }
+        };
+
+        await Dialog.ShowAsync<EditRoleDialog>("Edit Role", parameters, options);
+    }
+
+    private async Task DeleteRole(Role role)
+    {
+        if (role.IsSystemRole)
+        {
+            Snackbar.Add("Cannot delete system roles", Severity.Warning);
+            return;
+        }
+
+        var userCount = GetRoleUserCount(role.Id);
+        var groupCount = GetRoleGroupCount(role.Id);
+        var message = userCount > 0 || groupCount > 0
+            ? $"Delete role '{role.Name}'? This will remove it from {userCount} user(s) and {groupCount} group(s)."
+            : $"Delete role '{role.Name}'?";
+
+        var confirmed = await Dialog.ShowMessageBox(
+            "Confirm Delete",
+            message,
+            yesText: "Delete",
+            cancelText: "Cancel");
+
+        if (confirmed == true)
+        {
+            try
+            {
+                Db.Roles.Remove(role);
+                await Db.SaveChangesAsync();
+                await LoadRolesAsync();
+                Snackbar.Add($"Role '{role.Name}' deleted successfully", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error deleting role: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+}

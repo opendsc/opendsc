@@ -1,0 +1,103 @@
+@using Microsoft.EntityFrameworkCore
+@using MudBlazor
+@inject ServerDbContext Db
+@inject ISnackbar Snackbar
+@inject IPasswordHasher PasswordHasher
+
+<MudDialog>
+    <DialogContent>
+        @if (user != null)
+        {
+            <MudTextField @bind-Value="user.Username" Label="Username" Variant="Variant.Outlined" Disabled="true" Class="mb-3" />
+            <MudTextField @bind-Value="user.Email" Label="Email" Variant="Variant.Outlined" Required="true" Class="mb-3" />
+            <MudSelect @bind-Value="user.AccountType" Label="Account Type" Variant="Variant.Outlined" Class="mb-3" T="AccountType">
+                <MudSelectItem Value="@AccountType.User">User</MudSelectItem>
+                <MudSelectItem Value="@AccountType.ServiceAccount">Service Account</MudSelectItem>
+            </MudSelect>
+            <MudTextField @bind-Value="user.Description" Label="Description" Variant="Variant.Outlined" Lines="2" Class="mb-3" />
+
+            <MudDivider Class="my-3" />
+            <MudText Typo="Typo.subtitle2" Class="mb-2">Status</MudText>
+            <MudCheckBox @bind-Value="user.IsActive" Label="Active" Class="mb-2" />
+            <MudCheckBox @bind-Value="user.RequirePasswordChange" Label="Require Password Change" Class="mb-2" />
+            <MudCheckBox @bind-Value="isLocked" Label="Locked Out" Class="mb-2" />
+            <MudText Typo="Typo.caption" Class="mb-3">Failed login attempts: @user.AccessFailedCount</MudText>
+
+            <MudDivider Class="my-3" />
+            <MudText Typo="Typo.subtitle2" Class="mb-2">Change Password (optional)</MudText>
+            <MudTextField @bind-Value="newPassword" Label="New Password" Variant="Variant.Outlined" InputType="InputType.Password" />
+        }
+        else
+        {
+            <MudProgressCircular Indeterminate="true" />
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(user == null)">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter]
+    public Guid UserId { get; set; }
+
+    [Parameter]
+    public EventCallback OnUserUpdated { get; set; }
+
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private User? user;
+    private string? newPassword;
+    private bool isLocked;
+
+    protected override async Task OnInitializedAsync()
+    {
+        user = await Db.Users.FindAsync(UserId);
+        if (user != null)
+        {
+            isLocked = user.LockoutEnd.HasValue && user.LockoutEnd.Value > DateTimeOffset.UtcNow;
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private async Task Submit()
+    {
+        if (user == null)
+            return;
+
+        try
+        {
+            if (isLocked)
+            {
+                user.LockoutEnd = DateTimeOffset.UtcNow.AddYears(100);
+            }
+            else
+            {
+                user.LockoutEnd = null;
+            }
+
+            if (!string.IsNullOrWhiteSpace(newPassword))
+            {
+                var (hash, salt) = PasswordHasher.HashPassword(newPassword);
+                user.PasswordHash = hash;
+                user.PasswordSalt = salt;
+            }
+
+            user.ModifiedAt = DateTimeOffset.UtcNow;
+            await Db.SaveChangesAsync();
+
+            Snackbar.Add($"User '{user.Username}' updated successfully", Severity.Success);
+            await OnUserUpdated.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error updating user: {ex.Message}", Severity.Error);
+        }
+    }
+}

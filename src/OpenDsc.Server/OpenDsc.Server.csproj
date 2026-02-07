@@ -7,7 +7,7 @@
     <IsPackable>false</IsPackable>
     <!-- EF Core 10 has limited AOT support, disable for now -->
     <PublishAot>false</PublishAot>
-    <InvariantGlobalization>true</InvariantGlobalization>
+    <InvariantGlobalization>false</InvariantGlobalization>
     <EnableConfigurationBindingGenerator>true</EnableConfigurationBindingGenerator>
   </PropertyGroup>
 
@@ -19,6 +19,8 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="Scalar.AspNetCore" />
     <PackageReference Include="YamlDotNet" />
+    <PackageReference Include="MudBlazor" />
+    <PackageReference Include="BlazorMonaco" />
   </ItemGroup>
 
   <ItemGroup>

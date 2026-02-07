@@ -1,0 +1,103 @@
+@using Microsoft.EntityFrameworkCore
+@using MudBlazor
+@inject ServerDbContext Db
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="name" Label="Name" Variant="Variant.Outlined" Required="true" Class="mb-3"
+                      HelperText="e.g., Environment, Location, Department" />
+        <MudCheckBox @bind-Value="allowsValues" Label="Allows Multiple Values" Class="mb-3" />
+        <MudText Typo="Typo.caption" Class="mb-3">If checked, nodes can have multiple values for this scope type</MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Create" Disabled="@string.IsNullOrWhiteSpace(name)">
+            Create
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback OnScopeTypeCreated { get; set; }
+
+    private string name = string.Empty;
+    private bool allowsValues = true;
+
+    private async Task Create()
+    {
+        try
+        {
+            var now = DateTimeOffset.UtcNow;
+
+            // Load all existing scope types
+            var allScopeTypes = await Db.ScopeTypes.ToListAsync();
+
+            // Find Node scope (should be last/highest precedence)
+            var nodeScope = allScopeTypes.FirstOrDefault(s => s.IsSystem && s.Name == "Node");
+
+            // Create new scope type
+            var newScopeType = new ScopeType
+            {
+                Id = Guid.NewGuid(),
+                Name = name,
+                AllowsValues = allowsValues,
+                Precedence = 0, // Temporary value
+                CreatedAt = now
+            };
+
+            Db.ScopeTypes.Add(newScopeType);
+
+            // Two-phase renumbering to avoid unique constraint violations
+            // Phase 1: Set all to temporary negative values
+            for (int i = 0; i < allScopeTypes.Count; i++)
+            {
+                allScopeTypes[i].Precedence = -(i + 1);
+                allScopeTypes[i].UpdatedAt = now;
+            }
+            newScopeType.Precedence = -(allScopeTypes.Count + 1);
+            await Db.SaveChangesAsync();
+
+            // Phase 2: Renumber - Default first, new scopes, Node last
+            var defaultScope = allScopeTypes.FirstOrDefault(s => s.IsSystem && s.Name == "Default");
+            var otherScopes = allScopeTypes.Where(s => !s.IsSystem).OrderBy(s => s.CreatedAt).ToList();
+
+            int precedence = 0;
+            if (defaultScope != null)
+            {
+                defaultScope.Precedence = precedence++;
+            }
+
+            foreach (var scope in otherScopes)
+            {
+                scope.Precedence = precedence++;
+            }
+
+            newScopeType.Precedence = precedence++;
+
+            if (nodeScope != null)
+            {
+                nodeScope.Precedence = precedence++;
+            }
+
+            await Db.SaveChangesAsync();
+
+            Snackbar.Add($"Scope type '{name}' created successfully", Severity.Success);
+            MudDialog.Close();
+            await OnScopeTypeCreated.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error creating scope type: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+}

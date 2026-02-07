@@ -1,0 +1,18 @@
+@page "/admin"
+@attribute [Authorize(Policy = "users.manage")]
+
+<PageTitle>Administration</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Administration</MudText>
+
+<MudTabs Elevation="4" Rounded="true" Color="Color.Primary">
+    <MudTabPanel Text="Users" Icon="@Icons.Material.Filled.Person">
+        <Users />
+    </MudTabPanel>
+    <MudTabPanel Text="Groups" Icon="@Icons.Material.Filled.Group">
+        <Groups />
+    </MudTabPanel>
+    <MudTabPanel Text="Roles" Icon="@Icons.Material.Filled.Security">
+        <Roles />
+    </MudTabPanel>
+</MudTabs>

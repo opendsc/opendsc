@@ -1,0 +1,72 @@
+@using MudBlazor
+@inject ServerDbContext Db
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<MudDialog>
+    <DialogContent>
+        <MudDatePicker @bind-Date="expirationDate" Label="Expiration Date" Variant="Variant.Outlined" Required="true" Class="mb-3"
+                       MinDate="DateTime.Today" />
+        <MudNumericField @bind-Value="maxUses" Label="Maximum Uses (0 = unlimited)" Variant="Variant.Outlined" Min="0" Class="mb-3" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Create" Disabled="@(expirationDate == null)">
+            Create
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback OnKeyCreated { get; set; }
+
+    private DateTime? expirationDate = DateTime.Today.AddDays(30);
+    private int maxUses = 0;
+
+    private async Task Create()
+    {
+        try
+        {
+            var keyValue = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+            var key = new RegistrationKey
+            {
+                Id = Guid.NewGuid(),
+                Key = keyValue,
+                CreatedAt = DateTimeOffset.UtcNow,
+                ExpiresAt = new DateTimeOffset(expirationDate!.Value),
+                MaxUses = maxUses > 0 ? maxUses : null,
+                CurrentUses = 0,
+                IsRevoked = false
+            };
+
+            Db.RegistrationKeys.Add(key);
+            await Db.SaveChangesAsync();
+
+            MudDialog.Close();
+
+            // Show the key to the user
+            var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Medium };
+            var parameters = new DialogParameters
+            {
+                ["Key"] = keyValue
+            };
+            await DialogService.ShowAsync<ShowKeyDialog>("Registration Key Created", parameters, options);
+
+            Snackbar.Add("Registration key created successfully", Severity.Success);
+            await OnKeyCreated.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error creating key: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+}

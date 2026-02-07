@@ -1,0 +1,324 @@
+@page "/configurations/{Name}"
+@attribute [Authorize(Policy = "configurations.read")]
+@using Microsoft.EntityFrameworkCore
+@using BlazorMonaco
+@using BlazorMonaco.Editor
+@inject ServerDbContext Db
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@inject IConfiguration Config
+
+<PageTitle>@Name - Configuration</PageTitle>
+
+@if (configuration != null)
+{
+    <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" Class="mb-4" OnClick="@(() => Navigation.NavigateTo("/configurations"))">
+        Back to Configurations
+    </MudButton>
+
+    <MudText Typo="Typo.h4" Class="mb-4">@configuration.Name</MudText>
+
+    <MudTabs Elevation="4" Rounded="true" Color="Color.Primary">
+        <MudTabPanel Text="Details" Icon="@Icons.Material.Filled.Info">
+            <MudCard Class="mt-4">
+                <MudCardContent>
+                    <MudSimpleTable Dense="true">
+                        <tbody>
+                            <tr>
+                                <td><strong>Name</strong></td>
+                                <td>@configuration.Name</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Description</strong></td>
+                                <td>@(configuration.Description ?? "-")</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Entry Point</strong></td>
+                                <td>@configuration.EntryPoint</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Server Managed</strong></td>
+                                <td>@configuration.IsServerManaged</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Created</strong></td>
+                                <td>@configuration.CreatedAt.LocalDateTime.ToString("g")</td>
+                            </tr>
+                            @if (configuration.UpdatedAt.HasValue)
+                            {
+                                <tr>
+                                    <td><strong>Updated</strong></td>
+                                    <td>@configuration.UpdatedAt.Value.LocalDateTime.ToString("g")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </MudSimpleTable>
+                </MudCardContent>
+            </MudCard>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Versions" Icon="@Icons.Material.Filled.History">
+            <MudCard Class="mt-4">
+                <MudCardContent>
+                    @if (versions.Any())
+                    {
+                        <MudTable Items="@versions" Hover="true" Dense="true">
+                            <HeaderContent>
+                                <MudTh>Version</MudTh>
+                                <MudTh>Status</MudTh>
+                                <MudTh>Files</MudTh>
+                                <MudTh>Created</MudTh>
+                                <MudTh>Actions</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd>@context.Version</MudTd>
+                                <MudTd>
+                                    @if (context.IsDraft)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Info">Draft</MudChip>
+                                    }
+                                    else
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Success">Published</MudChip>
+                                    }
+                                    @if (context.IsArchived)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Default">Archived</MudChip>
+                                    }
+                                </MudTd>
+                                <MudTd>
+                                    <MudChip T="string" Size="Size.Small">@context.Files.Count</MudChip>
+                                </MudTd>
+                                <MudTd>@context.CreatedAt.LocalDateTime.ToString("g")</MudTd>
+                                <MudTd>
+                                    <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => ViewVersion(context))">
+                                        View Files
+                                    </MudButton>
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+                    else
+                    {
+                        <MudAlert Severity="Severity.Info">No versions found.</MudAlert>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Files" Icon="@Icons.Material.Filled.Description" Disabled="@(selectedVersion == null)">
+            <MudCard Class="mt-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Files - Version @(selectedVersion?.Version ?? "")</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    @if (selectedVersion != null && versionFiles.Any())
+                    {
+                        <MudList T="string">
+                            @foreach (var file in versionFiles)
+                            {
+                                <MudListItem T="string" OnClick="@(() => ViewFile(file))" Icon="@Icons.Material.Filled.Description">
+                                    <div>
+                                        <MudText>@file.RelativePath</MudText>
+                                        <MudText Typo="Typo.caption">@file.ContentType</MudText>
+                                    </div>
+                                </MudListItem>
+                            }
+                        </MudList>
+                    }
+                    else
+                    {
+                        <MudAlert Severity="Severity.Info">No files or select a version first.</MudAlert>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudTabPanel>
+
+        <MudTabPanel Text="File Viewer" Icon="@Icons.Material.Filled.Code" Disabled="@(selectedFile == null)">
+            <MudCard Class="mt-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">@(selectedFile?.RelativePath ?? "")</MudText>
+                    </CardHeaderContent>
+                    <CardHeaderActions>
+                        <MudButton Variant="Variant.Outlined"
+                                   Size="Size.Small"
+                                   StartIcon="@Icons.Material.Filled.Download"
+                                   OnClick="DownloadFile"
+                                   Disabled="@(selectedFile == null)">
+                            Download
+                        </MudButton>
+                    </CardHeaderActions>
+                </MudCardHeader>
+                <MudCardContent>
+                    @if (selectedFile != null && !string.IsNullOrEmpty(fileContent))
+                    {
+                        <div style="height: 600px; border: 1px solid #ddd;">
+                            <StandaloneCodeEditor @ref="editor"
+                                                  Id="monaco-editor"
+                                                  ConstructionOptions="EditorConstructionOptions"
+                                                  OnDidInit="OnEditorInit" />
+                        </div>
+                        <MudText Typo="Typo.caption" Class="mt-2">Read-only view. Use API to upload new versions.</MudText>
+                    }
+                    else if (isLoadingFile)
+                    {
+                        <MudProgressCircular Indeterminate="true" />
+                    }
+                    else
+                    {
+                        <MudAlert Severity="Severity.Info">Select a file to view its content.</MudAlert>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudTabPanel>
+    </MudTabs>
+}
+else if (loading)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else
+{
+    <MudAlert Severity="Severity.Error">Configuration not found.</MudAlert>
+}
+
+@code {
+    [Parameter]
+    public string Name { get; set; } = string.Empty;
+
+    private Configuration? configuration;
+    private List<ConfigurationVersion> versions = [];
+    private ConfigurationVersion? selectedVersion;
+    private List<ConfigurationFile> versionFiles = [];
+    private ConfigurationFile? selectedFile;
+    private string? fileContent;
+    private bool loading = true;
+    private bool isLoadingFile;
+    private StandaloneCodeEditor? editor;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadConfiguration();
+    }
+
+    private async Task LoadConfiguration()
+    {
+        loading = true;
+        try
+        {
+            configuration = await Db.Configurations
+                .Include(c => c.Versions)
+                    .ThenInclude(v => v.Files)
+                .FirstOrDefaultAsync(c => c.Name == Name);
+
+            if (configuration != null)
+            {
+                versions = configuration.Versions
+                    .OrderByDescending(v => v.CreatedAt)
+                    .ToList();
+            }
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task ViewVersion(ConfigurationVersion version)
+    {
+        selectedVersion = version;
+        versionFiles = selectedVersion.Files.OrderBy(f => f.RelativePath).ToList();
+        StateHasChanged();
+    }
+
+    private async Task ViewFile(ConfigurationFile file)
+    {
+        selectedFile = file;
+        isLoadingFile = true;
+        StateHasChanged();
+
+        try
+        {
+            var dataDir = Config["DataDirectory"] ?? "data";
+            var versionDir = Path.Combine(dataDir, "configurations", configuration!.Name, $"v{selectedVersion!.Version}");
+            var filePath = Path.Combine(versionDir, file.RelativePath);
+
+            if (File.Exists(filePath))
+            {
+                fileContent = await File.ReadAllTextAsync(filePath);
+
+                if (editor != null)
+                {
+                    await editor.SetValue(fileContent);
+                }
+            }
+            else
+            {
+                Snackbar.Add($"File not found: {filePath}", Severity.Error);
+                fileContent = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading file: {ex.Message}", Severity.Error);
+            fileContent = null;
+        }
+        finally
+        {
+            isLoadingFile = false;
+        }
+    }
+
+    private StandaloneEditorConstructionOptions EditorConstructionOptions(StandaloneCodeEditor editor)
+    {
+        var language = "yaml";
+        if (selectedFile != null)
+        {
+            var ext = Path.GetExtension(selectedFile.RelativePath).ToLowerInvariant();
+            language = ext switch
+            {
+                ".yaml" or ".yml" => "yaml",
+                ".json" => "json",
+                ".ps1" => "powershell",
+                ".sh" => "shell",
+                _ => "plaintext"
+            };
+        }
+
+        return new StandaloneEditorConstructionOptions
+        {
+            AutomaticLayout = true,
+            Language = language,
+            Value = fileContent ?? "",
+            ReadOnly = true,
+            Theme = "vs-dark",
+            Minimap = new EditorMinimapOptions { Enabled = false }
+        };
+    }
+
+    private async Task OnEditorInit()
+    {
+        if (editor != null && !string.IsNullOrEmpty(fileContent))
+        {
+            await editor.SetValue(fileContent);
+        }
+    }
+
+    private async Task DownloadFile()
+    {
+        if (selectedFile == null || configuration == null || selectedVersion == null)
+            return;
+
+        var dataDir = Config["DataDirectory"] ?? "data";
+        var versionDir = Path.Combine(dataDir, "configurations", configuration.Name, $"v{selectedVersion.Version}");
+        var filePath = Path.Combine(versionDir, selectedFile.RelativePath);
+
+        if (File.Exists(filePath))
+        {
+            Snackbar.Add("Use browser download or API endpoint to download files", Severity.Info);
+        }
+    }
+}

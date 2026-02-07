@@ -1,0 +1,146 @@
+@page "/nodes"
+@attribute [Authorize(Policy = "nodes.read")]
+@inject ServerDbContext Db
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Nodes</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Nodes</MudText>
+
+<MudCard Class="mb-4">
+    <MudCardContent>
+        <MudGrid>
+            <MudItem xs="12" md="4">
+                <MudTextField Value="@searchFqdn" Label="Search by FQDN" Variant="Variant.Outlined"
+                              Clearable="true" Immediate="true" ValueChanged="@((string value) => OnSearchChanged(value))" />
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudSelect T="NodeStatus?" Label="Filter by Status" Value="@selectedStatus" Clearable="true"
+                           ValueChanged="@((NodeStatus? value) => OnStatusFilterChanged(value))">
+                    <MudSelectItem Value="@((NodeStatus?)NodeStatus.Compliant)">Compliant</MudSelectItem>
+                    <MudSelectItem Value="@((NodeStatus?)NodeStatus.NonCompliant)">Non-Compliant</MudSelectItem>
+                    <MudSelectItem Value="@((NodeStatus?)NodeStatus.Error)">Error</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudTextField Value="@searchConfiguration" Label="Search by Configuration" Variant="Variant.Outlined"
+                              Clearable="true" Immediate="true" ValueChanged="@((string value) => OnConfigurationSearchChanged(value))" />
+            </MudItem>
+        </MudGrid>
+    </MudCardContent>
+</MudCard>
+
+<MudDataGrid T="Node" Items="@filteredNodes" Loading="@isLoading" Hover="true" Dense="true">
+    <ToolBarContent>
+        <MudText Typo="Typo.h6">Registered Nodes</MudText>
+        <MudSpacer />
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadNodesAsync" />
+    </ToolBarContent>
+    <Columns>
+        <PropertyColumn Property="x => x.Fqdn" Title="FQDN" />
+        <PropertyColumn Property="x => x.Status" Title="Status">
+            <CellTemplate>
+                <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(context.Item.Status)">
+                    @context.Item.Status
+                </MudChip>
+            </CellTemplate>
+        </PropertyColumn>
+        <PropertyColumn Property="x => x.ConfigurationName" Title="Configuration" />
+        <PropertyColumn Property="x => x.LastCheckIn" Title="Last Check-In">
+            <CellTemplate>
+                @(context.Item.LastCheckIn?.LocalDateTime.ToString("g") ?? "Never")
+            </CellTemplate>
+        </PropertyColumn>
+        <TemplateColumn>
+            <CellTemplate>
+                <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => ViewDetails(context.Item.Id))">
+                    View
+                </MudButton>
+            </CellTemplate>
+        </TemplateColumn>
+    </Columns>
+</MudDataGrid>
+
+@code {
+    private List<Node> nodes = [];
+    private List<Node> filteredNodes = [];
+    private bool isLoading = true;
+    private string searchFqdn = string.Empty;
+    private string searchConfiguration = string.Empty;
+    private NodeStatus? selectedStatus;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadNodesAsync();
+    }
+
+    private async Task LoadNodesAsync()
+    {
+        isLoading = true;
+        try
+        {
+            nodes = await Db.Nodes.OrderBy(n => n.Fqdn).ToListAsync();
+            ApplyFilters();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading nodes: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ApplyFilters()
+    {
+        filteredNodes = nodes.Where(n =>
+        {
+            if (!string.IsNullOrWhiteSpace(searchFqdn) &&
+                !n.Fqdn.Contains(searchFqdn, StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            if (selectedStatus.HasValue && n.Status != selectedStatus.Value)
+                return false;
+
+            if (!string.IsNullOrWhiteSpace(searchConfiguration) &&
+                (string.IsNullOrWhiteSpace(n.ConfigurationName) ||
+                 !n.ConfigurationName.Contains(searchConfiguration, StringComparison.OrdinalIgnoreCase)))
+                return false;
+
+            return true;
+        }).ToList();
+    }
+
+    private void OnSearchChanged(string value)
+    {
+        searchFqdn = value ?? string.Empty;
+        ApplyFilters();
+    }
+
+    private void OnStatusFilterChanged(NodeStatus? value)
+    {
+        selectedStatus = value;
+        ApplyFilters();
+    }
+
+    private void OnConfigurationSearchChanged(string value)
+    {
+        searchConfiguration = value ?? string.Empty;
+        ApplyFilters();
+    }
+
+    private void ViewDetails(Guid id)
+    {
+        Navigation.NavigateTo($"/nodes/{id}");
+    }
+
+    private Color GetStatusColor(NodeStatus status) => status switch
+    {
+        NodeStatus.Compliant => Color.Success,
+        NodeStatus.NonCompliant => Color.Warning,
+        NodeStatus.Error => Color.Error,
+        _ => Color.Default
+    };
+}

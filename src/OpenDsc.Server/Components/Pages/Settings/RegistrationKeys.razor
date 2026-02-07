@@ -1,0 +1,146 @@
+@attribute [Authorize(Policy = "settings.write")]
+@inject ServerDbContext Db
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<MudCard Class="mt-4">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">Node Registration Keys</MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateKey" StartIcon="@Icons.Material.Filled.Add">
+                Create Key
+            </MudButton>
+        </CardHeaderActions>
+    </MudCardHeader>
+    <MudCardContent>
+        @if (isLoading)
+        {
+            <MudProgressLinear Indeterminate="true" />
+        }
+        else
+        {
+            <MudTable Items="@registrationKeys" Hover="true" Dense="true">
+                <HeaderContent>
+                    <MudTh>Key</MudTh>
+                    <MudTh>Created</MudTh>
+                    <MudTh>Expires</MudTh>
+                    <MudTh>Uses</MudTh>
+                    <MudTh>Status</MudTh>
+                    <MudTh>Actions</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Key">
+                        <code>@context.Key.Substring(0, Math.Min(16, context.Key.Length))...</code>
+                    </MudTd>
+                    <MudTd DataLabel="Created">@context.CreatedAt.LocalDateTime.ToString("g")</MudTd>
+                    <MudTd DataLabel="Expires">@context.ExpiresAt.LocalDateTime.ToString("g")</MudTd>
+                    <MudTd DataLabel="Uses">
+                        @if (context.MaxUses.HasValue)
+                        {
+                            <span>@context.CurrentUses / @context.MaxUses</span>
+                        }
+                        else
+                        {
+                            <span>@context.CurrentUses (unlimited)</span>
+                        }
+                    </MudTd>
+                    <MudTd DataLabel="Status">
+                        @if (context.IsRevoked)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Error">Revoked</MudChip>
+                        }
+                        else if (context.ExpiresAt < DateTimeOffset.UtcNow)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Warning">Expired</MudChip>
+                        }
+                        else if (context.MaxUses.HasValue && context.CurrentUses >= context.MaxUses.Value)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Warning">Max Uses Reached</MudChip>
+                        }
+                        else
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Success">Active</MudChip>
+                        }
+                    </MudTd>
+                    <MudTd DataLabel="Actions">
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                       Size="Size.Small"
+                                       Color="Color.Error"
+                                       OnClick="@(() => DeleteKey(context))" />
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    private List<RegistrationKey> registrationKeys = [];
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadKeysAsync();
+    }
+
+    private async Task LoadKeysAsync()
+    {
+        isLoading = true;
+        try
+        {
+            var keys = await Db.RegistrationKeys.ToListAsync();
+            registrationKeys = keys.OrderByDescending(k => k.CreatedAt).ToList();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading registration keys: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task CreateKey()
+    {
+        var parameters = new DialogParameters<CreateKeyDialog>
+        {
+            { x => x.OnKeyCreated, EventCallback.Factory.Create(this, LoadKeysAsync) }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true
+        };
+
+        await DialogService.ShowAsync<CreateKeyDialog>("Create Registration Key", parameters, options);
+    }
+
+    private async Task DeleteKey(RegistrationKey key)
+    {
+        var result = await DialogService.ShowMessageBox(
+            "Delete Registration Key",
+            $"Are you sure you want to delete the registration key?",
+            yesText: "Delete",
+            cancelText: "Cancel");
+
+        if (result == true)
+        {
+            try
+            {
+                Db.RegistrationKeys.Remove(key);
+                await Db.SaveChangesAsync();
+                Snackbar.Add("Registration key deleted", Severity.Success);
+                await LoadKeysAsync();
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error deleting key: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+}

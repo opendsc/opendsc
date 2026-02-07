@@ -1,0 +1,23 @@
+@page "/access-denied"
+@inject IJSRuntime JSRuntime
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-8">
+    <div class="d-flex flex-column align-center">
+        <MudIcon Icon="@Icons.Material.Filled.Lock" Color="Color.Error" Size="Size.Large" Class="mb-4" Style="font-size: 8rem;" />
+        <MudText Typo="Typo.h3" Color="Color.Error" Class="mb-2">Access Denied</MudText>
+        <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-6">
+            You don't have permission to access this page.
+        </MudText>
+        <div class="d-flex gap-2">
+            <MudButton Href="/" Variant="Variant.Filled" Color="Color.Primary">Go to Dashboard</MudButton>
+            <MudButton OnClick="Logout" Variant="Variant.Outlined" Color="Color.Secondary">Logout</MudButton>
+        </div>
+    </div>
+</MudContainer>
+
+@code {
+    private async Task Logout()
+    {
+        await JSRuntime.InvokeVoidAsync("eval", "fetch('/api/v1/auth/logout', { method: 'POST' }).then(() => location.href = '/login')");
+    }
+}
