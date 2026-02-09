@@ -21,6 +21,7 @@
     <PackageReference Include="YamlDotNet" />
     <PackageReference Include="MudBlazor" />
     <PackageReference Include="BlazorMonaco" />
+    <PackageReference Include="NuGet.Versioning" />
   </ItemGroup>
 
   <ItemGroup>

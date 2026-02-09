@@ -1,0 +1,254 @@
+@using Microsoft.AspNetCore.Components.Forms
+@using NuGet.Versioning
+@using OpenDsc.Server.Services
+@inject IConfigurationApiClient ApiClient
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="name"
+                      Label="Name"
+                      Variant="Variant.Outlined"
+                      Required="true"
+                      Class="mb-3"
+                      HelperText="Unique identifier for the configuration" />
+
+        <MudTextField @bind-Value="description"
+                      Label="Description"
+                      Variant="Variant.Outlined"
+                      Lines="2"
+                      Class="mb-3"
+                      HelperText="Optional description" />
+
+        <MudTextField @bind-Value="entryPoint"
+                      Label="Entry Point"
+                      Variant="Variant.Outlined"
+                      Required="true"
+                      Class="mb-3"
+                      HelperText="Main configuration file (e.g., main.dsc.yaml)" />
+
+        <MudTextField @bind-Value="version"
+                      Label="Version"
+                      Variant="Variant.Outlined"
+                      Required="true"
+                      Class="mb-3"
+                      Immediate="true"
+                      Error="@(!string.IsNullOrWhiteSpace(version) && !SemanticVersion.TryParse(version, out _))"
+                      ErrorText="Version must follow semantic versioning (e.g., 1.0.0, 2.1.3-alpha, 1.0.0-beta+001)"
+                      HelperText="Semantic version: major.minor.patch[-prerelease][+metadata]" />
+
+        <MudSwitch @bind-Value="isDraft"
+                   Label="Save as Draft"
+                   Color="Color.Info"
+                   Class="mb-3" />
+
+        <MudText Typo="Typo.body2" Class="mb-2">Configuration Files</MudText>
+        <InputFile OnChange="OnFilesSelected" multiple accept=".yaml,.yml,.json" class="mud-input-file" />
+
+        @if (selectedFiles.Count > 0)
+        {
+            <MudChipSet T="string" Class="mt-2">
+                @foreach (var file in selectedFiles)
+                {
+                    <MudChip T="string" Size="Size.Small" OnClose="@(() => RemoveFile(file))">
+                        @file.Name
+                    </MudChip>
+                }
+            </MudChipSet>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(validationError))
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-3">@validationError</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(!IsValid() || isSubmitting)">
+            @if (isSubmitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+            }
+            else
+            {
+                <text>Create</text>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter]
+    public EventCallback OnConfigurationCreated { get; set; }
+
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private string name = string.Empty;
+    private string? description;
+    private string entryPoint = string.Empty;
+    private string version = "1.0.0";
+    private bool isDraft = false;
+    private bool isSubmitting = false;
+    private List<IBrowserFile> selectedFiles = [];
+    private string? validationError;
+
+    private void OnFilesSelected(InputFileChangeEventArgs e)
+    {
+        validationError = null;
+        selectedFiles.Clear();
+
+        foreach (var file in e.GetMultipleFiles(20))
+        {
+            if (!file.Name.EndsWith(".yaml", StringComparison.OrdinalIgnoreCase) &&
+                !file.Name.EndsWith(".yml", StringComparison.OrdinalIgnoreCase) &&
+                !file.Name.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+            {
+                validationError = $"Invalid file type: {file.Name}. Only .yaml, .yml, and .json files are allowed.";
+                selectedFiles.Clear();
+                return;
+            }
+
+            if (file.Size > 10 * 1024 * 1024)
+            {
+                validationError = $"File {file.Name} exceeds 10MB limit.";
+                selectedFiles.Clear();
+                return;
+            }
+
+            selectedFiles.Add(file);
+        }
+
+        // Auto-detect entry point
+        AutoDetectEntryPoint();
+    }
+
+    private void AutoDetectEntryPoint()
+    {
+        if (selectedFiles.Count == 0)
+            return;
+
+        // Look for .dsc.yaml or .dsc.json files
+        var dscFiles = selectedFiles
+            .Where(f => f.Name.EndsWith(".dsc.yaml", StringComparison.OrdinalIgnoreCase) ||
+                       f.Name.EndsWith(".dsc.yml", StringComparison.OrdinalIgnoreCase) ||
+                       f.Name.EndsWith(".dsc.json", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        // If there's exactly one .dsc file, use it
+        if (dscFiles.Count == 1)
+        {
+            entryPoint = dscFiles[0].Name;
+            return;
+        }
+
+        // If there's only one file total, use it
+        if (selectedFiles.Count == 1)
+        {
+            entryPoint = selectedFiles[0].Name;
+            return;
+        }
+
+        // If there are multiple .dsc files, look for common names
+        var commonNames = new[] { "main.dsc.yaml", "main.dsc.yml", "main.dsc.json", "config.dsc.yaml", "config.dsc.yml", "config.dsc.json" };
+        var matchedFile = dscFiles.FirstOrDefault(f => commonNames.Contains(f.Name, StringComparer.OrdinalIgnoreCase));
+
+        if (matchedFile != null)
+        {
+            entryPoint = matchedFile.Name;
+        }
+    }
+
+    private void RemoveFile(IBrowserFile file)
+    {
+        selectedFiles.Remove(file);
+        validationError = null;
+    }
+
+    private bool IsValid()
+    {
+        if (string.IsNullOrWhiteSpace(name) ||
+            string.IsNullOrWhiteSpace(entryPoint) ||
+            string.IsNullOrWhiteSpace(version))
+        {
+            return false;
+        }
+
+        if (!SemanticVersion.TryParse(version, out _))
+        {
+            return false;
+        }
+
+        if (selectedFiles.Count == 0)
+        {
+            return false;
+        }
+
+        if (!selectedFiles.Any(f => f.Name.Equals(entryPoint, StringComparison.OrdinalIgnoreCase)))
+        {
+            validationError = "Entry point file must be included in the uploaded files.";
+            return false;
+        }
+
+        return string.IsNullOrWhiteSpace(validationError);
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private async Task Submit()
+    {
+        if (!IsValid())
+            return;
+
+        isSubmitting = true;
+        validationError = null;
+
+        try
+        {
+            var success = await ApiClient.CreateConfigurationAsync(
+                name,
+                description,
+                entryPoint,
+                version,
+                isDraft,
+                selectedFiles);
+
+            if (success)
+            {
+                Snackbar.Add($"Configuration '{name}' created successfully", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+                await OnConfigurationCreated.InvokeAsync();
+            }
+            else
+            {
+                validationError = "Failed to create configuration. Please check server logs.";
+            }
+        }
+        catch (Exception ex)
+        {
+            validationError = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}
+
+<style>
+    .mud-input-file {
+        border: 2px dashed var(--mud-palette-lines-default);
+        border-radius: var(--mud-default-borderradius);
+        padding: 16px;
+        text-align: center;
+        cursor: pointer;
+        transition: border-color 0.2s;
+    }
+
+    .mud-input-file:hover {
+        border-color: var(--mud-palette-primary);
+    }
+</style>

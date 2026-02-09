@@ -61,6 +61,10 @@ public static class ConfigurationEndpoints
         group.MapDelete("/{name}/versions/{version}", DeleteConfigurationVersion)
             .WithName("DeleteConfigurationVersion")
             .WithDescription("Delete a specific version (only if draft and not active)");
+
+        group.MapGet("/{name}/versions/{version}/files/{*filePath}", DownloadConfigurationFile)
+            .WithName("DownloadConfigurationFile")
+            .WithDescription("Download a specific file from a configuration version");
     }
 
     private static async Task<Ok<List<ConfigurationSummaryDto>>> GetConfigurations(
@@ -546,6 +550,56 @@ public static class ConfigurationEndpoints
         using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
         var hash = await SHA256.HashDataAsync(stream);
         return Convert.ToHexString(hash).ToLowerInvariant();
+    }
+
+    private static async Task<Results<FileStreamHttpResult, NotFound, ForbidHttpResult>> DownloadConfigurationFile(
+        string name,
+        string version,
+        string filePath,
+        ServerDbContext db,
+        IConfiguration config,
+        IResourceAuthorizationService authService,
+        IUserContextService userContext)
+    {
+        var configEntity = await db.Configurations
+            .Include(c => c.Versions.Where(v => v.Version == version))
+            .ThenInclude(v => v.Files)
+            .FirstOrDefaultAsync(c => c.Name == name);
+
+        if (configEntity == null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null || !await authService.CanReadConfigurationAsync(userId.Value, configEntity.Id))
+        {
+            return TypedResults.Forbid();
+        }
+
+        var configVersion = configEntity.Versions.FirstOrDefault();
+        if (configVersion == null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        var file = configVersion.Files.FirstOrDefault(f => f.RelativePath == filePath);
+        if (file == null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        var dataDir = config["DataDirectory"] ?? "data";
+        var fullPath = Path.Combine(dataDir, "configurations", name, $"v{version}", filePath);
+
+        if (!File.Exists(fullPath))
+        {
+            return TypedResults.NotFound();
+        }
+
+        var stream = File.OpenRead(fullPath);
+        var fileName = Path.GetFileName(filePath);
+        return TypedResults.File(stream, file.ContentType ?? "application/octet-stream", fileName);
     }
 }
 

@@ -1,0 +1,133 @@
+@* Copyright (c) Thomas Nieto - All Rights Reserved *@
+@* You may use, distribute and modify this code under the *@
+@* terms of the MIT license. *@
+
+@using MudBlazor
+@inject ISnackbar Snackbar
+@inject IConfiguration Config
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.h6" Class="mb-2">@FilePath</MudText>
+        <MudText Typo="Typo.caption" Class="mb-4">@ContentType</MudText>
+
+        @if (isLoading)
+        {
+            <MudProgressCircular Indeterminate="true" />
+            <MudText Typo="Typo.caption">Loading file...</MudText>
+        }
+        else if (fileContent != null)
+        {
+            <MudPaper Class="pa-4" Elevation="0" Style="border: 1px solid #ddd;">
+                <MudTextField @bind-Value="fileContent"
+                              Lines="25"
+                              Variant="Variant.Outlined"
+                              Label="File Content"
+                              ReadOnly="@(!IsEditMode)"
+                              Immediate="true"
+                              Style="font-family: 'Courier New', monospace; font-size: 12px;" />
+            </MudPaper>
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Error">Failed to load file content.</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        @if (IsEditMode)
+        {
+            <MudButton OnClick="SaveFile" Color="Color.Primary" Variant="Variant.Filled" Disabled="isLoading">Save</MudButton>
+        }
+        <MudButton OnClick="Cancel">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public string ConfigurationName { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Version { get; set; } = string.Empty;
+
+    [Parameter]
+    public string FilePath { get; set; } = string.Empty;
+
+    [Parameter]
+    public string ContentType { get; set; } = string.Empty;
+
+    [Parameter]
+    public bool IsEditMode { get; set; }
+
+    private string? fileContent;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadFileContent();
+    }
+
+    private async Task LoadFileContent()
+    {
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var dataDir = Config["DataDirectory"] ?? "data";
+            var versionDir = Path.Combine(dataDir, "configurations", ConfigurationName, $"v{Version}");
+            var fullPath = Path.Combine(versionDir, FilePath);
+
+            if (File.Exists(fullPath))
+            {
+                fileContent = await File.ReadAllTextAsync(fullPath);
+
+                if (string.IsNullOrWhiteSpace(fileContent))
+                {
+                    Snackbar.Add($"File is empty: {FilePath}", Severity.Warning);
+                }
+            }
+            else
+            {
+                Snackbar.Add($"File not found: {fullPath}", Severity.Error);
+                fileContent = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading file: {ex.Message}", Severity.Error);
+            fileContent = null;
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SaveFile()
+    {
+        try
+        {
+            var dataDir = Config["DataDirectory"] ?? "data";
+            var versionDir = Path.Combine(dataDir, "configurations", ConfigurationName, $"v{Version}");
+            var fullPath = Path.Combine(versionDir, FilePath);
+
+            await File.WriteAllTextAsync(fullPath, fileContent ?? "");
+
+            Snackbar.Add("File saved successfully", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving file: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+}

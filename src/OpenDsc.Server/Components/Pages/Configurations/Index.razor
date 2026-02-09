@@ -1,22 +1,55 @@
 @page "/configurations"
 @attribute [Authorize(Policy = "configurations.read")]
+@using OpenDsc.Server.Services
 @inject ServerDbContext Db
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject IConfigurationApiClient ApiClient
 
 <PageTitle>Configurations</PageTitle>
 
-<MudText Typo="Typo.h4" Class="mb-4">DSC Configurations</MudText>
+<div class="d-flex justify-space-between align-center mb-4">
+    <MudText Typo="Typo.h4">DSC Configurations</MudText>
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Add"
+               OnClick="OpenCreateDialog">
+        Create Configuration
+    </MudButton>
+</div>
 
 <MudCard>
     <MudCardContent>
+        <div class="d-flex gap-4 mb-4">
+            <MudTextField @bind-Value="SearchText"
+                         Label="Search"
+                         Placeholder="Search by name or description"
+                         Adornment="Adornment.Start"
+                         AdornmentIcon="@Icons.Material.Filled.Search"
+                         Immediate="true"
+                         Clearable="true"
+                         Class="flex-grow-1" />
+            <MudSelect @bind-Value="SortBy"
+                      Label="Sort By"
+                      T="SortOption"
+                      Variant="Variant.Outlined"
+                      AnchorOrigin="Origin.BottomCenter">
+                <MudSelectItem Value="SortOption.NameAsc">Name (A-Z)</MudSelectItem>
+                <MudSelectItem Value="SortOption.NameDesc">Name (Z-A)</MudSelectItem>
+                <MudSelectItem Value="SortOption.CreatedDesc">Newest First</MudSelectItem>
+                <MudSelectItem Value="SortOption.CreatedAsc">Oldest First</MudSelectItem>
+                <MudSelectItem Value="SortOption.UpdatedDesc">Recently Updated</MudSelectItem>
+            </MudSelect>
+        </div>
+
         @if (isLoading)
         {
             <MudProgressLinear Indeterminate="true" />
         }
         else
         {
-            <MudDataGrid T="Configuration" Items="@configurations" Hover="true" Dense="true">
+            <MudDataGrid T="Configuration" Items="@filteredConfigurations" Hover="true" Dense="true">
                 <Columns>
                     <PropertyColumn Property="x => x.Name" Title="Name" />
                     <PropertyColumn Property="x => x.Description" Title="Description" />
@@ -36,18 +69,68 @@
                             @(context.Item.UpdatedAt?.LocalDateTime.ToString("g") ?? "Never")
                         </CellTemplate>
                     </TemplateColumn>
+                    <TemplateColumn Title="Actions" Sortable="false">
+                        <CellTemplate>
+                            <MudTooltip Text="View Details">
+                                <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                                             Size="Size.Small"
+                                             OnClick="@(() => ViewConfiguration(context.Item.Name))" />
+                            </MudTooltip>
+                            <MudTooltip Text="Delete Configuration">
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                             Size="Size.Small"
+                                             Color="Color.Error"
+                                             OnClick="@(() => DeleteConfiguration(context.Item.Name))" />
+                            </MudTooltip>
+                        </CellTemplate>
+                    </TemplateColumn>
                 </Columns>
             </MudDataGrid>
         }
-        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-4">
-            Configuration editor with Monaco and version management coming soon.
-        </MudText>
     </MudCardContent>
 </MudCard>
 
 @code {
     private List<Configuration> configurations = [];
+    private List<Configuration> filteredConfigurations = [];
     private bool isLoading = true;
+
+    private string _searchText = string.Empty;
+    private string SearchText
+    {
+        get => _searchText;
+        set
+        {
+            if (_searchText != value)
+            {
+                _searchText = value;
+                FilterConfigurations();
+            }
+        }
+    }
+
+    private SortOption _sortBy = SortOption.UpdatedDesc;
+    private SortOption SortBy
+    {
+        get => _sortBy;
+        set
+        {
+            if (_sortBy != value)
+            {
+                _sortBy = value;
+                FilterConfigurations();
+            }
+        }
+    }
+
+    private enum SortOption
+    {
+        NameAsc,
+        NameDesc,
+        CreatedAsc,
+        CreatedDesc,
+        UpdatedDesc
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -63,9 +146,8 @@
                 .Include(c => c.Versions)
                 .ToListAsync();
 
-            configurations = configs
-                .OrderByDescending(c => c.UpdatedAt ?? c.CreatedAt)
-                .ToList();
+            configurations = configs;
+            FilterConfigurations();
         }
         catch (Exception ex)
         {
@@ -80,5 +162,74 @@
     private void ViewConfiguration(string name)
     {
         Navigation.NavigateTo($"/configurations/{name}");
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<CreateConfigurationDialog>("Create Configuration", options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            await LoadConfigurationsAsync();
+        }
+    }
+
+    private void FilterConfigurations()
+    {
+        var filtered = configurations.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(_searchText))
+        {
+            var search = _searchText.ToLower();
+            filtered = filtered.Where(c =>
+                c.Name.ToLower().Contains(search) ||
+                (c.Description != null && c.Description.ToLower().Contains(search)));
+        }
+
+        filteredConfigurations = ApplySort(filtered).ToList();
+    }
+
+    private IEnumerable<Configuration> ApplySort(IEnumerable<Configuration> items)
+    {
+        return _sortBy switch
+        {
+            SortOption.NameAsc => items.OrderBy(c => c.Name),
+            SortOption.NameDesc => items.OrderByDescending(c => c.Name),
+            SortOption.CreatedAsc => items.OrderBy(c => c.CreatedAt),
+            SortOption.CreatedDesc => items.OrderByDescending(c => c.CreatedAt),
+            SortOption.UpdatedDesc => items.OrderByDescending(c => c.UpdatedAt ?? c.CreatedAt),
+            _ => items
+        };
+    }
+
+    private async Task DeleteConfiguration(string name)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Delete Configuration",
+            $"Are you sure you want to delete '{name}'? This will delete all versions, files, and associated parameter schemas.",
+            yesText: "Delete",
+            cancelText: "Cancel");
+
+        if (confirmed == true)
+        {
+            var success = await ApiClient.DeleteConfigurationAsync(name);
+
+            if (success)
+            {
+                Snackbar.Add($"Configuration '{name}' deleted successfully", Severity.Success);
+                await LoadConfigurationsAsync();
+            }
+            else
+            {
+                Snackbar.Add($"Failed to delete configuration '{name}'", Severity.Error);
+            }
+        }
     }
 }
