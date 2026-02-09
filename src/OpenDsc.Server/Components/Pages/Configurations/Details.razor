@@ -61,13 +61,19 @@
             <MudCard Class="mt-4">
                 <MudCardHeader>
                     <CardHeaderActions>
-                        <MudButton Variant="Variant.Filled"
-                                   Color="Color.Primary"
-                                   Size="Size.Small"
-                                   StartIcon="@Icons.Material.Filled.Add"
-                                   OnClick="OpenCreateVersionDialog">
-                            Upload New Version
-                        </MudButton>
+                        <MudMenu Label="New Version"
+                                 Variant="Variant.Filled"
+                                 Color="Color.Primary"
+                                 Size="Size.Small"
+                                 StartIcon="@Icons.Material.Filled.Add"
+                                 EndIcon="@Icons.Material.Filled.ArrowDropDown">
+                            <MudMenuItem OnClick="OpenCreateVersionDialog" Icon="@Icons.Material.Filled.Upload">
+                                Upload Files
+                            </MudMenuItem>
+                            <MudMenuItem OnClick="OpenCreateVersionFromExistingDialog" Icon="@Icons.Material.Filled.ContentCopy">
+                                Create from Existing Version
+                            </MudMenuItem>
+                        </MudMenu>
                     </CardHeaderActions>
                 </MudCardHeader>
                 <MudCardContent>
@@ -102,12 +108,29 @@
                                                       OnClick="@(() => ToggleVersionExpansion(version))" />
                                         @if (version.IsDraft)
                                         {
-                                            <MudButton Size="Size.Small"
-                                                      Variant="Variant.Text"
-                                                      Color="Color.Success"
-                                                      OnClick="@(() => PublishVersion(version))">
-                                                Publish
-                                            </MudButton>
+                                            <MudMenu AnchorOrigin="Origin.BottomLeft" Dense="true">
+                                                <ActivatorContent>
+                                                    <MudTooltip Text="Add Files to Draft">
+                                                        <MudIconButton Icon="@Icons.Material.Filled.Add"
+                                                                      Size="Size.Small"
+                                                                      Color="Color.Primary" />
+                                                    </MudTooltip>
+                                                </ActivatorContent>
+                                                <ChildContent>
+                                                    <MudMenuItem OnClick="@(() => OpenAddFilesDialog(version))" Icon="@Icons.Material.Filled.Upload">
+                                                        Upload Files
+                                                    </MudMenuItem>
+                                                    <MudMenuItem OnClick="@(() => OpenCreateFileDialog(version))" Icon="@Icons.Material.Filled.NoteAdd">
+                                                        Create File
+                                                    </MudMenuItem>
+                                                </ChildContent>
+                                            </MudMenu>
+                                            <MudTooltip Text="Publish this draft version to make it immutable">
+                                                <MudIconButton Icon="@Icons.Material.Filled.Publish"
+                                                              Size="Size.Small"
+                                                              Color="Color.Success"
+                                                              OnClick="@(() => PublishVersion(version))" />
+                                            </MudTooltip>
                                         }
                                         <MudTooltip Text="Delete Version">
                                             <MudIconButton Icon="@Icons.Material.Filled.Delete"
@@ -123,29 +146,39 @@
                                         <MudTable Items="@version.Files.OrderBy(f => f.RelativePath)" Dense="true" Hover="true">
                                             <HeaderContent>
                                                 <MudTh>File Path</MudTh>
-                                                <MudTh>Type</MudTh>
                                                 <MudTh>Actions</MudTh>
                                             </HeaderContent>
                                             <RowTemplate>
                                                 <MudTd>@context.RelativePath</MudTd>
-                                                <MudTd>@context.ContentType</MudTd>
                                                 <MudTd>
                                                     <MudTooltip Text="View File">
                                                         <MudIconButton Icon="@Icons.Material.Filled.Visibility"
                                                                       Size="Size.Small"
                                                                       OnClick="@(() => OpenFileViewer(version, context, false))" />
                                                     </MudTooltip>
-                                                    <MudTooltip Text="Edit File">
-                                                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                                                      Size="Size.Small"
-                                                                      Color="Color.Primary"
-                                                                      OnClick="@(() => OpenFileViewer(version, context, true))" />
-                                                    </MudTooltip>
+                                                    @if (version.IsDraft)
+                                                    {
+                                                        <MudTooltip Text="Edit File">
+                                                            <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                                          Size="Size.Small"
+                                                                          Color="Color.Primary"
+                                                                          OnClick="@(() => OpenFileViewer(version, context, true))" />
+                                                        </MudTooltip>
+                                                    }
                                                     <MudTooltip Text="Download">
                                                         <MudIconButton Icon="@Icons.Material.Filled.Download"
                                                                       Size="Size.Small"
                                                                       OnClick="@(() => DownloadSpecificFile(context, version))" />
                                                     </MudTooltip>
+                                                    @if (version.IsDraft)
+                                                    {
+                                                        <MudTooltip Text="Delete File">
+                                                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                                          Size="Size.Small"
+                                                                          Color="Color.Error"
+                                                                          OnClick="@(() => DeleteFile(version, context))" />
+                                                        </MudTooltip>
+                                                    }
                                                 </MudTd>
                                             </RowTemplate>
                                         </MudTable>
@@ -244,7 +277,7 @@ else
         };
 
         var dialog = await DialogService.ShowAsync<FileViewerDialog>(
-            editMode ? $"Edit: {file.RelativePath}" : $"View: {file.RelativePath}",
+            file.RelativePath,
             parameters,
             options);
 
@@ -300,6 +333,83 @@ else
         }
     }
 
+    private async Task OpenCreateVersionFromExistingDialog()
+    {
+        if (configuration == null)
+            return;
+
+        var parameters = new DialogParameters<CreateVersionFromExistingDialog>
+        {
+            { x => x.ConfigurationName, configuration.Name }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<CreateVersionFromExistingDialog>("Create Version from Existing", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            await LoadConfiguration();
+        }
+    }
+
+    private async Task OpenAddFilesDialog(ConfigurationVersion version)
+    {
+        if (configuration == null)
+            return;
+
+        var parameters = new DialogParameters<AddFilesToVersionDialog>
+        {
+            { x => x.ConfigurationName, configuration.Name },
+            { x => x.Version, version.Version }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<AddFilesToVersionDialog>("Upload Files to Version", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            await LoadConfiguration();
+        }
+    }
+
+    private async Task OpenCreateFileDialog(ConfigurationVersion version)
+    {
+        if (configuration == null)
+            return;
+
+        var parameters = new DialogParameters<CreateFileDialog>
+        {
+            { x => x.ConfigurationName, configuration.Name },
+            { x => x.Version, version.Version }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<CreateFileDialog>("Create File", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            await LoadConfiguration();
+        }
+    }
+
     private async Task PublishVersion(ConfigurationVersion version)
     {
         if (configuration == null)
@@ -332,6 +442,44 @@ else
         if (configuration == null)
             return;
 
+        // Check if version is in use by any nodes
+        var nodesUsingVersion = await Db.NodeConfigurations
+            .Where(nc => nc.ConfigurationId == configuration.Id && nc.ActiveVersion == version.Version)
+            .Include(nc => nc.Node)
+            .ToListAsync();
+
+        // Check if version is in use by any composite configurations
+        var compositeConfigsUsingVersion = await Db.CompositeConfigurationItems
+            .Where(cci => cci.ChildConfigurationId == configuration.Id && cci.ActiveVersion == version.Version)
+            .Include(cci => cci.CompositeConfigurationVersion)
+                .ThenInclude(ccv => ccv.CompositeConfiguration)
+            .ToListAsync();
+
+        if (nodesUsingVersion.Any() || compositeConfigsUsingVersion.Any())
+        {
+            var usageDetails = new List<string>();
+
+            if (nodesUsingVersion.Any())
+            {
+                usageDetails.Add($"- Nodes: {string.Join(", ", nodesUsingVersion.Select(n => n.Node.Fqdn))}");
+            }
+
+            if (compositeConfigsUsingVersion.Any())
+            {
+                var compositeNames = compositeConfigsUsingVersion
+                    .Select(c => $"{c.CompositeConfigurationVersion.CompositeConfiguration.Name} v{c.CompositeConfigurationVersion.Version}")
+                    .Distinct();
+                usageDetails.Add($"- Composite Configurations: {string.Join(", ", compositeNames)}");
+            }
+
+            await DialogService.ShowMessageBox(
+                "Cannot Delete Version",
+                $"Version {version.Version} is currently in use and cannot be deleted:\n\n{string.Join("\n", usageDetails)}\n\nPlease remove these assignments before deleting this version.",
+                yesText: "OK");
+
+            return;
+        }
+
         var confirmed = await DialogService.ShowMessageBox(
             "Delete Version",
             $"Are you sure you want to delete version {version.Version}? This action cannot be undone.",
@@ -356,6 +504,33 @@ else
             else
             {
                 Snackbar.Add("Failed to delete version", Severity.Error);
+            }
+        }
+    }
+
+    private async Task DeleteFile(ConfigurationVersion version, ConfigurationFile file)
+    {
+        if (configuration == null)
+            return;
+
+        var confirmed = await DialogService.ShowMessageBox(
+            "Delete File",
+            $"Are you sure you want to delete '{file.RelativePath}' from version {version.Version}?",
+            yesText: "Delete",
+            cancelText: "Cancel");
+
+        if (confirmed == true)
+        {
+            var success = await ApiClient.DeleteFileAsync(configuration.Name, version.Version, file.RelativePath);
+
+            if (success)
+            {
+                Snackbar.Add($"File '{file.RelativePath}' deleted successfully", Severity.Success);
+                await LoadConfiguration();
+            }
+            else
+            {
+                Snackbar.Add("Failed to delete file", Severity.Error);
             }
         }
     }

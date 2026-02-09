@@ -14,9 +14,12 @@ public interface IConfigurationApiClient
 {
     Task<bool> CreateConfigurationAsync(string name, string? description, string entryPoint, string version, bool isDraft, IReadOnlyList<IBrowserFile> files);
     Task<bool> CreateVersionAsync(string name, string version, bool isDraft, IReadOnlyList<IBrowserFile> files);
+    Task<bool> CreateVersionFromExistingAsync(string name, string sourceVersion, string newVersion, bool isDraft);
+    Task<bool> AddFilesToVersionAsync(string name, string version, IReadOnlyList<IBrowserFile> files);
     Task<bool> PublishVersionAsync(string name, string version);
     Task<bool> DeleteConfigurationAsync(string name);
     Task<bool> DeleteVersionAsync(string name, string version);
+    Task<bool> DeleteFileAsync(string name, string version, string filePath);
     Task<Stream?> DownloadFileAsync(string name, string version, string filePath);
 }
 
@@ -237,6 +240,189 @@ public sealed class ConfigurationApiClient : IConfigurationApiClient
         }
     }
 
+    public async Task<bool> CreateVersionFromExistingAsync(string name, string sourceVersion, string newVersion, bool isDraft)
+    {
+        try
+        {
+            var configuration = await _db.Configurations
+                .Include(c => c.Versions)
+                .ThenInclude(v => v.Files)
+                .FirstOrDefaultAsync(c => c.Name == name);
+
+            if (configuration == null)
+            {
+                _logger.LogWarning("Configuration '{Name}' not found", name);
+                return false;
+            }
+
+            var sourceConfigVersion = configuration.Versions
+                .FirstOrDefault(v => v.Version == sourceVersion);
+
+            if (sourceConfigVersion == null)
+            {
+                _logger.LogWarning("Source version '{Version}' not found for configuration '{Name}'", sourceVersion, name);
+                return false;
+            }
+
+            if (await _db.ConfigurationVersions.AnyAsync(v => v.ConfigurationId == configuration.Id && v.Version == newVersion))
+            {
+                _logger.LogWarning("Version '{Version}' already exists for configuration '{Name}'", newVersion, name);
+                return false;
+            }
+
+            var configVersion = new ConfigurationVersion
+            {
+                Id = Guid.NewGuid(),
+                ConfigurationId = configuration.Id,
+                Version = newVersion,
+                IsDraft = isDraft,
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+
+            _db.ConfigurationVersions.Add(configVersion);
+
+            var dataDir = _config["DataDirectory"] ?? "data";
+            var sourceVersionDir = Path.Combine(dataDir, "configurations", name, $"v{sourceVersion}");
+            var newVersionDir = Path.Combine(dataDir, "configurations", name, $"v{newVersion}");
+
+            if (!Directory.Exists(sourceVersionDir))
+            {
+                _logger.LogWarning("Source version directory not found: {SourceDir}", sourceVersionDir);
+                return false;
+            }
+
+            Directory.CreateDirectory(newVersionDir);
+
+            foreach (var sourceFile in sourceConfigVersion.Files)
+            {
+                var sourceFilePath = Path.Combine(sourceVersionDir, sourceFile.RelativePath);
+                var newFilePath = Path.Combine(newVersionDir, sourceFile.RelativePath);
+
+                if (!File.Exists(sourceFilePath))
+                {
+                    _logger.LogWarning("Source file not found: {FilePath}", sourceFilePath);
+                    continue;
+                }
+
+                var fileDir = Path.GetDirectoryName(newFilePath);
+                if (!string.IsNullOrEmpty(fileDir) && !Directory.Exists(fileDir))
+                {
+                    Directory.CreateDirectory(fileDir);
+                }
+
+                File.Copy(sourceFilePath, newFilePath, overwrite: false);
+
+                var checksum = await ComputeFileChecksumAsync(newFilePath);
+
+                var configFile = new ConfigurationFile
+                {
+                    Id = Guid.NewGuid(),
+                    VersionId = configVersion.Id,
+                    RelativePath = sourceFile.RelativePath,
+                    ContentType = sourceFile.ContentType,
+                    Checksum = checksum,
+                    CreatedAt = DateTimeOffset.UtcNow
+                };
+
+                _db.ConfigurationFiles.Add(configFile);
+            }
+
+            configuration.UpdatedAt = DateTimeOffset.UtcNow;
+            await _db.SaveChangesAsync();
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating version '{NewVersion}' from existing version '{SourceVersion}' for configuration '{Name}'", newVersion, sourceVersion, name);
+            return false;
+        }
+    }
+
+    public async Task<bool> AddFilesToVersionAsync(string name, string version, IReadOnlyList<IBrowserFile> files)
+    {
+        try
+        {
+            var configuration = await _db.Configurations
+                .Include(c => c.Versions)
+                .ThenInclude(v => v.Files)
+                .FirstOrDefaultAsync(c => c.Name == name);
+
+            if (configuration == null)
+            {
+                _logger.LogWarning("Configuration '{Name}' not found", name);
+                return false;
+            }
+
+            var configVersion = configuration.Versions
+                .FirstOrDefault(v => v.Version == version);
+
+            if (configVersion == null)
+            {
+                _logger.LogWarning("Version '{Version}' not found for configuration '{Name}'", version, name);
+                return false;
+            }
+
+            if (!configVersion.IsDraft)
+            {
+                _logger.LogWarning("Cannot add files to published version '{Version}'", version);
+                return false;
+            }
+
+            var dataDir = _config["DataDirectory"] ?? "data";
+            var versionDir = Path.Combine(dataDir, "configurations", name, $"v{version}");
+
+            foreach (var file in files)
+            {
+                var relativePath = file.Name;
+
+                // Check if file already exists in this version
+                if (configVersion.Files.Any(f => f.RelativePath == relativePath))
+                {
+                    _logger.LogWarning("File '{FilePath}' already exists in version '{Version}'", relativePath, version);
+                    continue;
+                }
+
+                var filePath = Path.Combine(versionDir, relativePath);
+                var fileDir = Path.GetDirectoryName(filePath);
+                if (!string.IsNullOrEmpty(fileDir) && !Directory.Exists(fileDir))
+                {
+                    Directory.CreateDirectory(fileDir);
+                }
+
+                await using (var stream = File.Create(filePath))
+                {
+                    await file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024).CopyToAsync(stream);
+                }
+
+                var checksum = await ComputeFileChecksumAsync(filePath);
+                var contentType = GetContentType(file);
+
+                var configFile = new ConfigurationFile
+                {
+                    Id = Guid.NewGuid(),
+                    VersionId = configVersion.Id,
+                    RelativePath = relativePath,
+                    ContentType = contentType,
+                    Checksum = checksum,
+                    CreatedAt = DateTimeOffset.UtcNow
+                };
+
+                _db.ConfigurationFiles.Add(configFile);
+            }
+
+            configuration.UpdatedAt = DateTimeOffset.UtcNow;
+            await _db.SaveChangesAsync();
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error adding files to version '{Version}' for configuration '{Name}'", version, name);
+            return false;
+        }
+    }
+
     public async Task<bool> PublishVersionAsync(string name, string version)
     {
         try
@@ -354,6 +540,65 @@ public sealed class ConfigurationApiClient : IConfigurationApiClient
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error deleting version '{Version}' for configuration '{Name}'", version, name);
+            return false;
+        }
+    }
+
+    public async Task<bool> DeleteFileAsync(string name, string version, string filePath)
+    {
+        try
+        {
+            var configuration = await _db.Configurations
+                .Include(c => c.Versions)
+                    .ThenInclude(v => v.Files)
+                .FirstOrDefaultAsync(c => c.Name == name);
+
+            if (configuration == null)
+            {
+                _logger.LogWarning("Configuration '{Name}' not found", name);
+                return false;
+            }
+
+            var configVersion = configuration.Versions
+                .FirstOrDefault(v => v.Version == version);
+
+            if (configVersion == null)
+            {
+                _logger.LogWarning("Version '{Version}' not found for configuration '{Name}'", version, name);
+                return false;
+            }
+
+            if (!configVersion.IsDraft)
+            {
+                _logger.LogWarning("Cannot delete files from published version '{Version}'", version);
+                return false;
+            }
+
+            var configFile = configVersion.Files
+                .FirstOrDefault(f => f.RelativePath == filePath);
+
+            if (configFile == null)
+            {
+                _logger.LogWarning("File '{FilePath}' not found in version '{Version}'", filePath, version);
+                return false;
+            }
+
+            var dataDir = _config["DataDirectory"] ?? "data";
+            var fullPath = Path.Combine(dataDir, "configurations", name, $"v{version}", filePath);
+            if (File.Exists(fullPath))
+            {
+                File.Delete(fullPath);
+            }
+
+            _db.ConfigurationFiles.Remove(configFile);
+            configuration.UpdatedAt = DateTimeOffset.UtcNow;
+            await _db.SaveChangesAsync();
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting file '{FilePath}' from version '{Version}' for configuration '{Name}'", filePath, version, name);
             return false;
         }
     }

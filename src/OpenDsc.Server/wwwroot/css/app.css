@@ -35,6 +35,10 @@ body {
     justify-content: center;
 }
 
+.justify-space-between {
+    justify-content: space-between;
+}
+
 /* Text utilities */
 .text-center {
     text-align: center;
@@ -47,4 +51,18 @@ body {
 /* Layout utilities */
 .w-100 {
     width: 100%;
+}
+
+/* Monaco Editor */
+.monaco-editor-container {
+    height: 100%;
+    width: 100%;
+}
+
+.monaco-editor-test {
+    height: 600px;
+}
+
+.file-viewer-editor {
+    height: 600px;
 }

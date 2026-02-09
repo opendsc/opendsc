@@ -2,14 +2,60 @@
 @* You may use, distribute and modify this code under the *@
 @* terms of the MIT license. *@
 
+@rendermode InteractiveServer
+
 @using MudBlazor
+@using BlazorMonaco
+@using BlazorMonaco.Editor
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.JSInterop
 @inject ISnackbar Snackbar
 @inject IConfiguration Config
+@inject ThemeService ThemeService
+@inject ServerDbContext Db
+@inject IJSRuntime JSRuntime
 
 <MudDialog>
     <DialogContent>
-        <MudText Typo="Typo.h6" Class="mb-2">@FilePath</MudText>
-        <MudText Typo="Typo.caption" Class="mb-4">@ContentType</MudText>
+        <div class="d-flex align-center justify-space-between mb-2">
+            <MudText Typo="Typo.body2" Color="Color.Secondary">Version @Version @(IsEditMode ? "(Editing)" : "(Read-only)")</MudText>
+            @if (!IsEditMode)
+            {
+                <MudButtonGroup Size="Size.Small">
+                    <MudButton OnClick="@(() => SwitchMode(ViewMode.View))"
+                               Variant="@(currentMode == ViewMode.View ? Variant.Filled : Variant.Text)"
+                               Color="@(currentMode == ViewMode.View ? Color.Primary : Color.Default)"
+                               Style="@(currentMode == ViewMode.View ? "" : "opacity: 0.6")">
+                        <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" Class="mr-1" />
+                        View
+                    </MudButton>
+                    <MudButton OnClick="@(() => SwitchMode(ViewMode.Compare))"
+                               Variant="@(currentMode == ViewMode.Compare ? Variant.Filled : Variant.Text)"
+                               Color="@(currentMode == ViewMode.Compare ? Color.Primary : Color.Default)"
+                               Style="@(currentMode == ViewMode.Compare ? "" : "opacity: 0.6")"
+                               Disabled="@(availableVersions.Count < 2)">
+                        <MudIcon Icon="@Icons.Material.Filled.CompareArrows" Size="Size.Small" Class="mr-1" />
+                        Compare
+                    </MudButton>
+                </MudButtonGroup>
+            }
+        </div>
+
+        @if (currentMode == ViewMode.Compare)
+        {
+            <MudSelect T="string"
+                       Value="@compareVersion"
+                       Label="Compare with version"
+                       Variant="Variant.Outlined"
+                       Class="mb-3"
+                       Disabled="isLoading"
+                       ValueChanged="OnCompareVersionChanged">
+                @foreach (var v in availableVersions.Where(v => v != Version))
+                {
+                    <MudSelectItem Value="@v">Version @v</MudSelectItem>
+                }
+            </MudSelect>
+        }
 
         @if (isLoading)
         {
@@ -18,15 +64,24 @@
         }
         else if (fileContent != null)
         {
-            <MudPaper Class="pa-4" Elevation="0" Style="border: 1px solid #ddd;">
-                <MudTextField @bind-Value="fileContent"
-                              Lines="25"
-                              Variant="Variant.Outlined"
-                              Label="File Content"
-                              ReadOnly="@(!IsEditMode)"
-                              Immediate="true"
-                              Style="font-family: 'Courier New', monospace; font-size: 12px;" />
-            </MudPaper>
+            @if (currentMode == ViewMode.View)
+            {
+                <div style="height: 600px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
+                    <StandaloneCodeEditor @ref="_editor"
+                                          Id="file-editor-config"
+                                          ConstructionOptions="GetEditorOptions"
+                                          CssClass="file-viewer-editor" />
+                </div>
+            }
+            else
+            {
+                <div style="height: 600px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
+                    <StandaloneDiffEditor @ref="_diffEditor"
+                                          Id="file-diff-editor"
+                                          ConstructionOptions="GetDiffEditorOptions"
+                                          CssClass="file-viewer-editor" />
+                </div>
+            }
         }
         else
         {
@@ -36,7 +91,12 @@
     <DialogActions>
         @if (IsEditMode)
         {
-            <MudButton OnClick="SaveFile" Color="Color.Primary" Variant="Variant.Filled" Disabled="isLoading">Save</MudButton>
+            <MudButton OnClick="SaveFile"
+                       Color="Color.Primary"
+                       Variant="Variant.Filled"
+                       Disabled="@(isLoading || currentMode == ViewMode.Compare)">
+                Save
+            </MudButton>
         }
         <MudButton OnClick="Cancel">Close</MudButton>
     </DialogActions>
@@ -61,18 +121,201 @@
     [Parameter]
     public bool IsEditMode { get; set; }
 
+    private enum ViewMode { View, Compare }
+
+    private StandaloneCodeEditor? _editor;
+    private StandaloneDiffEditor? _diffEditor;
     private string? fileContent;
+    private string? compareFileContent;
     private bool isLoading = true;
+    private ViewMode currentMode = ViewMode.View;
+    private List<string> availableVersions = new();
+    private string compareVersion = string.Empty;
+    private TextModel? _originalModel;
+    private TextModel? _modifiedModel;
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadAvailableVersions();
         await LoadFileContent();
+    }
+
+    private StandaloneEditorConstructionOptions GetEditorOptions(StandaloneCodeEditor editor)
+    {
+        return new StandaloneEditorConstructionOptions
+        {
+            AutomaticLayout = true,
+            Language = DetectLanguage(),
+            Value = fileContent ?? "",
+            ReadOnly = !IsEditMode,
+            Theme = ThemeService.IsDarkMode ? "vs-dark" : "vs",
+            LineNumbers = "on",
+            Minimap = new EditorMinimapOptions { Enabled = false },
+            ScrollBeyondLastLine = false,
+            FontSize = 14,
+            FontFamily = "'Cascadia Code', 'Courier New', monospace",
+            TabSize = 2,
+            InsertSpaces = true,
+            WordWrap = "off"
+        };
+    }
+
+    private StandaloneDiffEditorConstructionOptions GetDiffEditorOptions(StandaloneDiffEditor editor)
+    {
+        return new StandaloneDiffEditorConstructionOptions
+        {
+            AutomaticLayout = true,
+            OriginalEditable = false,
+            ReadOnly = true,
+            Theme = ThemeService.IsDarkMode ? "vs-dark" : "vs",
+            RenderSideBySide = true,
+            IgnoreTrimWhitespace = false
+        };
+    }
+
+    private string DetectLanguage()
+    {
+        var extension = Path.GetExtension(FilePath).ToLowerInvariant();
+        return extension switch
+        {
+            ".yaml" or ".yml" => "yaml",
+            ".json" => "json",
+            ".ps1" => "powershell",
+            ".sh" => "shell",
+            ".cs" => "csharp",
+            ".xml" => "xml",
+            ".md" => "markdown",
+            _ => "plaintext"
+        };
+    }
+
+    private async Task LoadAvailableVersions()
+    {
+        try
+        {
+            var config = await Db.Configurations
+                .Include(c => c.Versions)
+                .FirstOrDefaultAsync(c => c.Name == ConfigurationName);
+
+            if (config != null)
+            {
+                availableVersions = config.Versions
+                    .OrderByDescending(v => v.CreatedAt)
+                    .Select(v => v.Version)
+                    .ToList();
+
+                // Set default compare version to the previous version if available
+                if (availableVersions.Count > 1)
+                {
+                    var currentIndex = availableVersions.IndexOf(Version);
+                    if (currentIndex > 0)
+                    {
+                        compareVersion = availableVersions[currentIndex + 1];
+                    }
+                    else if (currentIndex == 0 && availableVersions.Count > 1)
+                    {
+                        compareVersion = availableVersions[1];
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading versions: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task SwitchMode(ViewMode mode)
+    {
+        currentMode = mode;
+
+        if (mode == ViewMode.Compare && !string.IsNullOrEmpty(compareVersion))
+        {
+            await LoadCompareFileContent();
+            await UpdateDiffEditor();
+        }
+    }
+
+    private async Task OnCompareVersionChanged(string newVersion)
+    {
+        compareVersion = newVersion;
+        if (currentMode == ViewMode.Compare && !string.IsNullOrEmpty(compareVersion))
+        {
+            await LoadCompareFileContent();
+        }
+    }
+
+    private async Task LoadCompareFileContent()
+    {
+        if (string.IsNullOrEmpty(compareVersion))
+            return;
+
+        try
+        {
+            var dataDir = Config["DataDirectory"] ?? "data";
+            var versionDir = Path.Combine(dataDir, "configurations", ConfigurationName, $"v{compareVersion}");
+            var fullPath = Path.Combine(versionDir, FilePath);
+
+            if (File.Exists(fullPath))
+            {
+                compareFileContent = await File.ReadAllTextAsync(fullPath);
+            }
+            else
+            {
+                compareFileContent = "// File does not exist in this version";
+                Snackbar.Add($"File not found in version {compareVersion}", Severity.Warning);
+            }
+
+            await UpdateDiffEditor();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading comparison file: {ex.Message}", Severity.Error);
+            compareFileContent = null;
+        }
+    }
+
+    private async Task UpdateDiffEditor()
+    {
+        if (_diffEditor != null && !string.IsNullOrEmpty(compareFileContent) && !string.IsNullOrEmpty(fileContent))
+        {
+            // Dispose existing models to avoid "model already exists" error
+            if (_originalModel != null)
+            {
+                await _originalModel.DisposeModel();
+            }
+            if (_modifiedModel != null)
+            {
+                await _modifiedModel.DisposeModel();
+            }
+
+            // Create new models with unique URIs based on timestamp
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            _originalModel = await BlazorMonaco.Editor.Global.CreateModel(
+                JSRuntime,
+                compareFileContent,
+                DetectLanguage(),
+                $"file://compare-{timestamp}/{compareVersion}/{FilePath}"
+            );
+
+            _modifiedModel = await BlazorMonaco.Editor.Global.CreateModel(
+                JSRuntime,
+                fileContent,
+                DetectLanguage(),
+                $"file://current-{timestamp}/{Version}/{FilePath}"
+            );
+
+            await _diffEditor.SetModel(new DiffEditorModel
+            {
+                Original = _originalModel,
+                Modified = _modifiedModel
+            });
+        }
     }
 
     private async Task LoadFileContent()
     {
         isLoading = true;
-        StateHasChanged();
 
         try
         {
@@ -109,13 +352,27 @@
 
     private async Task SaveFile()
     {
+        if (_editor == null && currentMode == ViewMode.View)
+        {
+            Snackbar.Add("Editor not initialized", Severity.Error);
+            return;
+        }
+
+        if (currentMode == ViewMode.Compare)
+        {
+            Snackbar.Add("Cannot save in compare mode", Severity.Warning);
+            return;
+        }
+
         try
         {
+            var content = await _editor!.GetValue();
+
             var dataDir = Config["DataDirectory"] ?? "data";
             var versionDir = Path.Combine(dataDir, "configurations", ConfigurationName, $"v{Version}");
             var fullPath = Path.Combine(versionDir, FilePath);
 
-            await File.WriteAllTextAsync(fullPath, fileContent ?? "");
+            await File.WriteAllTextAsync(fullPath, content ?? "");
 
             Snackbar.Add("File saved successfully", Severity.Success);
             MudDialog.Close(DialogResult.Ok(true));

@@ -1,5 +1,8 @@
+@* Copyright (c) Thomas Nieto - All Rights Reserved *@
+@* You may use, distribute and modify this code under the *@
+@* terms of the MIT license. *@
+
 @using Microsoft.AspNetCore.Components.Forms
-@using NuGet.Versioning
 @using OpenDsc.Server.Services
 @inject IConfigurationApiClient ApiClient
 @inject ISnackbar Snackbar
@@ -7,25 +10,7 @@
 <MudDialog>
     <DialogContent>
         <MudText Typo="Typo.body1" Class="mb-3">
-            Creating new version for configuration: <strong>@ConfigurationName</strong>
-        </MudText>
-
-        <MudTextField @bind-Value="version"
-                      Label="Version"
-                      Variant="Variant.Outlined"
-                      Required="true"
-                      Class="mb-3"
-                      Immediate="true"
-                      Error="@(!string.IsNullOrWhiteSpace(version) && !SemanticVersion.TryParse(version, out _))"
-                      ErrorText="Version must follow semantic versioning (e.g., 1.0.0, 2.1.3-alpha, 1.0.0-beta+001)"
-                      HelperText="Semantic version: major.minor.patch[-prerelease][+metadata]" />
-
-        <MudSwitch @bind-Value="isDraft"
-                   Label="Save as Draft"
-                   Color="Color.Info"
-                   Class="mb-3" />
-        <MudText Typo="Typo.caption" Class="mb-3" Color="Color.Secondary">
-            When unchecked, the version will be published immediately and become immutable.
+            Add files to <strong>@ConfigurationName</strong> version <strong>@Version</strong>
         </MudText>
 
         <MudText Typo="Typo.body2" Class="mb-2">Configuration Files</MudText>
@@ -57,7 +42,7 @@
             }
             else
             {
-                <text>Create Version</text>
+                <text>Add Files</text>
             }
         </MudButton>
     </DialogActions>
@@ -68,13 +53,14 @@
     public string ConfigurationName { get; set; } = string.Empty;
 
     [Parameter]
-    public EventCallback OnVersionCreated { get; set; }
+    public string Version { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback OnFilesAdded { get; set; }
 
     [CascadingParameter]
     private IMudDialogInstance MudDialog { get; set; } = default!;
 
-    private string version = string.Empty;
-    private bool isDraft = true;
     private bool isSubmitting = false;
     private List<IBrowserFile> selectedFiles = [];
     private string? validationError;
@@ -114,16 +100,6 @@
 
     private bool IsValid()
     {
-        if (string.IsNullOrWhiteSpace(version))
-        {
-            return false;
-        }
-
-        if (!SemanticVersion.TryParse(version, out _))
-        {
-            return false;
-        }
-
         if (selectedFiles.Count == 0)
         {
             return false;
@@ -147,21 +123,20 @@
 
         try
         {
-            var success = await ApiClient.CreateVersionAsync(
+            var success = await ApiClient.AddFilesToVersionAsync(
                 ConfigurationName,
-                version,
-                isDraft,
+                Version,
                 selectedFiles);
 
             if (success)
             {
-                Snackbar.Add($"Version {version} created successfully", Severity.Success);
+                Snackbar.Add($"Added {selectedFiles.Count} file(s) to version {Version}", Severity.Success);
                 MudDialog.Close(DialogResult.Ok(true));
-                await OnVersionCreated.InvokeAsync();
+                await OnFilesAdded.InvokeAsync();
             }
             else
             {
-                validationError = "Failed to create version. Please check server logs.";
+                validationError = "Failed to add files. Please check server logs.";
             }
         }
         catch (Exception ex)
@@ -177,8 +152,8 @@
 
 <style>
     .mud-input-file {
-        border: 2px dashed var(--mud-palette-lines-default);
-        border-radius: var(--mud-default-borderradius);
+        border: 2px dashed var(--mud-palette-divider);
+        border-radius: 4px;
         padding: 16px;
         text-align: center;
         cursor: pointer;
