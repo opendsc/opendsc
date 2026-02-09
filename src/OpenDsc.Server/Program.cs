@@ -43,6 +43,8 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddMudServices();
 
+builder.Services.AddScoped<ThemeService>();
+
 builder.Services.AddServerDatabase(builder.Configuration);
 builder.Services.AddServerAuthentication(builder.Environment);
 

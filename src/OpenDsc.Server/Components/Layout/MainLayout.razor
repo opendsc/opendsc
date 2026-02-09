@@ -1,7 +1,10 @@
 @inherits LayoutComponentBase
+@implements IDisposable
 @inject IJSRuntime JSRuntime
+@inject ThemeService ThemeService
+@inject ProtectedLocalStorage LocalStorage
 
-<MudThemeProvider />
+<MudThemeProvider @ref="_mudThemeProvider" @bind-IsDarkMode="_isDarkMode" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
@@ -14,6 +17,11 @@
         <AuthorizeView>
             <Authorized>
                 <MudText Typo="Typo.body2" Class="mr-4">@context.User.Identity?.Name</MudText>
+                <MudTooltip Text="@(_isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode")">
+                    <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+                                   Color="Color.Inherit"
+                                   OnClick="ToggleTheme" />
+                </MudTooltip>
                 <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit" OnClick="HandleLogout" />
             </Authorized>
         </AuthorizeView>
@@ -55,6 +63,36 @@
 
 @code {
     private bool _drawerOpen = true;
+    private MudThemeProvider _mudThemeProvider = default!;
+    private bool _isDarkMode;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await ThemeService.InitializeAsync(LocalStorage);
+            _isDarkMode = ThemeService.IsDarkMode;
+
+            ThemeService.OnThemeChanged += OnThemeChanged;
+
+            StateHasChanged();
+        }
+
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    private void OnThemeChanged()
+    {
+        _isDarkMode = ThemeService.IsDarkMode;
+        StateHasChanged();
+    }
+
+    private async Task ToggleTheme()
+    {
+        await ThemeService.ToggleAsync(LocalStorage);
+        _isDarkMode = ThemeService.IsDarkMode;
+        StateHasChanged();
+    }
 
     private void ToggleDrawer()
     {
@@ -69,5 +107,10 @@
                 window.location.href = '/login';
             })();
         ");
+    }
+
+    public void Dispose()
+    {
+        ThemeService.OnThemeChanged -= OnThemeChanged;
     }
 }
