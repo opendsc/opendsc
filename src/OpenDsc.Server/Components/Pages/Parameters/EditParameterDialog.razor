@@ -1,0 +1,202 @@
+@* Copyright (c) Thomas Nieto - All Rights Reserved *@
+@* You may use, distribute and modify this code under the *@
+@* terms of the MIT license. *@
+
+@rendermode InteractiveServer
+
+@using MudBlazor
+@using BlazorMonaco
+@using BlazorMonaco.Editor
+@using OpenDsc.Server.Services
+@inject IParameterApiClient ParameterApiClient
+@inject ISnackbar Snackbar
+@inject ThemeService ThemeService
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+            Editing parameter version @ParameterVersion (creates new version)
+        </MudText>
+
+        <MudTextField @bind-Value="newVersion"
+                      Label="New Version"
+                      Variant="Variant.Outlined"
+                      Required="true"
+                      HelperText="Semantic version for the updated parameter"
+                      Class="mb-3" />
+
+        <MudSwitch @bind-Value="isDraft"
+                   Label="Save as Draft"
+                   Color="Color.Primary"
+                   Class="mb-3" />
+
+        <MudText Typo="Typo.subtitle2" Class="mb-2">Parameter Content (YAML)</MudText>
+        @if (isLoading)
+        {
+            <MudProgressCircular Indeterminate="true" />
+            <MudText Typo="Typo.caption">Loading parameter content...</MudText>
+        }
+        else
+        {
+            <div style="height: 500px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
+                <StandaloneCodeEditor @ref="_editor"
+                                      Id="parameter-edit-editor"
+                                      ConstructionOptions="GetEditorOptions"
+                                      CssClass="monaco-editor-container" />
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="SaveParameter"
+                   Disabled="@(isLoading || string.IsNullOrWhiteSpace(newVersion) || isSaving)">
+            @if (isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Save
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public Guid ParameterId { get; set; }
+
+    [Parameter]
+    public Guid ScopeTypeId { get; set; }
+
+    [Parameter]
+    public Guid ConfigurationId { get; set; }
+
+    [Parameter]
+    public string? ScopeValue { get; set; }
+
+    [Parameter]
+    public string ParameterVersion { get; set; } = string.Empty;
+
+    private StandaloneCodeEditor? _editor;
+    private string? initialContent;
+    private string newVersion = string.Empty;
+    private bool isDraft = true;
+    private bool isLoading = true;
+    private bool isSaving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        newVersion = IncrementVersion(ParameterVersion);
+        await LoadParameterContent();
+    }
+
+    private async Task LoadParameterContent()
+    {
+        isLoading = true;
+
+        try
+        {
+            initialContent = await ParameterApiClient.GetParameterContentAsync(ParameterId);
+
+            if (initialContent == null)
+            {
+                Snackbar.Add("Failed to load parameter content", Severity.Error);
+                initialContent = "# Failed to load content";
+            }
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private StandaloneEditorConstructionOptions GetEditorOptions(StandaloneCodeEditor editor)
+    {
+        return new StandaloneEditorConstructionOptions
+        {
+            AutomaticLayout = true,
+            Language = "yaml",
+            Value = initialContent ?? "",
+            Theme = ThemeService.IsDarkMode ? "vs-dark" : "vs",
+            LineNumbers = "on",
+            Minimap = new EditorMinimapOptions { Enabled = false },
+            ScrollBeyondLastLine = false,
+            FontSize = 14,
+            FontFamily = "'Cascadia Code', 'Courier New', monospace",
+            TabSize = 2,
+            InsertSpaces = true,
+            WordWrap = "off"
+        };
+    }
+
+    private string IncrementVersion(string version)
+    {
+        if (string.IsNullOrWhiteSpace(version))
+        {
+            return "1.0.1";
+        }
+
+        var parts = version.Split('.');
+        if (parts.Length >= 3 && int.TryParse(parts[2], out var patch))
+        {
+            return $"{parts[0]}.{parts[1]}.{patch + 1}";
+        }
+
+        return version + ".1";
+    }
+
+    private async Task SaveParameter()
+    {
+        if (_editor == null || string.IsNullOrWhiteSpace(newVersion))
+        {
+            return;
+        }
+
+        isSaving = true;
+
+        try
+        {
+            var content = await _editor.GetValue();
+
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                Snackbar.Add("Parameter content cannot be empty", Severity.Warning);
+                return;
+            }
+
+            var (success, errorMessage) = await ParameterApiClient.CreateOrUpdateParameterAsync(
+                ScopeTypeId,
+                ConfigurationId,
+                ScopeValue,
+                newVersion,
+                content,
+                isDraft);
+
+            if (success)
+            {
+                Snackbar.Add($"Parameter saved as version {newVersion}", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+            {
+                Snackbar.Add($"Failed to save parameter: {errorMessage}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+}

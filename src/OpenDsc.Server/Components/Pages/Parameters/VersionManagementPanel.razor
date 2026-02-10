@@ -1,0 +1,246 @@
+@* Copyright (c) Thomas Nieto - All Rights Reserved *@
+@* You may use, distribute and modify this code under the *@
+@* terms of the MIT license. *@
+
+@rendermode InteractiveServer
+
+@using MudBlazor
+@using OpenDsc.Server.Services
+@using static OpenDsc.Server.Endpoints.ParameterEndpoints
+@inject IParameterApiClient ParameterApiClient
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<MudCard>
+    <MudCardContent>
+        <ScopeSelector @bind-SelectedConfigurationId="selectedConfigurationId"
+                       @bind-SelectedScopeTypeId="selectedScopeTypeId"
+                       @bind-SelectedScopeValue="selectedScopeValue"
+                       @bind-SelectedConfigurationId:after="OnSelectionChanged"
+                       @bind-SelectedScopeTypeId:after="OnSelectionChanged"
+                       @bind-SelectedScopeValue:after="OnSelectionChanged" />
+
+        @if (selectedConfigurationId.HasValue && selectedScopeTypeId.HasValue)
+        {
+            <MudDataGrid T="ParameterFileDto"
+                         Items="@versions"
+                         Loading="@isLoading"
+                         Class="mt-4"
+                         Dense="true"
+                         Hover="true">
+                <Columns>
+                    <PropertyColumn Property="v => v.Version" Title="Version" />
+                    <TemplateColumn Title="Status">
+                        <CellTemplate>
+                            @if (context.Item.IsActive)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Success">Active</MudChip>
+                            }
+                            else if (context.Item.IsDraft)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Info">Draft</MudChip>
+                            }
+                            else
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Default">Archived</MudChip>
+                            }
+                        </CellTemplate>
+                    </TemplateColumn>
+                    <PropertyColumn Property="v => v.Checksum.Substring(0, 8)" Title="Checksum" />
+                    <PropertyColumn Property="v => v.CreatedAt.ToLocalTime().ToString()" Title="Created" />
+                    <TemplateColumn Title="Actions" CellClass="d-flex justify-end">
+                        <CellTemplate>
+                            <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                                           Size="Size.Small"
+                                           OnClick="@(() => ViewParameter(context.Item))"
+                                           title="View" />
+                            @if (context.Item.IsDraft)
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                               Size="Size.Small"
+                                               Color="Color.Primary"
+                                               OnClick="@(() => EditParameter(context.Item))"
+                                               title="Edit" />
+                                <MudIconButton Icon="@Icons.Material.Filled.CheckCircle"
+                                               Size="Size.Small"
+                                               Color="Color.Success"
+                                               OnClick="@(() => ActivateParameter(context.Item))"
+                                               title="Activate" />
+                            }
+                            @if (!context.Item.IsActive)
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                               Size="Size.Small"
+                                               Color="Color.Error"
+                                               OnClick="@(() => DeleteParameter(context.Item))"
+                                               title="Delete" />
+                            }
+                        </CellTemplate>
+                    </TemplateColumn>
+                </Columns>
+                <NoRecordsContent>
+                    <MudText Typo="Typo.body2" Class="pa-4">
+                        @if (isLoading)
+                        {
+                            <text>Loading versions...</text>
+                        }
+                        else
+                        {
+                            <text>No parameter versions found. Create one to get started.</text>
+                        }
+                    </MudText>
+                </NoRecordsContent>
+            </MudDataGrid>
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Info" Class="mt-4">
+                Select a configuration and scope type to view parameter versions.
+            </MudAlert>
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    private Guid? selectedConfigurationId;
+    private Guid? selectedScopeTypeId;
+    private string? selectedScopeValue;
+    private List<ParameterFileDto> versions = [];
+    private bool isLoading;
+
+    private async Task OnSelectionChanged()
+    {
+        await LoadVersions();
+    }
+
+    private async Task LoadVersions()
+    {
+        if (!selectedConfigurationId.HasValue || !selectedScopeTypeId.HasValue)
+        {
+            versions = [];
+            return;
+        }
+
+        isLoading = true;
+
+        try
+        {
+            versions = await ParameterApiClient.GetParameterVersionsAsync(
+                selectedScopeTypeId.Value,
+                selectedConfigurationId.Value,
+                selectedScopeValue);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task ViewParameter(ParameterFileDto parameter)
+    {
+        var content = await ParameterApiClient.GetParameterContentAsync(parameter.Id);
+
+        var parameters = new DialogParameters<FileViewerDialog>
+        {
+            { x => x.ConfigurationName, $"Parameter {parameter.Version}" },
+            { x => x.Version, parameter.Version },
+            { x => x.FilePath, "parameters.yaml" },
+            { x => x.ContentType, "application/x-yaml" },
+            { x => x.IsEditMode, false }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.ExtraExtraLarge,
+            FullWidth = true
+        };
+
+        await DialogService.ShowAsync<FileViewerDialog>($"View Parameter Version {parameter.Version}", parameters, options);
+    }
+
+    private async Task EditParameter(ParameterFileDto parameter)
+    {
+        var parameters = new DialogParameters<EditParameterDialog>
+        {
+            { x => x.ParameterId, parameter.Id },
+            { x => x.ScopeTypeId, parameter.ScopeTypeId },
+            { x => x.ConfigurationId, parameter.ConfigurationId },
+            { x => x.ScopeValue, parameter.ScopeValue },
+            { x => x.ParameterVersion, parameter.Version }
+        };
+
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.ExtraLarge,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<EditParameterDialog>($"Edit Parameter", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            await LoadVersions();
+        }
+    }
+
+    private async Task ActivateParameter(ParameterFileDto parameter)
+    {
+        var confirm = await DialogService.ShowMessageBox(
+            "Confirm Activation",
+            $"Activate parameter version {parameter.Version}? This will deactivate the current active version.",
+            yesText: "Activate",
+            cancelText: "Cancel");
+
+        if (confirm != true)
+        {
+            return;
+        }
+
+        var (success, errorMessage) = await ParameterApiClient.ActivateParameterVersionAsync(
+            parameter.ScopeTypeId,
+            parameter.ConfigurationId,
+            parameter.ScopeValue,
+            parameter.Version);
+
+        if (success)
+        {
+            Snackbar.Add($"Parameter version {parameter.Version} activated", Severity.Success);
+            await LoadVersions();
+        }
+        else
+        {
+            Snackbar.Add($"Failed to activate: {errorMessage}", Severity.Error);
+        }
+    }
+
+    private async Task DeleteParameter(ParameterFileDto parameter)
+    {
+        var confirm = await DialogService.ShowMessageBox(
+            "Confirm Deletion",
+            $"Delete parameter version {parameter.Version}? This action cannot be undone.",
+            yesText: "Delete",
+            cancelText: "Cancel");
+
+        if (confirm != true)
+        {
+            return;
+        }
+
+        var (success, errorMessage) = await ParameterApiClient.DeleteParameterVersionAsync(
+            parameter.ScopeTypeId,
+            parameter.ConfigurationId,
+            parameter.ScopeValue,
+            parameter.Version);
+
+        if (success)
+        {
+            Snackbar.Add($"Parameter version {parameter.Version} deleted", Severity.Success);
+            await LoadVersions();
+        }
+        else
+        {
+            Snackbar.Add($"Failed to delete: {errorMessage}", Severity.Error);
+        }
+    }
+}

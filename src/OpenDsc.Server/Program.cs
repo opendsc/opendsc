@@ -69,6 +69,7 @@ builder.Services.AddScoped<IParameterMergeService, ParameterMergeService>();
 builder.Services.AddScoped<IParameterSchemaService, ParameterSchemaService>();
 builder.Services.AddScoped<IVersionRetentionService, VersionRetentionService>();
 builder.Services.AddScoped<IConfigurationApiClient, ConfigurationApiClient>();
+builder.Services.AddScoped<IParameterApiClient, ParameterApiClient>();
 
 var app = builder.Build();
 

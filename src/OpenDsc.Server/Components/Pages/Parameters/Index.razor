@@ -1,80 +1,118 @@
 @page "/parameters"
 @attribute [Authorize(Policy = "parameters.read")]
+@rendermode InteractiveServer
+
 @using Microsoft.EntityFrameworkCore
+@using OpenDsc.Server.Services
 @inject ServerDbContext Db
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
 @inject NavigationManager Navigation
 
 <PageTitle>Parameters</PageTitle>
 
-<MudText Typo="Typo.h4" Class="mb-4">Parameter Schemas</MudText>
+<MudText Typo="Typo.h4" Class="mb-4">Parameter Management</MudText>
 
-<MudCard>
-    <MudCardHeader>
-        <CardHeaderContent>
-            <MudText Typo="Typo.h6">Parameter Schemas by Configuration</MudText>
-        </CardHeaderContent>
-        <CardHeaderActions>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadDataAsync">
-                Refresh
-            </MudButton>
-        </CardHeaderActions>
-    </MudCardHeader>
-    <MudCardContent>
-        @if (loading)
-        {
-            <MudProgressLinear Indeterminate="true" />
-        }
-        else if (groupedSchemas.Any())
-        {
-            @foreach (var group in groupedSchemas)
-            {
-                <MudCard Class="mb-3" Outlined="true">
-                    <MudCardHeader>
-                        <CardHeaderContent>
-                            <MudText Typo="Typo.h6">@group.ConfigurationName</MudText>
-                        </CardHeaderContent>
-                    </MudCardHeader>
-                    <MudCardContent>
-                        <MudTable Items="@group.Schemas" Hover="true" Dense="true">
-                            <HeaderContent>
-                                <MudTh>Schema Hash</MudTh>
-                                <MudTh>Parameter Files</MudTh>
-                                <MudTh>Created</MudTh>
-                                <MudTh>Actions</MudTh>
-                            </HeaderContent>
-                            <RowTemplate>
-                                <MudTd>
-                                    <MudText Typo="Typo.caption">@context.SchemaHash[..Math.Min(16, context.SchemaHash.Length)]...</MudText>
-                                </MudTd>
-                                <MudTd>
-                                    <MudChip T="string" Size="Size.Small">@context.ParameterFiles.Count</MudChip>
-                                </MudTd>
-                                <MudTd>@context.CreatedAt.LocalDateTime.ToString("g")</MudTd>
-                                <MudTd>
-                                    <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => ViewSchema(context))">
-                                        View Schema
-                                    </MudButton>
-                                    <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => ViewFiles(context))">
-                                        View Files
-                                    </MudButton>
-                                </MudTd>
-                            </RowTemplate>
-                        </MudTable>
-                    </MudCardContent>
-                </MudCard>
-            }
-        }
-        else
-        {
-            <MudAlert Severity="Severity.Info">No parameter schemas found.</MudAlert>
-        }
+<MudTabs Elevation="4" Rounded="true" Color="Color.Primary" ApplyEffectsToContainer="true" PanelClass="pa-6">
+    <MudTabPanel Text="Overview" Icon="@Icons.Material.Filled.Info">
+        <MudCard>
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">Parameter Schemas by Configuration</MudText>
+                </CardHeaderContent>
+                <CardHeaderActions>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadDataAsync">
+                        Refresh
+                    </MudButton>
+                </CardHeaderActions>
+            </MudCardHeader>
+            <MudCardContent>
+                @if (loading)
+                {
+                    <MudProgressLinear Indeterminate="true" />
+                }
+                else if (groupedSchemas.Any())
+                {
+                    @foreach (var group in groupedSchemas)
+                    {
+                        <MudCard Class="mb-3" Outlined="true">
+                            <MudCardHeader>
+                                <CardHeaderContent>
+                                    <MudText Typo="Typo.h6">@group.ConfigurationName</MudText>
+                                </CardHeaderContent>
+                            </MudCardHeader>
+                            <MudCardContent>
+                                <MudTable Items="@group.Schemas" Hover="true" Dense="true">
+                                    <HeaderContent>
+                                        <MudTh>Schema Hash</MudTh>
+                                        <MudTh>Parameter Files</MudTh>
+                                        <MudTh>Created</MudTh>
+                                        <MudTh>Actions</MudTh>
+                                    </HeaderContent>
+                                    <RowTemplate>
+                                        <MudTd>
+                                            <MudText Typo="Typo.caption">@context.SchemaHash[..Math.Min(16, context.SchemaHash.Length)]...</MudText>
+                                        </MudTd>
+                                        <MudTd>
+                                            <MudChip T="string" Size="Size.Small">@context.ParameterFiles.Count</MudChip>
+                                        </MudTd>
+                                        <MudTd>@context.CreatedAt.LocalDateTime.ToString("g")</MudTd>
+                                        <MudTd>
+                                            <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => ViewSchema(context))">
+                                                View Schema
+                                            </MudButton>
+                                            <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => ViewFiles(context))">
+                                                View Files
+                                            </MudButton>
+                                        </MudTd>
+                                    </RowTemplate>
+                                </MudTable>
+                            </MudCardContent>
+                        </MudCard>
+                    }
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Info">No parameter schemas found.</MudAlert>
+                }
+            </MudCardContent>
+        </MudCard>
+    </MudTabPanel>
 
-        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-4">
-            Note: Full parameter schema editor with Monaco and file management coming soon. Use API endpoints for managing parameter files.
-        </MudText>
-    </MudCardContent>
-</MudCard>
+    <MudTabPanel Text="Create/Edit" Icon="@Icons.Material.Filled.Edit">
+        <MudCard>
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">Create Parameter</MudText>
+                </CardHeaderContent>
+                <CardHeaderActions>
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Add"
+                               OnClick="OpenCreateParameterDialog">
+                        Create New Parameter
+                    </MudButton>
+                </CardHeaderActions>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudText Typo="Typo.body1" Class="mb-3">
+                    Create and manage parameter files for your configurations with YAML editor support.
+                </MudText>
+                <MudAlert Severity="Severity.Info">
+                    Click "Create New Parameter" to open the parameter editor. You can specify scope type, scope value, version, and edit YAML content directly in the browser.
+                </MudAlert>
+            </MudCardContent>
+        </MudCard>
+    </MudTabPanel>
+
+    <MudTabPanel Text="Versions" Icon="@Icons.Material.Filled.History">
+        <VersionManagementPanel />
+    </MudTabPanel>
+
+    <MudTabPanel Text="Provenance" Icon="@Icons.Material.Filled.AccountTree">
+        <ProvenanceVisualizationPanel />
+    </MudTabPanel>
+</MudTabs>
 
 @if (selectedSchema != null && showSchemaDialog)
 {
@@ -197,6 +235,24 @@
         finally
         {
             loading = false;
+        }
+    }
+
+    private async Task OpenCreateParameterDialog()
+    {
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.ExtraLarge,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<CreateParameterDialog>("Create Parameter", options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            await LoadDataAsync();
+            Snackbar.Add("Parameter created successfully", Severity.Success);
         }
     }
 

@@ -1,0 +1,163 @@
+@* Copyright (c) Thomas Nieto - All Rights Reserved *@
+@* You may use, distribute and modify this code under the *@
+@* terms of the MIT license. *@
+
+@rendermode InteractiveServer
+
+@using MudBlazor
+@using BlazorMonaco
+@using BlazorMonaco.Editor
+@using OpenDsc.Server.Services
+@using Microsoft.EntityFrameworkCore
+@inject IParameterApiClient ParameterApiClient
+@inject ServerDbContext Db
+@inject ISnackbar Snackbar
+@inject ThemeService ThemeService
+
+<MudDialog>
+    <DialogContent>
+        <ScopeSelector @bind-SelectedConfigurationId="selectedConfigurationId"
+                       @bind-SelectedScopeTypeId="selectedScopeTypeId"
+                       @bind-SelectedScopeValue="selectedScopeValue" />
+
+        <MudGrid Class="mt-4">
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="version"
+                              Label="Version"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              HelperText="Semantic version (e.g., 1.0.0)" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudSwitch @bind-Value="isDraft"
+                           Label="Create as Draft"
+                           Color="Color.Primary"
+                           Class="mt-2" />
+            </MudItem>
+        </MudGrid>
+
+        <MudText Typo="Typo.subtitle2" Class="mt-4 mb-2">Parameter Content (YAML)</MudText>
+        <div style="height: 400px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
+            <StandaloneCodeEditor @ref="_editor"
+                                  Id="parameter-create-editor"
+                                  ConstructionOptions="GetEditorOptions"
+                                  CssClass="monaco-editor-container" />
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="CreateParameter"
+                   Disabled="@isCreating">
+            @if (isCreating)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Create
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private StandaloneCodeEditor? _editor;
+    private Guid? selectedConfigurationId;
+    private Guid? selectedScopeTypeId;
+    private string? selectedScopeValue;
+    private string version = "1.0.0";
+    private bool isDraft = true;
+    private bool isCreating;
+    private List<ScopeType> scopeTypes = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadScopeTypesAsync();
+    }
+
+    private async Task LoadScopeTypesAsync()
+    {
+        scopeTypes = await Db.ScopeTypes.ToListAsync();
+    }
+
+    private StandaloneEditorConstructionOptions GetEditorOptions(StandaloneCodeEditor editor)
+    {
+        return new StandaloneEditorConstructionOptions
+        {
+            AutomaticLayout = true,
+            Language = "yaml",
+            Value = "parameters:\n  setting1: value1\n  setting2: value2\n",
+            Theme = ThemeService.IsDarkMode ? "vs-dark" : "vs",
+            LineNumbers = "on",
+            Minimap = new EditorMinimapOptions { Enabled = false },
+            ScrollBeyondLastLine = false,
+            FontSize = 14,
+            FontFamily = "'Cascadia Code', 'Courier New', monospace",
+            TabSize = 2,
+            InsertSpaces = true,
+            WordWrap = "off"
+        };
+    }
+
+    private bool IsValid()
+    {
+        // Basic validation - just check required fields
+        return selectedConfigurationId.HasValue &&
+               selectedScopeTypeId.HasValue &&
+               !string.IsNullOrWhiteSpace(version);
+    }
+
+    private async Task CreateParameter()
+    {
+        if (!IsValid() || _editor == null)
+        {
+            return;
+        }
+
+        isCreating = true;
+
+        try
+        {
+            var content = await _editor.GetValue();
+
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                Snackbar.Add("Parameter content cannot be empty", Severity.Warning);
+                return;
+            }
+
+            var (success, errorMessage) = await ParameterApiClient.CreateOrUpdateParameterAsync(
+                selectedScopeTypeId!.Value,
+                selectedConfigurationId!.Value,
+                selectedScopeValue,
+                version,
+                content,
+                isDraft);
+
+            if (success)
+            {
+                Snackbar.Add("Parameter created successfully", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+            {
+                Snackbar.Add($"Failed to create parameter: {errorMessage}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isCreating = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+}
