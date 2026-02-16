@@ -551,10 +551,10 @@ Form Data:
 
 **Supported parameter types:**
 
-- `string` / `secureString` - Text values (secure strings are not logged or recorded by DSC)
+- `string` / `secureString` - Text values (not logged/recorded by DSC)
 - `int` / `bool` - Numbers and booleans
 - `array` / `object` - Complex structures
-- `secureObject` - Complex data (secure objects are not logged or recorded by DSC)
+- `secureObject` - Complex data (not logged/recorded by DSC)
 
 **Constraints:**
 
