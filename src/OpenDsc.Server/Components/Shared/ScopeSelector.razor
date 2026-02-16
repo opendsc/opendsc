@@ -134,7 +134,8 @@
 
     private async Task OnScopeTypeChanged(Guid? value)
     {
-        if (selectedScopeTypeId == value)
+        // Allow clearing: if both are null, don't skip
+        if (value.HasValue && selectedScopeTypeId == value)
         {
             Logger.LogInformation("OnScopeTypeChanged - value unchanged, skipping");
             return;

@@ -9,10 +9,15 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
+using NuGet.Versioning;
+
 using OpenDsc.Server.Authentication;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
 using OpenDsc.Server.Services;
+
+using YamlDotNet.Serialization;
+using YamlDotNet.Serialization.NamingConventions;
 
 namespace OpenDsc.Server.Endpoints;
 
@@ -105,7 +110,9 @@ public static class ConfigurationEndpoints
         ServerDbContext db,
         IConfiguration config,
         IResourceAuthorizationService authService,
-        IUserContextService userContext)
+        IUserContextService userContext,
+        IParameterSchemaBuilder schemaBuilder,
+        IParameterCompatibilityService compatibilityService)
     {
         if (string.IsNullOrWhiteSpace(request.Name))
         {
@@ -191,6 +198,37 @@ public static class ConfigurationEndpoints
         }
 
         await db.SaveChangesAsync();
+
+        // Extract and generate parameter schema from entry point file
+        var entryPointPath = Path.Combine(versionDir, configuration.EntryPoint);
+        if (File.Exists(entryPointPath))
+        {
+            var entryPointContent = await File.ReadAllTextAsync(entryPointPath);
+            var parametersBlock = ExtractParametersFromYaml(entryPointContent);
+
+            if (parametersBlock != null && parametersBlock.Count > 0)
+            {
+                // Build JSON schema
+                var paramDefinitions = ConvertToParameterDefinitions(parametersBlock);
+                var jsonSchemaObj = schemaBuilder.BuildJsonSchema(paramDefinitions);
+                var jsonSchema = schemaBuilder.SerializeSchema(jsonSchemaObj);
+
+                // Create parameter schema (no need to check for previous version since this is the first)
+                var paramSchema = new ParameterSchema
+                {
+                    Id = Guid.NewGuid(),
+                    ConfigurationId = configuration.Id,
+                    SchemaVersion = version.Version,
+                    GeneratedJsonSchema = jsonSchema,
+                    CreatedAt = DateTimeOffset.UtcNow,
+                    UpdatedAt = DateTimeOffset.UtcNow
+                };
+                db.ParameterSchemas.Add(paramSchema);
+                version.ParameterSchemaId = paramSchema.Id;
+
+                await db.SaveChangesAsync();
+            }
+        }
 
         var userId = userContext.GetCurrentUserId();
         if (userId.HasValue)
@@ -301,7 +339,9 @@ public static class ConfigurationEndpoints
         ServerDbContext db,
         IConfiguration config,
         IResourceAuthorizationService authService,
-        IUserContextService userContext)
+        IUserContextService userContext,
+        IParameterSchemaBuilder schemaBuilder,
+        IParameterCompatibilityService compatibilityService)
     {
         var configuration = await db.Configurations.FirstOrDefaultAsync(c => c.Name == name);
         if (configuration is null)
@@ -385,6 +425,89 @@ public static class ConfigurationEndpoints
 
         await db.SaveChangesAsync();
 
+        // Extract and generate parameter schema from entry point file
+        var entryPointPath = Path.Combine(versionDir, configuration.EntryPoint);
+        if (File.Exists(entryPointPath))
+        {
+            var entryPointContent = await File.ReadAllTextAsync(entryPointPath);
+            var parametersBlock = ExtractParametersFromYaml(entryPointContent);
+
+            if (parametersBlock != null && parametersBlock.Count > 0)
+            {
+                // Build JSON schema
+                var paramDefinitions = ConvertToParameterDefinitions(parametersBlock);
+                var jsonSchemaObj = schemaBuilder.BuildJsonSchema(paramDefinitions);
+                var jsonSchema = schemaBuilder.SerializeSchema(jsonSchemaObj);
+
+                // Check for previous version's schema
+                var allSchemas = await db.ParameterSchemas
+                    .Where(ps => ps.ConfigurationId == configuration.Id)
+                    .ToListAsync();
+
+                var previousSchema = allSchemas
+                    .OrderByDescending(ps => ps.UpdatedAt)
+                    .FirstOrDefault();
+
+                // Validate semver compatibility if previous schema exists
+                if (previousSchema != null && !string.IsNullOrWhiteSpace(previousSchema.GeneratedJsonSchema) && !string.IsNullOrWhiteSpace(previousSchema.SchemaVersion))
+                {
+                    if (!SemanticVersion.TryParse(previousSchema.SchemaVersion, out var prevSemVer))
+                    {
+                        return TypedResults.BadRequest("Previous schema has invalid version");
+                    }
+
+                    if (!SemanticVersion.TryParse(versionNumber, out var newSemVer))
+                    {
+                        return TypedResults.BadRequest($"Version '{versionNumber}' is not a valid semantic version");
+                    }
+
+                    // Compare schemas
+                    var compatibilityReport = compatibilityService.CompareSchemas(
+                        previousSchema.GeneratedJsonSchema,
+                        jsonSchema,
+                        previousSchema.SchemaVersion,
+                        versionNumber);
+
+                    // Check if breaking changes violate semver
+                    var isMajorVersionBump = newSemVer.Major > prevSemVer.Major;
+                    if (compatibilityReport.HasBreakingChanges && !isMajorVersionBump)
+                    {
+                        var changeDetails = string.Join("; ",
+                            compatibilityReport.BreakingChanges.Select(c => c.ChangeType));
+                        var versionType = newSemVer.Major == prevSemVer.Major && newSemVer.Minor == prevSemVer.Minor ? "patch" : "minor";
+                        return TypedResults.BadRequest(
+                            $"Parameter schema has breaking changes ({changeDetails}) which are not allowed in {versionType} versions. Use a major version bump to allow breaking changes.");
+                    }
+                }
+
+                // Create or reuse parameter schema
+                var existingSchema = await db.ParameterSchemas
+                    .FirstOrDefaultAsync(ps => ps.ConfigurationId == configuration.Id && ps.SchemaVersion == versionNumber);
+
+                if (existingSchema == null)
+                {
+                    var paramSchema = new ParameterSchema
+                    {
+                        Id = Guid.NewGuid(),
+                        ConfigurationId = configuration.Id,
+                        SchemaVersion = versionNumber,
+                        GeneratedJsonSchema = jsonSchema,
+                        CreatedAt = DateTimeOffset.UtcNow,
+                        UpdatedAt = DateTimeOffset.UtcNow
+                    };
+                    db.ParameterSchemas.Add(paramSchema);
+                    version.ParameterSchemaId = paramSchema.Id;
+                }
+                else
+                {
+                    version.ParameterSchemaId = existingSchema.Id;
+                    existingSchema.UpdatedAt = DateTimeOffset.UtcNow;
+                }
+
+                await db.SaveChangesAsync();
+            }
+        }
+
         var versionDto = new ConfigurationVersionDto
         {
             Version = version.Version,
@@ -398,28 +521,32 @@ public static class ConfigurationEndpoints
         return TypedResults.Created($"/api/v1/configurations/{name}/versions/{version.Version}", versionDto);
     }
 
-    private static async Task<Results<Ok<ConfigurationVersionDto>, NotFound, BadRequest<string>, ForbidHttpResult>> PublishConfigurationVersion(
+    private static async Task<Results<Ok<ConfigurationVersionDto>, NotFound, BadRequest<string>, Conflict<CompatibilityReport>, ForbidHttpResult>> PublishConfigurationVersion(
         string name,
         string version,
         ServerDbContext db,
+        IConfiguration config,
         IResourceAuthorizationService authService,
-        IUserContextService userContext)
+        IUserContextService userContext,
+        IParameterSchemaService parameterSchemaService,
+        IParameterCompatibilityService compatibilityService,
+        IParameterValidator parameterValidator)
     {
-        var config = await db.Configurations.FirstOrDefaultAsync(c => c.Name == name);
-        if (config is null)
+        var configuration = await db.Configurations.FirstOrDefaultAsync(c => c.Name == name);
+        if (configuration is null)
         {
             return TypedResults.NotFound();
         }
 
         var userId = userContext.GetCurrentUserId();
-        if (userId == null || !await authService.CanModifyConfigurationAsync(userId.Value, config.Id))
+        if (userId == null || !await authService.CanModifyConfigurationAsync(userId.Value, configuration.Id))
         {
             return TypedResults.Forbid();
         }
 
         var configVersion = await db.ConfigurationVersions
             .Include(v => v.Files)
-            .FirstOrDefaultAsync(v => v.ConfigurationId == config.Id && v.Version == version);
+            .FirstOrDefaultAsync(v => v.ConfigurationId == configuration.Id && v.Version == version);
 
         if (configVersion is null)
         {
@@ -434,6 +561,161 @@ public static class ConfigurationEndpoints
         if (configVersion.Files.Count == 0)
         {
             return TypedResults.BadRequest("Cannot publish version with no files");
+        }
+
+        // Parse semantic version
+        if (!NuGet.Versioning.SemanticVersion.TryParse(version, out var semVer))
+        {
+            return TypedResults.BadRequest($"Version '{version}' is not a valid semantic version");
+        }
+
+        var newMajor = semVer.Major;
+
+        // Read entry point configuration file to extract parameters block
+        var dataDir = config["DataDirectory"] ?? "data";
+        var entryPointPath = Path.Combine(dataDir, "configurations", name, $"v{version}", configuration.EntryPoint);
+
+        if (!File.Exists(entryPointPath))
+        {
+            return TypedResults.BadRequest($"Entry point file '{configuration.EntryPoint}' not found");
+        }
+
+        var entryPointContent = await File.ReadAllTextAsync(entryPointPath);
+        var parametersJson = await parameterSchemaService.ParseParameterBlockAsync(entryPointContent);
+
+        // Find or create ParameterSchema
+        var parameterSchema = await db.ParameterSchemas
+            .FirstOrDefaultAsync(ps => ps.ConfigurationId == configuration.Id);
+
+        CompatibilityReport? compatibilityReport = null;
+
+        if (parametersJson != null)
+        {
+            // Generate JSON Schema from parameters block
+            await parameterSchemaService.GenerateAndStoreSchemaAsync(configuration.Id, parametersJson, version);
+
+            // Reload schema after generation
+            parameterSchema = await db.ParameterSchemas
+                .FirstOrDefaultAsync(ps => ps.ConfigurationId == configuration.Id);
+
+            // Check for previous schema version to compare
+            if (parameterSchema != null && !string.IsNullOrWhiteSpace(parameterSchema.SchemaVersion) &&
+                parameterSchema.SchemaVersion != version)
+            {
+                if (!NuGet.Versioning.SemanticVersion.TryParse(parameterSchema.SchemaVersion, out var oldSemVer))
+                {
+                    return TypedResults.BadRequest($"Previous schema version '{parameterSchema.SchemaVersion}' is not a valid semantic version");
+                }
+
+                var oldMajor = oldSemVer.Major;
+
+                // Compare schemas for compatibility
+                compatibilityReport = compatibilityService.CompareSchemas(
+                    parameterSchema.GeneratedJsonSchema,
+                    parameterSchema.GeneratedJsonSchema,
+                    parameterSchema.SchemaVersion,
+                    version);
+
+                // Enforce semver rules
+                if (semVer.Major == oldSemVer.Major)
+                {
+                    // Same major version - breaking changes not allowed
+                    if (compatibilityReport.HasBreakingChanges)
+                    {
+                        // Populate affected parameter files
+                        var affectedFiles = await db.ParameterFiles
+                            .Include(pf => pf.ScopeType)
+                            .Where(pf => pf.ParameterSchemaId == parameterSchema.Id && pf.MajorVersion == oldMajor)
+                            .ToListAsync();
+
+                        compatibilityReport = new CompatibilityReport
+                        {
+                            OldVersion = compatibilityReport.OldVersion,
+                            NewVersion = compatibilityReport.NewVersion,
+                            NewMajorVersion = compatibilityReport.NewMajorVersion,
+                            HasBreakingChanges = compatibilityReport.HasBreakingChanges,
+                            BreakingChanges = compatibilityReport.BreakingChanges,
+                            NonBreakingChanges = compatibilityReport.NonBreakingChanges,
+                            AffectedParameterFiles = affectedFiles.Select(f => new ParameterFileMigrationStatus
+                            {
+                                FileId = f.Id,
+                                ScopeTypeName = f.ScopeType.Name,
+                                ScopeValue = f.ScopeValue,
+                                Version = f.Version,
+                                NeedsMigration = true,
+                                Errors = null
+                            }).ToList()
+                        };
+
+                        return TypedResults.Conflict(compatibilityReport);
+                    }
+                }
+                else if (semVer.Major > oldMajor)
+                {
+                    // New major version - auto-copy active parameters with migration flags
+                    var activeParameters = await db.ParameterFiles
+                        .Include(pf => pf.ScopeType)
+                        .Where(pf => pf.ParameterSchemaId == parameterSchema.Id &&
+                                     pf.MajorVersion == oldMajor &&
+                                     pf.IsActive)
+                        .ToListAsync();
+
+                    foreach (var activeParam in activeParameters)
+                    {
+                        // Check if parameter file already exists for new major version
+                        var existsInNewMajor = await db.ParameterFiles
+                            .AnyAsync(pf => pf.ParameterSchemaId == parameterSchema.Id &&
+                                            pf.MajorVersion == newMajor &&
+                                            pf.ScopeTypeId == activeParam.ScopeTypeId &&
+                                            pf.ScopeValue == activeParam.ScopeValue);
+
+                        if (!existsInNewMajor)
+                        {
+                            // Read parameter file content
+                            var paramFilePath = !string.IsNullOrWhiteSpace(activeParam.ScopeValue)
+                                ? Path.Combine(dataDir, "parameters", name, activeParam.ScopeType.Name, activeParam.ScopeValue, "parameters.yaml")
+                                : Path.Combine(dataDir, "parameters", name, activeParam.ScopeType.Name, "parameters.yaml");
+
+                            string? validationErrors = null;
+                            if (File.Exists(paramFilePath) && !string.IsNullOrWhiteSpace(parameterSchema.GeneratedJsonSchema))
+                            {
+                                var content = await File.ReadAllTextAsync(paramFilePath);
+                                var validationResult = parameterValidator.Validate(parameterSchema.GeneratedJsonSchema, content);
+
+                                if (!validationResult.IsValid)
+                                {
+                                    validationErrors = System.Text.Json.JsonSerializer.Serialize(
+                                        validationResult.Errors,
+                                        SourceGenerationContext.Default.ListValidationError);
+                                }
+                            }
+
+                            // Create new parameter file entry for new major version
+                            var newMajorVer = $"{newMajor}.0.0";
+                            var newParameterFile = new ParameterFile
+                            {
+                                Id = Guid.NewGuid(),
+                                ParameterSchemaId = parameterSchema.Id,
+                                ScopeTypeId = activeParam.ScopeTypeId,
+                                ScopeValue = activeParam.ScopeValue,
+                                Version = newMajorVer,
+                                MajorVersion = newMajor,
+                                Checksum = activeParam.Checksum,
+                                ContentType = activeParam.ContentType,
+                                IsActive = true,
+                                IsDraft = false,
+                                NeedsMigration = validationErrors != null || compatibilityReport!.HasBreakingChanges,
+                                ValidationErrors = validationErrors,
+                                CreatedAt = DateTimeOffset.UtcNow
+                            };
+
+                            db.ParameterFiles.Add(newParameterFile);
+                        }
+                    }
+
+                    await db.SaveChangesAsync();
+                }
+            }
         }
 
         configVersion.IsDraft = false;
@@ -600,6 +882,61 @@ public static class ConfigurationEndpoints
         var stream = File.OpenRead(fullPath);
         var fileName = Path.GetFileName(filePath);
         return TypedResults.File(stream, file.ContentType ?? "application/octet-stream", fileName);
+    }
+
+    private static Dictionary<string, object>? ExtractParametersFromYaml(string yamlContent)
+    {
+        try
+        {
+            var deserializer = new DeserializerBuilder()
+                .WithNamingConvention(CamelCaseNamingConvention.Instance)
+                .IgnoreUnmatchedProperties()
+                .Build();
+
+            var document = deserializer.Deserialize<Dictionary<object, object>>(yamlContent);
+            if (document?.TryGetValue("parameters", out var parametersObj) == true)
+            {
+                // YamlDotNet deserializes to Dictionary<object, object>, convert keys to strings
+                if (parametersObj is Dictionary<object, object> paramDict)
+                {
+                    return paramDict.ToDictionary(
+                        kvp => kvp.Key.ToString() ?? string.Empty,
+                        kvp => kvp.Value);
+                }
+            }
+        }
+        catch
+        {
+            // If parsing fails, return null - configuration can exist without parameters
+        }
+
+        return null;
+    }
+
+    private static Dictionary<string, ParameterDefinition> ConvertToParameterDefinitions(Dictionary<string, object> parametersBlock)
+    {
+        var result = new Dictionary<string, ParameterDefinition>();
+
+        foreach (var param in parametersBlock)
+        {
+            if (param.Value is Dictionary<object, object> paramObj)
+            {
+                var def = new ParameterDefinition
+                {
+                    Type = paramObj.ContainsKey("type") ? paramObj["type"]?.ToString() ?? "string" : "string",
+                    Description = paramObj.ContainsKey("description") ? paramObj["description"]?.ToString() : null,
+                    DefaultValue = paramObj.ContainsKey("defaultValue") ? paramObj["defaultValue"] : null,
+                    AllowedValues = paramObj.ContainsKey("allowedValues") && paramObj["allowedValues"] is List<object> list ? list.ToArray() : null,
+                    MinLength = paramObj.ContainsKey("minLength") ? paramObj["minLength"] as int? : null,
+                    MaxLength = paramObj.ContainsKey("maxLength") ? paramObj["maxLength"] as int? : null,
+                    MinValue = paramObj.ContainsKey("minValue") ? paramObj["minValue"] as int? : null,
+                    MaxValue = paramObj.ContainsKey("maxValue") ? paramObj["maxValue"] as int? : null
+                };
+                result[param.Key] = def;
+            }
+        }
+
+        return result;
     }
 }
 

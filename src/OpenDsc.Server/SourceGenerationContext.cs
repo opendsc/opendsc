@@ -134,6 +134,13 @@ namespace OpenDsc.Server;
 [JsonSerializable(typeof(CleanupRequest))]
 [JsonSerializable(typeof(VersionRetentionResult))]
 [JsonSerializable(typeof(List<VersionDeletionInfo>))]
+// Parameter validation
+[JsonSerializable(typeof(ValidationError))]
+[JsonSerializable(typeof(List<ValidationError>))]
+[JsonSerializable(typeof(ValidationResult))]
+[JsonSerializable(typeof(CompatibilityReport))]
+[JsonSerializable(typeof(SchemaChange))]
+[JsonSerializable(typeof(ParameterFileMigrationStatus))]
 // Schema types
 [JsonSerializable(typeof(DscResult))]
 [JsonSerializable(typeof(DscOperation))]

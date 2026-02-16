@@ -36,6 +36,8 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 
 builder.Services.AddSingleton(SourceGenerationContext.Default.Options);
 
+builder.Services.AddHttpContextAccessor();
+
 builder.Services.AddOpenApi();
 
 builder.Services.AddRazorComponents()
@@ -67,9 +69,13 @@ builder.Services.AddAuthorizationBuilder()
 builder.Services.AddSingleton<IParameterMerger, ParameterMerger>();
 builder.Services.AddScoped<IParameterMergeService, ParameterMergeService>();
 builder.Services.AddScoped<IParameterSchemaService, ParameterSchemaService>();
+builder.Services.AddScoped<IParameterSchemaBuilder, ParameterSchemaBuilder>();
+builder.Services.AddScoped<IParameterValidator, ParameterValidator>();
+builder.Services.AddScoped<IParameterCompatibilityService, ParameterCompatibilityService>();
 builder.Services.AddScoped<IVersionRetentionService, VersionRetentionService>();
 builder.Services.AddScoped<IConfigurationApiClient, ConfigurationApiClient>();
 builder.Services.AddScoped<IParameterApiClient, ParameterApiClient>();
+builder.Services.AddScoped<IJsonYamlConverter, JsonYamlConverter>();
 
 var app = builder.Build();
 

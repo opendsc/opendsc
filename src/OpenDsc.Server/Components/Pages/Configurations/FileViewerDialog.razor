@@ -9,11 +9,13 @@
 @using BlazorMonaco.Editor
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.JSInterop
+@using OpenDsc.Server.Services
 @inject ISnackbar Snackbar
 @inject IConfiguration Config
 @inject ThemeService ThemeService
 @inject ServerDbContext Db
 @inject IJSRuntime JSRuntime
+@inject IParameterApiClient ParameterApiClient
 
 <MudDialog>
     <DialogContent>
@@ -121,6 +123,21 @@
     [Parameter]
     public bool IsEditMode { get; set; }
 
+    [Parameter]
+    public string? Content { get; set; }
+
+    [Parameter]
+    public Guid? ParameterFileId { get; set; }
+
+    [Parameter]
+    public Guid? ParameterConfigurationId { get; set; }
+
+    [Parameter]
+    public Guid? ParameterScopeTypeId { get; set; }
+
+    [Parameter]
+    public string? ParameterScopeValue { get; set; }
+
     private enum ViewMode { View, Compare }
 
     private StandaloneCodeEditor? _editor;
@@ -136,6 +153,23 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // If content is provided directly (parameter mode), use it
+        if (!string.IsNullOrEmpty(Content))
+        {
+            fileContent = Content;
+            isLoading = false;
+
+            // Load available versions for parameters
+            if (ParameterConfigurationId.HasValue && ParameterScopeTypeId.HasValue)
+            {
+                await LoadParameterVersions();
+            }
+
+            StateHasChanged();
+            return;
+        }
+
+        // Configuration mode - load from file system
         await LoadAvailableVersions();
         await LoadFileContent();
     }
@@ -252,6 +286,46 @@
 
         try
         {
+            // Parameter mode - load via API
+            if (ParameterConfigurationId.HasValue && ParameterScopeTypeId.HasValue)
+            {
+                var parameterSchema = await Db.ParameterSchemas
+                    .FirstOrDefaultAsync(ps => ps.ConfigurationId == ParameterConfigurationId.Value);
+
+                if (parameterSchema != null)
+                {
+                    var parameterFile = await Db.ParameterFiles
+                        .FirstOrDefaultAsync(pf =>
+                            pf.ParameterSchemaId == parameterSchema.Id &&
+                            pf.ScopeTypeId == ParameterScopeTypeId.Value &&
+                            pf.ScopeValue == ParameterScopeValue &&
+                            pf.Version == compareVersion);
+
+                    if (parameterFile != null)
+                    {
+                        compareFileContent = await ParameterApiClient.GetParameterContentAsync(parameterFile.Id);
+                        if (string.IsNullOrEmpty(compareFileContent))
+                        {
+                            compareFileContent = "// Unable to load parameter content";
+                            Snackbar.Add($"Failed to load version {compareVersion}", Severity.Warning);
+                        }
+                    }
+                    else
+                    {
+                        compareFileContent = "// Parameter version does not exist";
+                        Snackbar.Add($"Version {compareVersion} not found", Severity.Warning);
+                    }
+                }
+                else
+                {
+                    compareFileContent = "// Parameter schema not found";
+                }
+
+                await UpdateDiffEditor();
+                return;
+            }
+
+            // Configuration mode - load from file system
             var dataDir = Config["DataDirectory"] ?? "data";
             var versionDir = Path.Combine(dataDir, "configurations", ConfigurationName, $"v{compareVersion}");
             var fullPath = Path.Combine(versionDir, FilePath);
@@ -386,5 +460,49 @@
     private void Cancel()
     {
         MudDialog.Cancel();
+    }
+
+    private async Task LoadParameterVersions()
+    {
+        if (!ParameterConfigurationId.HasValue || !ParameterScopeTypeId.HasValue)
+            return;
+
+        try
+        {
+            var parameterSchema = await Db.ParameterSchemas
+                .FirstOrDefaultAsync(ps => ps.ConfigurationId == ParameterConfigurationId.Value);
+
+            if (parameterSchema != null)
+            {
+                var versions = await Db.ParameterFiles
+                    .Where(pf =>
+                        pf.ParameterSchemaId == parameterSchema.Id &&
+                        pf.ScopeTypeId == ParameterScopeTypeId.Value &&
+                        pf.ScopeValue == ParameterScopeValue)
+                    .OrderByDescending(pf => pf.CreatedAt)
+                    .Select(pf => pf.Version)
+                    .ToListAsync();
+
+                availableVersions = versions;
+
+                // Set default compare version to most recent version other than current
+                if (availableVersions.Count > 1)
+                {
+                    var currentFile = await Db.ParameterFiles.FindAsync(ParameterFileId);
+                    if (currentFile != null)
+                    {
+                        compareVersion = availableVersions.FirstOrDefault(v => v != currentFile.Version) ?? string.Empty;
+                    }
+                    else
+                    {
+                        compareVersion = availableVersions.Skip(1).FirstOrDefault() ?? string.Empty;
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading parameter versions: {ex.Message}", Severity.Error);
+        }
     }
 }

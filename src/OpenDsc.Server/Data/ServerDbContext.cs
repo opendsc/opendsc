@@ -358,14 +358,29 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
         modelBuilder.Entity<ParameterSchema>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.HasIndex(e => new { e.ConfigurationId, e.SchemaHash });
-            entity.Property(e => e.SchemaHash).HasMaxLength(64).IsRequired();
-            entity.Property(e => e.SchemaDefinition).IsRequired();
+            entity.HasIndex(e => e.ConfigurationId);
 
             entity.HasOne(e => e.Configuration)
                 .WithMany()
                 .HasForeignKey(e => e.ConfigurationId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ParameterFile>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.ParameterSchemaId, e.MajorVersion, e.ScopeTypeId, e.ScopeValue, e.Version }).IsUnique();
+            entity.HasIndex(e => new { e.ParameterSchemaId, e.MajorVersion, e.ScopeTypeId, e.ScopeValue, e.IsActive });
+
+            entity.HasOne(e => e.ParameterSchema)
+                .WithMany(p => p.ParameterFiles)
+                .HasForeignKey(e => e.ParameterSchemaId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.ScopeType)
+                .WithMany(p => p.ParameterFiles)
+                .HasForeignKey(e => e.ScopeTypeId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<ValidationSettings>(entity =>
@@ -590,7 +605,7 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
             {
                 Id = Guid.Parse("00000000-0000-0000-0000-000000000001"),
                 Name = "Default",
-                Description = "Default parameters applied to all configurations",
+                Description = "Default configuration parameters",
                 Precedence = 0,
                 IsSystem = true,
                 ValueMode = ScopeValueMode.Unrestricted,

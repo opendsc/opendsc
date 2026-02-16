@@ -246,6 +246,101 @@ public class ParameterEndpointsTests : IDisposable
         result!.NodeId.Should().Be(nodeId);
         result.ConfigurationId.Should().Be(configId);
     }
+
+    [Fact]
+    public async Task ValidateParameterFile_WithValidParameters_ReturnsSuccess()
+    {
+        // Arrange
+        using var client = CreateAuthenticatedClient();
+        var configName = $"validate-test-{Guid.NewGuid()}";
+        var configId = await CreateTestConfigurationAsync(client, configName);
+
+        // Create parameter schema
+        var schemaContent = @"{
+  ""parameters"": {
+    ""appName"": { ""type"": ""string"" },
+    ""port"": { ""type"": ""int"", ""minValue"": 1, ""maxValue"": 65535 }
+  }
+}";
+
+        using var schemaRequest = new MultipartFormDataContent();
+        schemaRequest.Add(new StringContent("1.0.0"), "version");
+        var schemaFile = new ByteArrayContent(System.Text.Encoding.UTF8.GetBytes(schemaContent));
+        schemaFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+        schemaRequest.Add(schemaFile, "parametersFile", "parameters.json");
+
+        await client.PutAsync($"/api/v1/configurations/{configName}/parameters", schemaRequest);
+
+        // Act - Validate a parameter file
+        var paramContent = @"{
+  ""parameters"": {
+    ""appName"": ""MyApp"",
+    ""port"": 8080
+  }
+}";
+
+        var validateResponse = await client.PostAsync(
+            $"/api/v1/configurations/{configName}/parameters/validate?version=1.0.0",
+            new StringContent(paramContent, System.Text.Encoding.UTF8, "application/json"));
+
+        // Assert
+        validateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await validateResponse.Content.ReadFromJsonAsync<ValidationResultDto>();
+        result.Should().NotBeNull();
+        result!.IsValid.Should().BeTrue();
+        result.Errors.Should().BeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task ValidateParameterFile_WithInvalidParameters_ReturnsErrors()
+    {
+        // Arrange
+        using var client = CreateAuthenticatedClient();
+        var configName = $"validate-test-{Guid.NewGuid()}";
+        await CreateTestConfigurationAsync(client, configName);
+
+        // Create parameter schema
+        var schemaContent = @"{
+  ""parameters"": {
+    ""appName"": { ""type"": ""string"" },
+    ""port"": { ""type"": ""int"", ""minValue"": 1, ""maxValue"": 65535 }
+  }
+}";
+
+        using var schemaRequest = new MultipartFormDataContent();
+        schemaRequest.Add(new StringContent("1.0.0"), "version");
+        var schemaFile = new ByteArrayContent(System.Text.Encoding.UTF8.GetBytes(schemaContent));
+        schemaFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+        schemaRequest.Add(schemaFile, "parametersFile", "parameters.json");
+
+        await client.PutAsync($"/api/v1/configurations/{configName}/parameters", schemaRequest);
+
+        // Act - Validate with invalid port value
+        var paramContent = @"{
+  ""parameters"": {
+    ""appName"": ""MyApp"",
+    ""port"": 99999
+  }
+}";
+
+        var validateResponse = await client.PostAsync(
+            $"/api/v1/configurations/{configName}/parameters/validate?version=1.0.0",
+            new StringContent(paramContent, System.Text.Encoding.UTF8, "application/json"));
+
+        // Assert
+        validateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await validateResponse.Content.ReadFromJsonAsync<ValidationResultDto>();
+        result.Should().NotBeNull();
+        result!.IsValid.Should().BeFalse();
+        result.Errors.Should().NotBeNullOrEmpty();
+        result.Errors.Should().Contain(e => e.Path.Contains("port"));
+    }
+}
+
+public sealed class ValidationResultDto
+{
+    public required bool IsValid { get; init; }
+    public ValidationErrorDto[]? Errors { get; init; }
 }
 
 public sealed class ParameterFileDto

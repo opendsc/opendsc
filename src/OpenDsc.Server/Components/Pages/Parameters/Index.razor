@@ -4,10 +4,15 @@
 
 @using Microsoft.EntityFrameworkCore
 @using OpenDsc.Server.Services
+@using BlazorMonaco
+@using BlazorMonaco.Editor
 @inject ServerDbContext Db
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 @inject NavigationManager Navigation
+@inject IJsonYamlConverter JsonYamlConverter
+@inject ThemeService ThemeService
+@inject IJSRuntime JSRuntime
 
 <PageTitle>Parameters</PageTitle>
 
@@ -44,14 +49,14 @@
                             <MudCardContent>
                                 <MudTable Items="@group.Schemas" Hover="true" Dense="true">
                                     <HeaderContent>
-                                        <MudTh>Schema Hash</MudTh>
+                                        <MudTh>Schema Version</MudTh>
                                         <MudTh>Parameter Files</MudTh>
                                         <MudTh>Created</MudTh>
                                         <MudTh>Actions</MudTh>
                                     </HeaderContent>
                                     <RowTemplate>
                                         <MudTd>
-                                            <MudText Typo="Typo.caption">@context.SchemaHash[..Math.Min(16, context.SchemaHash.Length)]...</MudText>
+                                            <MudText Typo="Typo.caption">@(context.SchemaVersion ?? "unknown")</MudText>
                                         </MudTd>
                                         <MudTd>
                                             <MudChip T="string" Size="Size.Small">@context.ParameterFiles.Count</MudChip>
@@ -116,24 +121,50 @@
 
 @if (selectedSchema != null && showSchemaDialog)
 {
-    <MudDialog @bind-Visible="showSchemaDialog" Options="new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Large, FullWidth = true }">
+    <MudDialog @bind-Visible="showSchemaDialog" Options="@(new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.ExtraLarge, FullWidth = true })">
         <DialogContent>
             <MudText Typo="Typo.h6" Class="mb-3">Schema Definition</MudText>
             <MudCard Outlined="true">
                 <MudCardContent>
-                    <MudText Typo="Typo.caption" Class="mb-2">Configuration: @selectedConfiguration?.Name</MudText>
-                    <MudText Typo="Typo.caption" Class="mb-2">Schema Hash: @selectedSchema.SchemaHash</MudText>
-                    <MudTextField T="string"
-                                  Value="@selectedSchema.SchemaDefinition"
-                                  Lines="20"
-                                  Variant="Variant.Outlined"
-                                  ReadOnly="true"
-                                  Label="JSON Schema" />
+                    <MudText Typo="Typo.caption">Configuration: @selectedConfiguration?.Name</MudText>
+                    <br />
+                    <MudText Typo="Typo.caption" Class="mb-3">Schema Version: v@(selectedSchema.SchemaVersion ?? "unknown")</MudText>
+                    @if (!string.IsNullOrWhiteSpace(selectedSchema.GeneratedJsonSchema))
+                    {
+                        <div class="d-flex justify-end mb-2">
+                            <MudButtonGroup>
+                                <MudButton Variant="@(schemaViewFormat == SchemaFormat.Yaml ? Variant.Filled : Variant.Text)"
+                                           Color="@(schemaViewFormat == SchemaFormat.Yaml ? Color.Primary : Color.Default)"
+                                           Style="@(schemaViewFormat == SchemaFormat.Yaml ? "" : "opacity: 0.6")"
+                                           OnClick="@(() => SwitchSchemaFormat(SchemaFormat.Yaml))">
+                                    YAML
+                                </MudButton>
+                                <MudButton Variant="@(schemaViewFormat == SchemaFormat.Json ? Variant.Filled : Variant.Text)"
+                                           Color="@(schemaViewFormat == SchemaFormat.Json ? Color.Primary : Color.Default)"
+                                           Style="@(schemaViewFormat == SchemaFormat.Json ? "" : "opacity: 0.6")"
+                                           OnClick="@(() => SwitchSchemaFormat(SchemaFormat.Json))">
+                                    JSON
+                                </MudButton>
+                            </MudButtonGroup>
+                        </div>
+                        <div style="height: 500px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
+                            <StandaloneCodeEditor @ref="_schemaEditor"
+                                                  Id="schema-viewer-editor"
+                                                  ConstructionOptions="GetSchemaEditorOptions"
+                                                  CssClass="monaco-editor-container" />
+                        </div>
+                    }
+                    else
+                    {
+                        <MudAlert Severity="Severity.Warning">
+                            No JSON schema generated for this parameter schema.
+                        </MudAlert>
+                    }
                 </MudCardContent>
             </MudCard>
         </DialogContent>
         <DialogActions>
-            <MudButton OnClick="@(() => showSchemaDialog = false)">Close</MudButton>
+            <MudButton OnClick="CloseSchemaDialog">Close</MudButton>
         </DialogActions>
     </MudDialog>
 }
@@ -183,7 +214,7 @@
             }
         </DialogContent>
         <DialogActions>
-            <MudButton OnClick="@(() => showFilesDialog = false)">Close</MudButton>
+            <MudButton OnClick="@(() => { showFilesDialog = false; StateHasChanged(); })">Close</MudButton>
         </DialogActions>
     </MudDialog>
 }
@@ -196,6 +227,15 @@
     private bool showSchemaDialog;
     private bool showFilesDialog;
     private bool loading = true;
+    private StandaloneCodeEditor? _schemaEditor;
+    private SchemaFormat schemaViewFormat = SchemaFormat.Yaml;
+    private string _currentSchemaContent = string.Empty;
+
+    private enum SchemaFormat
+    {
+        Json,
+        Yaml
+    }
 
     public class SchemaGroup
     {
@@ -256,11 +296,84 @@
         }
     }
 
-    private void ViewSchema(ParameterSchema schema)
+    private async Task ViewSchema(ParameterSchema schema)
     {
         selectedSchema = schema;
         selectedConfiguration = schema.Configuration;
+        schemaViewFormat = SchemaFormat.Yaml;
         showSchemaDialog = true;
+
+        await Task.Delay(100);
+        await UpdateSchemaEditorContent();
+    }
+
+    private async Task SwitchSchemaFormat(SchemaFormat format)
+    {
+        schemaViewFormat = format;
+        await UpdateSchemaEditorContent();
+    }
+
+    private async Task UpdateSchemaEditorContent()
+    {
+        if (_schemaEditor == null || selectedSchema == null || string.IsNullOrWhiteSpace(selectedSchema.GeneratedJsonSchema))
+        {
+            return;
+        }
+
+        var content = schemaViewFormat == SchemaFormat.Yaml
+            ? JsonYamlConverter.ConvertJsonToYaml(selectedSchema.GeneratedJsonSchema)
+            : FormatJson(selectedSchema.GeneratedJsonSchema);
+
+        _currentSchemaContent = content;
+        await _schemaEditor.SetValue(content);
+
+        var language = schemaViewFormat == SchemaFormat.Yaml ? "yaml" : "json";
+        var model = await _schemaEditor.GetModel();
+        if (model != null)
+        {
+            await Global.SetModelLanguage(JSRuntime, model, language);
+        }
+    }
+
+    private string FormatJson(string json)
+    {
+        try
+        {
+            var jsonObj = System.Text.Json.JsonSerializer.Deserialize<object>(json);
+            return System.Text.Json.JsonSerializer.Serialize(jsonObj, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        }
+        catch
+        {
+            return json;
+        }
+    }
+
+    private StandaloneEditorConstructionOptions GetSchemaEditorOptions(StandaloneCodeEditor editor)
+    {
+        return new StandaloneEditorConstructionOptions
+        {
+            AutomaticLayout = true,
+            Language = schemaViewFormat == SchemaFormat.Yaml ? "yaml" : "json",
+            Value = _currentSchemaContent,
+            Theme = ThemeService.IsDarkMode ? "vs-dark" : "vs",
+            ReadOnly = true,
+            LineNumbers = "on",
+            Minimap = new EditorMinimapOptions { Enabled = false },
+            ScrollBeyondLastLine = false,
+            FontSize = 14,
+            FontFamily = "'Cascadia Code', 'Courier New', monospace",
+            TabSize = 2,
+            InsertSpaces = true,
+            WordWrap = "off"
+        };
+    }
+
+    private void CloseSchemaDialog()
+    {
+        showSchemaDialog = false;
+        selectedSchema = null;
+        selectedConfiguration = null;
+        _currentSchemaContent = string.Empty;
     }
 
     private async Task ViewFiles(ParameterSchema schema)
@@ -279,4 +392,6 @@
         showFilesDialog = true;
     }
 }
+
+
 

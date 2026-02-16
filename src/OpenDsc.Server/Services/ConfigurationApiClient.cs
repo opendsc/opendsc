@@ -3,10 +3,16 @@
 // terms of the MIT license.
 
 using System.Security.Cryptography;
+using System.Text.Json;
+
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.EntityFrameworkCore;
+
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
+
+using YamlDotNet.Serialization;
+using YamlDotNet.Serialization.NamingConventions;
 
 namespace OpenDsc.Server.Services;
 
@@ -16,11 +22,21 @@ public interface IConfigurationApiClient
     Task<bool> CreateVersionAsync(string name, string version, bool isDraft, IReadOnlyList<IBrowserFile> files);
     Task<bool> CreateVersionFromExistingAsync(string name, string sourceVersion, string newVersion, bool isDraft);
     Task<bool> AddFilesToVersionAsync(string name, string version, IReadOnlyList<IBrowserFile> files);
-    Task<bool> PublishVersionAsync(string name, string version);
+    Task<PublishResult> PublishVersionAsync(string name, string version);
     Task<bool> DeleteConfigurationAsync(string name);
     Task<bool> DeleteVersionAsync(string name, string version);
     Task<bool> DeleteFileAsync(string name, string version, string filePath);
     Task<Stream?> DownloadFileAsync(string name, string version, string filePath);
+}
+
+public sealed class PublishResult
+{
+    public bool Success { get; init; }
+    public CompatibilityReport? CompatibilityReport { get; init; }
+    public string? ErrorMessage { get; init; }
+    public bool? UpdatedIsDraft { get; init; }
+    public string? UpdatedVersion { get; init; }
+    public string? UpdatedPrereleaseChannel { get; init; }
 }
 
 public sealed class ConfigurationApiClient : IConfigurationApiClient
@@ -30,19 +46,28 @@ public sealed class ConfigurationApiClient : IConfigurationApiClient
     private readonly IResourceAuthorizationService _authService;
     private readonly IUserContextService _userContext;
     private readonly ILogger<ConfigurationApiClient> _logger;
+    private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly IParameterSchemaBuilder _schemaBuilder;
+    private readonly IParameterCompatibilityService _compatibilityService;
 
     public ConfigurationApiClient(
         ServerDbContext db,
         IConfiguration config,
         IResourceAuthorizationService authService,
         IUserContextService userContext,
-        ILogger<ConfigurationApiClient> logger)
+        ILogger<ConfigurationApiClient> logger,
+        IHttpContextAccessor httpContextAccessor,
+        IParameterSchemaBuilder schemaBuilder,
+        IParameterCompatibilityService compatibilityService)
     {
         _db = db;
         _config = config;
         _authService = authService;
         _userContext = userContext;
         _logger = logger;
+        _httpContextAccessor = httpContextAccessor;
+        _schemaBuilder = schemaBuilder;
+        _compatibilityService = compatibilityService;
     }
 
     public async Task<bool> CreateConfigurationAsync(
@@ -139,6 +164,34 @@ public sealed class ConfigurationApiClient : IConfigurationApiClient
 
             await _db.SaveChangesAsync();
 
+            // Extract and generate parameter schema from entry point file
+            var entryPointPath = Path.Combine(versionDir, configuration.EntryPoint);
+            if (File.Exists(entryPointPath))
+            {
+                var entryPointContent = await File.ReadAllTextAsync(entryPointPath);
+                var parametersBlock = ExtractParametersFromYaml(entryPointContent);
+
+                if (parametersBlock != null && parametersBlock.Count > 0)
+                {
+                    var paramDefinitions = ConvertToParameterDefinitions(parametersBlock);
+                    var jsonSchemaObj = _schemaBuilder.BuildJsonSchema(paramDefinitions);
+                    var jsonSchema = _schemaBuilder.SerializeSchema(jsonSchemaObj);
+
+                    var paramSchema = new ParameterSchema
+                    {
+                        Id = Guid.NewGuid(),
+                        ConfigurationId = configuration.Id,
+                        SchemaVersion = version,
+                        GeneratedJsonSchema = jsonSchema,
+                        CreatedAt = DateTimeOffset.UtcNow
+                    };
+
+                    _db.ParameterSchemas.Add(paramSchema);
+                    configVersion.ParameterSchemaId = paramSchema.Id;
+                    await _db.SaveChangesAsync();
+                }
+            }
+
             var userId = _userContext.GetCurrentUserId();
             if (userId.HasValue)
             {
@@ -230,6 +283,46 @@ public sealed class ConfigurationApiClient : IConfigurationApiClient
 
             configuration.UpdatedAt = DateTimeOffset.UtcNow;
             await _db.SaveChangesAsync();
+
+            // Extract and generate parameter schema from entry point file
+            var entryPointPath = Path.Combine(versionDir, configuration.EntryPoint);
+            if (File.Exists(entryPointPath))
+            {
+                var entryPointContent = await File.ReadAllTextAsync(entryPointPath);
+                var parametersBlock = ExtractParametersFromYaml(entryPointContent);
+
+                if (parametersBlock != null && parametersBlock.Count > 0)
+                {
+                    var paramDefinitions = ConvertToParameterDefinitions(parametersBlock);
+                    var jsonSchemaObj = _schemaBuilder.BuildJsonSchema(paramDefinitions);
+                    var jsonSchema = _schemaBuilder.SerializeSchema(jsonSchemaObj);
+
+                    var existingSchema = await _db.ParameterSchemas
+                        .FirstOrDefaultAsync(ps => ps.ConfigurationId == configuration.Id && ps.SchemaVersion == version);
+
+                    if (existingSchema == null)
+                    {
+                        var paramSchema = new ParameterSchema
+                        {
+                            Id = Guid.NewGuid(),
+                            ConfigurationId = configuration.Id,
+                            SchemaVersion = version,
+                            GeneratedJsonSchema = jsonSchema,
+                            CreatedAt = DateTimeOffset.UtcNow,
+                            UpdatedAt = DateTimeOffset.UtcNow
+                        };
+                        _db.ParameterSchemas.Add(paramSchema);
+                        configVersion.ParameterSchemaId = paramSchema.Id;
+                    }
+                    else
+                    {
+                        configVersion.ParameterSchemaId = existingSchema.Id;
+                        existingSchema.UpdatedAt = DateTimeOffset.UtcNow;
+                    }
+
+                    await _db.SaveChangesAsync();
+                }
+            }
 
             return true;
         }
@@ -423,46 +516,117 @@ public sealed class ConfigurationApiClient : IConfigurationApiClient
         }
     }
 
-    public async Task<bool> PublishVersionAsync(string name, string version)
+    public async Task<PublishResult> PublishVersionAsync(string name, string version)
     {
         try
         {
-            var configuration = await _db.Configurations
-                .Include(c => c.Versions)
-                .FirstOrDefaultAsync(c => c.Name == name);
-
-            if (configuration == null)
+            // Get the current request's base URL
+            var httpContext = _httpContextAccessor.HttpContext;
+            if (httpContext == null)
             {
-                _logger.LogWarning("Configuration '{Name}' not found", name);
-                return false;
+                return new PublishResult { Success = false, ErrorMessage = "Unable to determine server URL" };
             }
 
-            var configVersion = configuration.Versions
-                .FirstOrDefault(v => v.Version == version);
+            var request = httpContext.Request;
+            var baseUrl = $"{request.Scheme}://{request.Host}";
 
-            if (configVersion == null)
+            using var httpClient = new HttpClient { BaseAddress = new Uri(baseUrl) };
+
+            // Forward authentication cookie from current request
+            if (request.Headers.Cookie.Count > 0)
             {
-                _logger.LogWarning("Version '{Version}' not found for configuration '{Name}'", version, name);
-                return false;
+                httpClient.DefaultRequestHeaders.Add("Cookie", request.Headers.Cookie.ToString());
             }
 
-            if (!configVersion.IsDraft)
+            var response = await httpClient.PutAsync($"/api/v1/configurations/{Uri.EscapeDataString(name)}/versions/{Uri.EscapeDataString(version)}/publish", null);
+
+            if (response.IsSuccessStatusCode)
             {
-                _logger.LogWarning("Version '{Version}' is already published", version);
-                return false;
+                // Parse the returned ConfigurationVersionDto to get updated state
+                var content = await response.Content.ReadAsStringAsync();
+                try
+                {
+                    var versionData = JsonSerializer.Deserialize<Dictionary<string, object>>(
+                        content,
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                    var result = new PublishResult { Success = true };
+                    bool? updatedIsDraft = null;
+                    string? updatedVersion = null;
+                    string? updatedChannel = null;
+
+                    if (versionData != null)
+                    {
+                        if (versionData.TryGetValue("isDraft", out var isDraftObj))
+                        {
+                            if (isDraftObj is JsonElement isDraftElem)
+                            {
+                                updatedIsDraft = isDraftElem.GetBoolean();
+                            }
+                            else if (isDraftObj is bool isDraftBool)
+                            {
+                                updatedIsDraft = isDraftBool;
+                            }
+                        }
+
+                        if (versionData.TryGetValue("version", out var versionObj) && versionObj is string versionStr)
+                        {
+                            updatedVersion = versionStr;
+                        }
+
+                        if (versionData.TryGetValue("prereleaseChannel", out var channelObj) && channelObj is string channelStr)
+                        {
+                            updatedChannel = channelStr;
+                        }
+                    }
+
+                    return new PublishResult
+                    {
+                        Success = true,
+                        UpdatedIsDraft = updatedIsDraft,
+                        UpdatedVersion = updatedVersion,
+                        UpdatedPrereleaseChannel = updatedChannel
+                    };
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to parse publish response, but publish succeeded");
+                    return new PublishResult { Success = true };
+                }
             }
 
-            configVersion.IsDraft = false;
-            configuration.UpdatedAt = DateTimeOffset.UtcNow;
+            if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
+            {
+                // Breaking changes detected - parse CompatibilityReport from response
+                var content = await response.Content.ReadAsStringAsync();
+                var compatibilityReport = System.Text.Json.JsonSerializer.Deserialize<CompatibilityReport>(
+                    content,
+                    new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
-            await _db.SaveChangesAsync();
+                return new PublishResult
+                {
+                    Success = false,
+                    CompatibilityReport = compatibilityReport
+                };
+            }
 
-            return true;
+            // Other error
+            var errorContent = await response.Content.ReadAsStringAsync();
+            _logger.LogError("Failed to publish version {Version} for {Name}: {Error}", version, name, errorContent);
+            return new PublishResult
+            {
+                Success = false,
+                ErrorMessage = errorContent
+            };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error publishing version '{Version}' for configuration '{Name}'", version, name);
-            return false;
+            _logger.LogError(ex, "Error publishing version {Version} for configuration {Name}", version, name);
+            return new PublishResult
+            {
+                Success = false,
+                ErrorMessage = ex.Message
+            };
         }
     }
 
@@ -654,5 +818,58 @@ public sealed class ConfigurationApiClient : IConfigurationApiClient
             ".json" => "application/json",
             _ => "application/octet-stream"
         };
+    }
+
+    private static Dictionary<string, object>? ExtractParametersFromYaml(string yamlContent)
+    {
+        try
+        {
+            var deserializer = new DeserializerBuilder()
+                .WithNamingConvention(CamelCaseNamingConvention.Instance)
+                .IgnoreUnmatchedProperties()
+                .Build();
+
+            var document = deserializer.Deserialize<Dictionary<object, object>>(yamlContent);
+            if (document?.TryGetValue("parameters", out var parametersObj) == true)
+            {
+                if (parametersObj is Dictionary<object, object> paramDict)
+                {
+                    return paramDict.ToDictionary(
+                        kvp => kvp.Key.ToString() ?? string.Empty,
+                        kvp => kvp.Value);
+                }
+            }
+        }
+        catch
+        {
+        }
+
+        return null;
+    }
+
+    private static Dictionary<string, ParameterDefinition> ConvertToParameterDefinitions(Dictionary<string, object> parametersBlock)
+    {
+        var result = new Dictionary<string, ParameterDefinition>();
+
+        foreach (var param in parametersBlock)
+        {
+            if (param.Value is Dictionary<object, object> paramObj)
+            {
+                var def = new ParameterDefinition
+                {
+                    Type = paramObj.ContainsKey("type") ? paramObj["type"]?.ToString() ?? "string" : "string",
+                    Description = paramObj.ContainsKey("description") ? paramObj["description"]?.ToString() : null,
+                    DefaultValue = paramObj.ContainsKey("defaultValue") ? paramObj["defaultValue"] : null,
+                    AllowedValues = paramObj.ContainsKey("allowedValues") && paramObj["allowedValues"] is List<object> list ? list.ToArray() : null,
+                    MinLength = paramObj.ContainsKey("minLength") ? paramObj["minLength"] as int? : null,
+                    MaxLength = paramObj.ContainsKey("maxLength") ? paramObj["maxLength"] as int? : null,
+                    MinValue = paramObj.ContainsKey("minValue") ? paramObj["minValue"] as int? : null,
+                    MaxValue = paramObj.ContainsKey("maxValue") ? paramObj["maxValue"] as int? : null
+                };
+                result[param.Key] = def;
+            }
+        }
+
+        return result;
     }
 }

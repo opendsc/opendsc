@@ -458,6 +458,193 @@ With centralized schema:
 4. Consistent validation across all nodes
 5. Reduced server load (no repeated schema generation)
 
+## Parameter Schema Validation and Compatibility
+
+The Pull Server provides **runtime parameter validation** and
+**semver-aware compatibility checking** to ensure parameter changes
+respect semantic versioning rules.
+
+### Parameter Schema Versioning
+
+Parameter schemas are versioned independently from configuration files:
+
+```http
+PUT /api/v1/configurations/WebServer/parameters
+Content-Type: multipart/form-data
+
+Form Data:
+- version: 1.0.0
+- parametersFile: parameters.json
+```
+
+**Parameter Schema Format:**
+
+```json
+{
+  "parameters": {
+    "logLevel": {
+      "type": "string",
+      "allowedValues": ["Debug", "Info", "Warning", "Error"]
+    },
+    "port": {
+      "type": "int",
+      "minValue": 1,
+      "maxValue": 65535,
+      "defaultValue": 8080
+    },
+    "features": {
+      "type": "array",
+      "minLength": 1
+    }
+  }
+}
+```
+
+The server generates a JSON Schema from this definition and tracks it
+across versions.
+
+### Major Version Scoping
+
+Parameter schemas are scoped to their **major version**:
+
+- **v1.x.x schemas** → Only compatible with v1.x.x parameter files
+- **v2.x.x schemas** → Only compatible with v2.x.x parameter files
+
+This prevents mixing incompatible parameter files when breaking changes occur.
+
+### Compatibility Checking
+
+When publishing a new parameter schema, the server automatically detects
+**breaking vs. non-breaking changes**:
+
+**Breaking Changes (invalidate existing parameter files):**
+
+- **ParameterRemoved** - Deleting a required parameter
+- **BecameRequired** - Adding required constraint (removing defaultValue)
+- **AllowedValuesReduced** - Removing values from enum
+- **MinValueIncreased** - Tightening minimum bound
+- **MaxValueDecreased** - Tightening maximum bound
+- **MinLengthIncreased** - Requiring longer strings/arrays
+- **MaxLengthDecreased** - Restricting length
+
+**Non-Breaking Changes (remain compatible):**
+
+- **ParameterAdded** - Adding optional parameter (with defaultValue)
+- **BecameOptional** - Removing required constraint
+- **AllowedValuesExpanded** - Adding enum values
+
+### Semver Enforcement
+
+| Version Type | Breaking Changes Allowed | Behavior |
+| -------------- | -------------------------- | ---------- |
+| **PATCH** (1.0.0 → 1.0.1) | ❌ No | Returns **409 Conflict** if breaking changes detected |
+| **MINOR** (1.0.0 → 1.1.0) | ❌ No | Returns **409 Conflict** if breaking changes detected |
+| **MAJOR** (1.0.0 → 2.0.0) | ✅ Yes | Requires manual parameter file migration |
+
+**Example - Rejected Minor Update:**
+
+```http
+PUT /api/v1/configurations/WebServer/parameters
+version: 1.1.0
+parametersFile: { parameters: { port: { type: "int" } } }  // Removed logLevel
+```
+
+### Response: 409 Conflict
+
+```json
+{
+  "success": false,
+  "compatibilityReport": {
+    "hasBreakingChanges": true,
+    "breakingChanges": [
+      {
+        "parameterName": "logLevel",
+        "changeType": "ParameterRemoved",
+        "details": "Parameter 'logLevel' was removed"
+      }
+    ]
+  },
+  "migrationRequirements": [
+    {
+      "scopeTypeName": "Environment",
+      "scopeValue": "production",
+      "version": "1.0.0",
+      "needsMigration": true,
+      "errors": [
+        {
+          "path": "/parameters/logLevel",
+          "message": "Required property 'logLevel' is missing"
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Example - Allowed Major Update:**
+
+```http
+PUT /api/v1/configurations/WebServer/parameters
+version: 2.0.0
+parametersFile: { parameters: { port: { type: "int" } } }  // Removed logLevel
+```
+
+**Response: 200 OK** - Breaking changes allowed with major version bump
+
+### Parameter Validation API
+
+Validate parameter files against a specific schema version:
+
+```http
+POST /api/v1/configurations/WebServer/parameters/validate?version=1.0.0
+Content-Type: application/json
+
+{
+  "parameters": {
+    "logLevel": "Debug",
+    "port": 8080
+  }
+}
+```
+
+**Response (valid):**
+
+```json
+{
+  "isValid": true,
+  "errors": []
+}
+```
+
+**Response (invalid):**
+
+```json
+{
+  "isValid": false,
+  "errors": [
+    {
+      "path": "/parameters/port",
+      "message": "Value is 99999 but should be less than or equal to 65535",
+      "code": "maximum"
+    }
+  ]
+}
+```
+
+### Migration Workflow
+
+When breaking changes require migration:
+
+1. **Server identifies affected parameter files** - Validates all existing
+   parameter files against new schema
+2. **Returns migration requirements** - Lists parameter files that need updates
+3. **User updates parameter files** - Manually fix validation errors
+4. **Re-upload parameter files** - Submit updated files for the new major
+   version
+
+**For detailed information, see:**
+[Parameter Validation and Compatibility](parameter-validation.md)
+
 ## API Reference
 
 ### Get Parameter Schema

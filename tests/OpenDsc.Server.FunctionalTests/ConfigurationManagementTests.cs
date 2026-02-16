@@ -132,6 +132,42 @@ resources: []
 
         await Task.CompletedTask;
     }
+
+    [Fact]
+    public async Task PublishConfiguration_WithCookieAuth_WorksAcrossAllProviders()
+    {
+        using var adminClient = await AuthenticationHelper.CreateAuthenticatedClientAsync(Fixture);
+
+        var configName = $"publish-test-{Guid.NewGuid()}";
+        var configContent = @"
+$schema: https://raw.githubusercontent.com/PowerShell/DSC/main/schemas/2024/04/config/document.json
+resources: []
+";
+
+        using var content = new MultipartFormDataContent();
+        content.Add(new StringContent(configName), "name");
+        content.Add(new StringContent("main.dsc.yaml"), "entryPoint");
+        content.Add(new StringContent("true"), "isDraft");
+        var file = new ByteArrayContent(System.Text.Encoding.UTF8.GetBytes(configContent));
+        file.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+        content.Add(file, "files", "main.dsc.yaml");
+
+        var createResponse = await adminClient.PostAsync("/api/v1/configurations", content);
+        createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var getResponse = await adminClient.GetAsync($"/api/v1/configurations/{configName}");
+        var configDetails = await getResponse.Content.ReadFromJsonAsync<ConfigurationDetailsDto>();
+        configDetails.Should().NotBeNull();
+        configDetails!.LatestVersion.Should().Be("1.0.0");
+
+        var publishResponse = await adminClient.PutAsync($"/api/v1/configurations/{configName}/versions/1.0.0/publish", null);
+
+        publishResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var verifyResponse = await adminClient.GetAsync($"/api/v1/configurations/{configName}");
+        var verifiedConfig = await verifyResponse.Content.ReadFromJsonAsync<ConfigurationDetailsDto>();
+        verifiedConfig.Should().NotBeNull();
+    }
 }
 
 [Collection("SQLite")]

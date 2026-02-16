@@ -8,6 +8,7 @@ using FluentAssertions;
 
 using OpenDsc.Server.Contracts;
 using OpenDsc.Server.Endpoints;
+using OpenDsc.Server.Entities;
 
 using Xunit;
 
@@ -31,9 +32,9 @@ public sealed class ScopeValueEndpointsTests : IDisposable
 
     private async Task<Guid> CreateScopeTypeAsync(HttpClient client, string name)
     {
-        var request = new CreateScopeTypeRequest { Name = name, AllowsValues = true };
-        var response = await client.PostAsJsonAsync("/api/v1/scope-types", request);
-        var result = await response.Content.ReadFromJsonAsync<ScopeTypeDto>();
+        var request = new CreateScopeTypeRequest { Name = name, ValueMode = ScopeValueMode.Restricted };
+        var response = await client.PostAsJsonAsync("/api/v1/scope-types", request, SourceGenerationContext.Default.Options);
+        var result = await response.Content.ReadFromJsonAsync<ScopeTypeDto>(SourceGenerationContext.Default.Options);
         return result!.Id;
     }
 
@@ -44,10 +45,10 @@ public sealed class ScopeValueEndpointsTests : IDisposable
         var scopeTypeId = await CreateScopeTypeAsync(client, "Environment");
         var request = new CreateScopeValueRequest { Value = "Production" };
 
-        var response = await client.PostAsJsonAsync($"/api/v1/scope-types/{scopeTypeId}/values", request);
+        var response = await client.PostAsJsonAsync($"/api/v1/scope-types/{scopeTypeId}/values", request, SourceGenerationContext.Default.Options);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
-        var result = await response.Content.ReadFromJsonAsync<ScopeValueDto>();
+        var result = await response.Content.ReadFromJsonAsync<ScopeValueDto>(SourceGenerationContext.Default.Options);
         result!.Value.Should().Be("Production");
     }
 
@@ -56,12 +57,12 @@ public sealed class ScopeValueEndpointsTests : IDisposable
     {
         using var client = CreateAuthenticatedClient();
         var scopeTypeId = await CreateScopeTypeAsync(client, "Region");
-        await client.PostAsJsonAsync($"/api/v1/scope-types/{scopeTypeId}/values", new CreateScopeValueRequest { Value = "US" });
+        await client.PostAsJsonAsync($"/api/v1/scope-types/{scopeTypeId}/values", new CreateScopeValueRequest { Value = "US" }, SourceGenerationContext.Default.Options);
 
         var response = await client.GetAsync($"/api/v1/scope-types/{scopeTypeId}/values");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var result = await response.Content.ReadFromJsonAsync<List<ScopeValueDto>>();
+        var result = await response.Content.ReadFromJsonAsync<List<ScopeValueDto>>(SourceGenerationContext.Default.Options);
         result!.Should().Contain(sv => sv.Value == "US");
     }
 
@@ -82,9 +83,9 @@ public sealed class ScopeValueEndpointsTests : IDisposable
     public async Task CreateScopeValue_ScopeTypeDoesNotAllowValues_ReturnsBadRequest()
     {
         using var client = CreateAuthenticatedClient();
-        var createScopeType = new CreateScopeTypeRequest { Name = "NoValuesScope", AllowsValues = false };
-        var scopeTypeResponse = await client.PostAsJsonAsync("/api/v1/scope-types", createScopeType);
-        var scopeType = await scopeTypeResponse.Content.ReadFromJsonAsync<ScopeTypeDto>();
+        var createScopeType = new CreateScopeTypeRequest { Name = "NoValuesScope", ValueMode = ScopeValueMode.Unrestricted };
+        var scopeTypeResponse = await client.PostAsJsonAsync("/api/v1/scope-types", createScopeType, SourceGenerationContext.Default.Options);
+        var scopeType = await scopeTypeResponse.Content.ReadFromJsonAsync<ScopeTypeDto>(SourceGenerationContext.Default.Options);
 
         var request = new CreateScopeValueRequest { Value = "InvalidValue" };
         var response = await client.PostAsJsonAsync($"/api/v1/scope-types/{scopeType!.Id}/values", request);
@@ -100,10 +101,10 @@ public sealed class ScopeValueEndpointsTests : IDisposable
         var valueId = await CreateScopeValueAsync(client, scopeTypeId, "DC1");
 
         var updateRequest = new UpdateScopeValueRequest { Description = "Primary datacenter" };
-        var response = await client.PutAsJsonAsync($"/api/v1/scope-types/{scopeTypeId}/values/{valueId}", updateRequest);
+        var response = await client.PutAsJsonAsync($"/api/v1/scope-types/{scopeTypeId}/values/{valueId}", updateRequest, SourceGenerationContext.Default.Options);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var result = await response.Content.ReadFromJsonAsync<ScopeValueDto>();
+        var result = await response.Content.ReadFromJsonAsync<ScopeValueDto>(SourceGenerationContext.Default.Options);
         result!.Description.Should().Be("Primary datacenter");
     }
 

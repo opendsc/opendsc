@@ -11,11 +11,14 @@ public sealed class ParameterFile
     public required Guid ScopeTypeId { get; set; }
     public string? ScopeValue { get; set; }
     public required string Version { get; set; }
+    public int MajorVersion { get; set; }
     public string? ContentType { get; set; }
     public required string Checksum { get; set; }
     public bool IsDraft { get; set; } = true;
     public bool IsActive { get; set; }
     public bool IsArchived { get; set; }
+    public bool NeedsMigration { get; set; }
+    public string? ValidationErrors { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public string? CreatedBy { get; set; }
 

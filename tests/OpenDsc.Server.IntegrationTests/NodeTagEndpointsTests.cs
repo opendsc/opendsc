@@ -8,6 +8,7 @@ using FluentAssertions;
 
 using OpenDsc.Server.Contracts;
 using OpenDsc.Server.Endpoints;
+using OpenDsc.Server.Entities;
 
 using Xunit;
 
@@ -31,9 +32,9 @@ public sealed class NodeTagEndpointsTests : IDisposable
 
     private async Task<Guid> CreateScopeTypeAsync(HttpClient client, string name)
     {
-        var request = new CreateScopeTypeRequest { Name = name, AllowsValues = true };
-        var response = await client.PostAsJsonAsync("/api/v1/scope-types", request);
-        var result = await response.Content.ReadFromJsonAsync<ScopeTypeDto>();
+        var request = new CreateScopeTypeRequest { Name = name, ValueMode = ScopeValueMode.Restricted };
+        var response = await client.PostAsJsonAsync("/api/v1/scope-types", request, SourceGenerationContext.Default.Options);
+        var result = await response.Content.ReadFromJsonAsync<ScopeTypeDto>(SourceGenerationContext.Default.Options);
         return result!.Id;
     }
 

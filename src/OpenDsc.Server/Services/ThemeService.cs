@@ -3,7 +3,6 @@
 // terms of the MIT license.
 
 using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
-using MudBlazor;
 
 namespace OpenDsc.Server.Services;
 
@@ -17,10 +16,10 @@ public enum ThemePreference
 public class ThemeService
 {
     private const string StorageKey = "opendsc-theme";
-    
+
     public ThemePreference Preference { get; private set; } = ThemePreference.System;
     public bool IsDarkMode { get; private set; }
-    
+
     public event Action? OnThemeChanged;
 
     public async Task InitializeAsync(ProtectedLocalStorage localStorage)
@@ -56,7 +55,7 @@ public class ThemeService
     public async Task SetPreferenceAsync(ThemePreference preference, ProtectedLocalStorage localStorage)
     {
         Preference = preference;
-        
+
         try
         {
             await localStorage.SetAsync(StorageKey, preference.ToString());

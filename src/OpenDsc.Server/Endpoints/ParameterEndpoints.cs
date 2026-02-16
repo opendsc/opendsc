@@ -4,11 +4,14 @@
 
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+
+using NuGet.Versioning;
 
 using OpenDsc.Server.Authentication;
 using OpenDsc.Server.Data;
@@ -45,12 +48,42 @@ public static class ParameterEndpoints
             .WithName("DeleteParameterVersion")
             .WithDescription("Delete a parameter version (only if not active)");
 
+        group.MapGet("/{scopeTypeId:guid}/{configurationId:guid}/majors", GetMajorVersions)
+            .WithName("GetMajorVersions")
+            .WithDescription("Get all major versions with parameter files");
+
+        group.MapGet("/{scopeTypeId:guid}/{configurationId:guid}/majors/{major:int}", GetActiveParameterForMajor)
+            .WithName("GetActiveParameterForMajor")
+            .WithDescription("Get active parameter file for a specific major version");
+
         var nodeGroup = app.MapGroup("/api/v1/nodes/{nodeId:guid}/parameters")
             .WithTags("Parameters");
 
         nodeGroup.MapGet("/provenance", GetNodeParameterProvenance)
             .WithName("GetNodeParameterProvenance")
             .WithDescription("Get parameter provenance showing which scope provided each value");
+
+        var configGroup = app.MapGroup("/api/v1/configurations/{configurationName}/parameters")
+            .WithTags("Parameters")
+            .RequireAuthorization(policy => policy
+                .RequireAuthenticatedUser()
+                .AddAuthenticationSchemes(
+                    CookieAuthenticationDefaults.AuthenticationScheme,
+                    PersonalAccessTokenHandler.SchemeName));
+
+        configGroup.MapPut("", UploadParameterSchema)
+            .WithName("UploadParameterSchema")
+            .WithDescription("Upload a parameter schema for a configuration")
+            .DisableAntiforgery();
+
+        configGroup.MapPost("/validate", ValidateParameterFile)
+            .WithName("ValidateParameterFile")
+            .WithDescription("Validate a parameter file against a schema version");
+
+        configGroup.MapPost("/parameter-files", UploadParameterFile)
+            .WithName("UploadParameterFile")
+            .WithDescription("Upload a parameter file for a specific scope")
+            .DisableAntiforgery();
 
         return app;
     }
@@ -62,7 +95,8 @@ public static class ParameterEndpoints
         ServerDbContext db,
         IConfiguration config,
         IResourceAuthorizationService authService,
-        IUserContextService userContext)
+        IUserContextService userContext,
+        IParameterValidator parameterValidator)
     {
         var scopeType = await db.ScopeTypes.FindAsync(scopeTypeId);
         if (scopeType is null)
@@ -75,6 +109,13 @@ public static class ParameterEndpoints
         {
             return TypedResults.NotFound();
         }
+
+        if (!SemanticVersion.TryParse(request.Version, out var semVer))
+        {
+            return TypedResults.BadRequest($"Version '{request.Version}' is not a valid semantic version");
+        }
+
+        var majorVersion = semVer.Major;
 
         // Find or create ParameterSchema to check permissions
         var parameterSchema = await db.ParameterSchemas
@@ -92,6 +133,16 @@ public static class ParameterEndpoints
             if (!await authService.CanModifyParameterAsync(userId.Value, parameterSchema.Id))
             {
                 return TypedResults.Forbid();
+            }
+
+            if (!string.IsNullOrWhiteSpace(parameterSchema.GeneratedJsonSchema))
+            {
+                var validationResult = parameterValidator.Validate(parameterSchema.GeneratedJsonSchema, request.Content);
+                if (!validationResult.IsValid)
+                {
+                    var errorMessages = string.Join("; ", validationResult.Errors?.Select(e => $"{e.Path}: {e.Message}") ?? []);
+                    return TypedResults.BadRequest($"Parameter validation failed: {errorMessages}");
+                }
             }
         }
         else
@@ -136,18 +187,24 @@ public static class ParameterEndpoints
 
         var dataDir = config["DataDirectory"] ?? "data";
         var filePath = !string.IsNullOrWhiteSpace(request.ScopeValue)
-            ? Path.Combine(dataDir, "parameters", configuration.Name, scopeType.Name, request.ScopeValue, "parameters.yaml")
-            : Path.Combine(dataDir, "parameters", configuration.Name, scopeType.Name, "parameters.yaml");
-
-        var fileDir = Path.GetDirectoryName(filePath);
-        if (!string.IsNullOrEmpty(fileDir) && !Directory.Exists(fileDir))
-        {
-            Directory.CreateDirectory(fileDir);
-        }
-        await File.WriteAllTextAsync(filePath, request.Content);
+            ? Path.Combine(dataDir, "parameters", configuration.Name, scopeType.Name, request.ScopeValue, $"v{request.Version}", "parameters.yaml")
+            : Path.Combine(dataDir, "parameters", configuration.Name, scopeType.Name, $"v{request.Version}", "parameters.yaml");
 
         if (existingVersion is not null)
         {
+            if (!existingVersion.IsDraft)
+            {
+                return TypedResults.BadRequest("Cannot modify a published parameter version. Published versions are immutable. Create a new version instead.");
+            }
+
+            // Only allow editing draft versions
+            var fileDir = Path.GetDirectoryName(filePath);
+            if (!string.IsNullOrEmpty(fileDir) && !Directory.Exists(fileDir))
+            {
+                Directory.CreateDirectory(fileDir);
+            }
+            await File.WriteAllTextAsync(filePath, request.Content);
+
             existingVersion.Checksum = checksum;
             existingVersion.ContentType = request.ContentType ?? "application/x-yaml";
             await db.SaveChangesAsync();
@@ -173,9 +230,8 @@ public static class ParameterEndpoints
             {
                 Id = Guid.NewGuid(),
                 ConfigurationId = configurationId,
-                SchemaHash = string.Empty,
-                SchemaDefinition = "{}",
-                CreatedAt = DateTimeOffset.UtcNow
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow
             };
             db.ParameterSchemas.Add(parameterSchema);
             await db.SaveChangesAsync();
@@ -196,6 +252,7 @@ public static class ParameterEndpoints
             ParameterSchemaId = parameterSchema.Id,
             ScopeValue = request.ScopeValue,
             Version = request.Version,
+            MajorVersion = majorVersion,
             ContentType = request.ContentType ?? "application/x-yaml",
             Checksum = checksum,
             IsDraft = request.IsDraft ?? true,
@@ -282,7 +339,9 @@ public static class ParameterEndpoints
         [FromQuery] string? scopeValue,
         ServerDbContext db,
         IResourceAuthorizationService authService,
-        IUserContextService userContext)
+        IUserContextService userContext,
+        IParameterValidator parameterValidator,
+        IConfiguration config)
     {
         var parameterFile = await db.ParameterFiles
             .Include(pf => pf.ParameterSchema)
@@ -301,6 +360,47 @@ public static class ParameterEndpoints
         if (userId == null || !await authService.CanModifyParameterAsync(userId.Value, parameterFile.ParameterSchemaId))
         {
             return TypedResults.Forbid();
+        }
+
+        // Prevent activation if parameter needs migration
+        if (parameterFile.NeedsMigration)
+        {
+            return TypedResults.Conflict("Cannot activate parameter file that needs migration. Please resolve migration issues first.");
+        }
+
+        // Validate parameter content if schema exists
+        if (!string.IsNullOrWhiteSpace(parameterFile.ParameterSchema?.GeneratedJsonSchema))
+        {
+            var configuration = await db.Configurations.FindAsync(configurationId);
+            if (configuration is null)
+            {
+                return TypedResults.NotFound();
+            }
+
+            var scopeType = await db.ScopeTypes.FindAsync(scopeTypeId);
+            if (scopeType is null)
+            {
+                return TypedResults.NotFound();
+            }
+
+            var dataDir = config["DataDirectory"] ?? "data";
+            var filePath = !string.IsNullOrWhiteSpace(scopeValue)
+                ? Path.Combine(dataDir, "parameters", configuration.Name, scopeType.Name, scopeValue, $"v{version}", "parameters.yaml")
+                : Path.Combine(dataDir, "parameters", configuration.Name, scopeType.Name, $"v{version}", "parameters.yaml");
+
+            if (!File.Exists(filePath))
+            {
+                return TypedResults.Conflict("Parameter file does not exist on disk");
+            }
+
+            var content = await File.ReadAllTextAsync(filePath);
+            var validationResult = parameterValidator.Validate(parameterFile.ParameterSchema.GeneratedJsonSchema, content);
+
+            if (!validationResult.IsValid)
+            {
+                var errorMessages = string.Join("; ", validationResult.Errors?.Select(e => $"{e.Path}: {e.Message}") ?? []);
+                return TypedResults.Conflict($"Cannot activate parameter file with validation errors: {errorMessages}");
+            }
         }
 
         var currentlyActive = await db.ParameterFiles
@@ -551,6 +651,411 @@ public static class ParameterEndpoints
         });
     }
 
+    private static async Task<Results<Ok<List<MajorVersionDto>>, NotFound, ForbidHttpResult>> GetMajorVersions(
+        Guid scopeTypeId,
+        Guid configurationId,
+        [FromQuery] string? scopeValue,
+        ServerDbContext db,
+        IResourceAuthorizationService authService,
+        IUserContextService userContext)
+    {
+        var scopeType = await db.ScopeTypes.FindAsync(scopeTypeId);
+        if (scopeType is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        var parameterSchema = await db.ParameterSchemas
+            .FirstOrDefaultAsync(ps => ps.ConfigurationId == configurationId);
+
+        if (parameterSchema is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null || !await authService.CanReadParameterAsync(userId.Value, parameterSchema.Id))
+        {
+            return TypedResults.Forbid();
+        }
+
+        var majorVersions = await db.ParameterFiles
+            .Include(pf => pf.ParameterSchema)
+            .Where(pf =>
+                pf.ScopeTypeId == scopeTypeId &&
+                pf.ParameterSchema!.ConfigurationId == configurationId &&
+                pf.ScopeValue == scopeValue)
+            .GroupBy(pf => pf.MajorVersion)
+            .Select(g => new MajorVersionDto
+            {
+                MajorVersion = g.Key,
+                VersionCount = g.Count(),
+                HasActive = g.Any(pf => pf.IsActive),
+                LatestVersion = g.OrderByDescending(pf => pf.CreatedAt).First().Version,
+                HasMigrationNeeded = g.Any(pf => pf.NeedsMigration)
+            })
+            .OrderByDescending(m => m.MajorVersion)
+            .ToListAsync();
+
+        return TypedResults.Ok(majorVersions);
+    }
+
+    private static async Task<Results<Ok<ParameterFileDto>, NotFound, ForbidHttpResult>> GetActiveParameterForMajor(
+        Guid scopeTypeId,
+        Guid configurationId,
+        int major,
+        [FromQuery] string? scopeValue,
+        ServerDbContext db,
+        IResourceAuthorizationService authService,
+        IUserContextService userContext)
+    {
+        var scopeType = await db.ScopeTypes.FindAsync(scopeTypeId);
+        if (scopeType is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        var parameterSchema = await db.ParameterSchemas
+            .FirstOrDefaultAsync(ps => ps.ConfigurationId == configurationId);
+
+        if (parameterSchema is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null || !await authService.CanReadParameterAsync(userId.Value, parameterSchema.Id))
+        {
+            return TypedResults.Forbid();
+        }
+
+        var activeParameter = await db.ParameterFiles
+            .Include(pf => pf.ParameterSchema)
+            .FirstOrDefaultAsync(pf =>
+                pf.ScopeTypeId == scopeTypeId &&
+                pf.ParameterSchema!.ConfigurationId == configurationId &&
+                pf.ScopeValue == scopeValue &&
+                pf.MajorVersion == major &&
+                pf.IsActive);
+
+        if (activeParameter is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        return TypedResults.Ok(new ParameterFileDto
+        {
+            Id = activeParameter.Id,
+            ScopeTypeId = activeParameter.ScopeTypeId,
+            ConfigurationId = activeParameter.ParameterSchema!.ConfigurationId,
+            ScopeValue = activeParameter.ScopeValue,
+            Version = activeParameter.Version,
+            Checksum = activeParameter.Checksum,
+            IsActive = activeParameter.IsActive,
+            IsDraft = activeParameter.IsDraft,
+            CreatedAt = activeParameter.CreatedAt
+        });
+    }
+
+    private static async Task<Results<Ok, Conflict<PublishResultDto>, BadRequest<string>, NotFound>> UploadParameterSchema(
+        string configurationName,
+        [FromForm] string version,
+        [FromForm] IFormFile parametersFile,
+        ServerDbContext db,
+        IParameterSchemaBuilder schemaBuilder,
+        IParameterCompatibilityService compatibilityService,
+        IParameterValidator validator)
+    {
+        var configuration = await db.Configurations.FirstOrDefaultAsync(c => c.Name == configurationName);
+        if (configuration is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        if (!SemanticVersion.TryParse(version, out var semVer))
+        {
+            return TypedResults.BadRequest($"Version '{version}' is not a valid semantic version");
+        }
+
+        string content;
+        using (var reader = new StreamReader(parametersFile.OpenReadStream()))
+        {
+            content = await reader.ReadToEndAsync();
+        }
+
+        // Check if schema already exists for this version
+        var existingSchema = await db.ParameterSchemas
+            .FirstOrDefaultAsync(ps => ps.ConfigurationId == configuration.Id && ps.SchemaVersion == version);
+
+        if (existingSchema is not null)
+        {
+            return TypedResults.BadRequest($"Parameter schema version '{version}' already exists");
+        }
+
+        // Parse the content to extract parameters block
+        var parametersBlock = JsonSerializer.Deserialize<Dictionary<string, object>>(content);
+        if (parametersBlock is null || !parametersBlock.TryGetValue("parameters", out var paramsObj))
+        {
+            return TypedResults.BadRequest("Parameter schema must contain a 'parameters' object");
+        }
+
+        var paramsJson = JsonSerializer.Serialize(paramsObj);
+        var paramDefinitions = JsonSerializer.Deserialize<Dictionary<string, ParameterDefinition>>(paramsJson);
+
+        if (paramDefinitions is null)
+        {
+            return TypedResults.BadRequest("Failed to parse parameter definitions");
+        }
+
+        // Generate JSON Schema
+        var jsonSchemaObj = schemaBuilder.BuildJsonSchema(paramDefinitions);
+        var jsonSchema = schemaBuilder.SerializeSchema(jsonSchemaObj);
+
+        // Check for existing schema (previous version) to compare
+        var allSchemas = await db.ParameterSchemas
+            .Where(ps => ps.ConfigurationId == configuration.Id)
+            .ToListAsync();
+
+        var previousSchema = allSchemas
+            .OrderByDescending(ps => ps.UpdatedAt)
+            .FirstOrDefault();
+
+        // Perform compatibility checking if there's a previous version
+        if (previousSchema is not null && !string.IsNullOrWhiteSpace(previousSchema.GeneratedJsonSchema))
+        {
+            if (string.IsNullOrWhiteSpace(previousSchema.SchemaVersion))
+            {
+                return TypedResults.BadRequest("Previous schema version is missing");
+            }
+
+            var compatibilityReport = compatibilityService.CompareSchemas(
+                previousSchema.GeneratedJsonSchema,
+                jsonSchema,
+                previousSchema.SchemaVersion,
+                version);
+
+            // Check if version allows breaking changes
+            var previousSemVer = SemanticVersion.Parse(previousSchema.SchemaVersion);
+            var isMajorVersionBump = semVer.Major > previousSemVer.Major;
+
+            if (compatibilityReport.HasBreakingChanges && !isMajorVersionBump)
+            {
+                // Validate all existing parameter files
+                var parameterFiles = await db.ParameterFiles
+                    .Where(pf => pf.ParameterSchemaId == previousSchema.Id)
+                    .ToListAsync();
+
+                var migrationRequirements = new List<ParameterFileMigrationStatusDto>();
+
+                foreach (var paramFile in parameterFiles)
+                {
+                    var scopeType = await db.ScopeTypes.FindAsync(paramFile.ScopeTypeId);
+                    if (scopeType is null) continue;
+
+                    // TODO: Read the actual parameter file content and validate
+                    // For now, just mark all affected files as needing migration
+                    migrationRequirements.Add(new ParameterFileMigrationStatusDto
+                    {
+                        ScopeTypeName = scopeType.Name,
+                        ScopeValue = paramFile.ScopeValue ?? "Global",
+                        Version = paramFile.Version,
+                        MajorVersion = paramFile.MajorVersion,
+                        NeedsMigration = true,
+                        Errors = []
+                    });
+                }
+
+                return TypedResults.Conflict(new PublishResultDto
+                {
+                    Success = false,
+                    CompatibilityReport = new CompatibilityReportDto
+                    {
+                        HasBreakingChanges = compatibilityReport.HasBreakingChanges,
+                        BreakingChanges = compatibilityReport.BreakingChanges?.Select(c => new ParameterChangeDto
+                        {
+                            ParameterName = c.ParameterName,
+                            ChangeType = c.ChangeType,
+                            Details = c.Description ?? string.Empty
+                        }).ToList(),
+                        NonBreakingChanges = compatibilityReport.NonBreakingChanges?.Select(c => new ParameterChangeDto
+                        {
+                            ParameterName = c.ParameterName,
+                            ChangeType = c.ChangeType,
+                            Details = c.Description ?? string.Empty
+                        }).ToList()
+                    },
+                    MigrationRequirements = migrationRequirements
+                });
+            }
+        }
+
+        // Create new parameter schema
+        var newSchema = new ParameterSchema
+        {
+            Id = Guid.NewGuid(),
+            ConfigurationId = configuration.Id,
+            SchemaVersion = version,
+            GeneratedJsonSchema = jsonSchema,
+            UpdatedAt = DateTimeOffset.UtcNow
+        };
+
+        db.ParameterSchemas.Add(newSchema);
+        await db.SaveChangesAsync();
+
+        return TypedResults.Ok();
+    }
+
+    private static async Task<Results<Ok<ValidationResultDto>, BadRequest<string>, NotFound>> ValidateParameterFile(
+        string configurationName,
+        [FromQuery] string version,
+        [FromBody] System.Text.Json.JsonElement parameterContent,
+        ServerDbContext db,
+        IParameterValidator validator)
+    {
+        var configuration = await db.Configurations.FirstOrDefaultAsync(c => c.Name == configurationName);
+        if (configuration is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        if (!SemanticVersion.TryParse(version, out _))
+        {
+            return TypedResults.BadRequest($"Version '{version}' is not a valid semantic version");
+        }
+
+        var parameterSchema = await db.ParameterSchemas
+            .FirstOrDefaultAsync(ps => ps.ConfigurationId == configuration.Id && ps.SchemaVersion == version);
+
+        if (parameterSchema is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        var jsonSchema = parameterSchema.GeneratedJsonSchema;
+        if (string.IsNullOrWhiteSpace(jsonSchema))
+        {
+            return TypedResults.BadRequest("No JSON schema available for this configuration version");
+        }
+
+        var validationResult = validator.Validate(jsonSchema, parameterContent.ToString());
+
+        return TypedResults.Ok(new ValidationResultDto
+        {
+            IsValid = validationResult.IsValid,
+            Errors = validationResult.Errors?.Select(e => new ValidationErrorDto
+            {
+                Path = e.Path,
+                Message = e.Message,
+                Code = e.Code
+            }).ToList()
+        });
+    }
+
+    private static async Task<Results<Ok, BadRequest<string>, NotFound>> UploadParameterFile(
+        string configurationName,
+        [FromForm] string scopeTypeName,
+        [FromForm] string version,
+        [FromForm] IFormFile parametersFile,
+        [FromForm] string? scopeValue,
+        ServerDbContext db,
+        IConfiguration config,
+        IParameterValidator validator)
+    {
+        var configuration = await db.Configurations.FirstOrDefaultAsync(c => c.Name == configurationName);
+        if (configuration is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        var scopeType = await db.ScopeTypes.FirstOrDefaultAsync(st => st.Name == scopeTypeName);
+        if (scopeType is null)
+        {
+            return TypedResults.BadRequest($"Scope type '{scopeTypeName}' not found");
+        }
+
+        if (!SemanticVersion.TryParse(version, out var semVer))
+        {
+            return TypedResults.BadRequest($"Version '{version}' is not a valid semantic version");
+        }
+
+        // Find the parameter schema for this configuration and version
+        var parameterSchema = await db.ParameterSchemas
+            .FirstOrDefaultAsync(ps => ps.ConfigurationId == configuration.Id && ps.SchemaVersion == version);
+
+        if (parameterSchema is null)
+        {
+            return TypedResults.BadRequest($"Parameter schema version '{version}' not found. Upload the schema first.");
+        }
+
+        string content;
+        using (var reader = new StreamReader(parametersFile.OpenReadStream()))
+        {
+            content = await reader.ReadToEndAsync();
+        }
+
+        // Validate parameter content against schema
+        if (!string.IsNullOrWhiteSpace(parameterSchema.GeneratedJsonSchema))
+        {
+            var validationResult = validator.Validate(parameterSchema.GeneratedJsonSchema, content);
+            if (!validationResult.IsValid)
+            {
+                var errorMessages = string.Join("; ", validationResult.Errors?.Select(e => $"{e.Path}: {e.Message}") ?? []);
+                return TypedResults.BadRequest($"Parameter validation failed: {errorMessages}");
+            }
+        }
+
+        var checksum = ComputeChecksum(content);
+
+        // Check if parameter file already exists
+        var existingFile = await db.ParameterFiles
+            .FirstOrDefaultAsync(pf =>
+                pf.ParameterSchemaId == parameterSchema.Id &&
+                pf.ScopeTypeId == scopeType.Id &&
+                pf.Version == version &&
+                pf.ScopeValue == (scopeValue ?? string.Empty));
+
+        var dataDir = config["DataDirectory"] ?? "data";
+        var filePath = !string.IsNullOrWhiteSpace(scopeValue)
+            ? Path.Combine(dataDir, "parameters", configuration.Name, scopeType.Name, scopeValue, $"v{version}", "parameters.yaml")
+            : Path.Combine(dataDir, "parameters", configuration.Name, scopeType.Name, $"v{version}", "parameters.yaml");
+
+        var fileDir = Path.GetDirectoryName(filePath);
+        if (!string.IsNullOrEmpty(fileDir) && !Directory.Exists(fileDir))
+        {
+            Directory.CreateDirectory(fileDir);
+        }
+        await File.WriteAllTextAsync(filePath, content);
+
+        if (existingFile is not null)
+        {
+            existingFile.Checksum = checksum;
+            existingFile.ContentType = "application/json";
+            await db.SaveChangesAsync();
+            return TypedResults.Ok();
+        }
+
+        // Create new parameter file
+        var newFile = new ParameterFile
+        {
+            Id = Guid.NewGuid(),
+            ParameterSchemaId = parameterSchema.Id,
+            ScopeTypeId = scopeType.Id,
+            ScopeValue = scopeValue ?? string.Empty,
+            Version = version,
+            MajorVersion = semVer.Major,
+            Checksum = checksum,
+            ContentType = "application/json",
+            IsActive = true,
+            IsDraft = false,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+
+        db.ParameterFiles.Add(newFile);
+        await db.SaveChangesAsync();
+
+        return TypedResults.Ok();
+    }
+
     private static string ComputeChecksum(string content)
     {
         var bytes = Encoding.UTF8.GetBytes(content);
@@ -598,10 +1103,63 @@ public sealed class ParameterSourceInfo
     public List<ScopeInfo>? OverriddenBy { get; init; }
 }
 
+public sealed class MajorVersionDto
+{
+    public required int MajorVersion { get; init; }
+    public required int VersionCount { get; init; }
+    public required bool HasActive { get; init; }
+    public required string LatestVersion { get; init; }
+    public required bool HasMigrationNeeded { get; init; }
+}
+
 public sealed class ScopeInfo
 {
     public required string ScopeTypeName { get; init; }
     public string? ScopeValue { get; init; }
     public required int Precedence { get; init; }
     public required object? Value { get; init; }
+}
+
+public sealed class ValidationResultDto
+{
+    public required bool IsValid { get; init; }
+    public List<ValidationErrorDto>? Errors { get; init; }
+}
+
+public sealed class ValidationErrorDto
+{
+    public required string Path { get; init; }
+    public required string Message { get; init; }
+    public required string Code { get; init; }
+}
+
+public sealed class PublishResultDto
+{
+    public required bool Success { get; init; }
+    public CompatibilityReportDto? CompatibilityReport { get; init; }
+    public List<ParameterFileMigrationStatusDto>? MigrationRequirements { get; init; }
+}
+
+public sealed class CompatibilityReportDto
+{
+    public required bool HasBreakingChanges { get; init; }
+    public List<ParameterChangeDto>? BreakingChanges { get; init; }
+    public List<ParameterChangeDto>? NonBreakingChanges { get; init; }
+}
+
+public sealed class ParameterChangeDto
+{
+    public required string ParameterName { get; init; }
+    public required string ChangeType { get; init; }
+    public required string Details { get; init; }
+}
+
+public sealed class ParameterFileMigrationStatusDto
+{
+    public required string ScopeTypeName { get; init; }
+    public required string ScopeValue { get; init; }
+    public required string Version { get; init; }
+    public required int MajorVersion { get; init; }
+    public required bool NeedsMigration { get; init; }
+    public required List<ValidationErrorDto> Errors { get; init; }
 }

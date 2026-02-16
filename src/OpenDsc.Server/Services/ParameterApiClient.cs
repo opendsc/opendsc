@@ -4,7 +4,9 @@
 
 using System.Security.Cryptography;
 using System.Text;
+
 using Microsoft.EntityFrameworkCore;
+
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Endpoints;
 using OpenDsc.Server.Entities;
@@ -50,6 +52,7 @@ public sealed class ParameterApiClient : IParameterApiClient
     private readonly IResourceAuthorizationService _authService;
     private readonly IUserContextService _userContext;
     private readonly IParameterMergeService _parameterMergeService;
+    private readonly IParameterValidator _validator;
     private readonly ILogger<ParameterApiClient> _logger;
 
     public ParameterApiClient(
@@ -58,6 +61,7 @@ public sealed class ParameterApiClient : IParameterApiClient
         IResourceAuthorizationService authService,
         IUserContextService userContext,
         IParameterMergeService parameterMergeService,
+        IParameterValidator validator,
         ILogger<ParameterApiClient> logger)
     {
         _db = db;
@@ -65,6 +69,7 @@ public sealed class ParameterApiClient : IParameterApiClient
         _authService = authService;
         _userContext = userContext;
         _parameterMergeService = parameterMergeService;
+        _validator = validator;
         _logger = logger;
     }
 
@@ -121,6 +126,17 @@ public sealed class ParameterApiClient : IParameterApiClient
                 {
                     return (false, "Access denied");
                 }
+
+                // Validate against schema if available
+                if (!string.IsNullOrWhiteSpace(parameterSchema.GeneratedJsonSchema))
+                {
+                    var validationResult = _validator.Validate(parameterSchema.GeneratedJsonSchema, content);
+                    if (!validationResult.IsValid)
+                    {
+                        var errorMessages = string.Join("; ", validationResult.Errors?.Select(e => $"{e.Path}: {e.Message}") ?? []);
+                        return (false, $"Parameter validation failed: {errorMessages}");
+                    }
+                }
             }
             else
             {
@@ -133,9 +149,8 @@ public sealed class ParameterApiClient : IParameterApiClient
                 {
                     Id = Guid.NewGuid(),
                     ConfigurationId = configurationId,
-                    SchemaHash = string.Empty,
-                    SchemaDefinition = "{}",
-                    CreatedAt = DateTimeOffset.UtcNow
+                    CreatedAt = DateTimeOffset.UtcNow,
+                    UpdatedAt = DateTimeOffset.UtcNow
                 };
 
                 _db.ParameterSchemas.Add(parameterSchema);
@@ -151,8 +166,8 @@ public sealed class ParameterApiClient : IParameterApiClient
 
             var dataDir = _config["DataDirectory"] ?? "data";
             var filePath = !string.IsNullOrWhiteSpace(scopeValue)
-                ? Path.Combine(dataDir, "parameters", configuration.Name, scopeType.Name, scopeValue, "parameters.yaml")
-                : Path.Combine(dataDir, "parameters", configuration.Name, scopeType.Name, "parameters.yaml");
+                ? Path.Combine(dataDir, "parameters", configuration.Name, scopeType.Name, scopeValue, $"v{version}", "parameters.yaml")
+                : Path.Combine(dataDir, "parameters", configuration.Name, scopeType.Name, $"v{version}", "parameters.yaml");
 
             var fileDir = Path.GetDirectoryName(filePath);
             if (!string.IsNullOrEmpty(fileDir) && !Directory.Exists(fileDir))
@@ -173,6 +188,12 @@ public sealed class ParameterApiClient : IParameterApiClient
 
             if (existingFile != null)
             {
+                if (!existingFile.IsDraft)
+                {
+                    return (false, "Cannot modify a published parameter version. Published versions are immutable. Create a new version instead.");
+                }
+
+                // Only allow editing draft versions
                 existingFile.Checksum = checksum;
                 existingFile.IsDraft = isDraft;
             }
@@ -236,7 +257,7 @@ public sealed class ParameterApiClient : IParameterApiClient
                 CreatedAt = pf.CreatedAt
             })
             .ToListAsync();
-        
+
         return files.OrderByDescending(f => f.CreatedAt).ToList();
     }
 
@@ -413,9 +434,9 @@ public sealed class ParameterApiClient : IParameterApiClient
             var dataDir = _config["DataDirectory"] ?? "data";
             var filePath = !string.IsNullOrWhiteSpace(parameterFile.ScopeValue)
                 ? Path.Combine(dataDir, "parameters", parameterFile.ParameterSchema.Configuration.Name,
-                    parameterFile.ScopeType.Name, parameterFile.ScopeValue, "parameters.yaml")
+                    parameterFile.ScopeType.Name, parameterFile.ScopeValue, $"v{parameterFile.Version}", "parameters.yaml")
                 : Path.Combine(dataDir, "parameters", parameterFile.ParameterSchema.Configuration.Name,
-                    parameterFile.ScopeType.Name, "parameters.yaml");
+                    parameterFile.ScopeType.Name, $"v{parameterFile.Version}", "parameters.yaml");
 
             if (!File.Exists(filePath))
             {
@@ -438,3 +459,4 @@ public sealed class ParameterApiClient : IParameterApiClient
         return Convert.ToHexString(hash).ToLowerInvariant();
     }
 }
+

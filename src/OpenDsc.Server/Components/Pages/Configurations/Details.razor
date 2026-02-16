@@ -85,7 +85,7 @@
                                 <MudCardHeader>
                                     <CardHeaderContent>
                                         <div class="d-flex align-center gap-2">
-                                            <MudText Typo="Typo.h6">Version @version.Version</MudText>
+                                            <MudText Typo="Typo.h6">@version.Version</MudText>
                                             @if (version.IsDraft)
                                             {
                                                 <MudChip T="string" Size="Size.Small" Color="Color.Info">Draft</MudChip>
@@ -423,16 +423,41 @@ else
 
         if (confirmed == true)
         {
-            var success = await ApiClient.PublishVersionAsync(configuration.Name, version.Version);
+            var result = await ApiClient.PublishVersionAsync(configuration.Name, version.Version);
 
-            if (success)
+            if (result.Success)
             {
                 Snackbar.Add($"Version {version.Version} published successfully", Severity.Success);
-                await LoadConfiguration();
+                // Update the version's state directly from the returned data
+                if (result.UpdatedIsDraft.HasValue)
+                {
+                    version.IsDraft = result.UpdatedIsDraft.Value;
+                }
+                // Trigger re-render to update UI with new state
+                StateHasChanged();
+            }
+            else if (result.CompatibilityReport != null)
+            {
+                // Show compatibility report dialog for breaking changes
+                var options = new DialogOptions
+                {
+                    CloseButton = true,
+                    MaxWidth = MaxWidth.Large,
+                    FullWidth = true
+                };
+                var parameters = new DialogParameters
+                {
+                    ["Report"] = result.CompatibilityReport
+                };
+                await DialogService.ShowAsync<CompatibilityReportDialog>(
+                    "Breaking Changes Detected",
+                    parameters,
+                    options);
             }
             else
             {
-                Snackbar.Add("Failed to publish version", Severity.Error);
+                var errorMsg = result.ErrorMessage ?? "Failed to publish version";
+                Snackbar.Add(errorMsg, Severity.Error);
             }
         }
     }

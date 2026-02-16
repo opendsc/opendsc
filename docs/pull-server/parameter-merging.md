@@ -642,6 +642,183 @@ configuration:
    unchanged files
 4. **Archive old versions** - Clean up unused versions periodically
 
+## Parameter Validation and Schema Management
+
+The Pull Server provides **runtime parameter validation** to ensure parameter
+files comply with defined schemas and maintain backward compatibility across
+versions.
+
+### Uploading Parameter Schemas
+
+Define parameter schemas to enable validation:
+
+```http
+PUT /api/v1/configurations/WebServer/parameters
+Content-Type: multipart/form-data
+
+Form Data:
+- version: 1.0.0
+- parametersFile: parameters-schema.json
+```
+
+**Schema format (DSC parameter schema):**
+
+```json
+{
+  "parameters": {
+    "logLevel": {
+      "type": "string",
+      "description": "Logging level",
+      "allowedValues": ["Debug", "Info", "Warning", "Error"],
+      "defaultValue": "Info"
+    },
+    "server": {
+      "type": "object",
+      "description": "Server configuration"
+    },
+    "port": {
+      "type": "int",
+      "minValue": 1,
+      "maxValue": 65535,
+      "defaultValue": 8080
+    },
+    "features": {
+      "type": "array",
+      "description": "Enabled features",
+      "minLength": 1
+    }
+  }
+}
+```
+
+**Supported types:**
+
+- `string`, `secureString` - Text values
+- `int`, `bool` - Numbers and booleans
+- `array`, `object` - Complex structures
+- `secureObject` - Complex data (not logged or recorded by DSC)
+
+**Constraints:**
+
+- `allowedValues` - Enum values
+- `minValue`, `maxValue` - Numeric ranges
+- `minLength`, `maxLength` - Length constraints
+- `defaultValue` - Makes parameter optional
+- `description` - Documentation
+
+### Validating Parameter Files
+
+Before uploading parameter files, validate them against the schema:
+
+```http
+POST /api/v1/configurations/WebServer/parameters/validate?version=1.0.0
+Content-Type: application/json
+
+{
+  "parameters": {
+    "logLevel": "Debug",
+    "server": {
+      "host": "example.com",
+      "ssl": true
+    },
+    "port": 8080,
+    "features": ["logging", "monitoring"]
+  }
+}
+```
+
+**Response (valid):**
+
+```json
+{
+  "isValid": true,
+  "errors": []
+}
+```
+
+**Response (invalid - schema violations):**
+
+```json
+{
+  "isValid": false,
+  "errors": [
+    {
+      "path": "/parameters/port",
+      "message": "Value is 99999 but should be less than or equal to 65535",
+      "code": "maximum"
+    },
+    {
+      "path": "/parameters/logLevel",
+      "message": "Value is not one of the allowed values",
+      "code": "enum"
+    },
+    {
+      "path": "/parameters/features",
+      "message": "Array should contain at least 1 item",
+      "code": "minItems"
+    }
+  ]
+}
+```
+
+### Schema Versioning and Compatibility
+
+Parameter schemas follow **semantic versioning** with compatibility checking:
+
+**Breaking Changes (not allowed in patch/minor versions):**
+
+- Removing required parameters
+- Adding required constraints (removing `defaultValue`)
+- Reducing `allowedValues` list
+- Tightening min/max constraints
+
+**Non-Breaking Changes (allowed in minor versions):**
+
+- Adding optional parameters (with `defaultValue`)
+- Removing required constraints
+- Expanding `allowedValues` list
+
+**Major Version Updates:**
+
+- Breaking changes allowed
+- Requires manual migration of parameter files
+- Server validates all existing parameter files and identifies migration
+  requirements
+
+**Example - Rejected breaking change in minor version:**
+
+```http
+PUT /api/v1/configurations/WebServer/parameters
+version: 1.1.0
+parametersFile: {
+  "parameters": {
+    "port": { "type": "int" }
+    // Removed "logLevel" parameter - BREAKING CHANGE
+  }
+}
+```
+
+**Response: 409 Conflict** - Breaking changes not allowed in minor version
+
+See [Parameter Validation and Compatibility](parameter-validation.md) for
+detailed information about:
+
+- Breaking vs. non-breaking changes
+- Semver enforcement rules
+- Migration workflows
+- Compatibility checking API
+
+### Best Practices for Schemas
+
+1. **Use `defaultValue` generously** - Makes parameters optional and prevents
+   breaking changes
+2. **Document all parameters** - Use `description` field for clarity
+3. **Constrain types appropriately** - Use `allowedValues`, `minValue`,
+   `maxValue` for validation
+4. **Version schemas semantically** - Follow semver rules for schema changes
+5. **Test schemas before publishing** - Use validation API to test against
+   existing parameter files
+
 ## Troubleshooting
 
 ### "No active parameter version found"
