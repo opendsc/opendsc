@@ -4,7 +4,7 @@
 
 using System.Text.Json;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Xunit;
 

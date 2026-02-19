@@ -4,7 +4,7 @@
 
 using System.Net.Http.Json;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

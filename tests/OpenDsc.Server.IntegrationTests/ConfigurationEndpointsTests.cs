@@ -4,7 +4,7 @@
 
 using System.Net;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using OpenDsc.Server.Endpoints;
 
@@ -186,7 +186,7 @@ public class ConfigurationEndpointsTests : IDisposable
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var configs = await response.Content.ReadFromJsonAsync<List<ConfigurationSummaryDto>>();
         configs.Should().NotBeNull();
-        configs!.Count.Should().BeGreaterOrEqualTo(2);
+        configs!.Count.Should().BeGreaterThanOrEqualTo(2);
         configs.Should().Contain(c => c.Name == "config1");
         configs.Should().Contain(c => c.Name == "config2");
     }
@@ -260,7 +260,7 @@ public class ConfigurationEndpointsTests : IDisposable
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var versions = await response.Content.ReadFromJsonAsync<List<ConfigurationVersionDto>>();
         versions.Should().NotBeNull();
-        versions!.Count.Should().BeGreaterOrEqualTo(2);
+        versions!.Count.Should().BeGreaterThanOrEqualTo(2);
     }
 
     [Fact]
