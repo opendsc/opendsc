@@ -4,7 +4,7 @@
 
 using System.Net;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using OpenDsc.Server.Endpoints;
 

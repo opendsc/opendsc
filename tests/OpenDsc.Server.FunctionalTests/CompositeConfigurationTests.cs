@@ -5,7 +5,7 @@
 using System.IO.Compression;
 using System.Net;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using OpenDsc.Server.Contracts;
 using OpenDsc.Server.FunctionalTests.DatabaseProviders;

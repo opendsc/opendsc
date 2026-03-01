@@ -4,7 +4,7 @@
 
 using System.Reflection;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Microsoft.Extensions.Logging;
 

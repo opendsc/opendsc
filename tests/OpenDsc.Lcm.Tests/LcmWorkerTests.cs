@@ -2,7 +2,7 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -510,7 +510,7 @@ public class LcmWorkerTests
             await Task.Delay(1500, CancellationToken.None);
             await worker.StopAsync(CancellationToken.None);
 
-            callCount.Should().BeGreaterOrEqualTo(2, "worker should retry after error");
+            callCount.Should().BeGreaterThanOrEqualTo(2, "worker should retry after error");
         }
         finally
         {
