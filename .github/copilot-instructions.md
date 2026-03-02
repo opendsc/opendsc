@@ -28,9 +28,14 @@ SQL Server Resources (in `src/OpenDsc.Resource.SqlServer/`):
 - `Login/` - SQL Server login management (`OpenDsc.SqlServer/Login`)
 - `Database/` - SQL Server database management (`OpenDsc.SqlServer/Database`)
 - `DatabaseRole/` - SQL Server database role management (`OpenDsc.SqlServer/DatabaseRole`)
+- `DatabaseUser/` - SQL Server database user management (`OpenDsc.SqlServer/DatabaseUser`)
 - `ServerRole/` - SQL Server server role management (`OpenDsc.SqlServer/ServerRole`)
 - `DatabasePermission/` - SQL Server database permissions (`OpenDsc.SqlServer/DatabasePermission`)
 - `ServerPermission/` - SQL Server server permissions (`OpenDsc.SqlServer/ServerPermission`)
+- `ObjectPermission/` - SQL Server object-level permissions (`OpenDsc.SqlServer/ObjectPermission`)
+- `Configuration/` - SQL Server configuration values (`OpenDsc.SqlServer/Configuration`)
+- `LinkedServer/` - SQL Server linked server management (`OpenDsc.SqlServer/LinkedServer`)
+- `AgentJob/` - SQL Server Agent job management (`OpenDsc.SqlServer/AgentJob`)
 
 Cross-Platform Resources (in `src/OpenDsc.Resource.FileSystem/`, `src/OpenDsc.Resource.Xml/`, `src/OpenDsc.Resource.Json/`, `src/OpenDsc.Resource.Archive/`, and `src/OpenDsc.Resource.Posix/`):
 - `File/` - Cross-platform file management (`OpenDsc.FileSystem/File`)
@@ -794,30 +799,35 @@ Machine scope requires admin elevation.
 
 ## Pull Server (OpenDsc.Server)
 
-The Pull Server (`src/OpenDsc.Server/`) is a REST API-based centralized configuration management server for DSC v3, enabling LCM agents to retrieve configurations and submit compliance reports.
+The Pull Server (`src/OpenDsc.Server/`) is an ASP.NET Core application combining a REST API and a **Blazor Server web UI** for centralized configuration management of DSC v3 nodes.
 
 ### Architecture Overview
 
 **Key Components:**
-- `Program.cs` - ASP.NET Core minimal API entry point with endpoint registration
-- `Endpoints/` - Grouped endpoint definitions (Health, Nodes, Configurations, Reports, Settings)
+- `Program.cs` - Entry point registering Blazor + minimal API + services
+- `Components/` - Blazor Server web UI pages and shared components (uses **MudBlazor** for all UI)
+- `Endpoints/` - Minimal API endpoint groups (Nodes, Configurations, Parameters, Reports, Scopes, etc.)
 - `Data/` - EF Core database layer with SQLite, PostgreSQL, and SQL Server support
-- `Authentication/` - API key-based authentication for node and admin operations
+- `Authentication/` - mTLS (`CertificateAuthHandler`) + Personal Access Token (`PersonalAccessTokenHandler`) authentication
+- `Services/` - Business logic services (parameter merging, schema validation, version retention, etc.)
+- `Entities/` - EF Core entity models
 - `PullServerClient.cs` (in LCM) - HTTP client for LCM-to-server communication
 
-**Supported Databases:**
-- SQLite (default, file-based)
-- PostgreSQL (production-ready)
-- SQL Server (enterprise environments)
+**Supported Databases:** SQLite (default), PostgreSQL, SQL Server
 
 ### Key Features
 
 1. **Node Registration** - FQDN-based node identification with mTLS certificate-based authentication
 2. **mTLS Authentication** - Mutual TLS using client certificates for secure node communication
 3. **Certificate Management** - Automatic certificate rotation with atomic updates
-4. **Configuration Distribution** - Store configurations and distribute to registered nodes
-5. **Compliance Reporting** - Collect and store reports from LCM agents
-6. **Pull Mode Integration** - LCM can operate in pull mode by connecting to the server
+4. **Composite Configurations** - Combine multiple versioned configurations into single deployment units with ordering
+5. **Hierarchical Parameter Merging** - Merge parameters across scope types (Default → Region → Environment → Node) with precedence-based ordering and node tagging
+6. **Parameter Validation** - JSONSchema-based validation; `ParameterCompatibilityService` checks schema changes between versions before activation
+7. **Compliance Reporting** - Collect and store compliance reports from LCM agents
+8. **RBAC** - Users, Groups, and Roles with fine-grained authorization policies; `GroupClaimsTransformation` adds group claims; `ResourceAuthorizationService` enforces resource-level access
+9. **Version Retention** - Configurable retention policies per configuration/parameter via `VersionRetentionService`
+10. **Node Tags** - Tag nodes for use in parameter scope targeting
+11. **Audit Log** - Change history tracked in `AuditLog` entity
 
 ### mTLS Architecture
 
@@ -852,29 +862,35 @@ The Pull Server (`src/OpenDsc.Server/`) is a REST API-based centralized configur
 
 ### API Endpoint Structure
 
+All endpoints are registered in `Program.cs`:
 ```csharp
-// Health endpoints
-app.MapHealthEndpoints();           // /health, /health/ready
-
-// Node endpoints
-app.MapNodeEndpoints();             // /api/v1/nodes/*, /api/v1/nodes/{nodeId}/configuration
-
-// Configuration endpoints
-app.MapConfigurationEndpoints();    // /api/v1/configurations/*
-
-// Report endpoints
-app.MapReportEndpoints();           // /api/v1/nodes/{nodeId}/reports, /api/v1/reports/*
-
-// Settings endpoints
-app.MapSettingsEndpoints();         // /api/v1/settings/*
+app.MapAuthenticationEndpoints();       // /api/v1/auth/* (login, token)
+app.MapUserEndpoints();                 // /api/v1/users/*
+app.MapGroupEndpoints();                // /api/v1/groups/*
+app.MapRoleEndpoints();                 // /api/v1/roles/*
+app.MapHealthEndpoints();               // /health, /health/ready
+app.MapScopeTypeEndpoints();            // /api/v1/scope-types/*
+app.MapScopeValueEndpoints();           // /api/v1/scope-values/*
+app.MapNodeTagEndpoints();              // /api/v1/node-tags/*
+app.MapParameterEndpoints();            // /api/v1/parameters/*
+app.MapNodeEndpoints();                 // /api/v1/nodes/*
+app.MapConfigurationEndpoints();        // /api/v1/configurations/*
+app.MapCompositeConfigurationEndpoints(); // /api/v1/composite-configurations/*
+app.MapReportEndpoints();               // /api/v1/reports/*
+app.MapSettingsEndpoints();             // /api/v1/settings/*
+app.MapValidationSettingsEndpoints();   // /api/v1/validation-settings/*
+app.MapConfigurationSettingsEndpoints(); // /api/v1/configuration-settings/*
+app.MapRegistrationKeyEndpoints();      // /api/v1/registration-keys/*
+app.MapRetentionEndpoints();            // /api/v1/retention/*
 ```
 
 ### Authentication Model
 
 **Multi-tier authentication:**
 1. **Registration Key** - Used for initial node registration (shared secret)
-2. **mTLS (Mutual TLS)** - Certificate-based authentication for node operations after registration
-3. **Admin API Key** - For administrative operations
+2. **mTLS (Mutual TLS)** - Certificate-based authentication for node API operations (via `CertificateAuthHandler`)
+3. **Personal Access Token (PAT)** - Bearer token for API access by users/automation (via `PersonalAccessTokenHandler`)
+4. **Cookie/Session** - Used by the Blazor Server web UI after password login
 
 **LCM Pull Mode Configuration:**
 ```json
@@ -931,6 +947,49 @@ docker-compose --profile sqlserver up -d # SQL Server
 **API Documentation:**
 - Development mode: Navigate to `/scalar/v1` for interactive API reference
 - OpenAPI schema: `/openapi/v1.json`
+- Web UI: Navigate to `/` for the Blazor management portal (Dashboard, Nodes, Configurations, Parameters, Reports, Settings, Admin)
+
+### Blazor Web UI (MudBlazor)
+
+The server includes a full Blazor Server admin portal using **MudBlazor** components.
+
+**Structure:**
+```
+Components/
+├── App.razor / Routes.razor / _Imports.razor
+├── Layout/              # Shared layout (nav, theme)
+├── Pages/
+│   ├── Dashboard.razor
+│   ├── Nodes/           # Node management UI
+│   ├── Configurations/  # Config + composite config + parameter management
+│   ├── Parameters/      # Parameter files, schema, version management
+│   ├── Reports/         # Compliance report viewer
+│   ├── Settings/        # Server settings
+│   └── Admin/           # Users, Groups, Roles management
+└── Shared/              # Reusable components
+```
+
+**Key UI Conventions:**
+- All UI components use MudBlazor (`MudDialog`, `MudTable`, `MudCard`, `MudAlert`, etc.)
+- Dialogs for create/edit operations (e.g., `CreateUserDialog.razor`, `EditGroupDialog.razor`)
+- Parameter pages include a `ProvenanceVisualizationPanel` showing merge lineage and a `VersionManagementPanel`
+- Blazor pages use `[Authorize]` with policy names matching the authorization policies defined in `Program.cs` (e.g., `"nodes.read"`, `"configurations.write"`)
+- `ThemeService` manages dark/light mode; inject it in layout components
+- API calls from Blazor pages go through `ConfigurationApiClient` / `ParameterApiClient` service wrappers, not direct `HttpClient`
+
+### Parameter Merging System
+
+Parameters flow from broad scope to narrow, with narrow scopes overriding broader ones:
+
+```
+Default → Region → Environment → Node
+```
+
+- `ScopeType` entities define the scope hierarchy and precedence order
+- `ScopeValue` entities represent instances of a scope type (e.g., region "West", environment "Prod")
+- Nodes are tagged with `NodeTag` entries linking them to scope values
+- `IParameterMerger` / `ParameterMergeService` performs the merge; `IParameterSchemaService` validates against the configuration's parameter schema
+- When promoting a new schema version, `ParameterCompatibilityService` checks all existing parameter files for breaking changes and surfaces them in the `ParameterMigrationDialog`
 
 ### LCM Pull Server Integration
 
@@ -1147,7 +1206,12 @@ Use [Environment/](../src/OpenDsc.Resource.Windows/Environment/) as the template
 - **Archive Resources:** [Zip/Compress/](../src/OpenDsc.Resource.Archive/Zip/Compress/), [Zip/Expand/](../src/OpenDsc.Resource.Archive/Zip/Expand/) (multi-level namespace structure)
 - **JSON Resources:** [Value/](../src/OpenDsc.Resource.Json/Value/) (JSONPath manipulation, custom schema override)
 - **LCM Service:** [LcmWorker.cs](../src/OpenDsc.Lcm/LcmWorker.cs), [DscExecutor.cs](../src/OpenDsc.Lcm/DscExecutor.cs) (background service patterns)
-- **Pull Server:** [Program.cs](../src/OpenDsc.Server/Program.cs), [Endpoints/](../src/OpenDsc.Server/Endpoints/) (ASP.NET Core minimal APIs, EF Core)
+- **Pull Server Entry Point:** [Program.cs](../src/OpenDsc.Server/Program.cs) (Blazor + minimal API registration)
+- **Pull Server Endpoints:** [Endpoints/](../src/OpenDsc.Server/Endpoints/) (minimal API groups)
+- **Pull Server Blazor UI:** [Components/](../src/OpenDsc.Server/Components/) (MudBlazor pages and dialogs)
+- **Pull Server Services:** [Services/](../src/OpenDsc.Server/Services/) (ParameterMerger, ParameterValidator, VersionRetentionService, etc.)
+- **Pull Server Auth:** [Authentication/](../src/OpenDsc.Server/Authentication/) (CertificateAuthHandler, PersonalAccessTokenHandler)
+- **Pull Server Entities:** [Entities/](../src/OpenDsc.Server/Entities/) (EF Core models)
 - **Test Examples:** [Environment.Tests.ps1](../tests/Windows/Environment.Tests.ps1) (comprehensive integration tests)
 - **Platform Entry Point:** [Program.cs](../src/OpenDsc.Resources/Program.cs) (resource registration with conditional compilation)
 - **Scheduled Task Resource:** [ScheduledTask/](../src/OpenDsc.Resource.Windows/ScheduledTask/) (complex resource with embedded schema, multiple supporting types)
