@@ -93,6 +93,11 @@ public class PullServerSettings
     public string? ConfigurationChecksum { get; set; }
 
     /// <summary>
+    /// The cached entry point file name within the configuration bundle.
+    /// </summary>
+    public string? ConfigurationEntryPoint { get; set; }
+
+    /// <summary>
     /// Whether to submit compliance reports to the server.
     /// </summary>
     public bool ReportCompliance { get; set; } = true;

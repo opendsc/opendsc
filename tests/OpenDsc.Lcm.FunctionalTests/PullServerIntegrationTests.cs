@@ -117,7 +117,8 @@ public sealed class PullServerIntegrationTests(ServerFixture serverFixture) : IA
         config.PullServer!.NodeId = registrationResult!.NodeId;
 
         var checksum1 = await pullServerClient.GetConfigurationChecksumAsync();
-        checksum1.Should().NotBeNullOrEmpty();
+        checksum1.Should().NotBeNull();
+        checksum1!.Checksum.Should().NotBeNullOrEmpty();
 
         // Update configuration on server
         _httpClient!.DefaultRequestHeaders.Clear();
@@ -129,7 +130,8 @@ public sealed class PullServerIntegrationTests(ServerFixture serverFixture) : IA
         await _httpClient.PutAsJsonAsync($"/configurations/{_configId}", updateRequest);
 
         var checksum2 = await pullServerClient.GetConfigurationChecksumAsync();
-        checksum2.Should().NotBe(checksum1);
+        checksum2.Should().NotBeNull();
+        checksum2!.Checksum.Should().NotBe(checksum1.Checksum);
 
         await host.StopAsync();
     }

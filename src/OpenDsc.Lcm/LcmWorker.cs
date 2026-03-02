@@ -294,8 +294,12 @@ public partial class LcmWorker(
                 : null;
         }
 
-        var checksum = await pullServerClient.GetConfigurationChecksumAsync(cancellationToken);
-        config.PullServer.ConfigurationChecksum = checksum;
+        var checksumResponse = await pullServerClient.GetConfigurationChecksumAsync(cancellationToken);
+        config.PullServer.ConfigurationChecksum = checksumResponse?.Checksum;
+        if (checksumResponse?.EntryPoint is not null)
+        {
+            config.PullServer.ConfigurationEntryPoint = checksumResponse.EntryPoint;
+        }
 
         var extractDir = Path.Combine(ConfigPaths.GetLcmConfigDirectory(), "config", "pull");
         Directory.CreateDirectory(extractDir);
@@ -329,15 +333,8 @@ public partial class LcmWorker(
             }
         }
 
-        var entryPointPath = Path.Combine(extractDir, "main.dsc.yaml");
-        if (!File.Exists(entryPointPath))
-        {
-            var yamlFiles = Directory.GetFiles(extractDir, "*.dsc.yaml", SearchOption.TopDirectoryOnly);
-            if (yamlFiles.Length > 0)
-            {
-                entryPointPath = yamlFiles[0];
-            }
-        }
+        var entryPointFile = config.PullServer!.ConfigurationEntryPoint ?? "main.dsc.yaml";
+        var entryPointPath = Path.Combine(extractDir, entryPointFile);
 
         if (!File.Exists(entryPointPath))
         {

@@ -33,10 +33,6 @@
                                 <td>@(configuration.Description ?? "-")</td>
                             </tr>
                             <tr>
-                                <td><strong>Entry Point</strong></td>
-                                <td>@configuration.EntryPoint</td>
-                            </tr>
-                            <tr>
                                 <td><strong>Server Managed</strong></td>
                                 <td>@configuration.IsServerManaged</td>
                             </tr>
@@ -108,6 +104,12 @@
                                                       OnClick="@(() => ToggleVersionExpansion(version))" />
                                         @if (version.IsDraft)
                                         {
+                                            <MudTooltip Text="Change Entry Point">
+                                                <MudIconButton Icon="@Icons.Material.Filled.Flag"
+                                                              Size="Size.Small"
+                                                              Color="Color.Secondary"
+                                                              OnClick="@(() => OpenChangeEntryPointDialog(version))" />
+                                            </MudTooltip>
                                             <MudMenu AnchorOrigin="Origin.BottomLeft" Dense="true">
                                                 <ActivatorContent>
                                                     <MudTooltip Text="Add Files to Draft">
@@ -149,7 +151,19 @@
                                                 <MudTh>Actions</MudTh>
                                             </HeaderContent>
                                             <RowTemplate>
-                                                <MudTd>@context.RelativePath</MudTd>
+                                                <MudTd>
+                                                    <div class="d-flex align-center gap-1">
+                                                        @if (string.Equals(context.RelativePath, version.EntryPoint, StringComparison.OrdinalIgnoreCase))
+                                                        {
+                                                            <MudTooltip Text="Entry point">
+                                                                <MudIcon Icon="@Icons.Material.Filled.Flag"
+                                                                         Size="Size.Small"
+                                                                         Color="Color.Secondary" />
+                                                            </MudTooltip>
+                                                        }
+                                                        <span>@context.RelativePath</span>
+                                                    </div>
+                                                </MudTd>
                                                 <MudTd>
                                                     <MudTooltip Text="View File">
                                                         <MudIconButton Icon="@Icons.Material.Filled.Visibility"
@@ -172,12 +186,35 @@
                                                     </MudTooltip>
                                                     @if (version.IsDraft)
                                                     {
-                                                        <MudTooltip Text="Delete File">
-                                                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                                                          Size="Size.Small"
-                                                                          Color="Color.Error"
-                                                                          OnClick="@(() => DeleteFile(version, context))" />
-                                                        </MudTooltip>
+                                                        @if (!string.Equals(context.RelativePath, version.EntryPoint, StringComparison.OrdinalIgnoreCase))
+                                                        {
+                                                            <MudTooltip Text="Set as Entry Point">
+                                                                <MudIconButton Icon="@Icons.Material.Filled.Flag"
+                                                                              Size="Size.Small"
+                                                                              Color="Color.Secondary"
+                                                                              OnClick="@(() => SetEntryPoint(version, context))" />
+                                                            </MudTooltip>
+                                                        }
+                                                        @if (string.Equals(context.RelativePath, version.EntryPoint, StringComparison.OrdinalIgnoreCase))
+                                                        {
+                                                            <MudTooltip Text="Change the entry point before deleting this file">
+                                                                <span>
+                                                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                                                  Size="Size.Small"
+                                                                                  Color="Color.Error"
+                                                                                  Disabled="true" />
+                                                                </span>
+                                                            </MudTooltip>
+                                                        }
+                                                        else
+                                                        {
+                                                            <MudTooltip Text="Delete File">
+                                                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                                              Size="Size.Small"
+                                                                              Color="Color.Error"
+                                                                              OnClick="@(() => DeleteFile(version, context))" />
+                                                            </MudTooltip>
+                                                        }
                                                     }
                                                 </MudTd>
                                             </RowTemplate>
@@ -558,5 +595,58 @@ else
                 Snackbar.Add("Failed to delete file", Severity.Error);
             }
         }
+    }
+
+    private async Task SetEntryPoint(ConfigurationVersion version, ConfigurationFile file)
+    {
+        if (configuration == null)
+            return;
+
+        var confirmed = await DialogService.ShowMessageBox(
+            "Set Entry Point",
+            $"Set '{file.RelativePath}' as the entry point for version {version.Version}?",
+            yesText: "Set Entry Point",
+            cancelText: "Cancel");
+
+        if (confirmed == true)
+        {
+            var success = await ApiClient.ChangeVersionEntryPointAsync(configuration.Name, version.Version, file.RelativePath);
+
+            if (success)
+            {
+                Snackbar.Add($"Entry point changed to '{file.RelativePath}'", Severity.Success);
+                await LoadConfiguration();
+            }
+            else
+            {
+                Snackbar.Add("Failed to change entry point", Severity.Error);
+            }
+        }
+    }
+
+    private async Task OpenChangeEntryPointDialog(ConfigurationVersion version)
+    {
+        if (configuration == null)
+            return;
+
+        if (version.Files.Count <= 1)
+        {
+            await DialogService.ShowMessageBox(
+                "Change Entry Point",
+                "The version must have more than one file to change the entry point.",
+                yesText: "OK");
+            return;
+        }
+
+        var parameters = new DialogParameters<ChangeEntryPointDialog>
+        {
+            { d => d.ConfigurationName, configuration.Name },
+            { d => d.VersionNumber, version.Version },
+            { d => d.CurrentEntryPoint, version.EntryPoint },
+            { d => d.AvailableFiles, version.Files.Select(f => f.RelativePath).OrderBy(p => p).ToList() },
+            { d => d.OnEntryPointChanged, EventCallback.Factory.Create(this, LoadConfiguration) }
+        };
+
+        await DialogService.ShowAsync<ChangeEntryPointDialog>("Change Entry Point", parameters);
     }
 }

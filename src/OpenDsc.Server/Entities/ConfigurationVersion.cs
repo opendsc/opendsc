@@ -9,6 +9,7 @@ public sealed class ConfigurationVersion
     public Guid Id { get; set; }
     public required Guid ConfigurationId { get; set; }
     public required string Version { get; set; }
+    public string EntryPoint { get; set; } = "main.dsc.yaml";
     public Guid? ParameterSchemaId { get; set; }
     public bool IsDraft { get; set; } = true;
     public string? PrereleaseChannel { get; set; }

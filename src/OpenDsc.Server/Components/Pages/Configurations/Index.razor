@@ -53,7 +53,6 @@
                 <Columns>
                     <PropertyColumn Property="x => x.Name" Title="Name" />
                     <PropertyColumn Property="x => x.Description" Title="Description" />
-                    <PropertyColumn Property="x => x.EntryPoint" Title="Entry Point" />
                     <TemplateColumn Title="Versions">
                         <CellTemplate>
                             <MudChip T="string" Size="Size.Small">@context.Item.Versions.Count</MudChip>

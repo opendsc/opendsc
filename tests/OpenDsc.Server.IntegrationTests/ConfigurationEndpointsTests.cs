@@ -303,6 +303,92 @@ resources: []
     }
 
     [Fact]
+    public async Task CreateConfigurationVersion_WithDifferentEntryPoint_ReturnsCreated()
+    {
+        using var client = CreateAuthenticatedClient();
+
+        using var configContent = new MultipartFormDataContent();
+        configContent.Add(new StringContent("version-entrypoint-test"), "name");
+        configContent.Add(new StringContent("main.dsc.yaml"), "entryPoint");
+        var configFile = new ByteArrayContent("v1content"u8.ToArray());
+        configFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+        configContent.Add(configFile, "files", "main.dsc.yaml");
+        await client.PostAsync("/api/v1/configurations", configContent);
+
+        using var versionContent = new MultipartFormDataContent();
+        versionContent.Add(new StringContent("2.0.0"), "version");
+        versionContent.Add(new StringContent("main.bicep"), "entryPoint");
+        var versionFile = new ByteArrayContent("bicep content"u8.ToArray());
+        versionFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+        versionContent.Add(versionFile, "files", "main.bicep");
+
+        var response = await client.PostAsync("/api/v1/configurations/version-entrypoint-test/versions", versionContent);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var versionsResponse = await client.GetAsync("/api/v1/configurations/version-entrypoint-test/versions");
+        var versions = await versionsResponse.Content.ReadFromJsonAsync<List<ConfigurationVersionDto>>();
+        versions.Should().NotBeNull();
+        var v1 = versions!.FirstOrDefault(v => v.Version == "1.0.0");
+        var v2 = versions.FirstOrDefault(v => v.Version == "2.0.0");
+        v1.Should().NotBeNull();
+        v2.Should().NotBeNull();
+        v1!.EntryPoint.Should().Be("main.dsc.yaml");
+        v2!.EntryPoint.Should().Be("main.bicep");
+    }
+
+    [Fact]
+    public async Task GetConfigurationVersions_ReturnsVersionsWithEntryPoint()
+    {
+        using var client = CreateAuthenticatedClient();
+
+        using var configContent = new MultipartFormDataContent();
+        configContent.Add(new StringContent("versions-entrypoint-list-test"), "name");
+        configContent.Add(new StringContent("config.dsc.yaml"), "entryPoint");
+        var configFile = new ByteArrayContent("v1"u8.ToArray());
+        configFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+        configContent.Add(configFile, "files", "config.dsc.yaml");
+        await client.PostAsync("/api/v1/configurations", configContent);
+
+        var response = await client.GetAsync("/api/v1/configurations/versions-entrypoint-list-test/versions");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var versions = await response.Content.ReadFromJsonAsync<List<ConfigurationVersionDto>>();
+        versions.Should().NotBeNull();
+        versions!.Should().HaveCount(1);
+        versions[0].EntryPoint.Should().Be("config.dsc.yaml");
+    }
+
+    [Fact]
+    public async Task CreateConfigurationVersion_InheritsEntryPointFromPreviousVersion()
+    {
+        using var client = CreateAuthenticatedClient();
+
+        using var configContent = new MultipartFormDataContent();
+        configContent.Add(new StringContent("inherit-entrypoint-test"), "name");
+        configContent.Add(new StringContent("inherited.dsc.yaml"), "entryPoint");
+        var configFile = new ByteArrayContent("v1content"u8.ToArray());
+        configFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+        configContent.Add(configFile, "files", "inherited.dsc.yaml");
+        await client.PostAsync("/api/v1/configurations", configContent);
+
+        // Create v2 without specifying entryPoint - should inherit from v1
+        using var versionContent = new MultipartFormDataContent();
+        versionContent.Add(new StringContent("2.0.0"), "version");
+        var versionFile = new ByteArrayContent("v2content"u8.ToArray());
+        versionFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+        versionContent.Add(versionFile, "files", "inherited.dsc.yaml");
+        var createV2Response = await client.PostAsync("/api/v1/configurations/inherit-entrypoint-test/versions", versionContent);
+        createV2Response.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var versionsResponse = await client.GetAsync("/api/v1/configurations/inherit-entrypoint-test/versions");
+        var versions = await versionsResponse.Content.ReadFromJsonAsync<List<ConfigurationVersionDto>>();
+        var v2 = versions!.FirstOrDefault(v => v.Version == "2.0.0");
+        v2.Should().NotBeNull();
+        v2!.EntryPoint.Should().Be("inherited.dsc.yaml");
+    }
+
+    [Fact]
     public async Task DeleteConfigurationVersion_DraftVersion_ReturnsNoContent()
     {
         using var client = CreateAuthenticatedClient();

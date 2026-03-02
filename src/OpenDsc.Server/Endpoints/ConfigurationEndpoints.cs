@@ -94,7 +94,6 @@ public static class ConfigurationEndpoints
         {
             Name = c.Name,
             Description = c.Description,
-            EntryPoint = c.EntryPoint,
             IsServerManaged = c.IsServerManaged,
             VersionCount = c.Versions.Count,
             LatestVersion = c.Versions.OrderByDescending(v => v.CreatedAt).Select(v => v.Version).FirstOrDefault(),
@@ -140,7 +139,6 @@ public static class ConfigurationEndpoints
             Id = Guid.NewGuid(),
             Name = request.Name,
             Description = request.Description,
-            EntryPoint = entryPoint,
             IsServerManaged = request.IsServerManaged,
             CreatedAt = DateTimeOffset.UtcNow
         };
@@ -152,6 +150,7 @@ public static class ConfigurationEndpoints
             Id = Guid.NewGuid(),
             ConfigurationId = configuration.Id,
             Version = request.Version ?? "1.0.0",
+            EntryPoint = entryPoint,
             IsDraft = request.IsDraft,
             CreatedAt = DateTimeOffset.UtcNow
         };
@@ -200,7 +199,7 @@ public static class ConfigurationEndpoints
         await db.SaveChangesAsync();
 
         // Extract and generate parameter schema from entry point file
-        var entryPointPath = Path.Combine(versionDir, configuration.EntryPoint);
+        var entryPointPath = Path.Combine(versionDir, version.EntryPoint);
         if (File.Exists(entryPointPath))
         {
             var entryPointContent = await File.ReadAllTextAsync(entryPointPath);
@@ -245,7 +244,6 @@ public static class ConfigurationEndpoints
         {
             Name = configuration.Name,
             Description = configuration.Description,
-            EntryPoint = configuration.EntryPoint,
             IsServerManaged = configuration.IsServerManaged,
             LatestVersion = version.Version,
             CreatedAt = configuration.CreatedAt
@@ -284,7 +282,6 @@ public static class ConfigurationEndpoints
         {
             Name = config.Name,
             Description = config.Description,
-            EntryPoint = config.EntryPoint,
             IsServerManaged = config.IsServerManaged,
             LatestVersion = latestVersion,
             CreatedAt = config.CreatedAt,
@@ -321,6 +318,7 @@ public static class ConfigurationEndpoints
             .Select(v => new ConfigurationVersionDto
             {
                 Version = v.Version,
+                EntryPoint = v.EntryPoint,
                 IsDraft = v.IsDraft,
                 PrereleaseChannel = v.PrereleaseChannel,
                 FileCount = v.Files.Count,
@@ -360,9 +358,20 @@ public static class ConfigurationEndpoints
             return TypedResults.BadRequest("At least one file is required");
         }
 
-        if (!files.Any(f => f.FileName == configuration.EntryPoint))
+        // Resolve entry point: prefer explicit request value, fall back to latest version's entry point
+        var latestVersionEntryPoint = (await db.ConfigurationVersions
+            .Where(v => v.ConfigurationId == configuration.Id)
+            .Select(v => new { v.EntryPoint, v.CreatedAt })
+            .ToListAsync())
+            .OrderByDescending(v => v.CreatedAt)
+            .Select(v => v.EntryPoint)
+            .FirstOrDefault();
+
+        var entryPoint = request.EntryPoint ?? latestVersionEntryPoint ?? "main.dsc.yaml";
+
+        if (!files.Any(f => f.FileName == entryPoint))
         {
-            return TypedResults.BadRequest($"Entry point file '{configuration.EntryPoint}' not found in uploaded files");
+            return TypedResults.BadRequest($"Entry point file '{entryPoint}' not found in uploaded files");
         }
 
         var versionNumber = request.Version ?? "1.0.0";
@@ -377,6 +386,7 @@ public static class ConfigurationEndpoints
             Id = Guid.NewGuid(),
             ConfigurationId = configuration.Id,
             Version = versionNumber,
+            EntryPoint = entryPoint,
             IsDraft = request.IsDraft,
             PrereleaseChannel = request.PrereleaseChannel,
             CreatedAt = DateTimeOffset.UtcNow
@@ -426,7 +436,7 @@ public static class ConfigurationEndpoints
         await db.SaveChangesAsync();
 
         // Extract and generate parameter schema from entry point file
-        var entryPointPath = Path.Combine(versionDir, configuration.EntryPoint);
+        var entryPointPath = Path.Combine(versionDir, version.EntryPoint);
         if (File.Exists(entryPointPath))
         {
             var entryPointContent = await File.ReadAllTextAsync(entryPointPath);
@@ -511,6 +521,7 @@ public static class ConfigurationEndpoints
         var versionDto = new ConfigurationVersionDto
         {
             Version = version.Version,
+            EntryPoint = version.EntryPoint,
             IsDraft = version.IsDraft,
             PrereleaseChannel = version.PrereleaseChannel,
             FileCount = files.Count,
@@ -573,11 +584,11 @@ public static class ConfigurationEndpoints
 
         // Read entry point configuration file to extract parameters block
         var dataDir = config["DataDirectory"] ?? "data";
-        var entryPointPath = Path.Combine(dataDir, "configurations", name, $"v{version}", configuration.EntryPoint);
+        var entryPointPath = Path.Combine(dataDir, "configurations", name, $"v{version}", configVersion.EntryPoint);
 
         if (!File.Exists(entryPointPath))
         {
-            return TypedResults.BadRequest($"Entry point file '{configuration.EntryPoint}' not found");
+            return TypedResults.BadRequest($"Entry point file '{configVersion.EntryPoint}' not found");
         }
 
         var entryPointContent = await File.ReadAllTextAsync(entryPointPath);
@@ -724,6 +735,7 @@ public static class ConfigurationEndpoints
         var versionDto = new ConfigurationVersionDto
         {
             Version = configVersion.Version,
+            EntryPoint = configVersion.EntryPoint,
             IsDraft = configVersion.IsDraft,
             PrereleaseChannel = configVersion.PrereleaseChannel,
             FileCount = configVersion.Files.Count,
@@ -944,7 +956,6 @@ public sealed class ConfigurationSummaryDto
 {
     public required string Name { get; init; }
     public string? Description { get; init; }
-    public required string EntryPoint { get; init; }
     public required bool IsServerManaged { get; init; }
     public required int VersionCount { get; init; }
     public string? LatestVersion { get; init; }
@@ -955,7 +966,6 @@ public sealed class ConfigurationDetailsDto
 {
     public required string Name { get; init; }
     public string? Description { get; init; }
-    public required string EntryPoint { get; init; }
     public required bool IsServerManaged { get; init; }
     public string? LatestVersion { get; init; }
     public required DateTimeOffset CreatedAt { get; init; }
@@ -975,6 +985,7 @@ public sealed class CreateConfigurationDto
 public sealed class ConfigurationVersionDto
 {
     public required string Version { get; init; }
+    public required string EntryPoint { get; init; }
     public required bool IsDraft { get; init; }
     public string? PrereleaseChannel { get; init; }
     public required int FileCount { get; init; }
@@ -985,6 +996,7 @@ public sealed class ConfigurationVersionDto
 public sealed class CreateConfigurationVersionDto
 {
     public required string Version { get; init; }
+    public string? EntryPoint { get; init; }
     public bool IsDraft { get; init; } = true;
     public string? PrereleaseChannel { get; init; }
 }

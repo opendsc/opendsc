@@ -19,13 +19,14 @@ namespace OpenDsc.Server.Services;
 public interface IConfigurationApiClient
 {
     Task<bool> CreateConfigurationAsync(string name, string? description, string entryPoint, string version, bool isDraft, IReadOnlyList<IBrowserFile> files);
-    Task<bool> CreateVersionAsync(string name, string version, bool isDraft, IReadOnlyList<IBrowserFile> files);
+    Task<bool> CreateVersionAsync(string name, string version, bool isDraft, IReadOnlyList<IBrowserFile> files, string? entryPoint = null);
     Task<bool> CreateVersionFromExistingAsync(string name, string sourceVersion, string newVersion, bool isDraft);
     Task<bool> AddFilesToVersionAsync(string name, string version, IReadOnlyList<IBrowserFile> files);
     Task<PublishResult> PublishVersionAsync(string name, string version);
     Task<bool> DeleteConfigurationAsync(string name);
     Task<bool> DeleteVersionAsync(string name, string version);
     Task<bool> DeleteFileAsync(string name, string version, string filePath);
+    Task<bool> ChangeVersionEntryPointAsync(string name, string version, string entryPoint);
     Task<Stream?> DownloadFileAsync(string name, string version, string filePath);
 }
 
@@ -109,7 +110,6 @@ public sealed class ConfigurationApiClient : IConfigurationApiClient
                 Id = Guid.NewGuid(),
                 Name = name,
                 Description = description,
-                EntryPoint = entryPoint,
                 IsServerManaged = false,
                 CreatedAt = DateTimeOffset.UtcNow
             };
@@ -121,6 +121,7 @@ public sealed class ConfigurationApiClient : IConfigurationApiClient
                 Id = Guid.NewGuid(),
                 ConfigurationId = configuration.Id,
                 Version = version,
+                EntryPoint = entryPoint,
                 IsDraft = isDraft,
                 CreatedAt = DateTimeOffset.UtcNow
             };
@@ -165,7 +166,7 @@ public sealed class ConfigurationApiClient : IConfigurationApiClient
             await _db.SaveChangesAsync();
 
             // Extract and generate parameter schema from entry point file
-            var entryPointPath = Path.Combine(versionDir, configuration.EntryPoint);
+            var entryPointPath = Path.Combine(versionDir, configVersion.EntryPoint);
             if (File.Exists(entryPointPath))
             {
                 var entryPointContent = await File.ReadAllTextAsync(entryPointPath);
@@ -216,7 +217,8 @@ public sealed class ConfigurationApiClient : IConfigurationApiClient
         string name,
         string version,
         bool isDraft,
-        IReadOnlyList<IBrowserFile> files)
+        IReadOnlyList<IBrowserFile> files,
+        string? entryPoint = null)
     {
         try
         {
@@ -235,11 +237,23 @@ public sealed class ConfigurationApiClient : IConfigurationApiClient
                 return false;
             }
 
+            // Resolve entry point: prefer explicit value, fall back to latest version's entry point
+            var latestVersionEntryPoint = (await _db.ConfigurationVersions
+                .Where(v => v.ConfigurationId == configuration.Id)
+                .Select(v => new { v.EntryPoint, v.CreatedAt })
+                .ToListAsync())
+                .OrderByDescending(v => v.CreatedAt)
+                .Select(v => v.EntryPoint)
+                .FirstOrDefault();
+
+            var resolvedEntryPoint = entryPoint ?? latestVersionEntryPoint ?? "main.dsc.yaml";
+
             var configVersion = new ConfigurationVersion
             {
                 Id = Guid.NewGuid(),
                 ConfigurationId = configuration.Id,
                 Version = version,
+                EntryPoint = resolvedEntryPoint,
                 IsDraft = isDraft,
                 CreatedAt = DateTimeOffset.UtcNow
             };
@@ -285,7 +299,7 @@ public sealed class ConfigurationApiClient : IConfigurationApiClient
             await _db.SaveChangesAsync();
 
             // Extract and generate parameter schema from entry point file
-            var entryPointPath = Path.Combine(versionDir, configuration.EntryPoint);
+            var entryPointPath = Path.Combine(versionDir, configVersion.EntryPoint);
             if (File.Exists(entryPointPath))
             {
                 var entryPointContent = await File.ReadAllTextAsync(entryPointPath);
@@ -368,6 +382,7 @@ public sealed class ConfigurationApiClient : IConfigurationApiClient
                 Id = Guid.NewGuid(),
                 ConfigurationId = configuration.Id,
                 Version = newVersion,
+                EntryPoint = sourceConfigVersion.EntryPoint,
                 IsDraft = isDraft,
                 CreatedAt = DateTimeOffset.UtcNow
             };
@@ -763,6 +778,44 @@ public sealed class ConfigurationApiClient : IConfigurationApiClient
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error deleting file '{FilePath}' from version '{Version}' for configuration '{Name}'", filePath, version, name);
+            return false;
+        }
+    }
+
+    public async Task<bool> ChangeVersionEntryPointAsync(string name, string version, string entryPoint)
+    {
+        try
+        {
+            var configVersion = await _db.ConfigurationVersions
+                .Include(v => v.Files)
+                .Include(v => v.Configuration)
+                .FirstOrDefaultAsync(v => v.Configuration.Name == name && v.Version == version);
+
+            if (configVersion == null)
+            {
+                _logger.LogWarning("Version '{Version}' not found for configuration '{Name}'", version, name);
+                return false;
+            }
+
+            if (!configVersion.IsDraft)
+            {
+                _logger.LogWarning("Cannot change entry point of published version '{Version}'", version);
+                return false;
+            }
+
+            if (!configVersion.Files.Any(f => string.Equals(f.RelativePath, entryPoint, StringComparison.OrdinalIgnoreCase)))
+            {
+                _logger.LogWarning("Entry point file '{EntryPoint}' not found in version '{Version}'", entryPoint, version);
+                return false;
+            }
+
+            configVersion.EntryPoint = entryPoint;
+            await _db.SaveChangesAsync();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error changing entry point for version '{Version}' of configuration '{Name}'", version, name);
             return false;
         }
     }

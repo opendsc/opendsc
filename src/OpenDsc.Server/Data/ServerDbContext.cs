@@ -179,7 +179,6 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.Name).IsUnique();
             entity.Property(e => e.Name).HasMaxLength(255).IsRequired();
-            entity.Property(e => e.EntryPoint).HasMaxLength(500).IsRequired();
         });
 
         modelBuilder.Entity<ConfigurationVersion>(entity =>
@@ -187,6 +186,7 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => new { e.ConfigurationId, e.Version }).IsUnique();
             entity.Property(e => e.Version).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.EntryPoint).HasMaxLength(500).IsRequired();
             entity.Property(e => e.PrereleaseChannel).HasMaxLength(50);
             entity.Property(e => e.CreatedBy).HasMaxLength(255);
 

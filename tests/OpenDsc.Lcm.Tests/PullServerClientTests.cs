@@ -221,7 +221,8 @@ public sealed class PullServerClientTests
     {
         var response = new ConfigurationChecksumResponse
         {
-            Checksum = "new-checksum-456"
+            Checksum = "new-checksum-456",
+            EntryPoint = "main.dsc.yaml"
         };
 
         _httpMessageHandlerMock.Protected()
@@ -244,7 +245,9 @@ public sealed class PullServerClientTests
 
         var result = await client.GetConfigurationChecksumAsync();
 
-        result.Should().Be(response.Checksum);
+        result.Should().NotBeNull();
+        result!.Checksum.Should().Be(response.Checksum);
+        result.EntryPoint.Should().Be(response.EntryPoint);
     }
 
     [Fact]

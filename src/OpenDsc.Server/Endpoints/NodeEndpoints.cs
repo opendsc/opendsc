@@ -522,7 +522,7 @@ public static class NodeEndpoints
                 }
 
                 // Add to include list for main.dsc.yaml
-                var childEntryPoint = item.ChildConfiguration.EntryPoint;
+                var childEntryPoint = childVersion.EntryPoint;
                 includeResources.Add($"  - name: {item.ChildConfiguration.Name}\n    type: Microsoft.DSC/Include\n    properties:\n      configurationFile: {childFolderName}/{childEntryPoint}");
             }
 
@@ -690,6 +690,7 @@ public static class NodeEndpoints
         }
 
         string checksum;
+        string entryPoint;
 
         if (nodeConfig.CompositeConfigurationId.HasValue)
         {
@@ -716,7 +717,7 @@ public static class NodeEndpoints
 
                 if (childVersion is not null)
                 {
-                    checksumParts.Add($"child:{item.ChildConfiguration!.Name}:{childVersion.Version}");
+                    checksumParts.Add($"child:{item.ChildConfiguration!.Name}:{childVersion.Version}:{childVersion.EntryPoint}");
 
                     foreach (var file in childVersion.Files.OrderBy(f => f.RelativePath))
                     {
@@ -728,6 +729,7 @@ public static class NodeEndpoints
             var combined = string.Join("|", checksumParts);
             var hash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(combined));
             checksum = Convert.ToHexString(hash).ToLowerInvariant();
+            entryPoint = nodeConfig.CompositeConfiguration!.EntryPoint;
         }
         else
         {
@@ -743,7 +745,8 @@ public static class NodeEndpoints
 
             var checksumParts = new List<string>
             {
-                $"version:{activeVersion.Version}"
+                $"version:{activeVersion.Version}",
+                $"entrypoint:{activeVersion.EntryPoint}"
             };
 
             foreach (var file in activeVersion.Files.OrderBy(f => f.RelativePath))
@@ -754,10 +757,11 @@ public static class NodeEndpoints
             var combined = string.Join("|", checksumParts);
             var hash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(combined));
             checksum = Convert.ToHexString(hash).ToLowerInvariant();
+            entryPoint = activeVersion.EntryPoint;
         }
 
         await db.SaveChangesAsync(cancellationToken);
-        return TypedResults.Ok(new ConfigurationChecksumResponse { Checksum = checksum });
+        return TypedResults.Ok(new ConfigurationChecksumResponse { Checksum = checksum, EntryPoint = entryPoint });
     }
 
     private static async Task<Results<Ok<RotateCertificateResponse>, NotFound<ErrorResponse>, BadRequest<ErrorResponse>, ForbidHttpResult>> RotateCertificate(

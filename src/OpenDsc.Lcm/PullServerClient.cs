@@ -192,7 +192,7 @@ public partial class PullServerClient : IDisposable
     /// <summary>
     /// Gets the current configuration checksum from the server.
     /// </summary>
-    public async Task<string?> GetConfigurationChecksumAsync(CancellationToken cancellationToken = default)
+    public async Task<ConfigurationChecksumResponse?> GetConfigurationChecksumAsync(CancellationToken cancellationToken = default)
     {
         var config = _lcmMonitor.CurrentValue;
         var pullServer = config.PullServer;
@@ -213,11 +213,9 @@ public partial class PullServerClient : IDisposable
                 return null;
             }
 
-            var result = await response.Content.ReadFromJsonAsync(
+            return await response.Content.ReadFromJsonAsync(
                 PullServerJsonContext.Default.ConfigurationChecksumResponse,
                 cancellationToken);
-
-            return result?.Checksum;
         }
         catch
         {

@@ -138,4 +138,9 @@ public sealed class ConfigurationChecksumResponse
     /// The SHA256 checksum of the configuration.
     /// </summary>
     public string Checksum { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The entry point file name within the configuration bundle.
+    /// </summary>
+    public string EntryPoint { get; set; } = "main.dsc.yaml";
 }

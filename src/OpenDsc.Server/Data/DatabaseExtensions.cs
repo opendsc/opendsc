@@ -187,7 +187,6 @@ public static class DatabaseExtensions
             Id = Guid.NewGuid(),
             Name = "test-config",
             Description = "Test configuration",
-            EntryPoint = "main.dsc.yaml",
             IsServerManaged = true,
             CreatedAt = DateTimeOffset.UtcNow
         };
@@ -199,6 +198,7 @@ public static class DatabaseExtensions
             Id = Guid.NewGuid(),
             ConfigurationId = config.Id,
             Version = "1.0.0",
+            EntryPoint = "main.dsc.yaml",
             IsDraft = false,
             CreatedAt = DateTimeOffset.UtcNow
         };

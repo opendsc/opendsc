@@ -269,6 +269,45 @@ public class NodeEndpointsTests : IClassFixture<ServerWebApplicationFactory>
     }
 
     [Fact]
+    public async Task GetConfigurationChecksum_ReturnsChecksumAndEntryPoint()
+    {
+        // Register node
+        var registerRequest = new RegisterNodeRequest
+        {
+            Fqdn = "checksum-entrypoint-test.example.com",
+            RegistrationKey = "test-registration-key"
+        };
+        var registerResponse = await _client.PostAsJsonAsync("/api/v1/nodes/register", registerRequest);
+        var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>();
+
+        using var adminClient = _factory.CreateAuthenticatedClient();
+
+        // Create and publish a configuration
+        var configName = $"checksum-entrypoint-config-{Guid.NewGuid():N}";
+        using var configContent = new MultipartFormDataContent();
+        configContent.Add(new StringContent(configName), "name");
+        configContent.Add(new StringContent("deploy.dsc.yaml"), "entryPoint");
+        var configFile = new ByteArrayContent("resources: []"u8.ToArray());
+        configFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+        configContent.Add(configFile, "files", "deploy.dsc.yaml");
+        var createResponse = await adminClient.PostAsync("/api/v1/configurations", configContent);
+        var configDto = await createResponse.Content.ReadFromJsonAsync<ConfigurationDetailsDto>();
+        await adminClient.PutAsync($"/api/v1/configurations/{configName}/versions/{configDto!.LatestVersion}/publish", null);
+
+        // Assign configuration to node
+        var assignRequest = new AssignConfigurationRequest { ConfigurationName = configName };
+        await adminClient.PutAsJsonAsync($"/api/v1/nodes/{registerResult!.NodeId}/configuration", assignRequest);
+
+        // Get checksum - should include entry point
+        var checksumResponse = await _client.GetAsync($"/api/v1/nodes/{registerResult.NodeId}/configuration/checksum");
+        checksumResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var checksum = await checksumResponse.Content.ReadFromJsonAsync<ConfigurationChecksumResponse>();
+        checksum.Should().NotBeNull();
+        checksum!.Checksum.Should().NotBeNullOrEmpty();
+        checksum.EntryPoint.Should().Be("deploy.dsc.yaml");
+    }
+
+    [Fact]
     public async Task AssignConfiguration_WithNonExistentConfiguration_ReturnsNotFound()
     {
         var registerRequest = new RegisterNodeRequest
