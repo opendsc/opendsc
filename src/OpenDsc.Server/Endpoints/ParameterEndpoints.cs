@@ -216,9 +216,11 @@ public static class ParameterEndpoints
                 ConfigurationId = existingVersion.ParameterSchema!.ConfigurationId,
                 ScopeValue = existingVersion.ScopeValue,
                 Version = existingVersion.Version,
+                MajorVersion = existingVersion.MajorVersion,
                 Checksum = existingVersion.Checksum,
                 IsActive = existingVersion.IsActive,
                 IsDraft = existingVersion.IsDraft,
+                IsArchived = existingVersion.IsArchived,
                 CreatedAt = existingVersion.CreatedAt
             });
         }
@@ -270,9 +272,11 @@ public static class ParameterEndpoints
             ConfigurationId = parameterFile.ParameterSchema!.ConfigurationId,
             ScopeValue = parameterFile.ScopeValue,
             Version = parameterFile.Version,
+            MajorVersion = parameterFile.MajorVersion,
             Checksum = parameterFile.Checksum,
             IsActive = parameterFile.IsActive,
             IsDraft = parameterFile.IsDraft,
+            IsArchived = parameterFile.IsArchived,
             CreatedAt = parameterFile.CreatedAt
         });
     }
@@ -322,9 +326,11 @@ public static class ParameterEndpoints
                 ConfigurationId = pf.ParameterSchema!.ConfigurationId,
                 ScopeValue = pf.ScopeValue,
                 Version = pf.Version,
+                MajorVersion = pf.MajorVersion,
                 Checksum = pf.Checksum,
                 IsActive = pf.IsActive,
                 IsDraft = pf.IsDraft,
+                IsArchived = pf.IsArchived,
                 CreatedAt = pf.CreatedAt
             })
             .ToList();
@@ -409,12 +415,14 @@ public static class ParameterEndpoints
                 pf.ScopeTypeId == scopeTypeId &&
                 pf.ParameterSchema!.ConfigurationId == configurationId &&
                 pf.ScopeValue == scopeValue &&
+                pf.MajorVersion == parameterFile.MajorVersion &&
                 pf.IsActive)
             .ToListAsync();
 
         foreach (var activeFile in currentlyActive)
         {
             activeFile.IsActive = false;
+            activeFile.IsArchived = true;
         }
 
         parameterFile.IsActive = true;
@@ -428,9 +436,11 @@ public static class ParameterEndpoints
             ConfigurationId = parameterFile.ParameterSchema!.ConfigurationId,
             ScopeValue = parameterFile.ScopeValue,
             Version = parameterFile.Version,
+            MajorVersion = parameterFile.MajorVersion,
             Checksum = parameterFile.Checksum,
             IsActive = parameterFile.IsActive,
             IsDraft = parameterFile.IsDraft,
+            IsArchived = parameterFile.IsArchived,
             CreatedAt = parameterFile.CreatedAt
         });
     }
@@ -679,12 +689,15 @@ public static class ParameterEndpoints
             return TypedResults.Forbid();
         }
 
-        var majorVersions = await db.ParameterFiles
-            .Include(pf => pf.ParameterSchema)
+        var allFiles = await db.ParameterFiles
             .Where(pf =>
                 pf.ScopeTypeId == scopeTypeId &&
                 pf.ParameterSchema!.ConfigurationId == configurationId &&
                 pf.ScopeValue == scopeValue)
+            .Select(pf => new { pf.MajorVersion, pf.Version, pf.CreatedAt, pf.IsActive, pf.NeedsMigration })
+            .ToListAsync();
+
+        var majorVersions = allFiles
             .GroupBy(pf => pf.MajorVersion)
             .Select(g => new MajorVersionDto
             {
@@ -695,7 +708,7 @@ public static class ParameterEndpoints
                 HasMigrationNeeded = g.Any(pf => pf.NeedsMigration)
             })
             .OrderByDescending(m => m.MajorVersion)
-            .ToListAsync();
+            .ToList();
 
         return TypedResults.Ok(majorVersions);
     }
@@ -750,9 +763,11 @@ public static class ParameterEndpoints
             ConfigurationId = activeParameter.ParameterSchema!.ConfigurationId,
             ScopeValue = activeParameter.ScopeValue,
             Version = activeParameter.Version,
+            MajorVersion = activeParameter.MajorVersion,
             Checksum = activeParameter.Checksum,
             IsActive = activeParameter.IsActive,
             IsDraft = activeParameter.IsDraft,
+            IsArchived = activeParameter.IsArchived,
             CreatedAt = activeParameter.CreatedAt
         });
     }
@@ -1071,9 +1086,11 @@ public sealed class ParameterFileDto
     public required Guid ConfigurationId { get; init; }
     public string? ScopeValue { get; init; }
     public required string Version { get; init; }
+    public required int MajorVersion { get; init; }
     public required string Checksum { get; init; }
     public required bool IsActive { get; init; }
     public required bool IsDraft { get; init; }
+    public required bool IsArchived { get; init; }
     public required DateTimeOffset CreatedAt { get; init; }
 }
 

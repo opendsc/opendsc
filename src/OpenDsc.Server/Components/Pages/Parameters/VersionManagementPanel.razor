@@ -5,12 +5,15 @@
 @rendermode InteractiveServer
 
 @using MudBlazor
+@using NuGet.Versioning
+@using Microsoft.EntityFrameworkCore
+@using OpenDsc.Server.Entities
 @using OpenDsc.Server.Services
 @using static OpenDsc.Server.Endpoints.ParameterEndpoints
-@using NuGet.Versioning
 @inject IParameterApiClient ParameterApiClient
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
+@inject ServerDbContext Db
 
 <MudCard>
     <MudCardContent>
@@ -23,88 +26,138 @@
 
         @if (selectedConfigurationId.HasValue && selectedScopeTypeId.HasValue)
         {
-            <div class="d-flex justify-space-between align-center my-3">
-                <MudText Typo="Typo.h6">Parameter Versions</MudText>
-                @if (versions.Any())
-                {
-                    <MudButton Variant="Variant.Filled"
-                               Color="Color.Primary"
-                               StartIcon="@Icons.Material.Filled.Add"
-                               OnClick="ShowCreateVersionDialog">
-                        Create New Version
-                    </MudButton>
-                }
-            </div>
-
-            <MudDataGrid T="ParameterFileDto"
-                         Items="@versions"
-                         Loading="@isLoading"
-                         Class="mt-4"
-                         Dense="true"
-                         Hover="true">
-                <Columns>
-                    <PropertyColumn Property="v => v.Version" Title="Version" />
-                    <TemplateColumn Title="Status">
-                        <CellTemplate>
-                            @if (context.Item.IsActive)
-                            {
-                                <MudChip T="string" Size="Size.Small" Color="Color.Success">Active</MudChip>
-                            }
-                            else if (context.Item.IsDraft)
-                            {
-                                <MudChip T="string" Size="Size.Small" Color="Color.Info">Draft</MudChip>
-                            }
-                            else
-                            {
-                                <MudChip T="string" Size="Size.Small" Color="Color.Default">Archived</MudChip>
-                            }
-                        </CellTemplate>
-                    </TemplateColumn>
-                    <PropertyColumn Property="v => v.Checksum.Substring(0, 8)" Title="Checksum" />
-                    <PropertyColumn Property="v => v.CreatedAt.ToLocalTime().ToString()" Title="Created" />
-                    <TemplateColumn Title="Actions" CellClass="d-flex justify-end">
-                        <CellTemplate>
-                            <MudIconButton Icon="@Icons.Material.Filled.Visibility"
-                                           Size="Size.Small"
-                                           OnClick="@(() => ViewParameter(context.Item))"
-                                           title="View" />
-                            @if (context.Item.IsDraft)
-                            {
-                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                               Size="Size.Small"
+            @if (isLoading)
+            {
+                <MudProgressLinear Indeterminate="true" Class="mt-4" />
+            }
+            else if (!availableConfigMajors.Any())
+            {
+                <MudText Typo="Typo.body2" Class="pa-4">No configuration schema versions found. Create a configuration version first.</MudText>
+            }
+            else
+            {
+                <MudExpansionPanels MultiExpansion="true" Class="mt-2">
+                    @foreach (var major in availableConfigMajors.OrderByDescending(m => m))
+                    {
+                        var majorVersions = versions.Where(v => v.MajorVersion == major).ToList();
+                        var publishedParamVersion = majorVersions.FirstOrDefault(v => v.IsActive);
+                        var draftCount = majorVersions.Count(v => v.IsDraft);
+                        var archivedCount = majorVersions.Count(v => !v.IsActive && !v.IsDraft);
+                        var isConfigPublished = publishedConfigMajors.Contains(major);
+                        <MudExpansionPanel Expanded="false">
+                            <TitleContent>
+                                <div class="d-flex align-center gap-2">
+                                    <MudText>Version @(major)</MudText>
+                                    @if (publishedParamVersion != null)
+                                    {
+                                        <MudTooltip Text="Latest published parameter">
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Success">
+                                                Published @publishedParamVersion.Version
+                                            </MudChip>
+                                        </MudTooltip>
+                                    }
+                                    else
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Default">No Published</MudChip>
+                                    }
+                                    @if (majorVersions.Any())
+                                    {
+                                        <MudChip T="string" Size="Size.Small">@majorVersions.Count @(majorVersions.Count == 1 ? "version" : "versions")</MudChip>
+                                    }
+                                    @if (draftCount > 0)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Info">@draftCount @(draftCount == 1 ? "draft" : "drafts")</MudChip>
+                                    }
+                                    @if (archivedCount > 0)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Default">@archivedCount archived</MudChip>
+                                    }
+                                    @if (!isConfigPublished)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Warning">Config draft</MudChip>
+                                    }
+                                </div>
+                            </TitleContent>
+                            <ChildContent>
+                                <div class="d-flex justify-end mb-3 mt-1">
+                                    <MudButton Variant="Variant.Filled"
                                                Color="Color.Primary"
-                                               OnClick="@(() => EditParameter(context.Item))"
-                                               title="Edit" />
-                            }
-                            @if (!context.Item.IsActive)
-                            {
-                                <MudIconButton Icon="@Icons.Material.Filled.CheckCircle"
                                                Size="Size.Small"
-                                               Color="Color.Success"
-                                               OnClick="@(() => ActivateParameter(context.Item))"
-                                               title="@(context.Item.IsDraft ? "Activate" : "Rollback to this version")" />
-                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                               Size="Size.Small"
-                                               Color="Color.Error"
-                                               OnClick="@(() => DeleteParameter(context.Item))"
-                                               title="Delete" />
-                            }
-                        </CellTemplate>
-                    </TemplateColumn>
-                </Columns>
-                <NoRecordsContent>
-                    <MudText Typo="Typo.body2" Class="pa-4">
-                        @if (isLoading)
-                        {
-                            <text>Loading versions...</text>
-                        }
-                        else
-                        {
-                            <text>No parameter versions found. Create one to get started.</text>
-                        }
-                    </MudText>
-                </NoRecordsContent>
-            </MudDataGrid>
+                                               StartIcon="@Icons.Material.Filled.Add"
+                                               OnClick="@(() => ShowCreateVersionDialogForMajor(major, majorVersions))">
+                                        New Version
+                                    </MudButton>
+                                </div>
+                                @if (majorVersions.Any())
+                                {
+                                    <MudTable Items="@majorVersions" Dense="true" Hover="true" Elevation="0">
+                                        <HeaderContent>
+                                            <MudTh>Version</MudTh>
+                                            <MudTh>Status</MudTh>
+                                            <MudTh>Checksum</MudTh>
+                                            <MudTh>Created</MudTh>
+                                            <MudTh Style="width:160px; text-align:right">Actions</MudTh>
+                                        </HeaderContent>
+                                        <RowTemplate>
+                                            <MudTd DataLabel="Version">@context.Version</MudTd>
+                                            <MudTd DataLabel="Status">
+                                                @if (context.IsActive)
+                                                {
+                                                    <MudChip T="string" Size="Size.Small" Color="Color.Success">Published</MudChip>
+                                                }
+                                                else if (context.IsDraft)
+                                                {
+                                                    <MudChip T="string" Size="Size.Small" Color="Color.Info">Draft</MudChip>
+                                                }
+                                                else
+                                                {
+                                                    <MudChip T="string" Size="Size.Small" Color="Color.Default">Archived</MudChip>
+                                                }
+                                            </MudTd>
+                                            <MudTd DataLabel="Checksum">@context.Checksum.Substring(0, 8)</MudTd>
+                                            <MudTd DataLabel="Created">@context.CreatedAt.LocalDateTime.ToString("g")</MudTd>
+                                            <MudTd DataLabel="Actions" Style="width:160px; text-align:right">
+                                                <div style="display:flex; justify-content:flex-end; align-items:center;">
+                                                    <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                                                                   Size="Size.Small"
+                                                                   OnClick="@(() => ViewParameter(context))"
+                                                                   title="View" />
+                                                    @if (context.IsDraft)
+                                                    {
+                                                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                                       Size="Size.Small"
+                                                                       Color="Color.Primary"
+                                                                       OnClick="@(() => EditParameter(context))"
+                                                                       title="Edit" />
+                                                        <MudIconButton Icon="@Icons.Material.Filled.CheckCircle"
+                                                                       Size="Size.Small"
+                                                                       Color="Color.Success"
+                                                                       Disabled="@(!isConfigPublished)"
+                                                                       OnClick="@(() => ActivateParameter(context))"
+                                                                       title="@(!isConfigPublished ? $"Cannot publish: configuration v{major}.x has no published version" : "Publish")" />
+                                                    }
+                                                    @if (!context.IsActive)
+                                                    {
+                                                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                                       Size="Size.Small"
+                                                                       Color="Color.Error"
+                                                                       OnClick="@(() => DeleteParameter(context))"
+                                                                       title="Delete" />
+                                                    }
+                                                </div>
+                                            </MudTd>
+                                        </RowTemplate>
+                                    </MudTable>
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.body2" Class="pa-2 mb-2">No parameter versions yet for this scope. Click "New Version" to create one.</MudText>
+                                }
+                            </ChildContent>
+                        </MudExpansionPanel>
+                    }
+                </MudExpansionPanels>
+            }
         }
         else
         {
@@ -120,10 +173,13 @@
     private Guid? selectedScopeTypeId;
     private string? selectedScopeValue;
     private List<ParameterFileDto> versions = [];
+    private List<int> availableConfigMajors = [];
+    private HashSet<int> publishedConfigMajors = [];
     private bool isLoading;
 
     private async Task OnSelectionChanged()
     {
+        await LoadConfigMajors();
         await LoadVersions();
     }
 
@@ -148,6 +204,28 @@
         {
             isLoading = false;
         }
+    }
+
+    private async Task LoadConfigMajors()
+    {
+        if (!selectedConfigurationId.HasValue)
+        {
+            availableConfigMajors = [];
+            publishedConfigMajors = [];
+            return;
+        }
+
+        availableConfigMajors = await ParameterApiClient.GetAvailableMajorVersionsAsync(selectedConfigurationId.Value);
+
+        var publishedVersionStrings = await Db.ConfigurationVersions
+            .Where(cv => cv.ConfigurationId == selectedConfigurationId.Value && !cv.IsDraft && !cv.IsArchived)
+            .Select(cv => cv.Version)
+            .ToListAsync();
+
+        publishedConfigMajors = publishedVersionStrings
+            .Where(v => SemanticVersion.TryParse(v, out _))
+            .Select(v => SemanticVersion.Parse(v).Major)
+            .ToHashSet();
     }
 
     private async Task ViewParameter(ParameterFileDto parameter)
@@ -211,11 +289,10 @@
 
     private async Task ActivateParameter(ParameterFileDto parameter)
     {
-        var actionText = parameter.IsDraft ? "Activate" : "rollback to";
         var confirm = await DialogService.ShowMessageBox(
-            "Confirm Activation",
-            $"{(parameter.IsDraft ? "Activate" : "Rollback to")} parameter version {parameter.Version}? This will deactivate the current active version.",
-            yesText: parameter.IsDraft ? "Activate" : "Rollback",
+            "Confirm Publish",
+            $"Publish parameter version {parameter.Version}? This will archive the current published version.",
+            yesText: "Publish",
             cancelText: "Cancel");
 
         if (confirm != true)
@@ -231,12 +308,12 @@
 
         if (success)
         {
-            Snackbar.Add($"Parameter version {parameter.Version} {(parameter.IsDraft ? "activated" : "restored")}", Severity.Success);
+            Snackbar.Add($"Parameter version {parameter.Version} published", Severity.Success);
             await LoadVersions();
         }
         else
         {
-            Snackbar.Add($"Failed to activate: {errorMessage}", Severity.Error);
+            Snackbar.Add($"Failed to publish: {errorMessage}", Severity.Error);
         }
     }
 
@@ -270,67 +347,52 @@
         }
     }
 
-    private async Task ShowCreateVersionDialog()
+    private async Task ShowCreateVersionDialogForMajor(int major, List<ParameterFileDto> majorVersions)
     {
         if (!selectedConfigurationId.HasValue || !selectedScopeTypeId.HasValue)
             return;
 
-        // Find the most recent version to use as template
-        var sourceVersion = versions.OrderByDescending(v => v.CreatedAt).FirstOrDefault();
-        if (sourceVersion == null)
+        string? content = null;
+        var latestVersion = majorVersions
+            .Where(v => SemanticVersion.TryParse(v.Version, out _))
+            .Select(v => (dto: v, semver: SemanticVersion.Parse(v.Version)))
+            .OrderByDescending(x => x.semver)
+            .Select(x => x.dto)
+            .FirstOrDefault();
+
+        if (latestVersion != null)
         {
-            Snackbar.Add("No existing versions to copy from", Severity.Warning);
-            return;
+            content = await ParameterApiClient.GetParameterContentAsync(latestVersion.Id);
+            if (string.IsNullOrEmpty(content))
+            {
+                Snackbar.Add("Failed to load parameter content for copying", Severity.Error);
+                return;
+            }
         }
 
-        // Show simple prompt for new version number
-        var newVersion = await DialogService.ShowMessageBox(
-            "Create New Version",
-            new MarkupString($"Create a new draft version based on <b>v{sourceVersion.Version}</b>"),
-            yesText: "Create",
-            cancelText: "Cancel");
-
-        if (newVersion != true)
-            return;
-
-        // Auto-increment version
-        var incrementedVersion = IncrementVersion(sourceVersion.Version);
-
-        // Copy the source version content
-        var content = await ParameterApiClient.GetParameterContentAsync(sourceVersion.Id);
-        if (string.IsNullOrEmpty(content))
+        var dialogParameters = new DialogParameters<CreateParameterDialog>
         {
-            Snackbar.Add("Failed to load source version content", Severity.Error);
-            return;
-        }
+            { x => x.InitialConfigurationId, selectedConfigurationId.Value },
+            { x => x.InitialScopeTypeId, selectedScopeTypeId.Value },
+            { x => x.InitialScopeValue, selectedScopeValue },
+            { x => x.LockScope, true },
+            { x => x.InitialMajorVersion, major },
+            { x => x.InitialContent, content }
+        };
 
-        // Create new version as draft
-        var (success, errorMessage) = await ParameterApiClient.CreateOrUpdateParameterAsync(
-            selectedScopeTypeId.Value,
-            selectedConfigurationId.Value,
-            selectedScopeValue,
-            incrementedVersion,
-            content,
-            true); // isDraft
-
-        if (success)
+        var options = new DialogOptions
         {
-            Snackbar.Add($"Version {incrementedVersion} created successfully", Severity.Success);
+            MaxWidth = MaxWidth.ExtraLarge,
+            FullWidth = true
+        };
+
+        var title = content != null ? "Create New Version from Existing" : "Create New Version";
+        var dialog = await DialogService.ShowAsync<CreateParameterDialog>(title, dialogParameters, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
             await LoadVersions();
         }
-        else
-        {
-            Snackbar.Add($"Failed to create version: {errorMessage}", Severity.Error);
-        }
-    }
-
-    private static string IncrementVersion(string version)
-    {
-        if (!NuGet.Versioning.SemanticVersion.TryParse(version, out var semVer))
-        {
-            return "1.0.1";
-        }
-
-        return new NuGet.Versioning.SemanticVersion(semVer.Major, semVer.Minor, semVer.Patch + 1).ToString();
     }
 }

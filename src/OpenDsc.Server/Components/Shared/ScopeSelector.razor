@@ -9,7 +9,7 @@
     <MudItem xs="12" sm="4">
         <MudSelect T="Guid?" Value="@selectedConfigurationId" ValueChanged="@OnConfigurationChanged"
                    Label="Configuration" Variant="Variant.Outlined"
-                   Clearable="true">
+                   Clearable="true" Disabled="@Locked">
             @foreach (var config in configurations)
             {
                 <MudSelectItem Value="@((Guid?)config.Id)">@config.Name</MudSelectItem>
@@ -19,7 +19,7 @@
     <MudItem xs="12" sm="4">
         <MudSelect T="Guid?" Value="@selectedScopeTypeId" ValueChanged="@OnScopeTypeChanged"
                    Label="Scope Type" Variant="Variant.Outlined"
-                   Clearable="true" Disabled="@(!selectedConfigurationId.HasValue)">
+                   Clearable="true" Disabled="@(Locked || !selectedConfigurationId.HasValue)">
             @foreach (var scopeType in scopeTypes)
             {
                 <MudSelectItem Value="@((Guid?)scopeType.Id)">@scopeType.Name</MudSelectItem>
@@ -36,7 +36,7 @@
         @if (isNodeScope)
         {
             <MudSelect T="string" @bind-Value="selectedScopeValue" Label="Node" Variant="Variant.Outlined"
-                       Clearable="true" Disabled="@(!selectedScopeTypeId.HasValue || isDefaultScope)"
+                       Clearable="true" Disabled="@(Locked || !selectedScopeTypeId.HasValue || isDefaultScope)"
                        HelperText="Select a registered node">
                 @foreach (var node in nodes)
                 {
@@ -47,7 +47,7 @@
         else if (isRestricted)
         {
             <MudSelect T="string" @bind-Value="selectedScopeValue" Label="Scope Value" Variant="Variant.Outlined"
-                       Clearable="true" Disabled="@(!selectedScopeTypeId.HasValue || isDefaultScope)">
+                       Clearable="true" Disabled="@(Locked || !selectedScopeTypeId.HasValue || isDefaultScope)">
                 @foreach (var scopeValue in scopeValues)
                 {
                     <MudSelectItem Value="@scopeValue.Value">@scopeValue.Value</MudSelectItem>
@@ -57,7 +57,7 @@
         else
         {
             <MudTextField @bind-Value="selectedScopeValue" Label="Scope Value" Variant="Variant.Outlined"
-                          Disabled="@(!selectedScopeTypeId.HasValue || isDefaultScope)"
+                          Disabled="@(Locked || !selectedScopeTypeId.HasValue || isDefaultScope)"
                           HelperText="@(isDefaultScope ? "Not applicable for Default scope" : "Enter a value for this scope")" />
         }
     </MudItem>
@@ -108,6 +108,9 @@
 
     [Parameter]
     public EventCallback<string?> SelectedScopeValueChanged { get; set; }
+
+    [Parameter]
+    public bool Locked { get; set; }
 #pragma warning restore BL0007
 
     private Guid? selectedConfigurationId;

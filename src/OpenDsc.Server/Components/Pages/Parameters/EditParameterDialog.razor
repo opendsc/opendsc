@@ -15,20 +15,8 @@
 <MudDialog>
     <DialogContent>
         <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
-            Editing parameter version @ParameterVersion (creates new version)
+            Editing draft version @ParameterVersion
         </MudText>
-
-        <MudTextField @bind-Value="newVersion"
-                      Label="New Version"
-                      Variant="Variant.Outlined"
-                      Required="true"
-                      HelperText="Semantic version for the updated parameter"
-                      Class="mb-3" />
-
-        <MudSwitch @bind-Value="isDraft"
-                   Label="Save as Draft"
-                   Color="Color.Primary"
-                   Class="mb-3" />
 
         <MudText Typo="Typo.subtitle2" Class="mb-2">Parameter Content (YAML)</MudText>
         @if (isLoading)
@@ -51,7 +39,7 @@
         <MudButton Color="Color.Primary"
                    Variant="Variant.Filled"
                    OnClick="SaveParameter"
-                   Disabled="@(isLoading || string.IsNullOrWhiteSpace(newVersion) || isSaving)">
+                   Disabled="@(isLoading || isSaving)">
             @if (isSaving)
             {
                 <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
@@ -82,14 +70,11 @@
 
     private StandaloneCodeEditor? _editor;
     private string? initialContent;
-    private string newVersion = string.Empty;
-    private bool isDraft = true;
     private bool isLoading = true;
     private bool isSaving;
 
     protected override async Task OnInitializedAsync()
     {
-        newVersion = IncrementVersion(ParameterVersion);
         await LoadParameterContent();
     }
 
@@ -132,25 +117,9 @@
         };
     }
 
-    private string IncrementVersion(string version)
-    {
-        if (string.IsNullOrWhiteSpace(version))
-        {
-            return "1.0.1";
-        }
-
-        var parts = version.Split('.');
-        if (parts.Length >= 3 && int.TryParse(parts[2], out var patch))
-        {
-            return $"{parts[0]}.{parts[1]}.{patch + 1}";
-        }
-
-        return version + ".1";
-    }
-
     private async Task SaveParameter()
     {
-        if (_editor == null || string.IsNullOrWhiteSpace(newVersion))
+        if (_editor == null)
         {
             return;
         }
@@ -167,17 +136,11 @@
                 return;
             }
 
-            var (success, errorMessage) = await ParameterApiClient.CreateOrUpdateParameterAsync(
-                ScopeTypeId,
-                ConfigurationId,
-                ScopeValue,
-                newVersion,
-                content,
-                isDraft);
+            var (success, errorMessage) = await ParameterApiClient.UpdateParameterDraftAsync(ParameterId, content);
 
             if (success)
             {
-                Snackbar.Add($"Parameter saved as version {newVersion}", Severity.Success);
+                Snackbar.Add($"Draft parameter saved", Severity.Success);
                 MudDialog.Close(DialogResult.Ok(true));
             }
             else

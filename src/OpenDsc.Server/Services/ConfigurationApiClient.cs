@@ -28,6 +28,7 @@ public interface IConfigurationApiClient
     Task<bool> DeleteFileAsync(string name, string version, string filePath);
     Task<bool> ChangeVersionEntryPointAsync(string name, string version, string entryPoint);
     Task<Stream?> DownloadFileAsync(string name, string version, string filePath);
+    Task<bool> SaveFileAsync(string name, string version, string filePath, string content);
 }
 
 public sealed class PublishResult
@@ -438,6 +439,46 @@ public sealed class ConfigurationApiClient : IConfigurationApiClient
             configuration.UpdatedAt = DateTimeOffset.UtcNow;
             await _db.SaveChangesAsync();
 
+            // Extract and generate parameter schema from copied entry point file
+            var entryPointPath = Path.Combine(newVersionDir, configVersion.EntryPoint);
+            if (File.Exists(entryPointPath))
+            {
+                var entryPointContent = await File.ReadAllTextAsync(entryPointPath);
+                var parametersBlock = ExtractParametersFromYaml(entryPointContent);
+
+                if (parametersBlock != null && parametersBlock.Count > 0)
+                {
+                    var paramDefinitions = ConvertToParameterDefinitions(parametersBlock);
+                    var jsonSchemaObj = _schemaBuilder.BuildJsonSchema(paramDefinitions);
+                    var jsonSchema = _schemaBuilder.SerializeSchema(jsonSchemaObj);
+
+                    var existingSchema = await _db.ParameterSchemas
+                        .FirstOrDefaultAsync(ps => ps.ConfigurationId == configuration.Id && ps.SchemaVersion == newVersion);
+
+                    if (existingSchema == null)
+                    {
+                        var paramSchema = new ParameterSchema
+                        {
+                            Id = Guid.NewGuid(),
+                            ConfigurationId = configuration.Id,
+                            SchemaVersion = newVersion,
+                            GeneratedJsonSchema = jsonSchema,
+                            CreatedAt = DateTimeOffset.UtcNow,
+                            UpdatedAt = DateTimeOffset.UtcNow
+                        };
+                        _db.ParameterSchemas.Add(paramSchema);
+                        configVersion.ParameterSchemaId = paramSchema.Id;
+                    }
+                    else
+                    {
+                        configVersion.ParameterSchemaId = existingSchema.Id;
+                        existingSchema.UpdatedAt = DateTimeOffset.UtcNow;
+                    }
+
+                    await _db.SaveChangesAsync();
+                }
+            }
+
             return true;
         }
         catch (Exception ex)
@@ -846,6 +887,77 @@ public sealed class ConfigurationApiClient : IConfigurationApiClient
         {
             _logger.LogError(ex, "Error downloading file '{FilePath}' from configuration '{Name}' version '{Version}'", filePath, name, version);
             return null;
+        }
+    }
+
+    public async Task<bool> SaveFileAsync(string name, string version, string filePath, string content)
+    {
+        try
+        {
+            var dataDir = _config["DataDirectory"] ?? "data";
+            var versionDir = Path.Combine(dataDir, "configurations", name, $"v{version}");
+            var fullPath = Path.Combine(versionDir, filePath);
+
+            await File.WriteAllTextAsync(fullPath, content);
+
+            var configVersion = await _db.ConfigurationVersions
+                .Include(v => v.Files)
+                .Include(v => v.Configuration)
+                .FirstOrDefaultAsync(v => v.Configuration.Name == name && v.Version == version);
+
+            if (configVersion != null)
+            {
+                var configFile = configVersion.Files.FirstOrDefault(f => f.RelativePath == filePath);
+                if (configFile != null)
+                {
+                    configFile.Checksum = await ComputeFileChecksumAsync(fullPath);
+                    await _db.SaveChangesAsync();
+                }
+
+                if (configVersion.EntryPoint == filePath)
+                {
+                    var parametersBlock = ExtractParametersFromYaml(content);
+                    if (parametersBlock != null && parametersBlock.Count > 0)
+                    {
+                        var paramDefinitions = ConvertToParameterDefinitions(parametersBlock);
+                        var jsonSchemaObj = _schemaBuilder.BuildJsonSchema(paramDefinitions);
+                        var jsonSchema = _schemaBuilder.SerializeSchema(jsonSchemaObj);
+
+                        var existingSchema = await _db.ParameterSchemas
+                            .FirstOrDefaultAsync(ps => ps.ConfigurationId == configVersion.ConfigurationId && ps.SchemaVersion == version);
+
+                        if (existingSchema == null)
+                        {
+                            var paramSchema = new ParameterSchema
+                            {
+                                Id = Guid.NewGuid(),
+                                ConfigurationId = configVersion.ConfigurationId,
+                                SchemaVersion = version,
+                                GeneratedJsonSchema = jsonSchema,
+                                CreatedAt = DateTimeOffset.UtcNow,
+                                UpdatedAt = DateTimeOffset.UtcNow
+                            };
+                            _db.ParameterSchemas.Add(paramSchema);
+                            configVersion.ParameterSchemaId = paramSchema.Id;
+                        }
+                        else
+                        {
+                            existingSchema.GeneratedJsonSchema = jsonSchema;
+                            existingSchema.UpdatedAt = DateTimeOffset.UtcNow;
+                            configVersion.ParameterSchemaId = existingSchema.Id;
+                        }
+
+                        await _db.SaveChangesAsync();
+                    }
+                }
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saving file '{FilePath}' in version '{Version}' for configuration '{Name}'", filePath, version, name);
+            return false;
         }
     }
 

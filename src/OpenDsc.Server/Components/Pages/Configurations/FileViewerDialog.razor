@@ -16,6 +16,7 @@
 @inject ServerDbContext Db
 @inject IJSRuntime JSRuntime
 @inject IParameterApiClient ParameterApiClient
+@inject IConfigurationApiClient ConfigApiClient
 
 <MudDialog>
     <DialogContent>
@@ -426,7 +427,7 @@
 
     private async Task SaveFile()
     {
-        if (_editor == null && currentMode == ViewMode.View)
+        if (_editor == null)
         {
             Snackbar.Add("Editor not initialized", Severity.Error);
             return;
@@ -442,14 +443,17 @@
         {
             var content = await _editor!.GetValue();
 
-            var dataDir = Config["DataDirectory"] ?? "data";
-            var versionDir = Path.Combine(dataDir, "configurations", ConfigurationName, $"v{Version}");
-            var fullPath = Path.Combine(versionDir, FilePath);
+            var success = await ConfigApiClient.SaveFileAsync(ConfigurationName, Version, FilePath, content ?? "");
 
-            await File.WriteAllTextAsync(fullPath, content ?? "");
-
-            Snackbar.Add("File saved successfully", Severity.Success);
-            MudDialog.Close(DialogResult.Ok(true));
+            if (success)
+            {
+                Snackbar.Add("File saved successfully", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+            {
+                Snackbar.Add("Error saving file", Severity.Error);
+            }
         }
         catch (Exception ex)
         {
@@ -479,11 +483,13 @@
                         pf.ParameterSchemaId == parameterSchema.Id &&
                         pf.ScopeTypeId == ParameterScopeTypeId.Value &&
                         pf.ScopeValue == ParameterScopeValue)
-                    .OrderByDescending(pf => pf.CreatedAt)
-                    .Select(pf => pf.Version)
+                    .Select(pf => new { pf.Version, pf.CreatedAt })
                     .ToListAsync();
 
-                availableVersions = versions;
+                availableVersions = versions
+                    .OrderByDescending(pf => pf.CreatedAt)
+                    .Select(pf => pf.Version)
+                    .ToList();
 
                 // Set default compare version to most recent version other than current
                 if (availableVersions.Count > 1)

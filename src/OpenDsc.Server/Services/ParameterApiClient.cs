@@ -7,6 +7,8 @@ using System.Text;
 
 using Microsoft.EntityFrameworkCore;
 
+using NuGet.Versioning;
+
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Endpoints;
 using OpenDsc.Server.Entities;
@@ -42,7 +44,11 @@ public interface IParameterApiClient
 
     Task<ParameterProvenanceDto?> GetNodeParameterProvenanceAsync(Guid nodeId, Guid configurationId);
 
+    Task<(bool Success, string? ErrorMessage)> UpdateParameterDraftAsync(Guid parameterId, string content);
+
     Task<string?> GetParameterContentAsync(Guid parameterId);
+
+    Task<List<int>> GetAvailableMajorVersionsAsync(Guid configurationId);
 }
 
 public sealed class ParameterApiClient : IParameterApiClient
@@ -111,57 +117,47 @@ public sealed class ParameterApiClient : IParameterApiClient
                 }
             }
 
+            if (!SemanticVersion.TryParse(version, out var semVer))
+            {
+                return (false, $"Version '{version}' is not a valid semantic version");
+            }
+
+            int majorVersion = semVer.Major;
+
             var userId = _userContext.GetCurrentUserId();
             if (!userId.HasValue)
             {
                 return (false, "User not authenticated");
             }
 
-            var parameterSchema = await _db.ParameterSchemas
-                .FirstOrDefaultAsync(ps => ps.ConfigurationId == configurationId);
+            var allSchemas = await _db.ParameterSchemas
+                .Where(ps => ps.ConfigurationId == configurationId)
+                .ToListAsync();
 
-            if (parameterSchema != null)
+            var parameterSchema = allSchemas.FirstOrDefault(ps =>
+                !string.IsNullOrEmpty(ps.SchemaVersion) &&
+                SemanticVersion.TryParse(ps.SchemaVersion, out var sv) &&
+                sv.Major == majorVersion);
+
+            if (parameterSchema == null)
             {
-                if (!await _authService.CanModifyParameterAsync(userId.Value, parameterSchema.Id))
-                {
-                    return (false, "Access denied");
-                }
-
-                // Validate against schema if available
-                if (!string.IsNullOrWhiteSpace(parameterSchema.GeneratedJsonSchema))
-                {
-                    var validationResult = _validator.Validate(parameterSchema.GeneratedJsonSchema, content);
-                    if (!validationResult.IsValid)
-                    {
-                        var errorMessages = string.Join("; ", validationResult.Errors?.Select(e => $"{e.Path}: {e.Message}") ?? []);
-                        return (false, $"Parameter validation failed: {errorMessages}");
-                    }
-                }
+                return (false, $"No parameter schema exists for major version {majorVersion}. " +
+                               $"Please create a configuration version {majorVersion}.0.0 with a parameter schema first.");
             }
-            else
+
+            if (!await _authService.CanModifyParameterAsync(userId.Value, parameterSchema.Id))
             {
-                if (!await _authService.CanModifyConfigurationAsync(userId.Value, configurationId))
+                return (false, "Access denied");
+            }
+
+            if (!string.IsNullOrWhiteSpace(parameterSchema.GeneratedJsonSchema))
+            {
+                var validationResult = _validator.Validate(parameterSchema.GeneratedJsonSchema, content);
+                if (!validationResult.IsValid)
                 {
-                    return (false, "Access denied");
+                    var errorMessages = string.Join("; ", validationResult.Errors?.Select(e => $"{e.Path}: {e.Message}") ?? []);
+                    return (false, $"Parameter validation failed: {errorMessages}");
                 }
-
-                parameterSchema = new ParameterSchema
-                {
-                    Id = Guid.NewGuid(),
-                    ConfigurationId = configurationId,
-                    CreatedAt = DateTimeOffset.UtcNow,
-                    UpdatedAt = DateTimeOffset.UtcNow
-                };
-
-                _db.ParameterSchemas.Add(parameterSchema);
-                await _db.SaveChangesAsync();
-
-                await _authService.GrantParameterPermissionAsync(
-                    parameterSchema.Id,
-                    userId.Value,
-                    PrincipalType.User,
-                    ResourcePermission.Manage,
-                    userId.Value);
             }
 
             var dataDir = _config["DataDirectory"] ?? "data";
@@ -206,6 +202,7 @@ public sealed class ParameterApiClient : IParameterApiClient
                     ParameterSchemaId = parameterSchema.Id,
                     ScopeValue = scopeValue,
                     Version = version,
+                    MajorVersion = majorVersion,
                     ContentType = "application/x-yaml",
                     Checksum = checksum,
                     IsActive = false,
@@ -232,16 +229,8 @@ public sealed class ParameterApiClient : IParameterApiClient
         Guid configurationId,
         string? scopeValue)
     {
-        var parameterSchema = await _db.ParameterSchemas
-            .FirstOrDefaultAsync(ps => ps.ConfigurationId == configurationId);
-
-        if (parameterSchema == null)
-        {
-            return [];
-        }
-
         var files = await _db.ParameterFiles
-            .Where(pf => pf.ParameterSchemaId == parameterSchema.Id &&
+            .Where(pf => pf.ParameterSchema!.ConfigurationId == configurationId &&
                          pf.ScopeTypeId == scopeTypeId &&
                          pf.ScopeValue == scopeValue)
             .Select(pf => new ParameterFileDto
@@ -254,6 +243,8 @@ public sealed class ParameterApiClient : IParameterApiClient
                 Checksum = pf.Checksum,
                 IsActive = pf.IsActive,
                 IsDraft = pf.IsDraft,
+                IsArchived = pf.IsArchived,
+                MajorVersion = pf.MajorVersion,
                 CreatedAt = pf.CreatedAt
             })
             .ToListAsync();
@@ -275,22 +266,10 @@ public sealed class ParameterApiClient : IParameterApiClient
                 return (false, "User not authenticated");
             }
 
-            var parameterSchema = await _db.ParameterSchemas
-                .FirstOrDefaultAsync(ps => ps.ConfigurationId == configurationId);
-
-            if (parameterSchema == null)
-            {
-                return (false, "Parameter schema not found");
-            }
-
-            if (!await _authService.CanModifyParameterAsync(userId.Value, parameterSchema.Id))
-            {
-                return (false, "Access denied");
-            }
-
             var parameterFile = await _db.ParameterFiles
+                .Include(pf => pf.ParameterSchema)
                 .FirstOrDefaultAsync(pf =>
-                    pf.ParameterSchemaId == parameterSchema.Id &&
+                    pf.ParameterSchema!.ConfigurationId == configurationId &&
                     pf.ScopeTypeId == scopeTypeId &&
                     pf.ScopeValue == scopeValue &&
                     pf.Version == version);
@@ -300,17 +279,24 @@ public sealed class ParameterApiClient : IParameterApiClient
                 return (false, "Parameter version not found");
             }
 
+            if (!await _authService.CanModifyParameterAsync(userId.Value, parameterFile.ParameterSchemaId))
+            {
+                return (false, "Access denied");
+            }
+
             var activeFiles = await _db.ParameterFiles
                 .Where(pf =>
-                    pf.ParameterSchemaId == parameterSchema.Id &&
+                    pf.ParameterSchema!.ConfigurationId == configurationId &&
                     pf.ScopeTypeId == scopeTypeId &&
                     pf.ScopeValue == scopeValue &&
+                    pf.MajorVersion == parameterFile.MajorVersion &&
                     pf.IsActive)
                 .ToListAsync();
 
             foreach (var file in activeFiles)
             {
                 file.IsActive = false;
+                file.IsArchived = true;
             }
 
             parameterFile.IsActive = true;
@@ -341,22 +327,10 @@ public sealed class ParameterApiClient : IParameterApiClient
                 return (false, "User not authenticated");
             }
 
-            var parameterSchema = await _db.ParameterSchemas
-                .FirstOrDefaultAsync(ps => ps.ConfigurationId == configurationId);
-
-            if (parameterSchema == null)
-            {
-                return (false, "Parameter schema not found");
-            }
-
-            if (!await _authService.CanManageParameterAsync(userId.Value, parameterSchema.Id))
-            {
-                return (false, "Access denied");
-            }
-
             var parameterFile = await _db.ParameterFiles
+                .Include(pf => pf.ParameterSchema)
                 .FirstOrDefaultAsync(pf =>
-                    pf.ParameterSchemaId == parameterSchema.Id &&
+                    pf.ParameterSchema!.ConfigurationId == configurationId &&
                     pf.ScopeTypeId == scopeTypeId &&
                     pf.ScopeValue == scopeValue &&
                     pf.Version == version);
@@ -364,6 +338,11 @@ public sealed class ParameterApiClient : IParameterApiClient
             if (parameterFile == null)
             {
                 return (false, "Parameter version not found");
+            }
+
+            if (!await _authService.CanManageParameterAsync(userId.Value, parameterFile.ParameterSchemaId))
+            {
+                return (false, "Access denied");
             }
 
             if (parameterFile.IsActive)
@@ -416,6 +395,64 @@ public sealed class ParameterApiClient : IParameterApiClient
         }
     }
 
+    public async Task<(bool Success, string? ErrorMessage)> UpdateParameterDraftAsync(Guid parameterId, string content)
+    {
+        try
+        {
+            var userId = _userContext.GetCurrentUserId();
+            if (!userId.HasValue)
+            {
+                return (false, "User not authenticated");
+            }
+
+            var parameterFile = await _db.ParameterFiles
+                .Include(pf => pf.ParameterSchema)
+                    .ThenInclude(ps => ps.Configuration)
+                .Include(pf => pf.ScopeType)
+                .FirstOrDefaultAsync(pf => pf.Id == parameterId);
+
+            if (parameterFile == null)
+            {
+                return (false, "Parameter version not found");
+            }
+
+            if (!parameterFile.IsDraft)
+            {
+                return (false, "Only draft versions can be edited in place.");
+            }
+
+            if (!await _authService.CanModifyParameterAsync(userId.Value, parameterFile.ParameterSchemaId))
+            {
+                return (false, "Access denied");
+            }
+
+            var dataDir = _config["DataDirectory"] ?? "data";
+            var filePath = !string.IsNullOrWhiteSpace(parameterFile.ScopeValue)
+                ? Path.Combine(dataDir, "parameters", parameterFile.ParameterSchema.Configuration.Name,
+                    parameterFile.ScopeType.Name, parameterFile.ScopeValue, $"v{parameterFile.Version}", "parameters.yaml")
+                : Path.Combine(dataDir, "parameters", parameterFile.ParameterSchema.Configuration.Name,
+                    parameterFile.ScopeType.Name, $"v{parameterFile.Version}", "parameters.yaml");
+
+            var fileDir = Path.GetDirectoryName(filePath);
+            if (!string.IsNullOrEmpty(fileDir) && !Directory.Exists(fileDir))
+            {
+                Directory.CreateDirectory(fileDir);
+            }
+
+            await File.WriteAllTextAsync(filePath, content);
+
+            parameterFile.Checksum = ComputeChecksum(content);
+            await _db.SaveChangesAsync();
+
+            return (true, null);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating draft parameter {ParameterId}", parameterId);
+            return (false, ex.Message);
+        }
+    }
+
     public async Task<string?> GetParameterContentAsync(Guid parameterId)
     {
         try
@@ -450,6 +487,21 @@ public sealed class ParameterApiClient : IParameterApiClient
             _logger.LogError(ex, "Error reading parameter content for {ParameterId}", parameterId);
             return null;
         }
+    }
+
+    public async Task<List<int>> GetAvailableMajorVersionsAsync(Guid configurationId)
+    {
+        var schemaVersions = await _db.ParameterSchemas
+            .Where(ps => ps.ConfigurationId == configurationId && ps.SchemaVersion != null)
+            .Select(ps => ps.SchemaVersion!)
+            .ToListAsync();
+
+        return schemaVersions
+            .Where(v => SemanticVersion.TryParse(v, out _))
+            .Select(v => SemanticVersion.Parse(v).Major)
+            .Distinct()
+            .OrderBy(m => m)
+            .ToList();
     }
 
     private static string ComputeChecksum(string content)

@@ -2,6 +2,7 @@
 @attribute [Authorize(Policy = "configurations.read")]
 @using Microsoft.EntityFrameworkCore
 @using OpenDsc.Server.Services
+@using NuGet.Versioning
 @inject ServerDbContext Db
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
@@ -74,160 +75,198 @@
                 </MudCardHeader>
                 <MudCardContent>
                     @if (versions.Any())
-                    {
-                        @foreach (var version in versions)
+                {
+                    <MudExpansionPanels MultiExpansion="true" Class="mt-2">
+                        @foreach (var major in availableConfigMajors)
                         {
-                            <MudCard Class="mb-3">
-                                <MudCardHeader>
-                                    <CardHeaderContent>
-                                        <div class="d-flex align-center gap-2">
-                                            <MudText Typo="Typo.h6">@version.Version</MudText>
-                                            @if (version.IsDraft)
-                                            {
-                                                <MudChip T="string" Size="Size.Small" Color="Color.Info">Draft</MudChip>
-                                            }
-                                            else
-                                            {
-                                                <MudChip T="string" Size="Size.Small" Color="Color.Success">Published</MudChip>
-                                            }
-                                            @if (version.IsArchived)
-                                            {
-                                                <MudChip T="string" Size="Size.Small" Color="Color.Default">Archived</MudChip>
-                                            }
-                                            <MudChip T="string" Size="Size.Small">@version.Files.Count files</MudChip>
-                                        </div>
-                                        <MudText Typo="Typo.caption">Created: @version.CreatedAt.LocalDateTime.ToString("g")</MudText>
-                                    </CardHeaderContent>
-                                    <CardHeaderActions>
-                                        <MudIconButton Icon="@(selectedVersion == version ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
-                                                      Size="Size.Small"
-                                                      OnClick="@(() => ToggleVersionExpansion(version))" />
-                                        @if (version.IsDraft)
+                            var majorVersions = versions
+                                .Where(v => SemanticVersion.TryParse(v.Version, out _) && SemanticVersion.Parse(v.Version).Major == major)
+                                .ToList();
+                            var draftCount = majorVersions.Count(v => v.IsDraft);
+                            var archivedCount = majorVersions.Count(v => v.IsArchived);
+                            var publishedVersion = majorVersions.FirstOrDefault(v => !v.IsDraft && !v.IsArchived);
+
+                            <MudExpansionPanel Expanded="false">
+                                <TitleContent>
+                                    <div class="d-flex align-center gap-2">
+                                        <MudText>Version @(major)</MudText>
+                                        @if (publishedVersion != null)
                                         {
-                                            <MudTooltip Text="Change Entry Point">
-                                                <MudIconButton Icon="@Icons.Material.Filled.Flag"
-                                                              Size="Size.Small"
-                                                              Color="Color.Secondary"
-                                                              OnClick="@(() => OpenChangeEntryPointDialog(version))" />
-                                            </MudTooltip>
-                                            <MudMenu AnchorOrigin="Origin.BottomLeft" Dense="true">
-                                                <ActivatorContent>
-                                                    <MudTooltip Text="Add Files to Draft">
-                                                        <MudIconButton Icon="@Icons.Material.Filled.Add"
-                                                                      Size="Size.Small"
-                                                                      Color="Color.Primary" />
-                                                    </MudTooltip>
-                                                </ActivatorContent>
-                                                <ChildContent>
-                                                    <MudMenuItem OnClick="@(() => OpenAddFilesDialog(version))" Icon="@Icons.Material.Filled.Upload">
-                                                        Upload Files
-                                                    </MudMenuItem>
-                                                    <MudMenuItem OnClick="@(() => OpenCreateFileDialog(version))" Icon="@Icons.Material.Filled.NoteAdd">
-                                                        Create File
-                                                    </MudMenuItem>
-                                                </ChildContent>
-                                            </MudMenu>
-                                            <MudTooltip Text="Publish this draft version to make it immutable">
-                                                <MudIconButton Icon="@Icons.Material.Filled.Publish"
-                                                              Size="Size.Small"
-                                                              Color="Color.Success"
-                                                              OnClick="@(() => PublishVersion(version))" />
+                                            <MudTooltip Text="Latest published version">
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Success">
+                                                    Published @publishedVersion.Version
+                                                </MudChip>
                                             </MudTooltip>
                                         }
-                                        <MudTooltip Text="Delete Version">
-                                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                                          Size="Size.Small"
-                                                          Color="Color.Error"
-                                                          OnClick="@(() => DeleteVersion(version))" />
-                                        </MudTooltip>
-                                    </CardHeaderActions>
-                                </MudCardHeader>
-                                @if (selectedVersion == version)
-                                {
-                                    <MudCardContent>
-                                        <MudTable Items="@version.Files.OrderBy(f => f.RelativePath)" Dense="true" Hover="true">
-                                            <HeaderContent>
-                                                <MudTh>File Path</MudTh>
-                                                <MudTh>Actions</MudTh>
-                                            </HeaderContent>
-                                            <RowTemplate>
-                                                <MudTd>
-                                                    <div class="d-flex align-center gap-1">
-                                                        @if (string.Equals(context.RelativePath, version.EntryPoint, StringComparison.OrdinalIgnoreCase))
-                                                        {
-                                                            <MudTooltip Text="Entry point">
-                                                                <MudIcon Icon="@Icons.Material.Filled.Flag"
-                                                                         Size="Size.Small"
-                                                                         Color="Color.Secondary" />
-                                                            </MudTooltip>
-                                                        }
-                                                        <span>@context.RelativePath</span>
-                                                    </div>
-                                                </MudTd>
-                                                <MudTd>
-                                                    <MudTooltip Text="View File">
-                                                        <MudIconButton Icon="@Icons.Material.Filled.Visibility"
-                                                                      Size="Size.Small"
-                                                                      OnClick="@(() => OpenFileViewer(version, context, false))" />
-                                                    </MudTooltip>
+                                        else if (majorVersions.Any())
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Default">No Published</MudChip>
+                                        }
+                                        @if (majorVersions.Any())
+                                        {
+                                            <MudChip T="string" Size="Size.Small">@majorVersions.Count @(majorVersions.Count == 1 ? "version" : "versions")</MudChip>
+                                        }
+                                        @if (draftCount > 0)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Info">@draftCount @(draftCount == 1 ? "draft" : "drafts")</MudChip>
+                                        }
+                                        @if (archivedCount > 0)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Default">@archivedCount archived</MudChip>
+                                        }
+                                    </div>
+                                </TitleContent>
+                                <ChildContent>
+                                    @foreach (var version in majorVersions)
+                                    {
+                                        <MudExpansionPanel Expanded="false" Class="mb-3">
+                                            <TitleContent>
+                                                <div class="d-flex align-center gap-2">
+                                                    <MudText Typo="Typo.h6">@version.Version</MudText>
                                                     @if (version.IsDraft)
                                                     {
-                                                        <MudTooltip Text="Edit File">
-                                                            <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                        <MudChip T="string" Size="Size.Small" Color="Color.Info">Draft</MudChip>
+                                                    }
+                                                    else
+                                                    {
+                                                        <MudChip T="string" Size="Size.Small" Color="Color.Success">Published</MudChip>
+                                                    }
+                                                    @if (version.IsArchived)
+                                                    {
+                                                        <MudChip T="string" Size="Size.Small" Color="Color.Default">Archived</MudChip>
+                                                    }
+                                                    <MudChip T="string" Size="Size.Small">@version.Files.Count files</MudChip>
+                                                </div>
+                                                <MudText Typo="Typo.caption">Created: @version.CreatedAt.LocalDateTime.ToString("g")</MudText>
+                                            </TitleContent>
+                                            <ChildContent>
+                                                <div class="d-flex justify-end mb-2">
+                                                    @if (version.IsDraft)
+                                                    {
+                                                        <MudTooltip Text="Change Entry Point">
+                                                            <MudIconButton Icon="@Icons.Material.Filled.Flag"
                                                                           Size="Size.Small"
-                                                                          Color="Color.Primary"
-                                                                          OnClick="@(() => OpenFileViewer(version, context, true))" />
+                                                                          Color="Color.Secondary"
+                                                                          OnClick="@(() => OpenChangeEntryPointDialog(version))" />
+                                                        </MudTooltip>
+                                                        <MudMenu AnchorOrigin="Origin.BottomLeft" Dense="true">
+                                                            <ActivatorContent>
+                                                                <MudTooltip Text="Add Files to Draft">
+                                                                    <MudIconButton Icon="@Icons.Material.Filled.Add"
+                                                                                  Size="Size.Small"
+                                                                                  Color="Color.Primary" />
+                                                                </MudTooltip>
+                                                            </ActivatorContent>
+                                                            <ChildContent>
+                                                                <MudMenuItem OnClick="@(() => OpenAddFilesDialog(version))" Icon="@Icons.Material.Filled.Upload">
+                                                                    Upload Files
+                                                                </MudMenuItem>
+                                                                <MudMenuItem OnClick="@(() => OpenCreateFileDialog(version))" Icon="@Icons.Material.Filled.NoteAdd">
+                                                                    Create File
+                                                                </MudMenuItem>
+                                                            </ChildContent>
+                                                        </MudMenu>
+                                                        <MudTooltip Text="Publish this draft version to make it immutable">
+                                                            <MudIconButton Icon="@Icons.Material.Filled.Publish"
+                                                                          Size="Size.Small"
+                                                                          Color="Color.Success"
+                                                                          OnClick="@(() => PublishVersion(version))" />
                                                         </MudTooltip>
                                                     }
-                                                    <MudTooltip Text="Download">
-                                                        <MudIconButton Icon="@Icons.Material.Filled.Download"
+                                                    <MudTooltip Text="Delete Version">
+                                                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
                                                                       Size="Size.Small"
-                                                                      OnClick="@(() => DownloadSpecificFile(context, version))" />
+                                                                      Color="Color.Error"
+                                                                      OnClick="@(() => DeleteVersion(version))" />
                                                     </MudTooltip>
-                                                    @if (version.IsDraft)
-                                                    {
-                                                        @if (!string.Equals(context.RelativePath, version.EntryPoint, StringComparison.OrdinalIgnoreCase))
-                                                        {
-                                                            <MudTooltip Text="Set as Entry Point">
-                                                                <MudIconButton Icon="@Icons.Material.Filled.Flag"
+                                                </div>
+
+                                                <MudTable Items="@version.Files.OrderBy(f => f.RelativePath)" Dense="true" Hover="true">
+                                                    <HeaderContent>
+                                                        <MudTh>File Path</MudTh>
+                                                        <MudTh>Actions</MudTh>
+                                                    </HeaderContent>
+                                                    <RowTemplate>
+                                                        <MudTd>
+                                                            <div class="d-flex align-center gap-1">
+                                                                @if (string.Equals(context.RelativePath, version.EntryPoint, StringComparison.OrdinalIgnoreCase))
+                                                                {
+                                                                    <MudTooltip Text="Entry point">
+                                                                        <MudIcon Icon="@Icons.Material.Filled.Flag"
+                                                                                 Size="Size.Small"
+                                                                                 Color="Color.Secondary" />
+                                                                    </MudTooltip>
+                                                                }
+                                                                <span>@context.RelativePath</span>
+                                                            </div>
+                                                        </MudTd>
+                                                        <MudTd>
+                                                            <MudTooltip Text="View File">
+                                                                <MudIconButton Icon="@Icons.Material.Filled.Visibility"
                                                                               Size="Size.Small"
-                                                                              Color="Color.Secondary"
-                                                                              OnClick="@(() => SetEntryPoint(version, context))" />
+                                                                              OnClick="@(() => OpenFileViewer(version, context, false))" />
                                                             </MudTooltip>
-                                                        }
-                                                        @if (string.Equals(context.RelativePath, version.EntryPoint, StringComparison.OrdinalIgnoreCase))
-                                                        {
-                                                            <MudTooltip Text="Change the entry point before deleting this file">
-                                                                <span>
-                                                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                            @if (version.IsDraft)
+                                                            {
+                                                                <MudTooltip Text="Edit File">
+                                                                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
                                                                                   Size="Size.Small"
-                                                                                  Color="Color.Error"
-                                                                                  Disabled="true" />
-                                                                </span>
-                                                            </MudTooltip>
-                                                        }
-                                                        else
-                                                        {
-                                                            <MudTooltip Text="Delete File">
-                                                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                                                  Color="Color.Primary"
+                                                                                  OnClick="@(() => OpenFileViewer(version, context, true))" />
+                                                                </MudTooltip>
+                                                            }
+                                                            <MudTooltip Text="Download">
+                                                                <MudIconButton Icon="@Icons.Material.Filled.Download"
                                                                               Size="Size.Small"
-                                                                              Color="Color.Error"
-                                                                              OnClick="@(() => DeleteFile(version, context))" />
+                                                                              OnClick="@(() => DownloadSpecificFile(context, version))" />
                                                             </MudTooltip>
-                                                        }
-                                                    }
-                                                </MudTd>
-                                            </RowTemplate>
-                                        </MudTable>
-                                    </MudCardContent>
-                                }
-                            </MudCard>
+                                                            @if (version.IsDraft)
+                                                            {
+                                                                @if (!string.Equals(context.RelativePath, version.EntryPoint, StringComparison.OrdinalIgnoreCase))
+                                                                {
+                                                                    <MudTooltip Text="Set as Entry Point">
+                                                                        <MudIconButton Icon="@Icons.Material.Filled.Flag"
+                                                                                      Size="Size.Small"
+                                                                                      Color="Color.Secondary"
+                                                                                      OnClick="@(() => SetEntryPoint(version, context))" />
+                                                                    </MudTooltip>
+                                                                }
+                                                                @if (string.Equals(context.RelativePath, version.EntryPoint, StringComparison.OrdinalIgnoreCase))
+                                                                {
+                                                                    <MudTooltip Text="Change the entry point before deleting this file">
+                                                                        <span>
+                                                                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                                                          Size="Size.Small"
+                                                                                          Color="Color.Error"
+                                                                                          Disabled="true" />
+                                                                        </span>
+                                                                    </MudTooltip>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <MudTooltip Text="Delete File">
+                                                                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                                                      Size="Size.Small"
+                                                                                      Color="Color.Error"
+                                                                                      OnClick="@(() => DeleteFile(version, context))" />
+                                                                    </MudTooltip>
+                                                                }
+                                                            }
+                                                        </MudTd>
+                                                    </RowTemplate>
+                                                </MudTable>
+                                            </ChildContent>
+                                        </MudExpansionPanel>
+                                    }
+                                </ChildContent>
+                            </MudExpansionPanel>
                         }
-                    }
-                    else
-                    {
-                        <MudAlert Severity="Severity.Info">No versions found.</MudAlert>
-                    }
+                    </MudExpansionPanels>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Info">No versions found.</MudAlert>
+                }
                 </MudCardContent>
             </MudCard>
         </MudTabPanel>
@@ -248,8 +287,8 @@ else
 
     private Configuration? configuration;
     private List<ConfigurationVersion> versions = [];
-    private ConfigurationVersion? selectedVersion;
     private bool loading = true;
+    private List<int> availableConfigMajors = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -272,6 +311,8 @@ else
                 versions = configuration.Versions
                     .OrderByDescending(v => v.CreatedAt)
                     .ToList();
+
+                UpdateMajors();
             }
         }
         finally
@@ -280,17 +321,16 @@ else
         }
     }
 
-    private void ToggleVersionExpansion(ConfigurationVersion version)
+    private void UpdateMajors()
     {
-        if (selectedVersion == version)
-        {
-            selectedVersion = null;
-        }
-        else
-        {
-            selectedVersion = version;
-        }
+        availableConfigMajors = versions
+            .Where(v => SemanticVersion.TryParse(v.Version, out _))
+            .Select(v => SemanticVersion.Parse(v.Version).Major)
+            .Distinct()
+            .OrderByDescending(m => m)
+            .ToList();
     }
+
 
     private async Task OpenFileViewer(ConfigurationVersion version, ConfigurationFile file, bool editMode)
     {
@@ -555,11 +595,6 @@ else
             if (success)
             {
                 Snackbar.Add($"Version {version.Version} deleted successfully", Severity.Success);
-
-                if (selectedVersion == version)
-                {
-                    selectedVersion = null;
-                }
 
                 await LoadConfiguration();
             }
