@@ -281,6 +281,7 @@ else
     private async Task LoadScopeDataAsync()
     {
         availableScopeTypes = await Db.ScopeTypes
+            .Where(st => st.Name != "Node" && st.Name != "Default")
             .OrderByDescending(st => st.Precedence)
             .ToListAsync();
 
