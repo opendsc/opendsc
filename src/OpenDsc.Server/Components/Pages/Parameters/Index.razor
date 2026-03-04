@@ -4,6 +4,7 @@
 
 @using Microsoft.EntityFrameworkCore
 @using OpenDsc.Server.Services
+@using MudBlazor
 @using BlazorMonaco
 @using BlazorMonaco.Editor
 @inject ServerDbContext Db
@@ -38,43 +39,50 @@
                 }
                 else if (groupedSchemas.Any())
                 {
-                    @foreach (var group in groupedSchemas)
-                    {
-                        <MudCard Class="mb-3" Outlined="true">
-                            <MudCardHeader>
-                                <CardHeaderContent>
-                                    <MudText Typo="Typo.h6">@group.ConfigurationName</MudText>
-                                </CardHeaderContent>
-                            </MudCardHeader>
-                            <MudCardContent>
-                                <MudTable Items="@group.Schemas" Hover="true" Dense="true">
-                                    <HeaderContent>
-                                        <MudTh>Schema Version</MudTh>
-                                        <MudTh>Parameter Files</MudTh>
-                                        <MudTh>Created</MudTh>
-                                        <MudTh>Actions</MudTh>
-                                    </HeaderContent>
-                                    <RowTemplate>
-                                        <MudTd>
-                                            <MudText Typo="Typo.caption">@(context.SchemaVersion ?? "unknown")</MudText>
-                                        </MudTd>
-                                        <MudTd>
-                                            <MudChip T="string" Size="Size.Small">@context.ParameterFiles.Count</MudChip>
-                                        </MudTd>
-                                        <MudTd>@context.CreatedAt.LocalDateTime.ToString("g")</MudTd>
-                                        <MudTd>
-                                            <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => ViewSchema(context))">
-                                                View Schema
-                                            </MudButton>
-                                            <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => ViewFiles(context))">
-                                                View Files
-                                            </MudButton>
-                                        </MudTd>
-                                    </RowTemplate>
-                                </MudTable>
-                            </MudCardContent>
-                        </MudCard>
-                    }
+                    <MudExpansionPanels MultiExpansion="true" Class="mt-2">
+                        @foreach (var group in groupedSchemas)
+                        {
+                            <MudExpansionPanel Expanded="false">
+                                <TitleContent>
+                                    <div class="d-flex align-center gap-2">
+                                        <MudText Typo="Typo.h6">@group.ConfigurationName</MudText>
+                                        <MudChip T="string"
+                                                 Size="Size.Small">
+                                            @group.Schemas.Count
+                                            @(group.Schemas.Count == 1 ? "schema" : "schemas")
+                                        </MudChip>
+                                    </div>
+                                </TitleContent>
+                                <ChildContent>
+                                    <MudTable Items="@group.Schemas" Hover="true" Dense="true">
+                                        <HeaderContent>
+                                            <MudTh>Schema Version</MudTh>
+                                            <MudTh>Parameter Files</MudTh>
+                                            <MudTh>Created</MudTh>
+                                            <MudTh>Actions</MudTh>
+                                        </HeaderContent>
+                                        <RowTemplate>
+                                            <MudTd>
+                                                <MudText Typo="Typo.caption">@(context.SchemaVersion ?? "unknown")</MudText>
+                                            </MudTd>
+                                            <MudTd>
+                                                <MudChip T="string" Size="Size.Small">@context.ParameterFiles.Count</MudChip>
+                                            </MudTd>
+                                            <MudTd>@context.CreatedAt.LocalDateTime.ToString("g")</MudTd>
+                                            <MudTd>
+                                                <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => ViewSchema(context))">
+                                                    View Schema
+                                                </MudButton>
+                                                <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => ViewFiles(context))">
+                                                    View Files
+                                                </MudButton>
+                                            </MudTd>
+                                        </RowTemplate>
+                                    </MudTable>
+                                </ChildContent>
+                            </MudExpansionPanel>
+                        }
+                    </MudExpansionPanels>
                 }
                 else
                 {
