@@ -4,7 +4,6 @@
 
 using System.Net.Http.Json;
 using System.Security.Cryptography.X509Certificates;
-using System.Text.Json;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -286,10 +285,8 @@ public partial class PullServerClient : IDisposable
         {
             var request = new SubmitReportRequest
             {
-                Operation = operation.ToString(),
-                Success = !result.HadErrors,
-                Result = JsonSerializer.Serialize(result, PullServerJsonContext.Default.DscResult),
-                Timestamp = DateTimeOffset.UtcNow
+                Operation = operation,
+                Result = result
             };
 
             using var response = await _httpClient.PostAsJsonAsync(
@@ -300,7 +297,8 @@ public partial class PullServerClient : IDisposable
 
             if (!response.IsSuccessStatusCode)
             {
-                LogReportSubmissionFailed(response.StatusCode.ToString());
+                var body = await response.Content.ReadAsStringAsync(cancellationToken);
+                LogReportSubmissionFailed(response.StatusCode.ToString(), body);
                 return false;
             }
 
@@ -394,8 +392,8 @@ public partial class PullServerClient : IDisposable
     [LoggerMessage(EventId = 1010, Level = LogLevel.Error, Message = "Configuration download error")]
     private partial void LogConfigurationDownloadError(Exception ex);
 
-    [LoggerMessage(EventId = 1011, Level = LogLevel.Warning, Message = "Report submission failed: {StatusCode}")]
-    private partial void LogReportSubmissionFailed(string statusCode);
+    [LoggerMessage(EventId = 1011, Level = LogLevel.Warning, Message = "Report submission failed: {StatusCode} - {Body}")]
+    private partial void LogReportSubmissionFailed(string statusCode, string body);
 
     [LoggerMessage(EventId = 1012, Level = LogLevel.Debug, Message = "Compliance report submitted")]
     private partial void LogReportSubmitted();

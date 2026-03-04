@@ -26,8 +26,12 @@ namespace OpenDsc.Lcm;
 // Schema types for DSC result parsing (also include here for HTTP client usage)
 [JsonSerializable(typeof(DscResult))]
 [JsonSerializable(typeof(DscResourceResult))]
+[JsonSerializable(typeof(DscGetOperationResult))]
 [JsonSerializable(typeof(DscTestOperationResult))]
 [JsonSerializable(typeof(DscSetOperationResult))]
+[JsonSerializable(typeof(DscMessage))]
+[JsonSerializable(typeof(DscMetadata))]
+[JsonSerializable(typeof(MicrosoftDscMetadata))]
 [JsonSerializable(typeof(DscTraceMessage))]
 [JsonSerializable(typeof(DscOperation))]
 public partial class PullServerJsonContext : JsonSerializerContext

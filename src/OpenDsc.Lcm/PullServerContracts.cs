@@ -4,6 +4,8 @@
 
 using System.Text.Json.Serialization;
 
+using OpenDsc.Schema;
+
 namespace OpenDsc.Lcm;
 
 /// <summary>
@@ -95,20 +97,11 @@ public sealed class SubmitReportRequest
     /// The DSC operation that generated this report.
     /// </summary>
     [JsonRequired]
-    public string Operation { get; set; } = string.Empty;
+    public DscOperation Operation { get; set; }
 
     /// <summary>
-    /// Whether the operation was successful.
+    /// The full DSC result from the operation.
     /// </summary>
-    public bool Success { get; set; }
-
-    /// <summary>
-    /// The full DSC result as JSON.
-    /// </summary>
-    public string? Result { get; set; }
-
-    /// <summary>
-    /// When the report was generated.
-    /// </summary>
-    public DateTimeOffset Timestamp { get; set; }
+    [JsonRequired]
+    public DscResult Result { get; set; } = null!;
 }
