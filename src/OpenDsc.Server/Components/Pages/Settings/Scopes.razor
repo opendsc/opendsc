@@ -88,6 +88,7 @@
                                         <MudTh>Value</MudTh>
                                         <MudTh>Description</MudTh>
                                         <MudTh>Nodes</MudTh>
+                                        <MudTh>Parameter Files</MudTh>
                                         <MudTh>Actions</MudTh>
                                     </HeaderContent>
                                     <RowTemplate>
@@ -95,6 +96,9 @@
                                         <MudTd>@context.Description</MudTd>
                                         <MudTd>
                                             <MudChip T="string" Size="Size.Small">@context.NodeTags.Count</MudChip>
+                                        </MudTd>
+                                        <MudTd>
+                                            <MudChip T="string" Size="Size.Small">@parameterFileCounts.GetValueOrDefault((scopeType.Id, context.Value), 0)</MudChip>
                                         </MudTd>
                                         <MudTd>
                                             <MudIconButton Icon="@Icons.Material.Filled.Edit"
@@ -137,14 +141,49 @@
                     }
                     else
                     {
-                        <MudCardContent>
-                            <MudAlert Severity="Severity.Info" Dense="true">
-                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                                    <MudIcon Icon="@Icons.Material.Filled.TextFields" Size="Size.Small" />
-                                    <MudText Typo="Typo.body2">Unrestricted scope accepts any user-entered value.</MudText>
-                                </MudStack>
-                            </MudAlert>
-                        </MudCardContent>
+                        var unrestrictedValues = scopeValues
+                            .Where(sv => sv.ScopeTypeId == scopeType.Id)
+                            .Select(sv => sv.Value)
+                            .Union(parameterFileCounts.Keys
+                                .Where(k => k.scopeTypeId == scopeType.Id)
+                                .Select(k => k.value))
+                            .OrderBy(v => v)
+                            .Select(v => new
+                            {
+                                Value = v,
+                                NodeCount = scopeValues.FirstOrDefault(sv => sv.ScopeTypeId == scopeType.Id && sv.Value == v)?.NodeTags.Count ?? 0,
+                                ParameterFileCount = parameterFileCounts.GetValueOrDefault((scopeType.Id, v), 0)
+                            })
+                            .ToList();
+                        @if (unrestrictedValues.Any())
+                        {
+                            <MudCardContent>
+                                <MudTable Items="@unrestrictedValues" Dense="true" Hover="true">
+                                    <HeaderContent>
+                                        <MudTh>Value</MudTh>
+                                        <MudTh>Nodes</MudTh>
+                                        <MudTh>Parameter Files</MudTh>
+                                    </HeaderContent>
+                                    <RowTemplate>
+                                        <MudTd>@context.Value</MudTd>
+                                        <MudTd>
+                                            <MudChip T="string" Size="Size.Small">@context.NodeCount</MudChip>
+                                        </MudTd>
+                                        <MudTd>
+                                            <MudChip T="string" Size="Size.Small">@context.ParameterFileCount</MudChip>
+                                        </MudTd>
+                                    </RowTemplate>
+                                </MudTable>
+                            </MudCardContent>
+                        }
+                        else
+                        {
+                            <MudCardContent>
+                                <MudAlert Severity="Severity.Info" Dense="true">
+                                    <MudText Typo="Typo.body2">No values have been used yet. Values appear here when nodes are tagged or parameter files are created for this scope.</MudText>
+                                </MudAlert>
+                            </MudCardContent>
+                        }
                     }
                 </MudCard>
             }
@@ -155,6 +194,7 @@
 @code {
     private List<ScopeType> scopeTypes = [];
     private List<ScopeValue> scopeValues = [];
+    private Dictionary<(Guid scopeTypeId, string value), int> parameterFileCounts = [];
     private bool isLoading = true;
 
     protected override async Task OnInitializedAsync()
@@ -175,6 +215,15 @@
                 .Include(sv => sv.NodeTags)
                 .OrderBy(sv => sv.Value)
                 .ToListAsync();
+
+            var parameterFileData = await Db.ParameterFiles
+                .Where(pf => pf.ScopeValue != null)
+                .GroupBy(pf => new { pf.ScopeTypeId, pf.ScopeValue })
+                .Select(g => new { g.Key.ScopeTypeId, ScopeValue = g.Key.ScopeValue!, Count = g.Count() })
+                .ToListAsync();
+
+            parameterFileCounts = parameterFileData
+                .ToDictionary(x => (x.ScopeTypeId, x.ScopeValue), x => x.Count);
         }
         catch (Exception ex)
         {
