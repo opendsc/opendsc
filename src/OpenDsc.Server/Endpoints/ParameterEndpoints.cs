@@ -154,19 +154,46 @@ public static class ParameterEndpoints
             }
         }
 
-        if (scopeType.ValueMode == ScopeValueMode.Restricted && string.IsNullOrWhiteSpace(request.ScopeValue))
+        if (scopeType.Name == "Default")
         {
-            return TypedResults.BadRequest($"Scope type '{scopeType.Name}' is restricted and requires a scope value");
+            if (!string.IsNullOrWhiteSpace(request.ScopeValue))
+            {
+                return TypedResults.BadRequest("The 'Default' scope type does not accept a scope value.");
+            }
         }
-
-        if (scopeType.ValueMode == ScopeValueMode.Restricted && !string.IsNullOrWhiteSpace(request.ScopeValue))
+        else if (scopeType.Name == "Node")
         {
+            if (string.IsNullOrWhiteSpace(request.ScopeValue))
+            {
+                return TypedResults.BadRequest("Scope type 'Node' requires a node FQDN as the scope value.");
+            }
+
+            var nodeExists = await db.Nodes.AnyAsync(n => n.Fqdn == request.ScopeValue);
+            if (!nodeExists)
+            {
+                return TypedResults.BadRequest($"Node '{request.ScopeValue}' is not registered.");
+            }
+        }
+        else if (scopeType.ValueMode == ScopeValueMode.Restricted)
+        {
+            if (string.IsNullOrWhiteSpace(request.ScopeValue))
+            {
+                return TypedResults.BadRequest($"Scope type '{scopeType.Name}' is restricted and requires a scope value.");
+            }
+
             var scopeValueExists = await db.ScopeValues
                 .AnyAsync(sv => sv.ScopeTypeId == scopeTypeId && sv.Value == request.ScopeValue);
 
             if (!scopeValueExists)
             {
                 return TypedResults.BadRequest($"Scope value '{request.ScopeValue}' does not exist for scope type '{scopeType.Name}'. Only predefined values are allowed.");
+            }
+        }
+        else
+        {
+            if (string.IsNullOrWhiteSpace(request.ScopeValue))
+            {
+                return TypedResults.BadRequest($"Scope type '{scopeType.Name}' requires a scope value.");
             }
         }
 

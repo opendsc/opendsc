@@ -83,7 +83,7 @@
         <MudButton Color="Color.Primary"
                    Variant="Variant.Filled"
                    OnClick="CreateParameter"
-                   Disabled="@isCreating">
+                   Disabled="@(!IsValid() || isCreating)">
             @if (isCreating)
             {
                 <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
@@ -417,10 +417,28 @@
 
     private bool IsValid()
     {
-        return selectedConfigurationId.HasValue &&
-               selectedScopeTypeId.HasValue &&
-               selectedMajor.HasValue &&
-               !string.IsNullOrWhiteSpace(minorPatch);
+        if (!selectedConfigurationId.HasValue ||
+            !selectedScopeTypeId.HasValue ||
+            !selectedMajor.HasValue ||
+            string.IsNullOrWhiteSpace(minorPatch))
+        {
+            return false;
+        }
+
+        var currentScopeType = scopeTypes.FirstOrDefault(st => st.Id == selectedScopeTypeId.Value);
+        if (currentScopeType is null)
+        {
+            return false;
+        }
+
+        // Default scope type does not use a scope value
+        if (currentScopeType.Name == "Default")
+        {
+            return true;
+        }
+
+        // All other scope types (Node, Restricted, Unrestricted) require a scope value
+        return !string.IsNullOrWhiteSpace(selectedScopeValue);
     }
 
     private async Task CreateParameter()

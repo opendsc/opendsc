@@ -35,7 +35,7 @@
 
         @if (isNodeScope)
         {
-            <MudSelect T="string" @bind-Value="selectedScopeValue" Label="Node" Variant="Variant.Outlined"
+            <MudSelect T="string" Value="@selectedScopeValue" ValueChanged="@OnScopeValueChanged" Label="Node" Variant="Variant.Outlined"
                        Clearable="true" Disabled="@(Locked || !selectedScopeTypeId.HasValue || isDefaultScope)"
                        HelperText="Select a registered node">
                 @foreach (var node in nodes)
@@ -46,7 +46,7 @@
         }
         else if (isRestricted)
         {
-            <MudSelect T="string" @bind-Value="selectedScopeValue" Label="Scope Value" Variant="Variant.Outlined"
+            <MudSelect T="string" Value="@selectedScopeValue" ValueChanged="@OnScopeValueChanged" Label="Scope Value" Variant="Variant.Outlined"
                        Clearable="true" Disabled="@(Locked || !selectedScopeTypeId.HasValue || isDefaultScope)">
                 @foreach (var scopeValue in scopeValues)
                 {
@@ -56,7 +56,7 @@
         }
         else
         {
-            <MudTextField @bind-Value="selectedScopeValue" Label="Scope Value" Variant="Variant.Outlined"
+            <MudTextField Value="@selectedScopeValue" ValueChanged="@((string v) => OnScopeValueChanged(v))" Label="Scope Value" Variant="Variant.Outlined"
                           Disabled="@(Locked || !selectedScopeTypeId.HasValue || isDefaultScope)"
                           HelperText="@(isDefaultScope ? "Not applicable for Default scope" : "Enter a value for this scope")" />
         }
@@ -147,6 +147,9 @@
         selectedScopeTypeId = value;
         await SelectedScopeTypeIdChanged.InvokeAsync(value);
 
+        selectedScopeValue = null;
+        await SelectedScopeValueChanged.InvokeAsync(null);
+
         if (value.HasValue)
         {
             await LoadScopeValuesAsync();
@@ -159,6 +162,12 @@
         }
 
         StateHasChanged();
+    }
+
+    private async Task OnScopeValueChanged(string? value)
+    {
+        selectedScopeValue = value;
+        await SelectedScopeValueChanged.InvokeAsync(value);
     }
 
     protected override async Task OnInitializedAsync()

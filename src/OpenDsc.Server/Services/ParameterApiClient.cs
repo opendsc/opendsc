@@ -101,19 +101,46 @@ public sealed class ParameterApiClient : IParameterApiClient
                 return (false, "Configuration not found");
             }
 
-            if (scopeType.ValueMode == ScopeValueMode.Restricted && string.IsNullOrWhiteSpace(scopeValue))
+            if (scopeType.Name == "Default")
             {
-                return (false, $"Scope type '{scopeType.Name}' is restricted and requires a scope value");
+                if (!string.IsNullOrWhiteSpace(scopeValue))
+                {
+                    return (false, "The 'Default' scope type does not accept a scope value.");
+                }
             }
-
-            if (scopeType.ValueMode == ScopeValueMode.Restricted && !string.IsNullOrWhiteSpace(scopeValue))
+            else if (scopeType.Name == "Node")
             {
+                if (string.IsNullOrWhiteSpace(scopeValue))
+                {
+                    return (false, "Scope type 'Node' requires a node FQDN as the scope value.");
+                }
+
+                var nodeExists = await _db.Nodes.AnyAsync(n => n.Fqdn == scopeValue);
+                if (!nodeExists)
+                {
+                    return (false, $"Node '{scopeValue}' is not registered.");
+                }
+            }
+            else if (scopeType.ValueMode == ScopeValueMode.Restricted)
+            {
+                if (string.IsNullOrWhiteSpace(scopeValue))
+                {
+                    return (false, $"Scope type '{scopeType.Name}' is restricted and requires a scope value.");
+                }
+
                 var scopeValueExists = await _db.ScopeValues
                     .AnyAsync(sv => sv.ScopeTypeId == scopeTypeId && sv.Value == scopeValue);
 
                 if (!scopeValueExists)
                 {
-                    return (false, $"Scope value '{scopeValue}' does not exist for scope type '{scopeType.Name}'");
+                    return (false, $"Scope value '{scopeValue}' does not exist for scope type '{scopeType.Name}'.");
+                }
+            }
+            else
+            {
+                if (string.IsNullOrWhiteSpace(scopeValue))
+                {
+                    return (false, $"Scope type '{scopeType.Name}' requires a scope value.");
                 }
             }
 

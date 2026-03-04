@@ -460,4 +460,84 @@ parameters:
         result.IsValid.Should().BeTrue();
         result.Errors.Should().BeEmpty();
     }
+
+    [Fact]
+    public void Validate_WithYamlNotStartingWithBrace_ShouldUsYamlParserDirectly()
+    {
+        // Verifies that YAML content (no leading '{' or '[') is parsed via the YAML path
+        // without triggering a JsonReaderException from a JSON fast-path attempt.
+        var parametersBlock = new Dictionary<string, ParameterDefinition>
+        {
+            ["name"] = new ParameterDefinition { Type = "string" },
+            ["count"] = new ParameterDefinition { Type = "int" }
+        };
+        var schema = _schemaBuilder.BuildJsonSchema(parametersBlock);
+        var schemaString = _schemaBuilder.SerializeSchema(schema);
+
+        var yaml = "parameters:\n  name: Production\n  count: 5\n";
+
+        var result = _validator.Validate(schemaString, yaml);
+
+        result.IsValid.Should().BeTrue();
+        result.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Validate_WithLeadingWhitespaceBeforeYaml_ShouldUsYamlParserDirectly()
+    {
+        // Verifies that YAML content with leading whitespace/newlines is also detected as YAML correctly.
+        var parametersBlock = new Dictionary<string, ParameterDefinition>
+        {
+            ["env"] = new ParameterDefinition { Type = "string" }
+        };
+        var schema = _schemaBuilder.BuildJsonSchema(parametersBlock);
+        var schemaString = _schemaBuilder.SerializeSchema(schema);
+
+        var yaml = "\n\nparameters:\n  env: Development\n";
+
+        var result = _validator.Validate(schemaString, yaml);
+
+        result.IsValid.Should().BeTrue();
+        result.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Validate_WithJsonStartingWithOpenBrace_ShouldUseJsonParser()
+    {
+        // Verifies that content starting with '{' is routed to the JSON parser path.
+        var parametersBlock = new Dictionary<string, ParameterDefinition>
+        {
+            ["name"] = new ParameterDefinition { Type = "string" }
+        };
+        var schema = _schemaBuilder.BuildJsonSchema(parametersBlock);
+        var schemaString = _schemaBuilder.SerializeSchema(schema);
+
+        var json = "{\"parameters\":{\"name\":\"TestValue\"}}";
+
+        var result = _validator.Validate(schemaString, json);
+
+        result.IsValid.Should().BeTrue();
+        result.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Validate_WithMalformedJsonStartingWithOpenBrace_ShouldReturnParseError()
+    {
+        // Verifies that malformed JSON content (starts with '{' but is invalid JSON) returns
+        // a parse_error result rather than leaking an exception.
+        var parametersBlock = new Dictionary<string, ParameterDefinition>
+        {
+            ["name"] = new ParameterDefinition { Type = "string" }
+        };
+        var schema = _schemaBuilder.BuildJsonSchema(parametersBlock);
+        var schemaString = _schemaBuilder.SerializeSchema(schema);
+
+        var malformedJson = "{ \"parameters\": { \"name\": }";
+
+        var result = _validator.Validate(schemaString, malformedJson);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().NotBeEmpty();
+        result.Errors!.Should().ContainSingle(e => e.Code == "parse_error");
+    }
 }

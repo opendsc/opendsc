@@ -52,16 +52,28 @@ public sealed class ParameterValidator : IParameterValidator
                 });
             }
 
-            // Parse parameter file (YAML or JSON)
+            // Parse parameter file (YAML or JSON).
+            // Detect format by content prefix to avoid throwing JsonReaderException for YAML input.
             JsonNode? paramContent;
-            try
+            var trimmedContent = parameterFileContent.TrimStart();
+            if (trimmedContent.StartsWith('{') || trimmedContent.StartsWith('['))
             {
-                // Try JSON first
-                paramContent = JsonNode.Parse(parameterFileContent);
+                try
+                {
+                    paramContent = JsonNode.Parse(parameterFileContent);
+                }
+                catch (Exception ex)
+                {
+                    return ValidationResult.Failure(new ValidationError
+                    {
+                        Path = "$",
+                        Message = $"Failed to parse parameter file content: {ex.Message}",
+                        Code = "parse_error"
+                    });
+                }
             }
-            catch
+            else
             {
-                // Fall back to YAML
                 try
                 {
                     var yamlObject = YamlDeserializer.Deserialize<object>(parameterFileContent);
