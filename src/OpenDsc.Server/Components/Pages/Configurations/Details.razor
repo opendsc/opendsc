@@ -20,40 +20,6 @@
     <MudText Typo="Typo.h4" Class="mb-4">@configuration.Name</MudText>
 
     <MudTabs Elevation="4" Rounded="true" Color="Color.Primary">
-        <MudTabPanel Text="Details" Icon="@Icons.Material.Filled.Info">
-            <MudCard Class="mt-4">
-                <MudCardContent>
-                    <MudSimpleTable Dense="true">
-                        <tbody>
-                            <tr>
-                                <td><strong>Name</strong></td>
-                                <td>@configuration.Name</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Description</strong></td>
-                                <td>@(configuration.Description ?? "-")</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Server Managed</strong></td>
-                                <td>@configuration.IsServerManaged</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Created</strong></td>
-                                <td>@configuration.CreatedAt.LocalDateTime.ToString("g")</td>
-                            </tr>
-                            @if (configuration.UpdatedAt.HasValue)
-                            {
-                                <tr>
-                                    <td><strong>Updated</strong></td>
-                                    <td>@configuration.UpdatedAt.Value.LocalDateTime.ToString("g")</td>
-                                </tr>
-                            }
-                        </tbody>
-                    </MudSimpleTable>
-                </MudCardContent>
-            </MudCard>
-        </MudTabPanel>
-
         <MudTabPanel Text="Versions" Icon="@Icons.Material.Filled.History">
             <MudCard Class="mt-4">
                 <MudCardHeader>
@@ -267,6 +233,40 @@
                 {
                     <MudAlert Severity="Severity.Info">No versions found.</MudAlert>
                 }
+                </MudCardContent>
+            </MudCard>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Details" Icon="@Icons.Material.Filled.Info">
+            <MudCard Class="mt-4">
+                <MudCardContent>
+                    <MudSimpleTable Dense="true">
+                        <tbody>
+                            <tr>
+                                <td><strong>Name</strong></td>
+                                <td>@configuration.Name</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Description</strong></td>
+                                <td>@(configuration.Description ?? "-")</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Server Managed</strong></td>
+                                <td>@configuration.IsServerManaged</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Created</strong></td>
+                                <td>@configuration.CreatedAt.LocalDateTime.ToString("g")</td>
+                            </tr>
+                            @if (configuration.UpdatedAt.HasValue)
+                            {
+                                <tr>
+                                    <td><strong>Updated</strong></td>
+                                    <td>@configuration.UpdatedAt.Value.LocalDateTime.ToString("g")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </MudSimpleTable>
                 </MudCardContent>
             </MudCard>
         </MudTabPanel>
