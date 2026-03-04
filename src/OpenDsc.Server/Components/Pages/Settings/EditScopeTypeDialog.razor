@@ -8,7 +8,7 @@
     <DialogContent>
         <MudTextField @bind-Value="name" Label="Name" Variant="Variant.Outlined" Required="true" ReadOnly="true" Disabled="true" Class="mb-3" />
         <MudTextField @bind-Value="description" Label="Description" Variant="Variant.Outlined" Lines="2" Class="mb-3" />
-        <MudSelect @bind-Value="valueMode" Label="Value Mode" Variant="Variant.Outlined" Class="mb-3" T="ScopeValueMode" Disabled="@(ScopeType.IsSystem)">
+        <MudSelect @bind-Value="valueMode" Label="Value Mode" Variant="Variant.Outlined" Class="mb-3" T="ScopeValueMode" Disabled="true">
             <MudSelectItem Value="@ScopeValueMode.Unrestricted">Unrestricted (Free text)</MudSelectItem>
             <MudSelectItem Value="@ScopeValueMode.Restricted">Restricted (Predefined values only)</MudSelectItem>
         </MudSelect>
@@ -22,10 +22,7 @@
                 <text>Unrestricted: Users can enter any value when creating parameters.</text>
             }
         </MudText>
-        @if (ScopeType.IsSystem)
-        {
-            <MudAlert Severity="Severity.Info" Dense="true">System scope types cannot change their value mode.</MudAlert>
-        }
+        <MudAlert Severity="Severity.Info" Dense="true">Value mode cannot be changed after creation.</MudAlert>
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Cancel</MudButton>
@@ -61,12 +58,6 @@
         try
         {
             ScopeType.Description = string.IsNullOrWhiteSpace(description) ? null : description;
-
-            if (!ScopeType.IsSystem)
-            {
-                ScopeType.ValueMode = valueMode;
-            }
-
             ScopeType.UpdatedAt = DateTimeOffset.UtcNow;
             await Db.SaveChangesAsync();
 
