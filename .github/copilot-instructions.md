@@ -850,7 +850,9 @@ The Pull Server (`src/OpenDsc.Server/`) is an ASP.NET Core application combining
   - Useful for enterprise environments with PKI
 
 **Server Configuration:**
-- Kestrel configured with `ClientCertificateMode.RequireCertificate` (except in Testing environment)
+- Kestrel configured with `ClientCertificateMode.AllowCertificate` (except in Testing environment)
+  so that browser/UI traffic is not blocked; certificate validation is enforced
+  selectively in the authentication layer for node endpoints only.
 - `CertificateAuthHandler` validates certificate thumbprint against database
 - Chain validation includes CRL/OCSP checking for enterprise certificates
 

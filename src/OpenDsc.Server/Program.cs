@@ -23,7 +23,7 @@ builder.WebHost.ConfigureKestrel((context, options) =>
     {
         options.ConfigureHttpsDefaults(httpsOptions =>
         {
-            httpsOptions.ClientCertificateMode = ClientCertificateMode.RequireCertificate;
+            httpsOptions.ClientCertificateMode = ClientCertificateMode.AllowCertificate;
             httpsOptions.AllowAnyClientCertificate();
         });
     }
