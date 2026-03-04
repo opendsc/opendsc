@@ -56,9 +56,12 @@
         }
         else
         {
-            <MudTextField Value="@selectedScopeValue" ValueChanged="@((string v) => OnScopeValueChanged(v))" Label="Scope Value" Variant="Variant.Outlined"
-                          Disabled="@(Locked || !selectedScopeTypeId.HasValue || isDefaultScope)"
-                          HelperText="@(isDefaultScope ? "Not applicable for Default scope" : "Enter a value for this scope")" />
+            <MudAutocomplete T="string" Value="@selectedScopeValue" ValueChanged="@OnScopeValueChanged" Label="Scope Value" Variant="Variant.Outlined"
+                             Clearable="true" Disabled="@(Locked || !selectedScopeTypeId.HasValue || isDefaultScope)"
+                             SearchFunc="@SearchUnrestrictedScopeValuesAsync"
+                             Strict="false"
+                             CoerceValue="true"
+                             HelperText="@(isDefaultScope ? "Not applicable for Default scope" : "Select existing or enter a new scope value")" />
         }
     </MudItem>
 </MudGrid>
@@ -121,6 +124,7 @@
     private List<ScopeType> scopeTypes = [];
     private List<ScopeValue> scopeValues = [];
     private List<Node> nodes = [];
+    private List<string> unrestrictedScopeValues = [];
     private ScopeType? currentScopeType;
 
     private async Task OnConfigurationChanged(Guid? value)
@@ -170,6 +174,15 @@
         await SelectedScopeValueChanged.InvokeAsync(value);
     }
 
+    private Task<IEnumerable<string>?> SearchUnrestrictedScopeValuesAsync(string value, CancellationToken token)
+    {
+        IEnumerable<string> results = string.IsNullOrWhiteSpace(value)
+            ? unrestrictedScopeValues
+            : unrestrictedScopeValues.Where(v => v.Contains(value, StringComparison.OrdinalIgnoreCase));
+
+        return Task.FromResult<IEnumerable<string>?>(results);
+    }
+
     protected override async Task OnInitializedAsync()
     {
         await LoadConfigurationsAsync();
@@ -196,6 +209,7 @@
         {
             scopeValues = [];
             nodes = [];
+            unrestrictedScopeValues = [];
             currentScopeType = null;
             StateHasChanged();
             return;
@@ -228,6 +242,12 @@
         }
         else
         {
+            unrestrictedScopeValues = await Db.ParameterFiles
+                .Where(pf => pf.ScopeTypeId == selectedScopeTypeId.Value && pf.ScopeValue != null)
+                .Select(pf => pf.ScopeValue!)
+                .Distinct()
+                .OrderBy(v => v)
+                .ToListAsync();
             scopeValues = [];
             nodes = [];
         }

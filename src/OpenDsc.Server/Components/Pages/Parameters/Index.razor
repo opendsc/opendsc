@@ -8,9 +8,6 @@
 @using BlazorMonaco
 @using BlazorMonaco.Editor
 @inject ServerDbContext Db
-@inject ISnackbar Snackbar
-@inject IDialogService DialogService
-@inject NavigationManager Navigation
 @inject IJsonYamlConverter JsonYamlConverter
 @inject ThemeService ThemeService
 @inject IJSRuntime JSRuntime
@@ -88,32 +85,6 @@
                 {
                     <MudAlert Severity="Severity.Info">No parameter schemas found.</MudAlert>
                 }
-            </MudCardContent>
-        </MudCard>
-    </MudTabPanel>
-
-    <MudTabPanel Text="Create/Edit" Icon="@Icons.Material.Filled.Edit">
-        <MudCard>
-            <MudCardHeader>
-                <CardHeaderContent>
-                    <MudText Typo="Typo.h6">Create Parameter</MudText>
-                </CardHeaderContent>
-                <CardHeaderActions>
-                    <MudButton Variant="Variant.Filled"
-                               Color="Color.Primary"
-                               StartIcon="@Icons.Material.Filled.Add"
-                               OnClick="OpenCreateParameterDialog">
-                        Create New Parameter
-                    </MudButton>
-                </CardHeaderActions>
-            </MudCardHeader>
-            <MudCardContent>
-                <MudText Typo="Typo.body1" Class="mb-3">
-                    Create and manage parameter files for your configurations with YAML editor support.
-                </MudText>
-                <MudAlert Severity="Severity.Info">
-                    Click "Create New Parameter" to open the parameter editor. You can specify scope type, scope value, version, and edit YAML content directly in the browser.
-                </MudAlert>
             </MudCardContent>
         </MudCard>
     </MudTabPanel>
@@ -283,24 +254,6 @@
         finally
         {
             loading = false;
-        }
-    }
-
-    private async Task OpenCreateParameterDialog()
-    {
-        var options = new DialogOptions
-        {
-            MaxWidth = MaxWidth.ExtraLarge,
-            FullWidth = true
-        };
-
-        var dialog = await DialogService.ShowAsync<CreateParameterDialog>("Create Parameter", options);
-        var result = await dialog.Result;
-
-        if (result is not null && !result.Canceled)
-        {
-            await LoadDataAsync();
-            Snackbar.Add("Parameter created successfully", Severity.Success);
         }
     }
 
