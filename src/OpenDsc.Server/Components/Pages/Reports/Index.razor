@@ -15,7 +15,7 @@
                 <MudSelect T="Guid?" Label="Filter by Node" Value="@selectedNodeId" Clearable="true" ValueChanged="@((Guid? value) => OnNodeFilterChanged(value))">
                     @foreach (var node in nodes)
                     {
-                        <MudSelectItem Value="@node.Id">@node.Fqdn</MudSelectItem>
+                        <MudSelectItem T="Guid?" Value="@node.Id">@node.Fqdn</MudSelectItem>
                     }
                 </MudSelect>
             </MudItem>
