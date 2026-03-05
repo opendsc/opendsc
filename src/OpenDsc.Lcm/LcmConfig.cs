@@ -4,6 +4,8 @@
 
 using System.ComponentModel.DataAnnotations;
 
+using OpenDsc.Lcm.Contracts;
+
 namespace OpenDsc.Lcm;
 
 /// <summary>
@@ -119,34 +121,4 @@ public enum CertificateSource
     Platform
 }
 
-/// <summary>
-/// The source of configuration documents.
-/// </summary>
-public enum ConfigurationSource
-{
-    /// <summary>
-    /// Use a local configuration file.
-    /// </summary>
-    Local,
 
-    /// <summary>
-    /// Pull configuration from a remote server.
-    /// </summary>
-    Pull
-}
-
-/// <summary>
-/// LCM service operating modes.
-/// </summary>
-public enum ConfigurationMode
-{
-    /// <summary>
-    /// Monitor mode: Run 'dsc config test' periodically.
-    /// </summary>
-    Monitor,
-
-    /// <summary>
-    /// Remediate mode: Run 'dsc config test' and apply corrections as needed.
-    /// </summary>
-    Remediate
-}

@@ -3,6 +3,7 @@
 @inject ServerDbContext Db
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
+@using OpenDsc.Lcm.Contracts
 
 <PageTitle>Node Details</PageTitle>
 
@@ -56,6 +57,26 @@ else
                                 <td><strong>Created:</strong></td>
                                 <td>@node.CreatedAt.LocalDateTime.ToString("g")</td>
                             </tr>
+                            <tr>
+                                <td><strong>Configuration Source:</strong></td>
+                                <td>
+                                    <MudChip T="string" Size="Size.Small" Color="@(node.ConfigurationSource == ConfigurationSource.Pull ? Color.Primary : Color.Default)">
+                                        @node.ConfigurationSource
+                                    </MudChip>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>LCM Mode:</strong></td>
+                                <td>@(node.ConfigurationMode?.ToString() ?? "—")</td>
+                            </tr>
+                            <tr>
+                                <td><strong>LCM Interval:</strong></td>
+                                <td>@(node.ConfigurationModeInterval.HasValue ? node.ConfigurationModeInterval.Value.ToString(@"hh\:mm\:ss") : "—")</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Report Compliance:</strong></td>
+                                <td>@(node.ReportCompliance.HasValue ? (node.ReportCompliance.Value ? "Yes" : "No") : "—")</td>
+                            </tr>
                         </tbody>
                     </MudSimpleTable>
                 </MudCardContent>
@@ -70,10 +91,18 @@ else
                     </CardHeaderContent>
                 </MudCardHeader>
                 <MudCardContent>
-                    @if (!string.IsNullOrEmpty(node.ConfigurationName))
+                    @if (nodeConfig != null)
                     {
                         <MudAlert Severity="Severity.Info" Class="mb-4">
                             Currently assigned: <strong>@node.ConfigurationName</strong>
+                            @if (nodeConfig.MajorVersion.HasValue)
+                            {
+                                <span> &mdash; Major v@(nodeConfig.MajorVersion)</span>
+                            }
+                            @if (!string.IsNullOrEmpty(nodeConfig.PrereleaseChannel))
+                            {
+                                <span> &mdash; Channel: <code>@nodeConfig.PrereleaseChannel</code></span>
+                            }
                         </MudAlert>
                     }
                     else
@@ -83,19 +112,50 @@ else
                         </MudAlert>
                     }
 
-                    <MudSelect @bind-Value="selectedConfigurationName" Label="Select Configuration" Variant="Variant.Outlined" Class="mb-3" Clearable="true">
+                    <MudSelect @bind-Value="selectedConfigurationName"
+                               @bind-Value:after="OnConfigurationChanged"
+                               Label="Select Configuration" Variant="Variant.Outlined" Class="mb-3" Clearable="true">
                         @foreach (var config in configurations)
                         {
-                            <MudSelectItem Value="@config.Name">@config.Name (v@config.Version)</MudSelectItem>
+                            <MudSelectItem Value="@config.Name">@config.Name</MudSelectItem>
                         }
                     </MudSelect>
+
+                    <MudSelect T="int?"
+                               @bind-Value="selectedMajorVersion"
+                               Label="Major Version"
+                               Variant="Variant.Outlined"
+                               Class="mb-3"
+                               Disabled="@(string.IsNullOrEmpty(selectedConfigurationName) || !availableMajorVersions.Any())"
+                               HelperText="Select the major version to track (e.g. v1 tracks 1.x.y).">
+                        @foreach (var major in availableMajorVersions)
+                        {
+                            <MudSelectItem T="int?" Value="@((int?)major)">v@(major)</MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    <MudTextField @bind-Value="selectedPrereleaseChannel"
+                                  Label="Prerelease Channel (optional)"
+                                  Variant="Variant.Outlined"
+                                  Class="mb-3"
+                                  HelperText="Minimum prerelease threshold (e.g. 'rc', 'beta'). Leave empty for stable-only." />
 
                     <MudButton Variant="Variant.Filled"
                                Color="Color.Primary"
                                OnClick="AssignConfiguration"
-                               Disabled="@(selectedConfigurationName == node.ConfigurationName)">
-                        @(string.IsNullOrEmpty(selectedConfigurationName) ? "Unassign Configuration" : "Assign Configuration")
+                               Disabled="@(string.IsNullOrEmpty(selectedConfigurationName) || !selectedMajorVersion.HasValue)">
+                        Assign Configuration
                     </MudButton>
+
+                    @if (nodeConfig != null)
+                    {
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Error"
+                                   OnClick="UnassignConfiguration"
+                                   Class="ml-2">
+                            Unassign
+                        </MudButton>
+                    }
                 </MudCardContent>
             </MudCard>
         </MudTabPanel>
@@ -225,9 +285,13 @@ else
     public Guid Id { get; set; }
 
     private Node? node;
+    private NodeConfiguration? nodeConfig;
     private List<Report> reports = [];
     private List<Configuration> configurations = [];
     private string? selectedConfigurationName;
+    private int? selectedMajorVersion;
+    private string? selectedPrereleaseChannel;
+    private List<int> availableMajorVersions = [];
     private List<NodeTag> nodeTags = [];
     private List<ScopeType> availableScopeTypes = [];
     private List<ScopeValue> availableScopeValues = [];
@@ -244,6 +308,28 @@ else
             {
                 selectedConfigurationName = node.ConfigurationName;
 
+                nodeConfig = await Db.NodeConfigurations
+                    .FirstOrDefaultAsync(nc => nc.NodeId == Id);
+
+                if (nodeConfig != null)
+                {
+                    selectedMajorVersion = nodeConfig.MajorVersion;
+                    selectedPrereleaseChannel = nodeConfig.PrereleaseChannel;
+                }
+
+                configurations = await Db.Configurations
+                    .Include(c => c.Versions.Where(v => !v.IsDraft))
+                    .Where(c => c.Versions.Any(v => !v.IsDraft))
+                    .OrderBy(c => c.Name)
+                    .ToListAsync();
+
+                OnConfigurationChanged();
+
+                if (nodeConfig != null)
+                {
+                    selectedMajorVersion = nodeConfig.MajorVersion;
+                }
+
                 var nodeReports = await Db.Reports
                     .Where(r => r.NodeId == Id)
                     .ToListAsync();
@@ -252,10 +338,6 @@ else
                     .OrderByDescending(r => r.Timestamp)
                     .Take(20)
                     .ToList();
-
-                configurations = await Db.Configurations
-                    .OrderBy(c => c.Name)
-                    .ToListAsync();
 
                 await LoadTagsAsync();
                 await LoadScopeDataAsync();
@@ -291,24 +373,108 @@ else
             .ToListAsync();
     }
 
+    private void OnConfigurationChanged()
+    {
+        selectedMajorVersion = null;
+
+        if (!string.IsNullOrEmpty(selectedConfigurationName))
+        {
+            var config = configurations.FirstOrDefault(c => c.Name == selectedConfigurationName);
+            availableMajorVersions = config?.Versions
+                .Select(v => NuGet.Versioning.SemanticVersion.TryParse(v.Version, out var sv) ? sv.Major : -1)
+                .Where(m => m >= 0)
+                .Distinct()
+                .OrderBy(m => m)
+                .ToList() ?? [];
+        }
+        else
+        {
+            availableMajorVersions = [];
+        }
+    }
+
     private async Task AssignConfiguration()
+    {
+        if (node == null || string.IsNullOrEmpty(selectedConfigurationName)) return;
+
+        try
+        {
+            var config = await Db.Configurations
+                .Include(c => c.Versions.Where(v => !v.IsDraft))
+                .FirstOrDefaultAsync(c => c.Name == selectedConfigurationName);
+
+            if (config is null)
+            {
+                Snackbar.Add("Configuration not found.", Severity.Error);
+                return;
+            }
+
+            var channel = string.IsNullOrWhiteSpace(selectedPrereleaseChannel) ? null : selectedPrereleaseChannel;
+            var eligible = VersionResolver.ResolveVersion(config.Versions, v => v.Version, selectedMajorVersion, channel);
+
+            if (eligible is null)
+            {
+                Snackbar.Add("No published version satisfies the specified major version and prerelease channel constraints.", Severity.Error);
+                return;
+            }
+
+            nodeConfig = await Db.NodeConfigurations.FirstOrDefaultAsync(nc => nc.NodeId == Id);
+            if (nodeConfig is null)
+            {
+                nodeConfig = new NodeConfiguration
+                {
+                    NodeId = Id,
+                    ConfigurationId = config.Id,
+                    MajorVersion = selectedMajorVersion,
+                    PrereleaseChannel = channel
+                };
+                Db.NodeConfigurations.Add(nodeConfig);
+            }
+            else
+            {
+                nodeConfig.CompositeConfigurationId = null;
+                nodeConfig.ActiveCompositeVersion = null;
+                nodeConfig.ConfigurationId = config.Id;
+                nodeConfig.ActiveVersion = null;
+                nodeConfig.MajorVersion = selectedMajorVersion;
+                nodeConfig.PrereleaseChannel = channel;
+            }
+
+            node.ConfigurationName = selectedConfigurationName;
+            await Db.SaveChangesAsync();
+
+            Snackbar.Add($"Configuration '{selectedConfigurationName}' assigned successfully", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error assigning configuration: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task UnassignConfiguration()
     {
         if (node == null) return;
 
         try
         {
-            node.ConfigurationName = string.IsNullOrEmpty(selectedConfigurationName) ? null : selectedConfigurationName;
+            if (nodeConfig is not null)
+            {
+                Db.NodeConfigurations.Remove(nodeConfig);
+                nodeConfig = null;
+            }
+
+            node.ConfigurationName = null;
+            selectedConfigurationName = null;
+            selectedMajorVersion = null;
+            selectedPrereleaseChannel = null;
+            availableMajorVersions = [];
             await Db.SaveChangesAsync();
 
-            var message = string.IsNullOrEmpty(selectedConfigurationName)
-                ? "Configuration unassigned"
-                : $"Configuration '{selectedConfigurationName}' assigned";
-
-            Snackbar.Add(message, Severity.Success);
+            Snackbar.Add("Configuration unassigned successfully", Severity.Success);
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error updating configuration assignment: {ex.Message}", Severity.Error);
+            Snackbar.Add($"Error unassigning configuration: {ex.Message}", Severity.Error);
         }
     }
 

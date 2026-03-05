@@ -4,6 +4,7 @@
 
 using System.Text.Json.Serialization;
 
+using OpenDsc.Lcm.Contracts;
 using OpenDsc.Schema;
 using OpenDsc.Server.Contracts;
 using OpenDsc.Server.Endpoints;

@@ -4,71 +4,9 @@
 
 using System.Text.Json.Serialization;
 
+using OpenDsc.Lcm.Contracts;
+
 namespace OpenDsc.Server.Contracts;
-
-/// <summary>
-/// Request to register a new node.
-/// </summary>
-public sealed class RegisterNodeRequest
-{
-    /// <summary>
-    /// The registration key for the server.
-    /// </summary>
-    [JsonRequired]
-    public string RegistrationKey { get; set; } = string.Empty;
-
-    /// <summary>
-    /// The fully qualified domain name of the node.
-    /// </summary>
-    [JsonRequired]
-    public string Fqdn { get; set; } = string.Empty;
-}
-
-/// <summary>
-/// Response from node registration.
-/// </summary>
-public sealed class RegisterNodeResponse
-{
-    /// <summary>
-    /// The unique identifier assigned to the node.
-    /// </summary>
-    public Guid NodeId { get; set; }
-}
-
-/// <summary>
-/// Request to rotate a node's certificate.
-/// </summary>
-public sealed class RotateCertificateRequest
-{
-    /// <summary>
-    /// The thumbprint of the new certificate.
-    /// </summary>
-    [JsonRequired]
-    public string CertificateThumbprint { get; set; } = string.Empty;
-
-    /// <summary>
-    /// The subject DN of the new certificate.
-    /// </summary>
-    [JsonRequired]
-    public string CertificateSubject { get; set; } = string.Empty;
-
-    /// <summary>
-    /// The expiration date of the new certificate.
-    /// </summary>
-    [JsonRequired]
-    public DateTimeOffset CertificateNotAfter { get; set; }
-}
-
-/// <summary>
-/// Response from certificate rotation.
-/// </summary>
-public sealed class RotateCertificateResponse
-{
-    /// <summary>
-    /// Confirmation message.
-    /// </summary>
-    public string Message { get; set; } = string.Empty;
-}
 
 /// <summary>
 /// Summary information about a node.
@@ -104,6 +42,26 @@ public sealed class NodeSummary
     /// When the node was registered.
     /// </summary>
     public DateTimeOffset CreatedAt { get; set; }
+
+    /// <summary>
+    /// Whether the node pulls its configuration from the server or manages it locally.
+    /// </summary>
+    public ConfigurationSource ConfigurationSource { get; set; }
+
+    /// <summary>
+    /// The LCM operating mode reported by the node.
+    /// </summary>
+    public ConfigurationMode? ConfigurationMode { get; set; }
+
+    /// <summary>
+    /// The LCM configuration mode interval reported by the node.
+    /// </summary>
+    public TimeSpan? ConfigurationModeInterval { get; set; }
+
+    /// <summary>
+    /// Whether the node submits compliance reports to the server.
+    /// </summary>
+    public bool? ReportCompliance { get; set; }
 }
 
 /// <summary>
@@ -123,24 +81,17 @@ public sealed class AssignConfigurationRequest
     public bool IsComposite { get; set; }
 
     /// <summary>
-    /// The specific version string to pin (optional, defaults to latest published version).
-    /// Example: "1.0.0", "2.1.3-beta"
+    /// The major version to track. When set, the node auto-promotes within this major version only.
+    /// When null, the node receives the latest version across all major versions.
+    /// Example: 1 tracks 1.x.y, 2 tracks 2.x.y
     /// </summary>
-    public string? Version { get; set; }
-}
-
-/// <summary>
-/// Response with configuration checksum.
-/// </summary>
-public sealed class ConfigurationChecksumResponse
-{
-    /// <summary>
-    /// The SHA256 checksum of the configuration.
-    /// </summary>
-    public string Checksum { get; set; } = string.Empty;
+    public int? MajorVersion { get; set; }
 
     /// <summary>
-    /// The entry point file name within the configuration bundle.
+    /// The minimum prerelease channel threshold (free-text, semver-compared).
+    /// When null, only stable (non-prerelease) versions are received.
+    /// Example: "rc" receives rc.*, beta.*, and stable; "beta" receives beta.*, rc.*, and stable.
     /// </summary>
-    public string EntryPoint { get; set; } = "main.dsc.yaml";
+    public string? PrereleaseChannel { get; set; }
 }
+

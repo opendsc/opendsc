@@ -3,6 +3,7 @@
 @inject ServerDbContext Db
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
+@using OpenDsc.Lcm.Contracts
 
 <PageTitle>Nodes</PageTitle>
 
@@ -47,6 +48,13 @@
             </CellTemplate>
         </PropertyColumn>
         <PropertyColumn Property="x => x.ConfigurationName" Title="Configuration" />
+        <PropertyColumn Property="x => x.ConfigurationSource" Title="Source">
+            <CellTemplate>
+                <MudChip T="string" Size="Size.Small" Color="@(context.Item.ConfigurationSource == ConfigurationSource.Pull ? Color.Primary : Color.Default)">
+                    @context.Item.ConfigurationSource
+                </MudChip>
+            </CellTemplate>
+        </PropertyColumn>
         <PropertyColumn Property="x => x.LastCheckIn" Title="Last Check-In">
             <CellTemplate>
                 @(context.Item.LastCheckIn?.LocalDateTime.ToString("g") ?? "Never")

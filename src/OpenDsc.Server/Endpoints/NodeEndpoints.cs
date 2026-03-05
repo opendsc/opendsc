@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
+using OpenDsc.Lcm.Contracts;
 using OpenDsc.Server.Authentication;
 using OpenDsc.Server.Authorization;
 using OpenDsc.Server.Contracts;
@@ -59,6 +60,11 @@ public static class NodeEndpoints
             .RequireAuthorization(Permissions.Nodes_AssignConfiguration)
             .WithSummary("Assign configuration")
             .WithDescription("Assigns a configuration to a node by name.");
+
+        group.MapDelete("/{nodeId:guid}/configuration", UnassignConfiguration)
+            .RequireAuthorization(Permissions.Nodes_AssignConfiguration)
+            .WithSummary("Unassign configuration")
+            .WithDescription("Removes the configuration assignment from a node.");
 
         group.MapGet("/{nodeId:guid}/configuration/checksum", GetConfigurationChecksum)
             .RequireAuthorization("Node")
@@ -163,6 +169,10 @@ public static class NodeEndpoints
             existingNode.CertificateSubject = subject;
             existingNode.CertificateNotAfter = notAfter;
             existingNode.LastCheckIn = DateTimeOffset.UtcNow;
+            existingNode.ConfigurationSource = request.ConfigurationSource ?? ConfigurationSource.Pull;
+            existingNode.ConfigurationMode = request.ConfigurationMode;
+            existingNode.ConfigurationModeInterval = request.ConfigurationModeInterval;
+            existingNode.ReportCompliance = request.ReportCompliance;
             registrationKey.CurrentUses++;
             await db.SaveChangesAsync(cancellationToken);
 
@@ -181,7 +191,11 @@ public static class NodeEndpoints
             CertificateNotAfter = notAfter,
             Status = NodeStatus.Unknown,
             CreatedAt = DateTimeOffset.UtcNow,
-            LastCheckIn = DateTimeOffset.UtcNow
+            LastCheckIn = DateTimeOffset.UtcNow,
+            ConfigurationSource = request.ConfigurationSource ?? ConfigurationSource.Pull,
+            ConfigurationMode = request.ConfigurationMode,
+            ConfigurationModeInterval = request.ConfigurationModeInterval,
+            ReportCompliance = request.ReportCompliance
         };
 
         db.Nodes.Add(node);
@@ -207,7 +221,11 @@ public static class NodeEndpoints
                 ConfigurationName = n.ConfigurationName,
                 Status = n.Status.ToString(),
                 LastCheckIn = n.LastCheckIn,
-                CreatedAt = n.CreatedAt
+                CreatedAt = n.CreatedAt,
+                ConfigurationSource = n.ConfigurationSource,
+                ConfigurationMode = n.ConfigurationMode,
+                ConfigurationModeInterval = n.ConfigurationModeInterval,
+                ReportCompliance = n.ReportCompliance
             })
             .ToListAsync(cancellationToken);
 
@@ -229,7 +247,11 @@ public static class NodeEndpoints
                 ConfigurationName = n.ConfigurationName,
                 Status = n.Status.ToString(),
                 LastCheckIn = n.LastCheckIn,
-                CreatedAt = n.CreatedAt
+                CreatedAt = n.CreatedAt,
+                ConfigurationSource = n.ConfigurationSource,
+                ConfigurationMode = n.ConfigurationMode,
+                ConfigurationModeInterval = n.ConfigurationModeInterval,
+                ReportCompliance = n.ReportCompliance
             })
             .FirstOrDefaultAsync(cancellationToken);
 
@@ -294,9 +316,8 @@ public static class NodeEndpoints
                 var configuration = nodeConfig.Configuration;
                 if (configuration is not null)
                 {
-                    var activeVersion = !string.IsNullOrWhiteSpace(nodeConfig.ActiveVersion)
-                        ? configuration.Versions.FirstOrDefault(v => v.Version == nodeConfig.ActiveVersion)
-                        : configuration.Versions.OrderByDescending(v => v.CreatedAt).FirstOrDefault();
+                    var activeVersion = VersionResolver.ResolveVersion(
+                        configuration.Versions, v => v.Version, nodeConfig.MajorVersion, nodeConfig.PrereleaseChannel);
 
                     if (activeVersion is not null)
                     {
@@ -407,9 +428,8 @@ public static class NodeEndpoints
         }
 
         // Handle regular configuration
-        var activeVersion = !string.IsNullOrWhiteSpace(nodeConfig.ActiveVersion)
-            ? nodeConfig.Configuration!.Versions.FirstOrDefault(v => v.Version == nodeConfig.ActiveVersion)
-            : nodeConfig.Configuration!.Versions.OrderByDescending(v => v.CreatedAt).FirstOrDefault();
+        var activeVersion = VersionResolver.ResolveVersion(
+            nodeConfig.Configuration!.Versions, v => v.Version, nodeConfig.MajorVersion, nodeConfig.PrereleaseChannel);
 
         if (activeVersion is null)
         {
@@ -461,9 +481,8 @@ public static class NodeEndpoints
         ServerDbContext db,
         CancellationToken cancellationToken)
     {
-        var activeCompositeVersion = !string.IsNullOrWhiteSpace(nodeConfig.ActiveCompositeVersion)
-            ? nodeConfig.CompositeConfiguration!.Versions.FirstOrDefault(v => v.Version == nodeConfig.ActiveCompositeVersion)
-            : nodeConfig.CompositeConfiguration!.Versions.OrderByDescending(v => v.CreatedAt).FirstOrDefault();
+        var activeCompositeVersion = VersionResolver.ResolveVersion(
+            nodeConfig.CompositeConfiguration!.Versions, v => v.Version, nodeConfig.MajorVersion, nodeConfig.PrereleaseChannel);
 
         if (activeCompositeVersion is null)
         {
@@ -478,10 +497,9 @@ public static class NodeEndpoints
             // Process each child configuration
             foreach (var item in activeCompositeVersion.Items)
             {
-                // Resolve child version using ActiveVersion pattern
                 var childVersion = !string.IsNullOrWhiteSpace(item.ActiveVersion)
                     ? item.ChildConfiguration.Versions.FirstOrDefault(v => v.Version == item.ActiveVersion)
-                    : item.ChildConfiguration.Versions.OrderByDescending(v => v.CreatedAt).FirstOrDefault();
+                    : VersionResolver.ResolveVersion(item.ChildConfiguration.Versions, v => v.Version, null, nodeConfig.PrereleaseChannel);
 
                 if (childVersion is null)
                 {
@@ -568,16 +586,15 @@ public static class NodeEndpoints
                 return TypedResults.NotFound(new ErrorResponse { Error = "Composite configuration not found." });
             }
 
-            if (!string.IsNullOrWhiteSpace(request.Version))
+            var eligibleCompositeVersion = VersionResolver.ResolveVersion(
+                composite.Versions, v => v.Version, request.MajorVersion, request.PrereleaseChannel);
+
+            if (eligibleCompositeVersion is null)
             {
-                if (!composite.Versions.Any(v => v.Version == request.Version))
+                return TypedResults.BadRequest(new ErrorResponse
                 {
-                    return TypedResults.BadRequest(new ErrorResponse { Error = "Specified version not found or is a draft." });
-                }
-            }
-            else if (!composite.Versions.Any())
-            {
-                return TypedResults.BadRequest(new ErrorResponse { Error = "No published versions available." });
+                    Error = "No published version satisfies the specified major version and prerelease channel constraints."
+                });
             }
 
             var nodeConfig = await db.NodeConfigurations.FindAsync([nodeId], cancellationToken);
@@ -587,7 +604,8 @@ public static class NodeEndpoints
                 {
                     NodeId = nodeId,
                     CompositeConfigurationId = composite.Id,
-                    ActiveCompositeVersion = request.Version
+                    MajorVersion = request.MajorVersion,
+                    PrereleaseChannel = request.PrereleaseChannel
                 };
                 db.NodeConfigurations.Add(nodeConfig);
             }
@@ -596,7 +614,9 @@ public static class NodeEndpoints
                 nodeConfig.ConfigurationId = null;
                 nodeConfig.ActiveVersion = null;
                 nodeConfig.CompositeConfigurationId = composite.Id;
-                nodeConfig.ActiveCompositeVersion = request.Version;
+                nodeConfig.ActiveCompositeVersion = null;
+                nodeConfig.MajorVersion = request.MajorVersion;
+                nodeConfig.PrereleaseChannel = request.PrereleaseChannel;
             }
 
             node.ConfigurationName = request.ConfigurationName;
@@ -612,16 +632,15 @@ public static class NodeEndpoints
                 return TypedResults.NotFound(new ErrorResponse { Error = "Configuration not found." });
             }
 
-            if (!string.IsNullOrWhiteSpace(request.Version))
+            var eligibleVersion = VersionResolver.ResolveVersion(
+                config.Versions, v => v.Version, request.MajorVersion, request.PrereleaseChannel);
+
+            if (eligibleVersion is null)
             {
-                if (!config.Versions.Any(v => v.Version == request.Version))
+                return TypedResults.BadRequest(new ErrorResponse
                 {
-                    return TypedResults.BadRequest(new ErrorResponse { Error = "Specified version not found or is a draft." });
-                }
-            }
-            else if (!config.Versions.Any())
-            {
-                return TypedResults.BadRequest(new ErrorResponse { Error = "No published versions available." });
+                    Error = "No published version satisfies the specified major version and prerelease channel constraints."
+                });
             }
 
             var nodeConfig = await db.NodeConfigurations.FindAsync([nodeId], cancellationToken);
@@ -631,7 +650,8 @@ public static class NodeEndpoints
                 {
                     NodeId = nodeId,
                     ConfigurationId = config.Id,
-                    ActiveVersion = request.Version
+                    MajorVersion = request.MajorVersion,
+                    PrereleaseChannel = request.PrereleaseChannel
                 };
                 db.NodeConfigurations.Add(nodeConfig);
             }
@@ -640,12 +660,37 @@ public static class NodeEndpoints
                 nodeConfig.CompositeConfigurationId = null;
                 nodeConfig.ActiveCompositeVersion = null;
                 nodeConfig.ConfigurationId = config.Id;
-                nodeConfig.ActiveVersion = request.Version;
+                nodeConfig.ActiveVersion = null;
+                nodeConfig.MajorVersion = request.MajorVersion;
+                nodeConfig.PrereleaseChannel = request.PrereleaseChannel;
             }
 
             node.ConfigurationName = request.ConfigurationName;
         }
 
+        await db.SaveChangesAsync(cancellationToken);
+
+        return TypedResults.NoContent();
+    }
+
+    private static async Task<Results<NoContent, NotFound<ErrorResponse>>> UnassignConfiguration(
+        Guid nodeId,
+        ServerDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var node = await db.Nodes.FindAsync([nodeId], cancellationToken);
+        if (node is null)
+        {
+            return TypedResults.NotFound(new ErrorResponse { Error = "Node not found." });
+        }
+
+        var nodeConfig = await db.NodeConfigurations.FindAsync([nodeId], cancellationToken);
+        if (nodeConfig is not null)
+        {
+            db.NodeConfigurations.Remove(nodeConfig);
+        }
+
+        node.ConfigurationName = null;
         await db.SaveChangesAsync(cancellationToken);
 
         return TypedResults.NoContent();
@@ -694,9 +739,8 @@ public static class NodeEndpoints
 
         if (nodeConfig.CompositeConfigurationId.HasValue)
         {
-            var activeCompositeVersion = !string.IsNullOrWhiteSpace(nodeConfig.ActiveCompositeVersion)
-                ? nodeConfig.CompositeConfiguration!.Versions.FirstOrDefault(v => v.Version == nodeConfig.ActiveCompositeVersion)
-                : nodeConfig.CompositeConfiguration!.Versions.OrderByDescending(v => v.CreatedAt).FirstOrDefault();
+            var activeCompositeVersion = VersionResolver.ResolveVersion(
+                nodeConfig.CompositeConfiguration!.Versions, v => v.Version, nodeConfig.MajorVersion, nodeConfig.PrereleaseChannel);
 
             if (activeCompositeVersion is null)
             {
@@ -713,7 +757,7 @@ public static class NodeEndpoints
             {
                 var childVersion = !string.IsNullOrWhiteSpace(item.ActiveVersion)
                     ? item.ChildConfiguration!.Versions.FirstOrDefault(v => v.Version == item.ActiveVersion)
-                    : item.ChildConfiguration!.Versions.OrderByDescending(v => v.CreatedAt).FirstOrDefault();
+                    : VersionResolver.ResolveVersion(item.ChildConfiguration!.Versions, v => v.Version, null, nodeConfig.PrereleaseChannel);
 
                 if (childVersion is not null)
                 {
@@ -733,9 +777,8 @@ public static class NodeEndpoints
         }
         else
         {
-            var activeVersion = !string.IsNullOrWhiteSpace(nodeConfig.ActiveVersion)
-                ? nodeConfig.Configuration!.Versions.FirstOrDefault(v => v.Version == nodeConfig.ActiveVersion)
-                : nodeConfig.Configuration!.Versions.OrderByDescending(v => v.CreatedAt).FirstOrDefault();
+            var activeVersion = VersionResolver.ResolveVersion(
+                nodeConfig.Configuration!.Versions, v => v.Version, nodeConfig.MajorVersion, nodeConfig.PrereleaseChannel);
 
             if (activeVersion is null)
             {

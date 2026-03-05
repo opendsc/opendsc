@@ -2,6 +2,8 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
+using OpenDsc.Lcm.Contracts;
+
 namespace OpenDsc.Server.Entities;
 
 /// <summary>
@@ -23,6 +25,26 @@ public sealed class Node
     /// Name of the configuration assigned to this node.
     /// </summary>
     public string? ConfigurationName { get; set; }
+
+    /// <summary>
+    /// Whether the node pulls its configuration from the server or manages it locally.
+    /// </summary>
+    public ConfigurationSource ConfigurationSource { get; set; } = ConfigurationSource.Pull;
+
+    /// <summary>
+    /// The LCM operating mode reported by the node.
+    /// </summary>
+    public ConfigurationMode? ConfigurationMode { get; set; }
+
+    /// <summary>
+    /// The LCM configuration mode interval reported by the node.
+    /// </summary>
+    public TimeSpan? ConfigurationModeInterval { get; set; }
+
+    /// <summary>
+    /// Whether the node submits compliance reports to the server.
+    /// </summary>
+    public bool? ReportCompliance { get; set; }
 
     /// <summary>
     /// SHA256 thumbprint of the node's client certificate.

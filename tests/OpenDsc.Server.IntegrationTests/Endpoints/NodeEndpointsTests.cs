@@ -6,6 +6,7 @@ using System.Net;
 
 using AwesomeAssertions;
 
+using OpenDsc.Lcm.Contracts;
 using OpenDsc.Server.Contracts;
 using OpenDsc.Server.Endpoints;
 
@@ -329,6 +330,212 @@ public class NodeEndpointsTests : IClassFixture<ServerWebApplicationFactory>
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
         var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
         error!.Error.Should().Contain("Configuration not found");
+    }
+
+    [Fact]
+    public async Task AssignConfiguration_WithMajorVersionConstraint_ReturnsNoContent()
+    {
+        var fqdn = $"major-version-test-{Guid.NewGuid():N}.example.com";
+        var registerResponse = await _client.PostAsJsonAsync("/api/v1/nodes/register",
+            new RegisterNodeRequest { Fqdn = fqdn, RegistrationKey = "test-registration-key" });
+        var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>();
+
+        using var adminClient = _factory.CreateAuthenticatedClient();
+
+        var configName = $"major-version-config-{Guid.NewGuid():N}";
+        await CreateAndPublishConfigVersion(adminClient, configName, "1.0.0", "main.dsc.yaml");
+        await CreateAndPublishConfigVersion(adminClient, configName, "2.0.0", "main.dsc.yaml", isNew: false);
+
+        var assignRequest = new AssignConfigurationRequest
+        {
+            ConfigurationName = configName,
+            MajorVersion = 1
+        };
+        var response = await adminClient.PutAsJsonAsync(
+            $"/api/v1/nodes/{registerResult!.NodeId}/configuration", assignRequest);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task AssignConfiguration_WithMajorVersionConstraint_NoMatchingVersion_ReturnsBadRequest()
+    {
+        var fqdn = $"major-version-noexist-{Guid.NewGuid():N}.example.com";
+        var registerResponse = await _client.PostAsJsonAsync("/api/v1/nodes/register",
+            new RegisterNodeRequest { Fqdn = fqdn, RegistrationKey = "test-registration-key" });
+        var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>();
+
+        using var adminClient = _factory.CreateAuthenticatedClient();
+
+        var configName = $"major-version-nomatch-{Guid.NewGuid():N}";
+        await CreateAndPublishConfigVersion(adminClient, configName, "1.0.0", "main.dsc.yaml");
+        await CreateAndPublishConfigVersion(adminClient, configName, "2.0.0", "main.dsc.yaml", isNew: false);
+
+        var assignRequest = new AssignConfigurationRequest
+        {
+            ConfigurationName = configName,
+            MajorVersion = 3
+        };
+        var response = await adminClient.PutAsJsonAsync(
+            $"/api/v1/nodes/{registerResult!.NodeId}/configuration", assignRequest);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        error!.Error.Should().Contain("No published version satisfies");
+    }
+
+    [Fact]
+    public async Task AssignConfiguration_WithPrereleaseChannel_AllowsPrereleaseVersions()
+    {
+        var fqdn = $"prerelease-channel-test-{Guid.NewGuid():N}.example.com";
+        var registerResponse = await _client.PostAsJsonAsync("/api/v1/nodes/register",
+            new RegisterNodeRequest { Fqdn = fqdn, RegistrationKey = "test-registration-key" });
+        var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>();
+
+        using var adminClient = _factory.CreateAuthenticatedClient();
+
+        // Only publish a prerelease version
+        var configName = $"prerelease-channel-config-{Guid.NewGuid():N}";
+        await CreateAndPublishConfigVersion(adminClient, configName, "1.0.0-rc.1", "main.dsc.yaml");
+
+        var assignRequest = new AssignConfigurationRequest
+        {
+            ConfigurationName = configName,
+            PrereleaseChannel = "rc"
+        };
+        var response = await adminClient.PutAsJsonAsync(
+            $"/api/v1/nodes/{registerResult!.NodeId}/configuration", assignRequest);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task AssignConfiguration_WithNoChannel_ExcludesPrereleaseVersions_ReturnsBadRequest()
+    {
+        var fqdn = $"no-channel-prerelease-{Guid.NewGuid():N}.example.com";
+        var registerResponse = await _client.PostAsJsonAsync("/api/v1/nodes/register",
+            new RegisterNodeRequest { Fqdn = fqdn, RegistrationKey = "test-registration-key" });
+        var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>();
+
+        using var adminClient = _factory.CreateAuthenticatedClient();
+
+        // Only publish a prerelease — no stable version exists
+        var configName = $"prerelease-only-config-{Guid.NewGuid():N}";
+        await CreateAndPublishConfigVersion(adminClient, configName, "1.0.0-beta.1", "main.dsc.yaml");
+
+        // No channel set → only stable versions qualify
+        var assignRequest = new AssignConfigurationRequest { ConfigurationName = configName };
+        var response = await adminClient.PutAsJsonAsync(
+            $"/api/v1/nodes/{registerResult!.NodeId}/configuration", assignRequest);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        error!.Error.Should().Contain("No published version satisfies");
+    }
+
+    [Fact]
+    public async Task AssignConfiguration_WithoutConstraints_UsesSemverOrdering()
+    {
+        // Publishes 2.0.0 first then 1.0.1 — semver ordering should resolve 2.0.0, not 1.0.1
+        var fqdn = $"semver-ordering-test-{Guid.NewGuid():N}.example.com";
+        var registerResponse = await _client.PostAsJsonAsync("/api/v1/nodes/register",
+            new RegisterNodeRequest { Fqdn = fqdn, RegistrationKey = "test-registration-key" });
+        var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>();
+
+        using var adminClient = _factory.CreateAuthenticatedClient();
+
+        var configName = $"semver-ordering-config-{Guid.NewGuid():N}";
+        await CreateAndPublishConfigVersion(adminClient, configName, "2.0.0", "main.dsc.yaml");
+        await CreateAndPublishConfigVersion(adminClient, configName, "1.0.1", "main.dsc.yaml", isNew: false);
+
+        var assignRequest = new AssignConfigurationRequest { ConfigurationName = configName };
+        var response = await adminClient.PutAsJsonAsync(
+            $"/api/v1/nodes/{registerResult!.NodeId}/configuration", assignRequest);
+
+        // Assignment succeeds — endpoint chose 2.0.0 (semver highest), not the most recently published 1.0.1
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    /// <summary>
+    /// Creates a new configuration with an initial version (isNew=true) or adds a version to
+    /// an existing configuration (isNew=false), then publishes it.
+    /// </summary>
+    private static async Task CreateAndPublishConfigVersion(
+        HttpClient adminClient,
+        string configName,
+        string version,
+        string entryPoint,
+        bool isNew = true)
+    {
+        if (isNew)
+        {
+            using var content = new MultipartFormDataContent();
+            content.Add(new StringContent(configName), "name");
+            content.Add(new StringContent(entryPoint), "entryPoint");
+            content.Add(new StringContent(version), "version");
+            var file = new ByteArrayContent("resources: []"u8.ToArray());
+            file.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+            content.Add(file, "files", entryPoint);
+            await adminClient.PostAsync("/api/v1/configurations", content);
+        }
+        else
+        {
+            using var content = new MultipartFormDataContent();
+            content.Add(new StringContent(version), "version");
+            content.Add(new StringContent(entryPoint), "entryPoint");
+            var file = new ByteArrayContent("resources: []"u8.ToArray());
+            file.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+            content.Add(file, "files", entryPoint);
+            await adminClient.PostAsync($"/api/v1/configurations/{configName}/versions", content);
+        }
+
+        await adminClient.PutAsync($"/api/v1/configurations/{configName}/versions/{version}/publish", null);
+    }
+
+    [Fact]
+    public async Task UnassignConfiguration_WithAssignedNode_ReturnsNoContent()
+    {
+        var fqdn = $"unassign-test-{Guid.NewGuid():N}.example.com";
+        var registerResponse = await _client.PostAsJsonAsync("/api/v1/nodes/register",
+            new RegisterNodeRequest { Fqdn = fqdn, RegistrationKey = "test-registration-key" });
+        var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>();
+
+        using var adminClient = _factory.CreateAuthenticatedClient();
+
+        var configName = $"unassign-config-{Guid.NewGuid():N}";
+        await CreateAndPublishConfigVersion(adminClient, configName, "1.0.0", "main.dsc.yaml");
+
+        await adminClient.PutAsJsonAsync($"/api/v1/nodes/{registerResult!.NodeId}/configuration",
+            new AssignConfigurationRequest { ConfigurationName = configName, MajorVersion = 1 });
+
+        var response = await adminClient.DeleteAsync($"/api/v1/nodes/{registerResult.NodeId}/configuration");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task UnassignConfiguration_WhenNotAssigned_ReturnsNoContent()
+    {
+        var fqdn = $"unassign-notassigned-{Guid.NewGuid():N}.example.com";
+        var registerResponse = await _client.PostAsJsonAsync("/api/v1/nodes/register",
+            new RegisterNodeRequest { Fqdn = fqdn, RegistrationKey = "test-registration-key" });
+        var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>();
+
+        using var adminClient = _factory.CreateAuthenticatedClient();
+
+        var response = await adminClient.DeleteAsync($"/api/v1/nodes/{registerResult!.NodeId}/configuration");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task UnassignConfiguration_WithNonExistentNode_ReturnsNotFound()
+    {
+        using var adminClient = _factory.CreateAuthenticatedClient();
+
+        var response = await adminClient.DeleteAsync($"/api/v1/nodes/{Guid.NewGuid()}/configuration");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
 }

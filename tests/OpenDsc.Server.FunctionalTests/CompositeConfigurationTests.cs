@@ -7,6 +7,7 @@ using System.Net;
 
 using AwesomeAssertions;
 
+using OpenDsc.Lcm.Contracts;
 using OpenDsc.Server.Contracts;
 using OpenDsc.Server.FunctionalTests.DatabaseProviders;
 

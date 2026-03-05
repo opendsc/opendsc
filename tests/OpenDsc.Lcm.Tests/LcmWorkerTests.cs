@@ -11,6 +11,8 @@ using Microsoft.Extensions.Options;
 using Moq;
 using Moq.Protected;
 
+using OpenDsc.Lcm.Contracts;
+
 using Xunit;
 
 namespace OpenDsc.Lcm.Tests;

@@ -100,7 +100,7 @@ public static class CompositeConfigurationEndpoints
             Description = c.Description,
             EntryPoint = c.EntryPoint,
             VersionCount = c.Versions.Count,
-            LatestVersion = c.Versions.OrderByDescending(v => v.CreatedAt).Select(v => v.Version).FirstOrDefault(),
+            LatestVersion = VersionResolver.LatestSemver(c.Versions.Select(v => v.Version)),
             CreatedAt = c.CreatedAt
         }).ToList();
 

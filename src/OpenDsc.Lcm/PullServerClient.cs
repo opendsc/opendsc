@@ -8,6 +8,7 @@ using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
+using OpenDsc.Lcm.Contracts;
 using OpenDsc.Schema;
 
 namespace OpenDsc.Lcm;
@@ -68,7 +69,11 @@ public partial class PullServerClient : IDisposable
         var request = new RegisterNodeRequest
         {
             RegistrationKey = pullServer.RegistrationKey,
-            Fqdn = fqdn
+            Fqdn = fqdn,
+            ConfigurationSource = config.ConfigurationSource,
+            ConfigurationMode = config.ConfigurationMode,
+            ConfigurationModeInterval = config.ConfigurationModeInterval,
+            ReportCompliance = pullServer.ReportCompliance
         };
 
         try

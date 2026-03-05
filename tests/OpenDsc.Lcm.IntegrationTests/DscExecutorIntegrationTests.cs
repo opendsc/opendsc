@@ -4,6 +4,8 @@
 
 using AwesomeAssertions;
 
+using OpenDsc.Lcm.Contracts;
+
 using Xunit;
 
 namespace OpenDsc.Lcm.IntegrationTests;
