@@ -163,6 +163,7 @@
                                         <MudTh>Value</MudTh>
                                         <MudTh>Nodes</MudTh>
                                         <MudTh>Parameter Files</MudTh>
+                                        <MudTh>Actions</MudTh>
                                     </HeaderContent>
                                     <RowTemplate>
                                         <MudTd>@context.Value</MudTd>
@@ -171,6 +172,13 @@
                                         </MudTd>
                                         <MudTd>
                                             <MudChip T="string" Size="Size.Small">@context.ParameterFileCount</MudChip>
+                                        </MudTd>
+                                        <MudTd>
+                                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                           Size="Size.Small"
+                                                           Color="Color.Error"
+                                                           Disabled="@(context.NodeCount > 0 || context.ParameterFileCount > 0)"
+                                                           OnClick="@(() => DeleteUnrestrictedValue(scopeType.Id, context.Value, context.NodeCount, context.ParameterFileCount))" />
                                         </MudTd>
                                     </RowTemplate>
                                 </MudTable>
@@ -421,5 +429,24 @@
                 Snackbar.Add($"Error deleting scope value: {ex.Message}", Severity.Error);
             }
         }
+    }
+
+    private async Task DeleteUnrestrictedValue(Guid scopeTypeId, string value, int nodeCount, int parameterFileCount)
+    {
+        // this method is only called when both counts are zero, but guard anyway
+        if (nodeCount > 0 || parameterFileCount > 0)
+        {
+            return;
+        }
+
+        var scopeValue = scopeValues.FirstOrDefault(sv => sv.ScopeTypeId == scopeTypeId && sv.Value == value);
+        if (scopeValue == null)
+        {
+            // refresh data to clear stale entries
+            await LoadDataAsync();
+            return;
+        }
+
+        await DeleteScopeValue(scopeValue);
     }
 }
