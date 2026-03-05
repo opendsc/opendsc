@@ -167,7 +167,7 @@ else
                         <MudText Typo="Typo.h6">Node Tags</MudText>
                     </CardHeaderContent>
                     <CardHeaderActions>
-                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => showAddTag = !showAddTag)" StartIcon="@Icons.Material.Filled.Add">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Disabled="@(!CanAddTag)" OnClick="ToggleAddTag">
                             Add Tag
                         </MudButton>
                     </CardHeaderActions>
@@ -177,9 +177,9 @@ else
                     {
                         <MudCard Class="mb-4" Outlined="true">
                             <MudCardContent>
-                                <MudText Typo="Typo.h6" Class="mb-3">Add New Tag</MudText>
-                                <MudSelect @bind-Value="selectedScopeTypeId" Label="Scope Type" Variant="Variant.Outlined" Class="mb-3" T="Guid?">
-                                    @foreach (var scopeType in availableScopeTypes)
+                                <MudText Typo="Typo.h6" Class="mb-3">@(editingTag != null ? "Edit Tag" : "Add New Tag")</MudText>
+                                <MudSelect @bind-Value="selectedScopeTypeId" @bind-Value:after="@OnScopeTypeChanged" Label="Scope Type" Variant="Variant.Outlined" Class="mb-3" T="Guid?" Disabled="@(editingTag != null)">
+                                    @foreach (var scopeType in FilteredScopeTypes)
                                     {
                                         <MudSelectItem Value="@((Guid?)scopeType.Id)">@scopeType.Name</MudSelectItem>
                                     }
@@ -187,18 +187,40 @@ else
 
                                 @if (selectedScopeTypeId.HasValue)
                                 {
-                                    <MudSelect @bind-Value="selectedScopeValueId" Label="Scope Value" Variant="Variant.Outlined" Class="mb-3" T="Guid?">
-                                        @foreach (var scopeValue in GetScopeValuesForType(selectedScopeTypeId.Value))
-                                        {
-                                            <MudSelectItem Value="@((Guid?)scopeValue.Id)">@scopeValue.Value</MudSelectItem>
-                                        }
-                                    </MudSelect>
+                                    var currentType = availableScopeTypes.FirstOrDefault(st => st.Id == selectedScopeTypeId.Value);
+                                    var isNode = currentType?.Name == "Node";
+                                    var isRestricted = currentType?.ValueMode == ScopeValueMode.Restricted;
+                                    var isUnrestricted = !isNode && !isRestricted;
+
+                                    if (isNode)
+                                    {
+                                        <MudSelect T="Guid?" @bind-Value="selectedScopeValueId" Label="Node" Variant="Variant.Outlined" Class="mb-3">
+                                            @foreach (var n in nodesForType)
+                                            {
+                                                <MudSelectItem Value="@((Guid?)n.Id)">@n.Fqdn</MudSelectItem>
+                                            }
+                                        </MudSelect>
+                                    }
+                                    else if (isRestricted)
+                                    {
+                                        <MudSelect T="Guid?" @bind-Value="selectedScopeValueId" Label="Scope Value" Variant="Variant.Outlined" Class="mb-3">
+                                            @foreach (var scopeValue in GetScopeValuesForType(selectedScopeTypeId.Value))
+                                            {
+                                                <MudSelectItem Value="@((Guid?)scopeValue.Id)">@scopeValue.Value</MudSelectItem>
+                                            }
+                                        </MudSelect>
+                                    }
+                                    else if (isUnrestricted)
+                                    {
+                                        <MudAutocomplete T="string" @bind-Value="selectedScopeValueText" Label="Scope Value" Variant="Variant.Outlined" Class="mb-3"
+                                                     SearchFunc="SearchScopeValueTexts" CoerceValue="true" Clearable="true" />
+                                    }
                                 }
 
-                                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="AddTag" Disabled="@(!selectedScopeValueId.HasValue)">
-                                    Add
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="AddTag" Disabled="@(!HasValueSelection)">
+                                    @(editingTag != null ? "Save" : "Add")
                                 </MudButton>
-                                <MudButton Variant="Variant.Outlined" OnClick="@(() => showAddTag = false)">
+                                <MudButton Variant="Variant.Outlined" OnClick="CancelAddOrEdit">
                                     Cancel
                                 </MudButton>
                             </MudCardContent>
@@ -219,6 +241,10 @@ else
                                 <MudTd>@context.ScopeValue.Value</MudTd>
                                 <MudTd>@context.AssignedAt.LocalDateTime.ToString("g")</MudTd>
                                 <MudTd>
+                                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                   Size="Size.Small"
+                                                   Color="Color.Primary"
+                                                   OnClick="@(() => StartEditTag(context))" />
                                     <MudIconButton Icon="@Icons.Material.Filled.Delete"
                                                    Size="Size.Small"
                                                    Color="Color.Error"
@@ -295,9 +321,47 @@ else
     private List<NodeTag> nodeTags = [];
     private List<ScopeType> availableScopeTypes = [];
     private List<ScopeValue> availableScopeValues = [];
+    private List<Node> nodesForType = [];
+    private string? selectedScopeValueText;
+
+    private bool IsUnrestrictedScopeType(Guid scopeTypeId)
+    {
+        var st = availableScopeTypes.FirstOrDefault(t => t.Id == scopeTypeId);
+        if (st == null) return false;
+        if (st.Name == "Node") return false;
+        return st.ValueMode != ScopeValueMode.Restricted;
+    }
+
+    private bool IsRestrictedScopeType(Guid scopeTypeId)
+    {
+        var st = availableScopeTypes.FirstOrDefault(t => t.Id == scopeTypeId);
+        return st?.ValueMode == ScopeValueMode.Restricted;
+    }
     private bool showAddTag;
     private Guid? selectedScopeTypeId;
     private Guid? selectedScopeValueId;
+
+    private NodeTag? editingTag;
+
+    private IEnumerable<ScopeType> FilteredScopeTypes =>
+        availableScopeTypes.Where(st =>
+            editingTag != null ? st.Id == editingTag.ScopeValue.ScopeTypeId
+            : !nodeTags.Any(nt => nt.ScopeValue.ScopeTypeId == st.Id));
+
+    private bool CanAddTag => editingTag != null || FilteredScopeTypes.Any();
+
+    private bool HasValueSelection
+    {
+        get
+        {
+            if (!selectedScopeTypeId.HasValue) return false;
+            if (IsUnrestrictedScopeType(selectedScopeTypeId.Value))
+            {
+                return !string.IsNullOrWhiteSpace(selectedScopeValueText);
+            }
+            return selectedScopeValueId.HasValue;
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -358,6 +422,9 @@ else
             .OrderBy(nt => nt.ScopeValue.ScopeType.Precedence)
             .ThenBy(nt => nt.ScopeValue.Value)
             .ToListAsync();
+
+        // clear any in-progress editing when the list changes
+        editingTag = null;
     }
 
     private async Task LoadScopeDataAsync()
@@ -370,6 +437,11 @@ else
         availableScopeValues = await Db.ScopeValues
             .Include(sv => sv.ScopeType)
             .OrderBy(sv => sv.Value)
+            .ToListAsync();
+
+        // preload nodes for node-scope dropdown
+        nodesForType = await Db.Nodes
+            .OrderBy(n => n.Fqdn)
             .ToListAsync();
     }
 
@@ -493,39 +565,130 @@ else
             .ToList();
     }
 
+    private List<string> GetScopeValueTextsForType(Guid scopeTypeId)
+    {
+        return availableScopeValues
+            .Where(sv => sv.ScopeTypeId == scopeTypeId)
+            .Select(sv => sv.Value)
+            .Distinct()
+            .OrderBy(v => v)
+            .ToList();
+    }
+
+    private Task<IEnumerable<string>?> SearchScopeValueTexts(string value, CancellationToken token)
+    {
+        IEnumerable<string> list = selectedScopeTypeId.HasValue
+            ? GetScopeValueTextsForType(selectedScopeTypeId.Value)
+            : Array.Empty<string>();
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            list = list.Where(v => v.Contains(value, StringComparison.OrdinalIgnoreCase));
+        }
+        return Task.FromResult<IEnumerable<string>?>(list);
+    }
     private async Task AddTag()
     {
-        if (!selectedScopeValueId.HasValue || node == null)
+        if (node == null || !selectedScopeTypeId.HasValue)
+            return;
+
+        var currentType = availableScopeTypes.FirstOrDefault(st => st.Id == selectedScopeTypeId.Value);
+        var isRestricted = currentType?.ValueMode == ScopeValueMode.Restricted;
+        var isNode = currentType?.Name == "Node";
+        var isUnrestricted = !isRestricted && !isNode;
+
+
+        if (!isUnrestricted && !selectedScopeValueId.HasValue)
+            return; // nothing selected for non-unrestricted type
+        if (isUnrestricted && string.IsNullOrWhiteSpace(selectedScopeValueText))
             return;
 
         try
         {
-            var existingTag = await Db.NodeTags
-                .FirstOrDefaultAsync(nt => nt.NodeId == Id && nt.ScopeValueId == selectedScopeValueId.Value);
-
-            if (existingTag != null)
+            // resolve the scope value identifier, creating a new ScopeValue record if necessary
+            Guid scopeValueId;
+            if (isUnrestricted)
             {
-                Snackbar.Add("This tag is already assigned to this node.", Severity.Warning);
-                return;
+                var text = selectedScopeValueText!.Trim();
+                var existingValue = await Db.ScopeValues
+                    .FirstOrDefaultAsync(sv => sv.ScopeTypeId == selectedScopeTypeId.Value && sv.Value == text);
+                if (existingValue == null)
+                {
+                    existingValue = new ScopeValue
+                    {
+                        Id = Guid.NewGuid(),
+                        ScopeTypeId = selectedScopeTypeId.Value,
+                        Value = text,
+                        CreatedAt = DateTimeOffset.UtcNow
+                    };
+                    Db.ScopeValues.Add(existingValue);
+                    await Db.SaveChangesAsync();
+                    availableScopeValues.Add(existingValue);
+                }
+                scopeValueId = existingValue.Id;
+            }
+            else
+            {
+                scopeValueId = selectedScopeValueId!.Value;
             }
 
-            var nodeTag = new NodeTag
+            if (editingTag != null)
             {
-                NodeId = Id,
-                ScopeValueId = selectedScopeValueId.Value,
-                AssignedAt = DateTimeOffset.UtcNow
-            };
+                // if the value didn't change, nothing to do
+                if (editingTag.ScopeValueId == scopeValueId)
+                {
+                    CancelAddOrEdit();
+                    return;
+                }
 
-            Db.NodeTags.Add(nodeTag);
-            await Db.SaveChangesAsync();
+                Db.NodeTags.Remove(editingTag);
+                await Db.SaveChangesAsync();
+
+                var newTag = new NodeTag
+                {
+                    NodeId = Id,
+                    ScopeValueId = scopeValueId,
+                    AssignedAt = DateTimeOffset.UtcNow
+                };
+                Db.NodeTags.Add(newTag);
+                await Db.SaveChangesAsync();
+                Snackbar.Add("Tag updated successfully", Severity.Success);
+            }
+            else
+            {
+                if (selectedScopeTypeId.HasValue && nodeTags.Any(nt => nt.ScopeValue.ScopeTypeId == selectedScopeTypeId.Value))
+                {
+                    Snackbar.Add("A tag for that scope type already exists.", Severity.Warning);
+                    return;
+                }
+
+                var existingTag = await Db.NodeTags
+                    .FirstOrDefaultAsync(nt => nt.NodeId == Id && nt.ScopeValueId == scopeValueId);
+
+                if (existingTag != null)
+                {
+                    Snackbar.Add("This tag is already assigned to this node.", Severity.Warning);
+                    return;
+                }
+
+                var nodeTag = new NodeTag
+                {
+                    NodeId = Id,
+                    ScopeValueId = scopeValueId,
+                    AssignedAt = DateTimeOffset.UtcNow
+                };
+
+                Db.NodeTags.Add(nodeTag);
+                await Db.SaveChangesAsync();
+                Snackbar.Add("Tag added successfully", Severity.Success);
+            }
 
             await LoadTagsAsync();
 
             selectedScopeTypeId = null;
             selectedScopeValueId = null;
+            selectedScopeValueText = null;
             showAddTag = false;
-
-            Snackbar.Add("Tag added successfully", Severity.Success);
+            editingTag = null;
         }
         catch (Exception ex)
         {
@@ -548,5 +711,50 @@ else
         {
             Snackbar.Add($"Error removing tag: {ex.Message}", Severity.Error);
         }
+    }
+
+    private void OnScopeTypeChanged()
+    {
+        // clear any previously selected value when the type changes
+        selectedScopeValueId = null;
+        selectedScopeValueText = null;
+    }
+
+    private void ToggleAddTag()
+    {
+        if (editingTag != null)
+        {
+            CancelAddOrEdit();
+        }
+        else
+        {
+            showAddTag = !showAddTag;
+        }
+    }
+
+    private void StartEditTag(NodeTag tag)
+    {
+        editingTag = tag;
+        showAddTag = true;
+        selectedScopeTypeId = tag.ScopeValue.ScopeTypeId;
+        if (IsUnrestrictedScopeType(selectedScopeTypeId.Value))
+        {
+            selectedScopeValueText = tag.ScopeValue.Value;
+            selectedScopeValueId = null;
+        }
+        else
+        {
+            selectedScopeValueId = tag.ScopeValueId;
+            selectedScopeValueText = null;
+        }
+    }
+
+    private void CancelAddOrEdit()
+    {
+        editingTag = null;
+        showAddTag = false;
+        selectedScopeTypeId = null;
+        selectedScopeValueId = null;
+        selectedScopeValueText = null;
     }
 }
