@@ -3,6 +3,11 @@
 @inject ServerDbContext Db
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
+@using BlazorMonaco
+@using BlazorMonaco.Editor
+@inject IJSRuntime JSRuntime
+@inject ThemeService ThemeService
+@inject IJsonYamlConverter JsonYamlConverter
 
 <PageTitle>Report Details</PageTitle>
 
@@ -73,16 +78,32 @@ else
             <MudCard>
                 <MudCardHeader>
                     <CardHeaderContent>
-                        <MudText Typo="Typo.h6">Full Report JSON</MudText>
+                        <MudText Typo="Typo.h6">Full Report</MudText>
                     </CardHeaderContent>
                 </MudCardHeader>
                 <MudCardContent>
-                    <MudTextField T="string"
-                                  @bind-Value="@report.ResultJson"
-                                  Lines="20"
-                                  Variant="Variant.Outlined"
-                                  ReadOnly="true"
-                                  Class="mud-input-monospace" />
+                    <div class="d-flex justify-end mb-2">
+                        <MudButtonGroup>
+                            <MudButton Variant="@(contentFormat == ContentFormat.Yaml ? Variant.Filled : Variant.Text)"
+                                       Color="@(contentFormat == ContentFormat.Yaml ? Color.Primary : Color.Default)"
+                                       Style="@(contentFormat == ContentFormat.Yaml ? "" : "opacity: 0.6")"
+                                       OnClick="() => SwitchFormat(ContentFormat.Yaml)">
+                                YAML
+                            </MudButton>
+                            <MudButton Variant="@(contentFormat == ContentFormat.Json ? Variant.Filled : Variant.Text)"
+                                       Color="@(contentFormat == ContentFormat.Json ? Color.Primary : Color.Default)"
+                                       Style="@(contentFormat == ContentFormat.Json ? "" : "opacity: 0.6")"
+                                       OnClick="() => SwitchFormat(ContentFormat.Json)">
+                                JSON
+                            </MudButton>
+                        </MudButtonGroup>
+                    </div>
+                    <div style="height: 500px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
+                        <StandaloneCodeEditor @ref="_editor"
+                                              Id="report-json-editor"
+                                              ConstructionOptions="GetEditorOptions"
+                                              CssClass="mud-input-monospace" />
+                    </div>
                 </MudCardContent>
             </MudCard>
         </MudItem>
@@ -100,6 +121,14 @@ else
     private Report? report;
     private string nodeFqdn = string.Empty;
 
+    // Monaco editor state
+    private StandaloneCodeEditor? _editor;
+    private string rawJson = string.Empty;
+    private string reportContent = string.Empty;
+
+    private enum ContentFormat { Json, Yaml }
+    private ContentFormat contentFormat = ContentFormat.Yaml;
+
     protected override async Task OnInitializedAsync()
     {
         try
@@ -109,11 +138,89 @@ else
             {
                 var node = await Db.Nodes.FindAsync(report.NodeId);
                 nodeFqdn = node?.Fqdn ?? "Unknown";
+
+                // save raw JSON and prepare content
+                rawJson = report.ResultJson ?? string.Empty;
+                UpdateReportContent();
             }
         }
         catch (Exception ex)
         {
             Snackbar.Add($"Error loading report: {ex.Message}", Severity.Error);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && report != null && _editor != null)
+        {
+            // give the Monaco container a moment to initialize on the client
+            await Task.Delay(100);
+            await _editor.SetValue(reportContent);
+        }
+    }
+
+    private StandaloneEditorConstructionOptions GetEditorOptions(StandaloneCodeEditor editor)
+    {
+        return new StandaloneEditorConstructionOptions
+        {
+            AutomaticLayout = true,
+            Language = contentFormat == ContentFormat.Yaml ? "yaml" : "json",
+            Value = reportContent,
+            Theme = ThemeService.IsDarkMode ? "vs-dark" : "vs",
+            ReadOnly = true,
+            LineNumbers = "on",
+            Minimap = new EditorMinimapOptions { Enabled = false },
+            ScrollBeyondLastLine = false,
+            FontSize = 14,
+            FontFamily = "'Cascadia Code', 'Courier New', monospace",
+            TabSize = 2,
+            InsertSpaces = true,
+            WordWrap = "off"
+        };
+    }
+
+    private void UpdateReportContent()
+    {
+        if (contentFormat == ContentFormat.Yaml)
+        {
+            reportContent = JsonYamlConverter.ConvertJsonToYaml(rawJson);
+        }
+        else
+        {
+            reportContent = FormatJson(rawJson);
+        }
+    }
+
+    private async Task SwitchFormat(ContentFormat format)
+    {
+        if (format == contentFormat)
+            return;
+
+        contentFormat = format;
+        UpdateReportContent();
+
+        if (_editor != null)
+        {
+            var model = await _editor.GetModel();
+            if (model != null)
+            {
+                await Global.SetModelLanguage(JSRuntime, model, contentFormat == ContentFormat.Yaml ? "yaml" : "json");
+            }
+            await _editor.SetValue(reportContent);
+        }
+    }
+
+    private string FormatJson(string json)
+    {
+        try
+        {
+            var jsonObj = System.Text.Json.JsonSerializer.Deserialize<object>(json);
+            return System.Text.Json.JsonSerializer.Serialize(jsonObj, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        }
+        catch
+        {
+            return json;
         }
     }
 }
