@@ -70,11 +70,13 @@
                                            Color="Color.Primary"
                                            Disabled="@(scopeType.IsSystem || scopeType.Name == "Node" || scopeType.Name == "Default")"
                                            OnClick="@(() => EditScopeType(scopeType))" />
-                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                           Size="Size.Small"
-                                           Color="Color.Error"
-                                           Disabled="@scopeType.IsSystem"
-                                           OnClick="@(() => DeleteScopeType(scopeType))" />
+                            <MudTooltip Text="@(scopeType.IsSystem ? "System types cannot be deleted" : (!CanDeleteScopeType(scopeType) ? "One or more values are in use; remove associated nodes/parameter files first" : null))">
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                               Size="Size.Small"
+                                               Color="Color.Error"
+                                               Disabled="@(scopeType.IsSystem || !CanDeleteScopeType(scopeType))"
+                                               OnClick="@(() => DeleteScopeType(scopeType))" />
+                            </MudTooltip>
                         </CardHeaderActions>
                     </MudCardHeader>
                     @if (scopeType.ValueMode == ScopeValueMode.Restricted)
@@ -105,10 +107,23 @@
                                                            Size="Size.Small"
                                                            Color="Color.Primary"
                                                            OnClick="@(() => EditScopeValue(context))" />
+                                            @{
+                                            bool valueHasNodes = context.NodeTags.Count > 0;
+                                            bool valueHasParams = parameterFileCounts.GetValueOrDefault((scopeType.Id, context.Value), 0) > 0;
+                                            bool canDelete = !valueHasNodes && !valueHasParams;
+                                            string? tooltip = valueHasNodes
+                                                ? "Cannot delete value while nodes are tagged"
+                                                : valueHasParams
+                                                    ? "Cannot delete value while parameter files reference it"
+                                                    : null;
+                                        }
+                                        <MudTooltip Text="@tooltip">
                                             <MudIconButton Icon="@Icons.Material.Filled.Delete"
                                                            Size="Size.Small"
                                                            Color="Color.Error"
+                                                           Disabled="@(!canDelete)"
                                                            OnClick="@(() => DeleteScopeValue(context))" />
+                                        </MudTooltip>
                                         </MudTd>
                                     </RowTemplate>
                                 </MudTable>
@@ -368,8 +383,46 @@
         }
     }
 
+    private bool CanDeleteScopeType(ScopeType scopeType)
+    {
+        if (scopeType.IsSystem)
+            return false;
+
+        var values = scopeValues.Where(sv => sv.ScopeTypeId == scopeType.Id).ToList();
+        if (!values.Any())
+        {
+            if (parameterFileCounts.Keys.Any(k => k.scopeTypeId == scopeType.Id && parameterFileCounts[k] > 0))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        foreach (var v in values)
+        {
+            if (v.NodeTags.Count > 0)
+                return false;
+            if (parameterFileCounts.GetValueOrDefault((scopeType.Id, v.Value), 0) > 0)
+                return false;
+        }
+
+        if (parameterFileCounts.Keys.Any(k => k.scopeTypeId == scopeType.Id && !values.Any(v => v.Value == k.value) && parameterFileCounts[k] > 0))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
     private async Task DeleteScopeType(ScopeType scopeType)
     {
+        if (!CanDeleteScopeType(scopeType))
+        {
+            Snackbar.Add("Cannot delete scope type because one or more values are in use by nodes or parameter files.", Severity.Warning);
+            return;
+        }
+
         var result = await DialogService.ShowMessageBox(
             "Delete Scope Type",
             $"Are you sure you want to delete the scope type '{scopeType.Name}'? This will also remove all associated scope values.",
@@ -394,20 +447,33 @@
 
     private async Task DeleteScopeValue(ScopeValue scopeValue)
     {
+        var fresh = await Db.ScopeValues
+            .Include(sv => sv.NodeTags)
+            .FirstOrDefaultAsync(sv => sv.Id == scopeValue.Id);
+        if (fresh is null)
+        {
+            Snackbar.Add("Scope value no longer exists.", Severity.Warning);
+            await LoadDataAsync();
+            return;
+        }
+
         var parameterCount = await Db.ParameterFiles
-            .Where(pf => pf.ScopeTypeId == scopeValue.ScopeTypeId && pf.ScopeValue == scopeValue.Value)
+            .Where(pf => pf.ScopeTypeId == fresh.ScopeTypeId && pf.ScopeValue == fresh.Value)
             .CountAsync();
 
         if (parameterCount > 0)
         {
-            Snackbar.Add($"Cannot delete scope value '{scopeValue.Value}' because {parameterCount} parameter(s) are using it.", Severity.Warning);
+            Snackbar.Add($"Cannot delete scope value '{fresh.Value}' because {parameterCount} parameter(s) are using it.", Severity.Warning);
             return;
         }
 
-        var nodeCount = scopeValue.NodeTags.Count;
-        var message = nodeCount > 0
-            ? $"Delete '{scopeValue.Value}'? This will remove it from {nodeCount} node(s)."
-            : $"Delete '{scopeValue.Value}'?";
+        var nodeCount = fresh.NodeTags.Count;
+        if (nodeCount > 0)
+        {
+            Snackbar.Add($"Cannot delete scope value '{fresh.Value}' because it is assigned to {nodeCount} node(s).", Severity.Warning);
+            return;
+        }
+        var message = $"Delete '{fresh.Value}'?";
 
         var confirmed = await DialogService.ShowMessageBox(
             "Confirm Delete",

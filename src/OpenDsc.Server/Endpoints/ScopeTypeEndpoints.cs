@@ -270,6 +270,7 @@ public static class ScopeTypeEndpoints
     {
         var scopeType = await db.ScopeTypes
             .Include(st => st.ScopeValues)
+            .ThenInclude(sv => sv.NodeTags)
             .Include(st => st.ParameterFiles)
             .FirstOrDefaultAsync(st => st.Id == id);
 
@@ -283,14 +284,17 @@ public static class ScopeTypeEndpoints
             return TypedResults.Conflict($"Cannot delete system scope type '{scopeType.Name}'");
         }
 
-        if (scopeType.ScopeValues.Count > 0)
+        bool hasUsedValue = scopeType.ScopeValues.Any(v => v.NodeTags.Any());
+        if (hasUsedValue)
         {
-            return TypedResults.Conflict($"Cannot delete scope type '{scopeType.Name}' because it has {scopeType.ScopeValues.Count} scope values");
+            return TypedResults.Conflict(
+                $"Cannot delete scope type '{scopeType.Name}' because one or more values are assigned to nodes");
         }
 
         if (scopeType.ParameterFiles.Count > 0)
         {
-            return TypedResults.Conflict($"Cannot delete scope type '{scopeType.Name}' because it has {scopeType.ParameterFiles.Count} parameter files");
+            return TypedResults.Conflict(
+                $"Cannot delete scope type '{scopeType.Name}' because it has {scopeType.ParameterFiles.Count} parameter files");
         }
 
         var allScopeTypes = await db.ScopeTypes.OrderBy(st => st.Precedence).ToListAsync();

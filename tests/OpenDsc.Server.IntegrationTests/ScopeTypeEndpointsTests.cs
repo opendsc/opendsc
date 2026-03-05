@@ -6,6 +6,9 @@ using System.Net;
 
 using AwesomeAssertions;
 
+using Microsoft.EntityFrameworkCore;
+using OpenDsc.Server.Data;
+using OpenDsc.Server.Contracts;
 using OpenDsc.Server.Endpoints;
 using OpenDsc.Server.Entities;
 
@@ -27,6 +30,44 @@ public sealed class ScopeTypeEndpointsTests : IDisposable
     private HttpClient CreateAuthenticatedClient()
     {
         return _factory.CreateAuthenticatedClient();
+    }
+
+    private async Task<Guid> CreateScopeTypeAsync(HttpClient client, string name)
+    {
+        var request = new CreateScopeTypeRequest { Name = name, ValueMode = ScopeValueMode.Restricted };
+        var response = await client.PostAsJsonAsync("/api/v1/scope-types", request, SourceGenerationContext.Default.Options);
+        var result = await response.Content.ReadFromJsonAsync<ScopeTypeDto>(SourceGenerationContext.Default.Options);
+        return result!.Id;
+    }
+
+    private async Task<Guid> CreateScopeValueAsync(HttpClient client, Guid scopeTypeId, string value)
+    {
+        var request = new CreateScopeValueRequest { Value = value };
+        var response = await client.PostAsJsonAsync($"/api/v1/scope-types/{scopeTypeId}/values", request);
+        var result = await response.Content.ReadFromJsonAsync<ScopeValueDto>();
+        return result!.Id;
+    }
+
+    private async Task<Guid> CreateTestConfigurationAsync(HttpClient client, string name)
+    {
+        using var content = new MultipartFormDataContent();
+        content.Add(new StringContent(name), "name");
+        content.Add(new StringContent("main.dsc.yaml"), "entryPoint");
+        var file = new ByteArrayContent("resources: []"u8.ToArray());
+        file.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+        content.Add(file, "files", "main.dsc.yaml");
+
+        var response = await client.PostAsync("/api/v1/configurations", content);
+        response.EnsureSuccessStatusCode();
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
+        var config = await db.Configurations.FirstOrDefaultAsync(c => c.Name == name);
+        if (config is null)
+        {
+            throw new InvalidOperationException($"Configuration '{name}' was not found after creation");
+        }
+        return config.Id;
     }
 
     [Fact]
@@ -205,8 +246,9 @@ public sealed class ScopeTypeEndpointsTests : IDisposable
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
+    // after adding values alone we should still be able to delete until those values are used
     [Fact]
-    public async Task DeleteScopeType_WithScopeValues_ReturnsConflict()
+    public async Task DeleteScopeType_WithScopeValuesButUnused_ReturnsNoContent()
     {
         using var client = CreateAuthenticatedClient();
         var createRequest = new CreateScopeTypeRequest { Name = "WithValues", ValueMode = ScopeValueMode.Restricted };
@@ -217,6 +259,55 @@ public sealed class ScopeTypeEndpointsTests : IDisposable
 
         var response = await client.DeleteAsync($"/api/v1/scope-types/{scopeType.Id}");
 
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task DeleteScopeType_WithValueUsedByNode_ReturnsConflict()
+    {
+        using var client = CreateAuthenticatedClient();
+        var createRequest = new CreateScopeTypeRequest { Name = "WithNode", ValueMode = ScopeValueMode.Restricted };
+        var createResponse = await client.PostAsJsonAsync("/api/v1/scope-types", createRequest, SourceGenerationContext.Default.Options);
+        var scopeType = await createResponse.Content.ReadFromJsonAsync<ScopeTypeDto>(SourceGenerationContext.Default.Options);
+
+        var valueResponse = await client.PostAsJsonAsync($"/api/v1/scope-types/{scopeType!.Id}/values", new CreateScopeValueRequest { Value = "Used" }, SourceGenerationContext.Default.Options);
+        var scopeValue = await valueResponse.Content.ReadFromJsonAsync<ScopeValueDto>();
+
+        // assign a node tag so the value becomes "used"
+        var regKeyRequest = new CreateRegistrationKeyRequest();
+        var registrationKeyResponse = await client.PostAsJsonAsync("/api/v1/admin/registration-keys", regKeyRequest);
+        var regKey = await registrationKeyResponse.Content.ReadFromJsonAsync<RegistrationKeyResponse>();
+        string keyValue = regKey!.Key!;
+
+        var registerResponse = await client.PostAsJsonAsync("/api/v1/nodes/register", new RegisterNodeRequest { Fqdn = "delete-node.local", RegistrationKey = keyValue });
+        var nodeId = (await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>())!.NodeId;
+        await client.PostAsJsonAsync($"/api/v1/nodes/{nodeId}/tags", new AssignNodeTagRequest { ScopeValueId = scopeValue!.Id });
+
+        var response = await client.DeleteAsync($"/api/v1/scope-types/{scopeType.Id}");
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    [Fact]
+    public async Task DeleteScopeType_WithParameterFiles_ReturnsConflict()
+    {
+        using var client = CreateAuthenticatedClient();
+        var scopeTypeId = await CreateScopeTypeAsync(client, "PFType");
+        var scopeValueId = await CreateScopeValueAsync(client, scopeTypeId, "PFValue");
+
+        // create a configuration and add a parameter file scoped to the value
+        var configId = await CreateTestConfigurationAsync(client, $"config-{Guid.NewGuid()}");
+        var request = new
+        {
+            scopeValue = "PFValue",
+            version = "1.0.0",
+            content = "param: value",
+            contentType = "application/x-yaml",
+            isDraft = false
+        };
+        var response1 = await client.PutAsJsonAsync($"/api/v1/parameters/{scopeTypeId}/{configId}", request);
+        response1.EnsureSuccessStatusCode();
+
+        var response = await client.DeleteAsync($"/api/v1/scope-types/{scopeTypeId}");
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
 
