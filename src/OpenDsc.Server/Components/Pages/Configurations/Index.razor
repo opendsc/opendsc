@@ -52,6 +52,16 @@
             <MudDataGrid T="Configuration" Items="@filteredConfigurations" Hover="true" Dense="true">
                 <Columns>
                     <PropertyColumn Property="x => x.Name" Title="Name" />
+                    <TemplateColumn Title="Status" Sortable="false">
+                        <CellTemplate>
+                            @{
+                                var published = context.Item.Versions.Any(v => !v.IsDraft);
+                                var chipColor = published ? Color.Success : Color.Warning;
+                                var chipText = published ? "Published" : "Draft";
+                            }
+                            <MudChip Color="@chipColor" Size="Size.Small" Variant="Variant.Filled">@chipText</MudChip>
+                        </CellTemplate>
+                    </TemplateColumn>
                     <PropertyColumn Property="x => x.Description" Title="Description" />
                     <TemplateColumn Title="Versions">
                         <CellTemplate>
