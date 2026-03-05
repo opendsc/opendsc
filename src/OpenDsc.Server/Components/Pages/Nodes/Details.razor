@@ -271,6 +271,7 @@ else
                                 <MudTh>Timestamp</MudTh>
                                 <MudTh>Operation</MudTh>
                                 <MudTh>Status</MudTh>
+                                <MudTh>Actions</MudTh>
                             </HeaderContent>
                             <RowTemplate>
                                 <MudTd>@context.Timestamp.LocalDateTime.ToString("g")</MudTd>
@@ -288,6 +289,14 @@ else
                                     {
                                         <MudChip T="string" Size="Size.Small" Color="Color.Warning">Non-Compliant</MudChip>
                                     }
+                                </MudTd>
+                                <MudTd>
+                                    <MudTooltip Text="View Details">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                                                       Size="Size.Small"
+                                                       Variant="Variant.Text"
+                                                       OnClick="@(() => ViewReportDetails(context.Id))" />
+                                    </MudTooltip>
                                 </MudTd>
                             </RowTemplate>
                         </MudTable>
@@ -557,6 +566,11 @@ else
         NodeStatus.Error => Color.Error,
         _ => Color.Default
     };
+
+    private void ViewReportDetails(Guid id)
+    {
+        Navigation.NavigateTo($"/reports/{id}");
+    }
 
     private List<ScopeValue> GetScopeValuesForType(Guid scopeTypeId)
     {
