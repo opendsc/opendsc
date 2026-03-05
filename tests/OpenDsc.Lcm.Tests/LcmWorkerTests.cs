@@ -2,6 +2,10 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
+using System.IO.Compression;
+using System.Net;
+using System.Net.Http.Json;
+
 using AwesomeAssertions;
 
 using Microsoft.Extensions.Configuration;
@@ -610,11 +614,221 @@ public class LcmWorkerTests
         }
     }
 
+    [Fact]
+    public async Task PullMode_NewBundle_ClearsOrphanedFilesFromExtractDir()
+    {
+        var extractDir = Path.Combine(Path.GetTempPath(), $"lcm-pull-test-{Guid.NewGuid()}");
+        Directory.CreateDirectory(extractDir);
+        var orphanedFile = Path.Combine(extractDir, "orphaned.dsc.yaml");
+        File.WriteAllText(orphanedFile, "# orphaned config");
+
+        try
+        {
+            var nodeId = Guid.NewGuid();
+            var lcmConfig = new LcmConfig
+            {
+                ConfigurationMode = ConfigurationMode.Monitor,
+                ConfigurationModeInterval = TimeSpan.FromMilliseconds(200),
+                ConfigurationSource = ConfigurationSource.Pull,
+                PullServer = new PullServerSettings
+                {
+                    ServerUrl = "http://test-server",
+                    RegistrationKey = "test-key",
+                    NodeId = nodeId,
+                    ConfigurationChecksum = "old-checksum",
+                    ReportCompliance = false,
+                    CertificateSource = CertificateSource.Managed
+                }
+            };
+
+            var optionsMonitor = CreateOptionsMonitor(lcmConfig);
+            var httpHandlerMock = new Mock<HttpMessageHandler>();
+
+            httpHandlerMock.Protected()
+                .Setup<Task<HttpResponseMessage>>("SendAsync",
+                    ItExpr.Is<HttpRequestMessage>(r => r.RequestUri!.AbsolutePath.EndsWith("/configuration/checksum")),
+                    ItExpr.IsAny<CancellationToken>())
+                .ReturnsAsync(new HttpResponseMessage
+                {
+                    StatusCode = HttpStatusCode.OK,
+                    Content = JsonContent.Create(new ConfigurationChecksumResponse
+                    {
+                        Checksum = "new-checksum",
+                        EntryPoint = "main.dsc.yaml"
+                    })
+                });
+
+            httpHandlerMock.Protected()
+                .Setup<Task<HttpResponseMessage>>("SendAsync",
+                    ItExpr.Is<HttpRequestMessage>(r => r.RequestUri!.AbsolutePath.EndsWith("/configuration/bundle")),
+                    ItExpr.IsAny<CancellationToken>())
+                .ReturnsAsync(() => new HttpResponseMessage
+                {
+                    StatusCode = HttpStatusCode.OK,
+                    Content = new StreamContent(CreateZipBundle([("main.dsc.yaml", "# config")])),
+                });
+
+            var httpClient = new HttpClient(httpHandlerMock.Object)
+            {
+                BaseAddress = new Uri("http://test-server")
+            };
+
+            var certManagerMock = new Mock<ICertificateManager>();
+            var pullClient = new PullServerClient(httpClient, optionsMonitor, certManagerMock.Object, Mock.Of<ILogger<PullServerClient>>());
+
+            var configMock = new Mock<IConfiguration>();
+            configMock.SetupGet(c => c["Logging:LogLevel:OpenDsc.Lcm"]).Returns("Information");
+
+            var dscExecutorMock = new Mock<DscExecutor>(MockBehavior.Loose, Mock.Of<ILogger<DscExecutor>>(), Mock.Of<ILoggerFactory>());
+            dscExecutorMock.Protected()
+                .Setup<Task<(OpenDsc.Schema.DscResult, int)>>("ExecuteCommandAsync",
+                    ItExpr.IsAny<string>(), ItExpr.IsAny<string>(), ItExpr.IsAny<LcmConfig>(),
+                    ItExpr.IsAny<LogLevel>(), ItExpr.IsAny<CancellationToken>())
+                .ReturnsAsync((new OpenDsc.Schema.DscResult { HadErrors = false }, 0));
+
+            var worker = new TestLcmWorker(configMock.Object, optionsMonitor, dscExecutorMock.Object,
+                pullClient, certManagerMock.Object, Mock.Of<ILogger<LcmWorker>>(), extractDir);
+
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            await worker.StartAsync(cts.Token);
+            await Task.Delay(1000, CancellationToken.None);
+            await worker.StopAsync(CancellationToken.None);
+
+            File.Exists(orphanedFile).Should().BeFalse("orphaned files must be removed when a new bundle is extracted");
+            File.Exists(Path.Combine(extractDir, "main.dsc.yaml")).Should().BeTrue("the new bundle entry point must be present");
+        }
+        finally
+        {
+            if (Directory.Exists(extractDir)) Directory.Delete(extractDir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task PullMode_NewBundle_ExtractsAllBundleFiles()
+    {
+        var extractDir = Path.Combine(Path.GetTempPath(), $"lcm-pull-test-{Guid.NewGuid()}");
+
+        try
+        {
+            var nodeId = Guid.NewGuid();
+            var lcmConfig = new LcmConfig
+            {
+                ConfigurationMode = ConfigurationMode.Monitor,
+                ConfigurationModeInterval = TimeSpan.FromMilliseconds(200),
+                ConfigurationSource = ConfigurationSource.Pull,
+                PullServer = new PullServerSettings
+                {
+                    ServerUrl = "http://test-server",
+                    RegistrationKey = "test-key",
+                    NodeId = nodeId,
+                    ConfigurationChecksum = "old-checksum",
+                    ReportCompliance = false,
+                    CertificateSource = CertificateSource.Managed
+                }
+            };
+
+            var optionsMonitor = CreateOptionsMonitor(lcmConfig);
+            var httpHandlerMock = new Mock<HttpMessageHandler>();
+
+            httpHandlerMock.Protected()
+                .Setup<Task<HttpResponseMessage>>("SendAsync",
+                    ItExpr.Is<HttpRequestMessage>(r => r.RequestUri!.AbsolutePath.EndsWith("/configuration/checksum")),
+                    ItExpr.IsAny<CancellationToken>())
+                .ReturnsAsync(new HttpResponseMessage
+                {
+                    StatusCode = HttpStatusCode.OK,
+                    Content = JsonContent.Create(new ConfigurationChecksumResponse
+                    {
+                        Checksum = "new-checksum",
+                        EntryPoint = "main.dsc.yaml"
+                    })
+                });
+
+            var bundleFiles = new[]
+            {
+                ("main.dsc.yaml", "# main config"),
+                ("sub/helper.dsc.yaml", "# helper config")
+            };
+
+            httpHandlerMock.Protected()
+                .Setup<Task<HttpResponseMessage>>("SendAsync",
+                    ItExpr.Is<HttpRequestMessage>(r => r.RequestUri!.AbsolutePath.EndsWith("/configuration/bundle")),
+                    ItExpr.IsAny<CancellationToken>())
+                .ReturnsAsync(() => new HttpResponseMessage
+                {
+                    StatusCode = HttpStatusCode.OK,
+                    Content = new StreamContent(CreateZipBundle(bundleFiles)),
+                });
+
+            var httpClient = new HttpClient(httpHandlerMock.Object)
+            {
+                BaseAddress = new Uri("http://test-server")
+            };
+
+            var certManagerMock = new Mock<ICertificateManager>();
+            var pullClient = new PullServerClient(httpClient, optionsMonitor, certManagerMock.Object, Mock.Of<ILogger<PullServerClient>>());
+
+            var configMock = new Mock<IConfiguration>();
+            configMock.SetupGet(c => c["Logging:LogLevel:OpenDsc.Lcm"]).Returns("Information");
+
+            var dscExecutorMock = new Mock<DscExecutor>(MockBehavior.Loose, Mock.Of<ILogger<DscExecutor>>(), Mock.Of<ILoggerFactory>());
+            dscExecutorMock.Protected()
+                .Setup<Task<(OpenDsc.Schema.DscResult, int)>>("ExecuteCommandAsync",
+                    ItExpr.IsAny<string>(), ItExpr.IsAny<string>(), ItExpr.IsAny<LcmConfig>(),
+                    ItExpr.IsAny<LogLevel>(), ItExpr.IsAny<CancellationToken>())
+                .ReturnsAsync((new OpenDsc.Schema.DscResult { HadErrors = false }, 0));
+
+            var worker = new TestLcmWorker(configMock.Object, optionsMonitor, dscExecutorMock.Object,
+                pullClient, certManagerMock.Object, Mock.Of<ILogger<LcmWorker>>(), extractDir);
+
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            await worker.StartAsync(cts.Token);
+            await Task.Delay(1000, CancellationToken.None);
+            await worker.StopAsync(CancellationToken.None);
+
+            File.Exists(Path.Combine(extractDir, "main.dsc.yaml")).Should().BeTrue();
+            File.Exists(Path.Combine(extractDir, "sub", "helper.dsc.yaml")).Should().BeTrue();
+        }
+        finally
+        {
+            if (Directory.Exists(extractDir)) Directory.Delete(extractDir, recursive: true);
+        }
+    }
+
     private static IOptionsMonitor<LcmConfig> CreateOptionsMonitor(LcmConfig config)
     {
         var mock = new Mock<IOptionsMonitor<LcmConfig>>();
         mock.Setup(o => o.CurrentValue).Returns(config);
         mock.Setup(o => o.OnChange(It.IsAny<Action<LcmConfig, string?>>())).Returns(Mock.Of<IDisposable>());
         return mock.Object;
+    }
+
+    private static MemoryStream CreateZipBundle(IEnumerable<(string Name, string Content)> files)
+    {
+        var stream = new MemoryStream();
+        using (var archive = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            foreach (var (name, content) in files)
+            {
+                var entry = archive.CreateEntry(name);
+                using var writer = new System.IO.StreamWriter(entry.Open());
+                writer.Write(content);
+            }
+        }
+        stream.Position = 0;
+        return stream;
+    }
+
+    private sealed class TestLcmWorker(
+        IConfiguration configuration,
+        IOptionsMonitor<LcmConfig> lcmMonitor,
+        DscExecutor dscExecutor,
+        PullServerClient pullServerClient,
+        ICertificateManager certificateManager,
+        ILogger<LcmWorker> logger,
+        string extractDir)
+        : LcmWorker(configuration, lcmMonitor, dscExecutor, pullServerClient, certificateManager, logger)
+    {
+        protected override string GetPullExtractDirectory() => extractDir;
     }
 }

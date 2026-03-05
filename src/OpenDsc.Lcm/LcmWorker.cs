@@ -302,7 +302,12 @@ public partial class LcmWorker(
             config.PullServer.ConfigurationEntryPoint = checksumResponse.EntryPoint;
         }
 
-        var extractDir = Path.Combine(ConfigPaths.GetLcmConfigDirectory(), "config", "pull");
+        var extractDir = GetPullExtractDirectory();
+        if (Directory.Exists(extractDir))
+        {
+            Directory.Delete(extractDir, recursive: true);
+        }
+
         Directory.CreateDirectory(extractDir);
 
         using (bundleStream)
@@ -436,6 +441,9 @@ public partial class LcmWorker(
 
         await pullServerClient.SubmitReportAsync(operation, result, cancellationToken);
     }
+
+    protected virtual string GetPullExtractDirectory() =>
+        Path.Combine(ConfigPaths.GetLcmConfigDirectory(), "config", "pull");
 
     private async Task InterruptibleDelayAsync(TimeSpan delay, TimeSpan originalInterval, CancellationToken stoppingToken, CancellationToken modeChangeToken)
     {
