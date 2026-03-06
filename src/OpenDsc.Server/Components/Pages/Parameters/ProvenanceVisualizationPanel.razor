@@ -3,6 +3,7 @@
 @* terms of the MIT license. *@
 
 @rendermode InteractiveServer
+@implements IDisposable
 
 @using Microsoft.EntityFrameworkCore
 @using MudBlazor
@@ -14,6 +15,7 @@
 @inject IParameterApiClient ParameterApiClient
 @inject ServerDbContext Db
 @inject ThemeService ThemeService
+@inject IJSRuntime JSRuntime
 
 <MudCard>
     <MudCardContent>
@@ -116,6 +118,7 @@
     protected override async Task OnInitializedAsync()
     {
         nodes = await Db.Nodes.OrderBy(n => n.Fqdn).ToListAsync();
+        ThemeService.OnThemeChanged += OnThemeChanged;
     }
 
     private async Task<IEnumerable<Node>> SearchNodesAsync(string value, CancellationToken ct)
@@ -195,6 +198,16 @@
             InsertSpaces = true,
             WordWrap = "off"
         };
+    }
+
+    private async void OnThemeChanged()
+    {
+        await Global.SetTheme(JSRuntime, ThemeService.IsDarkMode ? "vs-dark" : "vs");
+    }
+
+    public void Dispose()
+    {
+        ThemeService.OnThemeChanged -= OnThemeChanged;
     }
 
     private static List<ProvenanceTreeNode> BuildTree(Dictionary<string, ParameterSourceInfo> provenance)
