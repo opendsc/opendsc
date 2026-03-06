@@ -1,0 +1,163 @@
+@using NuGet.Versioning
+@inject ServerDbContext Db
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body1" Class="mb-3">
+            Add a child configuration to <strong>@CompositeName</strong> v<strong>@VersionString</strong>
+        </MudText>
+
+        <MudSelect @bind-Value="selectedConfigId"
+                   @bind-Value:after="OnConfigurationSelected"
+                   T="Guid?"
+                   Label="Configuration"
+                   Variant="Variant.Outlined"
+                   Class="mb-3"
+                   Required="true">
+            @foreach (var config in availableConfigurations)
+            {
+                <MudSelectItem T="Guid?" Value="@((Guid?)config.Id)">@config.Name</MudSelectItem>
+            }
+        </MudSelect>
+
+        <MudSelect @bind-Value="selectedMajorVersion"
+                   T="int?"
+                   Label="Major Version"
+                   Variant="Variant.Outlined"
+                   Class="mb-3"
+                   Required="true"
+                   Disabled="@(!selectedConfigId.HasValue || !availableMajorVersions.Any())"
+                   HelperText="Select the major version to track">
+            @foreach (var major in availableMajorVersions)
+            {
+                <MudSelectItem T="int?" Value="@((int?)major)">v@(major)</MudSelectItem>
+            }
+        </MudSelect>
+
+        @if (!string.IsNullOrWhiteSpace(validationError))
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-3">@validationError</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(!IsValid() || isSubmitting)">
+            @if (isSubmitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+            }
+            else
+            {
+                <text>Add</text>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter]
+    public string CompositeName { get; set; } = string.Empty;
+
+    [Parameter]
+    public string VersionString { get; set; } = string.Empty;
+
+    [Parameter]
+    public List<Guid> ExistingChildConfigIds { get; set; } = [];
+
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private List<Configuration> availableConfigurations = [];
+    private List<int> availableMajorVersions = [];
+    private Guid? selectedConfigId;
+    private int? selectedMajorVersion;
+    private bool isSubmitting;
+    private string? validationError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        availableConfigurations = await Db.Configurations
+            .Include(c => c.Versions.Where(v => !v.IsDraft && !v.IsArchived))
+            .Where(c => !ExistingChildConfigIds.Contains(c.Id) && c.Versions.Any(v => !v.IsDraft && !v.IsArchived))
+            .OrderBy(c => c.Name)
+            .ToListAsync();
+    }
+
+    private void OnConfigurationSelected()
+    {
+        selectedMajorVersion = null;
+        availableMajorVersions = [];
+
+        if (!selectedConfigId.HasValue) return;
+
+        var config = availableConfigurations.FirstOrDefault(c => c.Id == selectedConfigId.Value);
+        if (config is null) return;
+
+        availableMajorVersions = config.Versions
+            .Select(v => SemanticVersion.TryParse(v.Version, out var sv) ? sv.Major : -1)
+            .Where(m => m >= 0)
+            .Distinct()
+            .OrderBy(m => m)
+            .ToList();
+    }
+
+    private bool IsValid() => selectedConfigId.HasValue && selectedMajorVersion.HasValue;
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task Submit()
+    {
+        validationError = null;
+        isSubmitting = true;
+
+        try
+        {
+            var compositeVersion = await Db.CompositeConfigurationVersions
+                .Include(v => v.CompositeConfiguration)
+                .Include(v => v.Items)
+                .FirstOrDefaultAsync(v =>
+                    v.CompositeConfiguration.Name == CompositeName &&
+                    v.Version == VersionString);
+
+            if (compositeVersion is null)
+            {
+                validationError = "Composite configuration version not found.";
+                return;
+            }
+
+            if (!compositeVersion.IsDraft)
+            {
+                validationError = "Cannot add children to a published version.";
+                return;
+            }
+
+            var nextOrder = compositeVersion.Items.Any()
+                ? compositeVersion.Items.Max(i => i.Order) + 1
+                : 1;
+
+            var item = new CompositeConfigurationItem
+            {
+                Id = Guid.NewGuid(),
+                CompositeConfigurationVersionId = compositeVersion.Id,
+                ChildConfigurationId = selectedConfigId!.Value,
+                MajorVersion = selectedMajorVersion,
+                Order = nextOrder
+            };
+
+            Db.CompositeConfigurationItems.Add(item);
+            await Db.SaveChangesAsync();
+
+            Snackbar.Add("Child configuration added", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            validationError = $"Error adding child configuration: {ex.Message}";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}

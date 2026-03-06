@@ -1,0 +1,552 @@
+@page "/composite-configurations/{Name}"
+@attribute [Authorize(Policy = "configurations.read")]
+@using NuGet.Versioning
+@inject ServerDbContext Db
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+
+<PageTitle>@Name - Composite Configuration</PageTitle>
+
+@if (composite != null)
+{
+    <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" Class="mb-4" OnClick="@(() => Navigation.NavigateTo("/composite-configurations"))">
+        Back to Composite Configurations
+    </MudButton>
+
+    <MudText Typo="Typo.h4" Class="mb-4">@composite.Name</MudText>
+
+    <MudTabs Elevation="4" Rounded="true" Color="Color.Primary">
+        <MudTabPanel Text="Versions" Icon="@Icons.Material.Filled.History">
+            <MudCard Class="mt-4">
+                <MudCardHeader>
+                    <CardHeaderActions>
+                        <MudMenu Label="New Version"
+                                 Variant="Variant.Filled"
+                                 Color="Color.Primary"
+                                 Size="Size.Small"
+                                 StartIcon="@Icons.Material.Filled.Add"
+                                 EndIcon="@Icons.Material.Filled.ArrowDropDown">
+                            <MudMenuItem OnClick="OpenCreateVersionDialog" Icon="@Icons.Material.Filled.Add">
+                                Blank Version
+                            </MudMenuItem>
+                            <MudMenuItem OnClick="OpenCreateVersionFromExistingDialog" Icon="@Icons.Material.Filled.ContentCopy">
+                                Create from Existing Version
+                            </MudMenuItem>
+                        </MudMenu>
+                    </CardHeaderActions>
+                </MudCardHeader>
+                <MudCardContent>
+                    @if (versions.Any())
+                    {
+                        <MudExpansionPanels MultiExpansion="true" Class="mt-2">
+                            @foreach (var major in availableMajors)
+                            {
+                                var majorVersions = versions
+                                    .Where(v => SemanticVersion.TryParse(v.Version, out _) && SemanticVersion.Parse(v.Version).Major == major)
+                                    .ToList();
+                                var draftCount = majorVersions.Count(v => v.IsDraft);
+                                var archivedCount = majorVersions.Count(v => v.IsArchived);
+                                var publishedVersion = majorVersions.FirstOrDefault(v => !v.IsDraft && !v.IsArchived);
+
+                                <MudExpansionPanel Expanded="false">
+                                    <TitleContent>
+                                        <div class="d-flex align-center gap-2">
+                                            <MudText>Version @(major)</MudText>
+                                            @if (publishedVersion != null)
+                                            {
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Success">Published @publishedVersion.Version</MudChip>
+                                            }
+                                            else if (majorVersions.Any())
+                                            {
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Default">No Published</MudChip>
+                                            }
+                                            <MudChip T="string" Size="Size.Small">@majorVersions.Count @(majorVersions.Count == 1 ? "version" : "versions")</MudChip>
+                                            @if (draftCount > 0)
+                                            {
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Info">@draftCount @(draftCount == 1 ? "draft" : "drafts")</MudChip>
+                                            }
+                                            @if (archivedCount > 0)
+                                            {
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Default">@archivedCount archived</MudChip>
+                                            }
+                                        </div>
+                                    </TitleContent>
+                                    <ChildContent>
+                                        @foreach (var version in majorVersions)
+                                        {
+                                            <MudExpansionPanel Expanded="false" Class="mb-3">
+                                                <TitleContent>
+                                                    <div class="d-flex align-center gap-2">
+                                                        <MudText Typo="Typo.h6">@version.Version</MudText>
+                                                        @if (version.IsDraft)
+                                                        {
+                                                            <MudChip T="string" Size="Size.Small" Color="Color.Info">Draft</MudChip>
+                                                        }
+                                                        else
+                                                        {
+                                                            <MudChip T="string" Size="Size.Small" Color="Color.Success">Published</MudChip>
+                                                        }
+                                                        @if (version.IsArchived)
+                                                        {
+                                                            <MudChip T="string" Size="Size.Small" Color="Color.Default">Archived</MudChip>
+                                                        }
+                                                        <MudChip T="string" Size="Size.Small">@version.Items.Count @(version.Items.Count == 1 ? "child" : "children")</MudChip>
+                                                    </div>
+                                                    <MudText Typo="Typo.caption">Created: @version.CreatedAt.LocalDateTime.ToString("g")</MudText>
+                                                </TitleContent>
+                                                <ChildContent>
+                                                    <div class="d-flex justify-end mb-2">
+                                                        @if (version.IsDraft)
+                                                        {
+                                                            <MudTooltip Text="Add Child Configuration">
+                                                                <MudIconButton Icon="@Icons.Material.Filled.Add"
+                                                                              Size="Size.Small"
+                                                                              Color="Color.Primary"
+                                                                              OnClick="@(() => OpenAddChildDialog(version))" />
+                                                            </MudTooltip>
+                                                            <MudTooltip Text="Publish this draft version">
+                                                                <MudIconButton Icon="@Icons.Material.Filled.Publish"
+                                                                              Size="Size.Small"
+                                                                              Color="Color.Success"
+                                                                              OnClick="@(() => PublishVersion(version))" />
+                                                            </MudTooltip>
+                                                        }
+                                                        <MudTooltip Text="Delete Version">
+                                                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                                          Size="Size.Small"
+                                                                          Color="Color.Error"
+                                                                          OnClick="@(() => DeleteVersion(version))" />
+                                                        </MudTooltip>
+                                                    </div>
+
+                                                    @if (version.Items.Any())
+                                                    {
+                                                        <MudTable Items="@version.Items.OrderBy(i => i.Order).ToList()" Dense="true" Hover="true">
+                                                            <HeaderContent>
+                                                                @if (version.IsDraft)
+                                                                {
+                                                                    <MudTh Style="width: 80px">Order</MudTh>
+                                                                }
+                                                                <MudTh>Configuration</MudTh>
+                                                                <MudTh>Major Version</MudTh>
+                                                                @if (version.IsDraft)
+                                                                {
+                                                                    <MudTh>Actions</MudTh>
+                                                                }
+                                                            </HeaderContent>
+                                                            <RowTemplate>
+                                                                @{
+                                                                    var orderedItems = version.Items.OrderBy(i => i.Order).ToList();
+                                                                    var itemIndex = orderedItems.IndexOf(context);
+                                                                }
+                                                                @if (version.IsDraft)
+                                                                {
+                                                                    <MudTd>
+                                                                        <MudIconButton Icon="@Icons.Material.Filled.ArrowUpward"
+                                                                                       Size="Size.Small"
+                                                                                       Disabled="@(itemIndex == 0)"
+                                                                                       OnClick="@(() => MoveChildUp(version, context))" />
+                                                                        <MudIconButton Icon="@Icons.Material.Filled.ArrowDownward"
+                                                                                       Size="Size.Small"
+                                                                                       Disabled="@(itemIndex == orderedItems.Count - 1)"
+                                                                                       OnClick="@(() => MoveChildDown(version, context))" />
+                                                                    </MudTd>
+                                                                }
+                                                                <MudTd>
+                                                                    <MudLink Href="@($"/configurations/{context.ChildConfiguration.Name}")">
+                                                                        @context.ChildConfiguration.Name
+                                                                    </MudLink>
+                                                                </MudTd>
+                                                                <MudTd>
+                                                                    @if (context.MajorVersion.HasValue)
+                                                                    {
+                                                                        <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined">v@(context.MajorVersion)</MudChip>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">—</MudChip>
+                                                                    }
+                                                                </MudTd>
+                                                                @if (version.IsDraft)
+                                                                {
+                                                                    <MudTd>
+                                                                        <MudTooltip Text="Edit">
+                                                                            <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                                                          Size="Size.Small"
+                                                                                          Color="Color.Primary"
+                                                                                          OnClick="@(() => OpenEditChildDialog(version, context))" />
+                                                                        </MudTooltip>
+                                                                        <MudTooltip Text="Remove">
+                                                                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                                                          Size="Size.Small"
+                                                                                          Color="Color.Error"
+                                                                                          OnClick="@(() => RemoveChild(version, context))" />
+                                                                        </MudTooltip>
+                                                                    </MudTd>
+                                                                }
+                                                            </RowTemplate>
+                                                        </MudTable>
+                                                    }
+                                                    else
+                                                    {
+                                                        <MudAlert Severity="Severity.Info" Dense="true">No child configurations. Click + to add one.</MudAlert>
+                                                    }
+                                                </ChildContent>
+                                            </MudExpansionPanel>
+                                        }
+                                    </ChildContent>
+                                </MudExpansionPanel>
+                            }
+                        </MudExpansionPanels>
+                    }
+                    else
+                    {
+                        <MudAlert Severity="Severity.Info">No versions found. Click "New Version" to create one.</MudAlert>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Details" Icon="@Icons.Material.Filled.Info">
+            <MudCard Class="mt-4">
+                <MudCardContent>
+                    <MudSimpleTable Dense="true">
+                        <tbody>
+                            <tr>
+                                <td><strong>Name</strong></td>
+                                <td>@composite.Name</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Description</strong></td>
+                                <td>@(composite.Description ?? "-")</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Entry Point</strong></td>
+                                <td><code>@composite.EntryPoint</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Created</strong></td>
+                                <td>@composite.CreatedAt.LocalDateTime.ToString("g")</td>
+                            </tr>
+                            @if (composite.UpdatedAt.HasValue)
+                            {
+                                <tr>
+                                    <td><strong>Updated</strong></td>
+                                    <td>@composite.UpdatedAt.Value.LocalDateTime.ToString("g")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </MudSimpleTable>
+                </MudCardContent>
+            </MudCard>
+        </MudTabPanel>
+    </MudTabs>
+}
+else if (loading)
+{
+    <MudProgressCircular Indeterminate="true" />
+}
+else
+{
+    <MudAlert Severity="Severity.Error">Composite configuration not found.</MudAlert>
+}
+
+@code {
+    [Parameter]
+    public string Name { get; set; } = string.Empty;
+
+    private CompositeConfiguration? composite;
+    private List<CompositeConfigurationVersion> versions = [];
+    private bool loading = true;
+    private List<int> availableMajors = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadComposite();
+    }
+
+    private async Task LoadComposite()
+    {
+        loading = true;
+        try
+        {
+            composite = await Db.CompositeConfigurations
+                .Include(c => c.Versions)
+                    .ThenInclude(v => v.Items)
+                        .ThenInclude(i => i.ChildConfiguration)
+                .AsSplitQuery()
+                .FirstOrDefaultAsync(c => c.Name == Name);
+
+            if (composite != null)
+            {
+                versions = composite.Versions
+                    .OrderByDescending(v => v.CreatedAt)
+                    .ToList();
+
+                UpdateMajors();
+            }
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private void UpdateMajors()
+    {
+        availableMajors = versions
+            .Where(v => SemanticVersion.TryParse(v.Version, out _))
+            .Select(v => SemanticVersion.Parse(v.Version).Major)
+            .Distinct()
+            .OrderByDescending(m => m)
+            .ToList();
+    }
+
+    private async Task OpenCreateVersionDialog()
+    {
+        if (composite == null) return;
+
+        var parameters = new DialogParameters<CreateCompositeVersionDialog>
+        {
+            { x => x.CompositeName, composite.Name }
+        };
+
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<CreateCompositeVersionDialog>("Create New Version", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            await LoadComposite();
+        }
+    }
+
+    private async Task OpenCreateVersionFromExistingDialog()
+    {
+        if (composite == null) return;
+
+        var parameters = new DialogParameters<CreateCompositeVersionFromExistingDialog>
+        {
+            { x => x.CompositeName, composite.Name }
+        };
+
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<CreateCompositeVersionFromExistingDialog>("Create Version from Existing", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            await LoadComposite();
+        }
+    }
+
+    private async Task OpenAddChildDialog(CompositeConfigurationVersion version)
+    {
+        if (composite == null) return;
+
+        var existingChildIds = version.Items.Select(i => i.ChildConfigurationId).ToList();
+
+        var parameters = new DialogParameters<AddChildConfigurationDialog>
+        {
+            { x => x.CompositeName, composite.Name },
+            { x => x.VersionString, version.Version },
+            { x => x.ExistingChildConfigIds, existingChildIds }
+        };
+
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<AddChildConfigurationDialog>("Add Child Configuration", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            await LoadComposite();
+        }
+    }
+
+    private async Task OpenEditChildDialog(CompositeConfigurationVersion version, CompositeConfigurationItem item)
+    {
+        if (composite == null) return;
+
+        var parameters = new DialogParameters<EditChildConfigurationDialog>
+        {
+            { x => x.CompositeName, composite.Name },
+            { x => x.VersionString, version.Version },
+            { x => x.Item, item }
+        };
+
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<EditChildConfigurationDialog>("Edit Child Configuration", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            await LoadComposite();
+        }
+    }
+
+    private async Task MoveChildUp(CompositeConfigurationVersion version, CompositeConfigurationItem item)
+    {
+        var orderedItems = version.Items.OrderBy(i => i.Order).ToList();
+        var index = orderedItems.IndexOf(item);
+        if (index <= 0) return;
+
+        var previous = orderedItems[index - 1];
+
+        try
+        {
+            var tempOrder = -(item.Order + previous.Order);
+            var itemOrder = item.Order;
+            var previousOrder = previous.Order;
+
+            item.Order = tempOrder;
+            await Db.SaveChangesAsync();
+
+            item.Order = previousOrder;
+            previous.Order = itemOrder;
+            await Db.SaveChangesAsync();
+
+            Snackbar.Add("Order updated", Severity.Success);
+            await LoadComposite();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error updating order: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task MoveChildDown(CompositeConfigurationVersion version, CompositeConfigurationItem item)
+    {
+        var orderedItems = version.Items.OrderBy(i => i.Order).ToList();
+        var index = orderedItems.IndexOf(item);
+        if (index < 0 || index >= orderedItems.Count - 1) return;
+
+        var next = orderedItems[index + 1];
+
+        try
+        {
+            var tempOrder = -(item.Order + next.Order);
+            var itemOrder = item.Order;
+            var nextOrder = next.Order;
+
+            item.Order = tempOrder;
+            await Db.SaveChangesAsync();
+
+            item.Order = nextOrder;
+            next.Order = itemOrder;
+            await Db.SaveChangesAsync();
+
+            Snackbar.Add("Order updated", Severity.Success);
+            await LoadComposite();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error updating order: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task PublishVersion(CompositeConfigurationVersion version)
+    {
+        if (composite == null) return;
+
+        var confirmed = await DialogService.ShowMessageBox(
+            "Publish Version",
+            $"Are you sure you want to publish version {version.Version}? This will make it available for node assignment.",
+            yesText: "Publish",
+            cancelText: "Cancel");
+
+        if (confirmed == true)
+        {
+            try
+            {
+                var v = await Db.CompositeConfigurationVersions.FindAsync(version.Id);
+                if (v != null)
+                {
+                    v.IsDraft = false;
+                    await Db.SaveChangesAsync();
+                    Snackbar.Add($"Version {version.Version} published successfully", Severity.Success);
+                    await LoadComposite();
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error publishing version: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task DeleteVersion(CompositeConfigurationVersion version)
+    {
+        if (composite == null) return;
+
+        if (!version.IsDraft)
+        {
+            var nodesUsing = await Db.NodeConfigurations
+                .Where(nc => nc.CompositeConfigurationId == composite.Id)
+                .Include(nc => nc.Node)
+                .ToListAsync();
+
+            if (nodesUsing.Any())
+            {
+                await DialogService.ShowMessageBox(
+                    "Cannot Delete Version",
+                    $"Version {version.Version} cannot be deleted because the composite configuration is assigned to nodes: {string.Join(", ", nodesUsing.Select(n => n.Node.Fqdn))}",
+                    yesText: "OK");
+                return;
+            }
+        }
+
+        var confirmed = await DialogService.ShowMessageBox(
+            "Delete Version",
+            $"Are you sure you want to delete version {version.Version}?",
+            yesText: "Delete",
+            cancelText: "Cancel");
+
+        if (confirmed == true)
+        {
+            try
+            {
+                var v = await Db.CompositeConfigurationVersions.FindAsync(version.Id);
+                if (v != null)
+                {
+                    Db.CompositeConfigurationVersions.Remove(v);
+                    await Db.SaveChangesAsync();
+                    Snackbar.Add($"Version {version.Version} deleted", Severity.Success);
+                    await LoadComposite();
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error deleting version: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task RemoveChild(CompositeConfigurationVersion version, CompositeConfigurationItem item)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Remove Child Configuration",
+            $"Remove '{item.ChildConfiguration.Name}' from this version?",
+            yesText: "Remove",
+            cancelText: "Cancel");
+
+        if (confirmed == true)
+        {
+            try
+            {
+                var toRemove = await Db.CompositeConfigurationItems.FindAsync(item.Id);
+                if (toRemove != null)
+                {
+                    Db.CompositeConfigurationItems.Remove(toRemove);
+                    await Db.SaveChangesAsync();
+                    Snackbar.Add($"'{item.ChildConfiguration.Name}' removed", Severity.Success);
+                    await LoadComposite();
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error removing child: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+}

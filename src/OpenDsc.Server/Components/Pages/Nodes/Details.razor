@@ -94,7 +94,8 @@ else
                     @if (nodeConfig != null)
                     {
                         <MudAlert Severity="Severity.Info" Class="mb-4">
-                            Currently assigned: <strong>@node.ConfigurationName</strong>
+                            Currently assigned (@(nodeConfig.CompositeConfigurationId.HasValue ? "Composite" : "Regular")):
+                            <strong>@node.ConfigurationName</strong>
                             @if (nodeConfig.MajorVersion.HasValue)
                             {
                                 <span> &mdash; Major v@(nodeConfig.MajorVersion)</span>
@@ -112,21 +113,40 @@ else
                         </MudAlert>
                     }
 
-                    <MudSelect @bind-Value="selectedConfigurationName"
-                               @bind-Value:after="OnConfigurationChanged"
-                               Label="Select Configuration" Variant="Variant.Outlined" Class="mb-3" Clearable="true">
-                        @foreach (var config in configurations)
-                        {
-                            <MudSelectItem Value="@config.Name">@config.Name</MudSelectItem>
-                        }
-                    </MudSelect>
+                    <MudToggleGroup T="string" @bind-Value="selectedConfigType" @bind-Value:after="OnConfigTypeChanged" Color="Color.Primary" Class="mb-3">
+                        <MudToggleItem Value="@("Regular")">Regular</MudToggleItem>
+                        <MudToggleItem Value="@("Composite")">Composite</MudToggleItem>
+                    </MudToggleGroup>
+
+                    @if (selectedConfigType == "Composite")
+                    {
+                        <MudSelect @bind-Value="selectedCompositeConfigurationName"
+                                   @bind-Value:after="OnCompositeConfigurationChanged"
+                                   Label="Select Composite Configuration" Variant="Variant.Outlined" Class="mb-3" Clearable="true">
+                            @foreach (var cc in compositeConfigurations)
+                            {
+                                <MudSelectItem Value="@cc.Name">@cc.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                    }
+                    else
+                    {
+                        <MudSelect @bind-Value="selectedConfigurationName"
+                                   @bind-Value:after="OnConfigurationChanged"
+                                   Label="Select Configuration" Variant="Variant.Outlined" Class="mb-3" Clearable="true">
+                            @foreach (var config in configurations)
+                            {
+                                <MudSelectItem Value="@config.Name">@config.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                    }
 
                     <MudSelect T="int?"
                                @bind-Value="selectedMajorVersion"
                                Label="Major Version"
                                Variant="Variant.Outlined"
                                Class="mb-3"
-                               Disabled="@(string.IsNullOrEmpty(selectedConfigurationName) || !availableMajorVersions.Any())"
+                               Disabled="@(!HasConfigSelected() || !availableMajorVersions.Any())"
                                HelperText="Select the major version to track (e.g. v1 tracks 1.x.y).">
                         @foreach (var major in availableMajorVersions)
                         {
@@ -143,7 +163,7 @@ else
                     <MudButton Variant="Variant.Filled"
                                Color="Color.Primary"
                                OnClick="AssignConfiguration"
-                               Disabled="@(string.IsNullOrEmpty(selectedConfigurationName) || !selectedMajorVersion.HasValue)">
+                               Disabled="@(!HasConfigSelected() || !selectedMajorVersion.HasValue)">
                         Assign Configuration
                     </MudButton>
 
@@ -323,7 +343,10 @@ else
     private NodeConfiguration? nodeConfig;
     private List<Report> reports = [];
     private List<Configuration> configurations = [];
+    private List<CompositeConfiguration> compositeConfigurations = [];
     private string? selectedConfigurationName;
+    private string? selectedCompositeConfigurationName;
+    private string selectedConfigType = "Regular";
     private int? selectedMajorVersion;
     private string? selectedPrereleaseChannel;
     private List<int> availableMajorVersions = [];
@@ -388,6 +411,11 @@ else
                 {
                     selectedMajorVersion = nodeConfig.MajorVersion;
                     selectedPrereleaseChannel = nodeConfig.PrereleaseChannel;
+                    if (nodeConfig.CompositeConfigurationId.HasValue)
+                    {
+                        selectedConfigType = "Composite";
+                        selectedCompositeConfigurationName = node.ConfigurationName;
+                    }
                 }
 
                 configurations = await Db.Configurations
@@ -396,7 +424,20 @@ else
                     .OrderBy(c => c.Name)
                     .ToListAsync();
 
-                OnConfigurationChanged();
+                compositeConfigurations = await Db.CompositeConfigurations
+                    .Include(c => c.Versions.Where(v => !v.IsDraft))
+                    .Where(c => c.Versions.Any(v => !v.IsDraft))
+                    .OrderBy(c => c.Name)
+                    .ToListAsync();
+
+                if (selectedConfigType == "Composite")
+                {
+                    OnCompositeConfigurationChanged();
+                }
+                else
+                {
+                    OnConfigurationChanged();
+                }
 
                 if (nodeConfig != null)
                 {
@@ -474,7 +515,51 @@ else
         }
     }
 
+    private void OnCompositeConfigurationChanged()
+    {
+        selectedMajorVersion = null;
+
+        if (!string.IsNullOrEmpty(selectedCompositeConfigurationName))
+        {
+            var cc = compositeConfigurations.FirstOrDefault(c => c.Name == selectedCompositeConfigurationName);
+            availableMajorVersions = cc?.Versions
+                .Select(v => NuGet.Versioning.SemanticVersion.TryParse(v.Version, out var sv) ? sv.Major : -1)
+                .Where(m => m >= 0)
+                .Distinct()
+                .OrderBy(m => m)
+                .ToList() ?? [];
+        }
+        else
+        {
+            availableMajorVersions = [];
+        }
+    }
+
+    private void OnConfigTypeChanged()
+    {
+        selectedMajorVersion = null;
+        availableMajorVersions = [];
+    }
+
+    private bool HasConfigSelected() => selectedConfigType == "Composite"
+        ? !string.IsNullOrEmpty(selectedCompositeConfigurationName)
+        : !string.IsNullOrEmpty(selectedConfigurationName);
+
     private async Task AssignConfiguration()
+    {
+        if (node == null) return;
+
+        if (selectedConfigType == "Composite")
+        {
+            await AssignCompositeConfigurationInternal();
+        }
+        else
+        {
+            await AssignRegularConfigurationInternal();
+        }
+    }
+
+    private async Task AssignRegularConfigurationInternal()
     {
         if (node == null || string.IsNullOrEmpty(selectedConfigurationName)) return;
 
@@ -529,6 +614,64 @@ else
         catch (Exception ex)
         {
             Snackbar.Add($"Error assigning configuration: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task AssignCompositeConfigurationInternal()
+    {
+        if (node == null || string.IsNullOrEmpty(selectedCompositeConfigurationName)) return;
+
+        try
+        {
+            var composite = await Db.CompositeConfigurations
+                .Include(c => c.Versions.Where(v => !v.IsDraft))
+                .FirstOrDefaultAsync(c => c.Name == selectedCompositeConfigurationName);
+
+            if (composite is null)
+            {
+                Snackbar.Add("Composite configuration not found.", Severity.Error);
+                return;
+            }
+
+            var channel = string.IsNullOrWhiteSpace(selectedPrereleaseChannel) ? null : selectedPrereleaseChannel;
+            var eligible = VersionResolver.ResolveVersion(composite.Versions, v => v.Version, selectedMajorVersion, channel);
+
+            if (eligible is null)
+            {
+                Snackbar.Add("No published version satisfies the specified major version and prerelease channel constraints.", Severity.Error);
+                return;
+            }
+
+            nodeConfig = await Db.NodeConfigurations.FirstOrDefaultAsync(nc => nc.NodeId == Id);
+            if (nodeConfig is null)
+            {
+                nodeConfig = new NodeConfiguration
+                {
+                    NodeId = Id,
+                    CompositeConfigurationId = composite.Id,
+                    MajorVersion = selectedMajorVersion,
+                    PrereleaseChannel = channel
+                };
+                Db.NodeConfigurations.Add(nodeConfig);
+            }
+            else
+            {
+                nodeConfig.ConfigurationId = null;
+                nodeConfig.ActiveVersion = null;
+                nodeConfig.CompositeConfigurationId = composite.Id;
+                nodeConfig.ActiveCompositeVersion = null;
+                nodeConfig.MajorVersion = selectedMajorVersion;
+                nodeConfig.PrereleaseChannel = channel;
+            }
+
+            node.ConfigurationName = selectedCompositeConfigurationName;
+            await Db.SaveChangesAsync();
+
+            Snackbar.Add($"Composite configuration '{selectedCompositeConfigurationName}' assigned successfully", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error assigning composite configuration: {ex.Message}", Severity.Error);
         }
     }
 
