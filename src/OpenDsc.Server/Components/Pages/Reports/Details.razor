@@ -8,6 +8,9 @@
 @inject IJSRuntime JSRuntime
 @inject ThemeService ThemeService
 @inject IJsonYamlConverter JsonYamlConverter
+@inject JsonSerializerOptions JsonOptions
+@using OpenDsc.Schema
+@using System.Text.Json
 
 <PageTitle>Report Details</PageTitle>
 
@@ -74,38 +77,255 @@ else
             </MudCard>
         </MudItem>
 
-        <MudItem xs="12">
+        <MudItem xs="12" md="6">
             <MudCard>
                 <MudCardHeader>
                     <CardHeaderContent>
-                        <MudText Typo="Typo.h6">Full Report</MudText>
+                        <MudText Typo="Typo.h6">DSC Metadata</MudText>
                     </CardHeaderContent>
                 </MudCardHeader>
                 <MudCardContent>
-                    <div class="d-flex justify-end mb-2">
-                        <MudButtonGroup>
-                            <MudButton Variant="@(contentFormat == ContentFormat.Yaml ? Variant.Filled : Variant.Text)"
-                                       Color="@(contentFormat == ContentFormat.Yaml ? Color.Primary : Color.Default)"
-                                       Style="@(contentFormat == ContentFormat.Yaml ? "" : "opacity: 0.6")"
-                                       OnClick="() => SwitchFormat(ContentFormat.Yaml)">
-                                YAML
-                            </MudButton>
-                            <MudButton Variant="@(contentFormat == ContentFormat.Json ? Variant.Filled : Variant.Text)"
-                                       Color="@(contentFormat == ContentFormat.Json ? Color.Primary : Color.Default)"
-                                       Style="@(contentFormat == ContentFormat.Json ? "" : "opacity: 0.6")"
-                                       OnClick="() => SwitchFormat(ContentFormat.Json)">
-                                JSON
-                            </MudButton>
-                        </MudButtonGroup>
-                    </div>
-                    <div style="height: 500px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
-                        <StandaloneCodeEditor @ref="_editor"
-                                              Id="report-json-editor"
-                                              ConstructionOptions="GetEditorOptions"
-                                              CssClass="mud-input-monospace" />
-                    </div>
+                    @if (dscMetadata != null)
+                    {
+                        <MudSimpleTable Dense="true">
+                            <tbody>
+                                @if (dscMetadata.Version != null)
+                                {
+                                    <tr>
+                                        <td><strong>Version:</strong></td>
+                                        <td>@dscMetadata.Version</td>
+                                    </tr>
+                                }
+                                @if (dscMetadata.ExecutionType != null)
+                                {
+                                    <tr>
+                                        <td><strong>Execution Type:</strong></td>
+                                        <td>@dscMetadata.ExecutionType</td>
+                                    </tr>
+                                }
+                                @if (dscMetadata.StartDatetime != null)
+                                {
+                                    <tr>
+                                        <td><strong>Start:</strong></td>
+                                        <td>@dscMetadata.StartDatetime.Value.LocalDateTime.ToString("g")</td>
+                                    </tr>
+                                }
+                                @if (dscMetadata.EndDatetime != null)
+                                {
+                                    <tr>
+                                        <td><strong>End:</strong></td>
+                                        <td>@dscMetadata.EndDatetime.Value.LocalDateTime.ToString("g")</td>
+                                    </tr>
+                                }
+                                @if (dscMetadata.Duration != null)
+                                {
+                                    <tr>
+                                        <td><strong>Duration:</strong></td>
+                                        <td>@FormatDuration(dscMetadata.Duration)</td>
+                                    </tr>
+                                }
+                                @if (dscMetadata.SecurityContext != null)
+                                {
+                                    <tr>
+                                        <td><strong>Security Context:</strong></td>
+                                        <td>@dscMetadata.SecurityContext</td>
+                                    </tr>
+                                }
+                                @if (dscMetadata.RestartRequired?.Count > 0)
+                                {
+                                    <tr>
+                                        <td><strong>Restart Required:</strong></td>
+                                        <td>
+                                            @foreach (var r in dscMetadata.RestartRequired)
+                                            {
+                                                @if (r.System != null)
+                                                {
+                                                    <MudChip T="string" Size="Size.Small" Color="Color.Warning">System: @r.System</MudChip>
+                                                }
+                                                @if (r.Service != null)
+                                                {
+                                                    <MudChip T="string" Size="Size.Small" Color="Color.Warning">Service: @r.Service</MudChip>
+                                                }
+                                                @if (r.Process != null)
+                                                {
+                                                    <MudChip T="string" Size="Size.Small" Color="Color.Warning">Process: @r.Process.Name</MudChip>
+                                                }
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </MudSimpleTable>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">No metadata available.</MudText>
+                    }
                 </MudCardContent>
             </MudCard>
+        </MudItem>
+
+        <MudItem xs="12">
+            <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-4"
+                     @bind-ActivePanelIndex="activePanelIndex">
+                <MudTabPanel Text="Resources" Icon="@Icons.Material.Filled.TableRows">
+                    @if (resourceRows.Count == 0)
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">No resource results found.</MudText>
+                    }
+                    else
+                    {
+                        var hasGroups = resourceRows.Any(r => r.GroupName != null);
+                        <MudTable Items="@resourceRows" Dense="true" Hover="true"
+                                  @bind-SelectedItem="selectedRow"
+                                  CustomHeader="true">
+                            <HeaderContent>
+                                <MudTHeadRow>
+                                    <MudTh Style="width:40px"></MudTh>
+                                    <MudTh>Type</MudTh>
+                                    <MudTh>Name</MudTh>
+                                    @if (hasGroups)
+                                    {
+                                        <MudTh>Group</MudTh>
+                                    }
+                                    <MudTh>Status</MudTh>
+                                    <MudTh>Properties</MudTh>
+                                </MudTHeadRow>
+                            </HeaderContent>
+                            <RowTemplate>
+                                @if (context != null)
+                                {
+                                <MudTd Style="width:40px; padding: 0 8px;">
+                                    <MudIconButton Icon="@(expandedRow == context ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                                                   Size="Size.Small"
+                                                   OnClick="@(() => ToggleRow(context))" />
+                                </MudTd>
+                                <MudTd DataLabel="Type">@context.Type</MudTd>
+                                <MudTd DataLabel="Name">@context.Name</MudTd>
+                                @if (hasGroups)
+                                {
+                                    <MudTd DataLabel="Group">@context.GroupName</MudTd>
+                                }
+                                <MudTd DataLabel="Status">
+                                    @if (context.Status == ResourceStatus.InDesiredState)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Success">In Desired State</MudChip>
+                                    }
+                                    else if (context.Status == ResourceStatus.Drifted)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Warning">Drift Detected</MudChip>
+                                    }
+                                    else if (context.Status == ResourceStatus.Changed)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Info">Changed</MudChip>
+                                    }
+                                    else if (context.Status == ResourceStatus.NoChange)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Success">No Change</MudChip>
+                                    }
+                                    else
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Default">Retrieved</MudChip>
+                                    }
+                                </MudTd>
+                                <MudTd DataLabel="Properties">
+                                    @if (context.Status == ResourceStatus.Changed && context.PropertyCount > 0)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined">@context.PropertyCount changed</MudChip>
+                                    }
+                                    else if (context.Status == ResourceStatus.Drifted && context.PropertyCount > 0)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined">@context.PropertyCount differing</MudChip>
+                                    }
+                                </MudTd>
+                                }
+                            </RowTemplate>
+                            <ChildRowContent>
+                                @if (context != null && expandedRow == context)
+                                {
+                                    <MudTr>
+                                        <MudTd colspan="@(hasGroups ? 6 : 5)" Style="padding: 0;">
+                                            @if (context.RightYaml != null)
+                                            {
+                                                <div style="height: 300px; width: 100%;">
+                                                    <StandaloneDiffEditor @ref="_diffEditor"
+                                                                          Id="@RowDiffEditorId"
+                                                                          ConstructionOptions="GetDiffEditorOptions" />
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div style="height: 250px; width: 100%;">
+                                                    <StandaloneCodeEditor @ref="_getEditor"
+                                                                          Id="@RowGetEditorId"
+                                                                          ConstructionOptions="GetRowEditorOptions" />
+                                                </div>
+                                            }
+                                        </MudTd>
+                                    </MudTr>
+                                }
+                            </ChildRowContent>
+                        </MudTable>
+                    }
+
+                    @if (parsedResult?.Messages?.Count > 0)
+                    {
+                        <MudText Typo="Typo.h6" Class="mt-4 mb-2">Messages</MudText>
+                        <MudSimpleTable Dense="true">
+                            <thead>
+                                <tr>
+                                    <th>Level</th>
+                                    <th>Name</th>
+                                    <th>Type</th>
+                                    <th>Message</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var msg in parsedResult.Messages)
+                                {
+                                    <tr>
+                                        <td>
+                                            @switch (msg.Level)
+                                            {
+                                                case DscMessageLevel.Error:
+                                                    <MudChip T="string" Size="Size.Small" Color="Color.Error">Error</MudChip>
+                                                    break;
+                                                case DscMessageLevel.Warning:
+                                                    <MudChip T="string" Size="Size.Small" Color="Color.Warning">Warning</MudChip>
+                                                    break;
+                                                default:
+                                                    <MudChip T="string" Size="Size.Small" Color="Color.Info">Info</MudChip>
+                                                    break;
+                                            }
+                                        </td>
+                                        <td>@msg.Name</td>
+                                        <td>@msg.Type</td>
+                                        <td>@msg.Message</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </MudSimpleTable>
+                    }
+                </MudTabPanel>
+
+                <MudTabPanel Text="YAML" Icon="@Icons.Material.Filled.Code">
+                    <div style="height: 500px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
+                        <StandaloneCodeEditor @ref="_editorYaml"
+                                              Id="report-yaml-editor"
+                                              ConstructionOptions="@(e => GetEditorOptions(e, "yaml"))"
+                                              CssClass="mud-input-monospace" />
+                    </div>
+                </MudTabPanel>
+
+                <MudTabPanel Text="JSON" Icon="@Icons.Material.Filled.DataObject">
+                    <div style="height: 500px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
+                        <StandaloneCodeEditor @ref="_editorJson"
+                                              Id="report-json-editor"
+                                              ConstructionOptions="@(e => GetEditorOptions(e, "json"))"
+                                              CssClass="mud-input-monospace" />
+                    </div>
+                </MudTabPanel>
+            </MudTabs>
         </MudItem>
     </MudGrid>
 
@@ -121,13 +341,42 @@ else
     private Report? report;
     private string nodeFqdn = string.Empty;
 
-    // Monaco editor state
-    private StandaloneCodeEditor? _editor;
+    private StandaloneCodeEditor? _editorYaml;
+    private StandaloneCodeEditor? _editorJson;
     private string rawJson = string.Empty;
-    private string reportContent = string.Empty;
+    private string yamlContent = string.Empty;
+    private string jsonContent = string.Empty;
 
-    private enum ContentFormat { Json, Yaml }
-    private ContentFormat contentFormat = ContentFormat.Yaml;
+    // 0=Simple, 1=YAML, 2=JSON
+    private int activePanelIndex = 0;
+
+    private DscResult? parsedResult;
+    private MicrosoftDscMetadata? dscMetadata;
+    private List<ResourceRow> resourceRows = [];
+    private ResourceRow? expandedRow;
+    private ResourceRow? selectedRow;
+    private int _editorInstanceId;
+    private StandaloneDiffEditor? _diffEditor;
+    private StandaloneCodeEditor? _getEditor;
+    private TextModel? _originalModel;
+    private TextModel? _modifiedModel;
+    private bool _pendingEditorUpdate;
+
+    private string RowDiffEditorId => $"row-diff-{_editorInstanceId}";
+    private string RowGetEditorId => $"row-get-{_editorInstanceId}";
+
+    private enum ResourceStatus { InDesiredState, Drifted, Changed, NoChange, Retrieved }
+
+    private record ResourceRow(
+        string Type,
+        string Name,
+        ResourceStatus Status,
+        int PropertyCount,
+        string? GroupName,
+        string? LeftYaml,
+        string? RightYaml,
+        string LeftLabel,
+        string RightLabel);
 
     protected override async Task OnInitializedAsync()
     {
@@ -138,10 +387,10 @@ else
             {
                 var node = await Db.Nodes.FindAsync(report.NodeId);
                 nodeFqdn = node?.Fqdn ?? "Unknown";
-
-                // save raw JSON and prepare content
                 rawJson = report.ResultJson ?? string.Empty;
-                UpdateReportContent();
+                ParseReport();
+                yamlContent = JsonYamlConverter.ConvertJsonToYaml(rawJson);
+                jsonContent = FormatJson(rawJson);
             }
         }
         catch (Exception ex)
@@ -152,21 +401,210 @@ else
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && report != null && _editor != null)
+        if (firstRender && report != null)
         {
-            // give the Monaco container a moment to initialize on the client
             await Task.Delay(100);
-            await _editor.SetValue(reportContent);
+            if (_editorYaml != null)
+                await _editorYaml.SetValue(yamlContent);
+            if (_editorJson != null)
+                await _editorJson.SetValue(jsonContent);
+        }
+
+        if (_pendingEditorUpdate && expandedRow != null)
+        {
+            _pendingEditorUpdate = false;
+            await InitializeRowEditor(expandedRow);
         }
     }
 
-    private StandaloneEditorConstructionOptions GetEditorOptions(StandaloneCodeEditor editor)
+    private void ToggleRow(ResourceRow row)
+    {
+        if (expandedRow == row)
+            expandedRow = null;
+        else
+        {
+            expandedRow = row;
+            _editorInstanceId++;
+            _pendingEditorUpdate = true;
+        }
+    }
+
+    private async Task InitializeRowEditor(ResourceRow row)
+    {
+        if (row.RightYaml != null && _diffEditor != null)
+        {
+            if (_originalModel != null) await _originalModel.DisposeModel();
+            if (_modifiedModel != null) await _modifiedModel.DisposeModel();
+            var ts = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            _originalModel = await Global.CreateModel(JSRuntime, row.LeftYaml ?? "", "yaml", $"file://diff-left-{ts}");
+            _modifiedModel = await Global.CreateModel(JSRuntime, row.RightYaml, "yaml", $"file://diff-right-{ts}");
+            await _diffEditor.SetModel(new DiffEditorModel { Original = _originalModel, Modified = _modifiedModel });
+        }
+        else if (_getEditor != null)
+        {
+            await _getEditor.SetValue(row.LeftYaml ?? "");
+        }
+    }
+
+    private StandaloneDiffEditorConstructionOptions GetDiffEditorOptions(StandaloneDiffEditor editor)
+    {
+        return new StandaloneDiffEditorConstructionOptions
+        {
+            AutomaticLayout = true,
+            OriginalEditable = false,
+            ReadOnly = true,
+            RenderSideBySide = true,
+            Theme = ThemeService.IsDarkMode ? "vs-dark" : "vs"
+        };
+    }
+
+    private StandaloneEditorConstructionOptions GetRowEditorOptions(StandaloneCodeEditor editor)
     {
         return new StandaloneEditorConstructionOptions
         {
             AutomaticLayout = true,
-            Language = contentFormat == ContentFormat.Yaml ? "yaml" : "json",
-            Value = reportContent,
+            Language = "yaml",
+            ReadOnly = true,
+            Theme = ThemeService.IsDarkMode ? "vs-dark" : "vs",
+            FontSize = 13,
+            FontFamily = "'Cascadia Code', 'Courier New', monospace",
+            Minimap = new EditorMinimapOptions { Enabled = false },
+            ScrollBeyondLastLine = false,
+            LineNumbers = "on"
+        };
+    }
+
+    private void ParseReport()
+    {
+        if (string.IsNullOrEmpty(rawJson))
+            return;
+
+        try
+        {
+            parsedResult = JsonSerializer.Deserialize<DscResult>(rawJson, JsonOptions);
+            dscMetadata = parsedResult?.Metadata?.MicrosoftDsc;
+
+            if (parsedResult?.Results != null)
+            {
+                foreach (var result in parsedResult.Results)
+                    ExtractRows(result, null);
+            }
+        }
+        catch
+        {
+            // Parsing failed; Simple view will show empty tables
+        }
+    }
+
+    private void ExtractRows(DscResourceResult result, string? groupName)
+    {
+        var isContainer = result.Type is "Microsoft.DSC/Include" or "Microsoft.DSC/Group";
+
+        if (isContainer)
+        {
+            if (TryGetArray(result.Result, "afterState", out var afterItems))
+            {
+                foreach (var item in afterItems)
+                    ExtractNestedRow(item, result.Name);
+            }
+            else if (TryGetArray(result.Result, "results", out var resultItems))
+            {
+                foreach (var item in resultItems)
+                    ExtractNestedRow(item, result.Name);
+            }
+        }
+        else
+        {
+            resourceRows.Add(CreateRow(result.Type, result.Name, result.Result, groupName));
+        }
+    }
+
+    private void ExtractNestedRow(JsonElement item, string groupName)
+    {
+        var type = item.TryGetProperty("type", out var t) ? t.GetString() ?? string.Empty : string.Empty;
+        var name = item.TryGetProperty("name", out var n) ? n.GetString() ?? string.Empty : string.Empty;
+
+        if (item.TryGetProperty("result", out var innerResult))
+            resourceRows.Add(CreateRow(type, name, innerResult, groupName));
+    }
+
+    private ResourceRow CreateRow(string type, string name, JsonElement result, string? groupName)
+    {
+        if (result.TryGetProperty("inDesiredState", out var ids))
+        {
+            var inDesired = ids.GetBoolean();
+            var diffProps = result.TryGetProperty("differingProperties", out var dp) ? DeserializeStringArray(dp) : null;
+            var leftYaml = result.TryGetProperty("desiredState", out var ds) ? JsonYamlConverter.ConvertJsonToYaml(ds.GetRawText()) : null;
+            var rightYaml = result.TryGetProperty("actualState", out var as_) ? JsonYamlConverter.ConvertJsonToYaml(as_.GetRawText()) : null;
+            return new ResourceRow(type, name,
+                inDesired ? ResourceStatus.InDesiredState : ResourceStatus.Drifted,
+                diffProps?.Length ?? 0,
+                groupName,
+                LeftYaml: leftYaml,
+                RightYaml: rightYaml,
+                LeftLabel: "Desired State",
+                RightLabel: "Actual State");
+        }
+
+        if (result.TryGetProperty("changedProperties", out var cp))
+        {
+            var props = DeserializeStringArray(cp);
+            var leftYaml = result.TryGetProperty("beforeState", out var bs) ? JsonYamlConverter.ConvertJsonToYaml(bs.GetRawText()) : null;
+            var rightYaml = result.TryGetProperty("afterState", out var af) ? JsonYamlConverter.ConvertJsonToYaml(af.GetRawText()) : null;
+            return new ResourceRow(type, name,
+                props?.Length > 0 ? ResourceStatus.Changed : ResourceStatus.NoChange,
+                props?.Length ?? 0,
+                groupName,
+                LeftYaml: leftYaml,
+                RightYaml: rightYaml,
+                LeftLabel: "Before",
+                RightLabel: "After");
+        }
+
+        var actualYaml = result.TryGetProperty("actualState", out var act) ? JsonYamlConverter.ConvertJsonToYaml(act.GetRawText()) : null;
+        return new ResourceRow(type, name, ResourceStatus.Retrieved, 0, groupName,
+            LeftYaml: actualYaml,
+            RightYaml: null,
+            LeftLabel: "Actual State",
+            RightLabel: "");
+    }
+
+    private static bool TryGetArray(JsonElement element, string property, out JsonElement[] items)
+    {
+        if (element.TryGetProperty(property, out var arr) && arr.ValueKind == JsonValueKind.Array)
+        {
+            items = [.. arr.EnumerateArray()];
+            return true;
+        }
+        items = [];
+        return false;
+    }
+
+    private static string[]? DeserializeStringArray(JsonElement element)
+    {
+        if (element.ValueKind != JsonValueKind.Array)
+            return null;
+        return [.. element.EnumerateArray().Select(e => e.GetString() ?? string.Empty)];
+    }
+
+    private static string FormatDuration(TimeSpan? duration)
+    {
+        if (duration == null)
+            return string.Empty;
+        var d = duration.Value;
+        if (d.TotalSeconds < 60)
+            return $"{d.TotalSeconds:F1} sec";
+        return $"{(int)d.TotalMinutes}m {d.Seconds}s";
+    }
+
+    private StandaloneEditorConstructionOptions GetEditorOptions(StandaloneCodeEditor editor, string language)
+    {
+        var value = language == "yaml" ? yamlContent : jsonContent;
+        return new StandaloneEditorConstructionOptions
+        {
+            AutomaticLayout = true,
+            Language = language,
+            Value = value,
             Theme = ThemeService.IsDarkMode ? "vs-dark" : "vs",
             ReadOnly = true,
             LineNumbers = "on",
@@ -180,47 +618,17 @@ else
         };
     }
 
-    private void UpdateReportContent()
-    {
-        if (contentFormat == ContentFormat.Yaml)
-        {
-            reportContent = JsonYamlConverter.ConvertJsonToYaml(rawJson);
-        }
-        else
-        {
-            reportContent = FormatJson(rawJson);
-        }
-    }
-
-    private async Task SwitchFormat(ContentFormat format)
-    {
-        if (format == contentFormat)
-            return;
-
-        contentFormat = format;
-        UpdateReportContent();
-
-        if (_editor != null)
-        {
-            var model = await _editor.GetModel();
-            if (model != null)
-            {
-                await Global.SetModelLanguage(JSRuntime, model, contentFormat == ContentFormat.Yaml ? "yaml" : "json");
-            }
-            await _editor.SetValue(reportContent);
-        }
-    }
-
     private string FormatJson(string json)
     {
         try
         {
-            var jsonObj = System.Text.Json.JsonSerializer.Deserialize<object>(json);
-            return System.Text.Json.JsonSerializer.Serialize(jsonObj, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+            var jsonObj = JsonSerializer.Deserialize<object>(json);
+            return JsonSerializer.Serialize(jsonObj, new JsonSerializerOptions { WriteIndented = true });
         }
         catch
         {
             return json;
         }
     }
+
 }
