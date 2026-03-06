@@ -187,7 +187,7 @@ public static class DatabaseExtensions
             Id = Guid.NewGuid(),
             Name = "test-config",
             Description = "Test configuration",
-            IsServerManaged = true,
+            UseServerManagedParameters = true,
             CreatedAt = DateTimeOffset.UtcNow
         };
 

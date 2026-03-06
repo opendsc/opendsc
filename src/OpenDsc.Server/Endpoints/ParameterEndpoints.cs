@@ -289,6 +289,13 @@ public static class ParameterEndpoints
             CreatedAt = DateTimeOffset.UtcNow
         };
 
+        var newFileDir = Path.GetDirectoryName(filePath);
+        if (!string.IsNullOrEmpty(newFileDir) && !Directory.Exists(newFileDir))
+        {
+            Directory.CreateDirectory(newFileDir);
+        }
+        await File.WriteAllTextAsync(filePath, request.Content);
+
         db.ParameterFiles.Add(parameterFile);
         await db.SaveChangesAsync();
 
@@ -570,7 +577,7 @@ public static class ParameterEndpoints
 
             if (defaultParamFile != null)
             {
-                var defaultPath = Path.Combine(dataDir, "parameters", configuration.Name, "Default", "parameters.yaml");
+                var defaultPath = Path.Combine(dataDir, "parameters", configuration.Name, "Default", $"v{defaultParamFile.Version}", "parameters.yaml");
 
                 if (File.Exists(defaultPath))
                 {
@@ -601,7 +608,7 @@ public static class ParameterEndpoints
                 continue;
             }
 
-            var filePath = Path.Combine(dataDir, "parameters", configuration.Name, tag.ScopeValue.ScopeType.Name, tag.ScopeValue.Value, "parameters.yaml");
+            var filePath = Path.Combine(dataDir, "parameters", configuration.Name, tag.ScopeValue.ScopeType.Name, tag.ScopeValue.Value, $"v{paramFile.Version}", "parameters.yaml");
 
             if (!File.Exists(filePath))
             {
@@ -633,7 +640,7 @@ public static class ParameterEndpoints
 
             if (nodeParamFile != null)
             {
-                var nodePath = Path.Combine(dataDir, "parameters", configuration.Name, "Node", node.Fqdn, "parameters.yaml");
+                var nodePath = Path.Combine(dataDir, "parameters", configuration.Name, "Node", node.Fqdn, $"v{nodeParamFile.Version}", "parameters.yaml");
 
                 if (File.Exists(nodePath))
                 {

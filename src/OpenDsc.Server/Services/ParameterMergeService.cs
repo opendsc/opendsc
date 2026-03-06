@@ -12,18 +12,24 @@ public sealed class ParameterMergeService(ServerDbContext db, IParameterMerger m
 {
     public async Task<string?> MergeParametersAsync(Guid nodeId, Guid configurationId, CancellationToken cancellationToken = default)
     {
-        var nodeConfig = await db.NodeConfigurations
-            .Include(nc => nc.Configuration)
-            .Include(nc => nc.Node)
-            .FirstOrDefaultAsync(nc => nc.NodeId == nodeId && nc.ConfigurationId == configurationId, cancellationToken);
+        var configuration = await db.Configurations
+            .FirstOrDefaultAsync(c => c.Id == configurationId, cancellationToken);
 
-        if (nodeConfig is null || !nodeConfig.UseServerManagedParameters)
+        if (configuration is null)
         {
             return null;
         }
 
-        var configName = nodeConfig.Configuration!.Name;
-        var nodeFqdn = nodeConfig.Node!.Fqdn;
+        var node = await db.Nodes
+            .FirstOrDefaultAsync(n => n.Id == nodeId, cancellationToken);
+
+        if (node is null)
+        {
+            return null;
+        }
+
+        var configName = configuration.Name;
+        var nodeFqdn = node.Fqdn;
         var dataDir = config["DataDirectory"] ?? "data";
 
         var parameterSources = new List<ParameterSource>();
@@ -60,7 +66,7 @@ public sealed class ParameterMergeService(ServerDbContext db, IParameterMerger m
 
             if (defaultParamFile != null)
             {
-                var defaultPath = Path.Combine(dataDir, "parameters", configName, "Default", "parameters.yaml");
+                var defaultPath = Path.Combine(dataDir, "parameters", configName, "Default", $"v{defaultParamFile.Version}", "parameters.yaml");
 
                 if (File.Exists(defaultPath))
                 {
@@ -92,7 +98,7 @@ public sealed class ParameterMergeService(ServerDbContext db, IParameterMerger m
                 continue;
             }
 
-            var filePath = Path.Combine(dataDir, "parameters", configName, tag.ScopeTypeName, tag.ScopeValue, "parameters.yaml");
+            var filePath = Path.Combine(dataDir, "parameters", configName, tag.ScopeTypeName, tag.ScopeValue, $"v{paramFile.Version}", "parameters.yaml");
 
             if (!File.Exists(filePath))
             {
@@ -125,7 +131,7 @@ public sealed class ParameterMergeService(ServerDbContext db, IParameterMerger m
 
             if (nodeParamFile != null)
             {
-                var nodePath = Path.Combine(dataDir, "parameters", configName, "Node", nodeFqdn, "parameters.yaml");
+                var nodePath = Path.Combine(dataDir, "parameters", configName, "Node", nodeFqdn, $"v{nodeParamFile.Version}", "parameters.yaml");
 
                 if (File.Exists(nodePath))
                 {

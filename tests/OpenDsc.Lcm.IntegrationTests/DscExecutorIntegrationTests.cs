@@ -370,7 +370,7 @@ resources: []
             using var cts = new CancellationTokenSource();
             cts.Cancel();
 
-            var act = async () => await executor.ExecuteTestAsync(tempConfigPath, config, LogLevel.Information, cts.Token);
+            var act = async () => await executor.ExecuteTestAsync(tempConfigPath, config, LogLevel.Information, cancellationToken: cts.Token);
 
             await act.Should().ThrowAsync<OperationCanceledException>();
         }
@@ -399,7 +399,7 @@ resources: []
             using var cts = new CancellationTokenSource();
             cts.Cancel();
 
-            var act = async () => await executor.ExecuteSetAsync(tempConfigPath, config, LogLevel.Information, cts.Token);
+            var act = async () => await executor.ExecuteSetAsync(tempConfigPath, config, LogLevel.Information, cancellationToken: cts.Token);
 
             await act.Should().ThrowAsync<OperationCanceledException>();
         }

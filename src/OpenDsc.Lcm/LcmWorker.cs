@@ -145,9 +145,10 @@ public partial class LcmWorker(
                 }
                 else
                 {
+                    var parametersPath = currentConfig.PullServer?.ConfigurationParametersFile;
                     var traceLevel = GetTraceLevelFromConfiguration(configuration);
                     LogDscTestStarting();
-                    var (result, exitCode) = await dscExecutor.ExecuteTestAsync(configPath, currentConfig, traceLevel, stoppingToken);
+                    var (result, exitCode) = await dscExecutor.ExecuteTestAsync(configPath, currentConfig, traceLevel, parametersPath, stoppingToken);
                     LogDscTestResult(result, exitCode);
 
                     await SubmitReportAsync(currentConfig, DscOperation.Test, result, stoppingToken);
@@ -197,9 +198,10 @@ public partial class LcmWorker(
                 }
                 else
                 {
+                    var parametersPath = currentConfig.PullServer?.ConfigurationParametersFile;
                     var traceLevel = GetTraceLevelFromConfiguration(configuration);
                     LogDscTestStarting();
-                    var (testResult, testExitCode) = await dscExecutor.ExecuteTestAsync(configPath, currentConfig, traceLevel, stoppingToken);
+                    var (testResult, testExitCode) = await dscExecutor.ExecuteTestAsync(configPath, currentConfig, traceLevel, parametersPath, stoppingToken);
                     LogDscTestResult(testResult, testExitCode);
 
                     var configPathAfterTest = lcmMonitor.CurrentValue.ConfigurationPath;
@@ -220,7 +222,7 @@ public partial class LcmWorker(
                         LogResourcesNotInDesiredStateApplyingCorrections();
                         traceLevel = GetTraceLevelFromConfiguration(configuration);
                         LogDscSetStarting();
-                        var (setResult, setExitCode) = await dscExecutor.ExecuteSetAsync(configPath, currentConfig, traceLevel, stoppingToken);
+                        var (setResult, setExitCode) = await dscExecutor.ExecuteSetAsync(configPath, currentConfig, traceLevel, parametersPath, stoppingToken);
                         LogDscSetResult(setResult, setExitCode);
 
                         await SubmitReportAsync(currentConfig, DscOperation.Set, setResult, stoppingToken);
@@ -303,6 +305,10 @@ public partial class LcmWorker(
         }
 
         var extractDir = GetPullExtractDirectory();
+
+        config.PullServer.ConfigurationParametersFile = checksumResponse?.ParametersFile is not null
+            ? Path.Combine(extractDir, checksumResponse.ParametersFile)
+            : null;
         if (Directory.Exists(extractDir))
         {
             Directory.Delete(extractDir, recursive: true);

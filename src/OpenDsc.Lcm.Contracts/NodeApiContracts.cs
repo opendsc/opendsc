@@ -104,4 +104,10 @@ public sealed class ConfigurationChecksumResponse
     /// The entry point file name within the configuration bundle.
     /// </summary>
     public string EntryPoint { get; set; } = "main.dsc.yaml";
+
+    /// <summary>
+    /// The parameters file path within the bundle for use with --parameters-file,
+    /// or null when parameters are not server-managed or this is a composite configuration.
+    /// </summary>
+    public string? ParametersFile { get; set; }
 }

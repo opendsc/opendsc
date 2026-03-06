@@ -18,7 +18,7 @@ namespace OpenDsc.Server.Services;
 
 public interface IConfigurationApiClient
 {
-    Task<bool> CreateConfigurationAsync(string name, string? description, string entryPoint, string version, bool isDraft, IReadOnlyList<IBrowserFile> files);
+    Task<bool> CreateConfigurationAsync(string name, string? description, string entryPoint, string version, bool isDraft, bool useServerManagedParameters, IReadOnlyList<IBrowserFile> files);
     Task<bool> CreateVersionAsync(string name, string version, bool isDraft, IReadOnlyList<IBrowserFile> files, string? entryPoint = null);
     Task<bool> CreateVersionFromExistingAsync(string name, string sourceVersion, string newVersion, bool isDraft);
     Task<bool> AddFilesToVersionAsync(string name, string version, IReadOnlyList<IBrowserFile> files);
@@ -78,6 +78,7 @@ public sealed class ConfigurationApiClient : IConfigurationApiClient
         string entryPoint,
         string version,
         bool isDraft,
+        bool useServerManagedParameters,
         IReadOnlyList<IBrowserFile> files)
     {
         try
@@ -111,7 +112,7 @@ public sealed class ConfigurationApiClient : IConfigurationApiClient
                 Id = Guid.NewGuid(),
                 Name = name,
                 Description = description,
-                IsServerManaged = false,
+                UseServerManagedParameters = useServerManagedParameters,
                 CreatedAt = DateTimeOffset.UtcNow
             };
 

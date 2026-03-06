@@ -12,6 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using NuGet.Versioning;
 
 using OpenDsc.Server.Authentication;
+using OpenDsc.Server.Contracts;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
 using OpenDsc.Server.Services;
@@ -59,6 +60,10 @@ public static class ConfigurationEndpoints
             .WithName("PublishConfigurationVersion")
             .WithDescription("Publish a draft configuration version");
 
+        group.MapPatch("/{name}", UpdateConfiguration)
+            .WithName("UpdateConfiguration")
+            .WithDescription("Update configuration settings such as description and server-managed parameters");
+
         group.MapDelete("/{name}", DeleteConfiguration)
             .WithName("DeleteConfiguration")
             .WithDescription("Delete a configuration and all its versions");
@@ -94,7 +99,7 @@ public static class ConfigurationEndpoints
         {
             Name = c.Name,
             Description = c.Description,
-            IsServerManaged = c.IsServerManaged,
+            UseServerManagedParameters = c.UseServerManagedParameters,
             VersionCount = c.Versions.Count,
             LatestVersion = VersionResolver.LatestSemver(c.Versions.Select(v => v.Version)),
             CreatedAt = c.CreatedAt
@@ -139,7 +144,7 @@ public static class ConfigurationEndpoints
             Id = Guid.NewGuid(),
             Name = request.Name,
             Description = request.Description,
-            IsServerManaged = request.IsServerManaged,
+            UseServerManagedParameters = request.UseServerManagedParameters,
             CreatedAt = DateTimeOffset.UtcNow
         };
 
@@ -244,7 +249,7 @@ public static class ConfigurationEndpoints
         {
             Name = configuration.Name,
             Description = configuration.Description,
-            IsServerManaged = configuration.IsServerManaged,
+            UseServerManagedParameters = configuration.UseServerManagedParameters,
             LatestVersion = version.Version,
             CreatedAt = configuration.CreatedAt
         };
@@ -282,7 +287,7 @@ public static class ConfigurationEndpoints
         {
             Name = config.Name,
             Description = config.Description,
-            IsServerManaged = config.IsServerManaged,
+            UseServerManagedParameters = config.UseServerManagedParameters,
             LatestVersion = latestVersion,
             CreatedAt = config.CreatedAt,
             UpdatedAt = config.UpdatedAt
@@ -746,6 +751,75 @@ public static class ConfigurationEndpoints
         return TypedResults.Ok(versionDto);
     }
 
+    private static async Task<Results<Ok<ConfigurationDetailsDto>, NotFound, Conflict<ErrorResponse>, ForbidHttpResult>> UpdateConfiguration(
+        string name,
+        [FromBody] UpdateConfigurationDto request,
+        ServerDbContext db,
+        IResourceAuthorizationService authService,
+        IUserContextService userContext)
+    {
+        var configuration = await db.Configurations
+            .Include(c => c.Versions)
+            .FirstOrDefaultAsync(c => c.Name == name);
+
+        if (configuration is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null || !await authService.CanManageConfigurationAsync(userId.Value, configuration.Id))
+        {
+            return TypedResults.Forbid();
+        }
+
+        if (request.UseServerManagedParameters == false && configuration.UseServerManagedParameters)
+        {
+            var activeParamFiles = await db.ParameterFiles
+                .Include(pf => pf.ParameterSchema)
+                .Where(pf => pf.ParameterSchema!.ConfigurationId == configuration.Id && pf.IsActive)
+                .ToListAsync();
+
+            if (activeParamFiles.Count > 0)
+            {
+                return TypedResults.Conflict(new ErrorResponse
+                {
+                    Error = $"Cannot disable server-managed parameters: {activeParamFiles.Count} active parameter file(s) exist. Deactivate them first."
+                });
+            }
+        }
+
+        if (request.Description is not null)
+        {
+            configuration.Description = request.Description;
+        }
+
+        if (request.UseServerManagedParameters.HasValue)
+        {
+            configuration.UseServerManagedParameters = request.UseServerManagedParameters.Value;
+        }
+
+        configuration.UpdatedAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync();
+
+        var latestVersion = configuration.Versions
+            .OrderByDescending(v => v.CreatedAt)
+            .Select(v => v.Version)
+            .FirstOrDefault();
+
+        var details = new ConfigurationDetailsDto
+        {
+            Name = configuration.Name,
+            Description = configuration.Description,
+            UseServerManagedParameters = configuration.UseServerManagedParameters,
+            LatestVersion = latestVersion,
+            CreatedAt = configuration.CreatedAt,
+            UpdatedAt = configuration.UpdatedAt
+        };
+
+        return TypedResults.Ok(details);
+    }
+
     private static async Task<Results<NoContent, NotFound, Conflict<string>, ForbidHttpResult>> DeleteConfiguration(
         string name,
         ServerDbContext db,
@@ -956,7 +1030,7 @@ public sealed class ConfigurationSummaryDto
 {
     public required string Name { get; init; }
     public string? Description { get; init; }
-    public required bool IsServerManaged { get; init; }
+    public required bool UseServerManagedParameters { get; init; }
     public required int VersionCount { get; init; }
     public string? LatestVersion { get; init; }
     public required DateTimeOffset CreatedAt { get; init; }
@@ -966,7 +1040,7 @@ public sealed class ConfigurationDetailsDto
 {
     public required string Name { get; init; }
     public string? Description { get; init; }
-    public required bool IsServerManaged { get; init; }
+    public required bool UseServerManagedParameters { get; init; }
     public string? LatestVersion { get; init; }
     public required DateTimeOffset CreatedAt { get; init; }
     public DateTimeOffset? UpdatedAt { get; init; }
@@ -977,9 +1051,15 @@ public sealed class CreateConfigurationDto
     public required string Name { get; init; }
     public string? Description { get; init; }
     public string? EntryPoint { get; init; }
-    public bool IsServerManaged { get; init; } = true;
+    public bool UseServerManagedParameters { get; init; } = true;
     public string? Version { get; init; }
     public bool IsDraft { get; init; } = true;
+}
+
+public sealed class UpdateConfigurationDto
+{
+    public string? Description { get; init; }
+    public bool? UseServerManagedParameters { get; init; }
 }
 
 public sealed class ConfigurationVersionDto

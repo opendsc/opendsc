@@ -26,11 +26,6 @@ public sealed class CreateCompositeConfigurationRequest
     /// Entry point filename for the generated orchestrator configuration.
     /// </summary>
     public string EntryPoint { get; set; } = "main.dsc.yaml";
-
-    /// <summary>
-    /// Whether this composite configuration uses server-managed parameters.
-    /// </summary>
-    public bool IsServerManaged { get; set; } = true;
 }
 
 /// <summary>
@@ -157,11 +152,6 @@ public sealed class CompositeConfigurationDetailsDto
     /// Entry point filename.
     /// </summary>
     public string EntryPoint { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Whether this uses server-managed parameters.
-    /// </summary>
-    public bool IsServerManaged { get; set; }
 
     /// <summary>
     /// All versions of this composite configuration.

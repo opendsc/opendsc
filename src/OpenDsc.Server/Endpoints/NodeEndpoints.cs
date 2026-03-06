@@ -455,13 +455,12 @@ public static class NodeEndpoints
                 await fileStream.CopyToAsync(entryStream, cancellationToken);
             }
 
-            if (nodeConfig.UseServerManagedParameters)
+            if (nodeConfig.Configuration!.UseServerManagedParameters)
             {
                 var mergedParameters = await parameterMergeService.MergeParametersAsync(nodeId, nodeConfig.ConfigurationId!.Value, cancellationToken);
                 if (!string.IsNullOrWhiteSpace(mergedParameters))
                 {
-                    var paramFileName = nodeConfig.Configuration.IsServerManaged ? "parameters.yaml" : "parameters/default.yaml";
-                    var paramEntry = archive.CreateEntry(paramFileName);
+                    var paramEntry = archive.CreateEntry("parameters.yaml");
                     using var paramStream = paramEntry.Open();
                     using var writer = new StreamWriter(paramStream);
                     await writer.WriteAsync(mergedParameters);
@@ -526,13 +525,14 @@ public static class NodeEndpoints
                 }
 
                 // Merge parameters per child if server-managed
-                if (nodeConfig.UseServerManagedParameters)
+                string? childParametersFile = null;
+                if (item.ChildConfiguration.UseServerManagedParameters)
                 {
                     var mergedParameters = await parameterMergeService.MergeParametersAsync(nodeId, item.ChildConfigurationId, cancellationToken);
                     if (!string.IsNullOrWhiteSpace(mergedParameters))
                     {
-                        var paramEntryPath = $"{childFolderName}/parameters.yaml";
-                        var paramEntry = archive.CreateEntry(paramEntryPath);
+                        childParametersFile = $"{childFolderName}/parameters.yaml";
+                        var paramEntry = archive.CreateEntry(childParametersFile);
                         using var paramStream = paramEntry.Open();
                         using var writer = new StreamWriter(paramStream);
                         await writer.WriteAsync(mergedParameters);
@@ -541,7 +541,12 @@ public static class NodeEndpoints
 
                 // Add to include list for main.dsc.yaml
                 var childEntryPoint = childVersion.EntryPoint;
-                includeResources.Add($"  - name: {item.ChildConfiguration.Name}\n    type: Microsoft.DSC/Include\n    properties:\n      configurationFile: {childFolderName}/{childEntryPoint}");
+                var includeProps = $"      configurationFile: {childFolderName}/{childEntryPoint}";
+                if (childParametersFile is not null)
+                {
+                    includeProps += $"\n      parametersFile: {childParametersFile}";
+                }
+                includeResources.Add($"  - name: {item.ChildConfiguration.Name}\n    type: Microsoft.DSC/Include\n    properties:\n{includeProps}");
             }
 
             // Generate main.dsc.yaml orchestrator
@@ -700,6 +705,7 @@ public static class NodeEndpoints
         Guid nodeId,
         ClaimsPrincipal user,
         ServerDbContext db,
+        IParameterMergeService parameterMergeService,
         CancellationToken cancellationToken)
     {
         var authenticatedNodeId = user.FindFirst("node_id")?.Value;
@@ -736,6 +742,7 @@ public static class NodeEndpoints
 
         string checksum;
         string entryPoint;
+        string? parametersFile = null;
 
         if (nodeConfig.CompositeConfigurationId.HasValue)
         {
@@ -767,6 +774,17 @@ public static class NodeEndpoints
                     {
                         checksumParts.Add($"{item.ChildConfiguration.Name}/{file.RelativePath}:{file.Checksum}");
                     }
+
+                    if (item.ChildConfiguration.UseServerManagedParameters)
+                    {
+                        var mergedParams = await parameterMergeService.MergeParametersAsync(nodeId, item.ChildConfigurationId, cancellationToken);
+                        if (!string.IsNullOrWhiteSpace(mergedParams))
+                        {
+                            var paramHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
+                                System.Text.Encoding.UTF8.GetBytes(mergedParams))).ToLowerInvariant();
+                            checksumParts.Add($"params:{item.ChildConfiguration.Name}:{paramHash}");
+                        }
+                    }
                 }
             }
 
@@ -774,6 +792,7 @@ public static class NodeEndpoints
             var hash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(combined));
             checksum = Convert.ToHexString(hash).ToLowerInvariant();
             entryPoint = nodeConfig.CompositeConfiguration!.EntryPoint;
+            parametersFile = null;
         }
         else
         {
@@ -797,6 +816,18 @@ public static class NodeEndpoints
                 checksumParts.Add($"{file.RelativePath}:{file.Checksum}");
             }
 
+            if (nodeConfig.Configuration!.UseServerManagedParameters)
+            {
+                var mergedParams = await parameterMergeService.MergeParametersAsync(nodeId, nodeConfig.ConfigurationId!.Value, cancellationToken);
+                if (!string.IsNullOrWhiteSpace(mergedParams))
+                {
+                    var paramHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
+                        System.Text.Encoding.UTF8.GetBytes(mergedParams))).ToLowerInvariant();
+                    checksumParts.Add($"params:{paramHash}");
+                    parametersFile = "parameters.yaml";
+                }
+            }
+
             var combined = string.Join("|", checksumParts);
             var hash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(combined));
             checksum = Convert.ToHexString(hash).ToLowerInvariant();
@@ -804,7 +835,7 @@ public static class NodeEndpoints
         }
 
         await db.SaveChangesAsync(cancellationToken);
-        return TypedResults.Ok(new ConfigurationChecksumResponse { Checksum = checksum, EntryPoint = entryPoint });
+        return TypedResults.Ok(new ConfigurationChecksumResponse { Checksum = checksum, EntryPoint = entryPoint, ParametersFile = parametersFile });
     }
 
     private static async Task<Results<Ok<RotateCertificateResponse>, NotFound<ErrorResponse>, BadRequest<ErrorResponse>, ForbidHttpResult>> RotateCertificate(

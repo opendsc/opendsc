@@ -11,7 +11,6 @@ public sealed class NodeConfiguration
     public string? ActiveVersion { get; set; }
     public Guid? CompositeConfigurationId { get; set; }
     public string? ActiveCompositeVersion { get; set; }
-    public bool UseServerManagedParameters { get; set; } = true;
     public int? MajorVersion { get; set; }
     public string? PrereleaseChannel { get; set; }
     public DateTimeOffset AssignedAt { get; set; }

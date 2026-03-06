@@ -129,7 +129,6 @@ public static class CompositeConfigurationEndpoints
             Name = request.Name,
             Description = request.Description,
             EntryPoint = request.EntryPoint,
-            IsServerManaged = request.IsServerManaged,
             CreatedAt = DateTimeOffset.UtcNow
         };
 
@@ -153,7 +152,6 @@ public static class CompositeConfigurationEndpoints
             Name = composite.Name,
             Description = composite.Description,
             EntryPoint = composite.EntryPoint,
-            IsServerManaged = composite.IsServerManaged,
             Versions = [],
             CreatedAt = composite.CreatedAt,
             UpdatedAt = composite.UpdatedAt
@@ -191,7 +189,6 @@ public static class CompositeConfigurationEndpoints
             Name = composite.Name,
             Description = composite.Description,
             EntryPoint = composite.EntryPoint,
-            IsServerManaged = composite.IsServerManaged,
             Versions = composite.Versions.OrderByDescending(v => v.CreatedAt).Select(v => new CompositeConfigurationVersionDto
             {
                 Id = v.Id,

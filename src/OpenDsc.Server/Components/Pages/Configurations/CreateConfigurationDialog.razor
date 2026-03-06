@@ -45,6 +45,14 @@
             When unchecked, the version will be published immediately and become immutable.
         </MudText>
 
+        <MudSwitch @bind-Value="useServerManagedParameters"
+                   Label="Server Managed Parameters"
+                   Color="Color.Primary"
+                   Class="mb-3" />
+        <MudText Typo="Typo.caption" Class="mb-3" Color="Color.Secondary">
+            When enabled, parameters are merged from the server's parameter scopes and delivered in the configuration bundle.
+        </MudText>
+
         <MudText Typo="Typo.body2" Class="mb-2">Configuration Files</MudText>
         <InputFile OnChange="OnFilesSelected" multiple accept=".yaml,.yml,.json" class="mud-input-file" />
 
@@ -92,6 +100,7 @@
     private string entryPoint = string.Empty;
     private string version = "1.0.0";
     private bool isDraft = true;
+    private bool useServerManagedParameters = true;
     private bool isSubmitting = false;
     private List<IBrowserFile> selectedFiles = [];
     private string? validationError;
@@ -217,6 +226,7 @@
                 entryPoint,
                 version,
                 isDraft,
+                useServerManagedParameters,
                 selectedFiles);
 
             if (success)

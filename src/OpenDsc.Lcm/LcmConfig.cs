@@ -100,6 +100,11 @@ public class PullServerSettings
     public string? ConfigurationEntryPoint { get; set; }
 
     /// <summary>
+    /// The cached parameters file path within the extracted configuration bundle.
+    /// </summary>
+    public string? ConfigurationParametersFile { get; set; }
+
+    /// <summary>
     /// Whether to submit compliance reports to the server.
     /// </summary>
     public bool ReportCompliance { get; set; } = true;

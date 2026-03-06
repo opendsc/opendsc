@@ -251,8 +251,17 @@
                                 <td>@(configuration.Description ?? "-")</td>
                             </tr>
                             <tr>
-                                <td><strong>Server Managed</strong></td>
-                                <td>@configuration.IsServerManaged</td>
+                                <td><strong>Server Managed Parameters</strong></td>
+                                <td>
+                                    @if (configuration.UseServerManagedParameters)
+                                    {
+                                        <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Filled">Enabled</MudChip>
+                                    }
+                                    else
+                                    {
+                                        <MudChip T="string" Color="Color.Default" Size="Size.Small" Variant="Variant.Filled">Disabled</MudChip>
+                                    }
+                                </td>
                             </tr>
                             <tr>
                                 <td><strong>Created</strong></td>

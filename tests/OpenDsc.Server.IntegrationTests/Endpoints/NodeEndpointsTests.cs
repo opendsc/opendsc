@@ -6,8 +6,11 @@ using System.Net;
 
 using AwesomeAssertions;
 
+using Microsoft.EntityFrameworkCore;
+
 using OpenDsc.Lcm.Contracts;
 using OpenDsc.Server.Contracts;
+using OpenDsc.Server.Data;
 using OpenDsc.Server.Endpoints;
 
 using Xunit;
@@ -536,6 +539,96 @@ public class NodeEndpointsTests : IClassFixture<ServerWebApplicationFactory>
         var response = await adminClient.DeleteAsync($"/api/v1/nodes/{Guid.NewGuid()}/configuration");
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task GetConfigurationChecksum_WithNoParameterFiles_ReturnsNullParametersFile()
+    {
+        // Register node
+        var fqdn = $"no-params-checksum-{Guid.NewGuid():N}.example.com";
+        var registerResponse = await _client.PostAsJsonAsync("/api/v1/nodes/register",
+            new RegisterNodeRequest { Fqdn = fqdn, RegistrationKey = "test-registration-key" });
+        var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>();
+
+        using var adminClient = _factory.CreateAuthenticatedClient();
+
+        // Create and publish a configuration (UseServerManagedParameters defaults to true)
+        var configName = $"no-params-config-{Guid.NewGuid():N}";
+        await CreateAndPublishConfigVersion(adminClient, configName, "1.0.0", "main.dsc.yaml");
+
+        // Assign configuration to node
+        await adminClient.PutAsJsonAsync($"/api/v1/nodes/{registerResult!.NodeId}/configuration",
+            new AssignConfigurationRequest { ConfigurationName = configName });
+
+        // Get checksum — no parameter files defined, so ParametersFile should be null
+        var checksumResponse = await _client.GetAsync($"/api/v1/nodes/{registerResult.NodeId}/configuration/checksum");
+        checksumResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var checksum = await checksumResponse.Content.ReadFromJsonAsync<ConfigurationChecksumResponse>();
+        checksum.Should().NotBeNull();
+        checksum!.ParametersFile.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetConfigurationChecksum_WithActiveParameterFile_ReturnsParametersFileName()
+    {
+        // Register node
+        var fqdn = $"with-params-checksum-{Guid.NewGuid():N}.example.com";
+        var registerResponse = await _client.PostAsJsonAsync("/api/v1/nodes/register",
+            new RegisterNodeRequest { Fqdn = fqdn, RegistrationKey = "test-registration-key" });
+        var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>();
+
+        using var adminClient = _factory.CreateAuthenticatedClient();
+
+        // Create and publish a configuration with UseServerManagedParameters=true (explicit)
+        var configName = $"with-params-config-{Guid.NewGuid():N}";
+        using var createContent = new MultipartFormDataContent();
+        createContent.Add(new StringContent(configName), "name");
+        createContent.Add(new StringContent("main.dsc.yaml"), "entryPoint");
+        createContent.Add(new StringContent("1.0.0"), "version");
+        createContent.Add(new StringContent("true"), "useServerManagedParameters");
+        var configFile = new ByteArrayContent("resources: []"u8.ToArray());
+        configFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+        createContent.Add(configFile, "files", "main.dsc.yaml");
+        await adminClient.PostAsync("/api/v1/configurations", createContent);
+        await adminClient.PutAsync($"/api/v1/configurations/{configName}/versions/1.0.0/publish", null);
+
+        // Get configuration ID from the database
+        Guid configId;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
+            var cfg = await db.Configurations.FirstOrDefaultAsync(c => c.Name == configName);
+            configId = cfg!.Id;
+        }
+
+        // Upload a parameter file for the Default scope
+        var defaultScopeTypeId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+        var paramRequest = new
+        {
+            version = "1.0.0",
+            content = "parameters:\n  setting: value\n",
+            contentType = "application/x-yaml",
+            isDraft = false
+        };
+        var uploadResponse = await adminClient.PutAsJsonAsync(
+            $"/api/v1/parameters/{defaultScopeTypeId}/{configId}", paramRequest);
+        uploadResponse.EnsureSuccessStatusCode();
+
+        // Activate the parameter file
+        var activateResponse = await adminClient.PutAsync(
+            $"/api/v1/parameters/{defaultScopeTypeId}/{configId}/versions/1.0.0/activate", null);
+        activateResponse.EnsureSuccessStatusCode();
+
+        // Assign configuration to node
+        await adminClient.PutAsJsonAsync($"/api/v1/nodes/{registerResult!.NodeId}/configuration",
+            new AssignConfigurationRequest { ConfigurationName = configName });
+
+        // Get checksum — active parameter file exists, so ParametersFile should be set
+        var checksumResponse = await _client.GetAsync($"/api/v1/nodes/{registerResult.NodeId}/configuration/checksum");
+        checksumResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var checksum = await checksumResponse.Content.ReadFromJsonAsync<ConfigurationChecksumResponse>();
+        checksum.Should().NotBeNull();
+        checksum!.ParametersFile.Should().Be("parameters.yaml");
     }
 
 }

@@ -32,6 +32,7 @@ namespace OpenDsc.Server;
 [JsonSerializable(typeof(List<ConfigurationSummaryDto>))]
 [JsonSerializable(typeof(ConfigurationDetailsDto))]
 [JsonSerializable(typeof(CreateConfigurationDto))]
+[JsonSerializable(typeof(UpdateConfigurationDto))]
 [JsonSerializable(typeof(ConfigurationVersionDto))]
 [JsonSerializable(typeof(List<ConfigurationVersionDto>))]
 [JsonSerializable(typeof(CreateConfigurationVersionDto))]
