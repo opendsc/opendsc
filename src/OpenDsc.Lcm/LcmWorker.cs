@@ -211,11 +211,8 @@ public partial class LcmWorker(
                         continue;
                     }
 
-                    var needsCorrection = (testResult.Results?.Count(r =>
-                    {
-                        var testOp = JsonSerializer.Deserialize(r.Result, OpenDsc.Schema.SourceGenerationContext.Default.DscTestOperationResult);
-                        return testOp?.InDesiredState == false;
-                    }) ?? 0) > 0;
+                    var needsCorrection = testResult.Results is not null &&
+                        GetLeafTestResults(testResult.Results).Any(t => !t.TestOp.InDesiredState);
 
                     if (needsCorrection)
                     {
@@ -478,13 +475,11 @@ public partial class LcmWorker(
 
     private void LogDscTestResult(DscResult result, int exitCode)
     {
-        bool allInDesiredState = result.Results?.All(r =>
-        {
-            var testOp = JsonSerializer.Deserialize(r.Result, SourceGenerationContext.Default.DscTestOperationResult);
-            return testOp?.InDesiredState == true;
-        }) ?? true;
+        var leafResults = result.Results is not null
+            ? GetLeafTestResults(result.Results).ToList()
+            : [];
 
-        if (allInDesiredState)
+        if (leafResults.All(t => t.TestOp.InDesiredState))
         {
             LogDscOperationCompletedSuccessfully("Test");
         }
@@ -493,36 +488,51 @@ public partial class LcmWorker(
             LogDscOperationCompletedWithIssues("Test", exitCode);
         }
 
-        if (result.Results?.Count > 0)
+        if (leafResults.Count > 0)
         {
-            var totalResources = result.Results!.Count;
-            var inDesiredState = result.Results.Count(r =>
-            {
-                var testOp = JsonSerializer.Deserialize(r.Result, SourceGenerationContext.Default.DscTestOperationResult);
-                return testOp?.InDesiredState == true;
-            });
-            var notInDesiredState = result.Results.Count(r =>
-            {
-                var testOp = JsonSerializer.Deserialize(r.Result, SourceGenerationContext.Default.DscTestOperationResult);
-                return testOp?.InDesiredState == false;
-            });
+            var totalResources = leafResults.Count;
+            var inDesiredState = leafResults.Count(t => t.TestOp.InDesiredState);
+            var notInDesiredState = leafResults.Count(t => !t.TestOp.InDesiredState);
 
             LogResourceStatus(inDesiredState, totalResources, notInDesiredState);
 
             if (logger.IsEnabled(LogLevel.Warning))
             {
-                foreach (var resource in result.Results.Where(r =>
+                foreach (var (type, name, _) in leafResults.Where(t => !t.TestOp.InDesiredState))
                 {
-                    var testOp = JsonSerializer.Deserialize(r.Result, SourceGenerationContext.Default.DscTestOperationResult);
-                    return testOp?.InDesiredState == false;
-                }))
-                {
-                    LogResourceNotInDesiredState(resource.Type, resource.Name);
+                    LogResourceNotInDesiredState(type, name);
                 }
             }
         }
 
         LogRestartRequirements(result);
+    }
+
+    private static IEnumerable<(string Type, string Name, DscTestOperationResult TestOp)> GetLeafTestResults(
+        IEnumerable<DscResourceResult> results)
+    {
+        foreach (var r in results)
+        {
+            if (r.Result.ValueKind == JsonValueKind.Array)
+            {
+                var nested = JsonSerializer.Deserialize(r.Result, SourceGenerationContext.Default.ListDscResourceResult);
+                if (nested is not null)
+                {
+                    foreach (var item in GetLeafTestResults(nested))
+                    {
+                        yield return item;
+                    }
+                }
+            }
+            else if (r.Result.ValueKind == JsonValueKind.Object)
+            {
+                var testOp = JsonSerializer.Deserialize(r.Result, SourceGenerationContext.Default.DscTestOperationResult);
+                if (testOp is not null)
+                {
+                    yield return (r.Type, r.Name, testOp);
+                }
+            }
+        }
     }
 
     private void LogDscSetResult(DscResult result, int exitCode)

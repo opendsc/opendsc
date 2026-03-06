@@ -18,6 +18,7 @@ namespace OpenDsc.Schema;
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 [JsonSerializable(typeof(DscResult))]
 [JsonSerializable(typeof(DscResourceResult))]
+[JsonSerializable(typeof(List<DscResourceResult>))]
 [JsonSerializable(typeof(DscGetOperationResult))]
 [JsonSerializable(typeof(DscTestOperationResult))]
 [JsonSerializable(typeof(DscSetOperationResult))]
