@@ -401,18 +401,35 @@ public sealed class ParameterApiClient : IParameterApiClient
                 return null;
             }
 
-            var result = await _parameterMergeService.MergeParametersAsync(nodeId, configurationId);
+            var result = await _parameterMergeService.MergeParametersWithProvenanceAsync(nodeId, configurationId);
             if (result == null)
             {
                 return null;
             }
 
+            var provenance = result.Provenance.ToDictionary(
+                kvp => kvp.Key,
+                kvp => new ParameterSourceInfo
+                {
+                    ScopeTypeName = kvp.Value.ScopeTypeName,
+                    ScopeValue = kvp.Value.ScopeValue,
+                    Precedence = kvp.Value.Precedence,
+                    Value = kvp.Value.Value,
+                    OverriddenBy = kvp.Value.OverriddenValues?.Select(ov => new ScopeInfo
+                    {
+                        ScopeTypeName = ov.ScopeTypeName,
+                        ScopeValue = ov.ScopeValue,
+                        Precedence = ov.Precedence,
+                        Value = ov.Value
+                    }).ToList()
+                });
+
             return new ParameterProvenanceDto
             {
                 NodeId = nodeId,
                 ConfigurationId = configurationId,
-                MergedParameters = result,
-                Provenance = new Dictionary<string, ParameterSourceInfo>()
+                MergedParameters = result.MergedContent,
+                Provenance = provenance
             };
         }
         catch (Exception ex)
