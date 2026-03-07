@@ -23,8 +23,11 @@ namespace OpenDsc.Server;
 [JsonSerializable(typeof(RegisterNodeResponse))]
 [JsonSerializable(typeof(RotateCertificateRequest))]
 [JsonSerializable(typeof(RotateCertificateResponse))]
+[JsonSerializable(typeof(UpdateLcmStatusRequest))]
 [JsonSerializable(typeof(NodeSummary))]
 [JsonSerializable(typeof(List<NodeSummary>))]
+[JsonSerializable(typeof(NodeStatusEventSummary))]
+[JsonSerializable(typeof(List<NodeStatusEventSummary>))]
 [JsonSerializable(typeof(AssignConfigurationRequest))]
 [JsonSerializable(typeof(ConfigurationChecksumResponse))]
 // Configuration contracts

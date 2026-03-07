@@ -4,6 +4,7 @@
 
 using Microsoft.EntityFrameworkCore;
 
+using OpenDsc.Lcm.Contracts;
 using OpenDsc.Server.Entities;
 
 namespace OpenDsc.Server.Data;
@@ -82,6 +83,11 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
     /// Compliance reports from nodes.
     /// </summary>
     public DbSet<Report> Reports => Set<Report>();
+
+    /// <summary>
+    /// Node status events (LCM operational transitions and compliance changes).
+    /// </summary>
+    public DbSet<NodeStatusEvent> NodeStatusEvents => Set<NodeStatusEvent>();
 
     /// <summary>
     /// Registration keys for node authorization.
@@ -172,6 +178,7 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
             entity.Property(e => e.CertificateThumbprint).HasMaxLength(64).IsRequired();
             entity.Property(e => e.CertificateSubject).HasMaxLength(500).IsRequired();
             entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.LcmStatus).HasConversion<string>().HasMaxLength(20);
         });
 
         modelBuilder.Entity<Configuration>(entity =>
@@ -338,6 +345,23 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
 
             entity.HasOne(e => e.Node)
                 .WithMany(n => n.Reports)
+                .HasForeignKey(e => e.NodeId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<NodeStatusEvent>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.NodeId);
+            entity.HasIndex(e => e.Timestamp);
+            entity.Property(e => e.LcmStatus)
+                .HasMaxLength(20)
+                .HasConversion(
+                    v => v.HasValue ? v.Value.ToString() : null,
+                    v => v != null ? Enum.Parse<LcmStatus>(v) : (LcmStatus?)null);
+
+            entity.HasOne(e => e.Node)
+                .WithMany(n => n.StatusEvents)
                 .HasForeignKey(e => e.NodeId)
                 .OnDelete(DeleteBehavior.Cascade);
         });

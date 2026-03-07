@@ -67,6 +67,8 @@ internal static class EventIds
     public const int CertificateRotatedOnPullServer = 6005;
     public const int ConfigurationEntryPointNotFound = 6006;
     public const int ConfigurationExtractedFromBundle = 6007;
+    public const int LcmStatusUpdateFailed = 6008;
+    public const int LcmStatusUpdateError = 6009;
 
     // Certificate Management Events: 7000-7099
     public const int CertificateLoaded = 7000;

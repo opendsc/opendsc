@@ -34,6 +34,16 @@ public sealed class NodeSummary
     public string Status { get; set; } = string.Empty;
 
     /// <summary>
+    /// The node's LCM operational status.
+    /// </summary>
+    public string LcmStatus { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Whether the node is considered stale (no check-in within ConfigurationModeInterval × StalenessMultiplier).
+    /// </summary>
+    public bool IsStale { get; set; }
+
+    /// <summary>
     /// When the node last checked in.
     /// </summary>
     public DateTimeOffset? LastCheckIn { get; set; }
@@ -62,6 +72,32 @@ public sealed class NodeSummary
     /// Whether the node submits compliance reports to the server.
     /// </summary>
     public bool? ReportCompliance { get; set; }
+}
+
+/// <summary>
+/// Summary of a single node status event.
+/// </summary>
+public sealed class NodeStatusEventSummary
+{
+    /// <summary>
+    /// The event identifier.
+    /// </summary>
+    public long Id { get; set; }
+
+    /// <summary>
+    /// The node this event belongs to.
+    /// </summary>
+    public Guid NodeId { get; set; }
+
+    /// <summary>
+    /// The new LCM operational state.
+    /// </summary>
+    public string? LcmStatus { get; set; }
+
+    /// <summary>
+    /// When this event was recorded.
+    /// </summary>
+    public DateTimeOffset Timestamp { get; set; }
 }
 
 /// <summary>

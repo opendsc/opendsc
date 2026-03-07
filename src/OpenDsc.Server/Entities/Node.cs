@@ -72,6 +72,11 @@ public sealed class Node
     public NodeStatus Status { get; set; } = NodeStatus.Unknown;
 
     /// <summary>
+    /// Current operational state of the LCM agent running on this node.
+    /// </summary>
+    public LcmStatus LcmStatus { get; set; } = LcmStatus.Unknown;
+
+    /// <summary>
     /// When the node was registered.
     /// </summary>
     public DateTimeOffset CreatedAt { get; set; }
@@ -80,6 +85,11 @@ public sealed class Node
     /// Navigation property for reports.
     /// </summary>
     public ICollection<Report> Reports { get; set; } = [];
+
+    /// <summary>
+    /// Navigation property for status events.
+    /// </summary>
+    public ICollection<NodeStatusEvent> StatusEvents { get; set; } = [];
 }
 
 /// <summary>

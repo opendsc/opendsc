@@ -46,7 +46,8 @@ public static class SettingsEndpoints
 
         return TypedResults.Ok(new ServerSettingsResponse
         {
-            CertificateRotationInterval = settings.CertificateRotationInterval
+            CertificateRotationInterval = settings.CertificateRotationInterval,
+            StalenessMultiplier = settings.StalenessMultiplier
         });
     }
 
@@ -66,11 +67,17 @@ public static class SettingsEndpoints
             settings.CertificateRotationInterval = request.CertificateRotationInterval.Value;
         }
 
+        if (request.StalenessMultiplier.HasValue)
+        {
+            settings.StalenessMultiplier = request.StalenessMultiplier.Value;
+        }
+
         await db.SaveChangesAsync(cancellationToken);
 
         return TypedResults.Ok(new ServerSettingsResponse
         {
-            CertificateRotationInterval = settings.CertificateRotationInterval
+            CertificateRotationInterval = settings.CertificateRotationInterval,
+            StalenessMultiplier = settings.StalenessMultiplier
         });
     }
 

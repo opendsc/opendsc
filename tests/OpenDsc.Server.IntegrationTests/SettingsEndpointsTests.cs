@@ -66,6 +66,18 @@ public class SettingsEndpointsTests : IDisposable
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
+    [Fact]
+    public async Task UpdateSettings_WithStalenessMultiplier_PersistsValue()
+    {
+        var client = CreateAuthenticatedClient();
+
+        var updateRequest = new UpdateServerSettingsRequest { StalenessMultiplier = 3.5 };
+        var updateResponse = await client.PutAsJsonAsync("/api/v1/settings", updateRequest);
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updated = await updateResponse.Content.ReadFromJsonAsync<ServerSettingsResponse>();
+        updated!.StalenessMultiplier.Should().Be(3.5);
+    }
+
     public void Dispose()
     {
         _factory.Dispose();

@@ -92,6 +92,7 @@ public static class ReportEndpoints
 
         db.Reports.Add(report);
 
+        var previousStatus = node.Status;
         node.LastCheckIn = DateTimeOffset.UtcNow;
         node.Status = report.HadErrors ? NodeStatus.Error
             : report.InDesiredState ? NodeStatus.Compliant

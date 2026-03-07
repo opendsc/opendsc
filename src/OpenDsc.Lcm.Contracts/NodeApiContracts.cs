@@ -56,6 +56,54 @@ public sealed class RegisterNodeResponse
 }
 
 /// <summary>
+/// The operational state of the LCM agent.
+/// </summary>
+public enum LcmStatus
+{
+    /// <summary>
+    /// Status is unknown (node has not reported operational state).
+    /// </summary>
+    Unknown,
+
+    /// <summary>
+    /// LCM is idle, waiting for the next cycle.
+    /// </summary>
+    Idle,
+
+    /// <summary>
+    /// LCM is downloading configuration from the pull server.
+    /// </summary>
+    Downloading,
+
+    /// <summary>
+    /// LCM is running a DSC test operation.
+    /// </summary>
+    Testing,
+
+    /// <summary>
+    /// LCM is running a DSC set operation to remediate drift.
+    /// </summary>
+    Remediating,
+
+    /// <summary>
+    /// LCM encountered an unhandled error during the last cycle.
+    /// </summary>
+    Error
+}
+
+/// <summary>
+/// Request to update the LCM operational status.
+/// </summary>
+public sealed class UpdateLcmStatusRequest
+{
+    /// <summary>
+    /// The current operational state of the LCM agent.
+    /// </summary>
+    [JsonRequired]
+    public LcmStatus LcmStatus { get; set; }
+}
+
+/// <summary>
 /// Request to rotate a node's client certificate.
 /// </summary>
 public sealed class RotateCertificateRequest

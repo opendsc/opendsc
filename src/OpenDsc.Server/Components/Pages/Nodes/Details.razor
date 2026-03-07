@@ -34,6 +34,14 @@ else
                                 </td>
                             </tr>
                             <tr>
+                                <td><strong>LCM Status:</strong></td>
+                                <td>
+                                    <MudChip T="string" Size="Size.Small" Color="@GetLcmStatusColor(node.LcmStatus)">
+                                        @node.LcmStatus
+                                    </MudChip>
+                                </td>
+                            </tr>
+                            <tr>
                                 <td><strong>Configuration:</strong></td>
                                 <td>@(node.ConfigurationName ?? "Not assigned")</td>
                             </tr>
@@ -328,6 +336,41 @@ else
                 </MudCardContent>
             </MudCard>
         </MudTabPanel>
+
+        <MudTabPanel Text="Status History" Icon="@Icons.Material.Filled.Timeline">
+            <MudCard Class="mt-4">
+                <MudCardContent>
+                    @if (statusEvents.Any())
+                    {
+                        <MudTable Items="@statusEvents" Hover="true" Dense="true">
+                            <HeaderContent>
+                                <MudTh>Timestamp</MudTh>
+                                <MudTh>LCM Status</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd>@context.Timestamp.LocalDateTime.ToString("g")</MudTd>
+                                <MudTd>
+                                    @if (context.LcmStatus.HasValue)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="@GetLcmStatusColor(context.LcmStatus.Value)">
+                                            @context.LcmStatus.Value
+                                        </MudChip>
+                                    }
+                                    else
+                                    {
+                                        <MudText>&#x2014;</MudText>
+                                    }
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+                    else
+                    {
+                        <MudText Align="Align.Center" Class="pa-4">No status events recorded</MudText>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudTabPanel>
     </MudTabs>
 
     <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" Class="mt-4" OnClick="@(() => Navigation.NavigateTo("/nodes"))">
@@ -342,6 +385,7 @@ else
     private Node? node;
     private NodeConfiguration? nodeConfig;
     private List<Report> reports = [];
+    private List<NodeStatusEvent> statusEvents = [];
     private List<Configuration> configurations = [];
     private List<CompositeConfiguration> compositeConfigurations = [];
     private string? selectedConfigurationName;
@@ -451,6 +495,14 @@ else
                 reports = nodeReports
                     .OrderByDescending(r => r.Timestamp)
                     .Take(20)
+                    .ToList();
+
+                statusEvents = (await Db.NodeStatusEvents
+                    .Where(e => e.NodeId == Id)
+                    .OrderByDescending(e => e.Id)
+                    .Take(100)
+                    .ToListAsync())
+                    .OrderByDescending(e => e.Timestamp)
                     .ToList();
 
                 await LoadTagsAsync();
@@ -707,6 +759,16 @@ else
         NodeStatus.Compliant => Color.Success,
         NodeStatus.NonCompliant => Color.Warning,
         NodeStatus.Error => Color.Error,
+        _ => Color.Default
+    };
+
+    private Color GetLcmStatusColor(LcmStatus status) => status switch
+    {
+        LcmStatus.Idle => Color.Success,
+        LcmStatus.Testing => Color.Info,
+        LcmStatus.Downloading => Color.Info,
+        LcmStatus.Remediating => Color.Info,
+        LcmStatus.Error => Color.Error,
         _ => Color.Default
     };
 

@@ -5,6 +5,8 @@
 using System.IO.Compression;
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 using AwesomeAssertions;
 
@@ -261,7 +263,7 @@ public class LcmWorkerTests
             dscExecutorMock.Protected()
                 .Setup<Task<(OpenDsc.Schema.DscResult, int)>>("ExecuteCommandAsync",
                     ItExpr.IsAny<string>(), ItExpr.IsAny<string>(), ItExpr.IsAny<LcmConfig>(),
-                    ItExpr.IsAny<LogLevel>(), ItExpr.IsAny<CancellationToken>())
+                    ItExpr.IsAny<LogLevel>(), ItExpr.IsAny<string>(), ItExpr.IsAny<CancellationToken>())
                 .ReturnsAsync((dscResult, 0));
 
             var worker = new LcmWorker(configMock.Object, optionsMonitor, dscExecutorMock.Object, pullServerClient, certificateManagerMock.Object, loggerMock.Object);
@@ -274,7 +276,7 @@ public class LcmWorkerTests
             dscExecutorMock.Protected()
                 .Verify("ExecuteCommandAsync", Times.AtLeastOnce(),
                     ItExpr.Is<string>(s => s == "test"), ItExpr.IsAny<string>(),
-                    ItExpr.IsAny<LcmConfig>(), ItExpr.IsAny<LogLevel>(), ItExpr.IsAny<CancellationToken>());
+                    ItExpr.IsAny<LcmConfig>(), ItExpr.IsAny<LogLevel>(), ItExpr.IsAny<string>(), ItExpr.IsAny<CancellationToken>());
         }
         finally
         {
@@ -325,8 +327,8 @@ public class LcmWorkerTests
             dscExecutorMock.Protected()
                 .Setup<Task<(OpenDsc.Schema.DscResult, int)>>("ExecuteCommandAsync",
                     ItExpr.IsAny<string>(), ItExpr.IsAny<string>(), ItExpr.IsAny<LcmConfig>(),
-                    ItExpr.IsAny<LogLevel>(), ItExpr.IsAny<CancellationToken>())
-                .ReturnsAsync((string op, string path, LcmConfig cfg, LogLevel level, CancellationToken ct) =>
+                    ItExpr.IsAny<LogLevel>(), ItExpr.IsAny<string>(), ItExpr.IsAny<CancellationToken>())
+                .ReturnsAsync((string op, string path, LcmConfig cfg, LogLevel level, string? parametersPath, CancellationToken ct) =>
                     op == "test" ? (testResult, 0) : (setResult, 0));
 
             var certificateManagerMock = new Mock<CertificateManager>(optionsMonitor, Mock.Of<ILogger<CertificateManager>>());
@@ -340,11 +342,11 @@ public class LcmWorkerTests
             dscExecutorMock.Protected()
                 .Verify("ExecuteCommandAsync", Times.AtLeastOnce(),
                     ItExpr.Is<string>(s => s == "test"), ItExpr.IsAny<string>(),
-                    ItExpr.IsAny<LcmConfig>(), ItExpr.IsAny<LogLevel>(), ItExpr.IsAny<CancellationToken>());
+                    ItExpr.IsAny<LcmConfig>(), ItExpr.IsAny<LogLevel>(), ItExpr.IsAny<string>(), ItExpr.IsAny<CancellationToken>());
             dscExecutorMock.Protected()
                 .Verify("ExecuteCommandAsync", Times.AtLeastOnce(),
                     ItExpr.Is<string>(s => s == "set"), ItExpr.IsAny<string>(),
-                    ItExpr.IsAny<LcmConfig>(), ItExpr.IsAny<LogLevel>(), ItExpr.IsAny<CancellationToken>());
+                    ItExpr.IsAny<LcmConfig>(), ItExpr.IsAny<LogLevel>(), ItExpr.IsAny<string>(), ItExpr.IsAny<CancellationToken>());
         }
         finally
         {
@@ -393,7 +395,7 @@ public class LcmWorkerTests
             dscExecutorMock.Protected()
                 .Setup<Task<(OpenDsc.Schema.DscResult, int)>>("ExecuteCommandAsync",
                     ItExpr.Is<string>(s => s == "test"), ItExpr.IsAny<string>(),
-                    ItExpr.IsAny<LcmConfig>(), ItExpr.IsAny<LogLevel>(), ItExpr.IsAny<CancellationToken>())
+                    ItExpr.IsAny<LcmConfig>(), ItExpr.IsAny<LogLevel>(), ItExpr.IsAny<string>(), ItExpr.IsAny<CancellationToken>())
                 .ReturnsAsync((testResult, 0));
 
             var certificateManagerMock = new Mock<CertificateManager>(optionsMonitor, Mock.Of<ILogger<CertificateManager>>());
@@ -407,11 +409,11 @@ public class LcmWorkerTests
             dscExecutorMock.Protected()
                 .Verify("ExecuteCommandAsync", Times.AtLeastOnce(),
                     ItExpr.Is<string>(s => s == "test"), ItExpr.IsAny<string>(),
-                    ItExpr.IsAny<LcmConfig>(), ItExpr.IsAny<LogLevel>(), ItExpr.IsAny<CancellationToken>());
+                    ItExpr.IsAny<LcmConfig>(), ItExpr.IsAny<LogLevel>(), ItExpr.IsAny<string>(), ItExpr.IsAny<CancellationToken>());
             dscExecutorMock.Protected()
                 .Verify("ExecuteCommandAsync", Times.Never(),
                     ItExpr.Is<string>(s => s == "set"), ItExpr.IsAny<string>(),
-                    ItExpr.IsAny<LcmConfig>(), ItExpr.IsAny<LogLevel>(), ItExpr.IsAny<CancellationToken>());
+                    ItExpr.IsAny<LcmConfig>(), ItExpr.IsAny<LogLevel>(), ItExpr.IsAny<string>(), ItExpr.IsAny<CancellationToken>());
         }
         finally
         {
@@ -448,7 +450,7 @@ public class LcmWorkerTests
         dscExecutorMock.Protected()
             .Setup<Task<(OpenDsc.Schema.DscResult, int)>>("ExecuteCommandAsync",
                 ItExpr.IsAny<string>(), ItExpr.IsAny<string>(),
-                ItExpr.IsAny<LcmConfig>(), ItExpr.IsAny<LogLevel>(), ItExpr.IsAny<CancellationToken>())
+                ItExpr.IsAny<LcmConfig>(), ItExpr.IsAny<LogLevel>(), ItExpr.IsAny<string>(), ItExpr.IsAny<CancellationToken>())
             .ReturnsAsync((dscResult, 0));
 
         var certificateManagerMock = new Mock<CertificateManager>(optionsMonitorMock.Object, new Mock<ILogger<CertificateManager>>().Object);
@@ -497,7 +499,7 @@ public class LcmWorkerTests
             dscExecutorMock.Protected()
                 .Setup<Task<(OpenDsc.Schema.DscResult, int)>>("ExecuteCommandAsync",
                     ItExpr.IsAny<string>(), ItExpr.IsAny<string>(), ItExpr.IsAny<LcmConfig>(),
-                    ItExpr.IsAny<LogLevel>(), ItExpr.IsAny<CancellationToken>())
+                    ItExpr.IsAny<LogLevel>(), ItExpr.IsAny<string>(), ItExpr.IsAny<CancellationToken>())
                 .Returns(() =>
                 {
                     callCount++;
@@ -553,7 +555,7 @@ public class LcmWorkerTests
         dscExecutorMock.Protected()
             .Verify("ExecuteCommandAsync", Times.Never(),
                 ItExpr.IsAny<string>(), ItExpr.IsAny<string>(), ItExpr.IsAny<LcmConfig>(),
-                ItExpr.IsAny<LogLevel>(), ItExpr.IsAny<CancellationToken>());
+                ItExpr.IsAny<LogLevel>(), ItExpr.IsAny<string>(), ItExpr.IsAny<CancellationToken>());
     }
 
     [Fact]
@@ -588,7 +590,7 @@ public class LcmWorkerTests
             dscExecutorMock.Protected()
                 .Setup<Task<(OpenDsc.Schema.DscResult, int)>>("ExecuteCommandAsync",
                     ItExpr.IsAny<string>(), ItExpr.IsAny<string>(), ItExpr.IsAny<LcmConfig>(),
-                    ItExpr.IsAny<LogLevel>(), ItExpr.IsAny<CancellationToken>())
+                    ItExpr.IsAny<LogLevel>(), ItExpr.IsAny<string>(), ItExpr.IsAny<CancellationToken>())
                 .ReturnsAsync((dscResult, 0));
 
             var certificateManagerMock = new Mock<CertificateManager>(optionsMonitorMock.Object, new Mock<ILogger<CertificateManager>>().Object);
@@ -606,7 +608,7 @@ public class LcmWorkerTests
             dscExecutorMock.Protected()
                 .Verify("ExecuteCommandAsync", Times.AtLeastOnce(),
                     ItExpr.Is<string>(s => s == "test"), ItExpr.IsAny<string>(),
-                    ItExpr.IsAny<LcmConfig>(), ItExpr.IsAny<LogLevel>(), ItExpr.IsAny<CancellationToken>());
+                    ItExpr.IsAny<LcmConfig>(), ItExpr.IsAny<LogLevel>(), ItExpr.IsAny<string>(), ItExpr.IsAny<CancellationToken>());
         }
         finally
         {
@@ -683,7 +685,7 @@ public class LcmWorkerTests
             dscExecutorMock.Protected()
                 .Setup<Task<(OpenDsc.Schema.DscResult, int)>>("ExecuteCommandAsync",
                     ItExpr.IsAny<string>(), ItExpr.IsAny<string>(), ItExpr.IsAny<LcmConfig>(),
-                    ItExpr.IsAny<LogLevel>(), ItExpr.IsAny<CancellationToken>())
+                    ItExpr.IsAny<LogLevel>(), ItExpr.IsAny<string>(), ItExpr.IsAny<CancellationToken>())
                 .ReturnsAsync((new OpenDsc.Schema.DscResult { HadErrors = false }, 0));
 
             var worker = new TestLcmWorker(configMock.Object, optionsMonitor, dscExecutorMock.Object,
@@ -775,7 +777,7 @@ public class LcmWorkerTests
             dscExecutorMock.Protected()
                 .Setup<Task<(OpenDsc.Schema.DscResult, int)>>("ExecuteCommandAsync",
                     ItExpr.IsAny<string>(), ItExpr.IsAny<string>(), ItExpr.IsAny<LcmConfig>(),
-                    ItExpr.IsAny<LogLevel>(), ItExpr.IsAny<CancellationToken>())
+                    ItExpr.IsAny<LogLevel>(), ItExpr.IsAny<string>(), ItExpr.IsAny<CancellationToken>())
                 .ReturnsAsync((new OpenDsc.Schema.DscResult { HadErrors = false }, 0));
 
             var worker = new TestLcmWorker(configMock.Object, optionsMonitor, dscExecutorMock.Object,
@@ -788,6 +790,102 @@ public class LcmWorkerTests
 
             File.Exists(Path.Combine(extractDir, "main.dsc.yaml")).Should().BeTrue();
             File.Exists(Path.Combine(extractDir, "sub", "helper.dsc.yaml")).Should().BeTrue();
+        }
+        finally
+        {
+            if (Directory.Exists(extractDir)) Directory.Delete(extractDir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task PullMode_BundleDownloadFails_StatusReturnsToIdle()
+    {
+        var extractDir = Path.Combine(Path.GetTempPath(), $"lcm-pull-test-{Guid.NewGuid()}");
+
+        try
+        {
+            var nodeId = Guid.NewGuid();
+            var lcmConfig = new LcmConfig
+            {
+                ConfigurationMode = ConfigurationMode.Monitor,
+                ConfigurationModeInterval = TimeSpan.FromMilliseconds(200),
+                ConfigurationSource = ConfigurationSource.Pull,
+                PullServer = new PullServerSettings
+                {
+                    ServerUrl = "http://test-server",
+                    RegistrationKey = "test-key",
+                    NodeId = nodeId,
+                    ConfigurationChecksum = "old-checksum",
+                    ReportCompliance = false,
+                    CertificateSource = CertificateSource.Managed
+                }
+            };
+
+            var optionsMonitor = CreateOptionsMonitor(lcmConfig);
+            var httpHandlerMock = new Mock<HttpMessageHandler>();
+
+            httpHandlerMock.Protected()
+                .Setup<Task<HttpResponseMessage>>("SendAsync",
+                    ItExpr.Is<HttpRequestMessage>(r => r.RequestUri!.AbsolutePath.EndsWith("/configuration/checksum")),
+                    ItExpr.IsAny<CancellationToken>())
+                .ReturnsAsync(new HttpResponseMessage
+                {
+                    StatusCode = HttpStatusCode.OK,
+                    Content = JsonContent.Create(new ConfigurationChecksumResponse
+                    {
+                        Checksum = "new-checksum",
+                        EntryPoint = "main.dsc.yaml"
+                    })
+                });
+
+            httpHandlerMock.Protected()
+                .Setup<Task<HttpResponseMessage>>("SendAsync",
+                    ItExpr.Is<HttpRequestMessage>(r => r.RequestUri!.AbsolutePath.EndsWith("/configuration/bundle")),
+                    ItExpr.IsAny<CancellationToken>())
+                .ReturnsAsync(new HttpResponseMessage { StatusCode = HttpStatusCode.NotFound });
+
+            var lcmStatusRequests = new List<LcmStatus>();
+            httpHandlerMock.Protected()
+                .Setup<Task<HttpResponseMessage>>("SendAsync",
+                    ItExpr.Is<HttpRequestMessage>(r => r.RequestUri!.AbsolutePath.EndsWith("/lcm-status")),
+                    ItExpr.IsAny<CancellationToken>())
+                .ReturnsAsync(() => new HttpResponseMessage { StatusCode = HttpStatusCode.NoContent })
+                .Callback<HttpRequestMessage, CancellationToken>(async (req, _) =>
+                {
+                    var body = await req.Content!.ReadAsStringAsync();
+                    var jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, Converters = { new JsonStringEnumConverter() } };
+                    var parsed = JsonSerializer.Deserialize<UpdateLcmStatusRequest>(body, jsonOptions);
+                    if (parsed is not null)
+                    {
+                        lcmStatusRequests.Add(parsed.LcmStatus);
+                    }
+                });
+
+            var httpClient = new HttpClient(httpHandlerMock.Object)
+            {
+                BaseAddress = new Uri("http://test-server")
+            };
+
+            var certManagerMock = new Mock<ICertificateManager>();
+            var pullClient = new PullServerClient(httpClient, optionsMonitor, certManagerMock.Object, Mock.Of<ILogger<PullServerClient>>());
+
+            var configMock = new Mock<IConfiguration>();
+            configMock.SetupGet(c => c["Logging:LogLevel:OpenDsc.Lcm"]).Returns("Information");
+
+            var dscExecutorMock = new Mock<DscExecutor>(MockBehavior.Strict, Mock.Of<ILogger<DscExecutor>>(), Mock.Of<ILoggerFactory>());
+
+            var worker = new TestLcmWorker(configMock.Object, optionsMonitor, dscExecutorMock.Object,
+                pullClient, certManagerMock.Object, Mock.Of<ILogger<LcmWorker>>(), extractDir);
+
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+            await worker.StartAsync(cts.Token);
+            await Task.Delay(700, CancellationToken.None);
+            await worker.StopAsync(CancellationToken.None);
+
+            lcmStatusRequests.Should().Contain(LcmStatus.Downloading, "status must be set to Downloading when a bundle download starts");
+            lcmStatusRequests.Should().Contain(LcmStatus.Idle, "status must be reset to Idle after a failed bundle download");
+            var lastStatus = lcmStatusRequests.Last();
+            lastStatus.Should().Be(LcmStatus.Idle, "the final status before the next wait must be Idle, not Downloading");
         }
         finally
         {

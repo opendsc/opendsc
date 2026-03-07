@@ -13,6 +13,11 @@ public sealed class ServerSettingsResponse
     /// How often nodes should rotate their certificates (informational).
     /// </summary>
     public TimeSpan CertificateRotationInterval { get; set; }
+
+    /// <summary>
+    /// Multiplier applied to a node's ConfigurationModeInterval to determine staleness threshold.
+    /// </summary>
+    public double StalenessMultiplier { get; set; }
 }
 
 /// <summary>
@@ -24,6 +29,11 @@ public sealed class UpdateServerSettingsRequest
     /// How often nodes should rotate their certificates (informational).
     /// </summary>
     public TimeSpan? CertificateRotationInterval { get; set; }
+
+    /// <summary>
+    /// Multiplier applied to a node's ConfigurationModeInterval to determine staleness threshold.
+    /// </summary>
+    public double? StalenessMultiplier { get; set; }
 }
 
 /// <summary>

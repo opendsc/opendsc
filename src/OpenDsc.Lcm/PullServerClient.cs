@@ -362,6 +362,41 @@ public partial class PullServerClient : IDisposable
         }
     }
 
+    /// <summary>
+    /// Updates the node's LCM operational status on the pull server.
+    /// </summary>
+    public async Task UpdateLcmStatusAsync(LcmStatus status, CancellationToken cancellationToken = default)
+    {
+        var config = _lcmMonitor.CurrentValue;
+        var pullServer = config.PullServer;
+
+        if (pullServer is null || pullServer.NodeId is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var request = new UpdateLcmStatusRequest { LcmStatus = status };
+
+            using var response = await _httpClient.PutAsJsonAsync(
+                $"{pullServer.ServerUrl}/api/v1/nodes/{pullServer.NodeId}/lcm-status",
+                request,
+                PullServerJsonContext.Default.UpdateLcmStatusRequest,
+                cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadAsStringAsync(cancellationToken);
+                LogLcmStatusUpdateFailed(response.StatusCode.ToString(), body);
+            }
+        }
+        catch (Exception ex)
+        {
+            LogLcmStatusUpdateError(ex);
+        }
+    }
+
     public void Dispose()
     {
         _httpClient.Dispose();
@@ -426,4 +461,10 @@ public partial class PullServerClient : IDisposable
 
     [LoggerMessage(EventId = 1020, Level = LogLevel.Error, Message = "Bundle download error")]
     private partial void LogBundleDownloadException(Exception ex);
+
+    [LoggerMessage(EventId = EventIds.LcmStatusUpdateFailed, Level = LogLevel.Warning, Message = "LCM status update failed: {StatusCode} - {Body}")]
+    private partial void LogLcmStatusUpdateFailed(string statusCode, string body);
+
+    [LoggerMessage(EventId = EventIds.LcmStatusUpdateError, Level = LogLevel.Warning, Message = "LCM status update error")]
+    private partial void LogLcmStatusUpdateError(Exception ex);
 }

@@ -47,6 +47,39 @@ else
             </MudCard>
         </MudItem>
 
+        <MudItem xs="12" md="3">
+            <MudCard>
+                <MudCardContent>
+                    <MudText Typo="Typo.h6" Color="Color.Success">Idle</MudText>
+                    <MudText Typo="Typo.h3">@lcmIdleCount</MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <MudCard>
+                <MudCardContent>
+                    <MudText Typo="Typo.h6" Color="Color.Info">Active</MudText>
+                    <MudText Typo="Typo.h3">@lcmActiveCount</MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <MudCard>
+                <MudCardContent>
+                    <MudText Typo="Typo.h6" Color="Color.Warning">Unknown</MudText>
+                    <MudText Typo="Typo.h3">@lcmUnknownCount</MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+        <MudItem xs="12" md="3">
+            <MudCard>
+                <MudCardContent>
+                    <MudText Typo="Typo.h6" Color="Color.Error">LCM Error</MudText>
+                    <MudText Typo="Typo.h3">@lcmErrorCount</MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
         <MudItem xs="12" md="6">
             <MudCard>
                 <MudCardHeader>
@@ -60,11 +93,32 @@ else
                 <MudCardContent>
                     @if (chartData.Any())
                     {
-                        <MudChart ChartType="ChartType.Pie"
-                                  InputData="@chartData"
-                                  InputLabels="@chartLabels"
-                                  Width="100%"
-                                  Height="350px" />
+                        <MudChart ChartType="ChartType.Pie" InputData="@chartData" InputLabels="@chartLabels" Width="100%"
+                            Height="350px" />
+                    }
+                    else
+                    {
+                        <MudText Align="Align.Center" Class="pa-4">No nodes registered</MudText>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">LCM Status</MudText>
+                    </CardHeaderContent>
+                    <CardHeaderActions>
+                        <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadDataAsync" />
+                    </CardHeaderActions>
+                </MudCardHeader>
+                <MudCardContent>
+                    @if (lcmChartData.Any())
+                    {
+                        <MudChart ChartType="ChartType.Pie" InputData="@lcmChartData" InputLabels="@lcmChartLabels" Width="100%"
+                            Height="350px" />
                     }
                     else
                     {
@@ -117,6 +171,41 @@ else
                 </MudCardContent>
             </MudCard>
         </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Recent LCM Updates</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    @if (recentLcmEvents.Any())
+                    {
+                        <MudTable Items="@recentLcmEvents" Hover="true" Dense="true">
+                            <HeaderContent>
+                                <MudTh>Node</MudTh>
+                                <MudTh>Time</MudTh>
+                                <MudTh>LCM Status</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd DataLabel="Node">@context.NodeFqdn</MudTd>
+                                <MudTd DataLabel="Time">@context.Timestamp.LocalDateTime.ToString("g")</MudTd>
+                                <MudTd DataLabel="LCM Status">
+                                    <MudChip T="string" Size="Size.Small" Color="@GetLcmStatusColor(context.LcmStatus)">
+                                        @context.LcmStatus
+                                    </MudChip>
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+                    else
+                    {
+                        <MudText Align="Align.Center" Class="pa-4">No LCM events yet</MudText>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
     </MudGrid>
 }
 
@@ -127,9 +216,16 @@ else
     private int nonCompliantCount = 0;
     private int errorCount = 0;
     private int unknownCount = 0;
+    private int lcmIdleCount = 0;
+    private int lcmActiveCount = 0;
+    private int lcmUnknownCount = 0;
+    private int lcmErrorCount = 0;
     private double[] chartData = [];
     private string[] chartLabels = [];
+    private double[] lcmChartData = [];
+    private string[] lcmChartLabels = [];
     private List<ReportSummary> recentReports = [];
+    private List<LcmEventSummary> recentLcmEvents = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -147,6 +243,11 @@ else
             nonCompliantCount = nodes.Count(n => n.Status == NodeStatus.NonCompliant);
             errorCount = nodes.Count(n => n.Status == NodeStatus.Error);
             unknownCount = nodes.Count(n => n.Status == NodeStatus.Unknown);
+
+            lcmIdleCount = nodes.Count(n => n.LcmStatus == LcmStatus.Idle);
+            lcmActiveCount = nodes.Count(n => n.LcmStatus is LcmStatus.Testing or LcmStatus.Remediating or LcmStatus.Downloading);
+            lcmUnknownCount = nodes.Count(n => n.LcmStatus == LcmStatus.Unknown);
+            lcmErrorCount = nodes.Count(n => n.LcmStatus == LcmStatus.Error);
 
             // Build chart data
             var dataList = new List<double>();
@@ -173,25 +274,56 @@ else
                 labelList.Add($"Error ({errorCount})");
             }
 
-            chartData = [.. dataList];
-            chartLabels = [.. labelList];
+            chartData = [..dataList];
+            chartLabels = [..labelList];
+
+            // Build LCM status chart data
+            var lcmDataList = new List<double>();
+            var lcmLabelList = new List<string>();
+
+            if (lcmUnknownCount > 0) { lcmDataList.Add(lcmUnknownCount); lcmLabelList.Add($"Unknown ({lcmUnknownCount})"); }
+            if (lcmIdleCount > 0) { lcmDataList.Add(lcmIdleCount); lcmLabelList.Add($"Idle ({lcmIdleCount})"); }
+            if (lcmActiveCount > 0) { lcmDataList.Add(lcmActiveCount); lcmLabelList.Add($"Active ({lcmActiveCount})"); }
+            if (lcmErrorCount > 0) { lcmDataList.Add(lcmErrorCount); lcmLabelList.Add($"Error ({lcmErrorCount})"); }
+
+            lcmChartData = [..lcmDataList];
+            lcmChartLabels = [..lcmLabelList];
 
             // Get recent reports (load and sort in memory due to SQLite DateTimeOffset limitation)
             var allReports = await Db.Reports
-                .Include(r => r.Node)
-                .ToListAsync();
+            .Include(r => r.Node)
+            .ToListAsync();
 
             recentReports = allReports
-                .OrderByDescending(r => r.Timestamp)
-                .Take(10)
-                .Select(r => new ReportSummary
+            .OrderByDescending(r => r.Timestamp)
+            .Take(10)
+            .Select(r => new ReportSummary
                 {
                     NodeFqdn = r.Node.Fqdn,
                     Timestamp = r.Timestamp,
                     InDesiredState = r.InDesiredState,
                     HadErrors = r.HadErrors
                 })
-                .ToList();
+            .ToList();
+
+            // Get recent LCM status events
+            var allLcmEvents = await Db.NodeStatusEvents
+            .Include(e => e.Node)
+            .Where(e => e.LcmStatus != null)
+            .OrderByDescending(e => e.Id)
+            .Take(50)
+            .ToListAsync();
+
+            recentLcmEvents = allLcmEvents
+            .OrderByDescending(e => e.Timestamp)
+            .Take(10)
+            .Select(e => new LcmEventSummary
+                {
+                    NodeFqdn = e.Node.Fqdn,
+                    Timestamp = e.Timestamp,
+                    LcmStatus = e.LcmStatus!.Value
+                })
+            .ToList();
         }
         catch (Exception ex)
         {
@@ -210,4 +342,21 @@ else
         public bool InDesiredState { get; set; }
         public bool HadErrors { get; set; }
     }
+
+    private class LcmEventSummary
+    {
+        public string NodeFqdn { get; set; } = string.Empty;
+        public DateTimeOffset Timestamp { get; set; }
+        public LcmStatus LcmStatus { get; set; }
+    }
+
+    private static Color GetLcmStatusColor(LcmStatus status) => status switch
+    {
+        LcmStatus.Idle => Color.Success,
+        LcmStatus.Testing => Color.Info,
+        LcmStatus.Downloading => Color.Info,
+        LcmStatus.Remediating => Color.Info,
+        LcmStatus.Error => Color.Error,
+        _ => Color.Default
+    };
 }

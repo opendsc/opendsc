@@ -429,6 +429,70 @@ public sealed class PullServerClientTests
         certManagerMock.Verify(x => x.GetClientCertificate(), Times.Once);
     }
 
+    [Fact]
+    public async Task UpdateLcmStatusAsync_WithValidNodeId_SendsPutRequest()
+    {
+        _httpMessageHandlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.Is<HttpRequestMessage>(req =>
+                    req.Method == HttpMethod.Put &&
+                    req.RequestUri!.AbsolutePath.Contains("/lcm-status")),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.NoContent
+            });
+
+        var client = new PullServerClient(_httpClient, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
+
+        await client.UpdateLcmStatusAsync(LcmStatus.Testing, CancellationToken.None);
+
+        _httpMessageHandlerMock.Protected().Verify(
+            "SendAsync",
+            Times.Once(),
+            ItExpr.Is<HttpRequestMessage>(req =>
+                req.Method == HttpMethod.Put &&
+                req.RequestUri!.AbsolutePath.Contains("/lcm-status")),
+            ItExpr.IsAny<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task UpdateLcmStatusAsync_WithNullNodeId_DoesNotSendRequest()
+    {
+        _config.PullServer!.NodeId = null;
+
+        var client = new PullServerClient(_httpClient, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
+
+        await client.UpdateLcmStatusAsync(LcmStatus.Idle, CancellationToken.None);
+
+        _httpMessageHandlerMock.Protected().Verify(
+            "SendAsync",
+            Times.Never(),
+            ItExpr.IsAny<HttpRequestMessage>(),
+            ItExpr.IsAny<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task UpdateLcmStatusAsync_WhenServerFails_DoesNotThrow()
+    {
+        _httpMessageHandlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.InternalServerError
+            });
+
+        var client = new PullServerClient(_httpClient, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
+
+        var act = async () => await client.UpdateLcmStatusAsync(LcmStatus.Error, CancellationToken.None);
+
+        await act.Should().NotThrowAsync();
+    }
+
     private static X509Certificate2 GenerateTestCertificate()
     {
         using var rsa = RSA.Create(2048);

@@ -137,21 +137,26 @@ public partial class LcmWorker(
 
             try
             {
+                await EnsureLocalModeRegisteredAsync(currentConfig, stoppingToken);
+
                 var configPath = await GetConfigurationPathAsync(currentConfig, stoppingToken);
 
                 if (string.IsNullOrWhiteSpace(configPath) || !File.Exists(configPath))
                 {
                     LogConfigurationNotAvailableSkippingDscTest();
+                    await UpdatePullServerLcmStatusAsync(currentConfig, LcmStatus.Idle, stoppingToken);
                 }
                 else
                 {
                     var parametersPath = currentConfig.PullServer?.ConfigurationParametersFile;
                     var traceLevel = GetTraceLevelFromConfiguration(configuration);
+                    await UpdatePullServerLcmStatusAsync(currentConfig, LcmStatus.Testing, stoppingToken);
                     LogDscTestStarting();
                     var (result, exitCode) = await dscExecutor.ExecuteTestAsync(configPath, currentConfig, traceLevel, parametersPath, stoppingToken);
                     LogDscTestResult(result, exitCode);
 
                     await SubmitReportAsync(currentConfig, DscOperation.Test, result, stoppingToken);
+                    await UpdatePullServerLcmStatusAsync(currentConfig, LcmStatus.Idle, stoppingToken);
                 }
 
                 await InterruptibleDelayAsync(currentInterval, currentInterval, stoppingToken, modeChangeToken);
@@ -167,6 +172,7 @@ public partial class LcmWorker(
             catch (Exception ex)
             {
                 LogErrorDuringMonitorCycle(ex);
+                await UpdatePullServerLcmStatusAsync(currentConfig, LcmStatus.Error, stoppingToken);
                 var errorDelay = TimeSpan.FromSeconds(Math.Min(currentInterval.TotalSeconds, 60));
                 await InterruptibleDelayAsync(errorDelay, currentInterval, stoppingToken, modeChangeToken);
             }
@@ -190,16 +196,20 @@ public partial class LcmWorker(
 
             try
             {
+                await EnsureLocalModeRegisteredAsync(currentConfig, stoppingToken);
+
                 var configPath = await GetConfigurationPathAsync(currentConfig, stoppingToken);
 
                 if (string.IsNullOrWhiteSpace(configPath) || !File.Exists(configPath))
                 {
                     LogConfigurationNotAvailableSkippingDscOperations(currentConfig.ConfigurationPath!);
+                    await UpdatePullServerLcmStatusAsync(currentConfig, LcmStatus.Idle, stoppingToken);
                 }
                 else
                 {
                     var parametersPath = currentConfig.PullServer?.ConfigurationParametersFile;
                     var traceLevel = GetTraceLevelFromConfiguration(configuration);
+                    await UpdatePullServerLcmStatusAsync(currentConfig, LcmStatus.Testing, stoppingToken);
                     LogDscTestStarting();
                     var (testResult, testExitCode) = await dscExecutor.ExecuteTestAsync(configPath, currentConfig, traceLevel, parametersPath, stoppingToken);
                     LogDscTestResult(testResult, testExitCode);
@@ -218,16 +228,19 @@ public partial class LcmWorker(
                     {
                         LogResourcesNotInDesiredStateApplyingCorrections();
                         traceLevel = GetTraceLevelFromConfiguration(configuration);
+                        await UpdatePullServerLcmStatusAsync(currentConfig, LcmStatus.Remediating, stoppingToken);
                         LogDscSetStarting();
                         var (setResult, setExitCode) = await dscExecutor.ExecuteSetAsync(configPath, currentConfig, traceLevel, parametersPath, stoppingToken);
                         LogDscSetResult(setResult, setExitCode);
 
                         await SubmitReportAsync(currentConfig, DscOperation.Set, setResult, stoppingToken);
+                        await UpdatePullServerLcmStatusAsync(currentConfig, LcmStatus.Idle, stoppingToken);
                     }
                     else
                     {
                         LogAllResourcesAreInDesiredState();
                         await SubmitReportAsync(currentConfig, DscOperation.Test, testResult, stoppingToken);
+                        await UpdatePullServerLcmStatusAsync(currentConfig, LcmStatus.Idle, stoppingToken);
                     }
                 }
 
@@ -244,6 +257,7 @@ public partial class LcmWorker(
             catch (Exception ex)
             {
                 LogErrorDuringRemediateCycle(ex);
+                await UpdatePullServerLcmStatusAsync(currentConfig, LcmStatus.Error, stoppingToken);
                 var errorDelay = TimeSpan.FromSeconds(Math.Min(currentInterval.TotalSeconds, 60));
                 await InterruptibleDelayAsync(errorDelay, currentInterval, stoppingToken, modeChangeToken);
             }
@@ -286,6 +300,7 @@ public partial class LcmWorker(
             return config.ConfigurationPath;
         }
 
+        await pullServerClient.UpdateLcmStatusAsync(LcmStatus.Downloading, cancellationToken);
         var bundleStream = await pullServerClient.GetConfigurationBundleAsync(cancellationToken);
         if (bundleStream is null)
         {
@@ -427,12 +442,42 @@ public partial class LcmWorker(
         }
     }
 
+    private async Task UpdatePullServerLcmStatusAsync(LcmConfig config, LcmStatus status, CancellationToken cancellationToken)
+    {
+        if (config.PullServer is null)
+        {
+            return;
+        }
+
+        await pullServerClient.UpdateLcmStatusAsync(status, cancellationToken);
+    }
+
+    private async Task EnsureLocalModeRegisteredAsync(LcmConfig config, CancellationToken cancellationToken)
+    {
+        if (config.ConfigurationSource != ConfigurationSource.Local || config.PullServer is null)
+        {
+            return;
+        }
+
+        if (config.PullServer.NodeId is null)
+        {
+            var registrationResult = await pullServerClient.RegisterAsync(cancellationToken);
+            if (registrationResult is not null)
+            {
+                config.PullServer.NodeId = registrationResult.NodeId;
+                await PersistNodeIdAsync(config.PullServer.NodeId.Value, cancellationToken);
+            }
+        }
+
+        await CheckAndRotateCertificateAsync(config.PullServer, cancellationToken);
+    }
+
     /// <summary>
     /// Submits a compliance report to the pull server if configured.
     /// </summary>
     private async Task SubmitReportAsync(LcmConfig config, DscOperation operation, DscResult result, CancellationToken cancellationToken)
     {
-        if (config.ConfigurationSource != ConfigurationSource.Pull)
+        if (config.PullServer?.NodeId is null)
         {
             return;
         }

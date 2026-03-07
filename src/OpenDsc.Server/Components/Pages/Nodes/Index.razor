@@ -39,7 +39,19 @@
         <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadNodesAsync" />
     </ToolBarContent>
     <Columns>
-        <PropertyColumn Property="x => x.Fqdn" Title="FQDN" />
+        <PropertyColumn Property="x => x.Fqdn" Title="FQDN">
+            <CellTemplate>
+                <div class="d-flex align-center gap-1">
+                    @context.Item.Fqdn
+                    @if (IsStale(context.Item))
+                    {
+                        <MudTooltip Text="Node has not checked in within the expected interval">
+                            <MudIcon Icon="@Icons.Material.Filled.Warning" Color="Color.Warning" Size="Size.Small" />
+                        </MudTooltip>
+                    }
+                </div>
+            </CellTemplate>
+        </PropertyColumn>
         <PropertyColumn Property="x => x.Status" Title="Status">
             <CellTemplate>
                 <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(context.Item.Status)">
@@ -47,6 +59,13 @@
                 </MudChip>
             </CellTemplate>
         </PropertyColumn>
+        <TemplateColumn Title="LCM Status">
+            <CellTemplate>
+                <MudChip T="string" Size="Size.Small" Color="@GetLcmStatusColor(context.Item.LcmStatus)">
+                    @context.Item.LcmStatus
+                </MudChip>
+            </CellTemplate>
+        </TemplateColumn>
         <PropertyColumn Property="x => x.ConfigurationName" Title="Configuration" />
         <PropertyColumn Property="x => x.ConfigurationSource" Title="Source">
             <CellTemplate>
@@ -77,6 +96,7 @@
     private string searchFqdn = string.Empty;
     private string searchConfiguration = string.Empty;
     private NodeStatus? selectedStatus;
+    private double stalenessMultiplier = 2.0;
 
     protected override async Task OnInitializedAsync()
     {
@@ -89,6 +109,8 @@
         try
         {
             nodes = await Db.Nodes.OrderBy(n => n.Fqdn).ToListAsync();
+            var settings = await Db.ServerSettings.AsNoTracking().FirstOrDefaultAsync();
+            stalenessMultiplier = settings?.StalenessMultiplier ?? 2.0;
             ApplyFilters();
         }
         catch (Exception ex)
@@ -151,4 +173,19 @@
         NodeStatus.Error => Color.Error,
         _ => Color.Default
     };
+
+    private Color GetLcmStatusColor(LcmStatus status) => status switch
+    {
+        LcmStatus.Idle => Color.Success,
+        LcmStatus.Testing => Color.Info,
+        LcmStatus.Downloading => Color.Info,
+        LcmStatus.Remediating => Color.Info,
+        LcmStatus.Error => Color.Error,
+        _ => Color.Default
+    };
+
+    private bool IsStale(Node n) =>
+        n.LastCheckIn.HasValue
+        && n.ConfigurationModeInterval.HasValue
+        && (DateTimeOffset.UtcNow - n.LastCheckIn.Value) > n.ConfigurationModeInterval.Value * stalenessMultiplier;
 }

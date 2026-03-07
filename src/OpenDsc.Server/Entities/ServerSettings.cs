@@ -18,4 +18,11 @@ public sealed class ServerSettings
     /// Default interval for certificate rotation (informational).
     /// </summary>
     public TimeSpan CertificateRotationInterval { get; set; } = TimeSpan.FromDays(60);
+
+    /// <summary>
+    /// Multiplier applied to a node's ConfigurationModeInterval to determine when it is considered stale.
+    /// A node is stale when: LastCheckIn + (ConfigurationModeInterval × StalenessMultiplier) &lt; UtcNow.
+    /// Default is 2.0 (two missed intervals before stale).
+    /// </summary>
+    public double StalenessMultiplier { get; set; } = 2.0;
 }

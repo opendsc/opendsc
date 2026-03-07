@@ -3,6 +3,8 @@
 // terms of the MIT license.
 
 using System.Net;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 using AwesomeAssertions;
 
@@ -22,6 +24,12 @@ public class NodeEndpointsTests : IClassFixture<ServerWebApplicationFactory>
 {
     private readonly ServerWebApplicationFactory _factory;
     private readonly HttpClient _client;
+
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        Converters = { new JsonStringEnumConverter() }
+    };
 
     public NodeEndpointsTests(ServerWebApplicationFactory factory)
     {
@@ -121,7 +129,7 @@ public class NodeEndpointsTests : IClassFixture<ServerWebApplicationFactory>
         var response = await adminClient.GetAsync("/api/v1/nodes/");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var nodes = await response.Content.ReadFromJsonAsync<List<NodeSummary>>();
+        var nodes = await response.Content.ReadFromJsonAsync<List<NodeSummary>>(JsonOptions);
         nodes.Should().NotBeNull();
         nodes!.Should().NotBeEmpty();
         nodes.Should().Contain(n => n.Fqdn == "list-test.example.com");
@@ -143,7 +151,7 @@ public class NodeEndpointsTests : IClassFixture<ServerWebApplicationFactory>
         var response = await adminClient.GetAsync($"/api/v1/nodes/{registerResult!.NodeId}");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var node = await response.Content.ReadFromJsonAsync<NodeSummary>();
+        var node = await response.Content.ReadFromJsonAsync<NodeSummary>(JsonOptions);
         node.Should().NotBeNull();
         node!.Id.Should().Be(registerResult.NodeId);
         node.Fqdn.Should().Be("getnode-test.example.com");
@@ -230,7 +238,7 @@ public class NodeEndpointsTests : IClassFixture<ServerWebApplicationFactory>
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         var nodeResponse = await adminClient.GetAsync($"/api/v1/nodes/{registerResult.NodeId}");
-        var node = await nodeResponse.Content.ReadFromJsonAsync<NodeSummary>();
+        var node = await nodeResponse.Content.ReadFromJsonAsync<NodeSummary>(JsonOptions);
         node!.ConfigurationName.Should().Be("test-assign-config");
     }
 

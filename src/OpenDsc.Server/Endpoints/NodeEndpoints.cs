@@ -80,6 +80,16 @@ public static class NodeEndpoints
             .RequireAuthorization("Node")
             .WithSummary("Rotate certificate")
             .WithDescription("Updates the node's certificate to a new one.");
+
+        group.MapPut("/{nodeId:guid}/lcm-status", UpdateLcmStatus)
+            .RequireAuthorization("Node")
+            .WithSummary("Update LCM status")
+            .WithDescription("Updates the node's current LCM operational status.");
+
+        group.MapGet("/{nodeId:guid}/status-history", GetNodeStatusHistory)
+            .RequireAuthorization(Permissions.Nodes_Read)
+            .WithSummary("Get node status history")
+            .WithDescription("Returns the LCM and compliance status event history for a node.");
     }
 
     private static async Task<Results<Ok<RegisterNodeResponse>, BadRequest<ErrorResponse>, Conflict<ErrorResponse>>> RegisterNode(
@@ -212,24 +222,31 @@ public static class NodeEndpoints
         ServerDbContext db,
         CancellationToken cancellationToken)
     {
-        var nodes = await db.Nodes
-            .AsNoTracking()
-            .Select(n => new NodeSummary
-            {
-                Id = n.Id,
-                Fqdn = n.Fqdn,
-                ConfigurationName = n.ConfigurationName,
-                Status = n.Status.ToString(),
-                LastCheckIn = n.LastCheckIn,
-                CreatedAt = n.CreatedAt,
-                ConfigurationSource = n.ConfigurationSource,
-                ConfigurationMode = n.ConfigurationMode,
-                ConfigurationModeInterval = n.ConfigurationModeInterval,
-                ReportCompliance = n.ReportCompliance
-            })
-            .ToListAsync(cancellationToken);
+        var settings = await db.ServerSettings.AsNoTracking().FirstOrDefaultAsync(cancellationToken);
+        var staleness = settings?.StalenessMultiplier ?? 2.0;
+        var now = DateTimeOffset.UtcNow;
 
-        return TypedResults.Ok(nodes);
+        var nodes = await db.Nodes.AsNoTracking().ToListAsync(cancellationToken);
+
+        var result = nodes.Select(n => new NodeSummary
+        {
+            Id = n.Id,
+            Fqdn = n.Fqdn,
+            ConfigurationName = n.ConfigurationName,
+            Status = n.Status.ToString(),
+            LcmStatus = n.LcmStatus.ToString(),
+            IsStale = n.LastCheckIn.HasValue
+                && n.ConfigurationModeInterval.HasValue
+                && (now - n.LastCheckIn.Value) > n.ConfigurationModeInterval.Value * staleness,
+            LastCheckIn = n.LastCheckIn,
+            CreatedAt = n.CreatedAt,
+            ConfigurationSource = n.ConfigurationSource,
+            ConfigurationMode = n.ConfigurationMode,
+            ConfigurationModeInterval = n.ConfigurationModeInterval,
+            ReportCompliance = n.ReportCompliance
+        }).ToList();
+
+        return TypedResults.Ok(result);
     }
 
     private static async Task<Results<Ok<NodeSummary>, NotFound<ErrorResponse>>> GetNode(
@@ -237,28 +254,34 @@ public static class NodeEndpoints
         ServerDbContext db,
         CancellationToken cancellationToken)
     {
-        var node = await db.Nodes
-            .AsNoTracking()
-            .Where(n => n.Id == nodeId)
-            .Select(n => new NodeSummary
-            {
-                Id = n.Id,
-                Fqdn = n.Fqdn,
-                ConfigurationName = n.ConfigurationName,
-                Status = n.Status.ToString(),
-                LastCheckIn = n.LastCheckIn,
-                CreatedAt = n.CreatedAt,
-                ConfigurationSource = n.ConfigurationSource,
-                ConfigurationMode = n.ConfigurationMode,
-                ConfigurationModeInterval = n.ConfigurationModeInterval,
-                ReportCompliance = n.ReportCompliance
-            })
-            .FirstOrDefaultAsync(cancellationToken);
+        var settings = await db.ServerSettings.AsNoTracking().FirstOrDefaultAsync(cancellationToken);
+        var staleness = settings?.StalenessMultiplier ?? 2.0;
+        var now = DateTimeOffset.UtcNow;
 
-        if (node is null)
+        var n = await db.Nodes.AsNoTracking().FirstOrDefaultAsync(x => x.Id == nodeId, cancellationToken);
+
+        if (n is null)
         {
             return TypedResults.NotFound(new ErrorResponse { Error = "Node not found." });
         }
+
+        var node = new NodeSummary
+        {
+            Id = n.Id,
+            Fqdn = n.Fqdn,
+            ConfigurationName = n.ConfigurationName,
+            Status = n.Status.ToString(),
+            LcmStatus = n.LcmStatus.ToString(),
+            IsStale = n.LastCheckIn.HasValue
+                && n.ConfigurationModeInterval.HasValue
+                && (now - n.LastCheckIn.Value) > n.ConfigurationModeInterval.Value * staleness,
+            LastCheckIn = n.LastCheckIn,
+            CreatedAt = n.CreatedAt,
+            ConfigurationSource = n.ConfigurationSource,
+            ConfigurationMode = n.ConfigurationMode,
+            ConfigurationModeInterval = n.ConfigurationModeInterval,
+            ReportCompliance = n.ReportCompliance
+        };
 
         return TypedResults.Ok(node);
     }
@@ -836,6 +859,71 @@ public static class NodeEndpoints
 
         await db.SaveChangesAsync(cancellationToken);
         return TypedResults.Ok(new ConfigurationChecksumResponse { Checksum = checksum, EntryPoint = entryPoint, ParametersFile = parametersFile });
+    }
+
+    private static async Task<Results<NoContent, NotFound<ErrorResponse>, ForbidHttpResult>> UpdateLcmStatus(
+        Guid nodeId,
+        UpdateLcmStatusRequest request,
+        ClaimsPrincipal user,
+        ServerDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var authenticatedNodeId = user.FindFirst("node_id")?.Value;
+        if (authenticatedNodeId is null || !Guid.TryParse(authenticatedNodeId, out var authNodeId) || authNodeId != nodeId)
+        {
+            return TypedResults.Forbid();
+        }
+
+        var node = await db.Nodes.FindAsync([nodeId], cancellationToken);
+        if (node is null)
+        {
+            return TypedResults.NotFound(new ErrorResponse { Error = "Node not found." });
+        }
+
+        node.LcmStatus = request.LcmStatus;
+        node.LastCheckIn = DateTimeOffset.UtcNow;
+        db.NodeStatusEvents.Add(new NodeStatusEvent
+        {
+            NodeId = nodeId,
+            LcmStatus = request.LcmStatus,
+            Timestamp = DateTimeOffset.UtcNow
+        });
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        return TypedResults.NoContent();
+    }
+
+    private static async Task<Results<Ok<List<NodeStatusEventSummary>>, NotFound<ErrorResponse>>> GetNodeStatusHistory(
+        Guid nodeId,
+        ServerDbContext db,
+        int? skip,
+        int? take,
+        CancellationToken cancellationToken)
+    {
+        var nodeExists = await db.Nodes.AsNoTracking().AnyAsync(n => n.Id == nodeId, cancellationToken);
+        if (!nodeExists)
+        {
+            return TypedResults.NotFound(new ErrorResponse { Error = "Node not found." });
+        }
+
+        var rawEvents = await db.NodeStatusEvents
+            .AsNoTracking()
+            .Where(e => e.NodeId == nodeId)
+            .OrderByDescending(e => e.Id)
+            .Skip(skip ?? 0)
+            .Take(take ?? 50)
+            .ToListAsync(cancellationToken);
+
+        var events = rawEvents.Select(e => new NodeStatusEventSummary
+        {
+            Id = e.Id,
+            NodeId = e.NodeId,
+            LcmStatus = e.LcmStatus?.ToString(),
+            Timestamp = e.Timestamp
+        }).ToList();
+
+        return TypedResults.Ok(events);
     }
 
     private static async Task<Results<Ok<RotateCertificateResponse>, NotFound<ErrorResponse>, BadRequest<ErrorResponse>, ForbidHttpResult>> RotateCertificate(
