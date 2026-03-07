@@ -372,6 +372,7 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
             entity.HasIndex(e => e.Key).IsUnique();
             entity.HasIndex(e => e.ExpiresAt);
             entity.Property(e => e.Key).HasMaxLength(64).IsRequired();
+            entity.Property(e => e.Description).HasMaxLength(500);
         });
 
         modelBuilder.Entity<ServerSettings>(entity =>

@@ -24,6 +24,7 @@
             <MudTable Items="@registrationKeys" Hover="true" Dense="true">
                 <HeaderContent>
                     <MudTh>Key</MudTh>
+                    <MudTh>Description</MudTh>
                     <MudTh>Created</MudTh>
                     <MudTh>Expires</MudTh>
                     <MudTh>Uses</MudTh>
@@ -33,6 +34,16 @@
                 <RowTemplate>
                     <MudTd DataLabel="Key">
                         <code>@context.Key.Substring(0, Math.Min(16, context.Key.Length))...</code>
+                    </MudTd>
+                    <MudTd DataLabel="Description">
+                        @if (!string.IsNullOrEmpty(context.Description))
+                        {
+                            <MudText>@context.Description</MudText>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">No description</MudText>
+                        }
                     </MudTd>
                     <MudTd DataLabel="Created">@context.CreatedAt.LocalDateTime.ToString("g")</MudTd>
                     <MudTd DataLabel="Expires">@context.ExpiresAt.LocalDateTime.ToString("g")</MudTd>
@@ -65,6 +76,10 @@
                         }
                     </MudTd>
                     <MudTd DataLabel="Actions">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                       Size="Size.Small"
+                                       Color="Color.Default"
+                                       OnClick="@(() => EditKeyDescription(context))" />
                         <MudIconButton Icon="@Icons.Material.Filled.Delete"
                                        Size="Size.Small"
                                        Color="Color.Error"
@@ -118,6 +133,24 @@
         };
 
         await DialogService.ShowAsync<CreateKeyDialog>("Create Registration Key", parameters, options);
+    }
+
+    private async Task EditKeyDescription(RegistrationKey key)
+    {
+        var parameters = new DialogParameters<EditKeyDescriptionDialog>
+        {
+            { x => x.Key, key },
+            { x => x.OnUpdated, EventCallback.Factory.Create(this, LoadKeysAsync) }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+
+        await DialogService.ShowAsync<EditKeyDescriptionDialog>("Edit Description", parameters, options);
     }
 
     private async Task DeleteKey(RegistrationKey key)

@@ -66,6 +66,7 @@ namespace OpenDsc.Server;
 [JsonSerializable(typeof(ServerSettingsResponse))]
 [JsonSerializable(typeof(UpdateServerSettingsRequest))]
 [JsonSerializable(typeof(CreateRegistrationKeyRequest))]
+[JsonSerializable(typeof(UpdateRegistrationKeyRequest))]
 [JsonSerializable(typeof(RegistrationKeyResponse))]
 [JsonSerializable(typeof(List<RegistrationKeyResponse>))]
 [JsonSerializable(typeof(ErrorResponse))]

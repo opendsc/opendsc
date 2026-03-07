@@ -5,6 +5,8 @@
 
 <MudDialog>
     <DialogContent>
+        <MudTextField @bind-Value="description" Label="Description" Variant="Variant.Outlined" Class="mb-3"
+                      HelperText="Optional: describe the intended usage or purpose of this key (e.g. IIS team servers)" />
         <MudDatePicker @bind-Date="expirationDate" Label="Expiration Date" Variant="Variant.Outlined" Required="true" Class="mb-3"
                        MinDate="DateTime.Today" />
         <MudNumericField @bind-Value="maxUses" Label="Maximum Uses (0 = unlimited)" Variant="Variant.Outlined" Min="0" Class="mb-3" />
@@ -26,6 +28,7 @@
 
     private DateTime? expirationDate = DateTime.Today.AddDays(30);
     private int maxUses = 0;
+    private string? description;
 
     private async Task Create()
     {
@@ -40,7 +43,8 @@
                 ExpiresAt = new DateTimeOffset(expirationDate!.Value),
                 MaxUses = maxUses > 0 ? maxUses : null,
                 CurrentUses = 0,
-                IsRevoked = false
+                IsRevoked = false,
+                Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim()
             };
 
             Db.RegistrationKeys.Add(key);

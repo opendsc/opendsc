@@ -94,6 +94,22 @@ public sealed class CreateRegistrationKeyRequest
     /// Maximum number of times this key can be used (null = unlimited).
     /// </summary>
     public int? MaxUses { get; set; }
+
+    /// <summary>
+    /// Optional description of the key's intended usage or purpose.
+    /// </summary>
+    public string? Description { get; set; }
+}
+
+/// <summary>
+/// Request to update a registration key.
+/// </summary>
+public sealed class UpdateRegistrationKeyRequest
+{
+    /// <summary>
+    /// Description of the key's intended usage or purpose.
+    /// </summary>
+    public string? Description { get; set; }
 }
 
 /// <summary>
@@ -135,6 +151,11 @@ public sealed class RegistrationKeyResponse
     /// Whether the key is revoked.
     /// </summary>
     public bool IsRevoked { get; set; }
+
+    /// <summary>
+    /// Optional description of the key's intended usage or purpose.
+    /// </summary>
+    public string? Description { get; set; }
 }
 
 /// <summary>
