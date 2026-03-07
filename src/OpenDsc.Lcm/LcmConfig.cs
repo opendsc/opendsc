@@ -28,7 +28,7 @@ public class LcmConfig
     /// <summary>
     /// Full path to the main DSC configuration file. Used when ConfigurationSource is Local.
     /// </summary>
-    public string ConfigurationPath { get; set; } = Path.Combine(ConfigPaths.GetLcmConfigDirectory(), "config", "main.dsc.yaml");
+    public string ConfigurationPath { get; set; } = Path.Combine(ConfigPaths.GetLcmConfigDirectory(), "config", "local", "main.dsc.yaml");
 
     /// <summary>
     /// Interval between DSC operations (for Monitor and Remediate modes).

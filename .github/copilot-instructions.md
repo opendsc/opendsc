@@ -1102,7 +1102,7 @@ Uses source-generated logging with `LoggerMessage` attributes for performance. A
 **Testing Locally:**
 ```powershell
 # Set configuration via environment
-$env:LCM_ConfigurationPath = "C:\configs\main.dsc.yaml"
+$env:LCM_ConfigurationPath = "C:\configs\local\main.dsc.yaml"
 $env:LCM_ConfigurationMode = "Monitor"
 $env:LCM_ConfigurationModeInterval = "00:05:00"
 
@@ -1115,7 +1115,7 @@ $env:LCM_ConfigurationModeInterval = "00:05:00"
 {
   "LCM": {
     "ConfigurationMode": "Remediate",
-    "ConfigurationPath": "/etc/opendsc/config/main.dsc.yaml",
+    "ConfigurationPath": "/etc/opendsc/config/local/main.dsc.yaml",
     "ConfigurationModeInterval": "00:15:00",
     "DscExecutablePath": "/usr/local/bin/dsc"
   }

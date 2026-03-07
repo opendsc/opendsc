@@ -107,6 +107,13 @@ public class LcmWorkerTests
     }
 
     [Fact]
+    public void LcmConfig_DefaultConfigurationPathIncludesLocalFolder()
+    {
+        var config = new LcmConfig();
+        config.ConfigurationPath.Should().EndWith($"{Path.DirectorySeparatorChar}config{Path.DirectorySeparatorChar}local{Path.DirectorySeparatorChar}main.dsc.yaml");
+    }
+
+    [Fact]
     public void PullServerSettings_AcceptsServerUrl()
     {
         var settings = new PullServerSettings

@@ -197,7 +197,7 @@ Or run as a console application:
 
 ```powershell
 # Configure via environment variables
-$env:LCM_ConfigurationPath = "C:\configs\main.dsc.yaml"
+$env:LCM_ConfigurationPath = "C:\configs\local\main.dsc.yaml"
 $env:LCM_ConfigurationMode = "Monitor"
 $env:LCM_ConfigurationModeInterval = "00:15:00"
 
