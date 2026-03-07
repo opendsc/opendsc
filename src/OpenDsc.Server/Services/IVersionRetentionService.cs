@@ -2,7 +2,51 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
+using OpenDsc.Server.Entities;
+
 namespace OpenDsc.Server.Services;
+
+/// <summary>
+/// Defines the retention policy to apply during a cleanup run.
+/// </summary>
+public sealed record RetentionPolicy
+{
+    /// <summary>Number of recent non-draft versions to keep per configuration or parameter group.</summary>
+    public int KeepVersions { get; init; } = 10;
+
+    /// <summary>Versions older than this many days are candidates for deletion.</summary>
+    public int KeepDays { get; init; } = 90;
+
+    /// <summary>When true, release (non-prerelease) versions are never deleted.</summary>
+    public bool KeepReleaseVersions { get; init; } = true;
+
+    /// <summary>When true, archived versions are never deleted.</summary>
+    public bool KeepArchivedVersions { get; init; } = true;
+
+    /// <summary>When true, returns what would be deleted without actually deleting.</summary>
+    public bool DryRun { get; init; } = false;
+
+    /// <summary>True when triggered by the background scheduler; false for manual API calls.</summary>
+    public bool IsScheduled { get; init; } = false;
+}
+
+/// <summary>
+/// Retention policy for record-based data such as compliance reports and LCM status events.
+/// </summary>
+public sealed record RecordRetentionPolicy
+{
+    /// <summary>Maximum number of records to keep per node.</summary>
+    public int KeepCount { get; init; } = 1000;
+
+    /// <summary>Records older than this many days are candidates for deletion.</summary>
+    public int KeepDays { get; init; } = 30;
+
+    /// <summary>When true, returns what would be deleted without actually deleting.</summary>
+    public bool DryRun { get; init; } = false;
+
+    /// <summary>True when triggered by the background scheduler; false for manual API calls.</summary>
+    public bool IsScheduled { get; init; } = false;
+}
 
 /// <summary>
 /// Service for managing version retention and cleanup.
@@ -10,31 +54,49 @@ namespace OpenDsc.Server.Services;
 public interface IVersionRetentionService
 {
     /// <summary>
-    /// Cleans up old configuration versions based on retention policy.
+    /// Cleans up old configuration versions using the supplied policy.
+    /// Per-configuration settings overrides are applied on top of the base policy.
     /// </summary>
-    /// <param name="keepVersions">Number of recent versions to keep.</param>
-    /// <param name="keepDays">Number of days to keep versions.</param>
-    /// <param name="dryRun">If true, returns what would be deleted without actually deleting.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Retention result with deleted version information.</returns>
     Task<VersionRetentionResult> CleanupConfigurationVersionsAsync(
-        int keepVersions,
-        int keepDays,
-        bool dryRun = false,
+        RetentionPolicy policy,
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Cleans up old parameter versions based on retention policy.
+    /// Cleans up old parameter file versions using the supplied policy.
+    /// Per-configuration settings overrides are applied on top of the base policy.
     /// </summary>
-    /// <param name="keepVersions">Number of recent versions to keep.</param>
-    /// <param name="keepDays">Number of days to keep versions.</param>
-    /// <param name="dryRun">If true, returns what would be deleted without actually deleting.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Retention result with deleted version information.</returns>
     Task<VersionRetentionResult> CleanupParameterVersionsAsync(
-        int keepVersions,
-        int keepDays,
-        bool dryRun = false,
+        RetentionPolicy policy,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Cleans up old composite configuration versions using the supplied policy.
+    /// </summary>
+    Task<VersionRetentionResult> CleanupCompositeConfigurationVersionsAsync(
+        RetentionPolicy policy,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Cleans up old compliance reports using the supplied policy.
+    /// Keeps the most recent records per node.
+    /// </summary>
+    Task<VersionRetentionResult> CleanupReportsAsync(
+        RecordRetentionPolicy policy,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Cleans up old LCM status events using the supplied policy.
+    /// Keeps the most recent events per node.
+    /// </summary>
+    Task<VersionRetentionResult> CleanupNodeStatusEventsAsync(
+        RecordRetentionPolicy policy,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the most recent retention run history records.
+    /// </summary>
+    Task<IReadOnlyList<RetentionRun>> GetRunHistoryAsync(
+        int limit = 100,
         CancellationToken cancellationToken = default);
 }
 

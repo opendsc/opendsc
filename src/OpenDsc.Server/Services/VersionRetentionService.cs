@@ -18,22 +18,10 @@ public sealed partial class VersionRetentionService(
     ILogger<VersionRetentionService> logger) : IVersionRetentionService
 {
     public async Task<VersionRetentionResult> CleanupConfigurationVersionsAsync(
-        int keepVersions,
-        int keepDays,
-        bool dryRun = false,
+        RetentionPolicy policy,
         CancellationToken cancellationToken = default)
     {
-        if (keepVersions < 1)
-        {
-            throw new ArgumentException("Must keep at least 1 version", nameof(keepVersions));
-        }
-
-        if (keepDays < 0)
-        {
-            throw new ArgumentException("Keep days must be non-negative", nameof(keepDays));
-        }
-
-        var cutoffDate = DateTimeOffset.UtcNow.AddDays(-keepDays);
+        var startedAt = DateTimeOffset.UtcNow;
         var deletedVersions = new List<VersionDeletionInfo>();
         var keptCount = 0;
 
@@ -43,19 +31,25 @@ public sealed partial class VersionRetentionService(
 
         foreach (var configuration in configurations)
         {
+            var effective = await ResolvePolicyForConfigAsync(policy, configuration.Id, cancellationToken);
+            var cutoffDate = DateTimeOffset.UtcNow.AddDays(-effective.KeepDays);
+
             var versions = configuration.Versions
                 .Where(v => !v.IsDraft)
                 .OrderByDescending(v => v.CreatedAt)
                 .ToList();
 
-            for (int i = 0; i < versions.Count; i++)
+            for (var i = 0; i < versions.Count; i++)
             {
                 var version = versions[i];
+
                 var isInActiveUse = await db.NodeConfigurations
-                    .AnyAsync(nc => nc.ActiveVersion == version.Version, cancellationToken);
+                    .AnyAsync(nc => nc.ConfigurationId == configuration.Id
+                                    && nc.ActiveVersion == version.Version, cancellationToken);
 
                 var isUsedInComposite = await db.Set<CompositeConfigurationItem>()
-                    .AnyAsync(cci => cci.ActiveVersion == version.Version, cancellationToken);
+                    .AnyAsync(cci => cci.ChildConfigurationId == configuration.Id
+                                     && cci.ActiveVersion == version.Version, cancellationToken);
 
                 if (isInActiveUse || isUsedInComposite)
                 {
@@ -64,17 +58,12 @@ public sealed partial class VersionRetentionService(
                     continue;
                 }
 
-                var shouldKeep = i < keepVersions || version.CreatedAt >= cutoffDate;
-
-                if (shouldKeep)
+                if (ShouldKeep(i, effective, version.CreatedAt, cutoffDate,
+                        version.PrereleaseChannel is null, version.IsArchived))
                 {
                     keptCount++;
                     continue;
                 }
-
-                var reason = i >= keepVersions
-                    ? $"Exceeds retention count (keeping {keepVersions} versions)"
-                    : $"Older than retention period (keeping {keepDays} days)";
 
                 deletedVersions.Add(new VersionDeletionInfo
                 {
@@ -82,10 +71,10 @@ public sealed partial class VersionRetentionService(
                     Version = version.Version,
                     Name = configuration.Name,
                     CreatedAt = version.CreatedAt,
-                    Reason = reason
+                    Reason = BuildDeletionReason(i, effective, version.CreatedAt, cutoffDate)
                 });
 
-                if (!dryRun)
+                if (!policy.DryRun)
                 {
                     var dataDir = config["DataDirectory"] ?? "data";
                     var versionDir = Path.Combine(dataDir, "configurations", configuration.Name, $"v{version.Version}");
@@ -100,56 +89,378 @@ public sealed partial class VersionRetentionService(
             }
         }
 
-        if (!dryRun && deletedVersions.Count > 0)
+        if (!policy.DryRun && deletedVersions.Count > 0)
         {
             await db.SaveChangesAsync(cancellationToken);
         }
 
-        LogCleanupCompleted("configuration", deletedVersions.Count, keptCount, dryRun);
-
-        return new VersionRetentionResult
-        {
-            DeletedCount = deletedVersions.Count,
-            KeptCount = keptCount,
-            IsDryRun = dryRun,
-            DeletedVersions = deletedVersions
-        };
+        LogCleanupCompleted("Configuration", deletedVersions.Count, keptCount, policy.DryRun);
+        return await PersistRunAsync("Configuration", deletedVersions, keptCount, startedAt, policy, null, cancellationToken);
     }
 
     public async Task<VersionRetentionResult> CleanupParameterVersionsAsync(
-        int keepVersions,
-        int keepDays,
-        bool dryRun = false,
+        RetentionPolicy policy,
         CancellationToken cancellationToken = default)
     {
-        // TODO: Reimplement parameter cleanup for new ParameterFiles table structure
-        // The old ParameterVersions table has been replaced with ParameterFiles
-        // which has a different structure (ConfigurationId, ScopeTypeId, ScopeValue, Version)
-        // The new design doesn't have IsDraft/IsActive flags, so retention logic needs to be redesigned.
+        var startedAt = DateTimeOffset.UtcNow;
+        var deletedVersions = new List<VersionDeletionInfo>();
+        var keptCount = 0;
 
-        await Task.CompletedTask;
-        LogCleanupCompleted("parameter", 0, 0, dryRun);
+        var schemas = await db.Set<ParameterSchema>()
+            .Include(ps => ps.ParameterFiles)
+            .Include(ps => ps.Configuration)
+            .ToListAsync(cancellationToken);
 
-        return new VersionRetentionResult
+        foreach (var schema in schemas)
         {
-            DeletedCount = 0,
-            KeptCount = 0,
-            IsDryRun = dryRun,
-            DeletedVersions = []
+            var effective = await ResolvePolicyForConfigAsync(policy, schema.ConfigurationId, cancellationToken);
+            var cutoffDate = DateTimeOffset.UtcNow.AddDays(-effective.KeepDays);
+
+            var groups = schema.ParameterFiles
+                .GroupBy(pf => (pf.MajorVersion, pf.ScopeTypeId, pf.ScopeValue));
+
+            foreach (var group in groups)
+            {
+                // Always protect draft and active versions
+                keptCount += group.Count(pf => pf.IsDraft || pf.IsActive);
+
+                var candidates = group
+                    .Where(pf => !pf.IsDraft && !pf.IsActive)
+                    .OrderByDescending(pf => pf.CreatedAt)
+                    .ToList();
+
+                for (var i = 0; i < candidates.Count; i++)
+                {
+                    var file = candidates[i];
+
+                    // ParameterFile has no PrereleaseChannel, so KeepReleaseVersions doesn't apply
+                    if (ShouldKeep(i, effective, file.CreatedAt, cutoffDate, isRelease: false, file.IsArchived))
+                    {
+                        keptCount++;
+                        continue;
+                    }
+
+                    var scopeLabel = file.ScopeValue ?? "default";
+                    deletedVersions.Add(new VersionDeletionInfo
+                    {
+                        Id = file.Id,
+                        Version = file.Version,
+                        Name = $"{schema.Configuration.Name}/{scopeLabel}",
+                        CreatedAt = file.CreatedAt,
+                        Reason = BuildDeletionReason(i, effective, file.CreatedAt, cutoffDate)
+                    });
+
+                    if (!policy.DryRun)
+                    {
+                        db.ParameterFiles.Remove(file);
+                        LogParameterVersionDeleted(schema.Configuration.Name, scopeLabel, file.Version);
+                    }
+                }
+            }
+        }
+
+        if (!policy.DryRun && deletedVersions.Count > 0)
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+
+        LogCleanupCompleted("Parameter", deletedVersions.Count, keptCount, policy.DryRun);
+        return await PersistRunAsync("Parameter", deletedVersions, keptCount, startedAt, policy, null, cancellationToken);
+    }
+
+    public async Task<VersionRetentionResult> CleanupCompositeConfigurationVersionsAsync(
+        RetentionPolicy policy,
+        CancellationToken cancellationToken = default)
+    {
+        var startedAt = DateTimeOffset.UtcNow;
+        var deletedVersions = new List<VersionDeletionInfo>();
+        var keptCount = 0;
+        var cutoffDate = DateTimeOffset.UtcNow.AddDays(-policy.KeepDays);
+
+        var composites = await db.CompositeConfigurations
+            .Include(c => c.Versions)
+            .ToListAsync(cancellationToken);
+
+        foreach (var composite in composites)
+        {
+            var versions = composite.Versions
+                .Where(v => !v.IsDraft)
+                .OrderByDescending(v => v.CreatedAt)
+                .ToList();
+
+            for (var i = 0; i < versions.Count; i++)
+            {
+                var version = versions[i];
+
+                var isInActiveUse = await db.NodeConfigurations
+                    .AnyAsync(nc => nc.CompositeConfigurationId == composite.Id
+                                    && nc.ActiveVersion == version.Version, cancellationToken);
+
+                if (isInActiveUse)
+                {
+                    keptCount++;
+                    LogVersionInActiveUse(composite.Name, version.Version);
+                    continue;
+                }
+
+                if (ShouldKeep(i, policy, version.CreatedAt, cutoffDate,
+                        version.PrereleaseChannel is null, version.IsArchived))
+                {
+                    keptCount++;
+                    continue;
+                }
+
+                deletedVersions.Add(new VersionDeletionInfo
+                {
+                    Id = version.Id,
+                    Version = version.Version,
+                    Name = composite.Name,
+                    CreatedAt = version.CreatedAt,
+                    Reason = BuildDeletionReason(i, policy, version.CreatedAt, cutoffDate)
+                });
+
+                if (!policy.DryRun)
+                {
+                    db.CompositeConfigurationVersions.Remove(version);
+                    LogConfigurationVersionDeleted(composite.Name, version.Version);
+                }
+            }
+        }
+
+        if (!policy.DryRun && deletedVersions.Count > 0)
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+
+        LogCleanupCompleted("CompositeConfiguration", deletedVersions.Count, keptCount, policy.DryRun);
+        return await PersistRunAsync("CompositeConfiguration", deletedVersions, keptCount, startedAt, policy, null, cancellationToken);
+    }
+
+    public async Task<VersionRetentionResult> CleanupReportsAsync(
+        RecordRetentionPolicy policy,
+        CancellationToken cancellationToken = default)
+    {
+        var startedAt = DateTimeOffset.UtcNow;
+        var deletedCount = 0;
+        var keptCount = 0;
+        var cutoff = DateTimeOffset.UtcNow.AddDays(-policy.KeepDays);
+
+        var nodeIds = await db.Nodes.Select(n => n.Id).ToListAsync(cancellationToken);
+
+        foreach (var nodeId in nodeIds)
+        {
+            var reports = await db.Reports
+                .Where(r => r.NodeId == nodeId)
+                .Select(r => new { r.Id, r.Timestamp })
+                .ToListAsync(cancellationToken);
+
+            var ordered = reports.OrderByDescending(r => r.Timestamp).ToList();
+            var toDelete = new List<Guid>();
+
+            for (var i = 0; i < ordered.Count; i++)
+            {
+                if (i < policy.KeepCount || ordered[i].Timestamp >= cutoff)
+                    keptCount++;
+                else
+                {
+                    toDelete.Add(ordered[i].Id);
+                    deletedCount++;
+                }
+            }
+
+            if (!policy.DryRun && toDelete.Count > 0)
+            {
+                await db.Reports.Where(r => toDelete.Contains(r.Id)).ExecuteDeleteAsync(cancellationToken);
+            }
+        }
+
+        LogCleanupCompleted("Report", deletedCount, keptCount, policy.DryRun);
+        return await PersistRecordRunAsync("Report", deletedCount, keptCount, startedAt, policy, null, cancellationToken);
+    }
+
+    public async Task<VersionRetentionResult> CleanupNodeStatusEventsAsync(
+        RecordRetentionPolicy policy,
+        CancellationToken cancellationToken = default)
+    {
+        var startedAt = DateTimeOffset.UtcNow;
+        var deletedCount = 0;
+        var keptCount = 0;
+        var cutoff = DateTimeOffset.UtcNow.AddDays(-policy.KeepDays);
+
+        var nodeIds = await db.Nodes.Select(n => n.Id).ToListAsync(cancellationToken);
+
+        foreach (var nodeId in nodeIds)
+        {
+            var events = await db.NodeStatusEvents
+                .Where(e => e.NodeId == nodeId)
+                .Select(e => new { e.Id, e.Timestamp })
+                .ToListAsync(cancellationToken);
+
+            // NodeStatusEvent.Id is auto-increment, so descending Id order equals newest-first
+            var ordered = events.OrderByDescending(e => e.Id).ToList();
+            var toDelete = new List<long>();
+
+            for (var i = 0; i < ordered.Count; i++)
+            {
+                if (i < policy.KeepCount || ordered[i].Timestamp >= cutoff)
+                    keptCount++;
+                else
+                {
+                    toDelete.Add(ordered[i].Id);
+                    deletedCount++;
+                }
+            }
+
+            if (!policy.DryRun && toDelete.Count > 0)
+            {
+                await db.NodeStatusEvents.Where(e => toDelete.Contains(e.Id)).ExecuteDeleteAsync(cancellationToken);
+            }
+        }
+
+        LogCleanupCompleted("NodeStatusEvent", deletedCount, keptCount, policy.DryRun);
+        return await PersistRecordRunAsync("NodeStatusEvent", deletedCount, keptCount, startedAt, policy, null, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<RetentionRun>> GetRunHistoryAsync(
+        int limit = 100,
+        CancellationToken cancellationToken = default)
+    {
+        return await db.RetentionRuns
+            .OrderByDescending(r => r.StartedAt)
+            .Take(limit)
+            .ToListAsync(cancellationToken);
+    }
+
+    private async Task<RetentionPolicy> ResolvePolicyForConfigAsync(
+        RetentionPolicy basePolicy,
+        Guid configurationId,
+        CancellationToken cancellationToken)
+    {
+        var overrides = await db.Set<ConfigurationSettings>()
+            .FirstOrDefaultAsync(cs => cs.ConfigurationId == configurationId, cancellationToken);
+
+        if (overrides is null)
+        {
+            return basePolicy;
+        }
+
+        return basePolicy with
+        {
+            KeepVersions = overrides.RetentionKeepVersions ?? basePolicy.KeepVersions,
+            KeepDays = overrides.RetentionKeepDays ?? basePolicy.KeepDays,
+            KeepReleaseVersions = overrides.RetentionKeepReleaseVersions ?? basePolicy.KeepReleaseVersions,
+            KeepArchivedVersions = overrides.RetentionKeepArchivedVersions ?? basePolicy.KeepArchivedVersions
         };
     }
 
-    [LoggerMessage(EventId = 5001, Level = LogLevel.Information, Message = "Configuration version {ConfigurationName} v{Version} is in active use, keeping")]
-    private partial void LogVersionInActiveUse(string configurationName, string version);
+    private static bool ShouldKeep(
+        int index,
+        RetentionPolicy policy,
+        DateTimeOffset createdAt,
+        DateTimeOffset cutoffDate,
+        bool isRelease,
+        bool isArchived)
+    {
+        return index < policy.KeepVersions
+               || createdAt >= cutoffDate
+               || (policy.KeepReleaseVersions && isRelease)
+               || (policy.KeepArchivedVersions && isArchived);
+    }
 
-    [LoggerMessage(EventId = 5002, Level = LogLevel.Information, Message = "Parameter version {ScopeName}/{ConfigurationName} v{Version} is active, keeping")]
-    private partial void LogParameterVersionActive(string scopeName, string configurationName, string version);
+    private static string BuildDeletionReason(
+        int index,
+        RetentionPolicy policy,
+        DateTimeOffset createdAt,
+        DateTimeOffset cutoffDate)
+    {
+        var reasons = new List<string>();
+        if (index >= policy.KeepVersions)
+        {
+            reasons.Add($"exceeds version count (keep {policy.KeepVersions})");
+        }
+
+        if (createdAt < cutoffDate)
+        {
+            reasons.Add($"older than {policy.KeepDays} days");
+        }
+
+        return reasons.Count > 0 ? string.Join("; ", reasons) : "outside retention window";
+    }
+
+    private async Task<VersionRetentionResult> PersistRunAsync(
+        string versionType,
+        List<VersionDeletionInfo> deleted,
+        int kept,
+        DateTimeOffset startedAt,
+        RetentionPolicy policy,
+        string? error,
+        CancellationToken cancellationToken)
+    {
+        db.RetentionRuns.Add(new RetentionRun
+        {
+            Id = Guid.NewGuid(),
+            StartedAt = startedAt,
+            CompletedAt = DateTimeOffset.UtcNow,
+            VersionType = versionType,
+            IsScheduled = policy.IsScheduled,
+            IsDryRun = policy.DryRun,
+            DeletedCount = deleted.Count,
+            KeptCount = kept,
+            Error = error
+        });
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        return new VersionRetentionResult
+        {
+            DeletedCount = deleted.Count,
+            KeptCount = kept,
+            IsDryRun = policy.DryRun,
+            DeletedVersions = deleted
+        };
+    }
+
+    private async Task<VersionRetentionResult> PersistRecordRunAsync(
+        string versionType,
+        int deleted,
+        int kept,
+        DateTimeOffset startedAt,
+        RecordRetentionPolicy policy,
+        string? error,
+        CancellationToken cancellationToken)
+    {
+        db.RetentionRuns.Add(new RetentionRun
+        {
+            Id = Guid.NewGuid(),
+            StartedAt = startedAt,
+            CompletedAt = DateTimeOffset.UtcNow,
+            VersionType = versionType,
+            IsScheduled = policy.IsScheduled,
+            IsDryRun = policy.DryRun,
+            DeletedCount = deleted,
+            KeptCount = kept,
+            Error = error
+        });
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        return new VersionRetentionResult
+        {
+            DeletedCount = deleted,
+            KeptCount = kept,
+            IsDryRun = policy.DryRun,
+            DeletedVersions = null
+        };
+    }
+
+    [LoggerMessage(EventId = 5001, Level = LogLevel.Information, Message = "Version {ConfigurationName} v{Version} is in active use, keeping")]
+    private partial void LogVersionInActiveUse(string configurationName, string version);
 
     [LoggerMessage(EventId = 5003, Level = LogLevel.Information, Message = "Deleted configuration version {ConfigurationName} v{Version}")]
     private partial void LogConfigurationVersionDeleted(string configurationName, string version);
 
-    [LoggerMessage(EventId = 5004, Level = LogLevel.Information, Message = "Deleted parameter version {ScopeName}/{ConfigurationName} v{Version}")]
-    private partial void LogParameterVersionDeleted(string scopeName, string configurationName, string version);
+    [LoggerMessage(EventId = 5004, Level = LogLevel.Information, Message = "Deleted parameter version {ConfigurationName}/{ScopeLabel} v{Version}")]
+    private partial void LogParameterVersionDeleted(string configurationName, string scopeLabel, string version);
 
     [LoggerMessage(EventId = 5005, Level = LogLevel.Information, Message = "Cleanup completed for {VersionType} versions: {Deleted} deleted, {Kept} kept (dry-run: {DryRun})")]
     private partial void LogCleanupCompleted(string versionType, int deleted, int kept, bool dryRun);

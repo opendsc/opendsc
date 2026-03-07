@@ -164,6 +164,11 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
     /// </summary>
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
+    /// <summary>
+    /// Retention cleanup run history.
+    /// </summary>
+    public DbSet<RetentionRun> RetentionRuns => Set<RetentionRun>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -596,6 +601,23 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
             entity.Property(e => e.Action).HasMaxLength(100).IsRequired();
             entity.Property(e => e.ResourceType).HasMaxLength(100).IsRequired();
             entity.Property(e => e.IpAddress).HasMaxLength(45);
+        });
+
+        modelBuilder.Entity<RetentionRun>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.StartedAt);
+            entity.HasIndex(e => e.VersionType);
+            entity.Property(e => e.VersionType).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.Error).HasMaxLength(2000);
+            entity.Property(e => e.StartedAt)
+                .HasConversion(
+                    v => v.ToUnixTimeMilliseconds(),
+                    v => DateTimeOffset.FromUnixTimeMilliseconds(v));
+            entity.Property(e => e.CompletedAt)
+                .HasConversion(
+                    v => v.HasValue ? (long?)v.Value.ToUnixTimeMilliseconds() : null,
+                    v => v.HasValue ? (DateTimeOffset?)DateTimeOffset.FromUnixTimeMilliseconds(v.Value) : null);
         });
 
         SeedDefaultScopeTypes(modelBuilder);

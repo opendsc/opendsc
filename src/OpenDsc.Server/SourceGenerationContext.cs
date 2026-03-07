@@ -138,8 +138,13 @@ namespace OpenDsc.Server;
 [JsonSerializable(typeof(UpdateRoleRequest))]
 // Retention contracts
 [JsonSerializable(typeof(CleanupRequest))]
+[JsonSerializable(typeof(RecordCleanupRequest))]
 [JsonSerializable(typeof(VersionRetentionResult))]
 [JsonSerializable(typeof(List<VersionDeletionInfo>))]
+[JsonSerializable(typeof(RetentionRunDto))]
+[JsonSerializable(typeof(List<RetentionRunDto>))]
+[JsonSerializable(typeof(RetentionSettingsDto))]
+[JsonSerializable(typeof(UpdateRetentionSettingsRequest))]
 // Parameter validation
 [JsonSerializable(typeof(ValidationError))]
 [JsonSerializable(typeof(List<ValidationError>))]

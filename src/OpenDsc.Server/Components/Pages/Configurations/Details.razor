@@ -279,6 +279,96 @@
                 </MudCardContent>
             </MudCard>
         </MudTabPanel>
+
+        <MudTabPanel Text="Settings" Icon="@Icons.Material.Filled.Settings">
+            <MudCard Class="mt-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Retention Policy Override</MudText>
+                        <MudText Typo="Typo.body2">
+                            Override the global retention policy for this configuration. Leave any field blank to inherit the global default.
+                        </MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    @if (retentionLoading)
+                    {
+                        <MudProgressLinear Indeterminate="true" />
+                    }
+                    else
+                    {
+                        @if (retentionOverrideActive)
+                        {
+                            <MudAlert Severity="Severity.Info" Class="mb-4">
+                                This configuration has custom retention overrides active.
+                            </MudAlert>
+                        }
+                        else
+                        {
+                            <MudAlert Severity="Severity.Normal" Class="mb-4">
+                                Using the <strong>global retention policy</strong>. Set any field below to override.
+                            </MudAlert>
+                        }
+
+                        <MudGrid>
+                            <MudItem xs="12" sm="6">
+                                <MudTextField T="int?" @bind-Value="retentionKeepVersions" Label="Keep Versions" Variant="Variant.Outlined"
+                                              InputType="InputType.Number"
+                                              Placeholder="(global default)"
+                                              HelperText="Number of most-recent non-draft versions to keep per item." />
+                            </MudItem>
+                            <MudItem xs="12" sm="6">
+                                <MudTextField T="int?" @bind-Value="retentionKeepDays" Label="Keep Days" Variant="Variant.Outlined"
+                                              InputType="InputType.Number"
+                                              Placeholder="(global default)"
+                                              HelperText="Versions newer than this many days are always kept." />
+                            </MudItem>
+                            <MudItem xs="12" sm="6">
+                                <MudSelect T="bool?" @bind-Value="retentionKeepReleaseVersions" Label="Keep Release Versions"
+                                           Variant="Variant.Outlined"
+                                           HelperText="Always keep release (non-prerelease) versions.">
+                                    <MudSelectItem T="bool?" Value="@((bool?)null)">Use global default</MudSelectItem>
+                                    <MudSelectItem T="bool?" Value="@((bool?)true)">Yes</MudSelectItem>
+                                    <MudSelectItem T="bool?" Value="@((bool?)false)">No</MudSelectItem>
+                                </MudSelect>
+                            </MudItem>
+                            <MudItem xs="12" sm="6">
+                                <MudSelect T="bool?" @bind-Value="retentionKeepArchivedVersions" Label="Keep Archived Versions"
+                                           Variant="Variant.Outlined"
+                                           HelperText="Always keep archived versions.">
+                                    <MudSelectItem T="bool?" Value="@((bool?)null)">Use global default</MudSelectItem>
+                                    <MudSelectItem T="bool?" Value="@((bool?)true)">Yes</MudSelectItem>
+                                    <MudSelectItem T="bool?" Value="@((bool?)false)">No</MudSelectItem>
+                                </MudSelect>
+                            </MudItem>
+                        </MudGrid>
+
+                        @if (retentionSaveError is not null)
+                        {
+                            <MudAlert Severity="Severity.Error" Class="mt-3">@retentionSaveError</MudAlert>
+                        }
+
+                        <MudStack Row="true" Spacing="2" Class="mt-4">
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveRetentionSettings"
+                                       Disabled="@retentionSaving">
+                                @if (retentionSaving)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                }
+                                Save
+                            </MudButton>
+                            @if (retentionOverrideActive)
+                            {
+                                <MudButton Variant="Variant.Outlined" Color="Color.Warning" OnClick="ResetRetentionSettings"
+                                           StartIcon="@Icons.Material.Filled.RestartAlt">
+                                    Reset to Global Defaults
+                                </MudButton>
+                            }
+                        </MudStack>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudTabPanel>
     </MudTabs>
 }
 else if (loading)
@@ -298,6 +388,16 @@ else
     private List<ConfigurationVersion> versions = [];
     private bool loading = true;
     private List<int> availableConfigMajors = [];
+
+    // Retention override state
+    private bool retentionLoading = true;
+    private bool retentionSaving;
+    private string? retentionSaveError;
+    private bool retentionOverrideActive;
+    private int? retentionKeepVersions;
+    private int? retentionKeepDays;
+    private bool? retentionKeepReleaseVersions;
+    private bool? retentionKeepArchivedVersions;
 
     protected override async Task OnInitializedAsync()
     {
@@ -322,6 +422,7 @@ else
                     .ToList();
 
                 UpdateMajors();
+                await LoadRetentionSettings();
             }
         }
         finally
@@ -340,6 +441,121 @@ else
             .ToList();
     }
 
+    private async Task LoadRetentionSettings()
+    {
+        retentionLoading = true;
+
+        var settings = await Db.Set<ConfigurationSettings>()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(cs => cs.ConfigurationId == configuration!.Id);
+
+        if (settings is not null && (settings.RetentionKeepVersions.HasValue
+            || settings.RetentionKeepDays.HasValue
+            || settings.RetentionKeepReleaseVersions.HasValue
+            || settings.RetentionKeepArchivedVersions.HasValue))
+        {
+            retentionOverrideActive = true;
+            retentionKeepVersions = settings.RetentionKeepVersions;
+            retentionKeepDays = settings.RetentionKeepDays;
+            retentionKeepReleaseVersions = settings.RetentionKeepReleaseVersions;
+            retentionKeepArchivedVersions = settings.RetentionKeepArchivedVersions;
+        }
+        else
+        {
+            retentionOverrideActive = false;
+            retentionKeepVersions = null;
+            retentionKeepDays = null;
+            retentionKeepReleaseVersions = null;
+            retentionKeepArchivedVersions = null;
+        }
+
+        retentionLoading = false;
+    }
+
+    private async Task SaveRetentionSettings()
+    {
+        retentionSaveError = null;
+        retentionSaving = true;
+        StateHasChanged();
+
+        try
+        {
+            var settings = await Db.Set<ConfigurationSettings>()
+                .FirstOrDefaultAsync(cs => cs.ConfigurationId == configuration!.Id);
+
+            if (settings is null)
+            {
+                settings = new ConfigurationSettings
+                {
+                    ConfigurationId = configuration!.Id,
+                    UpdatedAt = DateTimeOffset.UtcNow
+                };
+                Db.Add(settings);
+            }
+
+            settings.RetentionKeepVersions = retentionKeepVersions;
+            settings.RetentionKeepDays = retentionKeepDays;
+            settings.RetentionKeepReleaseVersions = retentionKeepReleaseVersions;
+            settings.RetentionKeepArchivedVersions = retentionKeepArchivedVersions;
+            settings.UpdatedAt = DateTimeOffset.UtcNow;
+
+            await Db.SaveChangesAsync();
+
+            retentionOverrideActive = retentionKeepVersions.HasValue || retentionKeepDays.HasValue
+                || retentionKeepReleaseVersions.HasValue || retentionKeepArchivedVersions.HasValue;
+
+            Snackbar.Add("Retention settings saved.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            retentionSaveError = $"Error saving settings: {ex.Message}";
+        }
+        finally
+        {
+            retentionSaving = false;
+        }
+    }
+
+    private async Task ResetRetentionSettings()
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Reset Retention Overrides",
+            "Remove all retention overrides for this configuration and revert to the global policy?",
+            yesText: "Reset",
+            cancelText: "Cancel");
+
+        if (confirmed != true)
+            return;
+
+        try
+        {
+            var settings = await Db.Set<ConfigurationSettings>()
+                .FirstOrDefaultAsync(cs => cs.ConfigurationId == configuration!.Id);
+
+            if (settings is not null)
+            {
+                settings.RetentionEnabled = null;
+                settings.RetentionKeepVersions = null;
+                settings.RetentionKeepDays = null;
+                settings.RetentionKeepReleaseVersions = null;
+                settings.RetentionKeepArchivedVersions = null;
+                settings.UpdatedAt = DateTimeOffset.UtcNow;
+                await Db.SaveChangesAsync();
+            }
+
+            retentionKeepVersions = null;
+            retentionKeepDays = null;
+            retentionKeepReleaseVersions = null;
+            retentionKeepArchivedVersions = null;
+            retentionOverrideActive = false;
+
+            Snackbar.Add("Retention overrides cleared. Using global policy.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error resetting settings: {ex.Message}", Severity.Error);
+        }
+    }
 
     private async Task OpenFileViewer(ConfigurationVersion version, ConfigurationFile file, bool editMode)
     {

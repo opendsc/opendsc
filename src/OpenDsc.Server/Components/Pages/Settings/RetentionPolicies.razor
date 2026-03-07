@@ -1,0 +1,430 @@
+@attribute [Authorize(Policy = "settings.write")]
+@inject ServerDbContext Db
+@inject ISnackbar Snackbar
+@inject IVersionRetentionService RetentionService
+@using Microsoft.EntityFrameworkCore
+@using OpenDsc.Server.Entities
+@using OpenDsc.Server.Services
+
+<MudCard Class="mt-4">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">Global Retention Policy</MudText>
+            <MudText Typo="Typo.body2">
+                Configure how many historical versions are retained. Per-configuration overrides can be set on each configuration's settings page.
+            </MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
+    <MudCardContent>
+        @if (settingsLoading)
+        {
+            <MudProgressLinear Indeterminate="true" />
+        }
+        else
+        {
+            <MudSwitch @bind-Value="retentionEnabled" Label="Enable scheduled auto-purge" Color="Color.Primary" Class="mb-4" />
+
+            <MudGrid>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="keepVersions" Label="Keep Versions" Variant="Variant.Outlined"
+                                  InputType="InputType.Number"
+                                  HelperText="Number of most-recent non-draft versions to keep per item." />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="keepDays" Label="Keep Days" Variant="Variant.Outlined"
+                                  InputType="InputType.Number"
+                                  HelperText="Versions newer than this age (days) are always kept." />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSwitch @bind-Value="keepReleaseVersions" Label="Always keep release versions" Color="Color.Primary" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSwitch @bind-Value="keepArchivedVersions" Label="Always keep archived versions" Color="Color.Primary" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="scheduleIntervalHours" Label="Schedule Interval (hours)" Variant="Variant.Outlined"
+                                  InputType="InputType.Number"
+                                  HelperText="How often the background cleanup job runs automatically." />
+                </MudItem>
+            </MudGrid>
+
+            @if (settingsSaveError is not null)
+            {
+                <MudAlert Severity="Severity.Error" Class="mt-3">@settingsSaveError</MudAlert>
+            }
+
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveSettings"
+                       Disabled="@settingsSaving" Class="mt-4">
+                @if (settingsSaving)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                }
+                Save
+            </MudButton>
+        }
+    </MudCardContent>
+</MudCard>
+
+<MudCard Class="mt-4">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">Reports &amp; LCM Status Events</MudText>
+            <MudText Typo="Typo.body2">
+                These records accumulate on every LCM cycle. The defaults below are applied per node.
+            </MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
+    <MudCardContent>
+        @if (settingsLoading)
+        {
+            <MudProgressLinear Indeterminate="true" />
+        }
+        else
+        {
+            <MudGrid>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="reportKeepCount" Label="Reports per Node" Variant="Variant.Outlined"
+                                  InputType="InputType.Number"
+                                  HelperText="Maximum number of compliance reports to keep per node." />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="reportKeepDays" Label="Report Keep Days" Variant="Variant.Outlined"
+                                  InputType="InputType.Number"
+                                  HelperText="Reports older than this many days are candidates for deletion." />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="statusEventKeepCount" Label="Status Events per Node" Variant="Variant.Outlined"
+                                  InputType="InputType.Number"
+                                  HelperText="Maximum number of LCM status events to keep per node." />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="statusEventKeepDays" Label="Status Event Keep Days" Variant="Variant.Outlined"
+                                  InputType="InputType.Number"
+                                  HelperText="Status events older than this many days are candidates for deletion." />
+                </MudItem>
+            </MudGrid>
+
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveSettings"
+                       Disabled="@settingsSaving" Class="mt-4">
+                @if (settingsSaving)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                }
+                Save
+            </MudButton>
+        }
+    </MudCardContent>
+</MudCard>
+
+<MudCard Class="mt-4">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">Manual Cleanup</MudText>
+            <MudText Typo="Typo.body2">
+                Trigger a cleanup run now using the current global policy. Use <em>Dry Run</em> to preview changes without deleting anything.
+            </MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
+    <MudCardContent>
+        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="mb-4">
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="RunDryRun"
+                       Disabled="@runInProgress" StartIcon="@Icons.Material.Filled.Preview">
+                Dry Run
+            </MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Warning" OnClick="RunCleanup"
+                       Disabled="@runInProgress" StartIcon="@Icons.Material.Filled.DeleteSweep">
+                Apply Now
+            </MudButton>
+            @if (runInProgress)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+            }
+        </MudStack>
+
+        @if (lastRunResults is not null)
+        {
+            <MudAlert Severity="Severity.Info" Class="mb-3">
+                @foreach (var (label, result) in lastRunResults)
+                {
+                    <div>
+                        <strong>@label:</strong>
+                        @if (result.IsDryRun)
+                        {
+                            @($" Would delete {result.DeletedCount} version(s), keep {result.KeptCount}.")
+                        }
+                        else
+                        {
+                            @($" Deleted {result.DeletedCount} version(s), kept {result.KeptCount}.")
+                        }
+                    </div>
+                }
+            </MudAlert>
+
+            @if (lastRunResults.Any(r => r.Result.DeletedVersions?.Count > 0))
+            {
+                <MudExpansionPanels>
+                    @foreach (var (label, result) in lastRunResults.Where(r => r.Result.DeletedVersions?.Count > 0))
+                    {
+                        <MudExpansionPanel Text="@($"{label} — {result.DeletedVersions!.Count} version(s)")">
+                            <MudTable Items="result.DeletedVersions" Dense="true" Striped="true">
+                                <HeaderContent>
+                                    <MudTh>Name</MudTh>
+                                    <MudTh>Version</MudTh>
+                                    <MudTh>Created</MudTh>
+                                    <MudTh>Reason</MudTh>
+                                </HeaderContent>
+                                <RowTemplate>
+                                    <MudTd>@context.Name</MudTd>
+                                    <MudTd><MudChip T="string" Size="Size.Small">@context.Version</MudChip></MudTd>
+                                    <MudTd>@context.CreatedAt.ToString("yyyy-MM-dd HH:mm")</MudTd>
+                                    <MudTd>@context.Reason</MudTd>
+                                </RowTemplate>
+                            </MudTable>
+                        </MudExpansionPanel>
+                    }
+                </MudExpansionPanels>
+            }
+        }
+    </MudCardContent>
+</MudCard>
+
+<MudCard Class="mt-4">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">Run History</MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadHistory" />
+        </CardHeaderActions>
+    </MudCardHeader>
+    <MudCardContent>
+        @if (historyLoading)
+        {
+            <MudProgressLinear Indeterminate="true" />
+        }
+        else if (runHistory.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary">No retention runs recorded yet.</MudText>
+        }
+        else
+        {
+            <MudTable Items="runHistory" Dense="true" Striped="true" Hover="true">
+                <HeaderContent>
+                    <MudTh>Started</MudTh>
+                    <MudTh>Type</MudTh>
+                    <MudTh>Trigger</MudTh>
+                    <MudTh>Mode</MudTh>
+                    <MudTh>Deleted</MudTh>
+                    <MudTh>Kept</MudTh>
+                    <MudTh>Duration</MudTh>
+                    <MudTh>Status</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.StartedAt.ToString("yyyy-MM-dd HH:mm")</MudTd>
+                    <MudTd>@context.VersionType</MudTd>
+                    <MudTd>
+                        <MudChip T="string" Size="Size.Small" Color="@(context.IsScheduled ? Color.Default : Color.Primary)">
+                            @(context.IsScheduled ? "Scheduled" : "Manual")
+                        </MudChip>
+                    </MudTd>
+                    <MudTd>
+                        <MudChip T="string" Size="Size.Small" Color="@(context.IsDryRun ? Color.Info : Color.Warning)">
+                            @(context.IsDryRun ? "Dry Run" : "Applied")
+                        </MudChip>
+                    </MudTd>
+                    <MudTd>@context.DeletedCount</MudTd>
+                    <MudTd>@context.KeptCount</MudTd>
+                    <MudTd>
+                        @if (context.CompletedAt.HasValue)
+                        {
+                            var duration = context.CompletedAt.Value - context.StartedAt;
+                            @($"{duration.TotalSeconds:F1}s")
+                        }
+                        else
+                        {
+                            @("—")
+                        }
+                    </MudTd>
+                    <MudTd>
+                        @if (context.Error is not null)
+                        {
+                            <MudTooltip Text="@context.Error">
+                                <MudChip T="string" Size="Size.Small" Color="Color.Error">Error</MudChip>
+                            </MudTooltip>
+                        }
+                        else
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Success">OK</MudChip>
+                        }
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    // Settings state
+    private bool settingsLoading = true;
+    private bool settingsSaving;
+    private string? settingsSaveError;
+    private bool retentionEnabled;
+    private int keepVersions = 10;
+    private int keepDays = 90;
+    private bool keepReleaseVersions = true;
+    private bool keepArchivedVersions = true;
+    private int scheduleIntervalHours = 24;
+    private int reportKeepCount = 1000;
+    private int reportKeepDays = 30;
+    private int statusEventKeepCount = 200;
+    private int statusEventKeepDays = 7;
+
+    // Manual run state
+    private bool runInProgress;
+    private List<(string Label, VersionRetentionResult Result)>? lastRunResults;
+
+    // History state
+    private bool historyLoading = true;
+    private List<RetentionRun> runHistory = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSettings();
+        await LoadHistory();
+    }
+
+    private async Task LoadSettings()
+    {
+        settingsLoading = true;
+        var settings = await Db.ServerSettings.FirstOrDefaultAsync();
+        if (settings is not null)
+        {
+            retentionEnabled = settings.RetentionEnabled;
+            keepVersions = settings.RetentionKeepVersions;
+            keepDays = settings.RetentionKeepDays;
+            keepReleaseVersions = settings.RetentionKeepReleaseVersions;
+            keepArchivedVersions = settings.RetentionKeepArchivedVersions;
+            scheduleIntervalHours = (int)settings.RetentionScheduleInterval.TotalHours;
+            reportKeepCount = settings.RetentionReportKeepCount;
+            reportKeepDays = settings.RetentionReportKeepDays;
+            statusEventKeepCount = settings.RetentionStatusEventKeepCount;
+            statusEventKeepDays = settings.RetentionStatusEventKeepDays;
+        }
+
+        settingsLoading = false;
+    }
+
+    private async Task SaveSettings()
+    {
+        settingsSaveError = null;
+        settingsSaving = true;
+        StateHasChanged();
+
+        try
+        {
+            var settings = await Db.ServerSettings.FirstOrDefaultAsync();
+            if (settings is null)
+            {
+                Snackbar.Add("Server settings not found.", Severity.Error);
+                return;
+            }
+
+            settings.RetentionEnabled = retentionEnabled;
+            settings.RetentionKeepVersions = keepVersions;
+            settings.RetentionKeepDays = keepDays;
+            settings.RetentionKeepReleaseVersions = keepReleaseVersions;
+            settings.RetentionKeepArchivedVersions = keepArchivedVersions;
+            settings.RetentionScheduleInterval = TimeSpan.FromHours(scheduleIntervalHours);
+            settings.RetentionReportKeepCount = reportKeepCount;
+            settings.RetentionReportKeepDays = reportKeepDays;
+            settings.RetentionStatusEventKeepCount = statusEventKeepCount;
+            settings.RetentionStatusEventKeepDays = statusEventKeepDays;
+            await Db.SaveChangesAsync();
+            Snackbar.Add("Retention policy saved.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            settingsSaveError = $"Error saving settings: {ex.Message}";
+        }
+        finally
+        {
+            settingsSaving = false;
+        }
+    }
+
+    private Task RunDryRun() => ExecuteCleanup(dryRun: true);
+    private Task RunCleanup() => ExecuteCleanup(dryRun: false);
+
+    private async Task ExecuteCleanup(bool dryRun)
+    {
+        runInProgress = true;
+        lastRunResults = null;
+        StateHasChanged();
+
+        try
+        {
+            var policy = new RetentionPolicy
+            {
+                KeepVersions = keepVersions,
+                KeepDays = keepDays,
+                KeepReleaseVersions = keepReleaseVersions,
+                KeepArchivedVersions = keepArchivedVersions,
+                DryRun = dryRun,
+                IsScheduled = false
+            };
+
+            var configResult = await RetentionService.CleanupConfigurationVersionsAsync(policy);
+            var paramResult = await RetentionService.CleanupParameterVersionsAsync(policy);
+            var compositeResult = await RetentionService.CleanupCompositeConfigurationVersionsAsync(policy);
+
+            var reportPolicy = new RecordRetentionPolicy
+            {
+                KeepCount = reportKeepCount,
+                KeepDays = reportKeepDays,
+                DryRun = dryRun,
+                IsScheduled = false
+            };
+            var reportResult = await RetentionService.CleanupReportsAsync(reportPolicy);
+
+            var statusPolicy = new RecordRetentionPolicy
+            {
+                KeepCount = statusEventKeepCount,
+                KeepDays = statusEventKeepDays,
+                DryRun = dryRun,
+                IsScheduled = false
+            };
+            var statusResult = await RetentionService.CleanupNodeStatusEventsAsync(statusPolicy);
+
+            lastRunResults =
+            [
+                ("Configurations", configResult),
+                ("Parameters", paramResult),
+                ("Composite Configurations", compositeResult),
+                ("Reports", reportResult),
+                ("Status Events", statusResult)
+            ];
+
+            var action = dryRun ? "Dry run" : "Cleanup";
+            Snackbar.Add($"{action} complete.", Severity.Success);
+            await LoadHistory();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Cleanup failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            runInProgress = false;
+        }
+    }
+
+    private async Task LoadHistory()
+    {
+        historyLoading = true;
+        runHistory = await Db.RetentionRuns
+            .OrderByDescending(r => r.StartedAt)
+            .Take(50)
+            .ToListAsync();
+        historyLoading = false;
+    }
+}
