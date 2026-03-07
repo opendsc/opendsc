@@ -32,13 +32,21 @@ public static class SettingsEndpoints
         group.MapPost("/registration-keys", RotateRegistrationKey)
             .WithSummary("Rotate registration key")
             .WithDescription("Generates a new registration key for node registration.");
+
+        group.MapGet("/lcm-defaults", GetLcmDefaults)
+            .WithSummary("Get server LCM defaults")
+            .WithDescription("Returns the server-wide default LCM settings applied to all nodes unless overridden at the node level.");
+
+        group.MapPut("/lcm-defaults", UpdateLcmDefaults)
+            .WithSummary("Update server LCM defaults")
+            .WithDescription("Updates the server-wide default LCM settings. Null values clear the corresponding default.");
     }
 
     private static async Task<Results<Ok<ServerSettingsResponse>, NotFound<ErrorResponse>>> GetSettings(
         ServerDbContext db,
         CancellationToken cancellationToken)
     {
-        var settings = await db.ServerSettings.FirstOrDefaultAsync(cancellationToken);
+        var settings = await db.ServerSettings.FindAsync([1], cancellationToken);
         if (settings is null)
         {
             return TypedResults.NotFound(new ErrorResponse { Error = "Server settings not found." });
@@ -56,7 +64,7 @@ public static class SettingsEndpoints
         ServerDbContext db,
         CancellationToken cancellationToken)
     {
-        var settings = await db.ServerSettings.FirstOrDefaultAsync(cancellationToken);
+        var settings = await db.ServerSettings.FindAsync([1], cancellationToken);
         if (settings is null)
         {
             return TypedResults.NotFound(new ErrorResponse { Error = "Server settings not found." });
@@ -109,6 +117,48 @@ public static class SettingsEndpoints
             ExpiresAt = expiresAt,
             MaxUses = null,
             CurrentUses = 0
+        });
+    }
+
+    private static async Task<Results<Ok<ServerLcmDefaultsResponse>, NotFound<ErrorResponse>>> GetLcmDefaults(
+        ServerDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var settings = await db.ServerSettings.FindAsync([1], cancellationToken);
+        if (settings is null)
+        {
+            return TypedResults.NotFound(new ErrorResponse { Error = "Server settings not found." });
+        }
+
+        return TypedResults.Ok(new ServerLcmDefaultsResponse
+        {
+            DefaultConfigurationMode = settings.DefaultConfigurationMode,
+            DefaultConfigurationModeInterval = settings.DefaultConfigurationModeInterval,
+            DefaultReportCompliance = settings.DefaultReportCompliance
+        });
+    }
+
+    private static async Task<Results<Ok<ServerLcmDefaultsResponse>, NotFound<ErrorResponse>>> UpdateLcmDefaults(
+        UpdateServerLcmDefaultsRequest request,
+        ServerDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var settings = await db.ServerSettings.FindAsync([1], cancellationToken);
+        if (settings is null)
+        {
+            return TypedResults.NotFound(new ErrorResponse { Error = "Server settings not found." });
+        }
+
+        settings.DefaultConfigurationMode = request.DefaultConfigurationMode;
+        settings.DefaultConfigurationModeInterval = request.DefaultConfigurationModeInterval;
+        settings.DefaultReportCompliance = request.DefaultReportCompliance;
+        await db.SaveChangesAsync(cancellationToken);
+
+        return TypedResults.Ok(new ServerLcmDefaultsResponse
+        {
+            DefaultConfigurationMode = settings.DefaultConfigurationMode,
+            DefaultConfigurationModeInterval = settings.DefaultConfigurationModeInterval,
+            DefaultReportCompliance = settings.DefaultReportCompliance
         });
     }
 }

@@ -286,7 +286,7 @@ else
                 </MudCardHeader>
                 <MudCardContent>
                     <MudAlert Severity="Severity.Info" Class="mb-4">
-                        These values are sent to the node on its next check-in and override its local configuration. Changes are not applied immediately. You can clear a value by clicking the "x" or selecting "Use node default" in the dropdown, which leaves the node using its own setting.
+                        These values are sent to the node on its next check-in. A node-level value overrides the server default, which in turn overrides the node's own local setting. Clearing a value here causes the node to fall back to the server default (if configured) or its local setting.
                     </MudAlert>
 
                     <MudText Typo="Typo.subtitle2" Class="mb-2">Current node configuration</MudText>
@@ -308,19 +308,19 @@ else
                     </MudSimpleTable>
 
                     <MudSelect T="ConfigurationMode?" @bind-Value="desiredConfigMode" Label="Configuration Mode" Variant="Variant.Outlined" Class="mb-3" Clearable="true"
-                               HelperText="Monitor: check compliance only. Remediate: automatically fix drift.">
-                        <MudSelectItem T="ConfigurationMode?" Value="@((ConfigurationMode?)null)">Use node default</MudSelectItem>
+                               HelperText="Monitor: check compliance only. Remediate: automatically fix drift. Leave empty to use the server default or the node's own setting.">
+                        <MudSelectItem T="ConfigurationMode?" Value="@((ConfigurationMode?)null)">Use server default / node default</MudSelectItem>
                         <MudSelectItem T="ConfigurationMode?" Value="@((ConfigurationMode?)ConfigurationMode.Monitor)">Monitor</MudSelectItem>
                         <MudSelectItem T="ConfigurationMode?" Value="@((ConfigurationMode?)ConfigurationMode.Remediate)">Remediate</MudSelectItem>
                     </MudSelect>
 
                     <MudTextField @bind-Value="desiredIntervalText" Label="Configuration Interval (hh:mm:ss)" Variant="Variant.Outlined" Class="mb-3"
-                                  HelperText="How often the LCM runs, e.g. 00:15:00 for 15 minutes. Leave empty to use the node's local setting."
+                                  HelperText="How often the LCM runs, e.g. 00:15:00 for 15 minutes. Leave empty to use the server default or the node's own setting."
                                   Clearable="true" />
 
                     <MudSelect T="bool?" @bind-Value="desiredReportCompliance" Label="Report Compliance" Variant="Variant.Outlined" Class="mb-3" Clearable="true"
-                               HelperText="Whether the node submits compliance reports to this server.">
-                        <MudSelectItem T="bool?" Value="@((bool?)null)">Use node default</MudSelectItem>
+                               HelperText="Whether the node submits compliance reports to this server. Leave empty to use the server default or the node's own setting.">
+                        <MudSelectItem T="bool?" Value="@((bool?)null)">Use server default / node default</MudSelectItem>
                         <MudSelectItem T="bool?" Value="@((bool?)true)">Yes</MudSelectItem>
                         <MudSelectItem T="bool?" Value="@((bool?)false)">No</MudSelectItem>
                     </MudSelect>

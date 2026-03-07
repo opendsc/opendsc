@@ -260,6 +260,27 @@ public static class DatabaseSeeder
     }
 
     /// <summary>
+    /// Seeds the singleton server settings row if it does not already exist.
+    /// </summary>
+    public static async Task SeedServerSettingsAsync(ServerDbContext db, ILogger logger)
+    {
+        if (await db.ServerSettings.AnyAsync())
+        {
+            return;
+        }
+
+        db.ServerSettings.Add(new ServerSettings
+        {
+            Id = 1,
+            CertificateRotationInterval = TimeSpan.FromDays(60),
+            StalenessMultiplier = 2.0
+        });
+
+        await db.SaveChangesAsync();
+        logger.LogInformation("Seeded default server settings");
+    }
+
+    /// <summary>
     /// Seeds all default data.
     /// </summary>
     public static async Task SeedDefaultDataAsync(ServerDbContext db, IPasswordHasher passwordHasher, ILogger logger)
@@ -268,5 +289,6 @@ public static class DatabaseSeeder
         await SeedDefaultGroupsAsync(db, logger);
         await SeedSystemScopeTypesAsync(db, logger);
         await SeedInitialAdminAsync(db, passwordHasher, logger);
+        await SeedServerSettingsAsync(db, logger);
     }
 }

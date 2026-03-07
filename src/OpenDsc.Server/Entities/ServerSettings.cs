@@ -2,6 +2,8 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
+using OpenDsc.Lcm.Contracts;
+
 namespace OpenDsc.Server.Entities;
 
 /// <summary>
@@ -25,4 +27,19 @@ public sealed class ServerSettings
     /// Default is 2.0 (two missed intervals before stale).
     /// </summary>
     public double StalenessMultiplier { get; set; } = 2.0;
+
+    /// <summary>
+    /// Server-wide default LCM operating mode applied to all nodes unless overridden at the node level.
+    /// </summary>
+    public ConfigurationMode? DefaultConfigurationMode { get; set; }
+
+    /// <summary>
+    /// Server-wide default LCM configuration mode interval applied to all nodes unless overridden at the node level.
+    /// </summary>
+    public TimeSpan? DefaultConfigurationModeInterval { get; set; }
+
+    /// <summary>
+    /// Server-wide default compliance reporting setting applied to all nodes unless overridden at the node level.
+    /// </summary>
+    public bool? DefaultReportCompliance { get; set; }
 }

@@ -72,6 +72,7 @@ public static class DatabaseExtensions
             await DatabaseSeeder.SeedDefaultGroupsAsync(context, logger);
             await DatabaseSeeder.SeedSystemScopeTypesAsync(context, logger);
             await DatabaseSeeder.SeedInitialAdminAsync(context, passwordHasher, logger);
+            await DatabaseSeeder.SeedServerSettingsAsync(context, logger);
 
             if (environment.IsEnvironment("Testing"))
             {
@@ -105,6 +106,7 @@ public static class DatabaseExtensions
             await DatabaseSeeder.SeedDefaultGroupsAsync(context, logger);
             await DatabaseSeeder.SeedSystemScopeTypesAsync(context, logger);
             await DatabaseSeeder.SeedInitialAdminAsync(context, passwordHasher, logger);
+            await DatabaseSeeder.SeedServerSettingsAsync(context, logger);
             await SeedTestRegistrationKeyAsync(context, logger);
             await SeedTestDataAsync(context, logger);
         }
@@ -169,17 +171,6 @@ public static class DatabaseExtensions
         {
             logger.LogInformation("Test data already exists");
             return;
-        }
-
-        // Seed server settings
-        var serverSettingsExists = await context.ServerSettings.AnyAsync();
-        if (!serverSettingsExists)
-        {
-            context.ServerSettings.Add(new ServerSettings
-            {
-                Id = 1,
-                CertificateRotationInterval = TimeSpan.FromDays(60)
-            });
         }
 
         var config = new Configuration

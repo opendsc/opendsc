@@ -1010,11 +1010,13 @@ public static class NodeEndpoints
             return TypedResults.NotFound(new ErrorResponse { Error = "Node not found." });
         }
 
+        var serverSettings = await db.ServerSettings.FindAsync([1], cancellationToken);
+
         return TypedResults.Ok(new NodeLcmConfigResponse
         {
-            ConfigurationMode = node.DesiredConfigurationMode,
-            ConfigurationModeInterval = node.DesiredConfigurationModeInterval,
-            ReportCompliance = node.DesiredReportCompliance
+            ConfigurationMode = node.DesiredConfigurationMode ?? serverSettings?.DefaultConfigurationMode,
+            ConfigurationModeInterval = node.DesiredConfigurationModeInterval ?? serverSettings?.DefaultConfigurationModeInterval,
+            ReportCompliance = node.DesiredReportCompliance ?? serverSettings?.DefaultReportCompliance
         });
     }
 

@@ -303,4 +303,135 @@ public class NodeLcmConfigEndpointsTests : IDisposable
         var response = await client.PutAsJsonAsync($"/api/v1/nodes/{fakeId}/reported-config", new ReportNodeLcmConfigRequest());
         response.StatusCode.Should().BeOneOf(HttpStatusCode.NotFound, HttpStatusCode.Forbidden, HttpStatusCode.Unauthorized);
     }
+
+    // ── Server default fallback behaviour ─────────────────────────────────────
+
+    [Fact]
+    public async Task GetLcmConfig_FallsBackToServerDefault_WhenNoNodeOverride()
+    {
+        var nodeId = await RegisterTestNodeAsync();
+
+        // Set server-wide defaults
+        using var adminClient = _factory.CreateAuthenticatedClient();
+        await adminClient.PutAsJsonAsync("/api/v1/settings/lcm-defaults", new UpdateServerLcmDefaultsRequest
+        {
+            DefaultConfigurationMode = ConfigurationMode.Remediate,
+            DefaultConfigurationModeInterval = TimeSpan.FromMinutes(20),
+            DefaultReportCompliance = true
+        });
+
+        // Node has no overrides — should receive server defaults
+        using var nodeClient = _factory.CreateClient();
+        var response = await nodeClient.GetAsync($"/api/v1/nodes/{nodeId}/lcm-config");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var config = await response.Content.ReadFromJsonAsync<NodeLcmConfigResponse>(JsonOptions);
+        config.Should().NotBeNull();
+        config!.ConfigurationMode.Should().Be(ConfigurationMode.Remediate);
+        config.ConfigurationModeInterval.Should().Be(TimeSpan.FromMinutes(20));
+        config.ReportCompliance.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GetLcmConfig_NodeOverrideTakesPrecedenceOverServerDefault()
+    {
+        var nodeId = await RegisterTestNodeAsync();
+
+        // Set server-wide defaults
+        using var adminClient = _factory.CreateAuthenticatedClient();
+        await adminClient.PutAsJsonAsync("/api/v1/settings/lcm-defaults", new UpdateServerLcmDefaultsRequest
+        {
+            DefaultConfigurationMode = ConfigurationMode.Monitor,
+            DefaultConfigurationModeInterval = TimeSpan.FromMinutes(15),
+            DefaultReportCompliance = false
+        });
+
+        // Set node-level overrides that differ from server defaults
+        await adminClient.PutAsJsonAsync($"/api/v1/nodes/{nodeId}/lcm-config", new UpdateNodeLcmConfigRequest
+        {
+            ConfigurationMode = ConfigurationMode.Remediate,
+            ConfigurationModeInterval = TimeSpan.FromMinutes(5),
+            ReportCompliance = true
+        });
+
+        // Node override should win over server default
+        using var nodeClient = _factory.CreateClient();
+        var response = await nodeClient.GetAsync($"/api/v1/nodes/{nodeId}/lcm-config");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var config = await response.Content.ReadFromJsonAsync<NodeLcmConfigResponse>(JsonOptions);
+        config.Should().NotBeNull();
+        config!.ConfigurationMode.Should().Be(ConfigurationMode.Remediate);
+        config.ConfigurationModeInterval.Should().Be(TimeSpan.FromMinutes(5));
+        config.ReportCompliance.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GetLcmConfig_PartialNodeOverride_MixesNodeAndServerValues()
+    {
+        var nodeId = await RegisterTestNodeAsync();
+
+        // Set server-wide defaults
+        using var adminClient = _factory.CreateAuthenticatedClient();
+        await adminClient.PutAsJsonAsync("/api/v1/settings/lcm-defaults", new UpdateServerLcmDefaultsRequest
+        {
+            DefaultConfigurationMode = ConfigurationMode.Monitor,
+            DefaultConfigurationModeInterval = TimeSpan.FromMinutes(30),
+            DefaultReportCompliance = false
+        });
+
+        // Node only overrides one field
+        await adminClient.PutAsJsonAsync($"/api/v1/nodes/{nodeId}/lcm-config", new UpdateNodeLcmConfigRequest
+        {
+            ConfigurationMode = ConfigurationMode.Remediate,
+            ConfigurationModeInterval = null,
+            ReportCompliance = null
+        });
+
+        using var nodeClient = _factory.CreateClient();
+        var response = await nodeClient.GetAsync($"/api/v1/nodes/{nodeId}/lcm-config");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var config = await response.Content.ReadFromJsonAsync<NodeLcmConfigResponse>(JsonOptions);
+        config.Should().NotBeNull();
+        // Node override wins for mode
+        config!.ConfigurationMode.Should().Be(ConfigurationMode.Remediate);
+        // Server defaults apply for the other two
+        config.ConfigurationModeInterval.Should().Be(TimeSpan.FromMinutes(30));
+        config.ReportCompliance.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task GetLcmConfig_ClearedServerDefault_ReturnsNull()
+    {
+        var nodeId = await RegisterTestNodeAsync();
+
+        using var adminClient = _factory.CreateAuthenticatedClient();
+
+        // Set then clear server defaults
+        await adminClient.PutAsJsonAsync("/api/v1/settings/lcm-defaults", new UpdateServerLcmDefaultsRequest
+        {
+            DefaultConfigurationMode = ConfigurationMode.Monitor,
+            DefaultConfigurationModeInterval = TimeSpan.FromMinutes(10),
+            DefaultReportCompliance = true
+        });
+        await adminClient.PutAsJsonAsync("/api/v1/settings/lcm-defaults", new UpdateServerLcmDefaultsRequest
+        {
+            DefaultConfigurationMode = null,
+            DefaultConfigurationModeInterval = null,
+            DefaultReportCompliance = null
+        });
+
+        // With no node override and no server default, all fields should be null
+        using var nodeClient = _factory.CreateClient();
+        var response = await nodeClient.GetAsync($"/api/v1/nodes/{nodeId}/lcm-config");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var config = await response.Content.ReadFromJsonAsync<NodeLcmConfigResponse>(JsonOptions);
+        config.Should().NotBeNull();
+        config!.ConfigurationMode.Should().BeNull();
+        config.ConfigurationModeInterval.Should().BeNull();
+        config.ReportCompliance.Should().BeNull();
+    }
 }
+
