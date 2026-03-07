@@ -72,6 +72,9 @@ internal static class EventIds
     public const int ConfigurationChecksumUnchanged = 6010;
     public const int ServerChecksumChanged = 6011;
     public const int LocalContentHashMismatch = 6012;
+    public const int ServerLcmConfigApplied = 6013;
+    public const int FailedToApplyServerLcmConfig = 6014;
+    public const int ReportLcmConfigFailed = 6015;
 
     // Certificate Management Events: 7000-7099
     public const int CertificateLoaded = 7000;

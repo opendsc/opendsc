@@ -52,6 +52,12 @@ public partial class LcmWorker(
             _currentMode = lcmMonitor.CurrentValue.ConfigurationMode;
             LogOperatingInMode(_currentMode);
 
+            var startupConfig = lcmMonitor.CurrentValue;
+            if (startupConfig.ConfigurationSource == ConfigurationSource.Pull && startupConfig.PullServer?.NodeId is not null)
+            {
+                await pullServerClient.ReportLcmConfigAsync(stoppingToken);
+            }
+
             while (!stoppingToken.IsCancellationRequested)
             {
                 _modeChangeCts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
@@ -120,6 +126,11 @@ public partial class LcmWorker(
         {
             LogModeChangeDetected(_currentMode, newConfig.ConfigurationMode);
             _modeChangeCts?.Cancel();
+        }
+
+        if (newConfig.ConfigurationSource == ConfigurationSource.Pull && newConfig.PullServer?.NodeId is not null)
+        {
+            _ = pullServerClient.ReportLcmConfigAsync();
         }
     }
 
@@ -285,16 +296,19 @@ public partial class LcmWorker(
         if (config.PullServer.NodeId is null)
         {
             var registrationResult = await pullServerClient.RegisterAsync(cancellationToken);
-            if (registrationResult is null)
+            if (registrationResult is not null)
+            {
+                config.PullServer.NodeId = registrationResult.NodeId;
+                await PersistNodeIdAsync(config.PullServer.NodeId.Value, cancellationToken);
+            }
+            else
             {
                 return null;
             }
-
-            config.PullServer.NodeId = registrationResult.NodeId;
-            await PersistNodeIdAsync(config.PullServer.NodeId.Value, cancellationToken);
         }
 
         await CheckAndRotateCertificateAsync(config.PullServer, cancellationToken);
+        await ApplyServerLcmConfigAsync(cancellationToken);
 
         var hasChanged = await pullServerClient.HasConfigurationChangedAsync(cancellationToken);
         if (!hasChanged)
@@ -417,6 +431,75 @@ public partial class LcmWorker(
         var combined = string.Join("|", parts);
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes(combined));
         return Convert.ToHexString(hash).ToLowerInvariant();
+    }
+
+    /// <summary>
+    /// Fetches the server-managed desired LCM configuration and persists any changed values.
+    /// </summary>
+    private async Task ApplyServerLcmConfigAsync(CancellationToken cancellationToken)
+    {
+        var serverConfig = await pullServerClient.GetLcmConfigAsync(cancellationToken);
+        if (serverConfig is null)
+        {
+            return;
+        }
+
+        if (serverConfig.ConfigurationMode is null && serverConfig.ConfigurationModeInterval is null && serverConfig.ReportCompliance is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var configPath = GetLcmConfigPath();
+            var configDir = Path.GetDirectoryName(configPath);
+            if (!string.IsNullOrWhiteSpace(configDir) && !Directory.Exists(configDir))
+            {
+                Directory.CreateDirectory(configDir);
+            }
+
+            JsonNode configNode;
+            if (File.Exists(configPath))
+            {
+                var existingJson = await File.ReadAllTextAsync(configPath, cancellationToken);
+                configNode = JsonNode.Parse(existingJson) ?? new JsonObject();
+            }
+            else
+            {
+                configNode = new JsonObject();
+            }
+
+            var lcmNode = configNode["LCM"] as JsonObject ?? new JsonObject();
+            var pullServerNode = lcmNode["PullServer"] as JsonObject ?? new JsonObject();
+
+            if (serverConfig.ConfigurationMode is not null)
+            {
+                lcmNode["ConfigurationMode"] = serverConfig.ConfigurationMode.Value.ToString();
+            }
+
+            if (serverConfig.ConfigurationModeInterval is not null)
+            {
+                lcmNode["ConfigurationModeInterval"] = serverConfig.ConfigurationModeInterval.Value.ToString(TimeSpanFormat);
+            }
+
+            if (serverConfig.ReportCompliance is not null)
+            {
+                pullServerNode["ReportCompliance"] = serverConfig.ReportCompliance.Value;
+            }
+
+            lcmNode["PullServer"] = pullServerNode;
+            configNode["LCM"] = lcmNode;
+
+            var options = new JsonSerializerOptions { WriteIndented = true };
+            var updatedJson = configNode.ToJsonString(options);
+            await File.WriteAllTextAsync(configPath, updatedJson, cancellationToken);
+
+            LogServerLcmConfigApplied();
+        }
+        catch (Exception ex)
+        {
+            LogFailedToApplyServerLcmConfig(ex);
+        }
     }
 
     /// <summary>
@@ -868,4 +951,10 @@ public partial class LcmWorker(
 
     [LoggerMessage(EventId = 9999, Level = LogLevel.Debug, Message = "Trace level for DSC operations: {TraceLevel}")]
     private partial void LogTraceLevelForDsc(LogLevel traceLevel);
+
+    [LoggerMessage(EventId = EventIds.ServerLcmConfigApplied, Level = LogLevel.Information, Message = "Server-managed LCM configuration applied")]
+    private partial void LogServerLcmConfigApplied();
+
+    [LoggerMessage(EventId = EventIds.FailedToApplyServerLcmConfig, Level = LogLevel.Error, Message = "Failed to apply server-managed LCM configuration")]
+    private partial void LogFailedToApplyServerLcmConfig(Exception ex);
 }

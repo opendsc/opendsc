@@ -90,6 +90,21 @@ public static class NodeEndpoints
             .RequireAuthorization(Permissions.Nodes_Read)
             .WithSummary("Get node status history")
             .WithDescription("Returns the LCM and compliance status event history for a node.");
+
+        group.MapGet("/{nodeId:guid}/lcm-config", GetNodeLcmConfig)
+            .RequireAuthorization("Node")
+            .WithSummary("Get desired LCM configuration")
+            .WithDescription("Returns the server-managed desired LCM configuration for the node.");
+
+        group.MapPut("/{nodeId:guid}/lcm-config", UpdateNodeLcmConfig)
+            .RequireAuthorization(Permissions.Nodes_Write)
+            .WithSummary("Update desired LCM configuration")
+            .WithDescription("Updates the server-managed desired LCM configuration for the node.");
+
+        group.MapPut("/{nodeId:guid}/reported-config", ReportNodeLcmConfig)
+            .RequireAuthorization("Node")
+            .WithSummary("Report current LCM configuration")
+            .WithDescription("Called by the node to report its current LCM configuration to the server.");
     }
 
     private static async Task<Results<Ok<RegisterNodeResponse>, BadRequest<ErrorResponse>, Conflict<ErrorResponse>>> RegisterNode(
@@ -243,7 +258,10 @@ public static class NodeEndpoints
             ConfigurationSource = n.ConfigurationSource,
             ConfigurationMode = n.ConfigurationMode,
             ConfigurationModeInterval = n.ConfigurationModeInterval,
-            ReportCompliance = n.ReportCompliance
+            ReportCompliance = n.ReportCompliance,
+            DesiredConfigurationMode = n.DesiredConfigurationMode,
+            DesiredConfigurationModeInterval = n.DesiredConfigurationModeInterval,
+            DesiredReportCompliance = n.DesiredReportCompliance
         }).ToList();
 
         return TypedResults.Ok(result);
@@ -280,7 +298,10 @@ public static class NodeEndpoints
             ConfigurationSource = n.ConfigurationSource,
             ConfigurationMode = n.ConfigurationMode,
             ConfigurationModeInterval = n.ConfigurationModeInterval,
-            ReportCompliance = n.ReportCompliance
+            ReportCompliance = n.ReportCompliance,
+            DesiredConfigurationMode = n.DesiredConfigurationMode,
+            DesiredConfigurationModeInterval = n.DesiredConfigurationModeInterval,
+            DesiredReportCompliance = n.DesiredReportCompliance
         };
 
         return TypedResults.Ok(node);
@@ -965,5 +986,91 @@ public static class NodeEndpoints
         {
             Message = "Certificate updated successfully"
         });
+    }
+
+    private static async Task<Results<Ok<NodeLcmConfigResponse>, NotFound<ErrorResponse>, ForbidHttpResult>> GetNodeLcmConfig(
+        Guid nodeId,
+        ClaimsPrincipal user,
+        IWebHostEnvironment env,
+        ServerDbContext db,
+        CancellationToken cancellationToken)
+    {
+        if (!env.IsEnvironment("Testing"))
+        {
+            var authenticatedNodeId = user.FindFirst("node_id")?.Value;
+            if (authenticatedNodeId is null || !Guid.TryParse(authenticatedNodeId, out var authNodeId) || authNodeId != nodeId)
+            {
+                return TypedResults.Forbid();
+            }
+        }
+
+        var node = await db.Nodes.AsNoTracking().FirstOrDefaultAsync(n => n.Id == nodeId, cancellationToken);
+        if (node is null)
+        {
+            return TypedResults.NotFound(new ErrorResponse { Error = "Node not found." });
+        }
+
+        return TypedResults.Ok(new NodeLcmConfigResponse
+        {
+            ConfigurationMode = node.DesiredConfigurationMode,
+            ConfigurationModeInterval = node.DesiredConfigurationModeInterval,
+            ReportCompliance = node.DesiredReportCompliance
+        });
+    }
+
+    private static async Task<Results<Ok<NodeLcmConfigResponse>, NotFound<ErrorResponse>>> UpdateNodeLcmConfig(
+        Guid nodeId,
+        UpdateNodeLcmConfigRequest request,
+        ServerDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var node = await db.Nodes.FindAsync([nodeId], cancellationToken);
+        if (node is null)
+        {
+            return TypedResults.NotFound(new ErrorResponse { Error = "Node not found." });
+        }
+
+        node.DesiredConfigurationMode = request.ConfigurationMode;
+        node.DesiredConfigurationModeInterval = request.ConfigurationModeInterval;
+        node.DesiredReportCompliance = request.ReportCompliance;
+        await db.SaveChangesAsync(cancellationToken);
+
+        return TypedResults.Ok(new NodeLcmConfigResponse
+        {
+            ConfigurationMode = node.DesiredConfigurationMode,
+            ConfigurationModeInterval = node.DesiredConfigurationModeInterval,
+            ReportCompliance = node.DesiredReportCompliance
+        });
+    }
+
+    private static async Task<Results<NoContent, NotFound<ErrorResponse>, ForbidHttpResult>> ReportNodeLcmConfig(
+        Guid nodeId,
+        ReportNodeLcmConfigRequest request,
+        ClaimsPrincipal user,
+        IWebHostEnvironment env,
+        ServerDbContext db,
+        CancellationToken cancellationToken)
+    {
+        if (!env.IsEnvironment("Testing"))
+        {
+            var authenticatedNodeId = user.FindFirst("node_id")?.Value;
+            if (authenticatedNodeId is null || !Guid.TryParse(authenticatedNodeId, out var authNodeId) || authNodeId != nodeId)
+            {
+                return TypedResults.Forbid();
+            }
+        }
+
+        var node = await db.Nodes.FindAsync([nodeId], cancellationToken);
+        if (node is null)
+        {
+            return TypedResults.NotFound(new ErrorResponse { Error = "Node not found." });
+        }
+
+        node.ConfigurationMode = request.ConfigurationMode;
+        node.ConfigurationModeInterval = request.ConfigurationModeInterval;
+        node.ReportCompliance = request.ReportCompliance;
+        await db.SaveChangesAsync(cancellationToken);
+
+        return TypedResults.NoContent();
     }
 }

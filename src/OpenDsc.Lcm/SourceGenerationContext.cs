@@ -24,6 +24,8 @@ namespace OpenDsc.Lcm;
 [JsonSerializable(typeof(UpdateLcmStatusRequest))]
 [JsonSerializable(typeof(ConfigurationChecksumResponse))]
 [JsonSerializable(typeof(SubmitReportRequest))]
+[JsonSerializable(typeof(NodeLcmConfigResponse))]
+[JsonSerializable(typeof(ReportNodeLcmConfigRequest))]
 // Schema types for DSC result parsing (also include here for HTTP client usage)
 [JsonSerializable(typeof(DscResult))]
 [JsonSerializable(typeof(DscResourceResult))]

@@ -72,6 +72,21 @@ public sealed class NodeSummary
     /// Whether the node submits compliance reports to the server.
     /// </summary>
     public bool? ReportCompliance { get; set; }
+
+    /// <summary>
+    /// The desired LCM operating mode set by the server administrator.
+    /// </summary>
+    public ConfigurationMode? DesiredConfigurationMode { get; set; }
+
+    /// <summary>
+    /// The desired LCM configuration mode interval set by the server administrator.
+    /// </summary>
+    public TimeSpan? DesiredConfigurationModeInterval { get; set; }
+
+    /// <summary>
+    /// Whether compliance reporting should be enabled, as set by the server administrator.
+    /// </summary>
+    public bool? DesiredReportCompliance { get; set; }
 }
 
 /// <summary>
@@ -129,5 +144,26 @@ public sealed class AssignConfigurationRequest
     /// Example: "rc" receives rc.*, beta.*, and stable; "beta" receives beta.*, rc.*, and stable.
     /// </summary>
     public string? PrereleaseChannel { get; set; }
+}
+
+/// <summary>
+/// Request to update the desired LCM configuration for a node.
+/// </summary>
+public sealed class UpdateNodeLcmConfigRequest
+{
+    /// <summary>
+    /// The desired LCM operating mode, or null to clear the server-managed value.
+    /// </summary>
+    public ConfigurationMode? ConfigurationMode { get; set; }
+
+    /// <summary>
+    /// The desired interval between LCM operations, or null to clear the server-managed value.
+    /// </summary>
+    public TimeSpan? ConfigurationModeInterval { get; set; }
+
+    /// <summary>
+    /// Whether the node should submit compliance reports, or null to clear the server-managed value.
+    /// </summary>
+    public bool? ReportCompliance { get; set; }
 }
 

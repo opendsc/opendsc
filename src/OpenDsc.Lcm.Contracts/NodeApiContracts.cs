@@ -139,6 +139,48 @@ public sealed class RotateCertificateResponse
 }
 
 /// <summary>
+/// Request sent by the node to report its current LCM configuration to the pull server.
+/// </summary>
+public sealed class ReportNodeLcmConfigRequest
+{
+    /// <summary>
+    /// The LCM operating mode currently active on the node.
+    /// </summary>
+    public ConfigurationMode? ConfigurationMode { get; set; }
+
+    /// <summary>
+    /// The interval between LCM operations currently active on the node.
+    /// </summary>
+    public TimeSpan? ConfigurationModeInterval { get; set; }
+
+    /// <summary>
+    /// Whether the node is currently configured to submit compliance reports.
+    /// </summary>
+    public bool? ReportCompliance { get; set; }
+}
+
+/// <summary>
+/// The desired LCM configuration for a node, as managed by the pull server.
+/// </summary>
+public sealed class NodeLcmConfigResponse
+{
+    /// <summary>
+    /// The desired LCM operating mode, or null to use the node's local setting.
+    /// </summary>
+    public ConfigurationMode? ConfigurationMode { get; set; }
+
+    /// <summary>
+    /// The desired interval between LCM operations, or null to use the node's local setting.
+    /// </summary>
+    public TimeSpan? ConfigurationModeInterval { get; set; }
+
+    /// <summary>
+    /// Whether the node should submit compliance reports, or null to use the node's local setting.
+    /// </summary>
+    public bool? ReportCompliance { get; set; }
+}
+
+/// <summary>
 /// Response containing configuration checksum information.
 /// </summary>
 public sealed class ConfigurationChecksumResponse

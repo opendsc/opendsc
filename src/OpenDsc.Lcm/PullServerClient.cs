@@ -397,9 +397,85 @@ public partial class PullServerClient : IDisposable
         }
     }
 
+    /// <summary>
+    /// Reports the node's current LCM configuration to the pull server.
+    /// </summary>
+    public async Task ReportLcmConfigAsync(CancellationToken cancellationToken = default)
+    {
+        var config = _lcmMonitor.CurrentValue;
+        var pullServer = config.PullServer;
+
+        if (pullServer is null || pullServer.NodeId is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var request = new ReportNodeLcmConfigRequest
+            {
+                ConfigurationMode = config.ConfigurationMode,
+                ConfigurationModeInterval = config.ConfigurationModeInterval,
+                ReportCompliance = pullServer.ReportCompliance
+            };
+
+            using var response = await _httpClient.PutAsJsonAsync(
+                $"{pullServer.ServerUrl}/api/v1/nodes/{pullServer.NodeId}/reported-config",
+                request,
+                PullServerJsonContext.Default.ReportNodeLcmConfigRequest,
+                cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = await response.Content.ReadAsStringAsync(cancellationToken);
+                LogReportLcmConfigFailed(response.StatusCode.ToString(), body);
+            }
+        }
+        catch (Exception ex)
+        {
+            LogReportLcmConfigError(ex);
+        }
+    }
+
     public void Dispose()
     {
         _httpClient.Dispose();
+    }
+
+    /// <summary>
+    /// Fetches the server-managed desired LCM configuration for this node.
+    /// </summary>
+    /// <returns>The desired LCM config, or null if unavailable.</returns>
+    public async Task<NodeLcmConfigResponse?> GetLcmConfigAsync(CancellationToken cancellationToken = default)
+    {
+        var config = _lcmMonitor.CurrentValue;
+        var pullServer = config.PullServer;
+
+        if (pullServer is null || pullServer.NodeId is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            using var response = await _httpClient.GetAsync(
+                $"{pullServer.ServerUrl}/api/v1/nodes/{pullServer.NodeId}/lcm-config",
+                cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
+            return await response.Content.ReadFromJsonAsync(
+                PullServerJsonContext.Default.NodeLcmConfigResponse,
+                cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            LogLcmConfigFetchError(ex);
+            return null;
+        }
     }
 
     [LoggerMessage(EventId = 1001, Level = LogLevel.Error, Message = "Pull server not configured")]
@@ -467,4 +543,13 @@ public partial class PullServerClient : IDisposable
 
     [LoggerMessage(EventId = EventIds.LcmStatusUpdateError, Level = LogLevel.Warning, Message = "LCM status update error")]
     private partial void LogLcmStatusUpdateError(Exception ex);
+
+    [LoggerMessage(EventId = 1021, Level = LogLevel.Warning, Message = "LCM config fetch error")]
+    private partial void LogLcmConfigFetchError(Exception ex);
+
+    [LoggerMessage(EventId = 1022, Level = LogLevel.Warning, Message = "Failed to report LCM config to server: {StatusCode} - {Body}")]
+    private partial void LogReportLcmConfigFailed(string statusCode, string body);
+
+    [LoggerMessage(EventId = 1023, Level = LogLevel.Warning, Message = "Error reporting LCM config to server")]
+    private partial void LogReportLcmConfigError(Exception ex);
 }

@@ -73,18 +73,6 @@ else
                                     </MudChip>
                                 </td>
                             </tr>
-                            <tr>
-                                <td><strong>LCM Mode:</strong></td>
-                                <td>@(node.ConfigurationMode?.ToString() ?? "—")</td>
-                            </tr>
-                            <tr>
-                                <td><strong>LCM Interval:</strong></td>
-                                <td>@(node.ConfigurationModeInterval.HasValue ? node.ConfigurationModeInterval.Value.ToString(@"hh\:mm\:ss") : "—")</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Report Compliance:</strong></td>
-                                <td>@(node.ReportCompliance.HasValue ? (node.ReportCompliance.Value ? "Yes" : "No") : "—")</td>
-                            </tr>
                         </tbody>
                     </MudSimpleTable>
                 </MudCardContent>
@@ -289,6 +277,70 @@ else
             </MudCard>
         </MudTabPanel>
 
+        <MudTabPanel Text="LCM Configuration" Icon="@Icons.Material.Filled.Tune">
+            <MudCard Class="mt-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Desired LCM Configuration</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudAlert Severity="Severity.Info" Class="mb-4">
+                        These values are sent to the node on its next check-in and override its local configuration. Changes are not applied immediately. You can clear a value by clicking the "x" or selecting "Use node default" in the dropdown, which leaves the node using its own setting.
+                    </MudAlert>
+
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">Current node configuration</MudText>
+                    <MudSimpleTable Dense="true" Class="mb-4">
+                        <tbody>
+                            <tr>
+                                <td><strong>Mode:</strong></td>
+                                <td>@currentModeText</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Interval:</strong></td>
+                                <td>@currentIntervalText</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Report compliance:</strong></td>
+                                <td>@currentReportText</td>
+                            </tr>
+                        </tbody>
+                    </MudSimpleTable>
+
+                    <MudSelect T="ConfigurationMode?" @bind-Value="desiredConfigMode" Label="Configuration Mode" Variant="Variant.Outlined" Class="mb-3" Clearable="true"
+                               HelperText="Monitor: check compliance only. Remediate: automatically fix drift.">
+                        <MudSelectItem T="ConfigurationMode?" Value="@((ConfigurationMode?)null)">Use node default</MudSelectItem>
+                        <MudSelectItem T="ConfigurationMode?" Value="@((ConfigurationMode?)ConfigurationMode.Monitor)">Monitor</MudSelectItem>
+                        <MudSelectItem T="ConfigurationMode?" Value="@((ConfigurationMode?)ConfigurationMode.Remediate)">Remediate</MudSelectItem>
+                    </MudSelect>
+
+                    <MudTextField @bind-Value="desiredIntervalText" Label="Configuration Interval (hh:mm:ss)" Variant="Variant.Outlined" Class="mb-3"
+                                  HelperText="How often the LCM runs, e.g. 00:15:00 for 15 minutes. Leave empty to use the node's local setting."
+                                  Clearable="true" />
+
+                    <MudSelect T="bool?" @bind-Value="desiredReportCompliance" Label="Report Compliance" Variant="Variant.Outlined" Class="mb-3" Clearable="true"
+                               HelperText="Whether the node submits compliance reports to this server.">
+                        <MudSelectItem T="bool?" Value="@((bool?)null)">Use node default</MudSelectItem>
+                        <MudSelectItem T="bool?" Value="@((bool?)true)">Yes</MudSelectItem>
+                        <MudSelectItem T="bool?" Value="@((bool?)false)">No</MudSelectItem>
+                    </MudSelect>
+
+                    @if (lcmConfigSaveError is not null)
+                    {
+                        <MudAlert Severity="Severity.Error" Class="mb-3">@lcmConfigSaveError</MudAlert>
+                    }
+
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveLcmConfig" Disabled="@lcmConfigSaving">
+                        @if (lcmConfigSaving)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        }
+                        Save
+                    </MudButton>
+                </MudCardContent>
+            </MudCard>
+        </MudTabPanel>
+
         <MudTabPanel Text="Reports" Icon="@Icons.Material.Filled.Assessment">
             <MudCard Class="mt-4">
                 <MudCardContent>
@@ -400,6 +452,18 @@ else
     private List<Node> nodesForType = [];
     private string? selectedScopeValueText;
 
+    // LCM Configuration state
+    private ConfigurationMode? desiredConfigMode;
+    private string? desiredIntervalText;
+    private bool? desiredReportCompliance;
+    private bool lcmConfigSaving;
+    private string? lcmConfigSaveError;
+
+    // current values displayed in info table
+    private string currentModeText = "—";
+    private string currentIntervalText = "—";
+    private string currentReportText = "—";
+
     private bool IsUnrestrictedScopeType(Guid scopeTypeId)
     {
         var st = availableScopeTypes.FirstOrDefault(t => t.Id == scopeTypeId);
@@ -447,6 +511,18 @@ else
             if (node != null)
             {
                 selectedConfigurationName = node.ConfigurationName;
+                desiredConfigMode = node.DesiredConfigurationMode;
+                desiredIntervalText = node.DesiredConfigurationModeInterval?.ToString(@"hh\:mm\:ss");
+                desiredReportCompliance = node.DesiredReportCompliance;
+
+                // compute texts for current values
+                currentModeText = node.ConfigurationMode?.ToString() ?? "—";
+                currentIntervalText = node.ConfigurationModeInterval.HasValue
+                    ? node.ConfigurationModeInterval.Value.ToString(@"hh\:mm\:ss")
+                    : "—";
+                currentReportText = node.ReportCompliance == true ? "Yes"
+                    : node.ReportCompliance == false ? "No"
+                    : "—";
 
                 nodeConfig = await Db.NodeConfigurations
                     .FirstOrDefaultAsync(nc => nc.NodeId == Id);
@@ -596,6 +672,44 @@ else
     private bool HasConfigSelected() => selectedConfigType == "Composite"
         ? !string.IsNullOrEmpty(selectedCompositeConfigurationName)
         : !string.IsNullOrEmpty(selectedConfigurationName);
+
+    private async Task SaveLcmConfig()
+    {
+        if (node is null) return;
+
+        lcmConfigSaveError = null;
+        lcmConfigSaving = true;
+        StateHasChanged();
+
+        try
+        {
+            TimeSpan? interval = null;
+            if (!string.IsNullOrWhiteSpace(desiredIntervalText))
+            {
+                if (!TimeSpan.TryParse(desiredIntervalText, out var parsed))
+                {
+                    lcmConfigSaveError = "Invalid interval format. Use hh:mm:ss (e.g. 00:15:00).";
+                    return;
+                }
+                interval = parsed;
+            }
+
+            node.DesiredConfigurationMode = desiredConfigMode;
+            node.DesiredConfigurationModeInterval = interval;
+            node.DesiredReportCompliance = desiredReportCompliance;
+            await Db.SaveChangesAsync();
+
+            Snackbar.Add("LCM configuration saved", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            lcmConfigSaveError = $"Error saving LCM configuration: {ex.Message}";
+        }
+        finally
+        {
+            lcmConfigSaving = false;
+        }
+    }
 
     private async Task AssignConfiguration()
     {

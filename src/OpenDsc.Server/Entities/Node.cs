@@ -47,6 +47,24 @@ public sealed class Node
     public bool? ReportCompliance { get; set; }
 
     /// <summary>
+    /// The desired LCM operating mode set by the server administrator.
+    /// Overrides the node's local setting when non-null.
+    /// </summary>
+    public ConfigurationMode? DesiredConfigurationMode { get; set; }
+
+    /// <summary>
+    /// The desired LCM configuration mode interval set by the server administrator.
+    /// Overrides the node's local setting when non-null.
+    /// </summary>
+    public TimeSpan? DesiredConfigurationModeInterval { get; set; }
+
+    /// <summary>
+    /// Whether compliance reporting should be enabled, as set by the server administrator.
+    /// Overrides the node's local setting when non-null.
+    /// </summary>
+    public bool? DesiredReportCompliance { get; set; }
+
+    /// <summary>
     /// SHA256 thumbprint of the node's client certificate.
     /// </summary>
     public string CertificateThumbprint { get; set; } = string.Empty;
