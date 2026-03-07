@@ -8,7 +8,8 @@
     <DialogContent>
         @if (ScopeTypeId == null)
         {
-            <MudSelect @bind-Value="scopeTypeId" Label="Scope Type" Variant="Variant.Outlined" Required="true" Class="mb-3" T="Guid?">
+            <MudSelect @bind-Value="scopeTypeId" Label="Scope Type" Variant="Variant.Outlined" Required="true" Class="mb-3"
+                T="Guid?">
                 @foreach (var scopeType in ScopeTypes)
                 {
                     <MudSelectItem Value="@((Guid?)scopeType.Id)">@scopeType.Name</MudSelectItem>
@@ -71,7 +72,8 @@
 
             if (isNodeScope)
             {
-                nodes = await Db.Nodes.OrderBy(n => n.Fqdn).ToListAsync();
+                Db.ChangeTracker.Clear();
+                nodes = await Db.Nodes.AsNoTracking().OrderBy(n => n.Fqdn).ToListAsync();
             }
         }
     }
@@ -96,13 +98,13 @@
         {
             var effectiveScopeTypeId = ScopeTypeId ?? scopeTypeId;
             var scopeValue = new ScopeValue
-            {
-                Id = Guid.NewGuid(),
-                ScopeTypeId = effectiveScopeTypeId!.Value,
-                Value = value,
-                Description = string.IsNullOrWhiteSpace(description) ? null : description,
-                CreatedAt = DateTimeOffset.UtcNow
-            };
+                {
+                    Id = Guid.NewGuid(),
+                    ScopeTypeId = effectiveScopeTypeId!.Value,
+                    Value = value,
+                    Description = string.IsNullOrWhiteSpace(description) ? null : description,
+                    CreatedAt = DateTimeOffset.UtcNow
+                };
 
             Db.ScopeValues.Add(scopeValue);
             await Db.SaveChangesAsync();

@@ -117,7 +117,8 @@
 
     protected override async Task OnInitializedAsync()
     {
-        nodes = await Db.Nodes.OrderBy(n => n.Fqdn).ToListAsync();
+        Db.ChangeTracker.Clear();
+        nodes = await Db.Nodes.AsNoTracking().OrderBy(n => n.Fqdn).ToListAsync();
         ThemeService.OnThemeChanged += OnThemeChanged;
     }
 

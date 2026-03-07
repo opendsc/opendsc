@@ -91,7 +91,8 @@
         isLoading = true;
         try
         {
-            nodes = await Db.Nodes.OrderBy(n => n.Fqdn).ToListAsync();
+            Db.ChangeTracker.Clear();
+            nodes = await Db.Nodes.AsNoTracking().OrderBy(n => n.Fqdn).ToListAsync();
 
             var reports = await Db.Reports
                 .Include(r => r.Node)
