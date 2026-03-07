@@ -69,6 +69,9 @@ internal static class EventIds
     public const int ConfigurationExtractedFromBundle = 6007;
     public const int LcmStatusUpdateFailed = 6008;
     public const int LcmStatusUpdateError = 6009;
+    public const int ConfigurationChecksumUnchanged = 6010;
+    public const int ServerChecksumChanged = 6011;
+    public const int LocalContentHashMismatch = 6012;
 
     // Certificate Management Events: 7000-7099
     public const int CertificateLoaded = 7000;

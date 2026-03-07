@@ -2,6 +2,8 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -295,18 +297,36 @@ public partial class LcmWorker(
         await CheckAndRotateCertificateAsync(config.PullServer, cancellationToken);
 
         var hasChanged = await pullServerClient.HasConfigurationChangedAsync(cancellationToken);
-        if (!hasChanged && !string.IsNullOrWhiteSpace(config.ConfigurationPath) && File.Exists(config.ConfigurationPath))
+        if (!hasChanged)
         {
-            return config.ConfigurationPath;
+            var cachedExtractDir = GetPullExtractDirectory();
+            var cachedEntryPoint = config.PullServer.ConfigurationEntryPoint ?? "main.dsc.yaml";
+            var cachedPath = Path.Combine(cachedExtractDir, cachedEntryPoint);
+            if (File.Exists(cachedPath) && !string.IsNullOrEmpty(config.PullServer.LocalContentHash))
+            {
+                var currentLocalHash = await ComputeLocalContentHashAsync(cachedExtractDir, cancellationToken);
+                if (currentLocalHash == config.PullServer.LocalContentHash)
+                {
+                    LogConfigurationChecksumUnchanged(cachedPath);
+                    return cachedPath;
+                }
+
+                LogLocalContentHashMismatch(cachedPath);
+            }
+        }
+        else
+        {
+            LogServerChecksumChanged();
         }
 
         await pullServerClient.UpdateLcmStatusAsync(LcmStatus.Downloading, cancellationToken);
         var bundleStream = await pullServerClient.GetConfigurationBundleAsync(cancellationToken);
         if (bundleStream is null)
         {
-            return !string.IsNullOrWhiteSpace(config.ConfigurationPath) && File.Exists(config.ConfigurationPath)
-                ? config.ConfigurationPath
-                : null;
+            var cachedExtractDir = GetPullExtractDirectory();
+            var cachedEntryPoint = config.PullServer.ConfigurationEntryPoint ?? "main.dsc.yaml";
+            var cachedPath = Path.Combine(cachedExtractDir, cachedEntryPoint);
+            return File.Exists(cachedPath) ? cachedPath : null;
         }
 
         var checksumResponse = await pullServerClient.GetConfigurationChecksumAsync(cancellationToken);
@@ -366,8 +386,37 @@ public partial class LcmWorker(
             return null;
         }
 
+        var localContentHash = await ComputeLocalContentHashAsync(extractDir, cancellationToken);
+        config.PullServer.LocalContentHash = localContentHash;
+        await PersistConfigurationChecksumAsync(config.PullServer.ConfigurationChecksum, config.PullServer.ConfigurationEntryPoint, localContentHash, cancellationToken);
         LogConfigurationExtractedFromBundle(entryPointPath);
         return entryPointPath;
+    }
+
+    protected static async Task<string> ComputeLocalContentHashAsync(string extractDir, CancellationToken cancellationToken)
+    {
+        if (!Directory.Exists(extractDir))
+        {
+            return string.Empty;
+        }
+
+        var parts = new List<string>();
+        foreach (var filePath in Directory.GetFiles(extractDir, "*", SearchOption.AllDirectories).OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
+        {
+            var relativePath = Path.GetRelativePath(extractDir, filePath).Replace('\\', '/');
+            var fileBytes = await File.ReadAllBytesAsync(filePath, cancellationToken);
+            var fileHash = Convert.ToHexString(SHA256.HashData(fileBytes)).ToLowerInvariant();
+            parts.Add($"{relativePath}:{fileHash}");
+        }
+
+        if (parts.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var combined = string.Join("|", parts);
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(combined));
+        return Convert.ToHexString(hash).ToLowerInvariant();
     }
 
     /// <summary>
@@ -377,7 +426,7 @@ public partial class LcmWorker(
     {
         try
         {
-            var configPath = ConfigPaths.GetLcmConfigPath();
+            var configPath = GetLcmConfigPath();
             var configDir = Path.GetDirectoryName(configPath);
             if (!string.IsNullOrWhiteSpace(configDir) && !Directory.Exists(configDir))
             {
@@ -406,6 +455,73 @@ public partial class LcmWorker(
             await File.WriteAllTextAsync(configPath, updatedJson, cancellationToken);
 
             LogNodeIdPersisted(nodeId);
+        }
+        catch (Exception ex)
+        {
+            LogFailedToPersistNodeId(ex);
+        }
+    }
+
+    /// <summary>
+    /// Persists the configuration checksum and entry point to the configuration file.
+    /// </summary>
+    private async Task PersistConfigurationChecksumAsync(string? checksum, string? entryPoint, string? localContentHash, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var configPath = GetLcmConfigPath();
+            var configDir = Path.GetDirectoryName(configPath);
+            if (!string.IsNullOrWhiteSpace(configDir) && !Directory.Exists(configDir))
+            {
+                Directory.CreateDirectory(configDir);
+            }
+
+            JsonNode configNode;
+            if (File.Exists(configPath))
+            {
+                var existingJson = await File.ReadAllTextAsync(configPath, cancellationToken);
+                configNode = JsonNode.Parse(existingJson) ?? new JsonObject();
+            }
+            else
+            {
+                configNode = new JsonObject();
+            }
+
+            var lcmNode = configNode["LCM"] as JsonObject ?? new JsonObject();
+            var pullServerNode = lcmNode["PullServer"] as JsonObject ?? new JsonObject();
+            if (checksum is not null)
+            {
+                pullServerNode["ConfigurationChecksum"] = checksum;
+            }
+            else
+            {
+                pullServerNode.Remove("ConfigurationChecksum");
+            }
+
+            if (entryPoint is not null)
+            {
+                pullServerNode["ConfigurationEntryPoint"] = entryPoint;
+            }
+            else
+            {
+                pullServerNode.Remove("ConfigurationEntryPoint");
+            }
+
+            if (localContentHash is not null)
+            {
+                pullServerNode["LocalContentHash"] = localContentHash;
+            }
+            else
+            {
+                pullServerNode.Remove("LocalContentHash");
+            }
+
+            lcmNode["PullServer"] = pullServerNode;
+            configNode["LCM"] = lcmNode;
+
+            var options = new JsonSerializerOptions { WriteIndented = true };
+            var updatedJson = configNode.ToJsonString(options);
+            await File.WriteAllTextAsync(configPath, updatedJson, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -492,6 +608,9 @@ public partial class LcmWorker(
 
     protected virtual string GetPullExtractDirectory() =>
         Path.Combine(ConfigPaths.GetLcmConfigDirectory(), "config", "pull");
+
+    protected virtual string GetLcmConfigPath() =>
+        ConfigPaths.GetLcmConfigPath();
 
     private async Task InterruptibleDelayAsync(TimeSpan delay, TimeSpan originalInterval, CancellationToken stoppingToken, CancellationToken modeChangeToken)
     {
@@ -737,6 +856,15 @@ public partial class LcmWorker(
 
     [LoggerMessage(EventId = EventIds.ConfigurationExtractedFromBundle, Level = LogLevel.Information, Message = "Configuration extracted from bundle: {ConfigurationPath}")]
     private partial void LogConfigurationExtractedFromBundle(string configurationPath);
+
+    [LoggerMessage(EventId = EventIds.ConfigurationChecksumUnchanged, Level = LogLevel.Debug, Message = "Configuration checksum unchanged, using cached configuration: {ConfigurationPath}")]
+    private partial void LogConfigurationChecksumUnchanged(string configurationPath);
+
+    [LoggerMessage(EventId = EventIds.ServerChecksumChanged, Level = LogLevel.Information, Message = "Server configuration checksum has changed, downloading bundle")]
+    private partial void LogServerChecksumChanged();
+
+    [LoggerMessage(EventId = EventIds.LocalContentHashMismatch, Level = LogLevel.Information, Message = "Local content hash mismatch (files may have been modified), re-downloading bundle: {ConfigurationPath}")]
+    private partial void LogLocalContentHashMismatch(string configurationPath);
 
     [LoggerMessage(EventId = 9999, Level = LogLevel.Debug, Message = "Trace level for DSC operations: {TraceLevel}")]
     private partial void LogTraceLevelForDsc(LogLevel traceLevel);

@@ -105,6 +105,12 @@ public class PullServerSettings
     public string? ConfigurationParametersFile { get; set; }
 
     /// <summary>
+    /// A locally computed content hash of all files in the pull extract directory.
+    /// Used to detect manual modifications to the extracted bundle.
+    /// </summary>
+    public string? LocalContentHash { get; set; }
+
+    /// <summary>
     /// Whether to submit compliance reports to the server.
     /// </summary>
     public bool ReportCompliance { get; set; } = true;
