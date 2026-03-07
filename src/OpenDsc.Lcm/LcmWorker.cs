@@ -295,6 +295,14 @@ public partial class LcmWorker(
 
         if (config.PullServer.NodeId is null)
         {
+            var publicSettings = await pullServerClient.GetPublicSettingsAsync(cancellationToken);
+            if (publicSettings is not null)
+            {
+                certificateManager.SetRotationInterval(publicSettings.CertificateRotationInterval);
+                config.PullServer.CertificateRotationInterval = publicSettings.CertificateRotationInterval;
+                await PersistCertificateRotationIntervalAsync(publicSettings.CertificateRotationInterval, cancellationToken);
+            }
+
             var registrationResult = await pullServerClient.RegisterAsync(cancellationToken);
             if (registrationResult is not null)
             {
@@ -307,8 +315,8 @@ public partial class LcmWorker(
             }
         }
 
-        await CheckAndRotateCertificateAsync(config.PullServer, cancellationToken);
         await ApplyServerLcmConfigAsync(cancellationToken);
+        await CheckAndRotateCertificateAsync(config.PullServer, cancellationToken);
 
         var hasChanged = await pullServerClient.HasConfigurationChangedAsync(cancellationToken);
         if (!hasChanged)
@@ -444,7 +452,7 @@ public partial class LcmWorker(
             return;
         }
 
-        if (serverConfig.ConfigurationMode is null && serverConfig.ConfigurationModeInterval is null && serverConfig.ReportCompliance is null)
+        if (serverConfig.ConfigurationMode is null && serverConfig.ConfigurationModeInterval is null && serverConfig.ReportCompliance is null && serverConfig.CertificateRotationInterval is null)
         {
             return;
         }
@@ -485,6 +493,11 @@ public partial class LcmWorker(
             if (serverConfig.ReportCompliance is not null)
             {
                 pullServerNode["ReportCompliance"] = serverConfig.ReportCompliance.Value;
+            }
+
+            if (serverConfig.CertificateRotationInterval is not null)
+            {
+                pullServerNode["CertificateRotationInterval"] = serverConfig.CertificateRotationInterval.Value.ToString(TimeSpanFormat);
             }
 
             lcmNode["PullServer"] = pullServerNode;
@@ -542,6 +555,47 @@ public partial class LcmWorker(
         catch (Exception ex)
         {
             LogFailedToPersistNodeId(ex);
+        }
+    }
+
+    /// <summary>
+    /// Persists the configuration checksum and entry point to the configuration file.
+    /// </summary>
+    private async Task PersistCertificateRotationIntervalAsync(TimeSpan interval, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var configPath = GetLcmConfigPath();
+            var configDir = Path.GetDirectoryName(configPath);
+            if (!string.IsNullOrWhiteSpace(configDir) && !Directory.Exists(configDir))
+            {
+                Directory.CreateDirectory(configDir);
+            }
+
+            JsonNode configNode;
+            if (File.Exists(configPath))
+            {
+                var existingJson = await File.ReadAllTextAsync(configPath, cancellationToken);
+                configNode = JsonNode.Parse(existingJson) ?? new JsonObject();
+            }
+            else
+            {
+                configNode = new JsonObject();
+            }
+
+            var lcmNode = configNode["LCM"] as JsonObject ?? new JsonObject();
+            var pullServerNode = lcmNode["PullServer"] as JsonObject ?? new JsonObject();
+            pullServerNode["CertificateRotationInterval"] = interval.ToString(TimeSpanFormat);
+            lcmNode["PullServer"] = pullServerNode;
+            configNode["LCM"] = lcmNode;
+
+            var options = new JsonSerializerOptions { WriteIndented = true };
+            var updatedJson = configNode.ToJsonString(options);
+            await File.WriteAllTextAsync(configPath, updatedJson, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            LogFailedToPersistCertificateRotationInterval(ex);
         }
     }
 
@@ -957,4 +1011,7 @@ public partial class LcmWorker(
 
     [LoggerMessage(EventId = EventIds.FailedToApplyServerLcmConfig, Level = LogLevel.Error, Message = "Failed to apply server-managed LCM configuration")]
     private partial void LogFailedToApplyServerLcmConfig(Exception ex);
+
+    [LoggerMessage(EventId = EventIds.FailedToPersistCertificateRotationInterval, Level = LogLevel.Error, Message = "Failed to persist certificate rotation interval to configuration")]
+    private partial void LogFailedToPersistCertificateRotationInterval(Exception ex);
 }

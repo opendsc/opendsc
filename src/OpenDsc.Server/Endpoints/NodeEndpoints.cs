@@ -1016,7 +1016,8 @@ public static class NodeEndpoints
         {
             ConfigurationMode = node.DesiredConfigurationMode ?? serverSettings?.DefaultConfigurationMode,
             ConfigurationModeInterval = node.DesiredConfigurationModeInterval ?? serverSettings?.DefaultConfigurationModeInterval,
-            ReportCompliance = node.DesiredReportCompliance ?? serverSettings?.DefaultReportCompliance
+            ReportCompliance = node.DesiredReportCompliance ?? serverSettings?.DefaultReportCompliance,
+            CertificateRotationInterval = serverSettings?.CertificateRotationInterval
         });
     }
 

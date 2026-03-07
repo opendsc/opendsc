@@ -85,6 +85,11 @@ public class PullServerSettings
     public string? CertificatePassword { get; set; }
 
     /// <summary>
+    /// The interval at which the managed client certificate should be rotated.
+    /// </summary>
+    public TimeSpan CertificateRotationInterval { get; set; } = TimeSpan.FromDays(60);
+
+    /// <summary>
     /// The registration key for initial node registration.
     /// </summary>
     public string? RegistrationKey { get; set; }

@@ -3,8 +3,8 @@
 // terms of the MIT license.
 
 using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.EntityFrameworkCore;
 
+using OpenDsc.Lcm.Contracts;
 using OpenDsc.Server.Authorization;
 using OpenDsc.Server.Contracts;
 using OpenDsc.Server.Data;
@@ -17,6 +17,12 @@ public static class SettingsEndpoints
 {
     public static void MapSettingsEndpoints(this IEndpointRouteBuilder app)
     {
+        app.MapGet("/api/v1/settings/public", GetPublicSettings)
+            .AllowAnonymous()
+            .WithTags("Settings")
+            .WithSummary("Get public server settings")
+            .WithDescription("Returns settings that nodes need before authenticating, such as the certificate rotation interval.");
+
         var group = app.MapGroup("/api/v1/settings")
             .RequireAuthorization(Permissions.ServerSettings_Write)
             .WithTags("Settings");
@@ -40,6 +46,22 @@ public static class SettingsEndpoints
         group.MapPut("/lcm-defaults", UpdateLcmDefaults)
             .WithSummary("Update server LCM defaults")
             .WithDescription("Updates the server-wide default LCM settings. Null values clear the corresponding default.");
+    }
+
+    private static async Task<Results<Ok<PublicSettingsResponse>, NotFound<ErrorResponse>>> GetPublicSettings(
+        ServerDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var settings = await db.ServerSettings.FindAsync([1], cancellationToken);
+        if (settings is null)
+        {
+            return TypedResults.NotFound(new ErrorResponse { Error = "Server settings not found." });
+        }
+
+        return TypedResults.Ok(new PublicSettingsResponse
+        {
+            CertificateRotationInterval = settings.CertificateRotationInterval
+        });
     }
 
     private static async Task<Results<Ok<ServerSettingsResponse>, NotFound<ErrorResponse>>> GetSettings(

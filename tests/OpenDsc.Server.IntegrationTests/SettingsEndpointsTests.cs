@@ -197,6 +197,49 @@ public class SettingsEndpointsTests : IDisposable
         fetched.DefaultReportCompliance.Should().BeTrue();
     }
 
+    // --- Public Settings ---
+
+    [Fact]
+    public async Task GetPublicSettings_WithoutAuth_ReturnsOk()
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.GetAsync("/api/v1/settings/public");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task GetPublicSettings_ReturnsCertificateRotationInterval()
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.GetAsync("/api/v1/settings/public");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var settings = await response.Content.ReadFromJsonAsync<PublicSettingsResponse>(JsonOptions);
+        settings.Should().NotBeNull();
+        settings!.CertificateRotationInterval.Should().BeGreaterThan(TimeSpan.Zero);
+    }
+
+    [Fact]
+    public async Task GetPublicSettings_ReflectsUpdatedCertificateRotationInterval()
+    {
+        var adminClient = CreateAuthenticatedClient();
+        var newInterval = TimeSpan.FromDays(30);
+
+        var updateResponse = await adminClient.PutAsJsonAsync("/api/v1/settings",
+            new UpdateServerSettingsRequest { CertificateRotationInterval = newInterval });
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var publicClient = _factory.CreateClient();
+        var response = await publicClient.GetAsync("/api/v1/settings/public");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var settings = await response.Content.ReadFromJsonAsync<PublicSettingsResponse>(JsonOptions);
+        settings!.CertificateRotationInterval.Should().Be(newInterval);
+    }
+
     public void Dispose()
     {
         _factory.Dispose();

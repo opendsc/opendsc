@@ -75,6 +75,7 @@ internal static class EventIds
     public const int ServerLcmConfigApplied = 6013;
     public const int FailedToApplyServerLcmConfig = 6014;
     public const int ReportLcmConfigFailed = 6015;
+    public const int FailedToPersistCertificateRotationInterval = 6016;
 
     // Certificate Management Events: 7000-7099
     public const int CertificateLoaded = 7000;

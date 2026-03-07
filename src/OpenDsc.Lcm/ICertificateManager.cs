@@ -25,4 +25,11 @@ public interface ICertificateManager
     /// Rotates the managed certificate.
     /// </summary>
     X509Certificate2? RotateCertificate(PullServerSettings pullServer);
+
+    /// <summary>
+    /// Overrides the rotation interval used when creating a new managed certificate.
+    /// Call this before the first connection when the interval has been fetched from the server
+    /// but not yet persisted to the local config file.
+    /// </summary>
+    void SetRotationInterval(TimeSpan interval);
 }

@@ -178,6 +178,11 @@ public sealed class NodeLcmConfigResponse
     /// Whether the node should submit compliance reports, or null to use the node's local setting.
     /// </summary>
     public bool? ReportCompliance { get; set; }
+
+    /// <summary>
+    /// The interval at which the LCM should rotate its managed client certificate.
+    /// </summary>
+    public TimeSpan? CertificateRotationInterval { get; set; }
 }
 
 /// <summary>
@@ -200,4 +205,15 @@ public sealed class ConfigurationChecksumResponse
     /// or null when parameters are not server-managed or this is a composite configuration.
     /// </summary>
     public string? ParametersFile { get; set; }
+}
+
+/// <summary>
+/// Public (unauthenticated) server settings exposed for node bootstrap.
+/// </summary>
+public sealed class PublicSettingsResponse
+{
+    /// <summary>
+    /// How often nodes should rotate their managed client certificates.
+    /// </summary>
+    public TimeSpan CertificateRotationInterval { get; set; }
 }

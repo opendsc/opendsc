@@ -18,18 +18,23 @@ namespace OpenDsc.Lcm;
 /// </summary>
 public partial class PullServerClient : IDisposable
 {
+    public const string AnonymousClientName = "PullServerAnonymous";
+
     private readonly HttpClient _httpClient;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly IOptionsMonitor<LcmConfig> _lcmMonitor;
     private readonly ICertificateManager _certificateManager;
     private readonly ILogger<PullServerClient> _logger;
 
     public PullServerClient(
         HttpClient httpClient,
+        IHttpClientFactory httpClientFactory,
         IOptionsMonitor<LcmConfig> lcmMonitor,
         ICertificateManager certificateManager,
         ILogger<PullServerClient> logger)
     {
         _httpClient = httpClient;
+        _httpClientFactory = httpClientFactory;
         _lcmMonitor = lcmMonitor;
         _certificateManager = certificateManager;
         _logger = logger;
@@ -443,6 +448,43 @@ public partial class PullServerClient : IDisposable
     }
 
     /// <summary>
+    /// Gets the public (unauthenticated) server settings, primarily for node bootstrap.
+    /// Uses an anonymous HTTP client so that no mTLS certificate is created or required.
+    /// </summary>
+    public async Task<PublicSettingsResponse?> GetPublicSettingsAsync(CancellationToken cancellationToken = default)
+    {
+        var config = _lcmMonitor.CurrentValue;
+        var pullServer = config.PullServer;
+
+        if (pullServer is null || string.IsNullOrWhiteSpace(pullServer.ServerUrl))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var anonymousClient = _httpClientFactory.CreateClient(AnonymousClientName);
+            using var response = await anonymousClient.GetAsync(
+                $"{pullServer.ServerUrl}/api/v1/settings/public",
+                cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
+            return await response.Content.ReadFromJsonAsync(
+                PullServerJsonContext.Default.PublicSettingsResponse,
+                cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            LogPublicSettingsFetchError(ex);
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Fetches the server-managed desired LCM configuration for this node.
     /// </summary>
     /// <returns>The desired LCM config, or null if unavailable.</returns>
@@ -552,4 +594,7 @@ public partial class PullServerClient : IDisposable
 
     [LoggerMessage(EventId = 1023, Level = LogLevel.Warning, Message = "Error reporting LCM config to server")]
     private partial void LogReportLcmConfigError(Exception ex);
+
+    [LoggerMessage(EventId = 1024, Level = LogLevel.Warning, Message = "Error fetching public server settings")]
+    private partial void LogPublicSettingsFetchError(Exception ex);
 }
