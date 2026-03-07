@@ -343,6 +343,14 @@ else
 
         <MudTabPanel Text="Reports" Icon="@Icons.Material.Filled.Assessment">
             <MudCard Class="mt-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Recent Compliance Reports</MudText>
+                    </CardHeaderContent>
+                    <CardHeaderActions>
+                        <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="RefreshReportsAsync" />
+                    </CardHeaderActions>
+                </MudCardHeader>
                 <MudCardContent>
                     @if (reports.Any())
                     {
@@ -391,6 +399,14 @@ else
 
         <MudTabPanel Text="Status History" Icon="@Icons.Material.Filled.Timeline">
             <MudCard Class="mt-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">LCM Status History</MudText>
+                    </CardHeaderContent>
+                    <CardHeaderActions>
+                        <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="RefreshStatusHistoryAsync" />
+                    </CardHeaderActions>
+                </MudCardHeader>
                 <MudCardContent>
                     @if (statusEvents.Any())
                     {
@@ -564,22 +580,8 @@ else
                     selectedMajorVersion = nodeConfig.MajorVersion;
                 }
 
-                var nodeReports = await Db.Reports
-                    .Where(r => r.NodeId == Id)
-                    .ToListAsync();
-
-                reports = nodeReports
-                    .OrderByDescending(r => r.Timestamp)
-                    .Take(20)
-                    .ToList();
-
-                statusEvents = (await Db.NodeStatusEvents
-                    .Where(e => e.NodeId == Id)
-                    .OrderByDescending(e => e.Id)
-                    .Take(100)
-                    .ToListAsync())
-                    .OrderByDescending(e => e.Timestamp)
-                    .ToList();
+                await LoadReportsAsync();
+                await LoadStatusEventsAsync();
 
                 await LoadTagsAsync();
                 await LoadScopeDataAsync();
@@ -621,6 +623,53 @@ else
         nodesForType = await Db.Nodes
             .OrderBy(n => n.Fqdn)
             .ToListAsync();
+    }
+
+    private async Task LoadReportsAsync()
+    {
+        var nodeReports = await Db.Reports
+            .Where(r => r.NodeId == Id)
+            .ToListAsync();
+
+        reports = nodeReports
+            .OrderByDescending(r => r.Timestamp)
+            .Take(20)
+            .ToList();
+    }
+
+    private async Task LoadStatusEventsAsync()
+    {
+        statusEvents = (await Db.NodeStatusEvents
+            .Where(e => e.NodeId == Id)
+            .OrderByDescending(e => e.Id)
+            .Take(100)
+            .ToListAsync())
+            .OrderByDescending(e => e.Timestamp)
+            .ToList();
+    }
+
+    private async Task RefreshReportsAsync()
+    {
+        try
+        {
+            await LoadReportsAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error refreshing reports: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task RefreshStatusHistoryAsync()
+    {
+        try
+        {
+            await LoadStatusEventsAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error refreshing status history: {ex.Message}", Severity.Error);
+        }
     }
 
     private void OnConfigurationChanged()
