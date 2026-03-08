@@ -323,9 +323,13 @@ public sealed partial class VersionRetentionService(
 
     public async Task<IReadOnlyList<RetentionRun>> GetRunHistoryAsync(
         int limit = 100,
+        DateTimeOffset? from = null,
+        DateTimeOffset? to = null,
         CancellationToken cancellationToken = default)
     {
         return await db.RetentionRuns
+            .Where(r => from == null || r.StartedAt >= from)
+            .Where(r => to == null || r.StartedAt <= to)
             .OrderByDescending(r => r.StartedAt)
             .Take(limit)
             .ToListAsync(cancellationToken);

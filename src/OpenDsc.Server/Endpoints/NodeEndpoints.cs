@@ -920,6 +920,8 @@ public static class NodeEndpoints
         ServerDbContext db,
         int? skip,
         int? take,
+        DateTimeOffset? from,
+        DateTimeOffset? to,
         CancellationToken cancellationToken)
     {
         var nodeExists = await db.Nodes.AsNoTracking().AnyAsync(n => n.Id == nodeId, cancellationToken);
@@ -931,6 +933,8 @@ public static class NodeEndpoints
         var rawEvents = await db.NodeStatusEvents
             .AsNoTracking()
             .Where(e => e.NodeId == nodeId)
+            .Where(e => from == null || e.Timestamp >= from)
+            .Where(e => to == null || e.Timestamp <= to)
             .OrderByDescending(e => e.Id)
             .Skip(skip ?? 0)
             .Take(take ?? 50)

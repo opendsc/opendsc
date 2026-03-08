@@ -352,9 +352,40 @@ else
                     </CardHeaderActions>
                 </MudCardHeader>
                 <MudCardContent>
-                    @if (reports.Any())
+                    <MudGrid Class="mb-3">
+                        <MudItem xs="12" md="4">
+                            <MudSelect T="string" Label="Filter by Status" @bind-Value="_reportStatusFilter"
+                                       @bind-Value:after="ApplyReportFilter" Clearable="true">
+                                <MudSelectItem Value="@("Compliant")">Compliant</MudSelectItem>
+                                <MudSelectItem Value="@("NonCompliant")">Non-Compliant</MudSelectItem>
+                                <MudSelectItem Value="@("Error")">Error</MudSelectItem>
+                            </MudSelect>
+                        </MudItem>
+                        <MudItem xs="12" md="4">
+                            <MudSelect T="string" Label="Filter by Operation" @bind-Value="_reportOperationFilter"
+                                       @bind-Value:after="ApplyReportFilter" Clearable="true">
+                                <MudSelectItem Value="@("Get")">Get</MudSelectItem>
+                                <MudSelectItem Value="@("Set")">Set</MudSelectItem>
+                                <MudSelectItem Value="@("Test")">Test</MudSelectItem>
+                                <MudSelectItem Value="@("Export")">Export</MudSelectItem>
+                            </MudSelect>
+                        </MudItem>
+                        <MudItem xs="12" md="4">
+                            <MudDateRangePicker @bind-DateRange="_reportDateRange"
+                                                @bind-DateRange:after="ApplyReportFilter"
+                                                Label="Date range"
+                                                Variant="Variant.Outlined"
+                                                DateFormat="yyyy-MM-dd" />
+                        </MudItem>
+                    </MudGrid>
+                    @if (!reports.Any())
                     {
-                        <MudTable Items="@reports" Hover="true" Dense="true">
+                        <MudText Align="Align.Center" Class="pa-4">No reports yet</MudText>
+                    }
+                    else if (filteredReports.Any())
+                    {
+                        <MudTable Items="@filteredReports" Hover="true" Dense="true"
+                                  @bind-RowsPerPage="_reportRowsPerPage">
                             <HeaderContent>
                                 <MudTh>Timestamp</MudTh>
                                 <MudTh>Operation</MudTh>
@@ -387,11 +418,14 @@ else
                                     </MudTooltip>
                                 </MudTd>
                             </RowTemplate>
+                            <PagerContent>
+                                <MudTablePager PageSizeOptions="@(new int[] { 10, 25, 50, 100 })" />
+                            </PagerContent>
                         </MudTable>
                     }
                     else
                     {
-                        <MudText Align="Align.Center" Class="pa-4">No reports yet</MudText>
+                        <MudText Align="Align.Center" Class="pa-4">No reports in the selected date range.</MudText>
                     }
                 </MudCardContent>
             </MudCard>
@@ -408,9 +442,34 @@ else
                     </CardHeaderActions>
                 </MudCardHeader>
                 <MudCardContent>
-                    @if (statusEvents.Any())
+                    <MudGrid Class="mb-3">
+                        <MudItem xs="12" md="6">
+                            <MudSelect T="string" Label="Filter by LCM Status" @bind-Value="_statusLcmFilter"
+                                       @bind-Value:after="ApplyStatusFilter" Clearable="true">
+                                <MudSelectItem Value="@("Unknown")">Unknown</MudSelectItem>
+                                <MudSelectItem Value="@("Idle")">Idle</MudSelectItem>
+                                <MudSelectItem Value="@("Downloading")">Downloading</MudSelectItem>
+                                <MudSelectItem Value="@("Testing")">Testing</MudSelectItem>
+                                <MudSelectItem Value="@("Remediating")">Remediating</MudSelectItem>
+                                <MudSelectItem Value="@("Error")">Error</MudSelectItem>
+                            </MudSelect>
+                        </MudItem>
+                        <MudItem xs="12" md="6">
+                            <MudDateRangePicker @bind-DateRange="_statusDateRange"
+                                                @bind-DateRange:after="ApplyStatusFilter"
+                                                Label="Date range"
+                                                Variant="Variant.Outlined"
+                                                DateFormat="yyyy-MM-dd" />
+                        </MudItem>
+                    </MudGrid>
+                    @if (!statusEvents.Any())
                     {
-                        <MudTable Items="@statusEvents" Hover="true" Dense="true">
+                        <MudText Align="Align.Center" Class="pa-4">No status events recorded</MudText>
+                    }
+                    else if (filteredStatusEvents.Any())
+                    {
+                        <MudTable Items="@filteredStatusEvents" Hover="true" Dense="true"
+                                  @bind-RowsPerPage="_statusRowsPerPage">
                             <HeaderContent>
                                 <MudTh>Timestamp</MudTh>
                                 <MudTh>LCM Status</MudTh>
@@ -430,11 +489,14 @@ else
                                     }
                                 </MudTd>
                             </RowTemplate>
+                            <PagerContent>
+                                <MudTablePager PageSizeOptions="@(new int[] { 10, 25, 50, 100 })" />
+                            </PagerContent>
                         </MudTable>
                     }
                     else
                     {
-                        <MudText Align="Align.Center" Class="pa-4">No status events recorded</MudText>
+                        <MudText Align="Align.Center" Class="pa-4">No status events in the selected date range.</MudText>
                     }
                 </MudCardContent>
             </MudCard>
@@ -453,7 +515,16 @@ else
     private Node? node;
     private NodeConfiguration? nodeConfig;
     private List<Report> reports = [];
+    private List<Report> filteredReports = [];
+    private MudBlazor.DateRange _reportDateRange = new(DateTime.Today.AddDays(-7), DateTime.Today);
+    private string? _reportStatusFilter;
+    private string? _reportOperationFilter;
+    private int _reportRowsPerPage = 25;
     private List<NodeStatusEvent> statusEvents = [];
+    private List<NodeStatusEvent> filteredStatusEvents = [];
+    private MudBlazor.DateRange _statusDateRange = new(DateTime.Today.AddDays(-7), DateTime.Today);
+    private string? _statusLcmFilter;
+    private int _statusRowsPerPage = 25;
     private List<Configuration> configurations = [];
     private List<CompositeConfiguration> compositeConfigurations = [];
     private string? selectedConfigurationName;
@@ -633,8 +704,33 @@ else
 
         reports = nodeReports
             .OrderByDescending(r => r.Timestamp)
-            .Take(20)
             .ToList();
+        ApplyReportFilter();
+    }
+
+    private void ApplyReportFilter()
+    {
+        filteredReports = reports.Where(r =>
+        {
+            if (_reportDateRange?.Start.HasValue == true && r.Timestamp.LocalDateTime.Date < _reportDateRange.Start.Value.Date)
+                return false;
+            if (_reportDateRange?.End.HasValue == true && r.Timestamp.LocalDateTime.Date > _reportDateRange.End.Value.Date)
+                return false;
+            if (!string.IsNullOrEmpty(_reportStatusFilter))
+            {
+                bool matchesStatus = _reportStatusFilter switch
+                {
+                    "Error" => r.HadErrors,
+                    "Compliant" => !r.HadErrors && r.InDesiredState,
+                    "NonCompliant" => !r.HadErrors && !r.InDesiredState,
+                    _ => true
+                };
+                if (!matchesStatus) return false;
+            }
+            if (!string.IsNullOrEmpty(_reportOperationFilter) && r.Operation.ToString() != _reportOperationFilter)
+                return false;
+            return true;
+        }).ToList();
     }
 
     private async Task LoadStatusEventsAsync()
@@ -642,10 +738,24 @@ else
         statusEvents = (await Db.NodeStatusEvents
             .Where(e => e.NodeId == Id)
             .OrderByDescending(e => e.Id)
-            .Take(100)
             .ToListAsync())
             .OrderByDescending(e => e.Timestamp)
             .ToList();
+        ApplyStatusFilter();
+    }
+
+    private void ApplyStatusFilter()
+    {
+        filteredStatusEvents = statusEvents.Where(e =>
+        {
+            if (_statusDateRange?.Start.HasValue == true && e.Timestamp.LocalDateTime.Date < _statusDateRange.Start.Value.Date)
+                return false;
+            if (_statusDateRange?.End.HasValue == true && e.Timestamp.LocalDateTime.Date > _statusDateRange.End.Value.Date)
+                return false;
+            if (!string.IsNullOrEmpty(_statusLcmFilter) && e.LcmStatus?.ToString() != _statusLcmFilter)
+                return false;
+            return true;
+        }).ToList();
     }
 
     private async Task RefreshReportsAsync()

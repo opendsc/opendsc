@@ -26,10 +26,14 @@
                     <MudSelectItem Value="@("Error")">Error</MudSelectItem>
                 </MudSelect>
             </MudItem>
+            <MudItem xs="12" md="4">
+                <MudDateRangePicker @bind-DateRange="_reportDateRange"
+                                    @bind-DateRange:after="ApplyFilters"
+                                    Label="Date range"
+                                    Variant="Variant.Outlined"
+                                    DateFormat="yyyy-MM-dd" />
+            </MudItem>
             <MudItem xs="12" md="4" Class="d-flex align-end">
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ApplyFilters">
-                    Apply Filters
-                </MudButton>
                 <MudButton Variant="Variant.Text" Color="Color.Secondary" OnClick="ClearFilters" Class="ml-2">
                     Clear
                 </MudButton>
@@ -69,6 +73,9 @@
                     </CellTemplate>
                 </TemplateColumn>
             </Columns>
+            <PagerContent>
+                <MudDataGridPager T="ReportViewModel" PageSizeOptions="@(new int[] { 10, 25, 50, 100 })" />
+            </PagerContent>
         </MudDataGrid>
     </MudCardContent>
 </MudCard>
@@ -80,6 +87,7 @@
     private bool isLoading = true;
     private Guid? selectedNodeId;
     private string? selectedStatus;
+    private MudBlazor.DateRange _reportDateRange = new(DateTime.Today.AddDays(-7), DateTime.Today);
 
     protected override async Task OnInitializedAsync()
     {
@@ -100,7 +108,6 @@
 
             allReports = reports
                 .OrderByDescending(r => r.Timestamp)
-                .Take(100)
                 .Select(r => new ReportViewModel
                 {
                     Id = r.Id,
@@ -145,6 +152,11 @@
                     return false;
             }
 
+            if (_reportDateRange?.Start.HasValue == true && r.Timestamp.LocalDateTime.Date < _reportDateRange.Start.Value.Date)
+                return false;
+            if (_reportDateRange?.End.HasValue == true && r.Timestamp.LocalDateTime.Date > _reportDateRange.End.Value.Date)
+                return false;
+
             return true;
         }).ToList();
     }
@@ -165,6 +177,7 @@
     {
         selectedNodeId = null;
         selectedStatus = null;
+        _reportDateRange = new(DateTime.Today.AddDays(-7), DateTime.Today);
         filteredReports = allReports;
     }
 

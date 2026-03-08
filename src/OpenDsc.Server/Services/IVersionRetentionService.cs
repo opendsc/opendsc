@@ -97,6 +97,8 @@ public interface IVersionRetentionService
     /// </summary>
     Task<IReadOnlyList<RetentionRun>> GetRunHistoryAsync(
         int limit = 100,
+        DateTimeOffset? from = null,
+        DateTimeOffset? to = null,
         CancellationToken cancellationToken = default);
 }
 

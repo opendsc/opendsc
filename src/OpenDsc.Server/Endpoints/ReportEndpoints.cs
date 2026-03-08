@@ -119,6 +119,8 @@ public static class ReportEndpoints
         ServerDbContext db,
         int? skip,
         int? take,
+        DateTimeOffset? from,
+        DateTimeOffset? to,
         CancellationToken cancellationToken)
     {
         var nodeExists = await db.Nodes.AnyAsync(n => n.Id == nodeId, cancellationToken);
@@ -131,6 +133,11 @@ public static class ReportEndpoints
             .AsNoTracking()
             .Include(r => r.Node)
             .Where(r => r.NodeId == nodeId)
+            .Where(r => from == null || r.Timestamp >= from)
+            .Where(r => to == null || r.Timestamp <= to)
+            .OrderByDescending(r => r.Timestamp)
+            .Skip(skip ?? 0)
+            .Take(take ?? 100)
             .Select(r => new ReportSummary
             {
                 Id = r.Id,
@@ -143,24 +150,25 @@ public static class ReportEndpoints
             })
             .ToListAsync(cancellationToken);
 
-        var orderedReports = reports
-            .OrderByDescending(r => r.Timestamp)
-            .Skip(skip ?? 0)
-            .Take(take ?? 100)
-            .ToList();
-
-        return TypedResults.Ok(orderedReports);
+        return TypedResults.Ok(reports);
     }
 
     private static async Task<Ok<List<ReportSummary>>> GetAllReports(
         ServerDbContext db,
         int? skip,
         int? take,
+        DateTimeOffset? from,
+        DateTimeOffset? to,
         CancellationToken cancellationToken)
     {
         var reports = await db.Reports
             .AsNoTracking()
             .Include(r => r.Node)
+            .Where(r => from == null || r.Timestamp >= from)
+            .Where(r => to == null || r.Timestamp <= to)
+            .OrderByDescending(r => r.Timestamp)
+            .Skip(skip ?? 0)
+            .Take(take ?? 100)
             .Select(r => new ReportSummary
             {
                 Id = r.Id,
@@ -173,13 +181,7 @@ public static class ReportEndpoints
             })
             .ToListAsync(cancellationToken);
 
-        var orderedReports = reports
-            .OrderByDescending(r => r.Timestamp)
-            .Skip(skip ?? 0)
-            .Take(take ?? 100)
-            .ToList();
-
-        return TypedResults.Ok(orderedReports);
+        return TypedResults.Ok(reports);
     }
 
     private static async Task<Results<Ok<ReportDetails>, NotFound<ErrorResponse>>> GetReport(
