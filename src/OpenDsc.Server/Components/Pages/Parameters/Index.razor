@@ -142,9 +142,6 @@
                 </MudCardContent>
             </MudCard>
         </DialogContent>
-        <DialogActions>
-            <MudButton OnClick="CloseSchemaDialog">Close</MudButton>
-        </DialogActions>
     </MudDialog>
 }
 
@@ -192,9 +189,6 @@
                 <MudAlert Severity="Severity.Info">No parameter files for this schema.</MudAlert>
             }
         </DialogContent>
-        <DialogActions>
-            <MudButton OnClick="@(() => { showFilesDialog = false; StateHasChanged(); })">Close</MudButton>
-        </DialogActions>
     </MudDialog>
 }
 
@@ -327,14 +321,6 @@
             InsertSpaces = true,
             WordWrap = "off"
         };
-    }
-
-    private void CloseSchemaDialog()
-    {
-        showSchemaDialog = false;
-        selectedSchema = null;
-        selectedConfiguration = null;
-        _currentSchemaContent = string.Empty;
     }
 
     private async Task ViewFiles(ParameterSchema schema)
