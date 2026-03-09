@@ -50,25 +50,27 @@
                                 .OrderByDescending(v => SemanticVersion.TryParse(v.Version, out var sv) ? sv : new SemanticVersion(0,0,0))
                                 .ToList();
                             var draftCount = majorVersions.Count(v => v.Status == ConfigurationVersionStatus.Draft);
-                            var publishedVersion = majorVersions.FirstOrDefault(v => v.Status == ConfigurationVersionStatus.Published);
+                            var publishedVersions = majorVersions.Where(v => v.Status == ConfigurationVersionStatus.Published).ToList();
+                            var publishedStable = publishedVersions.FirstOrDefault(v => SemanticVersion.TryParse(v.Version, out var sv) && !sv.IsPrerelease);
+                            var publishedPrerelease = publishedVersions.FirstOrDefault(v => SemanticVersion.TryParse(v.Version, out var sv) && sv.IsPrerelease);
 
                             <MudExpansionPanel Expanded="false">
                                 <TitleContent>
                                     <div class="d-flex align-center gap-2">
                                         <MudText>Version @(major)</MudText>
-                                        @if (publishedVersion != null)
+                                        @if (publishedStable != null)
                                         {
-                                            <MudTooltip Text="Latest published version">
-                                                <MudChip T="string" Size="Size.Small" Color="Color.Success">
-                                                    Published @publishedVersion.Version
-                                                </MudChip>
+                                            <MudTooltip Text="Latest stable published version">
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Success">Stable: @publishedStable.Version</MudChip>
                                             </MudTooltip>
-                                            @if (SemanticVersion.TryParse(publishedVersion.Version, out var pubSv) && pubSv.IsPrerelease)
-                                            {
-                                                <MudChip T="string" Size="Size.Small" Color="Color.Warning">Prerelease</MudChip>
-                                            }
                                         }
-                                        else if (majorVersions.Any())
+                                        @if (publishedPrerelease != null)
+                                        {
+                                            <MudTooltip Text="Latest prerelease published version">
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Warning">Prerelease: @publishedPrerelease.Version</MudChip>
+                                            </MudTooltip>
+                                        }
+                                        @if (publishedStable == null && publishedPrerelease == null && majorVersions.Any())
                                         {
                                             <MudChip T="string" Size="Size.Small" Color="Color.Default">No Published</MudChip>
                                         }
