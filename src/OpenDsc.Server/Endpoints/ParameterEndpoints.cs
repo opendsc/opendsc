@@ -108,6 +108,11 @@ public static class ParameterEndpoints
             return TypedResults.NotFound();
         }
 
+        if (!scopeType.IsEnabled)
+        {
+            return TypedResults.BadRequest($"Scope type '{scopeType.Name}' is disabled and cannot be used for new parameter files");
+        }
+
         var configuration = await db.Configurations.FindAsync(configurationId);
         if (configuration is null)
         {

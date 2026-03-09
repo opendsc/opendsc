@@ -43,6 +43,10 @@
                                 {
                                     <MudChip T="string" Size="Size.Small" Color="Color.Info">System</MudChip>
                                 }
+                                @if (!scopeType.IsEnabled)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Error">Disabled</MudChip>
+                                }
                                 @if (scopeType.ValueMode == ScopeValueMode.Restricted)
                                 {
                                     <MudChip T="string" Size="Size.Small" Color="Color.Primary">Restricted</MudChip>
@@ -50,6 +54,21 @@
                                 else if (scopeType.Name != "Node" && scopeType.Name != "Default")
                                 {
                                     <MudChip T="string" Size="Size.Small" Color="Color.Default">Unrestricted</MudChip>
+                                }
+                                @if (scopeType.Name == "Node")
+                                {
+                                    <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Filled.Computer">@nodeCount Nodes</MudChip>
+                                    <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Filled.Article">@scopeTypeAllParamFileCounts.GetValueOrDefault(scopeType.Id, 0) Parameter Files</MudChip>
+                                }
+                                else if (scopeType.Name == "Default")
+                                {
+                                    <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Filled.Article">@scopeTypeAllParamFileCounts.GetValueOrDefault(scopeType.Id, 0) Parameter Files</MudChip>
+                                }
+                                else
+                                {
+                                    var scopeNodeTotal = scopeValues.Where(sv => sv.ScopeTypeId == scopeType.Id).Sum(sv => sv.NodeTags.Count);
+                                    <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Filled.Computer">@scopeNodeTotal Nodes</MudChip>
+                                    <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Filled.Article">@scopeTypeAllParamFileCounts.GetValueOrDefault(scopeType.Id, 0) Parameter Files</MudChip>
                                 }
                                 <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">Precedence: @scopeType.Precedence</MudChip>
                             </MudStack>
@@ -77,6 +96,33 @@
                                                Disabled="@(scopeType.IsSystem || !CanDeleteScopeType(scopeType))"
                                                OnClick="@(() => DeleteScopeType(scopeType))" />
                             </MudTooltip>
+                            @if (scopeType.IsSystem)
+                            {
+                                @if (scopeType.IsEnabled)
+                                {
+                                    var disableParamCount = scopeTypeAllParamFileCounts.GetValueOrDefault(scopeType.Id, 0);
+                                    var disableBlocked = disableParamCount > 0;
+                                    var disableTooltip = disableBlocked
+                                        ? $"Cannot disable: {disableParamCount} parameter file(s) exist."
+                                        : "Disable this scope type";
+                                    <MudTooltip Text="@disableTooltip">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Block"
+                                                       Size="Size.Small"
+                                                       Color="Color.Warning"
+                                                       Disabled="@disableBlocked"
+                                                       OnClick="@(() => DisableScopeType(scopeType))" />
+                                    </MudTooltip>
+                                }
+                                else
+                                {
+                                    <MudTooltip Text="Enable this scope type">
+                                        <MudIconButton Icon="@Icons.Material.Filled.CheckCircle"
+                                                       Size="Size.Small"
+                                                       Color="Color.Success"
+                                                       OnClick="@(() => EnableScopeType(scopeType))" />
+                                    </MudTooltip>
+                                }
+                            }
                         </CardHeaderActions>
                     </MudCardHeader>
                     @if (scopeType.ValueMode == ScopeValueMode.Restricted)
@@ -218,6 +264,8 @@
     private List<ScopeType> scopeTypes = [];
     private List<ScopeValue> scopeValues = [];
     private Dictionary<(Guid scopeTypeId, string value), int> parameterFileCounts = [];
+    private Dictionary<Guid, int> scopeTypeAllParamFileCounts = [];
+    private int nodeCount = 0;
     private bool isLoading = true;
 
     protected override async Task OnInitializedAsync()
@@ -247,6 +295,14 @@
 
             parameterFileCounts = parameterFileData
                 .ToDictionary(x => (x.ScopeTypeId, x.ScopeValue), x => x.Count);
+
+            nodeCount = await Db.Nodes.CountAsync();
+
+            var allParamFileTotals = await Db.ParameterFiles
+                .GroupBy(pf => pf.ScopeTypeId)
+                .Select(g => new { ScopeTypeId = g.Key, Count = g.Count() })
+                .ToListAsync();
+            scopeTypeAllParamFileCounts = allParamFileTotals.ToDictionary(x => x.ScopeTypeId, x => x.Count);
         }
         catch (Exception ex)
         {
@@ -413,6 +469,47 @@
         }
 
         return true;
+    }
+
+    private async Task EnableScopeType(ScopeType scopeType)
+    {
+        try
+        {
+            scopeType.IsEnabled = true;
+            scopeType.UpdatedAt = DateTimeOffset.UtcNow;
+            await Db.SaveChangesAsync();
+            Snackbar.Add($"Scope type '{scopeType.Name}' enabled", Severity.Success);
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error enabling scope type: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task DisableScopeType(ScopeType scopeType)
+    {
+        var result = await DialogService.ShowMessageBox(
+            "Disable Scope Type",
+            $"Are you sure you want to disable the '{scopeType.Name}' scope type? It will be excluded from parameter merging and hidden from parameter management until re-enabled.",
+            yesText: "Disable",
+            cancelText: "Cancel");
+
+        if (result == true)
+        {
+            try
+            {
+                scopeType.IsEnabled = false;
+                scopeType.UpdatedAt = DateTimeOffset.UtcNow;
+                await Db.SaveChangesAsync();
+                Snackbar.Add($"Scope type '{scopeType.Name}' disabled", Severity.Success);
+                await LoadDataAsync();
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error disabling scope type: {ex.Message}", Severity.Error);
+            }
+        }
     }
 
     private async Task DeleteScopeType(ScopeType scopeType)

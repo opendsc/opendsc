@@ -51,7 +51,8 @@ public sealed class ParameterMergeService(ServerDbContext db, IParameterMerger m
                 ScopeTypeName = nt.ScopeValue.ScopeType.Name,
                 ScopeValue = nt.ScopeValue.Value,
                 Precedence = nt.ScopeValue.ScopeType.Precedence,
-                ValueMode = nt.ScopeValue.ScopeType.ValueMode
+                ValueMode = nt.ScopeValue.ScopeType.ValueMode,
+                IsEnabled = nt.ScopeValue.ScopeType.IsEnabled
             })
             .ToListAsync(cancellationToken);
 
@@ -60,7 +61,7 @@ public sealed class ParameterMergeService(ServerDbContext db, IParameterMerger m
         var defaultScopeType = await db.ScopeTypes
             .FirstOrDefaultAsync(st => st.Name == "Default", cancellationToken);
 
-        if (defaultScopeType != null && !scopeTypes.Contains(defaultScopeType.Id))
+        if (defaultScopeType != null && defaultScopeType.IsEnabled && !scopeTypes.Contains(defaultScopeType.Id))
         {
             var defaultCandidates = await db.ParameterFiles
                 .Include(pf => pf.ParameterSchema)
@@ -93,6 +94,11 @@ public sealed class ParameterMergeService(ServerDbContext db, IParameterMerger m
 
         foreach (var tag in nodeTags)
         {
+            if (!tag.IsEnabled)
+            {
+                continue;
+            }
+
             var tagCandidates = await db.ParameterFiles
                 .Include(pf => pf.ParameterSchema)
                 .Where(pf =>
@@ -130,7 +136,7 @@ public sealed class ParameterMergeService(ServerDbContext db, IParameterMerger m
         var nodeScopeType = await db.ScopeTypes
             .FirstOrDefaultAsync(st => st.Name == "Node", cancellationToken);
 
-        if (nodeScopeType != null)
+        if (nodeScopeType != null && nodeScopeType.IsEnabled)
         {
             var nodeCandidates = await db.ParameterFiles
                 .Include(pf => pf.ParameterSchema)
@@ -211,7 +217,8 @@ public sealed class ParameterMergeService(ServerDbContext db, IParameterMerger m
                 ScopeTypeName = nt.ScopeValue.ScopeType.Name,
                 ScopeValue = nt.ScopeValue.Value,
                 Precedence = nt.ScopeValue.ScopeType.Precedence,
-                ValueMode = nt.ScopeValue.ScopeType.ValueMode
+                ValueMode = nt.ScopeValue.ScopeType.ValueMode,
+                IsEnabled = nt.ScopeValue.ScopeType.IsEnabled
             })
             .ToListAsync(cancellationToken);
 
@@ -220,7 +227,7 @@ public sealed class ParameterMergeService(ServerDbContext db, IParameterMerger m
         var defaultScopeType = await db.ScopeTypes
             .FirstOrDefaultAsync(st => st.Name == "Default", cancellationToken);
 
-        if (defaultScopeType != null && !scopeTypes.Contains(defaultScopeType.Id))
+        if (defaultScopeType != null && defaultScopeType.IsEnabled && !scopeTypes.Contains(defaultScopeType.Id))
         {
             var defaultCandidates = await db.ParameterFiles
                 .Include(pf => pf.ParameterSchema)
@@ -253,6 +260,11 @@ public sealed class ParameterMergeService(ServerDbContext db, IParameterMerger m
 
         foreach (var tag in nodeTags)
         {
+            if (!tag.IsEnabled)
+            {
+                continue;
+            }
+
             var tagCandidates = await db.ParameterFiles
                 .Include(pf => pf.ParameterSchema)
                 .Where(pf =>
@@ -290,7 +302,7 @@ public sealed class ParameterMergeService(ServerDbContext db, IParameterMerger m
         var nodeScopeType = await db.ScopeTypes
             .FirstOrDefaultAsync(st => st.Name == "Node", cancellationToken);
 
-        if (nodeScopeType != null)
+        if (nodeScopeType != null && nodeScopeType.IsEnabled)
         {
             var nodeCandidates = await db.ParameterFiles
                 .Include(pf => pf.ParameterSchema)

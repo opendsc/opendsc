@@ -11,6 +11,7 @@ public sealed class ScopeType
     public string? Description { get; set; }
     public int Precedence { get; set; }
     public bool IsSystem { get; set; }
+    public bool IsEnabled { get; set; } = true;
     public ScopeValueMode ValueMode { get; set; } = ScopeValueMode.Unrestricted;
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? UpdatedAt { get; set; }

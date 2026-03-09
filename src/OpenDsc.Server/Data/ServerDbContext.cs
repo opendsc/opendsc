@@ -229,6 +229,7 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
             entity.HasIndex(e => e.Precedence).IsUnique();
             entity.Property(e => e.Name).HasMaxLength(100).IsRequired();
             entity.Property(e => e.Description).HasMaxLength(500);
+            entity.Property(e => e.IsEnabled).HasDefaultValue(true);
         });
 
         modelBuilder.Entity<ScopeValue>(entity =>
@@ -655,6 +656,7 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
                 Description = "Default configuration parameters",
                 Precedence = 0,
                 IsSystem = true,
+                IsEnabled = true,
                 ValueMode = ScopeValueMode.Unrestricted,
                 CreatedAt = now
             },
@@ -665,6 +667,7 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
                 Description = "Node-specific parameter overrides matched by FQDN",
                 Precedence = 1,
                 IsSystem = true,
+                IsEnabled = true,
                 ValueMode = ScopeValueMode.Unrestricted,
                 CreatedAt = now
             }
