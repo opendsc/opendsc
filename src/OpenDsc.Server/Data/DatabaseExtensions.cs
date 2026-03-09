@@ -190,7 +190,7 @@ public static class DatabaseExtensions
             ConfigurationId = config.Id,
             Version = "1.0.0",
             EntryPoint = "main.dsc.yaml",
-            IsDraft = false,
+            Status = ConfigurationVersionStatus.Published,
             CreatedAt = DateTimeOffset.UtcNow
         };
 

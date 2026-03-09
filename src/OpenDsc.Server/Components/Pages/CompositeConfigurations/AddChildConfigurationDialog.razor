@@ -78,8 +78,8 @@
     protected override async Task OnInitializedAsync()
     {
         availableConfigurations = await Db.Configurations
-            .Include(c => c.Versions.Where(v => !v.IsDraft && !v.IsArchived))
-            .Where(c => !ExistingChildConfigIds.Contains(c.Id) && c.Versions.Any(v => !v.IsDraft && !v.IsArchived))
+            .Include(c => c.Versions.Where(v => v.Status == ConfigurationVersionStatus.Published))
+            .Where(c => !ExistingChildConfigIds.Contains(c.Id) && c.Versions.Any(v => v.Status == ConfigurationVersionStatus.Published))
             .OrderBy(c => c.Name)
             .ToListAsync();
     }
@@ -126,7 +126,7 @@
                 return;
             }
 
-            if (!compositeVersion.IsDraft)
+            if (compositeVersion.Status != ConfigurationVersionStatus.Draft)
             {
                 validationError = "Cannot add children to a published version.";
                 return;

@@ -20,7 +20,10 @@
         }
         else
         {
-            <MudSwitch @bind-Value="retentionEnabled" Label="Enable scheduled auto-purge" Color="Color.Primary" Class="mb-4" />
+            <div class="d-flex align-center gap-6 mb-4">
+                <MudSwitch @bind-Value="retentionEnabled" Label="Enable scheduled auto-purge" Color="Color.Primary" />
+                <MudSwitch @bind-Value="keepReleaseVersions" Label="Always keep release versions" Color="Color.Primary" />
+            </div>
 
             <MudGrid>
                 <MudItem xs="12" sm="6">
@@ -32,12 +35,6 @@
                     <MudTextField @bind-Value="keepDays" Label="Keep Days" Variant="Variant.Outlined"
                                   InputType="InputType.Number"
                                   HelperText="Versions newer than this age (days) are always kept." />
-                </MudItem>
-                <MudItem xs="12" sm="6">
-                    <MudSwitch @bind-Value="keepReleaseVersions" Label="Always keep release versions" Color="Color.Primary" />
-                </MudItem>
-                <MudItem xs="12" sm="6">
-                    <MudSwitch @bind-Value="keepArchivedVersions" Label="Always keep archived versions" Color="Color.Primary" />
                 </MudItem>
                 <MudItem xs="12" sm="6">
                     <MudTextField @bind-Value="scheduleIntervalHours" Label="Schedule Interval (hours)" Variant="Variant.Outlined"
@@ -125,7 +122,6 @@
     private int keepVersions = 10;
     private int keepDays = 90;
     private bool keepReleaseVersions = true;
-    private bool keepArchivedVersions = true;
     private int scheduleIntervalHours = 24;
     private int reportKeepCount = 1000;
     private int reportKeepDays = 30;
@@ -147,7 +143,6 @@
             keepVersions = settings.RetentionKeepVersions;
             keepDays = settings.RetentionKeepDays;
             keepReleaseVersions = settings.RetentionKeepReleaseVersions;
-            keepArchivedVersions = settings.RetentionKeepArchivedVersions;
             scheduleIntervalHours = (int)settings.RetentionScheduleInterval.TotalHours;
             reportKeepCount = settings.RetentionReportKeepCount;
             reportKeepDays = settings.RetentionReportKeepDays;
@@ -177,7 +172,6 @@
             settings.RetentionKeepVersions = keepVersions;
             settings.RetentionKeepDays = keepDays;
             settings.RetentionKeepReleaseVersions = keepReleaseVersions;
-            settings.RetentionKeepArchivedVersions = keepArchivedVersions;
             settings.RetentionScheduleInterval = TimeSpan.FromHours(scheduleIntervalHours);
             settings.RetentionReportKeepCount = reportKeepCount;
             settings.RetentionReportKeepDays = reportKeepDays;

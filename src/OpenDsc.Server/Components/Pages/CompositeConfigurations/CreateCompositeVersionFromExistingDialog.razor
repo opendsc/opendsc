@@ -20,7 +20,7 @@
                 <MudSelectItem Value="@version.Version">
                     <div class="d-flex align-center gap-2">
                         <span>@version.Version</span>
-                        @if (version.IsDraft)
+                        @if (version.Status == ConfigurationVersionStatus.Draft)
                         {
                             <MudChip T="string" Size="Size.Small" Color="Color.Info">Draft</MudChip>
                         }
@@ -170,7 +170,6 @@
                 Id = Guid.NewGuid(),
                 CompositeConfigurationId = composite.Id,
                 Version = newVersion,
-                IsDraft = true,
                 PrereleaseChannel = string.IsNullOrEmpty(sv.Release) ? null : sv.Release,
                 CreatedAt = DateTimeOffset.UtcNow
             };

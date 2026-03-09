@@ -346,7 +346,7 @@ public static class NodeEndpoints
 
             var nodeConfig = await db.NodeConfigurations
                 .Include(nc => nc.Configuration)
-                .ThenInclude(c => c.Versions.Where(v => !v.IsDraft))
+                .ThenInclude(c => c.Versions.Where(v => v.Status == ConfigurationVersionStatus.Published))
                 .ThenInclude(v => v.Files)
                 .AsSplitQuery()
                 .FirstOrDefaultAsync(nc => nc.NodeId == nodeId, cancellationToken);
@@ -384,7 +384,7 @@ public static class NodeEndpoints
                     var configName = node.ConfigurationName;
                     Console.WriteLine($"Looking for config with name: {configName}");
                     var config = await db.Configurations
-                        .Include(c => c.Versions.Where(v => !v.IsDraft))
+                        .Include(c => c.Versions.Where(v => v.Status == ConfigurationVersionStatus.Published))
                         .ThenInclude(v => v.Files)
                         .AsSplitQuery()
                         .FirstOrDefaultAsync(c => c.Name == configName, cancellationToken);
@@ -443,13 +443,13 @@ public static class NodeEndpoints
     {
         var nodeConfig = await db.NodeConfigurations
             .Include(nc => nc.Configuration)
-            .ThenInclude(c => c!.Versions.Where(v => !v.IsDraft))
+            .ThenInclude(c => c!.Versions.Where(v => v.Status == ConfigurationVersionStatus.Published))
             .ThenInclude(v => v.Files)
             .Include(nc => nc.CompositeConfiguration)
-            .ThenInclude(c => c!.Versions.Where(v => !v.IsDraft))
+            .ThenInclude(c => c!.Versions.Where(v => v.Status == ConfigurationVersionStatus.Published))
             .ThenInclude(v => v.Items)
             .ThenInclude(i => i.ChildConfiguration)
-            .ThenInclude(c => c!.Versions.Where(v => !v.IsDraft))
+            .ThenInclude(c => c!.Versions.Where(v => v.Status == ConfigurationVersionStatus.Published))
             .ThenInclude(v => v!.Files)
             .AsSplitQuery()
             .FirstOrDefaultAsync(nc => nc.NodeId == nodeId, cancellationToken);
@@ -627,7 +627,7 @@ public static class NodeEndpoints
         if (request.IsComposite)
         {
             var composite = await db.CompositeConfigurations
-                .Include(c => c.Versions.Where(v => !v.IsDraft))
+                .Include(c => c.Versions.Where(v => v.Status == ConfigurationVersionStatus.Published))
                 .FirstOrDefaultAsync(c => c.Name == request.ConfigurationName, cancellationToken);
 
             if (composite is null)
@@ -673,7 +673,7 @@ public static class NodeEndpoints
         else
         {
             var config = await db.Configurations
-                .Include(c => c.Versions.Where(v => !v.IsDraft))
+                .Include(c => c.Versions.Where(v => v.Status == ConfigurationVersionStatus.Published))
                 .FirstOrDefaultAsync(c => c.Name == request.ConfigurationName, cancellationToken);
 
             if (config is null)
@@ -768,13 +768,13 @@ public static class NodeEndpoints
 
         var nodeConfig = await db.NodeConfigurations
             .Include(nc => nc.Configuration)
-            .ThenInclude(c => c!.Versions.Where(v => !v.IsDraft))
+            .ThenInclude(c => c!.Versions.Where(v => v.Status == ConfigurationVersionStatus.Published))
             .ThenInclude(v => v.Files)
             .Include(nc => nc.CompositeConfiguration)
-            .ThenInclude(c => c!.Versions.Where(v => !v.IsDraft))
+            .ThenInclude(c => c!.Versions.Where(v => v.Status == ConfigurationVersionStatus.Published))
             .ThenInclude(v => v.Items)
             .ThenInclude(i => i.ChildConfiguration)
-            .ThenInclude(c => c!.Versions.Where(v => !v.IsDraft))
+            .ThenInclude(c => c!.Versions.Where(v => v.Status == ConfigurationVersionStatus.Published))
             .ThenInclude(v => v.Files)
             .FirstOrDefaultAsync(nc => nc.NodeId == nodeId, cancellationToken);
 

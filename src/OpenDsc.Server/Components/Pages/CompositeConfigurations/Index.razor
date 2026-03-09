@@ -53,7 +53,7 @@
                     <TemplateColumn Title="Status" Sortable="false">
                         <CellTemplate>
                             @{
-                                var published = context.Item.Versions.Any(v => !v.IsDraft);
+                                var published = context.Item.Versions.Any(v => v.Status == ConfigurationVersionStatus.Published);
                                 var chipColor = published ? Color.Success : Color.Warning;
                                 var chipText = published ? "Published" : "Draft";
                             }
@@ -68,7 +68,7 @@
                     </TemplateColumn>
                     <TemplateColumn Title="Latest Version" Sortable="false">
                         <CellTemplate>
-                            @(VersionResolver.LatestSemver(context.Item.Versions.Where(v => !v.IsDraft).Select(v => v.Version)) ?? "-")
+                            @(VersionResolver.LatestSemver(context.Item.Versions.Where(v => v.Status == ConfigurationVersionStatus.Published).Select(v => v.Version)) ?? "-")
                         </CellTemplate>
                     </TemplateColumn>
                     <PropertyColumn Property="x => x.CreatedAt" Title="Created">

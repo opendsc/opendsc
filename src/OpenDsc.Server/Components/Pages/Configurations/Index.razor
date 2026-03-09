@@ -55,7 +55,7 @@
                     <TemplateColumn Title="Status" Sortable="false">
                         <CellTemplate>
                             @{
-                                var published = context.Item.Versions.Any(v => !v.IsDraft);
+                                var published = context.Item.Versions.Any(v => v.Status == ConfigurationVersionStatus.Published);
                                 var chipColor = published ? Color.Success : Color.Warning;
                                 var chipText = published ? "Published" : "Draft";
                             }

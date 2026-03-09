@@ -20,7 +20,6 @@ public sealed class ConfigurationSettings
     public int? RetentionKeepVersions { get; set; }
     public int? RetentionKeepDays { get; set; }
     public bool? RetentionKeepReleaseVersions { get; set; }
-    public bool? RetentionKeepArchivedVersions { get; set; }
 
     public DateTimeOffset UpdatedAt { get; set; }
     public string? UpdatedBy { get; set; }

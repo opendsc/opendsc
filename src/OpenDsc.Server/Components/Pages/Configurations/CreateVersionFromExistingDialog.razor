@@ -27,7 +27,7 @@
                 <MudSelectItem Value="@version.Version">
                     <div class="d-flex align-center gap-2">
                         <span>@version.Version</span>
-                        @if (version.IsDraft)
+                        @if (version.Status == ConfigurationVersionStatus.Draft)
                         {
                             <MudChip T="string" Size="Size.Small" Color="Color.Info">Draft</MudChip>
                         }

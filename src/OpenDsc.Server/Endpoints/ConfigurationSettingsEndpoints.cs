@@ -180,7 +180,6 @@ internal sealed record ConfigurationRetentionDto
     public int? KeepVersions { get; init; }
     public int? KeepDays { get; init; }
     public bool? KeepReleaseVersions { get; init; }
-    public bool? KeepArchivedVersions { get; init; }
 }
 
 internal sealed record UpdateConfigurationRetentionRequest
@@ -189,7 +188,6 @@ internal sealed record UpdateConfigurationRetentionRequest
     public int? KeepVersions { get; init; }
     public int? KeepDays { get; init; }
     public bool? KeepReleaseVersions { get; init; }
-    public bool? KeepArchivedVersions { get; init; }
 }
 
 internal static partial class ConfigurationRetentionHandlers
@@ -208,8 +206,7 @@ internal static partial class ConfigurationRetentionHandlers
             .FirstOrDefaultAsync(cs => cs.ConfigurationId == configuration.Id);
 
         if (settings is null || settings.RetentionEnabled is null && settings.RetentionKeepVersions is null
-            && settings.RetentionKeepDays is null && settings.RetentionKeepReleaseVersions is null
-            && settings.RetentionKeepArchivedVersions is null)
+            && settings.RetentionKeepDays is null && settings.RetentionKeepReleaseVersions is null)
         {
             return TypedResults.Ok(new ConfigurationRetentionDto { IsOverridden = false });
         }
@@ -220,8 +217,7 @@ internal static partial class ConfigurationRetentionHandlers
             Enabled = settings.RetentionEnabled,
             KeepVersions = settings.RetentionKeepVersions,
             KeepDays = settings.RetentionKeepDays,
-            KeepReleaseVersions = settings.RetentionKeepReleaseVersions,
-            KeepArchivedVersions = settings.RetentionKeepArchivedVersions
+            KeepReleaseVersions = settings.RetentionKeepReleaseVersions
         });
     }
 
@@ -257,7 +253,6 @@ internal static partial class ConfigurationRetentionHandlers
         if (request.KeepVersions.HasValue) { settings.RetentionKeepVersions = request.KeepVersions.Value; }
         if (request.KeepDays.HasValue) { settings.RetentionKeepDays = request.KeepDays.Value; }
         if (request.KeepReleaseVersions.HasValue) { settings.RetentionKeepReleaseVersions = request.KeepReleaseVersions.Value; }
-        if (request.KeepArchivedVersions.HasValue) { settings.RetentionKeepArchivedVersions = request.KeepArchivedVersions.Value; }
 
         await db.SaveChangesAsync();
 
@@ -267,8 +262,7 @@ internal static partial class ConfigurationRetentionHandlers
             Enabled = settings.RetentionEnabled,
             KeepVersions = settings.RetentionKeepVersions,
             KeepDays = settings.RetentionKeepDays,
-            KeepReleaseVersions = settings.RetentionKeepReleaseVersions,
-            KeepArchivedVersions = settings.RetentionKeepArchivedVersions
+            KeepReleaseVersions = settings.RetentionKeepReleaseVersions
         });
     }
 
@@ -291,7 +285,6 @@ internal static partial class ConfigurationRetentionHandlers
             settings.RetentionKeepVersions = null;
             settings.RetentionKeepDays = null;
             settings.RetentionKeepReleaseVersions = null;
-            settings.RetentionKeepArchivedVersions = null;
             settings.UpdatedAt = DateTimeOffset.UtcNow;
             await db.SaveChangesAsync();
         }

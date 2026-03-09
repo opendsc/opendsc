@@ -253,7 +253,7 @@
         availableConfigMajors = await ParameterApiClient.GetAvailableMajorVersionsAsync(selectedConfigurationId.Value);
 
         var publishedVersionStrings = await Db.ConfigurationVersions
-            .Where(cv => cv.ConfigurationId == selectedConfigurationId.Value && !cv.IsDraft && !cv.IsArchived)
+            .Where(cv => cv.ConfigurationId == selectedConfigurationId.Value && cv.Status == ConfigurationVersionStatus.Published)
             .Select(cv => cv.Version)
             .ToListAsync();
 

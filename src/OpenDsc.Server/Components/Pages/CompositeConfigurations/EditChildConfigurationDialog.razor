@@ -64,7 +64,7 @@
         selectedMajorVersion = Item.MajorVersion;
 
         var versions = await Db.ConfigurationVersions
-            .Where(v => v.ConfigurationId == Item.ChildConfigurationId && !v.IsDraft && !v.IsArchived)
+            .Where(v => v.ConfigurationId == Item.ChildConfigurationId && v.Status == ConfigurationVersionStatus.Published)
             .Select(v => v.Version)
             .ToListAsync();
 

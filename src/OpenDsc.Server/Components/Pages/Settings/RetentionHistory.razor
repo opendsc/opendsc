@@ -211,7 +211,6 @@
     private int keepVersions = 10;
     private int keepDays = 90;
     private bool keepReleaseVersions = true;
-    private bool keepArchivedVersions = true;
     private int reportKeepCount = 1000;
     private int reportKeepDays = 30;
     private int statusEventKeepCount = 200;
@@ -231,7 +230,6 @@
             keepVersions = settings.RetentionKeepVersions;
             keepDays = settings.RetentionKeepDays;
             keepReleaseVersions = settings.RetentionKeepReleaseVersions;
-            keepArchivedVersions = settings.RetentionKeepArchivedVersions;
             reportKeepCount = settings.RetentionReportKeepCount;
             reportKeepDays = settings.RetentionReportKeepDays;
             statusEventKeepCount = settings.RetentionStatusEventKeepCount;
@@ -299,7 +297,6 @@
                 KeepVersions = keepVersions,
                 KeepDays = keepDays,
                 KeepReleaseVersions = keepReleaseVersions,
-                KeepArchivedVersions = keepArchivedVersions,
                 DryRun = dryRun,
                 IsScheduled = false
             };

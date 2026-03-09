@@ -83,7 +83,6 @@
                 Id = Guid.NewGuid(),
                 CompositeConfigurationId = composite.Id,
                 Version = version,
-                IsDraft = true,
                 PrereleaseChannel = string.IsNullOrEmpty(sv.Release) ? null : sv.Release,
                 CreatedAt = DateTimeOffset.UtcNow
             };

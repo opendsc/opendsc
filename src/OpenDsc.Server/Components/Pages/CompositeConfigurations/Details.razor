@@ -45,9 +45,8 @@
                                 var majorVersions = versions
                                     .Where(v => SemanticVersion.TryParse(v.Version, out _) && SemanticVersion.Parse(v.Version).Major == major)
                                     .ToList();
-                                var draftCount = majorVersions.Count(v => v.IsDraft);
-                                var archivedCount = majorVersions.Count(v => v.IsArchived);
-                                var publishedVersion = majorVersions.FirstOrDefault(v => !v.IsDraft && !v.IsArchived);
+                                var draftCount = majorVersions.Count(v => v.Status == ConfigurationVersionStatus.Draft);
+                                var publishedVersion = majorVersions.FirstOrDefault(v => v.Status == ConfigurationVersionStatus.Published);
 
                                 <MudExpansionPanel Expanded="false">
                                     <TitleContent>
@@ -70,10 +69,6 @@
                                             {
                                                 <MudChip T="string" Size="Size.Small" Color="Color.Info">@draftCount @(draftCount == 1 ? "draft" : "drafts")</MudChip>
                                             }
-                                            @if (archivedCount > 0)
-                                            {
-                                                <MudChip T="string" Size="Size.Small" Color="Color.Default">@archivedCount archived</MudChip>
-                                            }
                                         </div>
                                     </TitleContent>
                                     <ChildContent>
@@ -83,17 +78,13 @@
                                                 <TitleContent>
                                                     <div class="d-flex align-center gap-2">
                                                         <MudText Typo="Typo.h6">@version.Version</MudText>
-                                                        @if (version.IsDraft)
+                                                        @if (version.Status == ConfigurationVersionStatus.Draft)
                                                         {
                                                             <MudChip T="string" Size="Size.Small" Color="Color.Info">Draft</MudChip>
                                                         }
                                                         else
                                                         {
                                                             <MudChip T="string" Size="Size.Small" Color="Color.Success">Published</MudChip>
-                                                        }
-                                                        @if (version.IsArchived)
-                                                        {
-                                                            <MudChip T="string" Size="Size.Small" Color="Color.Default">Archived</MudChip>
                                                         }
                                                         @if (SemanticVersion.TryParse(version.Version, out var vSv) && vSv.IsPrerelease)
                                                         {
@@ -105,7 +96,7 @@
                                                 </TitleContent>
                                                 <ChildContent>
                                                     <div class="d-flex justify-end mb-2">
-                                                        @if (version.IsDraft)
+                                                        @if (version.Status == ConfigurationVersionStatus.Draft)
                                                         {
                                                             <MudTooltip Text="Add Child Configuration">
                                                                 <MudIconButton Icon="@Icons.Material.Filled.Add"
@@ -132,13 +123,13 @@
                                                     {
                                                         <MudTable Items="@version.Items.OrderBy(i => i.Order).ToList()" Dense="true" Hover="true">
                                                             <HeaderContent>
-                                                                @if (version.IsDraft)
+                                                                @if (version.Status == ConfigurationVersionStatus.Draft)
                                                                 {
                                                                     <MudTh Style="width: 80px">Order</MudTh>
                                                                 }
                                                                 <MudTh>Configuration</MudTh>
                                                                 <MudTh>Major Version</MudTh>
-                                                                @if (version.IsDraft)
+                                                                @if (version.Status == ConfigurationVersionStatus.Draft)
                                                                 {
                                                                     <MudTh>Actions</MudTh>
                                                                 }
@@ -148,7 +139,7 @@
                                                                     var orderedItems = version.Items.OrderBy(i => i.Order).ToList();
                                                                     var itemIndex = orderedItems.IndexOf(context);
                                                                 }
-                                                                @if (version.IsDraft)
+                                                                @if (version.Status == ConfigurationVersionStatus.Draft)
                                                                 {
                                                                     <MudTd>
                                                                         <MudIconButton Icon="@Icons.Material.Filled.ArrowUpward"
@@ -176,7 +167,7 @@
                                                                         <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">—</MudChip>
                                                                     }
                                                                 </MudTd>
-                                                                @if (version.IsDraft)
+                                                                @if (version.Status == ConfigurationVersionStatus.Draft)
                                                                 {
                                                                     <MudTd>
                                                                         <MudTooltip Text="Edit">
@@ -470,7 +461,7 @@ else
                 var v = await Db.CompositeConfigurationVersions.FindAsync(version.Id);
                 if (v != null)
                 {
-                    v.IsDraft = false;
+                    v.Status = ConfigurationVersionStatus.Published;
                     await Db.SaveChangesAsync();
                     Snackbar.Add($"Version {version.Version} published successfully", Severity.Success);
                     await LoadComposite();
@@ -487,7 +478,7 @@ else
     {
         if (composite == null) return;
 
-        if (!version.IsDraft)
+        if (version.Status != ConfigurationVersionStatus.Draft)
         {
             var nodesUsing = await Db.NodeConfigurations
                 .Where(nc => nc.CompositeConfigurationId == composite.Id)

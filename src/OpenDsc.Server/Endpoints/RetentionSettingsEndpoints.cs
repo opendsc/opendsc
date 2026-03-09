@@ -43,7 +43,6 @@ internal static class RetentionSettingsEndpoints
             KeepVersions = settings.RetentionKeepVersions,
             KeepDays = settings.RetentionKeepDays,
             KeepReleaseVersions = settings.RetentionKeepReleaseVersions,
-            KeepArchivedVersions = settings.RetentionKeepArchivedVersions,
             ScheduleIntervalHours = (int)settings.RetentionScheduleInterval.TotalHours,
             ReportKeepCount = settings.RetentionReportKeepCount,
             ReportKeepDays = settings.RetentionReportKeepDays,
@@ -82,11 +81,6 @@ internal static class RetentionSettingsEndpoints
             settings.RetentionKeepReleaseVersions = request.KeepReleaseVersions.Value;
         }
 
-        if (request.KeepArchivedVersions.HasValue)
-        {
-            settings.RetentionKeepArchivedVersions = request.KeepArchivedVersions.Value;
-        }
-
         if (request.ScheduleIntervalHours.HasValue)
         {
             settings.RetentionScheduleInterval = TimeSpan.FromHours(request.ScheduleIntervalHours.Value);
@@ -120,7 +114,6 @@ internal static class RetentionSettingsEndpoints
             KeepVersions = settings.RetentionKeepVersions,
             KeepDays = settings.RetentionKeepDays,
             KeepReleaseVersions = settings.RetentionKeepReleaseVersions,
-            KeepArchivedVersions = settings.RetentionKeepArchivedVersions,
             ScheduleIntervalHours = (int)settings.RetentionScheduleInterval.TotalHours,
             ReportKeepCount = settings.RetentionReportKeepCount,
             ReportKeepDays = settings.RetentionReportKeepDays,
@@ -139,7 +132,6 @@ public sealed class RetentionSettingsDto
     public int KeepVersions { get; init; } = 10;
     public int KeepDays { get; init; } = 90;
     public bool KeepReleaseVersions { get; init; } = true;
-    public bool KeepArchivedVersions { get; init; } = true;
     public int ScheduleIntervalHours { get; init; } = 24;
     public int ReportKeepCount { get; init; } = 1000;
     public int ReportKeepDays { get; init; } = 30;
@@ -156,7 +148,6 @@ public sealed class UpdateRetentionSettingsRequest
     public int? KeepVersions { get; init; }
     public int? KeepDays { get; init; }
     public bool? KeepReleaseVersions { get; init; }
-    public bool? KeepArchivedVersions { get; init; }
     public int? ScheduleIntervalHours { get; init; }
     public int? ReportKeepCount { get; init; }
     public int? ReportKeepDays { get; init; }

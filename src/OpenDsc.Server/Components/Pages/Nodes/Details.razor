@@ -629,14 +629,14 @@ else
                 }
 
                 configurations = await Db.Configurations
-                    .Include(c => c.Versions.Where(v => !v.IsDraft))
-                    .Where(c => c.Versions.Any(v => !v.IsDraft))
+                    .Include(c => c.Versions.Where(v => v.Status == ConfigurationVersionStatus.Published))
+                    .Where(c => c.Versions.Any(v => v.Status == ConfigurationVersionStatus.Published))
                     .OrderBy(c => c.Name)
                     .ToListAsync();
 
                 compositeConfigurations = await Db.CompositeConfigurations
-                    .Include(c => c.Versions.Where(v => !v.IsDraft))
-                    .Where(c => c.Versions.Any(v => !v.IsDraft))
+                    .Include(c => c.Versions.Where(v => v.Status == ConfigurationVersionStatus.Published))
+                    .Where(c => c.Versions.Any(v => v.Status == ConfigurationVersionStatus.Published))
                     .OrderBy(c => c.Name)
                     .ToListAsync();
 
@@ -906,7 +906,7 @@ else
         try
         {
             var config = await Db.Configurations
-                .Include(c => c.Versions.Where(v => !v.IsDraft))
+                .Include(c => c.Versions.Where(v => v.Status == ConfigurationVersionStatus.Published))
                 .FirstOrDefaultAsync(c => c.Name == selectedConfigurationName);
 
             if (config is null)
@@ -964,7 +964,7 @@ else
         try
         {
             var composite = await Db.CompositeConfigurations
-                .Include(c => c.Versions.Where(v => !v.IsDraft))
+                .Include(c => c.Versions.Where(v => v.Status == ConfigurationVersionStatus.Published))
                 .FirstOrDefaultAsync(c => c.Name == selectedCompositeConfigurationName);
 
             if (composite is null)

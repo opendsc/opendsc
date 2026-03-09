@@ -66,11 +66,6 @@ public sealed class ServerSettings
     public bool RetentionKeepReleaseVersions { get; set; } = true;
 
     /// <summary>
-    /// When true, archived versions are never automatically deleted.
-    /// </summary>
-    public bool RetentionKeepArchivedVersions { get; set; } = true;
-
-    /// <summary>
     /// How often the background retention job runs.
     /// </summary>
     public TimeSpan RetentionScheduleInterval { get; set; } = TimeSpan.FromHours(24);

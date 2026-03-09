@@ -11,9 +11,8 @@ public sealed class ConfigurationVersion
     public required string Version { get; set; }
     public string EntryPoint { get; set; } = "main.dsc.yaml";
     public Guid? ParameterSchemaId { get; set; }
-    public bool IsDraft { get; set; } = true;
+    public ConfigurationVersionStatus Status { get; set; } = ConfigurationVersionStatus.Draft;
     public string? PrereleaseChannel { get; set; }
-    public bool IsArchived { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public string? CreatedBy { get; set; }
 

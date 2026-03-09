@@ -137,9 +137,6 @@ public sealed class CleanupRequest
     /// <summary>When true, release (non-prerelease) versions are never deleted.</summary>
     public bool KeepReleaseVersions { get; init; } = true;
 
-    /// <summary>When true, archived versions are never deleted.</summary>
-    public bool KeepArchivedVersions { get; init; } = true;
-
     /// <summary>If true, returns what would be deleted without actually deleting.</summary>
     public bool DryRun { get; init; } = true;
 
@@ -148,7 +145,6 @@ public sealed class CleanupRequest
         KeepVersions = KeepVersions,
         KeepDays = KeepDays,
         KeepReleaseVersions = KeepReleaseVersions,
-        KeepArchivedVersions = KeepArchivedVersions,
         DryRun = DryRun,
         IsScheduled = false
     };

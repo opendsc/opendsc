@@ -20,9 +20,6 @@ public sealed record RetentionPolicy
     /// <summary>When true, release (non-prerelease) versions are never deleted.</summary>
     public bool KeepReleaseVersions { get; init; } = true;
 
-    /// <summary>When true, archived versions are never deleted.</summary>
-    public bool KeepArchivedVersions { get; init; } = true;
-
     /// <summary>When true, returns what would be deleted without actually deleting.</summary>
     public bool DryRun { get; init; } = false;
 

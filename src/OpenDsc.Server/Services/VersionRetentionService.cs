@@ -35,7 +35,7 @@ public sealed partial class VersionRetentionService(
             var cutoffDate = DateTimeOffset.UtcNow.AddDays(-effective.KeepDays);
 
             var versions = configuration.Versions
-                .Where(v => !v.IsDraft)
+                .Where(v => v.Status == ConfigurationVersionStatus.Published)
                 .OrderByDescending(v => v.CreatedAt)
                 .ToList();
 
@@ -59,7 +59,7 @@ public sealed partial class VersionRetentionService(
                 }
 
                 if (ShouldKeep(i, effective, version.CreatedAt, cutoffDate,
-                        version.PrereleaseChannel is null, version.IsArchived))
+                        version.PrereleaseChannel is null))
                 {
                     keptCount++;
                     continue;
@@ -134,7 +134,7 @@ public sealed partial class VersionRetentionService(
                     var file = candidates[i];
 
                     // ParameterFile has no PrereleaseChannel, so KeepReleaseVersions doesn't apply
-                    if (ShouldKeep(i, effective, file.CreatedAt, cutoffDate, isRelease: false, isArchived: false))
+                    if (ShouldKeep(i, effective, file.CreatedAt, cutoffDate, isRelease: false))
                     {
                         keptCount++;
                         continue;
@@ -184,7 +184,7 @@ public sealed partial class VersionRetentionService(
         foreach (var composite in composites)
         {
             var versions = composite.Versions
-                .Where(v => !v.IsDraft)
+                .Where(v => v.Status == ConfigurationVersionStatus.Published)
                 .OrderByDescending(v => v.CreatedAt)
                 .ToList();
 
@@ -204,7 +204,7 @@ public sealed partial class VersionRetentionService(
                 }
 
                 if (ShouldKeep(i, policy, version.CreatedAt, cutoffDate,
-                        version.PrereleaseChannel is null, version.IsArchived))
+                        version.PrereleaseChannel is null))
                 {
                     keptCount++;
                     continue;
@@ -352,8 +352,7 @@ public sealed partial class VersionRetentionService(
         {
             KeepVersions = overrides.RetentionKeepVersions ?? basePolicy.KeepVersions,
             KeepDays = overrides.RetentionKeepDays ?? basePolicy.KeepDays,
-            KeepReleaseVersions = overrides.RetentionKeepReleaseVersions ?? basePolicy.KeepReleaseVersions,
-            KeepArchivedVersions = overrides.RetentionKeepArchivedVersions ?? basePolicy.KeepArchivedVersions
+            KeepReleaseVersions = overrides.RetentionKeepReleaseVersions ?? basePolicy.KeepReleaseVersions
         };
     }
 
@@ -362,13 +361,11 @@ public sealed partial class VersionRetentionService(
         RetentionPolicy policy,
         DateTimeOffset createdAt,
         DateTimeOffset cutoffDate,
-        bool isRelease,
-        bool isArchived)
+        bool isRelease)
     {
         return index < policy.KeepVersions
                || createdAt >= cutoffDate
-               || (policy.KeepReleaseVersions && isRelease)
-               || (policy.KeepArchivedVersions && isArchived);
+               || (policy.KeepReleaseVersions && isRelease);
     }
 
     private static string BuildDeletionReason(

@@ -193,8 +193,7 @@ public static class CompositeConfigurationEndpoints
             {
                 Id = v.Id,
                 Version = v.Version,
-                IsDraft = v.IsDraft,
-                IsArchived = v.IsArchived,
+                Status = v.Status,
                 PrereleaseChannel = v.PrereleaseChannel,
                 Items = v.Items.OrderBy(i => i.Order).Select(i => new CompositeConfigurationItemDto
                 {
@@ -283,7 +282,6 @@ public static class CompositeConfigurationEndpoints
             Id = Guid.NewGuid(),
             CompositeConfigurationId = composite.Id,
             Version = request.Version,
-            IsDraft = true,
             PrereleaseChannel = request.PrereleaseChannel,
             CreatedAt = DateTimeOffset.UtcNow
         };
@@ -298,8 +296,7 @@ public static class CompositeConfigurationEndpoints
         {
             Id = version.Id,
             Version = version.Version,
-            IsDraft = version.IsDraft,
-            IsArchived = version.IsArchived,
+            Status = version.Status,
             PrereleaseChannel = version.PrereleaseChannel,
             Items = [],
             CreatedAt = version.CreatedAt,
@@ -336,8 +333,7 @@ public static class CompositeConfigurationEndpoints
         {
             Id = v.Id,
             Version = v.Version,
-            IsDraft = v.IsDraft,
-            IsArchived = v.IsArchived,
+            Status = v.Status,
             PrereleaseChannel = v.PrereleaseChannel,
             Items = v.Items.OrderBy(i => i.Order).Select(i => new CompositeConfigurationItemDto
             {
@@ -382,8 +378,7 @@ public static class CompositeConfigurationEndpoints
         {
             Id = compositeVersion.Id,
             Version = compositeVersion.Version,
-            IsDraft = compositeVersion.IsDraft,
-            IsArchived = compositeVersion.IsArchived,
+            Status = compositeVersion.Status,
             PrereleaseChannel = compositeVersion.PrereleaseChannel,
             Items = compositeVersion.Items.OrderBy(i => i.Order).Select(i => new CompositeConfigurationItemDto
             {
@@ -422,12 +417,12 @@ public static class CompositeConfigurationEndpoints
             return TypedResults.Forbid();
         }
 
-        if (!compositeVersion.IsDraft)
+        if (compositeVersion.Status != ConfigurationVersionStatus.Draft)
         {
             return TypedResults.BadRequest(new ErrorResponse { Error = "Version is already published" });
         }
 
-        compositeVersion.IsDraft = false;
+        compositeVersion.Status = ConfigurationVersionStatus.Published;
         compositeVersion.CompositeConfiguration.UpdatedAt = DateTimeOffset.UtcNow;
 
         await db.SaveChangesAsync();
@@ -458,7 +453,7 @@ public static class CompositeConfigurationEndpoints
             return TypedResults.Forbid();
         }
 
-        if (!compositeVersion.IsDraft)
+        if (compositeVersion.Status != ConfigurationVersionStatus.Draft)
         {
             return TypedResults.BadRequest(new ErrorResponse { Error = "Cannot delete published version" });
         }
@@ -498,7 +493,7 @@ public static class CompositeConfigurationEndpoints
             return TypedResults.Forbid();
         }
 
-        if (!compositeVersion.IsDraft)
+        if (compositeVersion.Status != ConfigurationVersionStatus.Draft)
         {
             return TypedResults.BadRequest(new ErrorResponse { Error = "Cannot modify published version" });
         }
@@ -595,7 +590,7 @@ public static class CompositeConfigurationEndpoints
             return TypedResults.Forbid();
         }
 
-        if (!item.CompositeConfigurationVersion.IsDraft)
+        if (item.CompositeConfigurationVersion.Status != ConfigurationVersionStatus.Draft)
         {
             return TypedResults.BadRequest(new ErrorResponse { Error = "Cannot modify published version" });
         }
@@ -656,7 +651,7 @@ public static class CompositeConfigurationEndpoints
             return TypedResults.Forbid();
         }
 
-        if (!item.CompositeConfigurationVersion.IsDraft)
+        if (item.CompositeConfigurationVersion.Status != ConfigurationVersionStatus.Draft)
         {
             return TypedResults.BadRequest(new ErrorResponse { Error = "Cannot modify published version" });
         }

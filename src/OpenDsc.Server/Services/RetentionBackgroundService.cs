@@ -71,7 +71,6 @@ public sealed partial class RetentionBackgroundService(
                     KeepVersions = settings.RetentionKeepVersions,
                     KeepDays = settings.RetentionKeepDays,
                     KeepReleaseVersions = settings.RetentionKeepReleaseVersions,
-                    KeepArchivedVersions = settings.RetentionKeepArchivedVersions,
                     DryRun = false,
                     IsScheduled = true
                 };

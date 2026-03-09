@@ -36,7 +36,7 @@ public sealed class PublishResult
     public bool Success { get; init; }
     public CompatibilityReport? CompatibilityReport { get; init; }
     public string? ErrorMessage { get; init; }
-    public bool? UpdatedIsDraft { get; init; }
+    public ConfigurationVersionStatus? UpdatedStatus { get; init; }
     public string? UpdatedVersion { get; init; }
     public string? UpdatedPrereleaseChannel { get; init; }
 }
@@ -124,7 +124,7 @@ public sealed class ConfigurationApiClient : IConfigurationApiClient
                 ConfigurationId = configuration.Id,
                 Version = version,
                 EntryPoint = entryPoint,
-                IsDraft = isDraft,
+                Status = isDraft ? ConfigurationVersionStatus.Draft : ConfigurationVersionStatus.Published,
                 CreatedAt = DateTimeOffset.UtcNow
             };
 
@@ -256,7 +256,7 @@ public sealed class ConfigurationApiClient : IConfigurationApiClient
                 ConfigurationId = configuration.Id,
                 Version = version,
                 EntryPoint = resolvedEntryPoint,
-                IsDraft = isDraft,
+                Status = isDraft ? ConfigurationVersionStatus.Draft : ConfigurationVersionStatus.Published,
                 CreatedAt = DateTimeOffset.UtcNow
             };
 
@@ -385,7 +385,7 @@ public sealed class ConfigurationApiClient : IConfigurationApiClient
                 ConfigurationId = configuration.Id,
                 Version = newVersion,
                 EntryPoint = sourceConfigVersion.EntryPoint,
-                IsDraft = isDraft,
+                Status = isDraft ? ConfigurationVersionStatus.Draft : ConfigurationVersionStatus.Published,
                 CreatedAt = DateTimeOffset.UtcNow
             };
 
@@ -513,7 +513,7 @@ public sealed class ConfigurationApiClient : IConfigurationApiClient
                 return false;
             }
 
-            if (!configVersion.IsDraft)
+            if (configVersion.Status != ConfigurationVersionStatus.Draft)
             {
                 _logger.LogWarning("Cannot add files to published version '{Version}'", version);
                 return false;
@@ -607,22 +607,29 @@ public sealed class ConfigurationApiClient : IConfigurationApiClient
                         content,
                         new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
-                    var result = new PublishResult { Success = true };
-                    bool? updatedIsDraft = null;
+                    ConfigurationVersionStatus? updatedStatus = null;
                     string? updatedVersion = null;
                     string? updatedChannel = null;
 
                     if (versionData != null)
                     {
-                        if (versionData.TryGetValue("isDraft", out var isDraftObj))
+                        if (versionData.TryGetValue("status", out var statusObj))
                         {
-                            if (isDraftObj is JsonElement isDraftElem)
+                            if (statusObj is JsonElement statusElem)
                             {
-                                updatedIsDraft = isDraftElem.GetBoolean();
+                                if (statusElem.ValueKind == JsonValueKind.String)
+                                {
+                                    if (Enum.TryParse<ConfigurationVersionStatus>(statusElem.GetString(), true, out var parsedStatus))
+                                        updatedStatus = parsedStatus;
+                                }
+                                else if (statusElem.ValueKind == JsonValueKind.Number)
+                                {
+                                    updatedStatus = (ConfigurationVersionStatus)statusElem.GetInt32();
+                                }
                             }
-                            else if (isDraftObj is bool isDraftBool)
+                            else if (statusObj is ConfigurationVersionStatus statusEnum)
                             {
-                                updatedIsDraft = isDraftBool;
+                                updatedStatus = statusEnum;
                             }
                         }
 
@@ -640,7 +647,7 @@ public sealed class ConfigurationApiClient : IConfigurationApiClient
                     return new PublishResult
                     {
                         Success = true,
-                        UpdatedIsDraft = updatedIsDraft,
+                        UpdatedStatus = updatedStatus,
                         UpdatedVersion = updatedVersion,
                         UpdatedPrereleaseChannel = updatedChannel
                     };
@@ -789,7 +796,7 @@ public sealed class ConfigurationApiClient : IConfigurationApiClient
                 return false;
             }
 
-            if (!configVersion.IsDraft)
+            if (configVersion.Status != ConfigurationVersionStatus.Draft)
             {
                 _logger.LogWarning("Cannot delete files from published version '{Version}'", version);
                 return false;
@@ -839,7 +846,7 @@ public sealed class ConfigurationApiClient : IConfigurationApiClient
                 return false;
             }
 
-            if (!configVersion.IsDraft)
+            if (configVersion.Status != ConfigurationVersionStatus.Draft)
             {
                 _logger.LogWarning("Cannot change entry point of published version '{Version}'", version);
                 return false;

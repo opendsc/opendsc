@@ -156,7 +156,6 @@ public static class ConfigurationEndpoints
             ConfigurationId = configuration.Id,
             Version = request.Version ?? "1.0.0",
             EntryPoint = entryPoint,
-            IsDraft = request.IsDraft,
             CreatedAt = DateTimeOffset.UtcNow
         };
 
@@ -324,7 +323,7 @@ public static class ConfigurationEndpoints
             {
                 Version = v.Version,
                 EntryPoint = v.EntryPoint,
-                IsDraft = v.IsDraft,
+                Status = v.Status,
                 PrereleaseChannel = v.PrereleaseChannel,
                 FileCount = v.Files.Count,
                 CreatedAt = v.CreatedAt,
@@ -392,7 +391,6 @@ public static class ConfigurationEndpoints
             ConfigurationId = configuration.Id,
             Version = versionNumber,
             EntryPoint = entryPoint,
-            IsDraft = request.IsDraft,
             PrereleaseChannel = request.PrereleaseChannel,
             CreatedAt = DateTimeOffset.UtcNow
         };
@@ -527,7 +525,7 @@ public static class ConfigurationEndpoints
         {
             Version = version.Version,
             EntryPoint = version.EntryPoint,
-            IsDraft = version.IsDraft,
+            Status = version.Status,
             PrereleaseChannel = version.PrereleaseChannel,
             FileCount = files.Count,
             CreatedAt = version.CreatedAt,
@@ -569,7 +567,7 @@ public static class ConfigurationEndpoints
             return TypedResults.NotFound();
         }
 
-        if (!configVersion.IsDraft)
+        if (configVersion.Status != ConfigurationVersionStatus.Draft)
         {
             return TypedResults.BadRequest("Version is already published");
         }
@@ -733,14 +731,14 @@ public static class ConfigurationEndpoints
             }
         }
 
-        configVersion.IsDraft = false;
+        configVersion.Status = ConfigurationVersionStatus.Published;
         await db.SaveChangesAsync();
 
         var versionDto = new ConfigurationVersionDto
         {
             Version = configVersion.Version,
             EntryPoint = configVersion.EntryPoint,
-            IsDraft = configVersion.IsDraft,
+            Status = configVersion.Status,
             PrereleaseChannel = configVersion.PrereleaseChannel,
             FileCount = configVersion.Files.Count,
             CreatedAt = configVersion.CreatedAt,
@@ -889,7 +887,7 @@ public static class ConfigurationEndpoints
             return TypedResults.NotFound();
         }
 
-        if (!configVersion.IsDraft)
+        if (configVersion.Status != ConfigurationVersionStatus.Draft)
         {
             return TypedResults.Conflict("Cannot delete published version");
         }
@@ -1052,7 +1050,6 @@ public sealed class CreateConfigurationDto
     public string? EntryPoint { get; init; }
     public bool UseServerManagedParameters { get; init; } = true;
     public string? Version { get; init; }
-    public bool IsDraft { get; init; } = true;
 }
 
 public sealed class UpdateConfigurationDto
@@ -1065,7 +1062,7 @@ public sealed class ConfigurationVersionDto
 {
     public required string Version { get; init; }
     public required string EntryPoint { get; init; }
-    public required bool IsDraft { get; init; }
+    public required ConfigurationVersionStatus Status { get; init; }
     public string? PrereleaseChannel { get; init; }
     public required int FileCount { get; init; }
     public required DateTimeOffset CreatedAt { get; init; }
@@ -1076,6 +1073,5 @@ public sealed class CreateConfigurationVersionDto
 {
     public required string Version { get; init; }
     public string? EntryPoint { get; init; }
-    public bool IsDraft { get; init; } = true;
     public string? PrereleaseChannel { get; init; }
 }
