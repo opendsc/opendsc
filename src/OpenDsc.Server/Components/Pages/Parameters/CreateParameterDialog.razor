@@ -21,35 +21,50 @@
 
 <MudDialog>
     <DialogContent>
-        <ScopeSelector @bind-SelectedConfigurationId="selectedConfigurationId"
-                       @bind-SelectedConfigurationId:after="OnConfigurationChanged"
-                       @bind-SelectedScopeTypeId="selectedScopeTypeId"
-                       @bind-SelectedScopeValue="selectedScopeValue"
-                       Locked="@LockScope" />
+        @if (LockScope && InitialMajorVersion.HasValue)
+        {
+            <MudTextField @bind-Value="versionString"
+                          @bind-Value:after="OnVersionChanged"
+                          Label="Version"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          Immediate="true"
+                          HelperText="@($"Semantic version: {InitialMajorVersion}.minor.patch[-prerelease][+metadata]")"
+                          Error="@(versionError != null)"
+                          ErrorText="@versionError" />
+        }
+        else
+        {
+            <ScopeSelector @bind-SelectedConfigurationId="selectedConfigurationId"
+                           @bind-SelectedConfigurationId:after="OnConfigurationChanged"
+                           @bind-SelectedScopeTypeId="selectedScopeTypeId"
+                           @bind-SelectedScopeValue="selectedScopeValue"
+                           Locked="@LockScope" />
 
-        <MudGrid Class="mt-4">
-            <MudItem xs="12" sm="3">
-                <MudSelect T="int?" @bind-Value="selectedMajor"
-                           @bind-Value:after="OnMajorVersionChanged"
-                           Label="Major Version"
-                           Variant="Variant.Outlined"
-                           Required="true"
-                           Disabled="@(InitialMajorVersion.HasValue || !selectedConfigurationId.HasValue || availableMajors.Count == 0)"
-                           HelperText="@(availableMajors.Count == 0 && selectedConfigurationId.HasValue ? "No schemas found" : "Select major")">
-                    @foreach (var major in availableMajors)
-                    {
-                        <MudSelectItem T="int?" Value="major">@(major)</MudSelectItem>
-                    }
-                </MudSelect>
-            </MudItem>
-            <MudItem xs="12" sm="6">
-                <MudTextField @bind-Value="minorPatch"
-                              Label="Minor.Patch"
-                              Variant="Variant.Outlined"
-                              Required="true"
-                              HelperText="e.g. 0.0" />
-            </MudItem>
-        </MudGrid>
+            <MudGrid Class="mt-4">
+                <MudItem xs="12" sm="3">
+                    <MudSelect T="int?" @bind-Value="selectedMajor"
+                               @bind-Value:after="OnMajorVersionChanged"
+                               Label="Major Version"
+                               Variant="Variant.Outlined"
+                               Required="true"
+                               Disabled="@(InitialMajorVersion.HasValue || !selectedConfigurationId.HasValue || availableMajors.Count == 0)"
+                               HelperText="@(availableMajors.Count == 0 && selectedConfigurationId.HasValue ? "No schemas found" : "Select major")">
+                        @foreach (var major in availableMajors)
+                        {
+                            <MudSelectItem T="int?" Value="major">@(major)</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="minorPatch"
+                                  Label="Minor.Patch"
+                                  Variant="Variant.Outlined"
+                                  Required="true"
+                                  HelperText="e.g. 0.0" />
+                </MudItem>
+            </MudGrid>
+        }
 
         @if (!isPassthrough)
         {
@@ -151,6 +166,8 @@
     private List<int> availableMajors = [];
     private int? selectedMajor;
     private string minorPatch = "0.0";
+    private string versionString = "0.0.0";
+    private string? versionError;
     private bool isPassthrough;
     private bool isCreating;
 
@@ -218,6 +235,8 @@
         if (!selectedConfigurationId.HasValue || !selectedScopeTypeId.HasValue || !selectedMajor.HasValue)
         {
             minorPatch = "0.0";
+            if (LockScope && InitialMajorVersion.HasValue)
+                versionString = $"{InitialMajorVersion}.0.0";
             return;
         }
 
@@ -235,6 +254,32 @@
         minorPatch = latestInMajor != null
             ? $"{latestInMajor.Minor}.{latestInMajor.Patch + 1}"
             : "0.0";
+
+        if (LockScope && InitialMajorVersion.HasValue)
+            versionString = $"{InitialMajorVersion}.{minorPatch}";
+    }
+
+    private void OnVersionChanged()
+    {
+        if (string.IsNullOrWhiteSpace(versionString))
+        {
+            versionError = null;
+            return;
+        }
+
+        if (!SemanticVersion.TryParse(versionString.Trim(), out var parsed))
+        {
+            versionError = "Not a valid semantic version (e.g., 1.2.3)";
+            return;
+        }
+
+        if (InitialMajorVersion.HasValue && parsed.Major != InitialMajorVersion.Value)
+        {
+            versionError = $"Major version must be {InitialMajorVersion} (e.g., {InitialMajorVersion}.0.0)";
+            return;
+        }
+
+        versionError = null;
     }
 
     private async Task LoadSchemaForSelectedMajorAsync()
@@ -417,6 +462,13 @@
 
     private bool IsValid()
     {
+        if (LockScope && InitialMajorVersion.HasValue)
+        {
+            return versionError == null
+                && !string.IsNullOrWhiteSpace(versionString)
+                && SemanticVersion.TryParse(versionString.Trim(), out _);
+        }
+
         if (!selectedConfigurationId.HasValue ||
             !selectedScopeTypeId.HasValue ||
             !selectedMajor.HasValue ||
@@ -431,13 +483,11 @@
             return false;
         }
 
-        // Default scope type does not use a scope value
         if (currentScopeType.Name == "Default")
         {
             return true;
         }
 
-        // All other scope types (Node, Restricted, Unrestricted) require a scope value
         return !string.IsNullOrWhiteSpace(selectedScopeValue);
     }
 
@@ -465,7 +515,9 @@
                 }
             }
 
-            var fullVersion = $"{selectedMajor}.{minorPatch.Trim()}";
+            var fullVersion = LockScope && InitialMajorVersion.HasValue
+                ? versionString.Trim()
+                : $"{selectedMajor}.{minorPatch.Trim()}";
 
             var (success, errorMessage) = await ParameterApiClient.CreateOrUpdateParameterAsync(
                 selectedScopeTypeId!.Value,
