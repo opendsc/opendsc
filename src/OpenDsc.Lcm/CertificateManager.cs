@@ -230,7 +230,7 @@ public partial class CertificateManager : ICertificateManager
     [LoggerMessage(EventId = EventIds.PullServerNotConfigured, Level = LogLevel.Error, Message = "Pull server not configured")]
     private partial void LogPullServerNotConfigured();
 
-    [LoggerMessage(EventId = EventIds.CertificateLoaded, Level = LogLevel.Information, Message = "Certificate loaded: {Thumbprint}")]
+    [LoggerMessage(EventId = EventIds.CertificateLoaded, Level = LogLevel.Debug, Message = "Certificate loaded: {Thumbprint}")]
     private partial void LogCertificateLoaded(string thumbprint);
 
     [LoggerMessage(EventId = EventIds.CertificateExpiringSoon, Level = LogLevel.Warning, Message = "Certificate {Thumbprint} expiring soon: {ExpirationDate}")]
@@ -248,7 +248,7 @@ public partial class CertificateManager : ICertificateManager
     [LoggerMessage(EventId = EventIds.CertificateNotFoundInStore, Level = LogLevel.Error, Message = "Certificate not found in store: {Thumbprint}")]
     private partial void LogCertificateNotFoundInStore(string thumbprint);
 
-    [LoggerMessage(EventId = EventIds.CertificateLoadedFromStore, Level = LogLevel.Information, Message = "Certificate loaded from store: {Thumbprint}")]
+    [LoggerMessage(EventId = EventIds.CertificateLoadedFromStore, Level = LogLevel.Debug, Message = "Certificate loaded from store: {Thumbprint}")]
     private partial void LogCertificateLoadedFromStore(string thumbprint);
 
     [LoggerMessage(EventId = EventIds.CertificateRotated, Level = LogLevel.Information, Message = "Certificate rotated: {Thumbprint}")]
