@@ -8,6 +8,7 @@
 @using MudBlazor
 @using BlazorMonaco
 @using BlazorMonaco.Editor
+@using NuGet.Versioning
 @inject ServerDbContext Db
 @inject IJsonYamlConverter JsonYamlConverter
 @inject ThemeService ThemeService
@@ -52,31 +53,31 @@
                                     </div>
                                 </TitleContent>
                                 <ChildContent>
-                                    <MudTable Items="@group.Schemas" Hover="true" Dense="true">
-                                        <HeaderContent>
-                                            <MudTh>Schema Version</MudTh>
-                                            <MudTh>Parameter Files</MudTh>
-                                            <MudTh>Created</MudTh>
-                                            <MudTh>Actions</MudTh>
-                                        </HeaderContent>
-                                        <RowTemplate>
-                                            <MudTd>
-                                                <MudText Typo="Typo.caption">@(context.SchemaVersion ?? "unknown")</MudText>
-                                            </MudTd>
-                                            <MudTd>
-                                                <MudChip T="string" Size="Size.Small">@context.ParameterFiles.Count</MudChip>
-                                            </MudTd>
-                                            <MudTd>@context.CreatedAt.LocalDateTime.ToString("g")</MudTd>
-                                            <MudTd>
-                                                <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => ViewSchema(context))">
-                                                    View Schema
-                                                </MudButton>
-                                                <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => ViewFiles(context))">
-                                                    View Files
-                                                </MudButton>
-                                            </MudTd>
-                                        </RowTemplate>
-                                    </MudTable>
+                                    <MudDataGrid T="ParameterSchema" Items="@group.Schemas" Hover="true" Dense="true">
+                                        <Columns>
+                                            <PropertyColumn Property="x => x.SchemaVersion" Title="Schema Version" InitialDirection="SortDirection.Descending" />
+                                            <TemplateColumn Title="Parameter Files" Sortable="false">
+                                                <CellTemplate>
+                                                    <MudChip T="string" Size="Size.Small">@context.Item.ParameterFiles.Count</MudChip>
+                                                </CellTemplate>
+                                            </TemplateColumn>
+                                            <PropertyColumn Property="x => x.CreatedAt" Title="Created">
+                                                <CellTemplate>
+                                                    @context.Item.CreatedAt.LocalDateTime.ToString("g")
+                                                </CellTemplate>
+                                            </PropertyColumn>
+                                            <TemplateColumn Title="Actions" Sortable="false">
+                                                <CellTemplate>
+                                                    <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => ViewSchema(context.Item))">
+                                                        View Schema
+                                                    </MudButton>
+                                                    <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => ViewFiles(context.Item))">
+                                                        View Files
+                                                    </MudButton>
+                                                </CellTemplate>
+                                            </TemplateColumn>
+                                        </Columns>
+                                    </MudDataGrid>
                                 </ChildContent>
                             </MudExpansionPanel>
                         }
@@ -155,32 +156,38 @@
 
             @if (selectedSchemaFiles.Any())
             {
-                <MudTable Items="@selectedSchemaFiles" Hover="true" Dense="true">
-                    <HeaderContent>
-                        <MudTh>Scope Type</MudTh>
-                        <MudTh>Scope Value</MudTh>
-                        <MudTh>Version</MudTh>
-                        <MudTh>Status</MudTh>
-                        <MudTh>Created</MudTh>
-                    </HeaderContent>
-                    <RowTemplate>
-                        <MudTd>@context.ScopeType.Name</MudTd>
-                        <MudTd>@(context.ScopeValue ?? "-")</MudTd>
-                        <MudTd>@context.Version</MudTd>
-                        <MudTd>
-                            @if (context.Status == ParameterVersionStatus.Published)
-                            {
-                                <MudChip T="string" Size="Size.Small" Color="Color.Success">Active</MudChip>
-                            }
-                            @if (context.Status == ParameterVersionStatus.Draft)
-                            {
-                                <MudChip T="string" Size="Size.Small" Color="Color.Info">Draft</MudChip>
-                            }
-
-                        </MudTd>
-                        <MudTd>@context.CreatedAt.LocalDateTime.ToString("g")</MudTd>
-                    </RowTemplate>
-                </MudTable>
+                <MudDataGrid T="ParameterFile" Items="@selectedSchemaFiles" Hover="true" Dense="true">
+                    <Columns>
+                        <TemplateColumn Title="Scope Type">
+                            <CellTemplate>
+                                @context.Item.ScopeType.Name
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <TemplateColumn Title="Scope Value">
+                            <CellTemplate>
+                                @(context.Item.ScopeValue ?? "-")
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <PropertyColumn Property="x => x.Version" Title="Version" />
+                        <TemplateColumn Title="Status" Sortable="false">
+                            <CellTemplate>
+                                @if (context.Item.Status == ParameterVersionStatus.Published)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Success">Active</MudChip>
+                                }
+                                @if (context.Item.Status == ParameterVersionStatus.Draft)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Info">Draft</MudChip>
+                                }
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <PropertyColumn Property="x => x.CreatedAt" Title="Created">
+                            <CellTemplate>
+                                @context.Item.CreatedAt.LocalDateTime.ToString("g")
+                            </CellTemplate>
+                        </PropertyColumn>
+                    </Columns>
+                </MudDataGrid>
             }
             else
             {
@@ -234,14 +241,21 @@
                 .ThenBy(ps => ps.CreatedAt)
                 .ToList();
 
+            // after grouping we'll sort each list by schema version descending
+            // this ensures tables default to highest version first
             groupedSchemas = schemas
                 .GroupBy(ps => ps.Configuration.Name)
                 .Select(g => new SchemaGroup
                 {
                     ConfigurationName = g.Key,
-                    Schemas = g.ToList()
+                    Schemas = g.OrderByDescending(s => {
+                        var ver = s.SchemaVersion ?? string.Empty;
+                        return SemanticVersion.TryParse(ver, out var sv) ? sv : new SemanticVersion(0,0,0);
+                    }).ToList()
                 })
                 .ToList();
+            // skip the previous grouping below since replaced
+            return;
         }
         finally
         {
@@ -292,7 +306,7 @@
     {
         try
         {
-            var jsonObj = System.Text.Json.JsonSerializer.Deserialize<object>(json);
+            var jsonObj = System.Text.Json.JsonSerializer.Deserialize(json, typeof(object));
             return System.Text.Json.JsonSerializer.Serialize(jsonObj, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
         }
         catch

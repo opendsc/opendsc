@@ -5,6 +5,7 @@
 @inject ISnackbar Snackbar
 @using OpenDsc.Lcm.Contracts
 @using NuGet.Versioning
+@using OpenDsc.Server.Entities
 
 <PageTitle>Node Details</PageTitle>
 
@@ -387,44 +388,45 @@ else
                     }
                     else if (filteredReports.Any())
                     {
-                        <MudTable Items="@filteredReports" Hover="true" Dense="true"
-                                  @bind-RowsPerPage="_reportRowsPerPage">
-                            <HeaderContent>
-                                <MudTh>Timestamp</MudTh>
-                                <MudTh>Operation</MudTh>
-                                <MudTh>Status</MudTh>
-                                <MudTh>Actions</MudTh>
-                            </HeaderContent>
-                            <RowTemplate>
-                                <MudTd>@context.Timestamp.LocalDateTime.ToString("g")</MudTd>
-                                <MudTd>@context.Operation</MudTd>
-                                <MudTd>
-                                    @if (context.HadErrors)
-                                    {
-                                        <MudChip T="string" Size="Size.Small" Color="Color.Error">Error</MudChip>
-                                    }
-                                    else if (context.InDesiredState)
-                                    {
-                                        <MudChip T="string" Size="Size.Small" Color="Color.Success">Compliant</MudChip>
-                                    }
-                                    else
-                                    {
-                                        <MudChip T="string" Size="Size.Small" Color="Color.Warning">Non-Compliant</MudChip>
-                                    }
-                                </MudTd>
-                                <MudTd>
-                                    <MudTooltip Text="View Details">
-                                        <MudIconButton Icon="@Icons.Material.Filled.Visibility"
-                                                       Size="Size.Small"
-                                                       Variant="Variant.Text"
-                                                       OnClick="@(() => ViewReportDetails(context.Id))" />
-                                    </MudTooltip>
-                                </MudTd>
-                            </RowTemplate>
+                        <MudDataGrid T="Report" Items="@filteredReports" Hover="true" Dense="true" sortable="true" sort-by="@((Report r) => r.Timestamp)" sort-direction="SortDirection.Descending" @bind-RowsPerPage="_reportRowsPerPage">
+                            <Columns>
+                                <PropertyColumn Property="x => x.Timestamp" Title="Timestamp" InitialDirection="SortDirection.Descending">
+                                    <CellTemplate>
+                                        @context.Item.Timestamp.LocalDateTime.ToString("g")
+                                    </CellTemplate>
+                                </PropertyColumn>
+                                <PropertyColumn Property="x => x.Operation" Title="Operation" />
+                                <TemplateColumn Title="Status" Sortable="false">
+                                    <CellTemplate>
+                                        @if (context.Item.HadErrors)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Error">Error</MudChip>
+                                        }
+                                        else if (context.Item.InDesiredState)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Success">Compliant</MudChip>
+                                        }
+                                        else
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Warning">Non-Compliant</MudChip>
+                                        }
+                                    </CellTemplate>
+                                </TemplateColumn>
+                                <TemplateColumn Title="Actions" Sortable="false">
+                                    <CellTemplate>
+                                        <MudTooltip Text="View Details">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                                                           Size="Size.Small"
+                                                           Variant="Variant.Text"
+                                                           OnClick="@(() => ViewReportDetails(context.Item.Id))" />
+                                        </MudTooltip>
+                                    </CellTemplate>
+                                </TemplateColumn>
+                            </Columns>
                             <PagerContent>
-                                <MudTablePager PageSizeOptions="@(new int[] { 10, 25, 50, 100 })" />
+                                <MudDataGridPager T="Report" PageSizeOptions="@(new int[] { 10, 25, 50, 100 })" />
                             </PagerContent>
-                        </MudTable>
+                        </MudDataGrid>
                     }
                     else
                     {
@@ -471,31 +473,32 @@ else
                     }
                     else if (filteredStatusEvents.Any())
                     {
-                        <MudTable Items="@filteredStatusEvents" Hover="true" Dense="true"
-                                  @bind-RowsPerPage="_statusRowsPerPage">
-                            <HeaderContent>
-                                <MudTh>Timestamp</MudTh>
-                                <MudTh>LCM Status</MudTh>
-                            </HeaderContent>
-                            <RowTemplate>
-                                <MudTd>@context.Timestamp.LocalDateTime.ToString("g")</MudTd>
-                                <MudTd>
-                                    @if (context.LcmStatus.HasValue)
-                                    {
-                                        <MudChip T="string" Size="Size.Small" Color="@GetLcmStatusColor(context.LcmStatus.Value)">
-                                            @context.LcmStatus.Value
-                                        </MudChip>
-                                    }
-                                    else
-                                    {
-                                        <MudText>&#x2014;</MudText>
-                                    }
-                                </MudTd>
-                            </RowTemplate>
+                        <MudDataGrid T="NodeStatusEvent" Items="@filteredStatusEvents" Hover="true" Dense="true" sortable="true" sort-by="@((NodeStatusEvent e) => e.Timestamp)" sort-direction="SortDirection.Descending" @bind-RowsPerPage="_statusRowsPerPage">
+                            <Columns>
+                                <PropertyColumn Property="x => x.Timestamp" Title="Timestamp">
+                                    <CellTemplate>
+                                        @context.Item.Timestamp.LocalDateTime.ToString("g")
+                                    </CellTemplate>
+                                </PropertyColumn>
+                                <TemplateColumn Title="LCM Status" Sortable="false">
+                                    <CellTemplate>
+                                        @if (context.Item.LcmStatus.HasValue)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="@GetLcmStatusColor(context.Item.LcmStatus.Value)">
+                                                @context.Item.LcmStatus.Value
+                                            </MudChip>
+                                        }
+                                        else
+                                        {
+                                            <MudText>&#x2014;</MudText>
+                                        }
+                                    </CellTemplate>
+                                </TemplateColumn>
+                            </Columns>
                             <PagerContent>
-                                <MudTablePager PageSizeOptions="@(new int[] { 10, 25, 50, 100 })" />
+                                <MudDataGridPager T="NodeStatusEvent" PageSizeOptions="@(new int[] { 10, 25, 50, 100 })" />
                             </PagerContent>
-                        </MudTable>
+                        </MudDataGrid>
                     }
                     else
                     {

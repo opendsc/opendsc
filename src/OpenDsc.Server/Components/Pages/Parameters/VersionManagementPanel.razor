@@ -39,7 +39,10 @@
                 <MudExpansionPanels MultiExpansion="true" Class="mt-2">
                     @foreach (var major in availableConfigMajors.OrderByDescending(m => m))
                     {
-                        var majorVersions = versions.Where(v => v.MajorVersion == major).ToList();
+                        var majorVersions = versions
+    .Where(v => v.MajorVersion == major)
+    .OrderByDescending(v => SemanticVersion.TryParse(v.Version, out var sv) ? sv : new SemanticVersion(0,0,0))
+    .ToList();
                         var publishedVersions = majorVersions.Where(v => v.Status == ParameterVersionStatus.Published).ToList();
                         var publishedStable = publishedVersions.FirstOrDefault(v => SemanticVersion.TryParse(v.Version, out var sv) && !sv.IsPrerelease);
                         var publishedPrerelease = publishedVersions.FirstOrDefault(v => SemanticVersion.TryParse(v.Version, out var sv) && sv.IsPrerelease);
@@ -122,67 +125,73 @@
                                 </div>
                                 @if (majorVersions.Any())
                                 {
-                                    <MudTable Items="@majorVersions" Dense="true" Hover="true" Elevation="0">
-                                        <HeaderContent>
-                                            <MudTh>Version</MudTh>
-                                            <MudTh>Status</MudTh>
-                                            <MudTh>Checksum</MudTh>
-                                            <MudTh>Created</MudTh>
-                                            <MudTh Style="width:160px; text-align:right">Actions</MudTh>
-                                        </HeaderContent>
-                                        <RowTemplate>
-                                            <MudTd DataLabel="Version">@context.Version</MudTd>
-                                            <MudTd DataLabel="Status">
-                                                @if (context.Status == ParameterVersionStatus.Published)
-                                                {
-                                                    <MudChip T="string" Size="Size.Small" Color="Color.Success">Published</MudChip>
-                                                }
-                                                else if (context.Status == ParameterVersionStatus.Draft)
-                                                {
-                                                    <MudChip T="string" Size="Size.Small" Color="Color.Info">Draft</MudChip>
-                                                }
-                                                @if (SemanticVersion.TryParse(context.Version, out var rowSv) && rowSv.IsPrerelease)
-                                                {
-                                                    <MudChip T="string" Size="Size.Small" Color="Color.Warning">Prerelease</MudChip>
-                                                }
-                                                @if (context.IsPassthrough)
-                                                {
-                                                    <MudChip T="string" Size="Size.Small" Color="Color.Warning" title="Passthrough: this scope uses parent scope parameters">Passthrough</MudChip>
-                                                }
-                                            </MudTd>
-                                            <MudTd DataLabel="Checksum">@(context.IsPassthrough ? "-" : context.Checksum.Substring(0, 8))</MudTd>
-                                            <MudTd DataLabel="Created">@context.CreatedAt.LocalDateTime.ToString("g")</MudTd>
-                                            <MudTd DataLabel="Actions" Style="width:160px; text-align:right">
-                                                <div style="display:flex; justify-content:flex-end; align-items:center;">
-                                                    <MudIconButton Icon="@Icons.Material.Filled.Visibility"
-                                                                   Size="Size.Small"
-                                                                   Disabled="@context.IsPassthrough"
-                                                                   OnClick="@(() => ViewParameter(context))"
-                                                                   title="View" />
-                                                    @if (context.Status == ParameterVersionStatus.Draft)
+                                    <MudDataGrid T="ParameterFileDto" Items="@majorVersions" Dense="true" Hover="true" sortable="true" sort-by="@((ParameterFileDto v) => v.Version)" sort-direction="SortDirection.Descending">
+                                        <Columns>
+                                            <PropertyColumn Property="x => x.Version" Title="Version" InitialDirection="SortDirection.Descending" />
+                                            <TemplateColumn Title="Status" Sortable="false">
+                                                <CellTemplate>
+                                                    @if (context.Item.Status == ParameterVersionStatus.Published)
                                                     {
-                                                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                                                       Size="Size.Small"
-                                                                       Color="Color.Primary"
-                                                                       OnClick="@(() => EditParameter(context))"
-                                                                       title="Edit" />
-                                                        <MudTooltip Text="@(!isConfigPublished ? $"Cannot publish: configuration v{major}.x has no published version" : "Publish this draft version")">
-                                                            <MudIconButton Icon="@Icons.Material.Filled.Publish"
-                                                                           Size="Size.Small"
-                                                                           Color="Color.Success"
-                                                                           Disabled="@(!isConfigPublished)"
-                                                                           OnClick="@(() => PublishParameter(context))" />
-                                                        </MudTooltip>
+                                                        <MudChip T="string" Size="Size.Small" Color="Color.Success">Published</MudChip>
                                                     }
-                                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                                                   Size="Size.Small"
-                                                                   Color="Color.Error"
-                                                                   OnClick="@(() => DeleteParameter(context))"
-                                                                   title="Delete" />
-                                                </div>
-                                            </MudTd>
-                                        </RowTemplate>
-                                    </MudTable>
+                                                    else if (context.Item.Status == ParameterVersionStatus.Draft)
+                                                    {
+                                                        <MudChip T="string" Size="Size.Small" Color="Color.Info">Draft</MudChip>
+                                                    }
+                                                    @if (SemanticVersion.TryParse(context.Item.Version, out var rowSv) && rowSv.IsPrerelease)
+                                                    {
+                                                        <MudChip T="string" Size="Size.Small" Color="Color.Warning">Prerelease</MudChip>
+                                                    }
+                                                    @if (context.Item.IsPassthrough)
+                                                    {
+                                                        <MudChip T="string" Size="Size.Small" Color="Color.Warning" title="Passthrough: this scope uses parent scope parameters">Passthrough</MudChip>
+                                                    }
+                                                </CellTemplate>
+                                            </TemplateColumn>
+                                            <PropertyColumn Property="x => x.Checksum" Title="Checksum">
+                                                <CellTemplate>
+                                                    @(context.Item.IsPassthrough ? "-" : context.Item.Checksum.Substring(0, 8))
+                                                </CellTemplate>
+                                            </PropertyColumn>
+                                            <PropertyColumn Property="x => x.CreatedAt" Title="Created">
+                                                <CellTemplate>
+                                                    @context.Item.CreatedAt.LocalDateTime.ToString("g")
+                                                </CellTemplate>
+                                            </PropertyColumn>
+                                            <TemplateColumn Title="Actions" Sortable="false" Style="width:160px; text-align:right">
+                                                <CellTemplate>
+                                                    <div style="display:flex; justify-content:flex-end; align-items:center;">
+                                                        <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                                                                       Size="Size.Small"
+                                                                       Disabled="@context.Item.IsPassthrough"
+                                                                       OnClick="@(() => ViewParameter(context.Item))"
+                                                                       title="View" />
+                                                        @if (context.Item.Status == ParameterVersionStatus.Draft)
+                                                        {
+                                                            <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                                           Size="Size.Small"
+                                                                           Color="Color.Primary"
+                                                                           OnClick="@(() => EditParameter(context.Item))"
+                                                                           title="Edit" />
+                                                            <MudTooltip Text="Publish this draft version">
+                                                                <MudIconButton Icon="@Icons.Material.Filled.Publish"
+                                                                               Size="Size.Small"
+                                                                               Color="Color.Success"
+                                                                               Disabled="@(!isConfigPublished)"
+                                                                               OnClick="@(() => PublishParameter(context.Item))" />
+                                                            </MudTooltip>
+                                                        }
+                                                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                                       Size="Size.Small"
+                                                                       Color="Color.Error"
+                                                                       OnClick="@(() => DeleteParameter(context.Item))"
+                                                                       title="Delete" />
+                                                    </div>
+                                                </CellTemplate>
+                                            </TemplateColumn>
+                                        </Columns>
+
+                                    </MudDataGrid>
                                 }
                                 else
                                 {

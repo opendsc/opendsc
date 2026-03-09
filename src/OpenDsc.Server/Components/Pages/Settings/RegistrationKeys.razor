@@ -21,72 +21,81 @@
         }
         else
         {
-            <MudTable Items="@registrationKeys" Hover="true" Dense="true">
-                <HeaderContent>
-                    <MudTh>Key</MudTh>
-                    <MudTh>Description</MudTh>
-                    <MudTh>Created</MudTh>
-                    <MudTh>Expires</MudTh>
-                    <MudTh>Uses</MudTh>
-                    <MudTh>Status</MudTh>
-                    <MudTh>Actions</MudTh>
-                </HeaderContent>
-                <RowTemplate>
-                    <MudTd DataLabel="Key">
-                        <code>@context.Key.Substring(0, Math.Min(16, context.Key.Length))...</code>
-                    </MudTd>
-                    <MudTd DataLabel="Description">
-                        @if (!string.IsNullOrEmpty(context.Description))
-                        {
-                            <MudText>@context.Description</MudText>
-                        }
-                        else
-                        {
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">No description</MudText>
-                        }
-                    </MudTd>
-                    <MudTd DataLabel="Created">@context.CreatedAt.LocalDateTime.ToString("g")</MudTd>
-                    <MudTd DataLabel="Expires">@context.ExpiresAt.LocalDateTime.ToString("g")</MudTd>
-                    <MudTd DataLabel="Uses">
-                        @if (context.MaxUses.HasValue)
-                        {
-                            <span>@context.CurrentUses / @context.MaxUses</span>
-                        }
-                        else
-                        {
-                            <span>@context.CurrentUses (unlimited)</span>
-                        }
-                    </MudTd>
-                    <MudTd DataLabel="Status">
-                        @if (context.IsRevoked)
-                        {
-                            <MudChip T="string" Size="Size.Small" Color="Color.Error">Revoked</MudChip>
-                        }
-                        else if (context.ExpiresAt < DateTimeOffset.UtcNow)
-                        {
-                            <MudChip T="string" Size="Size.Small" Color="Color.Warning">Expired</MudChip>
-                        }
-                        else if (context.MaxUses.HasValue && context.CurrentUses >= context.MaxUses.Value)
-                        {
-                            <MudChip T="string" Size="Size.Small" Color="Color.Warning">Max Uses Reached</MudChip>
-                        }
-                        else
-                        {
-                            <MudChip T="string" Size="Size.Small" Color="Color.Success">Active</MudChip>
-                        }
-                    </MudTd>
-                    <MudTd DataLabel="Actions">
-                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                       Size="Size.Small"
-                                       Color="Color.Default"
-                                       OnClick="@(() => EditKeyDescription(context))" />
-                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                       Size="Size.Small"
-                                       Color="Color.Error"
-                                       OnClick="@(() => DeleteKey(context))" />
-                    </MudTd>
-                </RowTemplate>
-            </MudTable>
+            <MudDataGrid T="RegistrationKey" Items="@registrationKeys" Hover="true" Dense="true" sortable="true">
+                <Columns>
+                    <TemplateColumn Title="Key">
+                        <CellTemplate>
+                            <code>@context.Item.Key.Substring(0, Math.Min(16, context.Item.Key.Length))...</code>
+                        </CellTemplate>
+                    </TemplateColumn>
+                    <TemplateColumn Title="Description">
+                        <CellTemplate>
+                            @if (!string.IsNullOrEmpty(context.Item.Description))
+                            {
+                                <MudText>@context.Item.Description</MudText>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">No description</MudText>
+                            }
+                        </CellTemplate>
+                    </TemplateColumn>
+                    <PropertyColumn Property="x => x.CreatedAt" Title="Created">
+                        <CellTemplate>
+                            @context.Item.CreatedAt.LocalDateTime.ToString("g")
+                        </CellTemplate>
+                    </PropertyColumn>
+                    <PropertyColumn Property="x => x.ExpiresAt" Title="Expires">
+                        <CellTemplate>
+                            @context.Item.ExpiresAt.LocalDateTime.ToString("g")
+                        </CellTemplate>
+                    </PropertyColumn>
+                    <TemplateColumn Title="Uses">
+                        <CellTemplate>
+                            @if (context.Item.MaxUses.HasValue)
+                            {
+                                <span>@context.Item.CurrentUses / @context.Item.MaxUses</span>
+                            }
+                            else
+                            {
+                                <span>@context.Item.CurrentUses (unlimited)</span>
+                            }
+                        </CellTemplate>
+                    </TemplateColumn>
+                    <TemplateColumn Title="Status" Sortable="false">
+                        <CellTemplate>
+                            @if (context.Item.IsRevoked)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Error">Revoked</MudChip>
+                            }
+                            else if (context.Item.ExpiresAt < DateTimeOffset.UtcNow)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Warning">Expired</MudChip>
+                            }
+                            else if (context.Item.MaxUses.HasValue && context.Item.CurrentUses >= context.Item.MaxUses.Value)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Warning">Max Uses Reached</MudChip>
+                            }
+                            else
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Success">Active</MudChip>
+                            }
+                        </CellTemplate>
+                    </TemplateColumn>
+                    <TemplateColumn Title="Actions" Sortable="false">
+                        <CellTemplate>
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                           Size="Size.Small"
+                                           Color="Color.Default"
+                                           OnClick="@(() => EditKeyDescription(context.Item))" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                           Size="Size.Small"
+                                           Color="Color.Error"
+                                           OnClick="@(() => DeleteKey(context.Item))" />
+                        </CellTemplate>
+                    </TemplateColumn>
+                </Columns>
+            </MudDataGrid>
         }
     </MudCardContent>
 </MudCard>

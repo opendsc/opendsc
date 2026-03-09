@@ -47,6 +47,7 @@
                         {
                             var majorVersions = versions
                                 .Where(v => SemanticVersion.TryParse(v.Version, out _) && SemanticVersion.Parse(v.Version).Major == major)
+                                .OrderByDescending(v => SemanticVersion.TryParse(v.Version, out var sv) ? sv : new SemanticVersion(0,0,0))
                                 .ToList();
                             var draftCount = majorVersions.Count(v => v.Status == ConfigurationVersionStatus.Draft);
                             var publishedVersion = majorVersions.FirstOrDefault(v => v.Status == ConfigurationVersionStatus.Published);
