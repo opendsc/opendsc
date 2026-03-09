@@ -4,6 +4,7 @@
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 @using OpenDsc.Lcm.Contracts
+@using NuGet.Versioning
 
 <PageTitle>Node Details</PageTitle>
 
@@ -154,6 +155,8 @@ else
                                   Label="Prerelease Channel (optional)"
                                   Variant="Variant.Outlined"
                                   Class="mb-3"
+                                  Immediate="true"
+                                  Validation="@(new Func<string?, string?>(ValidatePrereleaseChannel))"
                                   HelperText="Minimum prerelease threshold (e.g. 'rc', 'beta'). Leave empty for stable-only." />
 
                     <MudButton Variant="Variant.Filled"
@@ -831,6 +834,18 @@ else
     private bool HasConfigSelected() => selectedConfigType == "Composite"
         ? !string.IsNullOrEmpty(selectedCompositeConfigurationName)
         : !string.IsNullOrEmpty(selectedConfigurationName);
+
+    private string? ValidatePrereleaseChannel(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return null;
+        }
+
+        return SemanticVersion.TryParse($"0.0.0-{value}", out _)
+            ? null
+            : "Must be a valid semver prerelease identifier (e.g. 'beta', 'rc.1')";
+    }
 
     private async Task SaveLcmConfig()
     {

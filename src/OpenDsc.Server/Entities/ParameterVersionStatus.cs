@@ -7,6 +7,5 @@ namespace OpenDsc.Server.Entities;
 public enum ParameterVersionStatus
 {
     Draft = 0,
-    Published = 1,
-    Archived = 2
+    Published = 1
 }

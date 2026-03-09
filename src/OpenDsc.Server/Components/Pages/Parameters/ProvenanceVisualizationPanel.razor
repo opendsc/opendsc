@@ -11,6 +11,7 @@
 @using BlazorMonaco.Editor
 @using OpenDsc.Server.Entities
 @using OpenDsc.Server.Services
+@using NuGet.Versioning
 @using static OpenDsc.Server.Endpoints.ParameterEndpoints
 @inject IParameterApiClient ParameterApiClient
 @inject ServerDbContext Db
@@ -43,6 +44,19 @@
                 else if (selectedNode != null && !isLoading)
                 {
                     <MudAlert Severity="Severity.Warning" Dense="true">This node has no assigned configuration.</MudAlert>
+                }
+                @if (selectedNode != null && configurationName != null && provenanceData != null)
+                {
+                    <div class="d-flex align-center gap-2 mt-1">
+                        @if (!string.IsNullOrEmpty(provenanceData.PrereleaseChannel))
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Warning">Channel: @provenanceData.PrereleaseChannel</MudChip>
+                        }
+                        else
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Default">Stable only</MudChip>
+                        }
+                    </div>
                 }
             </MudItem>
         </MudGrid>
@@ -304,6 +318,12 @@
                 </MudTooltip>
                 <div class="d-flex align-center">
                     <MudChip T="string" Size="Size.Small" Color="@scopeColor" Variant="Variant.Filled">@scopeLabel</MudChip>
+                    @if (!string.IsNullOrEmpty(info.ResolvedVersion))
+                    {
+                        <MudTooltip Text="@($"Resolved from v{info.ResolvedVersion}")">
+                            <MudChip T="string" Size="Size.Small" Color="@(info.IsPrerelease ? Color.Warning : Color.Default)" Variant="Variant.Outlined" Class="ml-1">v@info.ResolvedVersion</MudChip>
+                        </MudTooltip>
+                    }
                 </div>
                 <div style="text-align: center;">
                     @if (overrideCount > 0)

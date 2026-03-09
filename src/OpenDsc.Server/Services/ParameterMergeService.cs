@@ -29,6 +29,11 @@ public sealed class ParameterMergeService(ServerDbContext db, IParameterMerger m
             return null;
         }
 
+        var nodeConfiguration = await db.NodeConfigurations
+            .FirstOrDefaultAsync(nc => nc.NodeId == nodeId, cancellationToken);
+
+        var prereleaseChannel = nodeConfiguration?.PrereleaseChannel;
+
         var configName = configuration.Name;
         var nodeFqdn = node.Fqdn;
         var dataDir = config["DataDirectory"] ?? "data";
@@ -57,13 +62,16 @@ public sealed class ParameterMergeService(ServerDbContext db, IParameterMerger m
 
         if (defaultScopeType != null && !scopeTypes.Contains(defaultScopeType.Id))
         {
-            var defaultParamFile = await db.ParameterFiles
+            var defaultCandidates = await db.ParameterFiles
                 .Include(pf => pf.ParameterSchema)
-                .FirstOrDefaultAsync(pf =>
+                .Where(pf =>
                     pf.ParameterSchema!.ConfigurationId == configurationId &&
                     pf.ScopeTypeId == defaultScopeType.Id &&
-                    pf.Status == ParameterVersionStatus.Published,
-                    cancellationToken);
+                    pf.Status == ParameterVersionStatus.Published)
+                .ToListAsync(cancellationToken);
+
+            var defaultParamFile = VersionResolver.ResolveVersion(
+                defaultCandidates, pf => pf.Version, majorVersion: null, prereleaseChannel);
 
             if (defaultParamFile != null && !defaultParamFile.IsPassthrough)
             {
@@ -85,14 +93,17 @@ public sealed class ParameterMergeService(ServerDbContext db, IParameterMerger m
 
         foreach (var tag in nodeTags)
         {
-            var paramFile = await db.ParameterFiles
+            var tagCandidates = await db.ParameterFiles
                 .Include(pf => pf.ParameterSchema)
-                .FirstOrDefaultAsync(pf =>
+                .Where(pf =>
                     pf.ParameterSchema!.ConfigurationId == configurationId &&
                     pf.ScopeTypeId == tag.ScopeTypeId &&
                     pf.ScopeValue == tag.ScopeValue &&
-                    pf.Status == ParameterVersionStatus.Published,
-                    cancellationToken);
+                    pf.Status == ParameterVersionStatus.Published)
+                .ToListAsync(cancellationToken);
+
+            var paramFile = VersionResolver.ResolveVersion(
+                tagCandidates, pf => pf.Version, majorVersion: null, prereleaseChannel);
 
             if (paramFile is null || paramFile.IsPassthrough)
             {
@@ -121,14 +132,17 @@ public sealed class ParameterMergeService(ServerDbContext db, IParameterMerger m
 
         if (nodeScopeType != null)
         {
-            var nodeParamFile = await db.ParameterFiles
+            var nodeCandidates = await db.ParameterFiles
                 .Include(pf => pf.ParameterSchema)
-                .FirstOrDefaultAsync(pf =>
+                .Where(pf =>
                     pf.ParameterSchema!.ConfigurationId == configurationId &&
                     pf.ScopeTypeId == nodeScopeType.Id &&
                     pf.ScopeValue == nodeFqdn &&
-                    pf.Status == ParameterVersionStatus.Published,
-                    cancellationToken);
+                    pf.Status == ParameterVersionStatus.Published)
+                .ToListAsync(cancellationToken);
+
+            var nodeParamFile = VersionResolver.ResolveVersion(
+                nodeCandidates, pf => pf.Version, majorVersion: null, prereleaseChannel);
 
             if (nodeParamFile != null && !nodeParamFile.IsPassthrough)
             {
@@ -175,6 +189,11 @@ public sealed class ParameterMergeService(ServerDbContext db, IParameterMerger m
             return null;
         }
 
+        var nodeConfiguration = await db.NodeConfigurations
+            .FirstOrDefaultAsync(nc => nc.NodeId == nodeId, cancellationToken);
+
+        var prereleaseChannel = nodeConfiguration?.PrereleaseChannel;
+
         var configName = configuration.Name;
         var nodeFqdn = node.Fqdn;
         var dataDir = config["DataDirectory"] ?? "data";
@@ -203,13 +222,16 @@ public sealed class ParameterMergeService(ServerDbContext db, IParameterMerger m
 
         if (defaultScopeType != null && !scopeTypes.Contains(defaultScopeType.Id))
         {
-            var defaultParamFile = await db.ParameterFiles
+            var defaultCandidates = await db.ParameterFiles
                 .Include(pf => pf.ParameterSchema)
-                .FirstOrDefaultAsync(pf =>
+                .Where(pf =>
                     pf.ParameterSchema!.ConfigurationId == configurationId &&
                     pf.ScopeTypeId == defaultScopeType.Id &&
-                    pf.Status == ParameterVersionStatus.Published,
-                    cancellationToken);
+                    pf.Status == ParameterVersionStatus.Published)
+                .ToListAsync(cancellationToken);
+
+            var defaultParamFile = VersionResolver.ResolveVersion(
+                defaultCandidates, pf => pf.Version, majorVersion: null, prereleaseChannel);
 
             if (defaultParamFile != null && !defaultParamFile.IsPassthrough)
             {
@@ -231,14 +253,17 @@ public sealed class ParameterMergeService(ServerDbContext db, IParameterMerger m
 
         foreach (var tag in nodeTags)
         {
-            var paramFile = await db.ParameterFiles
+            var tagCandidates = await db.ParameterFiles
                 .Include(pf => pf.ParameterSchema)
-                .FirstOrDefaultAsync(pf =>
+                .Where(pf =>
                     pf.ParameterSchema!.ConfigurationId == configurationId &&
                     pf.ScopeTypeId == tag.ScopeTypeId &&
                     pf.ScopeValue == tag.ScopeValue &&
-                    pf.Status == ParameterVersionStatus.Published,
-                    cancellationToken);
+                    pf.Status == ParameterVersionStatus.Published)
+                .ToListAsync(cancellationToken);
+
+            var paramFile = VersionResolver.ResolveVersion(
+                tagCandidates, pf => pf.Version, majorVersion: null, prereleaseChannel);
 
             if (paramFile is null || paramFile.IsPassthrough)
             {
@@ -267,14 +292,17 @@ public sealed class ParameterMergeService(ServerDbContext db, IParameterMerger m
 
         if (nodeScopeType != null)
         {
-            var nodeParamFile = await db.ParameterFiles
+            var nodeCandidates = await db.ParameterFiles
                 .Include(pf => pf.ParameterSchema)
-                .FirstOrDefaultAsync(pf =>
+                .Where(pf =>
                     pf.ParameterSchema!.ConfigurationId == configurationId &&
                     pf.ScopeTypeId == nodeScopeType.Id &&
                     pf.ScopeValue == nodeFqdn &&
-                    pf.Status == ParameterVersionStatus.Published,
-                    cancellationToken);
+                    pf.Status == ParameterVersionStatus.Published)
+                .ToListAsync(cancellationToken);
+
+            var nodeParamFile = VersionResolver.ResolveVersion(
+                nodeCandidates, pf => pf.Version, majorVersion: null, prereleaseChannel);
 
             if (nodeParamFile != null && !nodeParamFile.IsPassthrough)
             {

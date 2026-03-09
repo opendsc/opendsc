@@ -63,6 +63,10 @@ public static class ParameterEndpoints
             .WithName("GetNodeParameterProvenance")
             .WithDescription("Get parameter provenance showing which scope provided each value");
 
+        nodeGroup.MapGet("/resolution", GetNodeParameterResolution)
+            .WithName("GetNodeParameterResolution")
+            .WithDescription("Preview which parameter version each scope would resolve to for a node, without loading file content");
+
         var configGroup = app.MapGroup("/api/v1/configurations/{configurationName}/parameters")
             .WithTags("Parameters")
             .RequireAuthorization(policy => policy
@@ -445,21 +449,6 @@ public static class ParameterEndpoints
             }
         }
 
-        var currentlyActive = await db.ParameterFiles
-            .Include(pf => pf.ParameterSchema)
-            .Where(pf =>
-                pf.ScopeTypeId == scopeTypeId &&
-                pf.ParameterSchema!.ConfigurationId == configurationId &&
-                pf.ScopeValue == scopeValue &&
-                pf.MajorVersion == parameterFile.MajorVersion &&
-                pf.Status == ParameterVersionStatus.Published)
-            .ToListAsync();
-
-        foreach (var activeFile in currentlyActive)
-        {
-            activeFile.Status = ParameterVersionStatus.Archived;
-        }
-
         parameterFile.Status = ParameterVersionStatus.Published;
         await db.SaveChangesAsync();
 
@@ -506,11 +495,6 @@ public static class ParameterEndpoints
             return TypedResults.Forbid();
         }
 
-        if (parameterFile.Status == ParameterVersionStatus.Published)
-        {
-            return TypedResults.Conflict("Cannot delete a published parameter version");
-        }
-
         db.ParameterFiles.Remove(parameterFile);
         await db.SaveChangesAsync();
 
@@ -530,19 +514,21 @@ public static class ParameterEndpoints
             return TypedResults.NotFound();
         }
 
+        var nodeConfigRecord = await db.NodeConfigurations
+            .Include(nc => nc.Configuration)
+            .FirstOrDefaultAsync(nc => nc.NodeId == nodeId);
+
         if (!configurationId.HasValue)
         {
-            var nodeConfig = await db.NodeConfigurations
-                .Include(nc => nc.Configuration)
-                .FirstOrDefaultAsync(nc => nc.NodeId == nodeId);
-
-            if (nodeConfig is null)
+            if (nodeConfigRecord is null)
             {
                 return TypedResults.NotFound();
             }
 
-            configurationId = nodeConfig.ConfigurationId;
+            configurationId = nodeConfigRecord.ConfigurationId;
         }
+
+        var prereleaseChannel = nodeConfigRecord?.PrereleaseChannel;
 
         var configuration = await db.Configurations.FindAsync([configurationId!.Value]);
         if (configuration is null)
@@ -552,6 +538,9 @@ public static class ParameterEndpoints
 
         var dataDir = config["DataDirectory"] ?? "data";
         var parameterSources = new List<ParameterSource>();
+
+        // Track the resolved version per scope label for DTO population
+        var resolvedVersions = new Dictionary<string, string>();
 
         var nodeTags = await db.NodeTags
             .Include(nt => nt.ScopeValue)
@@ -567,12 +556,16 @@ public static class ParameterEndpoints
 
         if (defaultScopeType != null && !scopeTypes.Contains(defaultScopeType.Id))
         {
-            var defaultParamFile = await db.ParameterFiles
+            var defaultCandidates = await db.ParameterFiles
                 .Include(pf => pf.ParameterSchema)
-                .FirstOrDefaultAsync(pf =>
+                .Where(pf =>
                     pf.ParameterSchema!.ConfigurationId == configurationId &&
                     pf.ScopeTypeId == defaultScopeType.Id &&
-                    pf.Status == ParameterVersionStatus.Published);
+                    pf.Status == ParameterVersionStatus.Published)
+                .ToListAsync();
+
+            var defaultParamFile = VersionResolver.ResolveVersion(
+                defaultCandidates, pf => pf.Version, majorVersion: null, prereleaseChannel);
 
             if (defaultParamFile != null && !defaultParamFile.IsPassthrough)
             {
@@ -588,19 +581,23 @@ public static class ParameterEndpoints
                         Precedence = defaultScopeType.Precedence,
                         Content = content
                     });
+                    resolvedVersions["Default"] = defaultParamFile.Version;
                 }
             }
         }
 
         foreach (var tag in nodeTags)
         {
-            var paramFile = await db.ParameterFiles
+            var tagCandidates = await db.ParameterFiles
                 .Where(pf =>
                     pf.ParameterSchema!.ConfigurationId == configurationId &&
                     pf.ScopeTypeId == tag.ScopeValue.ScopeTypeId &&
                     pf.ScopeValue == tag.ScopeValue.Value &&
                     pf.Status == ParameterVersionStatus.Published)
-                .FirstOrDefaultAsync();
+                .ToListAsync();
+
+            var paramFile = VersionResolver.ResolveVersion(
+                tagCandidates, pf => pf.Version, majorVersion: null, prereleaseChannel);
 
             if (paramFile is null || paramFile.IsPassthrough)
             {
@@ -622,6 +619,7 @@ public static class ParameterEndpoints
                 Precedence = tag.ScopeValue.ScopeType.Precedence,
                 Content = content
             });
+            resolvedVersions[$"{tag.ScopeValue.ScopeType.Name}/{tag.ScopeValue.Value}"] = paramFile.Version;
         }
 
         var nodeScopeType = await db.ScopeTypes
@@ -629,13 +627,16 @@ public static class ParameterEndpoints
 
         if (nodeScopeType != null)
         {
-            var nodeParamFile = await db.ParameterFiles
+            var nodeCandidates = await db.ParameterFiles
                 .Where(pf =>
                     pf.ParameterSchema!.ConfigurationId == configurationId &&
                     pf.ScopeTypeId == nodeScopeType.Id &&
                     pf.ScopeValue == node.Fqdn &&
                     pf.Status == ParameterVersionStatus.Published)
-                .FirstOrDefaultAsync();
+                .ToListAsync();
+
+            var nodeParamFile = VersionResolver.ResolveVersion(
+                nodeCandidates, pf => pf.Version, majorVersion: null, prereleaseChannel);
 
             if (nodeParamFile != null && !nodeParamFile.IsPassthrough)
             {
@@ -651,6 +652,7 @@ public static class ParameterEndpoints
                         Precedence = nodeScopeType.Precedence,
                         Content = content
                     });
+                    resolvedVersions[$"Node/{node.Fqdn}"] = nodeParamFile.Version;
                 }
             }
         }
@@ -662,7 +664,8 @@ public static class ParameterEndpoints
                 NodeId = nodeId,
                 ConfigurationId = configurationId.Value,
                 MergedParameters = "{}",
-                Provenance = new Dictionary<string, ParameterSourceInfo>()
+                Provenance = new Dictionary<string, ParameterSourceInfo>(),
+                PrereleaseChannel = prereleaseChannel
             });
         }
 
@@ -670,19 +673,32 @@ public static class ParameterEndpoints
 
         var provenance = result.Provenance.ToDictionary(
             kvp => kvp.Key,
-            kvp => new ParameterSourceInfo
+            kvp =>
             {
-                ScopeTypeName = kvp.Value.ScopeTypeName,
-                ScopeValue = kvp.Value.ScopeValue,
-                Precedence = kvp.Value.Precedence,
-                Value = kvp.Value.Value,
-                OverriddenBy = kvp.Value.OverriddenValues?.Select(ov => new ScopeInfo
+                var scopeKey = kvp.Value.ScopeValue != null
+                    ? $"{kvp.Value.ScopeTypeName}/{kvp.Value.ScopeValue}"
+                    : kvp.Value.ScopeTypeName;
+                resolvedVersions.TryGetValue(scopeKey, out var resolvedVersion);
+                var isPrerelease = resolvedVersion is not null &&
+                    SemanticVersion.TryParse(resolvedVersion, out var sv) &&
+                    sv.IsPrerelease;
+
+                return new ParameterSourceInfo
                 {
-                    ScopeTypeName = ov.ScopeTypeName,
-                    ScopeValue = ov.ScopeValue,
-                    Precedence = ov.Precedence,
-                    Value = ov.Value
-                }).ToList()
+                    ScopeTypeName = kvp.Value.ScopeTypeName,
+                    ScopeValue = kvp.Value.ScopeValue,
+                    Precedence = kvp.Value.Precedence,
+                    Value = kvp.Value.Value,
+                    OverriddenBy = kvp.Value.OverriddenValues?.Select(ov => new ScopeInfo
+                    {
+                        ScopeTypeName = ov.ScopeTypeName,
+                        ScopeValue = ov.ScopeValue,
+                        Precedence = ov.Precedence,
+                        Value = ov.Value
+                    }).ToList(),
+                    ResolvedVersion = resolvedVersion,
+                    IsPrerelease = isPrerelease
+                };
             });
 
         return TypedResults.Ok(new ParameterProvenanceDto
@@ -690,7 +706,148 @@ public static class ParameterEndpoints
             NodeId = nodeId,
             ConfigurationId = configurationId.Value,
             MergedParameters = result.MergedContent,
-            Provenance = provenance
+            Provenance = provenance,
+            PrereleaseChannel = prereleaseChannel
+        });
+    }
+
+    private static async Task<Results<Ok<ParameterResolutionDto>, NotFound>> GetNodeParameterResolution(
+        Guid nodeId,
+        [FromQuery] Guid? configurationId,
+        ServerDbContext db)
+    {
+        var node = await db.Nodes.FindAsync(nodeId);
+        if (node is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        var nodeConfigRecord = await db.NodeConfigurations
+            .Include(nc => nc.Configuration)
+            .FirstOrDefaultAsync(nc => nc.NodeId == nodeId);
+
+        if (!configurationId.HasValue)
+        {
+            if (nodeConfigRecord is null)
+            {
+                return TypedResults.NotFound();
+            }
+
+            configurationId = nodeConfigRecord.ConfigurationId;
+        }
+
+        var prereleaseChannel = nodeConfigRecord?.PrereleaseChannel;
+
+        var configuration = await db.Configurations.FindAsync([configurationId!.Value]);
+        if (configuration is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        var scopes = new List<ScopeResolutionDto>();
+
+        var nodeTags = await db.NodeTags
+            .Include(nt => nt.ScopeValue)
+            .ThenInclude(sv => sv.ScopeType)
+            .Where(nt => nt.NodeId == nodeId)
+            .OrderBy(nt => nt.ScopeValue.ScopeType.Precedence)
+            .ToListAsync();
+
+        var taggedScopeTypeIds = new HashSet<Guid>(nodeTags.Select(nt => nt.ScopeValue.ScopeTypeId));
+
+        var defaultScopeType = await db.ScopeTypes
+            .FirstOrDefaultAsync(st => st.Name == "Default");
+
+        if (defaultScopeType != null && !taggedScopeTypeIds.Contains(defaultScopeType.Id))
+        {
+            var defaultCandidates = await db.ParameterFiles
+                .Include(pf => pf.ParameterSchema)
+                .Where(pf =>
+                    pf.ParameterSchema!.ConfigurationId == configurationId &&
+                    pf.ScopeTypeId == defaultScopeType.Id &&
+                    pf.Status == ParameterVersionStatus.Published)
+                .ToListAsync();
+
+            var resolved = VersionResolver.ResolveVersion(
+                defaultCandidates, pf => pf.Version, majorVersion: null, prereleaseChannel);
+
+            var version = resolved?.Version;
+            var isPrerelease = version is not null &&
+                SemanticVersion.TryParse(version, out var sv) && sv.IsPrerelease;
+
+            scopes.Add(new ScopeResolutionDto
+            {
+                ScopeTypeName = "Default",
+                ScopeValue = null,
+                ResolvedVersion = version,
+                IsPrerelease = isPrerelease,
+                NoPublishedVersion = defaultCandidates.Count == 0
+            });
+        }
+
+        foreach (var tag in nodeTags)
+        {
+            var tagCandidates = await db.ParameterFiles
+                .Where(pf =>
+                    pf.ParameterSchema!.ConfigurationId == configurationId &&
+                    pf.ScopeTypeId == tag.ScopeValue.ScopeTypeId &&
+                    pf.ScopeValue == tag.ScopeValue.Value &&
+                    pf.Status == ParameterVersionStatus.Published)
+                .ToListAsync();
+
+            var resolved = VersionResolver.ResolveVersion(
+                tagCandidates, pf => pf.Version, majorVersion: null, prereleaseChannel);
+
+            var version = resolved?.Version;
+            var isPrerelease = version is not null &&
+                SemanticVersion.TryParse(version, out var sv) && sv.IsPrerelease;
+
+            scopes.Add(new ScopeResolutionDto
+            {
+                ScopeTypeName = tag.ScopeValue.ScopeType.Name,
+                ScopeValue = tag.ScopeValue.Value,
+                ResolvedVersion = version,
+                IsPrerelease = isPrerelease,
+                NoPublishedVersion = tagCandidates.Count == 0
+            });
+        }
+
+        var nodeScopeType = await db.ScopeTypes
+            .FirstOrDefaultAsync(st => st.Name == "Node");
+
+        if (nodeScopeType != null)
+        {
+            var nodeCandidates = await db.ParameterFiles
+                .Where(pf =>
+                    pf.ParameterSchema!.ConfigurationId == configurationId &&
+                    pf.ScopeTypeId == nodeScopeType.Id &&
+                    pf.ScopeValue == node.Fqdn &&
+                    pf.Status == ParameterVersionStatus.Published)
+                .ToListAsync();
+
+            var resolved = VersionResolver.ResolveVersion(
+                nodeCandidates, pf => pf.Version, majorVersion: null, prereleaseChannel);
+
+            var version = resolved?.Version;
+            var isPrerelease = version is not null &&
+                SemanticVersion.TryParse(version, out var sv) && sv.IsPrerelease;
+
+            scopes.Add(new ScopeResolutionDto
+            {
+                ScopeTypeName = "Node",
+                ScopeValue = node.Fqdn,
+                ResolvedVersion = version,
+                IsPrerelease = isPrerelease,
+                NoPublishedVersion = nodeCandidates.Count == 0
+            });
+        }
+
+        return TypedResults.Ok(new ParameterResolutionDto
+        {
+            NodeId = nodeId,
+            ConfigurationId = configurationId.Value,
+            PrereleaseChannel = prereleaseChannel,
+            Scopes = scopes
         });
     }
 
@@ -1139,6 +1296,7 @@ public sealed class ParameterProvenanceDto
     public required Guid ConfigurationId { get; init; }
     public required string MergedParameters { get; init; }
     public required Dictionary<string, ParameterSourceInfo> Provenance { get; init; }
+    public string? PrereleaseChannel { get; init; }
 }
 
 public sealed class ParameterSourceInfo
@@ -1148,6 +1306,8 @@ public sealed class ParameterSourceInfo
     public required int Precedence { get; init; }
     public required object? Value { get; init; }
     public List<ScopeInfo>? OverriddenBy { get; init; }
+    public string? ResolvedVersion { get; init; }
+    public bool IsPrerelease { get; init; }
 }
 
 public sealed class MajorVersionDto
@@ -1209,4 +1369,21 @@ public sealed class ParameterFileMigrationStatusDto
     public required int MajorVersion { get; init; }
     public required bool NeedsMigration { get; init; }
     public required List<ValidationErrorDto> Errors { get; init; }
+}
+
+public sealed class ParameterResolutionDto
+{
+    public required Guid NodeId { get; init; }
+    public required Guid ConfigurationId { get; init; }
+    public string? PrereleaseChannel { get; init; }
+    public required List<ScopeResolutionDto> Scopes { get; init; }
+}
+
+public sealed class ScopeResolutionDto
+{
+    public required string ScopeTypeName { get; init; }
+    public string? ScopeValue { get; init; }
+    public string? ResolvedVersion { get; init; }
+    public bool IsPrerelease { get; init; }
+    public bool NoPublishedVersion { get; init; }
 }

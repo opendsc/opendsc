@@ -40,23 +40,28 @@
                     @foreach (var major in availableConfigMajors.OrderByDescending(m => m))
                     {
                         var majorVersions = versions.Where(v => v.MajorVersion == major).ToList();
-                        var publishedParamVersion = majorVersions.FirstOrDefault(v => v.Status == ParameterVersionStatus.Published);
+                        var publishedVersions = majorVersions.Where(v => v.Status == ParameterVersionStatus.Published).ToList();
+                        var publishedStable = publishedVersions.FirstOrDefault(v => SemanticVersion.TryParse(v.Version, out var sv) && !sv.IsPrerelease);
+                        var publishedPrerelease = publishedVersions.FirstOrDefault(v => SemanticVersion.TryParse(v.Version, out var sv) && sv.IsPrerelease);
                         var draftCount = majorVersions.Count(v => v.Status == ParameterVersionStatus.Draft);
-                        var archivedCount = majorVersions.Count(v => v.Status == ParameterVersionStatus.Archived);
                         var isConfigPublished = publishedConfigMajors.Contains(major);
                         <MudExpansionPanel Expanded="false">
                             <TitleContent>
                                 <div class="d-flex align-center gap-2">
                                     <MudText>Version @(major)</MudText>
-                                    @if (publishedParamVersion != null)
+                                    @if (publishedStable != null)
                                     {
-                                        <MudTooltip Text="Latest published parameter">
-                                            <MudChip T="string" Size="Size.Small" Color="Color.Success">
-                                                Published @publishedParamVersion.Version
-                                            </MudChip>
+                                        <MudTooltip Text="Latest stable published parameter">
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Success">Stable: @publishedStable.Version</MudChip>
                                         </MudTooltip>
                                     }
-                                    else
+                                    @if (publishedPrerelease != null)
+                                    {
+                                        <MudTooltip Text="Latest prerelease published parameter">
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Warning">Prerelease: @publishedPrerelease.Version</MudChip>
+                                        </MudTooltip>
+                                    }
+                                    @if (publishedStable == null && publishedPrerelease == null)
                                     {
                                         <MudChip T="string" Size="Size.Small" Color="Color.Default">No Published</MudChip>
                                     }
@@ -67,10 +72,6 @@
                                     @if (draftCount > 0)
                                     {
                                         <MudChip T="string" Size="Size.Small" Color="Color.Info">@draftCount @(draftCount == 1 ? "draft" : "drafts")</MudChip>
-                                    }
-                                    @if (archivedCount > 0)
-                                    {
-                                        <MudChip T="string" Size="Size.Small" Color="Color.Default">@archivedCount archived</MudChip>
                                     }
                                     @if (!isConfigPublished)
                                     {
@@ -140,9 +141,9 @@
                                                 {
                                                     <MudChip T="string" Size="Size.Small" Color="Color.Info">Draft</MudChip>
                                                 }
-                                                else
+                                                @if (SemanticVersion.TryParse(context.Version, out var rowSv) && rowSv.IsPrerelease)
                                                 {
-                                                    <MudChip T="string" Size="Size.Small" Color="Color.Default">Archived</MudChip>
+                                                    <MudChip T="string" Size="Size.Small" Color="Color.Warning">Prerelease</MudChip>
                                                 }
                                                 @if (context.IsPassthrough)
                                                 {
@@ -176,7 +177,6 @@
                                                     <MudIconButton Icon="@Icons.Material.Filled.Delete"
                                                                    Size="Size.Small"
                                                                    Color="Color.Error"
-                                                                   Disabled="@(context.Status == ParameterVersionStatus.Published)"
                                                                    OnClick="@(() => DeleteParameter(context))"
                                                                    title="Delete" />
                                                 </div>
@@ -324,15 +324,31 @@
 
     private async Task PublishParameter(ParameterFileDto parameter)
     {
-        var confirm = await DialogService.ShowMessageBox(
-            "Confirm Publish",
-            $"Publish parameter version {parameter.Version}? This will archive the current published version.",
-            yesText: "Publish",
-            cancelText: "Cancel");
-
-        if (confirm != true)
+        if (SemanticVersion.TryParse(parameter.Version, out var semVer) && semVer.IsPrerelease)
         {
-            return;
+            var confirm = await DialogService.ShowMessageBox(
+                "Publishing Prerelease Version",
+                $"Version {parameter.Version} is a prerelease. Nodes without a matching prerelease channel will not receive this version. Publish anyway?",
+                yesText: "Publish Prerelease",
+                cancelText: "Cancel");
+
+            if (confirm != true)
+            {
+                return;
+            }
+        }
+        else
+        {
+            var confirm = await DialogService.ShowMessageBox(
+                "Confirm Publish",
+                $"Publish parameter version {parameter.Version}? This will archive the current published version.",
+                yesText: "Publish",
+                cancelText: "Cancel");
+
+            if (confirm != true)
+            {
+                return;
+            }
         }
 
         var (success, errorMessage) = await ParameterApiClient.PublishParameterVersionAsync(
@@ -354,9 +370,13 @@
 
     private async Task DeleteParameter(ParameterFileDto parameter)
     {
+        var message = parameter.Status == ParameterVersionStatus.Published
+            ? $"Delete published parameter version {parameter.Version}? Nodes currently using this version may stop receiving parameters. This action cannot be undone."
+            : $"Delete parameter version {parameter.Version}? This action cannot be undone.";
+
         var confirm = await DialogService.ShowMessageBox(
             "Confirm Deletion",
-            $"Delete parameter version {parameter.Version}? This action cannot be undone.",
+            message,
             yesText: "Delete",
             cancelText: "Cancel");
 

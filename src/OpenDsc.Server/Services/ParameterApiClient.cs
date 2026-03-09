@@ -313,20 +313,6 @@ public sealed class ParameterApiClient : IParameterApiClient
                 return (false, "Access denied");
             }
 
-            var activeFiles = await _db.ParameterFiles
-                .Where(pf =>
-                    pf.ParameterSchema!.ConfigurationId == configurationId &&
-                    pf.ScopeTypeId == scopeTypeId &&
-                    pf.ScopeValue == scopeValue &&
-                    pf.MajorVersion == parameterFile.MajorVersion &&
-                    pf.Status == ParameterVersionStatus.Published)
-                .ToListAsync();
-
-            foreach (var file in activeFiles)
-            {
-                file.Status = ParameterVersionStatus.Archived;
-            }
-
             parameterFile.Status = ParameterVersionStatus.Published;
 
             await _db.SaveChangesAsync();

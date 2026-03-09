@@ -176,10 +176,7 @@
                             {
                                 <MudChip T="string" Size="Size.Small" Color="Color.Info">Draft</MudChip>
                             }
-                            @if (context.Status == ParameterVersionStatus.Archived)
-                            {
-                                <MudChip T="string" Size="Size.Small" Color="Color.Default">Archived</MudChip>
-                            }
+
                         </MudTd>
                         <MudTd>@context.CreatedAt.LocalDateTime.ToString("g")</MudTd>
                     </RowTemplate>
