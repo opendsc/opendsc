@@ -673,7 +673,7 @@ public static class ConfigurationEndpoints
                         .Include(pf => pf.ScopeType)
                         .Where(pf => pf.ParameterSchemaId == parameterSchema.Id &&
                                      pf.MajorVersion == oldMajor &&
-                                     pf.IsActive)
+                                     pf.Status == ParameterVersionStatus.Published)
                         .ToListAsync();
 
                     foreach (var activeParam in activeParameters)
@@ -718,8 +718,7 @@ public static class ConfigurationEndpoints
                                 MajorVersion = newMajor,
                                 Checksum = activeParam.Checksum,
                                 ContentType = activeParam.ContentType,
-                                IsActive = true,
-                                IsDraft = false,
+                                Status = ParameterVersionStatus.Published,
                                 NeedsMigration = validationErrors != null || compatibilityReport!.HasBreakingChanges,
                                 ValidationErrors = validationErrors,
                                 CreatedAt = DateTimeOffset.UtcNow
@@ -777,7 +776,7 @@ public static class ConfigurationEndpoints
         {
             var activeParamFiles = await db.ParameterFiles
                 .Include(pf => pf.ParameterSchema)
-                .Where(pf => pf.ParameterSchema!.ConfigurationId == configuration.Id && pf.IsActive)
+                .Where(pf => pf.ParameterSchema!.ConfigurationId == configuration.Id && pf.Status == ParameterVersionStatus.Published)
                 .ToListAsync();
 
             if (activeParamFiles.Count > 0)

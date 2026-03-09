@@ -263,7 +263,7 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
         {
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => new { e.ParameterSchemaId, e.ScopeTypeId, e.ScopeValue, e.Version }).IsUnique();
-            entity.HasIndex(e => new { e.ParameterSchemaId, e.ScopeTypeId, e.ScopeValue, e.IsActive });
+            entity.HasIndex(e => new { e.ParameterSchemaId, e.ScopeTypeId, e.ScopeValue, e.Status });
             entity.Property(e => e.Version).HasMaxLength(50).IsRequired();
             entity.Property(e => e.ScopeValue).HasMaxLength(255);
             entity.Property(e => e.ContentType).HasMaxLength(100);
@@ -400,7 +400,7 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
         {
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => new { e.ParameterSchemaId, e.MajorVersion, e.ScopeTypeId, e.ScopeValue, e.Version }).IsUnique();
-            entity.HasIndex(e => new { e.ParameterSchemaId, e.MajorVersion, e.ScopeTypeId, e.ScopeValue, e.IsActive });
+            entity.HasIndex(e => new { e.ParameterSchemaId, e.MajorVersion, e.ScopeTypeId, e.ScopeValue, e.Status });
 
             entity.HasOne(e => e.ParameterSchema)
                 .WithMany(p => p.ParameterFiles)

@@ -306,11 +306,18 @@
 
                     if (parameterFile != null)
                     {
-                        compareFileContent = await ParameterApiClient.GetParameterContentAsync(parameterFile.Id);
-                        if (string.IsNullOrEmpty(compareFileContent))
+                        if (parameterFile.IsPassthrough)
                         {
-                            compareFileContent = "// Unable to load parameter content";
-                            Snackbar.Add($"Failed to load version {compareVersion}", Severity.Warning);
+                            compareFileContent = "// Passthrough version (no content)";
+                        }
+                        else
+                        {
+                            compareFileContent = await ParameterApiClient.GetParameterContentAsync(parameterFile.Id);
+                            if (string.IsNullOrEmpty(compareFileContent))
+                            {
+                                compareFileContent = "// Unable to load parameter content";
+                                Snackbar.Add($"Failed to load version {compareVersion}", Severity.Warning);
+                            }
                         }
                     }
                     else

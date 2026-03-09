@@ -122,10 +122,10 @@ public sealed partial class VersionRetentionService(
             foreach (var group in groups)
             {
                 // Always protect draft and active versions
-                keptCount += group.Count(pf => pf.IsDraft || pf.IsActive);
+                keptCount += group.Count(pf => pf.Status == ParameterVersionStatus.Draft || pf.Status == ParameterVersionStatus.Published);
 
                 var candidates = group
-                    .Where(pf => !pf.IsDraft && !pf.IsActive)
+                    .Where(pf => pf.Status == ParameterVersionStatus.Archived)
                     .OrderByDescending(pf => pf.CreatedAt)
                     .ToList();
 
@@ -134,7 +134,7 @@ public sealed partial class VersionRetentionService(
                     var file = candidates[i];
 
                     // ParameterFile has no PrereleaseChannel, so KeepReleaseVersions doesn't apply
-                    if (ShouldKeep(i, effective, file.CreatedAt, cutoffDate, isRelease: false, file.IsArchived))
+                    if (ShouldKeep(i, effective, file.CreatedAt, cutoffDate, isRelease: false, file.Status == ParameterVersionStatus.Archived))
                     {
                         keptCount++;
                         continue;

@@ -22,15 +22,15 @@ public interface IParameterApiClient
         Guid configurationId,
         string? scopeValue,
         string version,
-        string content,
-        bool isDraft);
+        string? content,
+        bool isPassthrough = false);
 
     Task<List<ParameterFileDto>> GetParameterVersionsAsync(
         Guid scopeTypeId,
         Guid configurationId,
         string? scopeValue);
 
-    Task<(bool Success, string? ErrorMessage)> ActivateParameterVersionAsync(
+    Task<(bool Success, string? ErrorMessage)> PublishParameterVersionAsync(
         Guid scopeTypeId,
         Guid configurationId,
         string? scopeValue,
@@ -84,8 +84,8 @@ public sealed class ParameterApiClient : IParameterApiClient
         Guid configurationId,
         string? scopeValue,
         string version,
-        string content,
-        bool isDraft)
+        string? content,
+        bool isPassthrough = false)
     {
         try
         {
@@ -177,9 +177,9 @@ public sealed class ParameterApiClient : IParameterApiClient
                 return (false, "Access denied");
             }
 
-            if (!string.IsNullOrWhiteSpace(parameterSchema.GeneratedJsonSchema))
+            if (!isPassthrough && !string.IsNullOrWhiteSpace(parameterSchema.GeneratedJsonSchema))
             {
-                var validationResult = _validator.Validate(parameterSchema.GeneratedJsonSchema, content);
+                var validationResult = _validator.Validate(parameterSchema.GeneratedJsonSchema, content!);
                 if (!validationResult.IsValid)
                 {
                     var errorMessages = string.Join("; ", validationResult.Errors?.Select(e => $"{e.Path}: {e.Message}") ?? []);
@@ -188,19 +188,23 @@ public sealed class ParameterApiClient : IParameterApiClient
             }
 
             var dataDir = _config["DataDirectory"] ?? "data";
-            var filePath = !string.IsNullOrWhiteSpace(scopeValue)
-                ? Path.Combine(dataDir, "parameters", configuration.Name, scopeType.Name, scopeValue, $"v{version}", "parameters.yaml")
-                : Path.Combine(dataDir, "parameters", configuration.Name, scopeType.Name, $"v{version}", "parameters.yaml");
 
-            var fileDir = Path.GetDirectoryName(filePath);
-            if (!string.IsNullOrEmpty(fileDir) && !Directory.Exists(fileDir))
+            if (!isPassthrough)
             {
-                Directory.CreateDirectory(fileDir);
+                var filePath = !string.IsNullOrWhiteSpace(scopeValue)
+                    ? Path.Combine(dataDir, "parameters", configuration.Name, scopeType.Name, scopeValue, $"v{version}", "parameters.yaml")
+                    : Path.Combine(dataDir, "parameters", configuration.Name, scopeType.Name, $"v{version}", "parameters.yaml");
+
+                var fileDir = Path.GetDirectoryName(filePath);
+                if (!string.IsNullOrEmpty(fileDir) && !Directory.Exists(fileDir))
+                {
+                    Directory.CreateDirectory(fileDir);
+                }
+
+                await File.WriteAllTextAsync(filePath, content!);
             }
 
-            await File.WriteAllTextAsync(filePath, content);
-
-            var checksum = ComputeChecksum(content);
+            var checksum = isPassthrough ? "passthrough" : ComputeChecksum(content!);
 
             var existingFile = await _db.ParameterFiles
                 .FirstOrDefaultAsync(pf =>
@@ -211,14 +215,13 @@ public sealed class ParameterApiClient : IParameterApiClient
 
             if (existingFile != null)
             {
-                if (!existingFile.IsDraft)
+                if (existingFile.Status != ParameterVersionStatus.Draft)
                 {
                     return (false, "Cannot modify a published parameter version. Published versions are immutable. Create a new version instead.");
                 }
 
-                // Only allow editing draft versions
                 existingFile.Checksum = checksum;
-                existingFile.IsDraft = isDraft;
+                existingFile.IsPassthrough = isPassthrough;
             }
             else
             {
@@ -232,8 +235,8 @@ public sealed class ParameterApiClient : IParameterApiClient
                     MajorVersion = majorVersion,
                     ContentType = "application/x-yaml",
                     Checksum = checksum,
-                    IsActive = false,
-                    IsDraft = isDraft,
+                    Status = ParameterVersionStatus.Draft,
+                    IsPassthrough = isPassthrough,
                     CreatedAt = DateTimeOffset.UtcNow
                 };
 
@@ -268,9 +271,8 @@ public sealed class ParameterApiClient : IParameterApiClient
                 ScopeValue = pf.ScopeValue,
                 Version = pf.Version,
                 Checksum = pf.Checksum,
-                IsActive = pf.IsActive,
-                IsDraft = pf.IsDraft,
-                IsArchived = pf.IsArchived,
+                Status = pf.Status,
+                IsPassthrough = pf.IsPassthrough,
                 MajorVersion = pf.MajorVersion,
                 CreatedAt = pf.CreatedAt
             })
@@ -279,7 +281,7 @@ public sealed class ParameterApiClient : IParameterApiClient
         return files.OrderByDescending(f => f.CreatedAt).ToList();
     }
 
-    public async Task<(bool Success, string? ErrorMessage)> ActivateParameterVersionAsync(
+    public async Task<(bool Success, string? ErrorMessage)> PublishParameterVersionAsync(
         Guid scopeTypeId,
         Guid configurationId,
         string? scopeValue,
@@ -317,17 +319,15 @@ public sealed class ParameterApiClient : IParameterApiClient
                     pf.ScopeTypeId == scopeTypeId &&
                     pf.ScopeValue == scopeValue &&
                     pf.MajorVersion == parameterFile.MajorVersion &&
-                    pf.IsActive)
+                    pf.Status == ParameterVersionStatus.Published)
                 .ToListAsync();
 
             foreach (var file in activeFiles)
             {
-                file.IsActive = false;
-                file.IsArchived = true;
+                file.Status = ParameterVersionStatus.Archived;
             }
 
-            parameterFile.IsActive = true;
-            parameterFile.IsDraft = false;
+            parameterFile.Status = ParameterVersionStatus.Published;
 
             await _db.SaveChangesAsync();
 
@@ -335,7 +335,7 @@ public sealed class ParameterApiClient : IParameterApiClient
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error activating parameter version");
+            _logger.LogError(ex, "Error publishing parameter version");
             return (false, ex.Message);
         }
     }
@@ -372,9 +372,9 @@ public sealed class ParameterApiClient : IParameterApiClient
                 return (false, "Access denied");
             }
 
-            if (parameterFile.IsActive)
+            if (parameterFile.Status == ParameterVersionStatus.Published)
             {
-                return (false, "Cannot delete active parameter version");
+                return (false, "Cannot delete published parameter version");
             }
 
             _db.ParameterFiles.Remove(parameterFile);
@@ -460,7 +460,7 @@ public sealed class ParameterApiClient : IParameterApiClient
                 return (false, "Parameter version not found");
             }
 
-            if (!parameterFile.IsDraft)
+            if (parameterFile.Status != ParameterVersionStatus.Draft)
             {
                 return (false, "Only draft versions can be edited in place.");
             }

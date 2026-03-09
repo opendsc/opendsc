@@ -40,9 +40,9 @@ public static class ParameterEndpoints
             .WithName("GetParameterVersions")
             .WithDescription("Get all parameter file versions for a scope type and configuration");
 
-        group.MapPut("/{scopeTypeId:guid}/{configurationId:guid}/versions/{version}/activate", ActivateParameterVersion)
-            .WithName("ActivateParameterVersion")
-            .WithDescription("Activate a specific parameter version");
+        group.MapPut("/{scopeTypeId:guid}/{configurationId:guid}/versions/{version}/publish", PublishParameterVersion)
+            .WithName("PublishParameterVersion")
+            .WithDescription("Publish a specific parameter version");
 
         group.MapDelete("/{scopeTypeId:guid}/{configurationId:guid}/versions/{version}", DeleteParameterVersion)
             .WithName("DeleteParameterVersion")
@@ -135,9 +135,9 @@ public static class ParameterEndpoints
                 return TypedResults.Forbid();
             }
 
-            if (!string.IsNullOrWhiteSpace(parameterSchema.GeneratedJsonSchema))
+            if (request.IsPassthrough != true && !string.IsNullOrWhiteSpace(parameterSchema.GeneratedJsonSchema))
             {
-                var validationResult = parameterValidator.Validate(parameterSchema.GeneratedJsonSchema, request.Content);
+                var validationResult = parameterValidator.Validate(parameterSchema.GeneratedJsonSchema, request.Content ?? string.Empty);
                 if (!validationResult.IsValid)
                 {
                     var errorMessages = string.Join("; ", validationResult.Errors?.Select(e => $"{e.Path}: {e.Message}") ?? []);
@@ -197,12 +197,13 @@ public static class ParameterEndpoints
             }
         }
 
-        if (string.IsNullOrWhiteSpace(request.Content))
+        if (request.IsPassthrough != true && string.IsNullOrWhiteSpace(request.Content))
         {
             return TypedResults.BadRequest("Parameter content is required");
         }
 
-        var checksum = ComputeChecksum(request.Content);
+        var isPassthrough = request.IsPassthrough == true;
+        var checksum = isPassthrough ? "passthrough" : ComputeChecksum(request.Content!);
 
         var existingVersion = await db.ParameterFiles
             .Include(pf => pf.ParameterSchema)
@@ -219,21 +220,24 @@ public static class ParameterEndpoints
 
         if (existingVersion is not null)
         {
-            if (!existingVersion.IsDraft)
+            if (existingVersion.Status != ParameterVersionStatus.Draft)
             {
                 return TypedResults.BadRequest("Cannot modify a published parameter version. Published versions are immutable. Create a new version instead.");
             }
 
-            // Only allow editing draft versions
-            var fileDir = Path.GetDirectoryName(filePath);
-            if (!string.IsNullOrEmpty(fileDir) && !Directory.Exists(fileDir))
+            if (!isPassthrough)
             {
-                Directory.CreateDirectory(fileDir);
+                var fileDir = Path.GetDirectoryName(filePath);
+                if (!string.IsNullOrEmpty(fileDir) && !Directory.Exists(fileDir))
+                {
+                    Directory.CreateDirectory(fileDir);
+                }
+                await File.WriteAllTextAsync(filePath, request.Content!);
             }
-            await File.WriteAllTextAsync(filePath, request.Content);
 
             existingVersion.Checksum = checksum;
-            existingVersion.ContentType = request.ContentType ?? "application/x-yaml";
+            existingVersion.IsPassthrough = isPassthrough;
+            existingVersion.ContentType = isPassthrough ? null : (request.ContentType ?? "application/x-yaml");
             await db.SaveChangesAsync();
 
             return TypedResults.Ok(new ParameterFileDto
@@ -245,9 +249,8 @@ public static class ParameterEndpoints
                 Version = existingVersion.Version,
                 MajorVersion = existingVersion.MajorVersion,
                 Checksum = existingVersion.Checksum,
-                IsActive = existingVersion.IsActive,
-                IsDraft = existingVersion.IsDraft,
-                IsArchived = existingVersion.IsArchived,
+                Status = existingVersion.Status,
+                IsPassthrough = existingVersion.IsPassthrough,
                 CreatedAt = existingVersion.CreatedAt
             });
         }
@@ -282,19 +285,22 @@ public static class ParameterEndpoints
             ScopeValue = request.ScopeValue,
             Version = request.Version,
             MajorVersion = majorVersion,
-            ContentType = request.ContentType ?? "application/x-yaml",
+            ContentType = isPassthrough ? null : (request.ContentType ?? "application/x-yaml"),
             Checksum = checksum,
-            IsDraft = request.IsDraft ?? true,
-            IsActive = false,
+            Status = ParameterVersionStatus.Draft,
+            IsPassthrough = isPassthrough,
             CreatedAt = DateTimeOffset.UtcNow
         };
 
-        var newFileDir = Path.GetDirectoryName(filePath);
-        if (!string.IsNullOrEmpty(newFileDir) && !Directory.Exists(newFileDir))
+        if (!isPassthrough)
         {
-            Directory.CreateDirectory(newFileDir);
+            var newFileDir = Path.GetDirectoryName(filePath);
+            if (!string.IsNullOrEmpty(newFileDir) && !Directory.Exists(newFileDir))
+            {
+                Directory.CreateDirectory(newFileDir);
+            }
+            await File.WriteAllTextAsync(filePath, request.Content!);
         }
-        await File.WriteAllTextAsync(filePath, request.Content);
 
         db.ParameterFiles.Add(parameterFile);
         await db.SaveChangesAsync();
@@ -308,9 +314,8 @@ public static class ParameterEndpoints
             Version = parameterFile.Version,
             MajorVersion = parameterFile.MajorVersion,
             Checksum = parameterFile.Checksum,
-            IsActive = parameterFile.IsActive,
-            IsDraft = parameterFile.IsDraft,
-            IsArchived = parameterFile.IsArchived,
+            Status = parameterFile.Status,
+            IsPassthrough = parameterFile.IsPassthrough,
             CreatedAt = parameterFile.CreatedAt
         });
     }
@@ -362,9 +367,8 @@ public static class ParameterEndpoints
                 Version = pf.Version,
                 MajorVersion = pf.MajorVersion,
                 Checksum = pf.Checksum,
-                IsActive = pf.IsActive,
-                IsDraft = pf.IsDraft,
-                IsArchived = pf.IsArchived,
+                Status = pf.Status,
+                IsPassthrough = pf.IsPassthrough,
                 CreatedAt = pf.CreatedAt
             })
             .ToList();
@@ -372,7 +376,7 @@ public static class ParameterEndpoints
         return TypedResults.Ok(orderedVersions);
     }
 
-    private static async Task<Results<Ok<ParameterFileDto>, NotFound, Conflict<string>, ForbidHttpResult>> ActivateParameterVersion(
+    private static async Task<Results<Ok<ParameterFileDto>, NotFound, Conflict<string>, ForbidHttpResult>> PublishParameterVersion(
         Guid scopeTypeId,
         Guid configurationId,
         string version,
@@ -402,14 +406,12 @@ public static class ParameterEndpoints
             return TypedResults.Forbid();
         }
 
-        // Prevent activation if parameter needs migration
-        if (parameterFile.NeedsMigration)
+        if (parameterFile.NeedsMigration && !parameterFile.IsPassthrough)
         {
-            return TypedResults.Conflict("Cannot activate parameter file that needs migration. Please resolve migration issues first.");
+            return TypedResults.Conflict("Cannot publish parameter file that needs migration. Please resolve migration issues first.");
         }
 
-        // Validate parameter content if schema exists
-        if (!string.IsNullOrWhiteSpace(parameterFile.ParameterSchema?.GeneratedJsonSchema))
+        if (!parameterFile.IsPassthrough && !string.IsNullOrWhiteSpace(parameterFile.ParameterSchema?.GeneratedJsonSchema))
         {
             var configuration = await db.Configurations.FindAsync(configurationId);
             if (configuration is null)
@@ -439,7 +441,7 @@ public static class ParameterEndpoints
             if (!validationResult.IsValid)
             {
                 var errorMessages = string.Join("; ", validationResult.Errors?.Select(e => $"{e.Path}: {e.Message}") ?? []);
-                return TypedResults.Conflict($"Cannot activate parameter file with validation errors: {errorMessages}");
+                return TypedResults.Conflict($"Cannot publish parameter file with validation errors: {errorMessages}");
             }
         }
 
@@ -450,17 +452,15 @@ public static class ParameterEndpoints
                 pf.ParameterSchema!.ConfigurationId == configurationId &&
                 pf.ScopeValue == scopeValue &&
                 pf.MajorVersion == parameterFile.MajorVersion &&
-                pf.IsActive)
+                pf.Status == ParameterVersionStatus.Published)
             .ToListAsync();
 
         foreach (var activeFile in currentlyActive)
         {
-            activeFile.IsActive = false;
-            activeFile.IsArchived = true;
+            activeFile.Status = ParameterVersionStatus.Archived;
         }
 
-        parameterFile.IsActive = true;
-        parameterFile.IsDraft = false;
+        parameterFile.Status = ParameterVersionStatus.Published;
         await db.SaveChangesAsync();
 
         return TypedResults.Ok(new ParameterFileDto
@@ -472,9 +472,8 @@ public static class ParameterEndpoints
             Version = parameterFile.Version,
             MajorVersion = parameterFile.MajorVersion,
             Checksum = parameterFile.Checksum,
-            IsActive = parameterFile.IsActive,
-            IsDraft = parameterFile.IsDraft,
-            IsArchived = parameterFile.IsArchived,
+            Status = parameterFile.Status,
+            IsPassthrough = parameterFile.IsPassthrough,
             CreatedAt = parameterFile.CreatedAt
         });
     }
@@ -507,9 +506,9 @@ public static class ParameterEndpoints
             return TypedResults.Forbid();
         }
 
-        if (parameterFile.IsActive)
+        if (parameterFile.Status == ParameterVersionStatus.Published)
         {
-            return TypedResults.Conflict("Cannot delete an active parameter version");
+            return TypedResults.Conflict("Cannot delete a published parameter version");
         }
 
         db.ParameterFiles.Remove(parameterFile);
@@ -573,9 +572,9 @@ public static class ParameterEndpoints
                 .FirstOrDefaultAsync(pf =>
                     pf.ParameterSchema!.ConfigurationId == configurationId &&
                     pf.ScopeTypeId == defaultScopeType.Id &&
-                    pf.IsActive);
+                    pf.Status == ParameterVersionStatus.Published);
 
-            if (defaultParamFile != null)
+            if (defaultParamFile != null && !defaultParamFile.IsPassthrough)
             {
                 var defaultPath = Path.Combine(dataDir, "parameters", configuration.Name, "Default", $"v{defaultParamFile.Version}", "parameters.yaml");
 
@@ -600,10 +599,10 @@ public static class ParameterEndpoints
                     pf.ParameterSchema!.ConfigurationId == configurationId &&
                     pf.ScopeTypeId == tag.ScopeValue.ScopeTypeId &&
                     pf.ScopeValue == tag.ScopeValue.Value &&
-                    pf.IsActive)
+                    pf.Status == ParameterVersionStatus.Published)
                 .FirstOrDefaultAsync();
 
-            if (paramFile is null)
+            if (paramFile is null || paramFile.IsPassthrough)
             {
                 continue;
             }
@@ -635,10 +634,10 @@ public static class ParameterEndpoints
                     pf.ParameterSchema!.ConfigurationId == configurationId &&
                     pf.ScopeTypeId == nodeScopeType.Id &&
                     pf.ScopeValue == node.Fqdn &&
-                    pf.IsActive)
+                    pf.Status == ParameterVersionStatus.Published)
                 .FirstOrDefaultAsync();
 
-            if (nodeParamFile != null)
+            if (nodeParamFile != null && !nodeParamFile.IsPassthrough)
             {
                 var nodePath = Path.Combine(dataDir, "parameters", configuration.Name, "Node", node.Fqdn, $"v{nodeParamFile.Version}", "parameters.yaml");
 
@@ -728,7 +727,7 @@ public static class ParameterEndpoints
                 pf.ScopeTypeId == scopeTypeId &&
                 pf.ParameterSchema!.ConfigurationId == configurationId &&
                 pf.ScopeValue == scopeValue)
-            .Select(pf => new { pf.MajorVersion, pf.Version, pf.CreatedAt, pf.IsActive, pf.NeedsMigration })
+            .Select(pf => new { pf.MajorVersion, pf.Version, pf.CreatedAt, pf.Status, pf.NeedsMigration })
             .ToListAsync();
 
         var majorVersions = allFiles
@@ -737,7 +736,7 @@ public static class ParameterEndpoints
             {
                 MajorVersion = g.Key,
                 VersionCount = g.Count(),
-                HasActive = g.Any(pf => pf.IsActive),
+                HasActive = g.Any(pf => pf.Status == ParameterVersionStatus.Published),
                 LatestVersion = g.OrderByDescending(pf => pf.CreatedAt).First().Version,
                 HasMigrationNeeded = g.Any(pf => pf.NeedsMigration)
             })
@@ -783,7 +782,7 @@ public static class ParameterEndpoints
                 pf.ParameterSchema!.ConfigurationId == configurationId &&
                 pf.ScopeValue == scopeValue &&
                 pf.MajorVersion == major &&
-                pf.IsActive);
+                pf.Status == ParameterVersionStatus.Published);
 
         if (activeParameter is null)
         {
@@ -799,9 +798,8 @@ public static class ParameterEndpoints
             Version = activeParameter.Version,
             MajorVersion = activeParameter.MajorVersion,
             Checksum = activeParameter.Checksum,
-            IsActive = activeParameter.IsActive,
-            IsDraft = activeParameter.IsDraft,
-            IsArchived = activeParameter.IsArchived,
+            Status = activeParameter.Status,
+            IsPassthrough = activeParameter.IsPassthrough,
             CreatedAt = activeParameter.CreatedAt
         });
     }
@@ -1094,8 +1092,7 @@ public static class ParameterEndpoints
             MajorVersion = semVer.Major,
             Checksum = checksum,
             ContentType = "application/json",
-            IsActive = true,
-            IsDraft = false,
+            Status = ParameterVersionStatus.Published,
             CreatedAt = DateTimeOffset.UtcNow
         };
 
@@ -1122,9 +1119,8 @@ public sealed class ParameterFileDto
     public required string Version { get; init; }
     public required int MajorVersion { get; init; }
     public required string Checksum { get; init; }
-    public required bool IsActive { get; init; }
-    public required bool IsDraft { get; init; }
-    public required bool IsArchived { get; init; }
+    public required ParameterVersionStatus Status { get; init; }
+    public required bool IsPassthrough { get; init; }
     public required DateTimeOffset CreatedAt { get; init; }
 }
 
@@ -1132,9 +1128,9 @@ public sealed class CreateParameterRequest
 {
     public string? ScopeValue { get; init; }
     public required string Version { get; init; }
-    public required string Content { get; init; }
+    public string? Content { get; init; }
     public string? ContentType { get; init; }
-    public bool? IsDraft { get; init; }
+    public bool? IsPassthrough { get; init; }
 }
 
 public sealed class ParameterProvenanceDto

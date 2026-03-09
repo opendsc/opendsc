@@ -14,9 +14,8 @@ public sealed class ParameterFile
     public int MajorVersion { get; set; }
     public string? ContentType { get; set; }
     public required string Checksum { get; set; }
-    public bool IsDraft { get; set; } = true;
-    public bool IsActive { get; set; }
-    public bool IsArchived { get; set; }
+    public ParameterVersionStatus Status { get; set; } = ParameterVersionStatus.Draft;
+    public bool IsPassthrough { get; set; }
     public bool NeedsMigration { get; set; }
     public string? ValidationErrors { get; set; }
     public DateTimeOffset CreatedAt { get; set; }

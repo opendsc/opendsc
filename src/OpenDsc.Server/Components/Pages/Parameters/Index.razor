@@ -4,6 +4,7 @@
 
 @using Microsoft.EntityFrameworkCore
 @using OpenDsc.Server.Services
+@using OpenDsc.Server.Entities
 @using MudBlazor
 @using BlazorMonaco
 @using BlazorMonaco.Editor
@@ -167,15 +168,15 @@
                         <MudTd>@(context.ScopeValue ?? "-")</MudTd>
                         <MudTd>@context.Version</MudTd>
                         <MudTd>
-                            @if (context.IsActive)
+                            @if (context.Status == ParameterVersionStatus.Published)
                             {
                                 <MudChip T="string" Size="Size.Small" Color="Color.Success">Active</MudChip>
                             }
-                            @if (context.IsDraft)
+                            @if (context.Status == ParameterVersionStatus.Draft)
                             {
                                 <MudChip T="string" Size="Size.Small" Color="Color.Info">Draft</MudChip>
                             }
-                            @if (context.IsArchived)
+                            @if (context.Status == ParameterVersionStatus.Archived)
                             {
                                 <MudChip T="string" Size="Size.Small" Color="Color.Default">Archived</MudChip>
                             }

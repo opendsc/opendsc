@@ -42,41 +42,38 @@
                     }
                 </MudSelect>
             </MudItem>
-            <MudItem xs="12" sm="3">
+            <MudItem xs="12" sm="6">
                 <MudTextField @bind-Value="minorPatch"
                               Label="Minor.Patch"
                               Variant="Variant.Outlined"
                               Required="true"
                               HelperText="e.g. 0.0" />
             </MudItem>
-            <MudItem xs="12" sm="6">
-                <MudSwitch @bind-Value="isDraft"
-                           Label="Create as Draft"
-                           Color="Color.Primary"
-                           Class="mt-2" />
-            </MudItem>
         </MudGrid>
 
-        <div Class="d-flex justify-space-between align-center mt-4 mb-2">
-            <MudText Typo="Typo.subtitle2">Parameter Content (YAML)</MudText>
-            @if (selectedConfigurationId.HasValue)
-            {
-                <MudButton Size="Size.Small"
-                           Variant="Variant.Text"
-                           Color="Color.Primary"
-                           StartIcon="@Icons.Material.Filled.Schema"
-                           OnClick="OpenSchemaDialog"
-                           Disabled="@(currentSchema == null)">
-                    View Schema
-                </MudButton>
-            }
-        </div>
-        <div style="height: 400px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
-            <StandaloneCodeEditor @ref="_editor"
-                                  Id="parameter-create-editor"
-                                  ConstructionOptions="GetEditorOptions"
-                                  CssClass="monaco-editor-container" />
-        </div>
+        @if (!isPassthrough)
+        {
+            <div Class="d-flex justify-space-between align-center mt-4 mb-2">
+                <MudText Typo="Typo.subtitle2">Parameter Content (YAML)</MudText>
+                @if (selectedConfigurationId.HasValue)
+                {
+                    <MudButton Size="Size.Small"
+                               Variant="Variant.Text"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Schema"
+                               OnClick="OpenSchemaDialog"
+                               Disabled="@(currentSchema == null)">
+                        View Schema
+                    </MudButton>
+                }
+            </div>
+            <div style="height: 400px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
+                <StandaloneCodeEditor @ref="_editor"
+                                      Id="parameter-create-editor"
+                                      ConstructionOptions="GetEditorOptions"
+                                      CssClass="monaco-editor-container" />
+            </div>
+        }
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Cancel</MudButton>
@@ -144,6 +141,7 @@
     [Parameter] public string? InitialScopeValue { get; set; }
     [Parameter] public bool LockScope { get; set; }
     [Parameter] public string? InitialContent { get; set; }
+    [Parameter] public bool InitialIsPassthrough { get; set; }
     [Parameter] public int? InitialMajorVersion { get; set; }
 
     private StandaloneCodeEditor? _editor;
@@ -153,8 +151,9 @@
     private List<int> availableMajors = [];
     private int? selectedMajor;
     private string minorPatch = "0.0";
-    private bool isDraft = true;
+    private bool isPassthrough;
     private bool isCreating;
+
     private List<ScopeType> scopeTypes = [];
     private string defaultEditorValue = "parameters:\n  setting1: value1\n  setting2: value2\n";
     private ParameterSchema? currentSchema;
@@ -173,6 +172,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        isPassthrough = InitialIsPassthrough;
         _editorInitialValue = InitialContent ?? defaultEditorValue;
         await LoadScopeTypesAsync();
 
@@ -443,7 +443,7 @@
 
     private async Task CreateParameter()
     {
-        if (!IsValid() || _editor == null)
+        if (!IsValid() || (!isPassthrough && _editor == null))
         {
             return;
         }
@@ -452,12 +452,17 @@
 
         try
         {
-            var content = await _editor.GetValue();
+            string? content = null;
 
-            if (string.IsNullOrWhiteSpace(content))
+            if (!isPassthrough)
             {
-                Snackbar.Add("Parameter content cannot be empty", Severity.Warning);
-                return;
+                content = await _editor!.GetValue();
+
+                if (string.IsNullOrWhiteSpace(content))
+                {
+                    Snackbar.Add("Parameter content cannot be empty", Severity.Warning);
+                    return;
+                }
             }
 
             var fullVersion = $"{selectedMajor}.{minorPatch.Trim()}";
@@ -468,7 +473,7 @@
                 selectedScopeValue,
                 fullVersion,
                 content,
-                isDraft);
+                isPassthrough);
 
             if (success)
             {

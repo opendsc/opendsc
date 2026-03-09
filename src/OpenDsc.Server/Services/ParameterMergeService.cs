@@ -5,6 +5,7 @@
 using Microsoft.EntityFrameworkCore;
 
 using OpenDsc.Server.Data;
+using OpenDsc.Server.Entities;
 
 namespace OpenDsc.Server.Services;
 
@@ -61,10 +62,10 @@ public sealed class ParameterMergeService(ServerDbContext db, IParameterMerger m
                 .FirstOrDefaultAsync(pf =>
                     pf.ParameterSchema!.ConfigurationId == configurationId &&
                     pf.ScopeTypeId == defaultScopeType.Id &&
-                    pf.IsActive,
+                    pf.Status == ParameterVersionStatus.Published,
                     cancellationToken);
 
-            if (defaultParamFile != null)
+            if (defaultParamFile != null && !defaultParamFile.IsPassthrough)
             {
                 var defaultPath = Path.Combine(dataDir, "parameters", configName, "Default", $"v{defaultParamFile.Version}", "parameters.yaml");
 
@@ -90,10 +91,10 @@ public sealed class ParameterMergeService(ServerDbContext db, IParameterMerger m
                     pf.ParameterSchema!.ConfigurationId == configurationId &&
                     pf.ScopeTypeId == tag.ScopeTypeId &&
                     pf.ScopeValue == tag.ScopeValue &&
-                    pf.IsActive,
+                    pf.Status == ParameterVersionStatus.Published,
                     cancellationToken);
 
-            if (paramFile is null)
+            if (paramFile is null || paramFile.IsPassthrough)
             {
                 continue;
             }
@@ -126,10 +127,10 @@ public sealed class ParameterMergeService(ServerDbContext db, IParameterMerger m
                     pf.ParameterSchema!.ConfigurationId == configurationId &&
                     pf.ScopeTypeId == nodeScopeType.Id &&
                     pf.ScopeValue == nodeFqdn &&
-                    pf.IsActive,
+                    pf.Status == ParameterVersionStatus.Published,
                     cancellationToken);
 
-            if (nodeParamFile != null)
+            if (nodeParamFile != null && !nodeParamFile.IsPassthrough)
             {
                 var nodePath = Path.Combine(dataDir, "parameters", configName, "Node", nodeFqdn, $"v{nodeParamFile.Version}", "parameters.yaml");
 
@@ -207,10 +208,10 @@ public sealed class ParameterMergeService(ServerDbContext db, IParameterMerger m
                 .FirstOrDefaultAsync(pf =>
                     pf.ParameterSchema!.ConfigurationId == configurationId &&
                     pf.ScopeTypeId == defaultScopeType.Id &&
-                    pf.IsActive,
+                    pf.Status == ParameterVersionStatus.Published,
                     cancellationToken);
 
-            if (defaultParamFile != null)
+            if (defaultParamFile != null && !defaultParamFile.IsPassthrough)
             {
                 var defaultPath = Path.Combine(dataDir, "parameters", configName, "Default", $"v{defaultParamFile.Version}", "parameters.yaml");
 
@@ -236,10 +237,10 @@ public sealed class ParameterMergeService(ServerDbContext db, IParameterMerger m
                     pf.ParameterSchema!.ConfigurationId == configurationId &&
                     pf.ScopeTypeId == tag.ScopeTypeId &&
                     pf.ScopeValue == tag.ScopeValue &&
-                    pf.IsActive,
+                    pf.Status == ParameterVersionStatus.Published,
                     cancellationToken);
 
-            if (paramFile is null)
+            if (paramFile is null || paramFile.IsPassthrough)
             {
                 continue;
             }
@@ -272,10 +273,10 @@ public sealed class ParameterMergeService(ServerDbContext db, IParameterMerger m
                     pf.ParameterSchema!.ConfigurationId == configurationId &&
                     pf.ScopeTypeId == nodeScopeType.Id &&
                     pf.ScopeValue == nodeFqdn &&
-                    pf.IsActive,
+                    pf.Status == ParameterVersionStatus.Published,
                     cancellationToken);
 
-            if (nodeParamFile != null)
+            if (nodeParamFile != null && !nodeParamFile.IsPassthrough)
             {
                 var nodePath = Path.Combine(dataDir, "parameters", configName, "Node", nodeFqdn, $"v{nodeParamFile.Version}", "parameters.yaml");
 
