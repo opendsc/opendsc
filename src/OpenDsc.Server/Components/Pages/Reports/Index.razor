@@ -33,11 +33,7 @@
                                     Variant="Variant.Outlined"
                                     DateFormat="yyyy-MM-dd" />
             </MudItem>
-            <MudItem xs="12" md="4" Class="d-flex align-end">
-                <MudButton Variant="Variant.Text" Color="Color.Secondary" OnClick="ClearFilters" Class="ml-2">
-                    Clear
-                </MudButton>
-            </MudItem>
+
         </MudGrid>
 
         <MudDataGrid T="ReportViewModel" Items="@filteredReports" Loading="@isLoading" Hover="true" Dense="true">
@@ -173,13 +169,7 @@
         ApplyFilters();
     }
 
-    private void ClearFilters()
-    {
-        selectedNodeId = null;
-        selectedStatus = null;
-        _reportDateRange = new(DateTime.Today.AddDays(-7), DateTime.Today);
-        filteredReports = allReports;
-    }
+
 
     private void ViewDetails(Guid id)
     {
