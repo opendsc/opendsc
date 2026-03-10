@@ -16,7 +16,7 @@ using YamlDotNet.Serialization.NamingConventions;
 
 namespace OpenDsc.Server.Services;
 
-public interface IConfigurationApiClient
+public interface IConfigurationService
 {
     Task<bool> CreateConfigurationAsync(string name, string? description, string entryPoint, string version, bool isDraft, bool useServerManagedParameters, IReadOnlyList<IBrowserFile> files);
     Task<bool> CreateVersionAsync(string name, string version, bool isDraft, IReadOnlyList<IBrowserFile> files, string? entryPoint = null);
@@ -41,23 +41,23 @@ public sealed class PublishResult
     public string? UpdatedPrereleaseChannel { get; init; }
 }
 
-public sealed class ConfigurationApiClient : IConfigurationApiClient
+public sealed class ConfigurationService : IConfigurationService
 {
     private readonly ServerDbContext _db;
     private readonly IConfiguration _config;
     private readonly IResourceAuthorizationService _authService;
     private readonly IUserContextService _userContext;
-    private readonly ILogger<ConfigurationApiClient> _logger;
+    private readonly ILogger<ConfigurationService> _logger;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IParameterSchemaBuilder _schemaBuilder;
     private readonly IParameterCompatibilityService _compatibilityService;
 
-    public ConfigurationApiClient(
+    public ConfigurationService(
         ServerDbContext db,
         IConfiguration config,
         IResourceAuthorizationService authService,
         IUserContextService userContext,
-        ILogger<ConfigurationApiClient> logger,
+        ILogger<ConfigurationService> logger,
         IHttpContextAccessor httpContextAccessor,
         IParameterSchemaBuilder schemaBuilder,
         IParameterCompatibilityService compatibilityService)

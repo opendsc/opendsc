@@ -10,12 +10,11 @@ using Microsoft.EntityFrameworkCore;
 using NuGet.Versioning;
 
 using OpenDsc.Server.Data;
-using OpenDsc.Server.Endpoints;
 using OpenDsc.Server.Entities;
 
 namespace OpenDsc.Server.Services;
 
-public interface IParameterApiClient
+public interface IParameterService
 {
     Task<(bool Success, string? ErrorMessage)> CreateOrUpdateParameterAsync(
         Guid scopeTypeId,
@@ -51,7 +50,7 @@ public interface IParameterApiClient
     Task<List<int>> GetAvailableMajorVersionsAsync(Guid configurationId);
 }
 
-public sealed class ParameterApiClient : IParameterApiClient
+public sealed class ParameterService : IParameterService
 {
     private readonly ServerDbContext _db;
     private readonly IConfiguration _config;
@@ -59,16 +58,16 @@ public sealed class ParameterApiClient : IParameterApiClient
     private readonly IUserContextService _userContext;
     private readonly IParameterMergeService _parameterMergeService;
     private readonly IParameterValidator _validator;
-    private readonly ILogger<ParameterApiClient> _logger;
+    private readonly ILogger<ParameterService> _logger;
 
-    public ParameterApiClient(
+    public ParameterService(
         ServerDbContext db,
         IConfiguration config,
         IResourceAuthorizationService authService,
         IUserContextService userContext,
         IParameterMergeService parameterMergeService,
         IParameterValidator validator,
-        ILogger<ParameterApiClient> logger)
+        ILogger<ParameterService> logger)
     {
         _db = db;
         _config = config;
@@ -535,5 +534,47 @@ public sealed class ParameterApiClient : IParameterApiClient
         var hash = SHA256.HashData(bytes);
         return Convert.ToHexString(hash).ToLowerInvariant();
     }
+}
+
+public sealed class ParameterFileDto
+{
+    public required Guid Id { get; init; }
+    public required Guid ScopeTypeId { get; init; }
+    public required Guid ConfigurationId { get; init; }
+    public string? ScopeValue { get; init; }
+    public required string Version { get; init; }
+    public required int MajorVersion { get; init; }
+    public required string Checksum { get; init; }
+    public required ParameterVersionStatus Status { get; init; }
+    public required bool IsPassthrough { get; init; }
+    public required DateTimeOffset CreatedAt { get; init; }
+}
+
+public sealed class ParameterProvenanceDto
+{
+    public required Guid NodeId { get; init; }
+    public required Guid ConfigurationId { get; init; }
+    public required string MergedParameters { get; init; }
+    public required Dictionary<string, ParameterSourceInfo> Provenance { get; init; }
+    public string? PrereleaseChannel { get; init; }
+}
+
+public sealed class ParameterSourceInfo
+{
+    public required string ScopeTypeName { get; init; }
+    public string? ScopeValue { get; init; }
+    public required int Precedence { get; init; }
+    public required object? Value { get; init; }
+    public List<ScopeInfo>? OverriddenBy { get; init; }
+    public string? ResolvedVersion { get; init; }
+    public bool IsPrerelease { get; init; }
+}
+
+public sealed class ScopeInfo
+{
+    public required string ScopeTypeName { get; init; }
+    public string? ScopeValue { get; init; }
+    public required int Precedence { get; init; }
+    public required object? Value { get; init; }
 }
 

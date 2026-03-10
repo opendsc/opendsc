@@ -1272,20 +1272,6 @@ public static class ParameterEndpoints
     }
 }
 
-public sealed class ParameterFileDto
-{
-    public required Guid Id { get; init; }
-    public required Guid ScopeTypeId { get; init; }
-    public required Guid ConfigurationId { get; init; }
-    public string? ScopeValue { get; init; }
-    public required string Version { get; init; }
-    public required int MajorVersion { get; init; }
-    public required string Checksum { get; init; }
-    public required ParameterVersionStatus Status { get; init; }
-    public required bool IsPassthrough { get; init; }
-    public required DateTimeOffset CreatedAt { get; init; }
-}
-
 public sealed class CreateParameterRequest
 {
     public string? ScopeValue { get; init; }
@@ -1295,26 +1281,6 @@ public sealed class CreateParameterRequest
     public bool? IsPassthrough { get; init; }
 }
 
-public sealed class ParameterProvenanceDto
-{
-    public required Guid NodeId { get; init; }
-    public required Guid ConfigurationId { get; init; }
-    public required string MergedParameters { get; init; }
-    public required Dictionary<string, ParameterSourceInfo> Provenance { get; init; }
-    public string? PrereleaseChannel { get; init; }
-}
-
-public sealed class ParameterSourceInfo
-{
-    public required string ScopeTypeName { get; init; }
-    public string? ScopeValue { get; init; }
-    public required int Precedence { get; init; }
-    public required object? Value { get; init; }
-    public List<ScopeInfo>? OverriddenBy { get; init; }
-    public string? ResolvedVersion { get; init; }
-    public bool IsPrerelease { get; init; }
-}
-
 public sealed class MajorVersionDto
 {
     public required int MajorVersion { get; init; }
@@ -1322,14 +1288,6 @@ public sealed class MajorVersionDto
     public required bool HasActive { get; init; }
     public required string LatestVersion { get; init; }
     public required bool HasMigrationNeeded { get; init; }
-}
-
-public sealed class ScopeInfo
-{
-    public required string ScopeTypeName { get; init; }
-    public string? ScopeValue { get; init; }
-    public required int Precedence { get; init; }
-    public required object? Value { get; init; }
 }
 
 public sealed class ValidationResultDto

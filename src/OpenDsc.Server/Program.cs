@@ -74,8 +74,8 @@ builder.Services.AddScoped<IParameterValidator, ParameterValidator>();
 builder.Services.AddScoped<IParameterCompatibilityService, ParameterCompatibilityService>();
 builder.Services.AddScoped<IVersionRetentionService, VersionRetentionService>();
 builder.Services.AddHostedService<RetentionBackgroundService>();
-builder.Services.AddScoped<IConfigurationApiClient, ConfigurationApiClient>();
-builder.Services.AddScoped<IParameterApiClient, ParameterApiClient>();
+builder.Services.AddScoped<IConfigurationService, ConfigurationService>();
+builder.Services.AddScoped<IParameterService, ParameterService>();
 builder.Services.AddScoped<IJsonYamlConverter, JsonYamlConverter>();
 
 var app = builder.Build();
