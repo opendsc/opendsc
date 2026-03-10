@@ -358,11 +358,6 @@ public sealed class ParameterApiClient : IParameterApiClient
                 return (false, "Access denied");
             }
 
-            if (parameterFile.Status == ParameterVersionStatus.Published)
-            {
-                return (false, "Cannot delete published parameter version");
-            }
-
             _db.ParameterFiles.Remove(parameterFile);
             await _db.SaveChangesAsync();
 
