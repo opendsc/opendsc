@@ -1,5 +1,6 @@
 @using Microsoft.EntityFrameworkCore
 @using MudBlazor
+@using System.Text.RegularExpressions
 @inject ServerDbContext Db
 @inject ISnackbar Snackbar
 @inject IPasswordHasher PasswordHasher
@@ -9,7 +10,8 @@
         @if (user != null)
         {
             <MudTextField @bind-Value="user.Username" Label="Username" Variant="Variant.Outlined" Disabled="true" Class="mb-3" />
-            <MudTextField @bind-Value="user.Email" Label="Email" Variant="Variant.Outlined" Required="true" Class="mb-3" />
+            <MudTextField @bind-Value="user.Email" Label="Email" Variant="Variant.Outlined" Required="true" Class="mb-3"
+                          Immediate="true" Validation="@(new Func<string?, string?>(ValidateEmail))" />
             <MudSelect @bind-Value="user.AccountType" Label="Account Type" Variant="Variant.Outlined" Class="mb-3" T="AccountType">
                 <MudSelectItem Value="@AccountType.User">User</MudSelectItem>
                 <MudSelectItem Value="@AccountType.ServiceAccount">Service Account</MudSelectItem>
@@ -34,7 +36,7 @@
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(user == null)">Save</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(user == null || ValidateEmail(user?.Email) != null)">Save</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -51,6 +53,17 @@
     private User? user;
     private string? newPassword;
     private bool isLocked;
+
+    private static readonly Regex EmailRegex = new(@"^[^\s@]+@[^\s@]+\.[^\s@]+$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    private string? ValidateEmail(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return "Email is required";
+        if (!EmailRegex.IsMatch(value))
+            return "Please enter a valid email address";
+        return null;
+    }
 
     protected override async Task OnInitializedAsync()
     {
