@@ -110,10 +110,11 @@
                                                                               Color="Color.Primary"
                                                                               OnClick="@(() => OpenAddChildDialog(version))" />
                                                             </MudTooltip>
-                                                            <MudTooltip Text="Publish this draft version">
+                                                            <MudTooltip Text="@(version.Items.Any() ? "Publish this draft version" : "Cannot publish: add at least one child configuration first")">
                                                                 <MudIconButton Icon="@Icons.Material.Filled.Publish"
                                                                               Size="Size.Small"
                                                                               Color="Color.Success"
+                                                                              Disabled="@(!version.Items.Any())"
                                                                               OnClick="@(() => PublishVersion(version))" />
                                                             </MudTooltip>
                                                         }

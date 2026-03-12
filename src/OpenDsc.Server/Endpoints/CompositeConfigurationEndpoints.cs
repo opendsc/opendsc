@@ -404,6 +404,7 @@ public static class CompositeConfigurationEndpoints
     {
         var compositeVersion = await db.CompositeConfigurationVersions
             .Include(v => v.CompositeConfiguration)
+            .Include(v => v.Items)
             .FirstOrDefaultAsync(v => v.CompositeConfiguration.Name == name && v.Version == version);
 
         if (compositeVersion is null)
@@ -420,6 +421,11 @@ public static class CompositeConfigurationEndpoints
         if (compositeVersion.Status != ConfigurationVersionStatus.Draft)
         {
             return TypedResults.BadRequest(new ErrorResponse { Error = "Version is already published" });
+        }
+
+        if (!compositeVersion.Items.Any())
+        {
+            return TypedResults.BadRequest(new ErrorResponse { Error = "Cannot publish a composite configuration version with no child configurations" });
         }
 
         compositeVersion.Status = ConfigurationVersionStatus.Published;

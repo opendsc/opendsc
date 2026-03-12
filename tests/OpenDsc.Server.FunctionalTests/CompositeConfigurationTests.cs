@@ -9,6 +9,7 @@ using AwesomeAssertions;
 
 using OpenDsc.Lcm.Contracts;
 using OpenDsc.Server.Contracts;
+using OpenDsc.Server.Entities;
 using OpenDsc.Server.FunctionalTests.DatabaseProviders;
 
 using Xunit;
@@ -66,6 +67,15 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
     public async Task CreateVersionAndPublish_WorksCorrectly()
     {
         var compositeName = $"composite-version-{Guid.NewGuid()}";
+        var childName = $"child-pub-{Guid.NewGuid()}";
+
+        using var childContent = new MultipartFormDataContent();
+        childContent.Add(new StringContent(childName), "name");
+        childContent.Add(new StringContent("main.dsc.yaml"), "entryPoint");
+        var childFile = new ByteArrayContent("resources: []"u8.ToArray());
+        childFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+        childContent.Add(childFile, "files", "main.dsc.yaml");
+        await AuthClient.PostAsync("/api/v1/configurations", childContent);
 
         var createRequest = new CreateCompositeConfigurationRequest
         {
@@ -81,14 +91,20 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
         versionResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
         var versionDto = await versionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDto>();
-        versionDto!.IsDraft.Should().BeTrue();
+        versionDto!.Status.Should().Be(ConfigurationVersionStatus.Draft);
+
+        var addChildRequest = new AddChildConfigurationRequest
+        {
+            ChildConfigurationName = childName
+        };
+        await AuthClient.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto!.Version}/children", addChildRequest);
 
         var publishResponse = await AuthClient.PutAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto.Version}/publish", null);
         publishResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var getVersionResponse = await AuthClient.GetAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto.Version}");
         var publishedVersion = await getVersionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDto>();
-        publishedVersion!.IsDraft.Should().BeFalse();
+        publishedVersion!.Status.Should().Be(ConfigurationVersionStatus.Published);
     }
 
     [Fact]
