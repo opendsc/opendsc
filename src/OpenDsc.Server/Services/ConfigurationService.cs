@@ -8,6 +8,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.EntityFrameworkCore;
 
+using OpenDsc.Server.Authorization;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
 
@@ -196,14 +197,15 @@ public sealed class ConfigurationService : IConfigurationService
             }
 
             var userId = _userContext.GetCurrentUserId();
-            if (userId.HasValue)
+            if (userId is Guid creatorId &&
+                !await _authService.HasGlobalPermissionAsync(creatorId, Permissions.Configurations_AdminOverride))
             {
                 await _authService.GrantConfigurationPermissionAsync(
                     configuration.Id,
-                    userId.Value,
+                    creatorId,
                     PrincipalType.User,
                     ResourcePermission.Manage,
-                    userId.Value);
+                    creatorId);
             }
 
             return true;

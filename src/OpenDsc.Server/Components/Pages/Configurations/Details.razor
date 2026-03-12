@@ -362,6 +362,19 @@
                 </MudCardContent>
             </MudCard>
         </MudTabPanel>
+
+        <MudTabPanel Text="Permissions" Icon="@Icons.Material.Filled.Lock">
+            <PermissionsPanel ResourceId="@configuration!.Id"
+                              ResourceType="PermissionsPanel.PermissionResource.Configuration"
+                              Title="Configuration Permissions" />
+
+            @if (configuration!.UseServerManagedParameters && parameterSchemaId.HasValue)
+            {
+                <PermissionsPanel ResourceId="@parameterSchemaId.Value"
+                                  ResourceType="PermissionsPanel.PermissionResource.Parameter"
+                                  Title="Parameter Permissions" />
+            }
+        </MudTabPanel>
     </MudTabs>
 }
 else if (loading)
@@ -391,6 +404,9 @@ else
     private int? retentionKeepDays;
     private bool? retentionKeepReleaseVersions;
 
+    // Parameter schema ID for permissions panel
+    private Guid? parameterSchemaId;
+
     protected override async Task OnInitializedAsync()
     {
         await LoadConfiguration();
@@ -415,6 +431,10 @@ else
 
                 UpdateMajors();
                 await LoadRetentionSettings();
+
+                parameterSchemaId = (await Db.ParameterSchemas
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(ps => ps.ConfigurationId == configuration.Id))?.Id;
             }
         }
         finally

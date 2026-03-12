@@ -15,41 +15,42 @@
         </CardHeaderActions>
     </MudCardHeader>
     <MudCardContent>
-        <MudTable Items="@groups" Hover="true" Dense="true" Loading="@loading">
-            <HeaderContent>
-                <MudTh>Name</MudTh>
-                <MudTh>Description</MudTh>
-                <MudTh>System</MudTh>
-                <MudTh>Members</MudTh>
-                <MudTh>Roles</MudTh>
-                <MudTh>Created</MudTh>
-                <MudTh>Actions</MudTh>
-            </HeaderContent>
-            <RowTemplate>
-                <MudTd>@context.Name</MudTd>
-                <MudTd>@context.Description</MudTd>
-                <MudTd>
-                    @if (context.IsSystemGroup)
-                    {
-                        <MudChip T="string" Size="Size.Small" Color="Color.Info">System</MudChip>
-                    }
-                </MudTd>
-                <MudTd>@GetGroupMemberCount(context.Id)</MudTd>
-                <MudTd>@GetGroupRoleCount(context.Id)</MudTd>
-                <MudTd>@context.CreatedAt.LocalDateTime.ToString("g")</MudTd>
-                <MudTd>
-                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                   Size="Size.Small"
-                                   OnClick="@(() => EditGroup(context))"
-                                   Disabled="@context.IsSystemGroup" />
-                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                   Size="Size.Small"
-                                   Color="Color.Error"
-                                   OnClick="@(() => DeleteGroup(context))"
-                                   Disabled="@context.IsSystemGroup" />
-                </MudTd>
-            </RowTemplate>
-        </MudTable>
+        <MudDataGrid T="Group" Items="@groups" Hover="true" Dense="true" Loading="@loading" SortMode="SortMode.Single">
+            <Columns>
+                <PropertyColumn Property="x => x.Name" Title="Name" />
+                <PropertyColumn Property="x => x.Description" Title="Description" />
+                <TemplateColumn Title="System" SortBy="@(x => x.IsSystemGroup)">
+                    <CellTemplate>
+                        @if (context.Item.IsSystemGroup)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Info">System</MudChip>
+                        }
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="Members" SortBy="@(x => GetGroupMemberCount(x.Id))">
+                    <CellTemplate>@GetGroupMemberCount(context.Item.Id)</CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="Roles" SortBy="@(x => GetGroupRoleCount(x.Id))">
+                    <CellTemplate>@GetGroupRoleCount(context.Item.Id)</CellTemplate>
+                </TemplateColumn>
+                <PropertyColumn Property="x => x.CreatedAt" Title="Created">
+                    <CellTemplate>@context.Item.CreatedAt.LocalDateTime.ToString("g")</CellTemplate>
+                </PropertyColumn>
+                <TemplateColumn Title="Actions" Sortable="false">
+                    <CellTemplate>
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                       Size="Size.Small"
+                                       OnClick="@(() => EditGroup(context.Item))"
+                                       Disabled="@context.Item.IsSystemGroup" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                       Size="Size.Small"
+                                       Color="Color.Error"
+                                       OnClick="@(() => DeleteGroup(context.Item))"
+                                       Disabled="@context.Item.IsSystemGroup" />
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+        </MudDataGrid>
     </MudCardContent>
 </MudCard>
 

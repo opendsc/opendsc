@@ -14,6 +14,8 @@ using Microsoft.EntityFrameworkCore;
 using NuGet.Versioning;
 
 using OpenDsc.Server.Authentication;
+using OpenDsc.Server.Authorization;
+using OpenDsc.Server.Contracts;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
 using OpenDsc.Server.Services;
@@ -57,7 +59,8 @@ public static class ParameterEndpoints
             .WithDescription("Get active parameter file for a specific major version");
 
         var nodeGroup = app.MapGroup("/api/v1/nodes/{nodeId:guid}/parameters")
-            .WithTags("Parameters");
+            .WithTags("Parameters")
+            .RequireAuthorization(Permissions.Nodes_Read);
 
         nodeGroup.MapGet("/provenance", GetNodeParameterProvenance)
             .WithName("GetNodeParameterProvenance")
@@ -88,6 +91,18 @@ public static class ParameterEndpoints
             .WithName("UploadParameterFile")
             .WithDescription("Upload a parameter file for a specific scope")
             .DisableAntiforgery();
+
+        configGroup.MapGet("/permissions", GetParameterPermissions)
+            .WithName("GetParameterPermissions")
+            .WithDescription("List all permission grants on a configuration's parameter schema");
+
+        configGroup.MapPut("/permissions", GrantParameterPermission)
+            .WithName("GrantParameterPermission")
+            .WithDescription("Grant or update a permission on a configuration's parameter schema");
+
+        configGroup.MapDelete("/permissions/{principalType}/{principalId:guid}", RevokeParameterPermission)
+            .WithName("RevokeParameterPermission")
+            .WithDescription("Revoke a permission on a configuration's parameter schema");
 
         return app;
     }
@@ -966,19 +981,27 @@ public static class ParameterEndpoints
         });
     }
 
-    private static async Task<Results<Ok, Conflict<PublishResultDto>, BadRequest<string>, NotFound>> UploadParameterSchema(
+    private static async Task<Results<Ok, Conflict<PublishResultDto>, BadRequest<string>, NotFound, ForbidHttpResult>> UploadParameterSchema(
         string configurationName,
         [FromForm] string version,
         [FromForm] IFormFile parametersFile,
         ServerDbContext db,
         IParameterSchemaBuilder schemaBuilder,
         IParameterCompatibilityService compatibilityService,
-        IParameterValidator validator)
+        IParameterValidator validator,
+        IResourceAuthorizationService authService,
+        IUserContextService userContext)
     {
         var configuration = await db.Configurations.FirstOrDefaultAsync(c => c.Name == configurationName);
         if (configuration is null)
         {
             return TypedResults.NotFound();
+        }
+
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null || !await authService.CanModifyConfigurationAsync(userId.Value, configuration.Id))
+        {
+            return TypedResults.Forbid();
         }
 
         if (!SemanticVersion.TryParse(version, out var semVer))
@@ -1114,17 +1137,25 @@ public static class ParameterEndpoints
         return TypedResults.Ok();
     }
 
-    private static async Task<Results<Ok<ValidationResultDto>, BadRequest<string>, NotFound>> ValidateParameterFile(
+    private static async Task<Results<Ok<ValidationResultDto>, BadRequest<string>, NotFound, ForbidHttpResult>> ValidateParameterFile(
         string configurationName,
         [FromQuery] string version,
         [FromBody] System.Text.Json.JsonElement parameterContent,
         ServerDbContext db,
-        IParameterValidator validator)
+        IParameterValidator validator,
+        IResourceAuthorizationService authService,
+        IUserContextService userContext)
     {
         var configuration = await db.Configurations.FirstOrDefaultAsync(c => c.Name == configurationName);
         if (configuration is null)
         {
             return TypedResults.NotFound();
+        }
+
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null || !await authService.CanReadConfigurationAsync(userId.Value, configuration.Id))
+        {
+            return TypedResults.Forbid();
         }
 
         if (!SemanticVersion.TryParse(version, out _))
@@ -1160,7 +1191,7 @@ public static class ParameterEndpoints
         });
     }
 
-    private static async Task<Results<Ok, BadRequest<string>, NotFound>> UploadParameterFile(
+    private static async Task<Results<Ok, BadRequest<string>, NotFound, ForbidHttpResult>> UploadParameterFile(
         string configurationName,
         [FromForm] string scopeTypeName,
         [FromForm] string version,
@@ -1168,12 +1199,20 @@ public static class ParameterEndpoints
         [FromForm] string? scopeValue,
         ServerDbContext db,
         IConfiguration config,
-        IParameterValidator validator)
+        IParameterValidator validator,
+        IResourceAuthorizationService authService,
+        IUserContextService userContext)
     {
         var configuration = await db.Configurations.FirstOrDefaultAsync(c => c.Name == configurationName);
         if (configuration is null)
         {
             return TypedResults.NotFound();
+        }
+
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null || !await authService.CanModifyConfigurationAsync(userId.Value, configuration.Id))
+        {
+            return TypedResults.Forbid();
         }
 
         var scopeType = await db.ScopeTypes.FirstOrDefaultAsync(st => st.Name == scopeTypeName);
@@ -1262,6 +1301,150 @@ public static class ParameterEndpoints
         await db.SaveChangesAsync();
 
         return TypedResults.Ok();
+    }
+
+    private static async Task<Results<Ok<List<PermissionEntryDto>>, NotFound, ForbidHttpResult>> GetParameterPermissions(
+        string configurationName,
+        ServerDbContext db,
+        IResourceAuthorizationService authService,
+        IUserContextService userContext)
+    {
+        var configuration = await db.Configurations.FirstOrDefaultAsync(c => c.Name == configurationName);
+        if (configuration is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        var parameterSchema = await db.ParameterSchemas.FirstOrDefaultAsync(ps => ps.ConfigurationId == configuration.Id);
+        if (parameterSchema is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null || !await authService.CanManageParameterAsync(userId.Value, parameterSchema.Id)
+            && !await authService.CanManageConfigurationAsync(userId.Value, configuration.Id))
+        {
+            return TypedResults.Forbid();
+        }
+
+        var acl = await authService.GetParameterAclAsync(parameterSchema.Id);
+        return TypedResults.Ok(await BuildPermissionEntries(acl.Select(p => (p.PrincipalType, p.PrincipalId, p.PermissionLevel, p.GrantedAt, p.GrantedByUserId)), db));
+    }
+
+    private static async Task<Results<Ok, BadRequest<string>, NotFound, ForbidHttpResult>> GrantParameterPermission(
+        string configurationName,
+        [FromBody] PermissionGrantRequest request,
+        ServerDbContext db,
+        IResourceAuthorizationService authService,
+        IUserContextService userContext)
+    {
+        var configuration = await db.Configurations.FirstOrDefaultAsync(c => c.Name == configurationName);
+        if (configuration is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        var parameterSchema = await db.ParameterSchemas.FirstOrDefaultAsync(ps => ps.ConfigurationId == configuration.Id);
+        if (parameterSchema is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null || !await authService.CanManageParameterAsync(userId.Value, parameterSchema.Id)
+            && !await authService.CanManageConfigurationAsync(userId.Value, configuration.Id))
+        {
+            return TypedResults.Forbid();
+        }
+
+        if (!Enum.TryParse<PrincipalType>(request.PrincipalType, ignoreCase: true, out var principalType))
+        {
+            return TypedResults.BadRequest($"Invalid principal type '{request.PrincipalType}'. Must be 'User' or 'Group'.");
+        }
+
+        if (!Enum.TryParse<ResourcePermission>(request.Level, ignoreCase: true, out var level))
+        {
+            return TypedResults.BadRequest($"Invalid permission level '{request.Level}'. Must be 'Read', 'Modify', or 'Manage'.");
+        }
+
+        if (principalType == PrincipalType.User && !await db.Users.AnyAsync(u => u.Id == request.PrincipalId))
+        {
+            return TypedResults.NotFound();
+        }
+
+        if (principalType == PrincipalType.Group && !await db.Groups.AnyAsync(g => g.Id == request.PrincipalId))
+        {
+            return TypedResults.NotFound();
+        }
+
+        await authService.GrantParameterPermissionAsync(parameterSchema.Id, request.PrincipalId, principalType, level, userId.Value);
+        return TypedResults.Ok();
+    }
+
+    private static async Task<Results<NoContent, BadRequest<string>, NotFound, ForbidHttpResult>> RevokeParameterPermission(
+        string configurationName,
+        string principalType,
+        Guid principalId,
+        ServerDbContext db,
+        IResourceAuthorizationService authService,
+        IUserContextService userContext)
+    {
+        var configuration = await db.Configurations.FirstOrDefaultAsync(c => c.Name == configurationName);
+        if (configuration is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        var parameterSchema = await db.ParameterSchemas.FirstOrDefaultAsync(ps => ps.ConfigurationId == configuration.Id);
+        if (parameterSchema is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null || !await authService.CanManageParameterAsync(userId.Value, parameterSchema.Id)
+            && !await authService.CanManageConfigurationAsync(userId.Value, configuration.Id))
+        {
+            return TypedResults.Forbid();
+        }
+
+        if (!Enum.TryParse<PrincipalType>(principalType, ignoreCase: true, out var parsedPrincipalType))
+        {
+            return TypedResults.BadRequest($"Invalid principal type '{principalType}'. Must be 'User' or 'Group'.");
+        }
+
+        await authService.RevokeParameterPermissionAsync(parameterSchema.Id, principalId, parsedPrincipalType);
+        return TypedResults.NoContent();
+    }
+
+    private static async Task<List<PermissionEntryDto>> BuildPermissionEntries(
+        IEnumerable<(PrincipalType PrincipalType, Guid PrincipalId, ResourcePermission Level, DateTimeOffset GrantedAt, Guid? GrantedByUserId)> entries,
+        ServerDbContext db)
+    {
+        var list = entries.ToList();
+        var userIds = list.Where(e => e.PrincipalType == PrincipalType.User).Select(e => e.PrincipalId).ToList();
+        var groupIds = list.Where(e => e.PrincipalType == PrincipalType.Group).Select(e => e.PrincipalId).ToList();
+
+        var userNames = await db.Users
+            .Where(u => userIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, u => u.Username);
+
+        var groupNames = await db.Groups
+            .Where(g => groupIds.Contains(g.Id))
+            .ToDictionaryAsync(g => g.Id, g => g.Name);
+
+        return list.Select(e => new PermissionEntryDto
+        {
+            PrincipalType = e.PrincipalType.ToString(),
+            PrincipalId = e.PrincipalId,
+            PrincipalName = e.PrincipalType == PrincipalType.User
+                ? userNames.GetValueOrDefault(e.PrincipalId, "Unknown")
+                : groupNames.GetValueOrDefault(e.PrincipalId, "Unknown"),
+            Level = e.Level.ToString(),
+            GrantedAt = e.GrantedAt,
+            GrantedByUserId = e.GrantedByUserId
+        }).ToList();
     }
 
     private static string ComputeChecksum(string content)

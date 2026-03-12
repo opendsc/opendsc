@@ -16,46 +16,48 @@
         </CardHeaderActions>
     </MudCardHeader>
     <MudCardContent>
-        <MudTable Items="@roles" Hover="true" Dense="true" Loading="@loading">
-            <HeaderContent>
-                <MudTh>Name</MudTh>
-                <MudTh>Description</MudTh>
-                <MudTh>System</MudTh>
-                <MudTh>Permissions</MudTh>
-                <MudTh>Users</MudTh>
-                <MudTh>Groups</MudTh>
-                <MudTh>Created</MudTh>
-                <MudTh>Actions</MudTh>
-            </HeaderContent>
-            <RowTemplate>
-                <MudTd>@context.Name</MudTd>
-                <MudTd>@context.Description</MudTd>
-                <MudTd>
-                    @if (context.IsSystemRole)
-                    {
-                        <MudChip T="string" Size="Size.Small" Color="Color.Info">System</MudChip>
-                    }
-                </MudTd>
-                <MudTd>@GetPermissionCount(context.Permissions)</MudTd>
-                <MudTd>@GetRoleUserCount(context.Id)</MudTd>
-                <MudTd>@GetRoleGroupCount(context.Id)</MudTd>
-                <MudTd>@context.CreatedAt.LocalDateTime.ToString("g")</MudTd>
-                <MudTd>
-                    <MudIconButton Icon="@Icons.Material.Filled.Visibility"
-                                   Size="Size.Small"
-                                   OnClick="@(() => ViewRole(context))" />
-                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                   Size="Size.Small"
-                                   OnClick="@(() => EditRole(context))"
-                                   Disabled="@context.IsSystemRole" />
-                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                   Size="Size.Small"
-                                   Color="Color.Error"
-                                   OnClick="@(() => DeleteRole(context))"
-                                   Disabled="@context.IsSystemRole" />
-                </MudTd>
-            </RowTemplate>
-        </MudTable>
+        <MudDataGrid T="Role" Items="@roles" Hover="true" Dense="true" Loading="@loading" SortMode="SortMode.Single">
+            <Columns>
+                <PropertyColumn Property="x => x.Name" Title="Name" />
+                <PropertyColumn Property="x => x.Description" Title="Description" />
+                <TemplateColumn Title="System" SortBy="@(x => x.IsSystemRole)">
+                    <CellTemplate>
+                        @if (context.Item.IsSystemRole)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Info">System</MudChip>
+                        }
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="Permissions" SortBy="@(x => GetPermissionCount(x.Permissions))">
+                    <CellTemplate>@GetPermissionCount(context.Item.Permissions)</CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="Users" SortBy="@(x => GetRoleUserCount(x.Id))">
+                    <CellTemplate>@GetRoleUserCount(context.Item.Id)</CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="Groups" SortBy="@(x => GetRoleGroupCount(x.Id))">
+                    <CellTemplate>@GetRoleGroupCount(context.Item.Id)</CellTemplate>
+                </TemplateColumn>
+                <PropertyColumn Property="x => x.CreatedAt" Title="Created">
+                    <CellTemplate>@context.Item.CreatedAt.LocalDateTime.ToString("g")</CellTemplate>
+                </PropertyColumn>
+                <TemplateColumn Title="Actions" Sortable="false">
+                    <CellTemplate>
+                        <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                                       Size="Size.Small"
+                                       OnClick="@(() => ViewRole(context.Item))" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                       Size="Size.Small"
+                                       OnClick="@(() => EditRole(context.Item))"
+                                       Disabled="@context.Item.IsSystemRole" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                       Size="Size.Small"
+                                       Color="Color.Error"
+                                       OnClick="@(() => DeleteRole(context.Item))"
+                                       Disabled="@context.Item.IsSystemRole" />
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+        </MudDataGrid>
     </MudCardContent>
 </MudCard>
 

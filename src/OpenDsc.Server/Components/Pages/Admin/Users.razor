@@ -15,54 +15,54 @@
         </CardHeaderActions>
     </MudCardHeader>
     <MudCardContent>
-        <MudTable Items="@users" Hover="true" Dense="true" Loading="@loading">
-            <HeaderContent>
-                <MudTh>Username</MudTh>
-                <MudTh>Email</MudTh>
-                <MudTh>Account Type</MudTh>
-                <MudTh>Status</MudTh>
-                <MudTh>Roles</MudTh>
-                <MudTh>Groups</MudTh>
-                <MudTh>Created</MudTh>
-                <MudTh>Actions</MudTh>
-            </HeaderContent>
-            <RowTemplate>
-                <MudTd>@context.Username</MudTd>
-                <MudTd>@context.Email</MudTd>
-                <MudTd>@context.AccountType</MudTd>
-                <MudTd>
-                    @if (!context.IsActive)
-                    {
-                        <MudChip T="string" Size="Size.Small" Color="Color.Default">Inactive</MudChip>
-                    }
-                    else if (context.LockoutEnd.HasValue && context.LockoutEnd.Value > DateTimeOffset.UtcNow)
-                    {
-                        <MudChip T="string" Size="Size.Small" Color="Color.Error">Locked</MudChip>
-                    }
-                    else if (context.RequirePasswordChange)
-                    {
-                        <MudChip T="string" Size="Size.Small" Color="Color.Warning">Password Reset Required</MudChip>
-                    }
-                    else
-                    {
-                        <MudChip T="string" Size="Size.Small" Color="Color.Success">Active</MudChip>
-                    }
-                </MudTd>
-                <MudTd>@GetUserRoleCount(context.Id)</MudTd>
-                <MudTd>@GetUserGroupCount(context.Id)</MudTd>
-                <MudTd>@context.CreatedAt.LocalDateTime.ToString("g")</MudTd>
-                <MudTd>
-                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                   Size="Size.Small"
-                                   OnClick="@(() => EditUser(context))" />
-                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                   Size="Size.Small"
-                                   Color="Color.Error"
-                                   OnClick="@(() => DeleteUser(context))"
-                                   Disabled="@context.Username.Equals("admin", StringComparison.OrdinalIgnoreCase)" />
-                </MudTd>
-            </RowTemplate>
-        </MudTable>
+        <MudDataGrid T="User" Items="@users" Hover="true" Dense="true" Loading="@loading" SortMode="SortMode.Single">
+            <Columns>
+                <PropertyColumn Property="x => x.Username" Title="Username" />
+                <PropertyColumn Property="x => x.Email" Title="Email" />
+                <PropertyColumn Property="x => x.AccountType" Title="Account Type" />
+                <TemplateColumn Title="Status" SortBy="@(x => GetStatusSortKey(x))">
+                    <CellTemplate>
+                        @if (!context.Item.IsActive)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Default">Inactive</MudChip>
+                        }
+                        else if (context.Item.LockoutEnd.HasValue && context.Item.LockoutEnd.Value > DateTimeOffset.UtcNow)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Error">Locked</MudChip>
+                        }
+                        else if (context.Item.RequirePasswordChange)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Warning">Password Reset Required</MudChip>
+                        }
+                        else
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Success">Active</MudChip>
+                        }
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="Roles" SortBy="@(x => GetUserRoleCount(x.Id))">
+                    <CellTemplate>@GetUserRoleCount(context.Item.Id)</CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="Groups" SortBy="@(x => GetUserGroupCount(x.Id))">
+                    <CellTemplate>@GetUserGroupCount(context.Item.Id)</CellTemplate>
+                </TemplateColumn>
+                <PropertyColumn Property="x => x.CreatedAt" Title="Created">
+                    <CellTemplate>@context.Item.CreatedAt.LocalDateTime.ToString("g")</CellTemplate>
+                </PropertyColumn>
+                <TemplateColumn Title="Actions" Sortable="false">
+                    <CellTemplate>
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                       Size="Size.Small"
+                                       OnClick="@(() => EditUser(context.Item))" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                       Size="Size.Small"
+                                       Color="Color.Error"
+                                       OnClick="@(() => DeleteUser(context.Item))"
+                                       Disabled="@context.Item.Username.Equals("admin", StringComparison.OrdinalIgnoreCase)" />
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+        </MudDataGrid>
     </MudCardContent>
 </MudCard>
 
@@ -102,6 +102,14 @@
         {
             loading = false;
         }
+    }
+
+    private int GetStatusSortKey(User u)
+    {
+        if (!u.IsActive) return 3;
+        if (u.LockoutEnd.HasValue && u.LockoutEnd.Value > DateTimeOffset.UtcNow) return 2;
+        if (u.RequirePasswordChange) return 1;
+        return 0;
     }
 
     private int GetUserRoleCount(Guid userId)

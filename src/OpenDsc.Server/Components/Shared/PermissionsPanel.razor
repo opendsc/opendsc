@@ -1,0 +1,352 @@
+@* Copyright (c) Thomas Nieto - All Rights Reserved
+   You may use, distribute and modify this code under the
+   terms of the MIT license. *@
+
+@inject ServerDbContext Db
+@inject IResourceAuthorizationService AuthService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+@if (isLoading)
+{
+    <MudProgressLinear Indeterminate="true" Class="mt-4" />
+}
+else
+{
+    <MudCard Class="mt-4">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h6">@Title</MudText>
+            </CardHeaderContent>
+            <CardHeaderActions>
+                @if (canManage)
+                {
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.PersonAdd"
+                               OnClick="OpenGrantDialog">
+                        Grant Permission
+                    </MudButton>
+                }
+            </CardHeaderActions>
+        </MudCardHeader>
+        <MudCardContent>
+            @if (rows.Count == 0)
+            {
+                <MudAlert Severity="Severity.Info">No permissions configured.</MudAlert>
+            }
+            else
+            {
+                <MudDataGrid T="PermissionRow" Items="@rows" Dense="true" Hover="true" SortMode="SortMode.Single">
+                    <Columns>
+                        <PropertyColumn Property="x => x.PrincipalName" Title="Principal" />
+                        <PropertyColumn Property="x => x.PrincipalType" Title="Type">
+                            <CellTemplate>
+                                <MudChip T="string"
+                                         Size="Size.Small"
+                                         Color="@(context.Item.PrincipalType == PrincipalType.User ? Color.Primary : Color.Secondary)">
+                                    @context.Item.PrincipalType
+                                </MudChip>
+                            </CellTemplate>
+                        </PropertyColumn>
+                        <PropertyColumn Property="x => x.Level" Title="Level">
+                            <CellTemplate>
+                                <MudChip T="string" Size="Size.Small" Color="@LevelColor(context.Item.Level)">
+                                    @context.Item.Level
+                                </MudChip>
+                            </CellTemplate>
+                        </PropertyColumn>
+                        <PropertyColumn Property="x => x.GrantedAt" Title="Granted">
+                            <CellTemplate>
+                                @context.Item.GrantedAt.LocalDateTime.ToString("g")
+                            </CellTemplate>
+                        </PropertyColumn>
+                        @if (canManage)
+                        {
+                            <TemplateColumn Title="Actions" Sortable="false">
+                                <CellTemplate>
+                                    <MudTooltip Text="Edit Permission">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                       Size="Size.Small"
+                                                       OnClick="@(() => EditPermission(context.Item))" />
+                                    </MudTooltip>
+                                    <MudTooltip Text="Revoke Permission">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                       Size="Size.Small"
+                                                       Color="Color.Error"
+                                                       OnClick="@(() => RevokePermission(context.Item))" />
+                                    </MudTooltip>
+                                </CellTemplate>
+                            </TemplateColumn>
+                        }
+                    </Columns>
+                </MudDataGrid>
+            }
+        </MudCardContent>
+    </MudCard>
+}
+
+@code {
+    public enum PermissionResource
+    {
+        Configuration,
+        CompositeConfiguration,
+        Parameter
+    }
+
+    private sealed record PermissionRow(
+        PrincipalType PrincipalType,
+        Guid PrincipalId,
+        string PrincipalName,
+        ResourcePermission Level,
+        DateTimeOffset GrantedAt,
+        Guid? GrantedByUserId);
+
+    [Parameter, EditorRequired]
+    public Guid ResourceId { get; set; }
+
+    [Parameter, EditorRequired]
+    public PermissionResource ResourceType { get; set; }
+
+    [Parameter]
+    public string Title { get; set; } = "Permissions";
+
+    private List<PermissionRow> rows = [];
+    private bool isLoading = true;
+    private bool canManage;
+    private Guid? currentUserId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var claim = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (claim != null && Guid.TryParse(claim, out var userId))
+        {
+            currentUserId = userId;
+            canManage = ResourceType switch
+            {
+                PermissionResource.Configuration => await AuthService.CanManageConfigurationAsync(userId, ResourceId),
+                PermissionResource.CompositeConfiguration => await AuthService.CanManageCompositeConfigurationAsync(userId, ResourceId),
+                PermissionResource.Parameter => await AuthService.CanManageParameterAsync(userId, ResourceId),
+                _ => false
+            };
+        }
+
+        await LoadPermissions();
+    }
+
+    private async Task LoadPermissions()
+    {
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var entries = ResourceType switch
+            {
+                PermissionResource.Configuration =>
+                    (await AuthService.GetConfigurationAclAsync(ResourceId))
+                        .Select(p => (p.PrincipalType, p.PrincipalId, p.PermissionLevel, p.GrantedAt, p.GrantedByUserId))
+                        .ToList(),
+                PermissionResource.CompositeConfiguration =>
+                    (await AuthService.GetCompositeConfigurationAclAsync(ResourceId))
+                        .Select(p => (p.PrincipalType, p.PrincipalId, p.PermissionLevel, p.GrantedAt, p.GrantedByUserId))
+                        .ToList(),
+                PermissionResource.Parameter =>
+                    (await AuthService.GetParameterAclAsync(ResourceId))
+                        .Select(p => (p.PrincipalType, p.PrincipalId, p.PermissionLevel, p.GrantedAt, p.GrantedByUserId))
+                        .ToList(),
+                _ => []
+            };
+
+            var userIds = entries
+                .Where(e => e.PrincipalType == PrincipalType.User)
+                .Select(e => e.PrincipalId)
+                .Distinct()
+                .ToList();
+
+            var groupIds = entries
+                .Where(e => e.PrincipalType == PrincipalType.Group)
+                .Select(e => e.PrincipalId)
+                .Distinct()
+                .ToList();
+
+            var userNames = await Db.Users
+                .Where(u => userIds.Contains(u.Id))
+                .ToDictionaryAsync(u => u.Id, u => u.Username);
+
+            var groupNames = await Db.Groups
+                .Where(g => groupIds.Contains(g.Id))
+                .ToDictionaryAsync(g => g.Id, g => g.Name);
+
+            rows = entries.Select(e => new PermissionRow(
+                e.PrincipalType,
+                e.PrincipalId,
+                e.PrincipalType == PrincipalType.User
+                    ? userNames.GetValueOrDefault(e.PrincipalId, "Unknown")
+                    : groupNames.GetValueOrDefault(e.PrincipalId, "Unknown"),
+                e.PermissionLevel,
+                e.GrantedAt,
+                e.GrantedByUserId
+            )).OrderBy(r => r.PrincipalName).ToList();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task OpenGrantDialog()
+    {
+        if (currentUserId is null)
+        {
+            return;
+        }
+
+        var parameters = new DialogParameters<GrantPermissionDialog>
+        {
+            { x => x.ExistingUserIds, rows.Where(r => r.PrincipalType == PrincipalType.User).Select(r => r.PrincipalId).ToHashSet() },
+            { x => x.ExistingGroupIds, rows.Where(r => r.PrincipalType == PrincipalType.Group).Select(r => r.PrincipalId).ToHashSet() }
+        };
+
+        var dialogRef = await DialogService.ShowAsync<GrantPermissionDialog>("Grant Permission", parameters);
+        var dialogResult = await dialogRef.Result;
+
+        if (dialogResult is { Canceled: false, Data: PermissionGrantRequest req })
+        {
+            try
+            {
+                if (!Enum.TryParse<PrincipalType>(req.PrincipalType, ignoreCase: true, out var principalType) ||
+                    !Enum.TryParse<ResourcePermission>(req.Level, ignoreCase: true, out var level))
+                {
+                    Snackbar.Add("Invalid principal type or permission level.", Severity.Error);
+                    return;
+                }
+
+                switch (ResourceType)
+                {
+                    case PermissionResource.Configuration:
+                        await AuthService.GrantConfigurationPermissionAsync(ResourceId, req.PrincipalId, principalType, level, currentUserId.Value);
+                        break;
+                    case PermissionResource.CompositeConfiguration:
+                        await AuthService.GrantCompositeConfigurationPermissionAsync(ResourceId, req.PrincipalId, principalType, level, currentUserId.Value);
+                        break;
+                    case PermissionResource.Parameter:
+                        await AuthService.GrantParameterPermissionAsync(ResourceId, req.PrincipalId, principalType, level, currentUserId.Value);
+                        break;
+                }
+
+                Snackbar.Add("Permission granted.", Severity.Success);
+                await LoadPermissions();
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error granting permission: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task EditPermission(PermissionRow row)
+    {
+        if (currentUserId is null)
+        {
+            return;
+        }
+
+        var parameters = new DialogParameters<GrantPermissionDialog>
+        {
+            { x => x.EditPrincipalId, row.PrincipalId },
+            { x => x.EditPrincipalType, row.PrincipalType.ToString() },
+            { x => x.EditPrincipalName, row.PrincipalName },
+            { x => x.InitialLevel, row.Level.ToString() }
+        };
+
+        var dialogRef = await DialogService.ShowAsync<GrantPermissionDialog>("Edit Permission", parameters);
+        var result = await dialogRef.Result;
+
+        if (result is { Canceled: false, Data: PermissionGrantRequest req })
+        {
+            try
+            {
+                if (!Enum.TryParse<PrincipalType>(req.PrincipalType, ignoreCase: true, out var principalType) ||
+                    !Enum.TryParse<ResourcePermission>(req.Level, ignoreCase: true, out var level))
+                {
+                    Snackbar.Add("Invalid permission level.", Severity.Error);
+                    return;
+                }
+
+                switch (ResourceType)
+                {
+                    case PermissionResource.Configuration:
+                        await AuthService.GrantConfigurationPermissionAsync(ResourceId, req.PrincipalId, principalType, level, currentUserId.Value);
+                        break;
+                    case PermissionResource.CompositeConfiguration:
+                        await AuthService.GrantCompositeConfigurationPermissionAsync(ResourceId, req.PrincipalId, principalType, level, currentUserId.Value);
+                        break;
+                    case PermissionResource.Parameter:
+                        await AuthService.GrantParameterPermissionAsync(ResourceId, req.PrincipalId, principalType, level, currentUserId.Value);
+                        break;
+                }
+
+                Snackbar.Add("Permission updated.", Severity.Success);
+                await LoadPermissions();
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error updating permission: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task RevokePermission(PermissionRow row)
+    {
+        if (currentUserId is null)
+        {
+            return;
+        }
+
+        var confirmed = await DialogService.ShowMessageBox(
+            "Revoke Permission",
+            $"Remove {row.Level} permission for '{row.PrincipalName}'?",
+            yesText: "Revoke",
+            cancelText: "Cancel");
+
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        try
+        {
+            switch (ResourceType)
+            {
+                case PermissionResource.Configuration:
+                    await AuthService.RevokeConfigurationPermissionAsync(ResourceId, row.PrincipalId, row.PrincipalType);
+                    break;
+                case PermissionResource.CompositeConfiguration:
+                    await AuthService.RevokeCompositeConfigurationPermissionAsync(ResourceId, row.PrincipalId, row.PrincipalType);
+                    break;
+                case PermissionResource.Parameter:
+                    await AuthService.RevokeParameterPermissionAsync(ResourceId, row.PrincipalId, row.PrincipalType);
+                    break;
+            }
+
+            Snackbar.Add("Permission revoked.", Severity.Success);
+            await LoadPermissions();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error revoking permission: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private static Color LevelColor(ResourcePermission level) => level switch
+    {
+        ResourcePermission.Read => Color.Info,
+        ResourcePermission.Modify => Color.Warning,
+        ResourcePermission.Manage => Color.Error,
+        _ => Color.Default
+    };
+}

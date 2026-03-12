@@ -75,6 +75,18 @@ public static class ConfigurationEndpoints
         group.MapGet("/{name}/versions/{version}/files/{*filePath}", DownloadConfigurationFile)
             .WithName("DownloadConfigurationFile")
             .WithDescription("Download a specific file from a configuration version");
+
+        group.MapGet("/{name}/permissions", GetConfigurationPermissions)
+            .WithName("GetConfigurationPermissions")
+            .WithDescription("List all permission grants on a configuration");
+
+        group.MapPut("/{name}/permissions", GrantConfigurationPermission)
+            .WithName("GrantConfigurationPermission")
+            .WithDescription("Grant or update a permission on a configuration");
+
+        group.MapDelete("/{name}/permissions/{principalType}/{principalId:guid}", RevokeConfigurationPermission)
+            .WithName("RevokeConfigurationPermission")
+            .WithDescription("Revoke a permission on a configuration");
     }
 
     private static async Task<Ok<List<ConfigurationSummaryDto>>> GetConfigurations(
@@ -1020,6 +1032,131 @@ public static class ConfigurationEndpoints
         }
 
         return result;
+    }
+
+    private static async Task<Results<Ok<List<PermissionEntryDto>>, NotFound, ForbidHttpResult>> GetConfigurationPermissions(
+        string name,
+        ServerDbContext db,
+        IResourceAuthorizationService authService,
+        IUserContextService userContext)
+    {
+        var config = await db.Configurations.FirstOrDefaultAsync(c => c.Name == name);
+        if (config is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null || !await authService.CanManageConfigurationAsync(userId.Value, config.Id))
+        {
+            return TypedResults.Forbid();
+        }
+
+        var acl = await authService.GetConfigurationAclAsync(config.Id);
+        var result = await BuildPermissionEntries(
+            acl.Select(p => (p.PrincipalType, p.PrincipalId, p.PermissionLevel, p.GrantedAt, p.GrantedByUserId)), db);
+        return TypedResults.Ok(result);
+    }
+
+    private static async Task<Results<Ok, BadRequest<string>, NotFound, ForbidHttpResult>> GrantConfigurationPermission(
+        string name,
+        [FromBody] PermissionGrantRequest request,
+        ServerDbContext db,
+        IResourceAuthorizationService authService,
+        IUserContextService userContext)
+    {
+        var config = await db.Configurations.FirstOrDefaultAsync(c => c.Name == name);
+        if (config is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null || !await authService.CanManageConfigurationAsync(userId.Value, config.Id))
+        {
+            return TypedResults.Forbid();
+        }
+
+        if (!Enum.TryParse<PrincipalType>(request.PrincipalType, ignoreCase: true, out var principalType))
+        {
+            return TypedResults.BadRequest($"Invalid principal type '{request.PrincipalType}'. Must be 'User' or 'Group'.");
+        }
+
+        if (!Enum.TryParse<ResourcePermission>(request.Level, ignoreCase: true, out var level))
+        {
+            return TypedResults.BadRequest($"Invalid permission level '{request.Level}'. Must be 'Read', 'Modify', or 'Manage'.");
+        }
+
+        if (principalType == PrincipalType.User && !await db.Users.AnyAsync(u => u.Id == request.PrincipalId))
+        {
+            return TypedResults.NotFound();
+        }
+
+        if (principalType == PrincipalType.Group && !await db.Groups.AnyAsync(g => g.Id == request.PrincipalId))
+        {
+            return TypedResults.NotFound();
+        }
+
+        await authService.GrantConfigurationPermissionAsync(config.Id, request.PrincipalId, principalType, level, userId.Value);
+        return TypedResults.Ok();
+    }
+
+    private static async Task<Results<NoContent, BadRequest<string>, NotFound, ForbidHttpResult>> RevokeConfigurationPermission(
+        string name,
+        string principalType,
+        Guid principalId,
+        ServerDbContext db,
+        IResourceAuthorizationService authService,
+        IUserContextService userContext)
+    {
+        var config = await db.Configurations.FirstOrDefaultAsync(c => c.Name == name);
+        if (config is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null || !await authService.CanManageConfigurationAsync(userId.Value, config.Id))
+        {
+            return TypedResults.Forbid();
+        }
+
+        if (!Enum.TryParse<PrincipalType>(principalType, ignoreCase: true, out var parsedPrincipalType))
+        {
+            return TypedResults.BadRequest($"Invalid principal type '{principalType}'. Must be 'User' or 'Group'.");
+        }
+
+        await authService.RevokeConfigurationPermissionAsync(config.Id, principalId, parsedPrincipalType);
+        return TypedResults.NoContent();
+    }
+
+    private static async Task<List<PermissionEntryDto>> BuildPermissionEntries(
+        IEnumerable<(PrincipalType PrincipalType, Guid PrincipalId, ResourcePermission Level, DateTimeOffset GrantedAt, Guid? GrantedByUserId)> entries,
+        ServerDbContext db)
+    {
+        var list = entries.ToList();
+        var userIds = list.Where(e => e.PrincipalType == PrincipalType.User).Select(e => e.PrincipalId).ToList();
+        var groupIds = list.Where(e => e.PrincipalType == PrincipalType.Group).Select(e => e.PrincipalId).ToList();
+
+        var userNames = await db.Users
+            .Where(u => userIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, u => u.Username);
+
+        var groupNames = await db.Groups
+            .Where(g => groupIds.Contains(g.Id))
+            .ToDictionaryAsync(g => g.Id, g => g.Name);
+
+        return list.Select(e => new PermissionEntryDto
+        {
+            PrincipalType = e.PrincipalType.ToString(),
+            PrincipalId = e.PrincipalId,
+            PrincipalName = e.PrincipalType == PrincipalType.User
+                ? userNames.GetValueOrDefault(e.PrincipalId, "Unknown")
+                : groupNames.GetValueOrDefault(e.PrincipalId, "Unknown"),
+            Level = e.Level.ToString(),
+            GrantedAt = e.GrantedAt,
+            GrantedByUserId = e.GrantedByUserId
+        }).ToList();
     }
 }
 

@@ -260,6 +260,12 @@
                 </MudCardContent>
             </MudCard>
         </MudTabPanel>
+
+        <MudTabPanel Text="Permissions" Icon="@Icons.Material.Filled.Lock">
+            <PermissionsPanel ResourceId="@composite!.Id"
+                              ResourceType="PermissionsPanel.PermissionResource.CompositeConfiguration"
+                              Title="Composite Configuration Permissions" />
+        </MudTabPanel>
     </MudTabs>
 }
 else if (loading)
