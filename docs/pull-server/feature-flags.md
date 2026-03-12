@@ -94,7 +94,8 @@ resources:
       state: Running
 ```
 
-> [!TIP] All feature flag parameters share a consistent naming convention
+> [!TIP]
+> All feature flag parameters share a consistent naming convention
 > (`enable<Feature>`) and are grouped together at the top of the `parameters`
 > block. This makes it easy to scan which capabilities the configuration
 > supports.
