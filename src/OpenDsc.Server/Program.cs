@@ -11,6 +11,7 @@ using OpenDsc.Server.Authentication;
 using OpenDsc.Server.Components;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Endpoints;
+using OpenDsc.Server.Middleware;
 using OpenDsc.Server.Services;
 
 using Scalar.AspNetCore;
@@ -97,6 +98,7 @@ app.UseStaticFiles();
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseMiddleware<PasswordChangeEnforcementMiddleware>();
 
 app.UseAntiforgery();
 
