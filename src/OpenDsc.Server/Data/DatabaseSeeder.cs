@@ -121,7 +121,7 @@ public static class DatabaseSeeder
         {
             Id = Guid.NewGuid(),
             Username = username,
-            Email = "admin@localhost",
+            Email = "admin@localhost.local",
             PasswordHash = hash,
             PasswordSalt = salt,
             AccountType = AccountType.User,
