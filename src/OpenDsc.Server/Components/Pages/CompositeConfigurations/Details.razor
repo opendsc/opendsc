@@ -21,19 +21,32 @@
             <MudCard Class="mt-4">
                 <MudCardHeader>
                     <CardHeaderActions>
-                        <MudMenu Label="New Version"
-                                 Variant="Variant.Filled"
-                                 Color="Color.Primary"
-                                 Size="Size.Small"
-                                 StartIcon="@Icons.Material.Filled.Add"
-                                 EndIcon="@Icons.Material.Filled.ArrowDropDown">
-                            <MudMenuItem OnClick="OpenCreateVersionDialog" Icon="@Icons.Material.Filled.Add">
-                                Blank Version
-                            </MudMenuItem>
-                            <MudMenuItem OnClick="OpenCreateVersionFromExistingDialog" Icon="@Icons.Material.Filled.ContentCopy">
-                                Create from Existing Version
-                            </MudMenuItem>
-                        </MudMenu>
+                        @if (versions.Any())
+                        {
+                            <MudMenu Label="New Version"
+                                     Variant="Variant.Filled"
+                                     Color="Color.Primary"
+                                     Size="Size.Small"
+                                     StartIcon="@Icons.Material.Filled.Add"
+                                     EndIcon="@Icons.Material.Filled.ArrowDropDown">
+                                <MudMenuItem OnClick="OpenCreateVersionDialog" Icon="@Icons.Material.Filled.Add">
+                                    Blank Version
+                                </MudMenuItem>
+                                <MudMenuItem OnClick="OpenCreateVersionFromExistingDialog" Icon="@Icons.Material.Filled.ContentCopy">
+                                    Create from Existing Version
+                                </MudMenuItem>
+                            </MudMenu>
+                        }
+                        else
+                        {
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       Size="Size.Small"
+                                       StartIcon="@Icons.Material.Filled.Add"
+                                       OnClick="OpenCreateVersionDialog">
+                                New Version
+                            </MudButton>
+                        }
                     </CardHeaderActions>
                 </MudCardHeader>
                 <MudCardContent>
