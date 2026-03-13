@@ -7,6 +7,7 @@ using System.Net;
 using AwesomeAssertions;
 
 using OpenDsc.Server.Endpoints;
+using OpenDsc.Server.Entities;
 
 using Xunit;
 
@@ -66,7 +67,7 @@ resources:
         var versions = await versionResponse.Content.ReadFromJsonAsync<List<ConfigurationVersionDto>>();
         versions.Should().NotBeNull();
         versions.Should().HaveCount(1);
-        versions![0].IsDraft.Should().BeTrue();
+        versions![0].Status.Should().Be(ConfigurationVersionStatus.Draft);
 
         // Step 3: Publish the version (this is where cookie auth forwarding is critical)
         var publishResponse = await client.PutAsync($"/api/v1/configurations/{configName}/versions/1.0.0/publish", null);
@@ -78,7 +79,7 @@ resources:
         var publishedVersions = await verifyVersionResponse.Content.ReadFromJsonAsync<List<ConfigurationVersionDto>>();
         publishedVersions.Should().NotBeNull();
         publishedVersions.Should().HaveCount(1);
-        publishedVersions![0].IsDraft.Should().BeFalse();
+        publishedVersions![0].Status.Should().Be(ConfigurationVersionStatus.Published);
 
         // Step 5: Verify configuration details show published version
         var finalGetResponse = await client.GetAsync($"/api/v1/configurations/{configName}");
@@ -151,6 +152,6 @@ resources:
         var versions = await versionsResponse.Content.ReadFromJsonAsync<List<ConfigurationVersionDto>>();
         versions.Should().NotBeNull();
         versions.Should().HaveCount(2);
-        versions!.All(v => !v.IsDraft).Should().BeTrue();
+        versions!.All(v => v.Status == ConfigurationVersionStatus.Published).Should().BeTrue();
     }
 }

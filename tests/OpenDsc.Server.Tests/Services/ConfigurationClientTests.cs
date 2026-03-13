@@ -19,19 +19,19 @@ using Xunit;
 namespace OpenDsc.Server.Tests.Services;
 
 [Trait("Category", "Unit")]
-public class ConfigurationApiClientTests : IDisposable
+public class ConfigurationServiceTests : IDisposable
 {
     private readonly ServerDbContext _dbContext;
     private readonly Mock<IConfiguration> _mockConfig;
     private readonly Mock<IResourceAuthorizationService> _mockAuthService;
     private readonly Mock<IUserContextService> _mockUserContext;
-    private readonly Mock<ILogger<ConfigurationApiClient>> _mockLogger;
+    private readonly Mock<ILogger<ConfigurationService>> _mockLogger;
     private readonly Mock<IHttpContextAccessor> _mockHttpContextAccessor;
     private readonly Mock<IParameterSchemaBuilder> _mockSchemaBuilder;
     private readonly Mock<IParameterCompatibilityService> _mockCompatibilityService;
-    private readonly ConfigurationApiClient _client;
+    private readonly ConfigurationService _client;
 
-    public ConfigurationApiClientTests()
+    public ConfigurationServiceTests()
     {
         var options = new DbContextOptionsBuilder<ServerDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
@@ -41,14 +41,14 @@ public class ConfigurationApiClientTests : IDisposable
         _mockConfig = new Mock<IConfiguration>();
         _mockAuthService = new Mock<IResourceAuthorizationService>();
         _mockUserContext = new Mock<IUserContextService>();
-        _mockLogger = new Mock<ILogger<ConfigurationApiClient>>();
+        _mockLogger = new Mock<ILogger<ConfigurationService>>();
         _mockHttpContextAccessor = new Mock<IHttpContextAccessor>();
         _mockSchemaBuilder = new Mock<IParameterSchemaBuilder>();
         _mockCompatibilityService = new Mock<IParameterCompatibilityService>();
 
         _mockConfig.Setup(c => c["DataDirectory"]).Returns("test-data");
 
-        _client = new ConfigurationApiClient(
+        _client = new ConfigurationService(
             _dbContext,
             _mockConfig.Object,
             _mockAuthService.Object,

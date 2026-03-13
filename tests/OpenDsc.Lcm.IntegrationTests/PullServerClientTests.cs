@@ -50,6 +50,7 @@ public class PullServerClientTests : IClassFixture<LcmTestServerFactory>
 
         var client = new PullServerClient(
             httpClient,
+            new NullHttpClientFactory(),
             monitor,
             certManager,
             NullLogger<PullServerClient>.Instance);
@@ -77,6 +78,7 @@ public class PullServerClientTests : IClassFixture<LcmTestServerFactory>
 
         var client = new PullServerClient(
             httpClient,
+            new NullHttpClientFactory(),
             monitor,
             certificateManager,
             NullLogger<PullServerClient>.Instance);
@@ -104,6 +106,7 @@ public class PullServerClientTests : IClassFixture<LcmTestServerFactory>
 
         var client = new PullServerClient(
             httpClient,
+            new NullHttpClientFactory(),
             monitor,
             certificateManager,
             NullLogger<PullServerClient>.Instance);
@@ -133,6 +136,7 @@ public class PullServerClientTests : IClassFixture<LcmTestServerFactory>
 
         var client = new PullServerClient(
             httpClient,
+            new NullHttpClientFactory(),
             monitor,
             certificateManager,
             NullLogger<PullServerClient>.Instance);
@@ -159,6 +163,7 @@ public class PullServerClientTests : IClassFixture<LcmTestServerFactory>
 
         var client = new PullServerClient(
             httpClient,
+            new NullHttpClientFactory(),
             monitor,
             certificateManager,
             NullLogger<PullServerClient>.Instance);
@@ -196,6 +201,7 @@ public class PullServerClientTests : IClassFixture<LcmTestServerFactory>
 
         var client = new PullServerClient(
             httpClient,
+            new NullHttpClientFactory(),
             monitor,
             certificateManager,
             NullLogger<PullServerClient>.Instance);
@@ -231,6 +237,7 @@ public class PullServerClientTests : IClassFixture<LcmTestServerFactory>
 
         var client = new PullServerClient(
             httpClient,
+            new NullHttpClientFactory(),
             monitor,
             certificateManager,
             NullLogger<PullServerClient>.Instance);
@@ -265,6 +272,7 @@ public class PullServerClientTests : IClassFixture<LcmTestServerFactory>
 
         var client = new PullServerClient(
             httpClient,
+            new NullHttpClientFactory(),
             monitor,
             certificateManager,
             NullLogger<PullServerClient>.Instance);
@@ -289,6 +297,11 @@ public class PullServerClientTests : IClassFixture<LcmTestServerFactory>
         public IDisposable? OnChange(Action<T, string?> listener) => null;
     }
 
+    private sealed class NullHttpClientFactory : IHttpClientFactory
+    {
+        public HttpClient CreateClient(string name) => new();
+    }
+
     private sealed class NullCertificateManager : ICertificateManager
     {
         public X509Certificate2? GetClientCertificate() => null;
@@ -296,6 +309,8 @@ public class PullServerClientTests : IClassFixture<LcmTestServerFactory>
         public X509Certificate2? RotateCertificate(PullServerSettings pullServer) => null;
 
         public bool ShouldRotateCertificate(X509Certificate2? currentCertificate, PullServerSettings pullServer) => false;
+
+        public void SetRotationInterval(TimeSpan interval) { }
     }
 
     private static X509Certificate2 GenerateTestCertificate()
@@ -387,5 +402,7 @@ public class PullServerClientTests : IClassFixture<LcmTestServerFactory>
         public X509Certificate2? RotateCertificate(PullServerSettings pullServer) => null;
 
         public bool ShouldRotateCertificate(X509Certificate2? currentCertificate, PullServerSettings pullServer) => false;
+
+        public void SetRotationInterval(TimeSpan interval) { }
     }
 }

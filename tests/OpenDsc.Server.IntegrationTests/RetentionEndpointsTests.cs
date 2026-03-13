@@ -113,7 +113,6 @@ public sealed class RetentionEndpointsTests : IDisposable
             KeepVersions = 5,
             KeepDays = 60,
             KeepReleaseVersions = false,
-            KeepArchivedVersions = false,
             DryRun = true
         };
 

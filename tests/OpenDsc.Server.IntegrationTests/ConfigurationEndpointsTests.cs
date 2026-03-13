@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Endpoints;
+using OpenDsc.Server.Entities;
 
 using Xunit;
 
@@ -614,8 +615,8 @@ resources: []
         var publishedVersion = await publishResponse.Content.ReadFromJsonAsync<ConfigurationVersionDto>();
         publishedVersion.Should().NotBeNull();
         publishedVersion!.Version.Should().Be(configDto.LatestVersion);
-        // This is the key fix: IsDraft must be false after publishing
-        publishedVersion.IsDraft.Should().BeFalse();
+        // This is the key fix: Status must be Published after publishing
+        publishedVersion.Status.Should().Be(ConfigurationVersionStatus.Published);
     }
 
 

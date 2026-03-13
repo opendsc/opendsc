@@ -683,7 +683,7 @@ public class LcmWorkerTests
             };
 
             var certManagerMock = new Mock<ICertificateManager>();
-            var pullClient = new PullServerClient(httpClient, optionsMonitor, certManagerMock.Object, Mock.Of<ILogger<PullServerClient>>());
+            var pullClient = new PullServerClient(httpClient, Mock.Of<IHttpClientFactory>(), optionsMonitor, certManagerMock.Object, Mock.Of<ILogger<PullServerClient>>());
 
             var configMock = new Mock<IConfiguration>();
             configMock.SetupGet(c => c["Logging:LogLevel:OpenDsc.Lcm"]).Returns("Information");
@@ -775,7 +775,7 @@ public class LcmWorkerTests
             };
 
             var certManagerMock = new Mock<ICertificateManager>();
-            var pullClient = new PullServerClient(httpClient, optionsMonitor, certManagerMock.Object, Mock.Of<ILogger<PullServerClient>>());
+            var pullClient = new PullServerClient(httpClient, Mock.Of<IHttpClientFactory>(), optionsMonitor, certManagerMock.Object, Mock.Of<ILogger<PullServerClient>>());
 
             var configMock = new Mock<IConfiguration>();
             configMock.SetupGet(c => c["Logging:LogLevel:OpenDsc.Lcm"]).Returns("Information");
@@ -874,7 +874,7 @@ public class LcmWorkerTests
             };
 
             var certManagerMock = new Mock<ICertificateManager>();
-            var pullClient = new PullServerClient(httpClient, optionsMonitor, certManagerMock.Object, Mock.Of<ILogger<PullServerClient>>());
+            var pullClient = new PullServerClient(httpClient, Mock.Of<IHttpClientFactory>(), optionsMonitor, certManagerMock.Object, Mock.Of<ILogger<PullServerClient>>());
 
             var configMock = new Mock<IConfiguration>();
             configMock.SetupGet(c => c["Logging:LogLevel:OpenDsc.Lcm"]).Returns("Information");
@@ -1057,7 +1057,7 @@ public class LcmWorkerTests
 
             var httpClient = new HttpClient(httpHandlerMock.Object) { BaseAddress = new Uri("http://test-server") };
             var certManagerMock = new Mock<ICertificateManager>();
-            var pullClient = new PullServerClient(httpClient, optionsMonitor, certManagerMock.Object, Mock.Of<ILogger<PullServerClient>>());
+            var pullClient = new PullServerClient(httpClient, Mock.Of<IHttpClientFactory>(), optionsMonitor, certManagerMock.Object, Mock.Of<ILogger<PullServerClient>>());
 
             var dscExecutorMock = new Mock<DscExecutor>(MockBehavior.Loose, Mock.Of<ILogger<DscExecutor>>(), Mock.Of<ILoggerFactory>());
             dscExecutorMock.Protected()
@@ -1144,7 +1144,7 @@ public class LcmWorkerTests
 
             var httpClient = new HttpClient(httpHandlerMock.Object) { BaseAddress = new Uri("http://test-server") };
             var certManagerMock = new Mock<ICertificateManager>();
-            var pullClient = new PullServerClient(httpClient, optionsMonitor, certManagerMock.Object, Mock.Of<ILogger<PullServerClient>>());
+            var pullClient = new PullServerClient(httpClient, Mock.Of<IHttpClientFactory>(), optionsMonitor, certManagerMock.Object, Mock.Of<ILogger<PullServerClient>>());
 
             var dscExecutorMock = new Mock<DscExecutor>(MockBehavior.Loose, Mock.Of<ILogger<DscExecutor>>(), Mock.Of<ILoggerFactory>());
             dscExecutorMock.Protected()
@@ -1231,7 +1231,7 @@ public class LcmWorkerTests
 
             var httpClient = new HttpClient(httpHandlerMock.Object) { BaseAddress = new Uri("http://test-server") };
             var certManagerMock = new Mock<ICertificateManager>();
-            var pullClient = new PullServerClient(httpClient, optionsMonitor, certManagerMock.Object, Mock.Of<ILogger<PullServerClient>>());
+            var pullClient = new PullServerClient(httpClient, Mock.Of<IHttpClientFactory>(), optionsMonitor, certManagerMock.Object, Mock.Of<ILogger<PullServerClient>>());
 
             var dscExecutorMock = new Mock<DscExecutor>(MockBehavior.Loose, Mock.Of<ILogger<DscExecutor>>(), Mock.Of<ILoggerFactory>());
             dscExecutorMock.Protected()
@@ -1321,7 +1321,7 @@ public class LcmWorkerTests
 
             var httpClient = new HttpClient(httpHandlerMock.Object) { BaseAddress = new Uri("http://test-server") };
             var certManagerMock = new Mock<ICertificateManager>();
-            var pullClient = new PullServerClient(httpClient, optionsMonitor, certManagerMock.Object, Mock.Of<ILogger<PullServerClient>>());
+            var pullClient = new PullServerClient(httpClient, Mock.Of<IHttpClientFactory>(), optionsMonitor, certManagerMock.Object, Mock.Of<ILogger<PullServerClient>>());
 
             var dscExecutorMock = new Mock<DscExecutor>(MockBehavior.Loose, Mock.Of<ILogger<DscExecutor>>(), Mock.Of<ILoggerFactory>());
             dscExecutorMock.Protected()
@@ -1409,7 +1409,7 @@ public class LcmWorkerTests
 
             var httpClient = new HttpClient(httpHandlerMock.Object) { BaseAddress = new Uri("http://test-server") };
             var certManagerMock = new Mock<ICertificateManager>();
-            var pullClient = new PullServerClient(httpClient, optionsMonitor, certManagerMock.Object, Mock.Of<ILogger<PullServerClient>>());
+            var pullClient = new PullServerClient(httpClient, Mock.Of<IHttpClientFactory>(), optionsMonitor, certManagerMock.Object, Mock.Of<ILogger<PullServerClient>>());
 
             var dscExecutorMock = new Mock<DscExecutor>(MockBehavior.Loose, Mock.Of<ILogger<DscExecutor>>(), Mock.Of<ILoggerFactory>());
             dscExecutorMock.Protected()
@@ -1505,7 +1505,7 @@ public class LcmWorkerTests
 
             var httpClient = new HttpClient(httpHandlerMock.Object) { BaseAddress = new Uri("http://test-server") };
             var certManagerMock = new Mock<ICertificateManager>();
-            var pullClient = new PullServerClient(httpClient, optionsMonitor, certManagerMock.Object, Mock.Of<ILogger<PullServerClient>>());
+            var pullClient = new PullServerClient(httpClient, Mock.Of<IHttpClientFactory>(), optionsMonitor, certManagerMock.Object, Mock.Of<ILogger<PullServerClient>>());
 
             var dscExecutorMock = new Mock<DscExecutor>(MockBehavior.Loose, Mock.Of<ILogger<DscExecutor>>(), Mock.Of<ILoggerFactory>());
             dscExecutorMock.Protected()
@@ -1586,7 +1586,7 @@ public class LcmWorkerTests
 
             var httpClient = new HttpClient(httpHandlerMock.Object) { BaseAddress = new Uri("http://test-server") };
             var certManagerMock = new Mock<ICertificateManager>();
-            var pullClient = new PullServerClient(httpClient, optionsMonitor, certManagerMock.Object, Mock.Of<ILogger<PullServerClient>>());
+            var pullClient = new PullServerClient(httpClient, Mock.Of<IHttpClientFactory>(), optionsMonitor, certManagerMock.Object, Mock.Of<ILogger<PullServerClient>>());
 
             var dscExecutorMock = new Mock<DscExecutor>(MockBehavior.Loose, Mock.Of<ILogger<DscExecutor>>(), Mock.Of<ILoggerFactory>());
             dscExecutorMock.Protected()

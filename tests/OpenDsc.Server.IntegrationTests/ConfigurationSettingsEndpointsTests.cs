@@ -44,7 +44,6 @@ public sealed class ConfigurationSettingsEndpointsTests : IDisposable
         dto.KeepVersions.Should().BeNull();
         dto.KeepDays.Should().BeNull();
         dto.KeepReleaseVersions.Should().BeNull();
-        dto.KeepArchivedVersions.Should().BeNull();
     }
 
     [Fact]
@@ -78,8 +77,7 @@ public sealed class ConfigurationSettingsEndpointsTests : IDisposable
         {
             KeepVersions = 5,
             KeepDays = 30,
-            KeepReleaseVersions = false,
-            KeepArchivedVersions = false
+            KeepReleaseVersions = false
         };
 
         var putResponse = await client.PutAsJsonAsync("/api/v1/configurations/test-config/settings/retention", request);
@@ -93,7 +91,6 @@ public sealed class ConfigurationSettingsEndpointsTests : IDisposable
         dto.KeepVersions.Should().Be(5);
         dto.KeepDays.Should().Be(30);
         dto.KeepReleaseVersions.Should().BeFalse();
-        dto.KeepArchivedVersions.Should().BeFalse();
     }
 
     [Fact]

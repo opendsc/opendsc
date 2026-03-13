@@ -42,7 +42,6 @@ public sealed class RetentionSettingsEndpointsTests : IDisposable
         dto.KeepVersions.Should().Be(10);
         dto.KeepDays.Should().Be(90);
         dto.KeepReleaseVersions.Should().BeTrue();
-        dto.KeepArchivedVersions.Should().BeTrue();
         dto.ScheduleIntervalHours.Should().Be(24);
         dto.ReportKeepCount.Should().Be(1000);
         dto.ReportKeepDays.Should().Be(30);
@@ -71,7 +70,6 @@ public sealed class RetentionSettingsEndpointsTests : IDisposable
             KeepVersions = 5,
             KeepDays = 30,
             KeepReleaseVersions = false,
-            KeepArchivedVersions = false,
             ScheduleIntervalHours = 12,
             ReportKeepCount = 500,
             ReportKeepDays = 60,
@@ -90,7 +88,6 @@ public sealed class RetentionSettingsEndpointsTests : IDisposable
         dto.KeepVersions.Should().Be(5);
         dto.KeepDays.Should().Be(30);
         dto.KeepReleaseVersions.Should().BeFalse();
-        dto.KeepArchivedVersions.Should().BeFalse();
         dto.ScheduleIntervalHours.Should().Be(12);
         dto.ReportKeepCount.Should().Be(500);
         dto.ReportKeepDays.Should().Be(60);
