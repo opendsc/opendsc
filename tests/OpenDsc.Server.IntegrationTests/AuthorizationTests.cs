@@ -6,8 +6,6 @@ using System.Net;
 
 using AwesomeAssertions;
 
-using OpenDsc.Server.Authorization;
-
 using Xunit;
 
 namespace OpenDsc.Server.IntegrationTests;
