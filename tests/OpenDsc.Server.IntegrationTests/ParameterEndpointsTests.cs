@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 
 using OpenDsc.Server.Contracts;
 using OpenDsc.Server.Data;
+using OpenDsc.Server.Entities;
 
 using Xunit;
 
@@ -80,8 +81,7 @@ public class ParameterEndpointsTests : IDisposable
         var result = await response.Content.ReadFromJsonAsync<ParameterFileDto>();
         result.Should().NotBeNull();
         result!.Version.Should().Be("1.0.0");
-        result.IsDraft.Should().BeFalse();
-        result.IsActive.Should().BeFalse();
+        result.Status.Should().Be(ParameterVersionStatus.Draft);
     }
 
     [Fact]
@@ -136,15 +136,14 @@ public class ParameterEndpointsTests : IDisposable
         await client.PutAsJsonAsync($"/api/v1/parameters/{scopeTypeId}/{configId}", createRequest);
 
         // Act
-        var response = await client.PutAsync($"/api/v1/parameters/{scopeTypeId}/{configId}/versions/1.0.0/activate", null);
+        var response = await client.PutAsync($"/api/v1/parameters/{scopeTypeId}/{configId}/versions/1.0.0/publish", null);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var result = await response.Content.ReadFromJsonAsync<ParameterFileDto>();
         result.Should().NotBeNull();
         result!.Version.Should().Be("1.0.0");
-        result.IsActive.Should().BeTrue();
-        result.IsDraft.Should().BeFalse();
+        result.Status.Should().Be(ParameterVersionStatus.Published);
     }
 
     [Fact]
@@ -193,7 +192,7 @@ public class ParameterEndpointsTests : IDisposable
         };
 
         await client.PutAsJsonAsync($"/api/v1/parameters/{scopeTypeId}/{configId}", createRequest);
-        await client.PutAsync($"/api/v1/parameters/{scopeTypeId}/{configId}/versions/1.0.0/activate", null);
+        await client.PutAsync($"/api/v1/parameters/{scopeTypeId}/{configId}/versions/1.0.0/publish", null);
 
         // Act
         var response = await client.DeleteAsync($"/api/v1/parameters/{scopeTypeId}/{configId}/versions/1.0.0");
@@ -209,6 +208,15 @@ public class ParameterEndpointsTests : IDisposable
         using var client = CreateAuthenticatedClient();
         var configName = $"test-config-{Guid.NewGuid()}";
         var configId = await CreateTestConfigurationAsync(client, configName);
+
+        // Create and publish a configuration version so assignment succeeds
+        using var versionContent = new MultipartFormDataContent();
+        versionContent.Add(new StringContent("1.0.0"), "version");
+        var versionFile = new ByteArrayContent("resources: []"u8.ToArray());
+        versionFile.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+        versionContent.Add(versionFile, "files", "main.dsc.yaml");
+        await client.PostAsync($"/api/v1/configurations/{configName}/versions", versionContent);
+        await client.PutAsync($"/api/v1/configurations/{configName}/versions/1.0.0/publish", null);
 
         // Register a node
         var registerRequest = new RegisterNodeRequest { Fqdn = "test-node.example.com", RegistrationKey = "test-lcm-registration-key" };
@@ -382,7 +390,7 @@ public class ParameterEndpointsTests : IDisposable
         var result = await response.Content.ReadFromJsonAsync<ParameterFileDto>();
         result.Should().NotBeNull();
         result!.ScopeValue.Should().Be("Development");
-        result.IsDraft.Should().BeTrue();
+        result.Status.Should().Be(ParameterVersionStatus.Draft);
     }
 
     [Fact]
@@ -527,6 +535,7 @@ public class ParameterEndpointsTests : IDisposable
         var result = await response.Content.ReadFromJsonAsync<ParameterFileDto>();
         result.Should().NotBeNull();
         result!.ScopeValue.Should().BeNullOrEmpty();
+        result.Status.Should().Be(ParameterVersionStatus.Draft);
     }
 
     // ── Unrestricted (user-created) scope type ───────────────────────────────
@@ -582,6 +591,7 @@ public class ParameterEndpointsTests : IDisposable
         var result = await response.Content.ReadFromJsonAsync<ParameterFileDto>();
         result.Should().NotBeNull();
         result!.ScopeValue.Should().Be("us-west");
+        result.Status.Should().Be(ParameterVersionStatus.Draft);
     }
 }
 
@@ -598,9 +608,10 @@ public sealed class ParameterFileDto
     public required Guid ConfigurationId { get; init; }
     public string? ScopeValue { get; init; }
     public required string Version { get; init; }
+    public required int MajorVersion { get; init; }
     public required string Checksum { get; init; }
-    public required bool IsActive { get; init; }
-    public required bool IsDraft { get; init; }
+    public required ParameterVersionStatus Status { get; init; }
+    public required bool IsPassthrough { get; init; }
     public required DateTimeOffset CreatedAt { get; init; }
 }
 

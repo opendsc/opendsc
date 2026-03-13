@@ -160,6 +160,7 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
         child1File.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         child1Content.Add(child1File, "files", "main.dsc.yaml");
         await AuthClient.PostAsync("/api/v1/configurations", child1Content);
+        await AuthClient.PutAsync($"/api/v1/configurations/{childName1}/versions/1.0.0/publish", null);
 
         using var child2Content = new MultipartFormDataContent();
         child2Content.Add(new StringContent(childName2), "name");
@@ -168,6 +169,7 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
         child2File.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         child2Content.Add(child2File, "files", "main.dsc.yaml");
         await AuthClient.PostAsync("/api/v1/configurations", child2Content);
+        await AuthClient.PutAsync($"/api/v1/configurations/{childName2}/versions/1.0.0/publish", null);
 
         var createCompositeRequest = new CreateCompositeConfigurationRequest
         {

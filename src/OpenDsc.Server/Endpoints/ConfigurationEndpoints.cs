@@ -777,7 +777,7 @@ public static class ConfigurationEndpoints
         }
 
         var userId = userContext.GetCurrentUserId();
-        if (userId == null || !await authService.CanManageConfigurationAsync(userId.Value, configuration.Id))
+        if (userId == null || !await authService.CanModifyConfigurationAsync(userId.Value, configuration.Id))
         {
             return TypedResults.Forbid();
         }

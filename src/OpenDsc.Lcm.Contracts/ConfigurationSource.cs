@@ -2,11 +2,14 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
+using System.Text.Json.Serialization;
+
 namespace OpenDsc.Lcm.Contracts;
 
 /// <summary>
 /// The source of configuration documents for the LCM.
 /// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter<ConfigurationSource>))]
 public enum ConfigurationSource
 {
     /// <summary>

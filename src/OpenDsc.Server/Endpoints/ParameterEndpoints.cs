@@ -515,6 +515,11 @@ public static class ParameterEndpoints
             return TypedResults.Forbid();
         }
 
+        if (parameterFile.Status == ParameterVersionStatus.Published)
+        {
+            return TypedResults.Conflict("Cannot delete a published parameter version.");
+        }
+
         db.ParameterFiles.Remove(parameterFile);
         await db.SaveChangesAsync();
 

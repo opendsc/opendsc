@@ -129,15 +129,12 @@ public static class ReportEndpoints
             return TypedResults.NotFound(new ErrorResponse { Error = "Node not found." });
         }
 
-        var reports = await db.Reports
+        var allReports = await db.Reports
             .AsNoTracking()
             .Include(r => r.Node)
             .Where(r => r.NodeId == nodeId)
             .Where(r => from == null || r.Timestamp >= from)
             .Where(r => to == null || r.Timestamp <= to)
-            .OrderByDescending(r => r.Timestamp)
-            .Skip(skip ?? 0)
-            .Take(take ?? 100)
             .Select(r => new ReportSummary
             {
                 Id = r.Id,
@@ -149,6 +146,12 @@ public static class ReportEndpoints
                 HadErrors = r.HadErrors
             })
             .ToListAsync(cancellationToken);
+
+        var reports = allReports
+            .OrderByDescending(r => r.Timestamp)
+            .Skip(skip ?? 0)
+            .Take(take ?? 100)
+            .ToList();
 
         return TypedResults.Ok(reports);
     }
@@ -161,14 +164,11 @@ public static class ReportEndpoints
         DateTimeOffset? to,
         CancellationToken cancellationToken)
     {
-        var reports = await db.Reports
+        var allReports = await db.Reports
             .AsNoTracking()
             .Include(r => r.Node)
             .Where(r => from == null || r.Timestamp >= from)
             .Where(r => to == null || r.Timestamp <= to)
-            .OrderByDescending(r => r.Timestamp)
-            .Skip(skip ?? 0)
-            .Take(take ?? 100)
             .Select(r => new ReportSummary
             {
                 Id = r.Id,
@@ -180,6 +180,12 @@ public static class ReportEndpoints
                 HadErrors = r.HadErrors
             })
             .ToListAsync(cancellationToken);
+
+        var reports = allReports
+            .OrderByDescending(r => r.Timestamp)
+            .Skip(skip ?? 0)
+            .Take(take ?? 100)
+            .ToList();
 
         return TypedResults.Ok(reports);
     }

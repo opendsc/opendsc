@@ -622,9 +622,9 @@ public class NodeEndpointsTests : IClassFixture<ServerWebApplicationFactory>
             $"/api/v1/parameters/{defaultScopeTypeId}/{configId}", paramRequest);
         uploadResponse.EnsureSuccessStatusCode();
 
-        // Activate the parameter file
+        // Publish the parameter file
         var activateResponse = await adminClient.PutAsync(
-            $"/api/v1/parameters/{defaultScopeTypeId}/{configId}/versions/1.0.0/activate", null);
+            $"/api/v1/parameters/{defaultScopeTypeId}/{configId}/versions/1.0.0/publish", null);
         activateResponse.EnsureSuccessStatusCode();
 
         // Assign configuration to node

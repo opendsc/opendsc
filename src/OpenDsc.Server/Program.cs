@@ -51,21 +51,19 @@ builder.Services.AddScoped<ThemeService>();
 builder.Services.AddServerDatabase(builder.Configuration);
 builder.Services.AddServerAuthentication(builder.Environment);
 
-// Add authorization policies for Blazor pages
+// Add authorization policies for Blazor pages that don't have dedicated permission-based policies
 builder.Services.AddAuthorizationBuilder()
     .AddPolicy("nodes.read", policy => policy.RequireAuthenticatedUser())
     .AddPolicy("nodes.write", policy => policy.RequireAuthenticatedUser())
-    .AddPolicy("nodes.delete", policy => policy.RequireAuthenticatedUser())
+    .AddPolicy("reports.read", policy => policy.RequireAuthenticatedUser())
+    .AddPolicy("reports.write", policy => policy.RequireAuthenticatedUser())
     .AddPolicy("configurations.read", policy => policy.RequireAuthenticatedUser())
     .AddPolicy("configurations.write", policy => policy.RequireAuthenticatedUser())
     .AddPolicy("parameters.read", policy => policy.RequireAuthenticatedUser())
     .AddPolicy("parameters.write", policy => policy.RequireAuthenticatedUser())
-    .AddPolicy("reports.read", policy => policy.RequireAuthenticatedUser())
-    .AddPolicy("users.manage", policy => policy.RequireAuthenticatedUser())
-    .AddPolicy("groups.manage", policy => policy.RequireAuthenticatedUser())
-    .AddPolicy("roles.manage", policy => policy.RequireAuthenticatedUser())
     .AddPolicy("settings.read", policy => policy.RequireAuthenticatedUser())
-    .AddPolicy("settings.write", policy => policy.RequireAuthenticatedUser());
+    .AddPolicy("settings.write", policy => policy.RequireAuthenticatedUser())
+    .AddPolicy("users.manage", policy => policy.RequireAuthenticatedUser());
 
 builder.Services.AddSingleton<IParameterMerger, ParameterMerger>();
 builder.Services.AddScoped<IParameterMergeService, ParameterMergeService>();

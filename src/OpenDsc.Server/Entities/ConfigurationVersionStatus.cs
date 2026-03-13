@@ -2,8 +2,11 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
+using System.Text.Json.Serialization;
+
 namespace OpenDsc.Server.Entities;
 
+[JsonConverter(typeof(JsonStringEnumConverter<ConfigurationVersionStatus>))]
 public enum ConfigurationVersionStatus
 {
     Draft = 0,

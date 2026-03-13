@@ -78,6 +78,7 @@ public static class DatabaseExtensions
             {
                 await SeedTestRegistrationKeyAsync(context, logger);
                 await SeedTestDataAsync(context, logger);
+                await DisableAdminPasswordChangeRequirementAsync(context);
             }
         }
         catch (Exception ex)
@@ -114,6 +115,18 @@ public static class DatabaseExtensions
         {
             logger.LogError(ex, "Failed to initialize database");
             throw;
+        }
+    }
+
+    private static async Task DisableAdminPasswordChangeRequirementAsync(ServerDbContext context)
+    {
+        var admin = await context.Users
+            .FirstOrDefaultAsync(u => u.Username == "admin");
+
+        if (admin != null && admin.RequirePasswordChange)
+        {
+            admin.RequirePasswordChange = false;
+            await context.SaveChangesAsync();
         }
     }
 

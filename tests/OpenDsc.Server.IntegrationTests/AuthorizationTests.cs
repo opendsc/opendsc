@@ -122,7 +122,7 @@ public class AuthorizationTests : IAsyncLifetime, IDisposable
     [Fact]
     public async Task GetRegistrationKeys_WithoutRegistrationKeysManage_ReturnsForbidden()
     {
-        var response = await _noPermissionsClient.GetAsync("/api/v1/registration-keys");
+        var response = await _noPermissionsClient.GetAsync("/api/v1/admin/registration-keys");
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
@@ -160,7 +160,7 @@ public class AuthorizationTests : IAsyncLifetime, IDisposable
     [Fact]
     public async Task GetScopeValues_WithoutScopesAdminOverride_ReturnsForbidden()
     {
-        var response = await _noPermissionsClient.GetAsync("/api/v1/scope-values");
+        var response = await _noPermissionsClient.GetAsync("/api/v1/scope-types/00000000-0000-0000-0000-000000000001/values");
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
@@ -169,7 +169,7 @@ public class AuthorizationTests : IAsyncLifetime, IDisposable
     [Fact]
     public async Task GetNodeTags_WithoutScopesAdminOverride_ReturnsForbidden()
     {
-        var response = await _noPermissionsClient.GetAsync("/api/v1/node-tags");
+        var response = await _noPermissionsClient.GetAsync("/api/v1/nodes/00000000-0000-0000-0000-000000000001/tags");
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
@@ -178,7 +178,7 @@ public class AuthorizationTests : IAsyncLifetime, IDisposable
     [Fact]
     public async Task GetRetentionPolicy_WithoutRetentionManage_ReturnsForbidden()
     {
-        var response = await _noPermissionsClient.GetAsync("/api/v1/retention");
+        var response = await _noPermissionsClient.GetAsync("/api/v1/retention/runs");
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 

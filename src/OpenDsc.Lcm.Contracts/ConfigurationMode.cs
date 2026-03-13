@@ -2,11 +2,14 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
+using System.Text.Json.Serialization;
+
 namespace OpenDsc.Lcm.Contracts;
 
 /// <summary>
 /// LCM service operating modes.
 /// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter<ConfigurationMode>))]
 public enum ConfigurationMode
 {
     /// <summary>

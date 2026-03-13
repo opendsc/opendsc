@@ -89,6 +89,8 @@ resources: []
         configContent2.Add(configFile, "files", "main.dsc.yaml");
         await adminClient.PostAsync("/api/v1/configurations", configContent2);
 
+        await adminClient.PutAsync($"/api/v1/configurations/{configName}/versions/1.0.0/publish", null);
+
         var assignRequest = new AssignConfigurationRequest
         {
             ConfigurationName = configName
