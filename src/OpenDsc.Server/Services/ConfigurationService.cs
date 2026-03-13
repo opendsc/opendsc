@@ -7,6 +7,7 @@ using System.Text.Json;
 
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 using OpenDsc.Server.Authorization;
 using OpenDsc.Server.Data;
@@ -45,7 +46,7 @@ public sealed class PublishResult
 public sealed class ConfigurationService : IConfigurationService
 {
     private readonly ServerDbContext _db;
-    private readonly IConfiguration _config;
+    private readonly IOptions<ServerConfig> _serverConfig;
     private readonly IResourceAuthorizationService _authService;
     private readonly IUserContextService _userContext;
     private readonly ILogger<ConfigurationService> _logger;
@@ -55,7 +56,7 @@ public sealed class ConfigurationService : IConfigurationService
 
     public ConfigurationService(
         ServerDbContext db,
-        IConfiguration config,
+        IOptions<ServerConfig> serverConfig,
         IResourceAuthorizationService authService,
         IUserContextService userContext,
         ILogger<ConfigurationService> logger,
@@ -64,7 +65,7 @@ public sealed class ConfigurationService : IConfigurationService
         IParameterCompatibilityService compatibilityService)
     {
         _db = db;
-        _config = config;
+        _serverConfig = serverConfig;
         _authService = authService;
         _userContext = userContext;
         _logger = logger;
@@ -131,8 +132,8 @@ public sealed class ConfigurationService : IConfigurationService
 
             _db.ConfigurationVersions.Add(configVersion);
 
-            var dataDir = _config["DataDirectory"] ?? "data";
-            var versionDir = Path.Combine(dataDir, "configurations", name, $"v{version}");
+            var dataDir = _serverConfig.Value.ConfigurationsDirectory;
+            var versionDir = Path.Combine(dataDir, name, $"v{version}");
             Directory.CreateDirectory(versionDir);
 
             foreach (var file in files)
@@ -264,8 +265,8 @@ public sealed class ConfigurationService : IConfigurationService
 
             _db.ConfigurationVersions.Add(configVersion);
 
-            var dataDir = _config["DataDirectory"] ?? "data";
-            var versionDir = Path.Combine(dataDir, "configurations", name, $"v{version}");
+            var dataDir = _serverConfig.Value.ConfigurationsDirectory;
+            var versionDir = Path.Combine(dataDir, name, $"v{version}");
             Directory.CreateDirectory(versionDir);
 
             foreach (var file in files)
@@ -393,9 +394,9 @@ public sealed class ConfigurationService : IConfigurationService
 
             _db.ConfigurationVersions.Add(configVersion);
 
-            var dataDir = _config["DataDirectory"] ?? "data";
-            var sourceVersionDir = Path.Combine(dataDir, "configurations", name, $"v{sourceVersion}");
-            var newVersionDir = Path.Combine(dataDir, "configurations", name, $"v{newVersion}");
+            var dataDir = _serverConfig.Value.ConfigurationsDirectory;
+            var sourceVersionDir = Path.Combine(dataDir, name, $"v{sourceVersion}");
+            var newVersionDir = Path.Combine(dataDir, name, $"v{newVersion}");
 
             if (!Directory.Exists(sourceVersionDir))
             {
@@ -521,8 +522,8 @@ public sealed class ConfigurationService : IConfigurationService
                 return false;
             }
 
-            var dataDir = _config["DataDirectory"] ?? "data";
-            var versionDir = Path.Combine(dataDir, "configurations", name, $"v{version}");
+            var dataDir = _serverConfig.Value.ConfigurationsDirectory;
+            var versionDir = Path.Combine(dataDir, name, $"v{version}");
 
             foreach (var file in files)
             {
@@ -711,8 +712,8 @@ public sealed class ConfigurationService : IConfigurationService
                 return false;
             }
 
-            var dataDir = _config["DataDirectory"] ?? "data";
-            var configDir = Path.Combine(dataDir, "configurations", name);
+            var dataDir = _serverConfig.Value.ConfigurationsDirectory;
+            var configDir = Path.Combine(dataDir, name);
             if (Directory.Exists(configDir))
             {
                 Directory.Delete(configDir, recursive: true);
@@ -754,8 +755,8 @@ public sealed class ConfigurationService : IConfigurationService
                 return false;
             }
 
-            var dataDir = _config["DataDirectory"] ?? "data";
-            var versionDir = Path.Combine(dataDir, "configurations", name, $"v{version}");
+            var dataDir = _serverConfig.Value.ConfigurationsDirectory;
+            var versionDir = Path.Combine(dataDir, name, $"v{version}");
             if (Directory.Exists(versionDir))
             {
                 Directory.Delete(versionDir, recursive: true);
@@ -813,8 +814,8 @@ public sealed class ConfigurationService : IConfigurationService
                 return false;
             }
 
-            var dataDir = _config["DataDirectory"] ?? "data";
-            var fullPath = Path.Combine(dataDir, "configurations", name, $"v{version}", filePath);
+            var dataDir = _serverConfig.Value.ConfigurationsDirectory;
+            var fullPath = Path.Combine(dataDir, name, $"v{version}", filePath);
             if (File.Exists(fullPath))
             {
                 File.Delete(fullPath);
@@ -875,8 +876,8 @@ public sealed class ConfigurationService : IConfigurationService
     {
         try
         {
-            var dataDir = _config["DataDirectory"] ?? "data";
-            var fullPath = Path.Combine(dataDir, "configurations", name, $"v{version}", filePath);
+            var dataDir = _serverConfig.Value.ConfigurationsDirectory;
+            var fullPath = Path.Combine(dataDir, name, $"v{version}", filePath);
 
             if (!File.Exists(fullPath))
             {
@@ -904,8 +905,8 @@ public sealed class ConfigurationService : IConfigurationService
     {
         try
         {
-            var dataDir = _config["DataDirectory"] ?? "data";
-            var versionDir = Path.Combine(dataDir, "configurations", name, $"v{version}");
+            var dataDir = _serverConfig.Value.ConfigurationsDirectory;
+            var versionDir = Path.Combine(dataDir, name, $"v{version}");
             var fullPath = Path.Combine(versionDir, filePath);
 
             await File.WriteAllTextAsync(fullPath, content);

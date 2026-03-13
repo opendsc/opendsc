@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 using NuGet.Versioning;
 
@@ -112,7 +113,7 @@ public static class ParameterEndpoints
         Guid configurationId,
         [FromBody] CreateParameterRequest request,
         ServerDbContext db,
-        IConfiguration config,
+        IOptions<ServerConfig> serverConfig,
         IResourceAuthorizationService authService,
         IUserContextService userContext,
         IParameterValidator parameterValidator)
@@ -237,10 +238,10 @@ public static class ParameterEndpoints
                 pf.ScopeValue == request.ScopeValue &&
                 pf.Version == request.Version);
 
-        var dataDir = config["DataDirectory"] ?? "data";
+        var dataDir = serverConfig.Value.ParametersDirectory;
         var filePath = !string.IsNullOrWhiteSpace(request.ScopeValue)
-            ? Path.Combine(dataDir, "parameters", configuration.Name, scopeType.Name, request.ScopeValue, $"v{request.Version}", "parameters.yaml")
-            : Path.Combine(dataDir, "parameters", configuration.Name, scopeType.Name, $"v{request.Version}", "parameters.yaml");
+            ? Path.Combine(dataDir, configuration.Name, scopeType.Name, request.ScopeValue, $"v{request.Version}", "parameters.yaml")
+            : Path.Combine(dataDir, configuration.Name, scopeType.Name, $"v{request.Version}", "parameters.yaml");
 
         if (existingVersion is not null)
         {
@@ -409,7 +410,7 @@ public static class ParameterEndpoints
         IResourceAuthorizationService authService,
         IUserContextService userContext,
         IParameterValidator parameterValidator,
-        IConfiguration config)
+        IOptions<ServerConfig> serverConfig)
     {
         var parameterFile = await db.ParameterFiles
             .Include(pf => pf.ParameterSchema)
@@ -449,10 +450,10 @@ public static class ParameterEndpoints
                 return TypedResults.NotFound();
             }
 
-            var dataDir = config["DataDirectory"] ?? "data";
+            var dataDir = serverConfig.Value.ParametersDirectory;
             var filePath = !string.IsNullOrWhiteSpace(scopeValue)
-                ? Path.Combine(dataDir, "parameters", configuration.Name, scopeType.Name, scopeValue, $"v{version}", "parameters.yaml")
-                : Path.Combine(dataDir, "parameters", configuration.Name, scopeType.Name, $"v{version}", "parameters.yaml");
+                ? Path.Combine(dataDir, configuration.Name, scopeType.Name, scopeValue, $"v{version}", "parameters.yaml")
+                : Path.Combine(dataDir, configuration.Name, scopeType.Name, $"v{version}", "parameters.yaml");
 
             if (!File.Exists(filePath))
             {
@@ -531,7 +532,7 @@ public static class ParameterEndpoints
         [FromQuery] Guid? configurationId,
         ServerDbContext db,
         IParameterMerger merger,
-        IConfiguration config)
+        IOptions<ServerConfig> serverConfig)
     {
         var node = await db.Nodes.FindAsync(nodeId);
         if (node is null)
@@ -561,7 +562,7 @@ public static class ParameterEndpoints
             return TypedResults.NotFound();
         }
 
-        var dataDir = config["DataDirectory"] ?? "data";
+        var dataDir = serverConfig.Value.ParametersDirectory;
         var parameterSources = new List<ParameterSource>();
 
         // Track the resolved version per scope label for DTO population
@@ -594,7 +595,7 @@ public static class ParameterEndpoints
 
             if (defaultParamFile != null && !defaultParamFile.IsPassthrough)
             {
-                var defaultPath = Path.Combine(dataDir, "parameters", configuration.Name, "Default", $"v{defaultParamFile.Version}", "parameters.yaml");
+                var defaultPath = Path.Combine(dataDir, configuration.Name, "Default", $"v{defaultParamFile.Version}", "parameters.yaml");
 
                 if (File.Exists(defaultPath))
                 {
@@ -629,7 +630,7 @@ public static class ParameterEndpoints
                 continue;
             }
 
-            var filePath = Path.Combine(dataDir, "parameters", configuration.Name, tag.ScopeValue.ScopeType.Name, tag.ScopeValue.Value, $"v{paramFile.Version}", "parameters.yaml");
+            var filePath = Path.Combine(dataDir, configuration.Name, tag.ScopeValue.ScopeType.Name, tag.ScopeValue.Value, $"v{paramFile.Version}", "parameters.yaml");
 
             if (!File.Exists(filePath))
             {
@@ -665,7 +666,7 @@ public static class ParameterEndpoints
 
             if (nodeParamFile != null && !nodeParamFile.IsPassthrough)
             {
-                var nodePath = Path.Combine(dataDir, "parameters", configuration.Name, "Node", node.Fqdn, $"v{nodeParamFile.Version}", "parameters.yaml");
+                var nodePath = Path.Combine(dataDir, configuration.Name, "Node", node.Fqdn, $"v{nodeParamFile.Version}", "parameters.yaml");
 
                 if (File.Exists(nodePath))
                 {
@@ -1203,7 +1204,7 @@ public static class ParameterEndpoints
         [FromForm] IFormFile parametersFile,
         [FromForm] string? scopeValue,
         ServerDbContext db,
-        IConfiguration config,
+        IOptions<ServerConfig> serverConfig,
         IParameterValidator validator,
         IResourceAuthorizationService authService,
         IUserContextService userContext)
@@ -1267,10 +1268,10 @@ public static class ParameterEndpoints
                 pf.Version == version &&
                 pf.ScopeValue == (scopeValue ?? string.Empty));
 
-        var dataDir = config["DataDirectory"] ?? "data";
+        var dataDir = serverConfig.Value.ParametersDirectory;
         var filePath = !string.IsNullOrWhiteSpace(scopeValue)
-            ? Path.Combine(dataDir, "parameters", configuration.Name, scopeType.Name, scopeValue, $"v{version}", "parameters.yaml")
-            : Path.Combine(dataDir, "parameters", configuration.Name, scopeType.Name, $"v{version}", "parameters.yaml");
+            ? Path.Combine(dataDir, configuration.Name, scopeType.Name, scopeValue, $"v{version}", "parameters.yaml")
+            : Path.Combine(dataDir, configuration.Name, scopeType.Name, $"v{version}", "parameters.yaml");
 
         var fileDir = Path.GetDirectoryName(filePath);
         if (!string.IsNullOrEmpty(fileDir) && !Directory.Exists(fileDir))

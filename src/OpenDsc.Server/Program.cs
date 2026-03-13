@@ -18,6 +18,16 @@ using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var configDir = ServerPaths.GetServerConfigDirectory();
+builder.Configuration
+    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
+    .AddJsonFile(Path.Combine(configDir, "appsettings.json"), optional: true, reloadOnChange: true)
+    .AddEnvironmentVariables()
+    .AddCommandLine(args);
+
+builder.Services.Configure<ServerConfig>(builder.Configuration.GetSection("Server:Data"));
+
 builder.WebHost.ConfigureKestrel((context, options) =>
 {
     if (!context.HostingEnvironment.IsEnvironment("Testing"))

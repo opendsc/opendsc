@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 using NuGet.Versioning;
 
@@ -124,7 +125,7 @@ public static class ConfigurationEndpoints
         [FromForm] CreateConfigurationDto request,
         IFormFileCollection files,
         ServerDbContext db,
-        IConfiguration config,
+        IOptions<ServerConfig> serverConfig,
         IResourceAuthorizationService authService,
         IUserContextService userContext,
         IParameterSchemaBuilder schemaBuilder,
@@ -173,8 +174,8 @@ public static class ConfigurationEndpoints
 
         db.ConfigurationVersions.Add(version);
 
-        var dataDir = config["DataDirectory"] ?? "data";
-        var versionDir = Path.Combine(dataDir, "configurations", request.Name, $"v{version.Version}");
+        var dataDir = serverConfig.Value.ConfigurationsDirectory;
+        var versionDir = Path.Combine(dataDir, request.Name, $"v{version.Version}");
         Directory.CreateDirectory(versionDir);
 
         foreach (var file in files)
@@ -351,7 +352,7 @@ public static class ConfigurationEndpoints
         [FromForm] CreateConfigurationVersionDto request,
         IFormFileCollection files,
         ServerDbContext db,
-        IConfiguration config,
+        IOptions<ServerConfig> serverConfig,
         IResourceAuthorizationService authService,
         IUserContextService userContext,
         IParameterSchemaBuilder schemaBuilder,
@@ -409,8 +410,8 @@ public static class ConfigurationEndpoints
 
         db.ConfigurationVersions.Add(version);
 
-        var dataDir = config["DataDirectory"] ?? "data";
-        var versionDir = Path.Combine(dataDir, "configurations", name, $"v{version.Version}");
+        var dataDir = serverConfig.Value.ConfigurationsDirectory;
+        var versionDir = Path.Combine(dataDir, name, $"v{version.Version}");
         Directory.CreateDirectory(versionDir);
 
         foreach (var file in files)
@@ -551,7 +552,7 @@ public static class ConfigurationEndpoints
         string name,
         string version,
         ServerDbContext db,
-        IConfiguration config,
+        IOptions<ServerConfig> serverConfig,
         IResourceAuthorizationService authService,
         IUserContextService userContext,
         IParameterSchemaService parameterSchemaService,
@@ -598,8 +599,8 @@ public static class ConfigurationEndpoints
         var newMajor = semVer.Major;
 
         // Read entry point configuration file to extract parameters block
-        var dataDir = config["DataDirectory"] ?? "data";
-        var entryPointPath = Path.Combine(dataDir, "configurations", name, $"v{version}", configVersion.EntryPoint);
+        var dataDir = serverConfig.Value.ConfigurationsDirectory;
+        var entryPointPath = Path.Combine(dataDir, name, $"v{version}", configVersion.EntryPoint);
 
         if (!File.Exists(entryPointPath))
         {
@@ -832,7 +833,7 @@ public static class ConfigurationEndpoints
     private static async Task<Results<NoContent, NotFound, Conflict<string>, ForbidHttpResult>> DeleteConfiguration(
         string name,
         ServerDbContext db,
-        IConfiguration config,
+        IOptions<ServerConfig> serverConfig,
         IResourceAuthorizationService authService,
         IUserContextService userContext)
     {
@@ -857,8 +858,8 @@ public static class ConfigurationEndpoints
             return TypedResults.Conflict($"Cannot delete configuration assigned to {configuration.NodeConfigurations.Count} nodes");
         }
 
-        var dataDir = config["DataDirectory"] ?? "data";
-        var configDir = Path.Combine(dataDir, "configurations", name);
+        var dataDir = serverConfig.Value.ConfigurationsDirectory;
+        var configDir = Path.Combine(dataDir, name);
         if (Directory.Exists(configDir))
         {
             Directory.Delete(configDir, true);
@@ -874,7 +875,7 @@ public static class ConfigurationEndpoints
         string name,
         string version,
         ServerDbContext db,
-        IConfiguration config,
+        IOptions<ServerConfig> serverConfig,
         IResourceAuthorizationService authService,
         IUserContextService userContext)
     {
@@ -909,8 +910,8 @@ public static class ConfigurationEndpoints
             return TypedResults.Conflict($"Cannot delete version assigned to {configVersion.NodeConfigurations.Count} nodes");
         }
 
-        var dataDir = config["DataDirectory"] ?? "data";
-        var versionDir = Path.Combine(dataDir, "configurations", name, $"v{version}");
+        var dataDir = serverConfig.Value.ConfigurationsDirectory;
+        var versionDir = Path.Combine(dataDir, name, $"v{version}");
         if (Directory.Exists(versionDir))
         {
             Directory.Delete(versionDir, true);
@@ -934,7 +935,7 @@ public static class ConfigurationEndpoints
         string version,
         string filePath,
         ServerDbContext db,
-        IConfiguration config,
+        IOptions<ServerConfig> serverConfig,
         IResourceAuthorizationService authService,
         IUserContextService userContext)
     {
@@ -966,8 +967,8 @@ public static class ConfigurationEndpoints
             return TypedResults.NotFound();
         }
 
-        var dataDir = config["DataDirectory"] ?? "data";
-        var fullPath = Path.Combine(dataDir, "configurations", name, $"v{version}", filePath);
+        var dataDir = serverConfig.Value.ConfigurationsDirectory;
+        var fullPath = Path.Combine(dataDir, name, $"v{version}", filePath);
 
         if (!File.Exists(fullPath))
         {

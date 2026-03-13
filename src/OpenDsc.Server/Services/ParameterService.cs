@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using System.Text;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 using NuGet.Versioning;
 
@@ -53,7 +54,7 @@ public interface IParameterService
 public sealed class ParameterService : IParameterService
 {
     private readonly ServerDbContext _db;
-    private readonly IConfiguration _config;
+    private readonly IOptions<ServerConfig> _serverConfig;
     private readonly IResourceAuthorizationService _authService;
     private readonly IUserContextService _userContext;
     private readonly IParameterMergeService _parameterMergeService;
@@ -62,7 +63,7 @@ public sealed class ParameterService : IParameterService
 
     public ParameterService(
         ServerDbContext db,
-        IConfiguration config,
+        IOptions<ServerConfig> serverConfig,
         IResourceAuthorizationService authService,
         IUserContextService userContext,
         IParameterMergeService parameterMergeService,
@@ -70,7 +71,7 @@ public sealed class ParameterService : IParameterService
         ILogger<ParameterService> logger)
     {
         _db = db;
-        _config = config;
+        _serverConfig = serverConfig;
         _authService = authService;
         _userContext = userContext;
         _parameterMergeService = parameterMergeService;
@@ -186,13 +187,13 @@ public sealed class ParameterService : IParameterService
                 }
             }
 
-            var dataDir = _config["DataDirectory"] ?? "data";
+            var dataDir = _serverConfig.Value.ParametersDirectory;
 
             if (!isPassthrough)
             {
                 var filePath = !string.IsNullOrWhiteSpace(scopeValue)
-                    ? Path.Combine(dataDir, "parameters", configuration.Name, scopeType.Name, scopeValue, $"v{version}", "parameters.yaml")
-                    : Path.Combine(dataDir, "parameters", configuration.Name, scopeType.Name, $"v{version}", "parameters.yaml");
+                    ? Path.Combine(dataDir, configuration.Name, scopeType.Name, scopeValue, $"v{version}", "parameters.yaml")
+                    : Path.Combine(dataDir, configuration.Name, scopeType.Name, $"v{version}", "parameters.yaml");
 
                 var fileDir = Path.GetDirectoryName(filePath);
                 if (!string.IsNullOrEmpty(fileDir) && !Directory.Exists(fileDir))
@@ -450,11 +451,11 @@ public sealed class ParameterService : IParameterService
                 return (false, "Access denied");
             }
 
-            var dataDir = _config["DataDirectory"] ?? "data";
+            var dataDir = _serverConfig.Value.ParametersDirectory;
             var filePath = !string.IsNullOrWhiteSpace(parameterFile.ScopeValue)
-                ? Path.Combine(dataDir, "parameters", parameterFile.ParameterSchema.Configuration.Name,
+                ? Path.Combine(dataDir, parameterFile.ParameterSchema.Configuration.Name,
                     parameterFile.ScopeType.Name, parameterFile.ScopeValue, $"v{parameterFile.Version}", "parameters.yaml")
-                : Path.Combine(dataDir, "parameters", parameterFile.ParameterSchema.Configuration.Name,
+                : Path.Combine(dataDir, parameterFile.ParameterSchema.Configuration.Name,
                     parameterFile.ScopeType.Name, $"v{parameterFile.Version}", "parameters.yaml");
 
             var fileDir = Path.GetDirectoryName(filePath);
@@ -492,11 +493,11 @@ public sealed class ParameterService : IParameterService
                 return null;
             }
 
-            var dataDir = _config["DataDirectory"] ?? "data";
+            var dataDir = _serverConfig.Value.ParametersDirectory;
             var filePath = !string.IsNullOrWhiteSpace(parameterFile.ScopeValue)
-                ? Path.Combine(dataDir, "parameters", parameterFile.ParameterSchema.Configuration.Name,
+                ? Path.Combine(dataDir, parameterFile.ParameterSchema.Configuration.Name,
                     parameterFile.ScopeType.Name, parameterFile.ScopeValue, $"v{parameterFile.Version}", "parameters.yaml")
-                : Path.Combine(dataDir, "parameters", parameterFile.ParameterSchema.Configuration.Name,
+                : Path.Combine(dataDir, parameterFile.ParameterSchema.Configuration.Name,
                     parameterFile.ScopeType.Name, $"v{parameterFile.Version}", "parameters.yaml");
 
             if (!File.Exists(filePath))

@@ -7,6 +7,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 using OpenDsc.Lcm.Contracts;
 using OpenDsc.Server.Authentication;
@@ -437,7 +438,7 @@ public static class NodeEndpoints
     private static async Task<Results<FileStreamHttpResult, NotFound<ErrorResponse>>> GetConfigurationBundle(
         Guid nodeId,
         ServerDbContext db,
-        IConfiguration config,
+        IOptions<ServerConfig> serverConfig,
         IParameterMergeService parameterMergeService,
         CancellationToken cancellationToken)
     {
@@ -463,7 +464,7 @@ public static class NodeEndpoints
         node!.LastCheckIn = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
 
-        var dataDir = config["DataDirectory"] ?? "data";
+        var dataDir = serverConfig.Value.ConfigurationsDirectory;
 
         // Handle composite configuration
         if (nodeConfig.CompositeConfigurationId.HasValue)
@@ -480,7 +481,7 @@ public static class NodeEndpoints
             return TypedResults.NotFound(new ErrorResponse { Error = "No published version available." });
         }
 
-        var versionDir = Path.Combine(dataDir, "configurations", nodeConfig.Configuration.Name, $"v{activeVersion.Version}");
+        var versionDir = Path.Combine(dataDir, nodeConfig.Configuration.Name, $"v{activeVersion.Version}");
 
         var bundleStream = new MemoryStream();
         using (var archive = new System.IO.Compression.ZipArchive(bundleStream, System.IO.Compression.ZipArchiveMode.Create, true))
@@ -549,7 +550,7 @@ public static class NodeEndpoints
                     continue;
                 }
 
-                var childVersionDir = Path.Combine(dataDir, "configurations", item.ChildConfiguration.Name, $"v{childVersion.Version}");
+                var childVersionDir = Path.Combine(dataDir, item.ChildConfiguration.Name, $"v{childVersion.Version}");
                 var childFolderName = item.ChildConfiguration.Name;
 
                 // Copy all child configuration files into {childName}/ folder

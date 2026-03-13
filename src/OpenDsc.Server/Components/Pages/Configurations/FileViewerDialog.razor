@@ -10,8 +10,9 @@
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.JSInterop
 @using OpenDsc.Server.Services
+@using Microsoft.Extensions.Options
 @inject ISnackbar Snackbar
-@inject IConfiguration Config
+@inject IOptions<ServerConfig> ServerConfig
 @inject ThemeService ThemeService
 @inject ServerDbContext Db
 @inject IJSRuntime JSRuntime
@@ -336,8 +337,8 @@
             }
 
             // Configuration mode - load from file system
-            var dataDir = Config["DataDirectory"] ?? "data";
-            var versionDir = Path.Combine(dataDir, "configurations", ConfigurationName, $"v{compareVersion}");
+            var dataDir = ServerConfig.Value.ConfigurationsDirectory;
+            var versionDir = Path.Combine(dataDir, ConfigurationName, $"v{compareVersion}");
             var fullPath = Path.Combine(versionDir, FilePath);
 
             if (File.Exists(fullPath))
@@ -403,8 +404,8 @@
 
         try
         {
-            var dataDir = Config["DataDirectory"] ?? "data";
-            var versionDir = Path.Combine(dataDir, "configurations", ConfigurationName, $"v{Version}");
+            var dataDir = ServerConfig.Value.ConfigurationsDirectory;
+            var versionDir = Path.Combine(dataDir, ConfigurationName, $"v{Version}");
             var fullPath = Path.Combine(versionDir, FilePath);
 
             if (File.Exists(fullPath))

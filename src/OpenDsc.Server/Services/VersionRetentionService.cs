@@ -3,6 +3,7 @@
 // terms of the MIT license.
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
@@ -14,7 +15,7 @@ namespace OpenDsc.Server.Services;
 /// </summary>
 public sealed partial class VersionRetentionService(
     ServerDbContext db,
-    IConfiguration config,
+    IOptions<ServerConfig> serverConfig,
     ILogger<VersionRetentionService> logger) : IVersionRetentionService
 {
     public async Task<VersionRetentionResult> CleanupConfigurationVersionsAsync(
@@ -76,8 +77,8 @@ public sealed partial class VersionRetentionService(
 
                 if (!policy.DryRun)
                 {
-                    var dataDir = config["DataDirectory"] ?? "data";
-                    var versionDir = Path.Combine(dataDir, "configurations", configuration.Name, $"v{version.Version}");
+                    var dataDir = serverConfig.Value.ConfigurationsDirectory;
+                    var versionDir = Path.Combine(dataDir, configuration.Name, $"v{version.Version}");
                     if (Directory.Exists(versionDir))
                     {
                         Directory.Delete(versionDir, true);

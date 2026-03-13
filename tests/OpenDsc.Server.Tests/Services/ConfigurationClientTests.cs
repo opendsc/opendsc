@@ -6,8 +6,8 @@ using AwesomeAssertions;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 using Moq;
 
@@ -22,7 +22,7 @@ namespace OpenDsc.Server.Tests.Services;
 public class ConfigurationServiceTests : IDisposable
 {
     private readonly ServerDbContext _dbContext;
-    private readonly Mock<IConfiguration> _mockConfig;
+    private readonly IOptions<ServerConfig> _serverConfig;
     private readonly Mock<IResourceAuthorizationService> _mockAuthService;
     private readonly Mock<IUserContextService> _mockUserContext;
     private readonly Mock<ILogger<ConfigurationService>> _mockLogger;
@@ -38,7 +38,7 @@ public class ConfigurationServiceTests : IDisposable
             .Options;
 
         _dbContext = new ServerDbContext(options);
-        _mockConfig = new Mock<IConfiguration>();
+        _serverConfig = Options.Create(new ServerConfig { DataDirectory = "test-data" });
         _mockAuthService = new Mock<IResourceAuthorizationService>();
         _mockUserContext = new Mock<IUserContextService>();
         _mockLogger = new Mock<ILogger<ConfigurationService>>();
@@ -46,11 +46,9 @@ public class ConfigurationServiceTests : IDisposable
         _mockSchemaBuilder = new Mock<IParameterSchemaBuilder>();
         _mockCompatibilityService = new Mock<IParameterCompatibilityService>();
 
-        _mockConfig.Setup(c => c["DataDirectory"]).Returns("test-data");
-
         _client = new ConfigurationService(
             _dbContext,
-            _mockConfig.Object,
+            _serverConfig,
             _mockAuthService.Object,
             _mockUserContext.Object,
             _mockLogger.Object,

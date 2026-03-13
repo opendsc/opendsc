@@ -22,8 +22,27 @@ public static class DatabaseExtensions
         IConfiguration configuration)
     {
         var provider = configuration.GetValue("Database:Provider", "SQLite")!;
-        var connectionString = configuration.GetValue<string>("Database:ConnectionString")
-            ?? "Data Source=opendsc-server.db";
+        var explicitConnectionString = configuration.GetValue<string>("Database:ConnectionString");
+
+        string connectionString;
+        if (explicitConnectionString is not null)
+        {
+            connectionString = explicitConnectionString;
+        }
+        else if (provider.Equals("SQLite", StringComparison.OrdinalIgnoreCase))
+        {
+            var serverConfig = new ServerConfig();
+            configuration.GetSection("Server:Data").Bind(serverConfig);
+            var dbDir = serverConfig.DatabaseDirectory;
+            Directory.CreateDirectory(dbDir);
+            connectionString = $"Data Source={Path.Combine(dbDir, "opendsc-server.db")}";
+        }
+        else
+        {
+            throw new InvalidOperationException(
+                $"A connection string must be provided for the '{provider}' database provider. " +
+                "Set 'Database:ConnectionString' in appsettings.json.");
+        }
 
         services.AddDbContext<ServerDbContext>(options =>
         {
