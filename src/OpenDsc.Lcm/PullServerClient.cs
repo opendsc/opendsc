@@ -520,64 +520,64 @@ public partial class PullServerClient : IDisposable
         }
     }
 
-    [LoggerMessage(EventId = 1001, Level = LogLevel.Error, Message = "Pull server not configured")]
+    [LoggerMessage(EventId = EventIds.PullServerNotConfigured, Level = LogLevel.Error, Message = "Pull server not configured")]
     private partial void LogPullServerNotConfigured();
 
-    [LoggerMessage(EventId = 1002, Level = LogLevel.Error, Message = "Registration key not configured")]
+    [LoggerMessage(EventId = EventIds.RegistrationKeyNotConfigured, Level = LogLevel.Error, Message = "Registration key not configured")]
     private partial void LogRegistrationKeyNotConfigured();
 
-    [LoggerMessage(EventId = 1003, Level = LogLevel.Error, Message = "Registration failed: {StatusCode} - {Error}")]
+    [LoggerMessage(EventId = EventIds.RegistrationFailed, Level = LogLevel.Error, Message = "Registration failed: {StatusCode} - {Error}")]
     private partial void LogRegistrationFailed(string statusCode, string error);
 
-    [LoggerMessage(EventId = 1004, Level = LogLevel.Error, Message = "Registration response was invalid")]
+    [LoggerMessage(EventId = EventIds.RegistrationResponseInvalid, Level = LogLevel.Error, Message = "Registration response was invalid")]
     private partial void LogRegistrationResponseInvalid();
 
-    [LoggerMessage(EventId = 1005, Level = LogLevel.Information, Message = "Node registered successfully: {NodeId}")]
+    [LoggerMessage(EventId = EventIds.NodeRegistered, Level = LogLevel.Information, Message = "Node registered successfully: {NodeId}")]
     private partial void LogRegistrationSucceeded(Guid nodeId);
 
-    [LoggerMessage(EventId = 1006, Level = LogLevel.Error, Message = "Registration error")]
+    [LoggerMessage(EventId = EventIds.RegistrationError, Level = LogLevel.Error, Message = "Registration error")]
     private partial void LogRegistrationError(Exception ex);
 
-    [LoggerMessage(EventId = 1007, Level = LogLevel.Warning, Message = "Error checking configuration checksum")]
+    [LoggerMessage(EventId = EventIds.ConfigurationChecksumCheckError, Level = LogLevel.Warning, Message = "Error checking configuration checksum")]
     private partial void LogChecksumCheckError(Exception ex);
 
-    [LoggerMessage(EventId = 1008, Level = LogLevel.Error, Message = "Configuration download failed: {StatusCode}")]
+    [LoggerMessage(EventId = EventIds.ConfigurationDownloadFailed, Level = LogLevel.Error, Message = "Configuration download failed: {StatusCode}")]
     private partial void LogConfigurationDownloadFailed(string statusCode);
 
-    [LoggerMessage(EventId = 1009, Level = LogLevel.Information, Message = "Configuration downloaded from server")]
+    [LoggerMessage(EventId = EventIds.ConfigurationDownloadedFromServer, Level = LogLevel.Information, Message = "Configuration downloaded from server")]
     private partial void LogConfigurationDownloaded();
 
-    [LoggerMessage(EventId = 1010, Level = LogLevel.Error, Message = "Configuration download error")]
+    [LoggerMessage(EventId = EventIds.ConfigurationDownloadError, Level = LogLevel.Error, Message = "Configuration download error")]
     private partial void LogConfigurationDownloadError(Exception ex);
 
-    [LoggerMessage(EventId = 1011, Level = LogLevel.Warning, Message = "Report submission failed: {StatusCode} - {Body}")]
+    [LoggerMessage(EventId = EventIds.ReportSubmissionFailed, Level = LogLevel.Warning, Message = "Report submission failed: {StatusCode} - {Body}")]
     private partial void LogReportSubmissionFailed(string statusCode, string body);
 
-    [LoggerMessage(EventId = 1012, Level = LogLevel.Debug, Message = "Compliance report submitted")]
+    [LoggerMessage(EventId = EventIds.ReportSubmitted, Level = LogLevel.Debug, Message = "Compliance report submitted")]
     private partial void LogReportSubmitted();
 
-    [LoggerMessage(EventId = 1013, Level = LogLevel.Warning, Message = "Report submission error")]
+    [LoggerMessage(EventId = EventIds.ReportSubmissionError, Level = LogLevel.Warning, Message = "Report submission error")]
     private partial void LogReportSubmissionError(Exception ex);
 
-    [LoggerMessage(EventId = 1014, Level = LogLevel.Warning, Message = "Certificate rotation failed: {StatusCode}")]
+    [LoggerMessage(EventId = EventIds.CertificateRotationFailed, Level = LogLevel.Warning, Message = "Certificate rotation failed: {StatusCode}")]
     private partial void LogCertificateRotationFailed(string statusCode);
 
-    [LoggerMessage(EventId = 1015, Level = LogLevel.Information, Message = "Certificate rotated on server successfully")]
+    [LoggerMessage(EventId = EventIds.CertificateRotatedOnPullServer, Level = LogLevel.Information, Message = "Certificate rotated on server successfully")]
     private partial void LogCertificateRotatedOnServer();
 
-    [LoggerMessage(EventId = 1016, Level = LogLevel.Warning, Message = "Certificate rotation error")]
+    [LoggerMessage(EventId = EventIds.CertificateRotationError, Level = LogLevel.Warning, Message = "Certificate rotation error")]
     private partial void LogCertificateRotationError(Exception ex);
 
-    [LoggerMessage(EventId = 1017, Level = LogLevel.Debug, Message = "Failed to resolve fully qualified domain name; using machine name '{MachineName}' instead.")]
+    [LoggerMessage(EventId = EventIds.FqdnResolutionFailed, Level = LogLevel.Debug, Message = "Failed to resolve fully qualified domain name; using machine name '{MachineName}' instead.")]
     private partial void LogFqdnResolutionFailed(Exception ex, string machineName);
 
-    [LoggerMessage(EventId = 1018, Level = LogLevel.Error, Message = "Bundle download failed: {StatusCode}")]
+    [LoggerMessage(EventId = EventIds.BundleDownloadFailed, Level = LogLevel.Error, Message = "Bundle download failed: {StatusCode}")]
     private partial void LogBundleDownloadFailed(string statusCode);
 
-    [LoggerMessage(EventId = 1019, Level = LogLevel.Information, Message = "Bundle downloaded successfully: {Bytes} bytes")]
+    [LoggerMessage(EventId = EventIds.BundleDownloaded, Level = LogLevel.Information, Message = "Bundle downloaded successfully: {Bytes} bytes")]
     private partial void LogBundleDownloadSucceeded(long bytes);
 
-    [LoggerMessage(EventId = 1020, Level = LogLevel.Error, Message = "Bundle download error")]
+    [LoggerMessage(EventId = EventIds.BundleDownloadError, Level = LogLevel.Error, Message = "Bundle download error")]
     private partial void LogBundleDownloadException(Exception ex);
 
     [LoggerMessage(EventId = EventIds.LcmStatusUpdateFailed, Level = LogLevel.Warning, Message = "LCM status update failed: {StatusCode} - {Body}")]
@@ -586,15 +586,15 @@ public partial class PullServerClient : IDisposable
     [LoggerMessage(EventId = EventIds.LcmStatusUpdateError, Level = LogLevel.Warning, Message = "LCM status update error")]
     private partial void LogLcmStatusUpdateError(Exception ex);
 
-    [LoggerMessage(EventId = 1021, Level = LogLevel.Warning, Message = "LCM config fetch error")]
+    [LoggerMessage(EventId = EventIds.LcmConfigFetchError, Level = LogLevel.Warning, Message = "LCM config fetch error")]
     private partial void LogLcmConfigFetchError(Exception ex);
 
-    [LoggerMessage(EventId = 1022, Level = LogLevel.Warning, Message = "Failed to report LCM config to server: {StatusCode} - {Body}")]
+    [LoggerMessage(EventId = EventIds.ReportLcmConfigFailed, Level = LogLevel.Warning, Message = "Failed to report LCM config to server: {StatusCode} - {Body}")]
     private partial void LogReportLcmConfigFailed(string statusCode, string body);
 
-    [LoggerMessage(EventId = 1023, Level = LogLevel.Warning, Message = "Error reporting LCM config to server")]
+    [LoggerMessage(EventId = EventIds.ReportLcmConfigError, Level = LogLevel.Warning, Message = "Error reporting LCM config to server")]
     private partial void LogReportLcmConfigError(Exception ex);
 
-    [LoggerMessage(EventId = 1024, Level = LogLevel.Warning, Message = "Error fetching public server settings")]
+    [LoggerMessage(EventId = EventIds.PublicSettingsFetchError, Level = LogLevel.Warning, Message = "Error fetching public server settings")]
     private partial void LogPublicSettingsFetchError(Exception ex);
 }

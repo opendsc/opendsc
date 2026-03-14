@@ -1003,7 +1003,7 @@ public partial class LcmWorker(
     [LoggerMessage(EventId = EventIds.LocalContentHashMismatch, Level = LogLevel.Information, Message = "Local content hash mismatch (files may have been modified), re-downloading bundle: {ConfigurationPath}")]
     private partial void LogLocalContentHashMismatch(string configurationPath);
 
-    [LoggerMessage(EventId = 9999, Level = LogLevel.Debug, Message = "Trace level for DSC operations: {TraceLevel}")]
+    [LoggerMessage(EventId = EventIds.DscTraceLevelConfigured, Level = LogLevel.Debug, Message = "Trace level for DSC operations: {TraceLevel}")]
     private partial void LogTraceLevelForDsc(LogLevel traceLevel);
 
     [LoggerMessage(EventId = EventIds.ServerLcmConfigApplied, Level = LogLevel.Information, Message = "Server-managed LCM configuration applied")]
