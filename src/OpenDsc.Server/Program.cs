@@ -2,6 +2,8 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
+using System.Runtime.InteropServices;
+
 using Microsoft.AspNetCore.Server.Kestrel.Https;
 
 using MudBlazor.Services;
@@ -82,6 +84,23 @@ builder.Services.AddScoped<IConfigurationService, ConfigurationService>();
 builder.Services.AddScoped<IParameterService, ParameterService>();
 builder.Services.AddScoped<IJsonYamlConverter, JsonYamlConverter>();
 builder.Services.AddSingleton<NodeEndpoints>();
+
+if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+{
+    builder.Logging.AddSystemdConsole(options =>
+    {
+        options.IncludeScopes = false;
+        options.TimestampFormat = "HH:mm:ss ";
+    });
+}
+else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+{
+    builder.Logging.AddSimpleConsole(options =>
+    {
+        options.SingleLine = true;
+        options.TimestampFormat = "HH:mm:ss ";
+    });
+}
 
 #if WINDOWS
 builder.Services.AddWindowsService();
