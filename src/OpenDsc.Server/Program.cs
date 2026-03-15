@@ -81,6 +81,7 @@ builder.Services.AddHostedService<RetentionBackgroundService>();
 builder.Services.AddScoped<IConfigurationService, ConfigurationService>();
 builder.Services.AddScoped<IParameterService, ParameterService>();
 builder.Services.AddScoped<IJsonYamlConverter, JsonYamlConverter>();
+builder.Services.AddSingleton<NodeEndpoints>();
 
 var app = builder.Build();
 

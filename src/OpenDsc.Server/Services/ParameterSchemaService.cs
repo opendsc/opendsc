@@ -19,7 +19,8 @@ namespace OpenDsc.Server.Services;
 
 public partial class ParameterSchemaService(
     ServerDbContext dbContext,
-    IParameterSchemaBuilder schemaBuilder) : IParameterSchemaService
+    IParameterSchemaBuilder schemaBuilder,
+    ILogger<ParameterSchemaService> logger) : IParameterSchemaService
 {
     private static readonly IDeserializer YamlDeserializer = new DeserializerBuilder()
         .WithNamingConvention(CamelCaseNamingConvention.Instance)
@@ -82,6 +83,12 @@ public partial class ParameterSchemaService(
         var hasBreaking = removed.Count > 0;
         var hasAdditive = added.Count > 0;
         var isIdentical = removed.Count == 0 && added.Count == 0;
+
+        LogSchemaChangesDetected(removed.Count, added.Count);
+        if (hasBreaking)
+        {
+            LogBreakingSchemaChangesDetected(removed.Count, string.Join(", ", removed));
+        }
 
         return new SchemaChanges(hasBreaking, hasAdditive, isIdentical, removed, [], added);
     }
@@ -249,4 +256,10 @@ public partial class ParameterSchemaService(
             int.Parse(match.Groups["patch"].Value)
         );
     }
+
+    [LoggerMessage(EventId = EventIds.SchemaChangesDetected, Level = LogLevel.Debug, Message = "Schema changes detected: {RemovedCount} removed, {AddedCount} added")]
+    private partial void LogSchemaChangesDetected(int removedCount, int addedCount);
+
+    [LoggerMessage(EventId = EventIds.BreakingSchemaChangesDetected, Level = LogLevel.Warning, Message = "Breaking schema changes detected: {RemovedCount} parameter(s) removed ({RemovedParameters})")]
+    private partial void LogBreakingSchemaChangesDetected(int removedCount, string removedParameters);
 }

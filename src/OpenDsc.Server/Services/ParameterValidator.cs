@@ -19,7 +19,7 @@ public interface IParameterValidator
     ValidationResult Validate(string jsonSchemaString, string parameterFileContent);
 }
 
-public sealed class ParameterValidator : IParameterValidator
+public sealed partial class ParameterValidator(ILogger<ParameterValidator> logger) : IParameterValidator
 {
     private static readonly IDeserializer YamlDeserializer = new DeserializerBuilder()
         .WithAttemptingUnquotedStringTypeDeserialization()
@@ -121,6 +121,7 @@ public sealed class ParameterValidator : IParameterValidator
             var errors = new List<ValidationError>();
             CollectErrors(validationResults, errors);
 
+            LogParameterValidationFailed(errors.Count);
             return ValidationResult.Failure(errors.ToArray());
         }
         catch (Exception ex)
@@ -163,6 +164,9 @@ public sealed class ParameterValidator : IParameterValidator
             }
         }
     }
+
+    [LoggerMessage(EventId = EventIds.ParameterValidationFailed, Level = LogLevel.Warning, Message = "Parameter validation failed with {ErrorCount} error(s)")]
+    private partial void LogParameterValidationFailed(int errorCount);
 }
 
 public sealed class ValidationResult

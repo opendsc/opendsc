@@ -51,7 +51,7 @@ public interface IParameterService
     Task<List<int>> GetAvailableMajorVersionsAsync(Guid configurationId);
 }
 
-public sealed class ParameterService : IParameterService
+public sealed partial class ParameterService : IParameterService
 {
     private readonly ServerDbContext _db;
     private readonly IOptions<ServerConfig> _serverConfig;
@@ -249,7 +249,7 @@ public sealed class ParameterService : IParameterService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating/updating parameter");
+            LogErrorCreatingUpdatingParameter(ex);
             return (false, ex.Message);
         }
     }
@@ -321,7 +321,7 @@ public sealed class ParameterService : IParameterService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error publishing parameter version");
+            LogErrorPublishingParameterVersion(ex);
             return (false, ex.Message);
         }
     }
@@ -365,7 +365,7 @@ public sealed class ParameterService : IParameterService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting parameter version");
+            LogErrorDeletingParameterVersion(ex);
             return (false, ex.Message);
         }
     }
@@ -415,7 +415,7 @@ public sealed class ParameterService : IParameterService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting parameter provenance for node {NodeId}", nodeId);
+            LogErrorGettingParameterProvenance(ex, nodeId);
             return null;
         }
     }
@@ -473,7 +473,7 @@ public sealed class ParameterService : IParameterService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating draft parameter {ParameterId}", parameterId);
+            LogErrorUpdatingDraftParameter(ex, parameterId);
             return (false, ex.Message);
         }
     }
@@ -509,7 +509,7 @@ public sealed class ParameterService : IParameterService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error reading parameter content for {ParameterId}", parameterId);
+            LogErrorReadingParameterContent(ex, parameterId);
             return null;
         }
     }
@@ -535,6 +535,24 @@ public sealed class ParameterService : IParameterService
         var hash = SHA256.HashData(bytes);
         return Convert.ToHexString(hash).ToLowerInvariant();
     }
+
+    [LoggerMessage(EventId = EventIds.ErrorCreatingUpdatingParameter, Level = LogLevel.Error, Message = "Error creating/updating parameter")]
+    private partial void LogErrorCreatingUpdatingParameter(Exception ex);
+
+    [LoggerMessage(EventId = EventIds.ErrorPublishingParameterVersion, Level = LogLevel.Error, Message = "Error publishing parameter version")]
+    private partial void LogErrorPublishingParameterVersion(Exception ex);
+
+    [LoggerMessage(EventId = EventIds.ErrorDeletingParameterVersion, Level = LogLevel.Error, Message = "Error deleting parameter version")]
+    private partial void LogErrorDeletingParameterVersion(Exception ex);
+
+    [LoggerMessage(EventId = EventIds.ErrorGettingParameterProvenance, Level = LogLevel.Error, Message = "Error getting parameter provenance for node {NodeId}")]
+    private partial void LogErrorGettingParameterProvenance(Exception ex, Guid nodeId);
+
+    [LoggerMessage(EventId = EventIds.ErrorUpdatingDraftParameter, Level = LogLevel.Error, Message = "Error updating draft parameter {ParameterId}")]
+    private partial void LogErrorUpdatingDraftParameter(Exception ex, Guid parameterId);
+
+    [LoggerMessage(EventId = EventIds.ErrorReadingParameterContent, Level = LogLevel.Error, Message = "Error reading parameter content for {ParameterId}")]
+    private partial void LogErrorReadingParameterContent(Exception ex, Guid parameterId);
 }
 
 public sealed class ParameterFileDto

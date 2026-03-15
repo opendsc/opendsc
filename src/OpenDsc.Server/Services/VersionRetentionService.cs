@@ -455,15 +455,15 @@ public sealed partial class VersionRetentionService(
         };
     }
 
-    [LoggerMessage(EventId = 5001, Level = LogLevel.Information, Message = "Version {ConfigurationName} v{Version} is in active use, keeping")]
+    [LoggerMessage(EventId = EventIds.VersionInActiveUseKeeping, Level = LogLevel.Information, Message = "Version {ConfigurationName} v{Version} is in active use, keeping")]
     private partial void LogVersionInActiveUse(string configurationName, string version);
 
-    [LoggerMessage(EventId = 5003, Level = LogLevel.Information, Message = "Deleted configuration version {ConfigurationName} v{Version}")]
+    [LoggerMessage(EventId = EventIds.DeletedConfigurationVersion, Level = LogLevel.Information, Message = "Deleted configuration version {ConfigurationName} v{Version}")]
     private partial void LogConfigurationVersionDeleted(string configurationName, string version);
 
-    [LoggerMessage(EventId = 5004, Level = LogLevel.Information, Message = "Deleted parameter version {ConfigurationName}/{ScopeLabel} v{Version}")]
+    [LoggerMessage(EventId = EventIds.DeletedParameterVersion, Level = LogLevel.Information, Message = "Deleted parameter version {ConfigurationName}/{ScopeLabel} v{Version}")]
     private partial void LogParameterVersionDeleted(string configurationName, string scopeLabel, string version);
 
-    [LoggerMessage(EventId = 5005, Level = LogLevel.Information, Message = "Cleanup completed for {VersionType} versions: {Deleted} deleted, {Kept} kept (dry-run: {DryRun})")]
+    [LoggerMessage(EventId = EventIds.CleanupCompleted, Level = LogLevel.Information, Message = "Cleanup completed for {VersionType} versions: {Deleted} deleted, {Kept} kept (dry-run: {DryRun})")]
     private partial void LogCleanupCompleted(string versionType, int deleted, int kept, bool dryRun);
 }

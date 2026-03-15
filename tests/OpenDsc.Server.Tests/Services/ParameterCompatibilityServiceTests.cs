@@ -6,6 +6,8 @@ using System.Text.Json;
 
 using AwesomeAssertions;
 
+using Microsoft.Extensions.Logging.Abstractions;
+
 using OpenDsc.Server.Services;
 
 using Xunit;
@@ -19,7 +21,7 @@ public class ParameterCompatibilityServiceTests
 
     public ParameterCompatibilityServiceTests()
     {
-        _service = new ParameterCompatibilityService();
+        _service = new ParameterCompatibilityService(NullLogger<ParameterCompatibilityService>.Instance);
         _schemaBuilder = new ParameterSchemaBuilder();
     }
 

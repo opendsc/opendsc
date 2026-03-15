@@ -11,7 +11,7 @@ using OpenDsc.Server.Data;
 
 namespace OpenDsc.Server.Middleware;
 
-public sealed class PasswordChangeEnforcementMiddleware(RequestDelegate next)
+public sealed partial class PasswordChangeEnforcementMiddleware(RequestDelegate next, ILogger<PasswordChangeEnforcementMiddleware> logger)
 {
     private static readonly HashSet<string> ExemptApiPaths = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -58,6 +58,7 @@ public sealed class PasswordChangeEnforcementMiddleware(RequestDelegate next)
 
         if (path.StartsWith("/api/", StringComparison.OrdinalIgnoreCase))
         {
+            LogPasswordChangeRequiredApiBlocked(userId, path);
             context.Response.StatusCode = StatusCodes.Status403Forbidden;
             context.Response.ContentType = "application/json";
             await context.Response.WriteAsync(JsonSerializer.Serialize(new
@@ -69,6 +70,7 @@ public sealed class PasswordChangeEnforcementMiddleware(RequestDelegate next)
             return;
         }
 
+        LogPasswordChangeRequiredRedirect(userId, path);
         context.Response.Redirect("/change-password");
     }
 
@@ -83,4 +85,10 @@ public sealed class PasswordChangeEnforcementMiddleware(RequestDelegate next)
         if (path.Equals("/change-password", StringComparison.OrdinalIgnoreCase)) return true;
         return ExemptApiPaths.Contains(path);
     }
+
+    [LoggerMessage(EventId = EventIds.PasswordChangeRequired, Level = LogLevel.Warning, Message = "User {UserId} blocked from API path {Path}: password change required")]
+    private partial void LogPasswordChangeRequiredApiBlocked(Guid userId, string path);
+
+    [LoggerMessage(EventId = EventIds.PasswordChangeRequiredRedirect, Level = LogLevel.Warning, Message = "User {UserId} redirected from {Path} to change-password")]
+    private partial void LogPasswordChangeRequiredRedirect(Guid userId, string path);
 }

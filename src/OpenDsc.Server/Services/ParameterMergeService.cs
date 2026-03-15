@@ -10,10 +10,11 @@ using OpenDsc.Server.Entities;
 
 namespace OpenDsc.Server.Services;
 
-public sealed class ParameterMergeService(ServerDbContext db, IParameterMerger merger, IOptions<ServerConfig> serverConfig) : IParameterMergeService
+public sealed partial class ParameterMergeService(ServerDbContext db, IParameterMerger merger, IOptions<ServerConfig> serverConfig, ILogger<ParameterMergeService> logger) : IParameterMergeService
 {
     public async Task<string?> MergeParametersAsync(Guid nodeId, Guid configurationId, CancellationToken cancellationToken = default)
     {
+        LogMergingParameters(nodeId, configurationId);
         var configuration = await db.Configurations
             .FirstOrDefaultAsync(c => c.Id == configurationId, cancellationToken);
 
@@ -171,10 +172,12 @@ public sealed class ParameterMergeService(ServerDbContext db, IParameterMerger m
 
         if (parameterSources.Count == 0)
         {
+            LogNoParameterSourcesFound(nodeId, configurationId);
             return null;
         }
 
         var mergedContent = merger.Merge(parameterSources.Select(ps => ps.Content));
+        LogParameterMergeComplete(nodeId, configurationId, parameterSources.Count);
         return mergedContent;
     }
 
@@ -342,4 +345,13 @@ public sealed class ParameterMergeService(ServerDbContext db, IParameterMerger m
 
         return merger.MergeWithProvenance(parameterSources);
     }
+
+    [LoggerMessage(EventId = EventIds.MergingParameters, Level = LogLevel.Debug, Message = "Merging parameters for node {NodeId}, configuration {ConfigurationId}")]
+    private partial void LogMergingParameters(Guid nodeId, Guid configurationId);
+
+    [LoggerMessage(EventId = EventIds.NoParameterSourcesFound, Level = LogLevel.Debug, Message = "No parameter sources found for node {NodeId}, configuration {ConfigurationId}")]
+    private partial void LogNoParameterSourcesFound(Guid nodeId, Guid configurationId);
+
+    [LoggerMessage(EventId = EventIds.ParameterMergeComplete, Level = LogLevel.Debug, Message = "Merged {SourceCount} parameter source(s) for node {NodeId}, configuration {ConfigurationId}")]
+    private partial void LogParameterMergeComplete(Guid nodeId, Guid configurationId, int sourceCount);
 }

@@ -19,9 +19,9 @@ using OpenDsc.Server.Services;
 
 namespace OpenDsc.Server.Endpoints;
 
-public static class NodeEndpoints
+public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
 {
-    public static void MapNodeEndpoints(this IEndpointRouteBuilder app)
+    public void MapNodeEndpoints(IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/v1/nodes")
             .RequireAuthorization(policy => policy
@@ -108,7 +108,7 @@ public static class NodeEndpoints
             .WithDescription("Called by the node to report its current LCM configuration to the server.");
     }
 
-    private static async Task<Results<Ok<RegisterNodeResponse>, BadRequest<ErrorResponse>, Conflict<ErrorResponse>>> RegisterNode(
+    private async Task<Results<Ok<RegisterNodeResponse>, BadRequest<ErrorResponse>, Conflict<ErrorResponse>>> RegisterNode(
         RegisterNodeRequest request,
         HttpContext httpContext,
         IWebHostEnvironment env,
@@ -234,7 +234,7 @@ public static class NodeEndpoints
         });
     }
 
-    private static async Task<Ok<List<NodeSummary>>> GetNodes(
+    private async Task<Ok<List<NodeSummary>>> GetNodes(
         ServerDbContext db,
         CancellationToken cancellationToken)
     {
@@ -268,7 +268,7 @@ public static class NodeEndpoints
         return TypedResults.Ok(result);
     }
 
-    private static async Task<Results<Ok<NodeSummary>, NotFound<ErrorResponse>>> GetNode(
+    private async Task<Results<Ok<NodeSummary>, NotFound<ErrorResponse>>> GetNode(
         Guid nodeId,
         ServerDbContext db,
         CancellationToken cancellationToken)
@@ -308,7 +308,7 @@ public static class NodeEndpoints
         return TypedResults.Ok(node);
     }
 
-    private static async Task<Results<NoContent, NotFound<ErrorResponse>>> DeleteNode(
+    private async Task<Results<NoContent, NotFound<ErrorResponse>>> DeleteNode(
         Guid nodeId,
         ServerDbContext db,
         CancellationToken cancellationToken)
@@ -325,14 +325,14 @@ public static class NodeEndpoints
         return TypedResults.NoContent();
     }
 
-    private static async Task<Results<Ok<string>, NotFound<ErrorResponse>, ForbidHttpResult>> GetNodeConfiguration(
+    private async Task<Results<Ok<string>, NotFound<ErrorResponse>, ForbidHttpResult>> GetNodeConfiguration(
         Guid nodeId,
         ClaimsPrincipal user,
         IWebHostEnvironment env,
         ServerDbContext db,
         CancellationToken cancellationToken)
     {
-        Console.WriteLine($"GetNodeConfiguration called for nodeId: {nodeId}");
+        LogGettingNodeConfiguration(nodeId);
         try
         {
 #pragma warning disable CS8602 // Dereference of a possibly null reference
@@ -354,7 +354,7 @@ public static class NodeEndpoints
 
             string? configContent = null;
 
-            Console.WriteLine($"NodeConfigurations lookup: nodeConfig is {(nodeConfig is not null ? "found" : "null")}");
+            LogNodeConfigurationFound(nodeConfig is not null);
 
             if (nodeConfig is not null)
             {
@@ -370,7 +370,7 @@ public static class NodeEndpoints
                         if (mainFile is not null)
                         {
                             configContent = "resources: []"; // For test configurations
-                            Console.WriteLine("Set configContent from NodeConfigurations");
+                            LogNodeConfigurationContentSetFromAssignment();
                         }
                     }
                 }
@@ -379,31 +379,31 @@ public static class NodeEndpoints
             if (configContent is null)
             {
                 var node = await db.Nodes.FindAsync([nodeId], cancellationToken);
-                Console.WriteLine($"Fallback: node found: {node is not null}, ConfigurationName: {node?.ConfigurationName}");
+                LogNodeConfigurationFallback(node is not null, node?.ConfigurationName);
                 if (node is not null && node.ConfigurationName is not null)
                 {
                     var configName = node.ConfigurationName;
-                    Console.WriteLine($"Looking for config with name: {configName}");
+                    LogLookingForConfigurationByName(configName);
                     var config = await db.Configurations
                         .Include(c => c.Versions.Where(v => v.Status == ConfigurationVersionStatus.Published))
                         .ThenInclude(v => v.Files)
                         .AsSplitQuery()
                         .FirstOrDefaultAsync(c => c.Name == configName, cancellationToken);
 
-                    Console.WriteLine($"Config found: {config is not null}");
+                    LogConfigurationByNameFound(config is not null);
                     if (config is not null)
                     {
                         var activeVersion = config.Versions.FirstOrDefault();
-                        Console.WriteLine($"Found config '{config.Name}' with {config.Versions.Count} versions, activeVersion: {activeVersion?.Version}");
+                        LogConfigurationVersionDetails(config.Name, config.Versions.Count, activeVersion?.Version);
                         if (activeVersion is not null)
                         {
                             var mainFile = activeVersion.Files.FirstOrDefault(f => f.RelativePath == "main.dsc.yaml");
-                            Console.WriteLine($"Found {activeVersion.Files.Count} files, mainFile found: {mainFile is not null}");
+                            LogConfigurationFileDetails(activeVersion.Files.Count, mainFile is not null);
                             if (mainFile is not null)
                             {
                                 // For test configurations, return default content
                                 configContent = "resources: []";
-                                Console.WriteLine($"Set configContent from fallback: {configContent}");
+                                LogNodeConfigurationContentSetFromFallback(configContent);
                             }
                         }
                     }
@@ -412,7 +412,7 @@ public static class NodeEndpoints
 
             if (configContent is null)
             {
-                Console.WriteLine("No configuration found");
+                LogNoConfigurationFoundForNode(nodeId);
                 return TypedResults.NotFound(new ErrorResponse { Error = "No configuration assigned." });
             }
 
@@ -423,19 +423,17 @@ public static class NodeEndpoints
                 await db.SaveChangesAsync(cancellationToken);
             }
 
-            Console.WriteLine($"Returning Ok with content: '{configContent}'");
+            LogReturningNodeConfiguration(configContent);
             return TypedResults.Ok(configContent);
 #pragma warning restore CS8602
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"Exception in GetNodeConfiguration: {ex.Message}");
-            Console.WriteLine($"Stack trace: {ex.StackTrace}");
             throw;
         }
     }
 
-    private static async Task<Results<FileStreamHttpResult, NotFound<ErrorResponse>>> GetConfigurationBundle(
+    private async Task<Results<FileStreamHttpResult, NotFound<ErrorResponse>>> GetConfigurationBundle(
         Guid nodeId,
         ServerDbContext db,
         IOptions<ServerConfig> serverConfig,
@@ -517,7 +515,7 @@ public static class NodeEndpoints
         return TypedResults.File(bundleStream, "application/zip", $"{nodeConfig.Configuration.Name}-v{activeVersion.Version}.zip");
     }
 
-    private static async Task<FileStreamHttpResult> GenerateCompositeBundle(
+    private async Task<FileStreamHttpResult> GenerateCompositeBundle(
         Guid nodeId,
         NodeConfiguration nodeConfig,
         string dataDir,
@@ -608,7 +606,7 @@ public static class NodeEndpoints
         return TypedResults.File(bundleStream, "application/zip", $"{nodeConfig.CompositeConfiguration.Name}-v{activeCompositeVersion.Version}.zip");
     }
 
-    private static async Task<Results<NoContent, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> AssignConfiguration(
+    private async Task<Results<NoContent, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> AssignConfiguration(
         Guid nodeId,
         AssignConfigurationRequest request,
         ServerDbContext db,
@@ -723,7 +721,7 @@ public static class NodeEndpoints
         return TypedResults.NoContent();
     }
 
-    private static async Task<Results<NoContent, NotFound<ErrorResponse>>> UnassignConfiguration(
+    private async Task<Results<NoContent, NotFound<ErrorResponse>>> UnassignConfiguration(
         Guid nodeId,
         ServerDbContext db,
         CancellationToken cancellationToken)
@@ -746,7 +744,7 @@ public static class NodeEndpoints
         return TypedResults.NoContent();
     }
 
-    private static async Task<Results<Ok<ConfigurationChecksumResponse>, NotFound<ErrorResponse>, ForbidHttpResult>> GetConfigurationChecksum(
+    private async Task<Results<Ok<ConfigurationChecksumResponse>, NotFound<ErrorResponse>, ForbidHttpResult>> GetConfigurationChecksum(
         Guid nodeId,
         ClaimsPrincipal user,
         ServerDbContext db,
@@ -883,7 +881,7 @@ public static class NodeEndpoints
         return TypedResults.Ok(new ConfigurationChecksumResponse { Checksum = checksum, EntryPoint = entryPoint, ParametersFile = parametersFile });
     }
 
-    private static async Task<Results<NoContent, NotFound<ErrorResponse>, ForbidHttpResult>> UpdateLcmStatus(
+    private async Task<Results<NoContent, NotFound<ErrorResponse>, ForbidHttpResult>> UpdateLcmStatus(
         Guid nodeId,
         UpdateLcmStatusRequest request,
         ClaimsPrincipal user,
@@ -916,7 +914,7 @@ public static class NodeEndpoints
         return TypedResults.NoContent();
     }
 
-    private static async Task<Results<Ok<List<NodeStatusEventSummary>>, NotFound<ErrorResponse>>> GetNodeStatusHistory(
+    private async Task<Results<Ok<List<NodeStatusEventSummary>>, NotFound<ErrorResponse>>> GetNodeStatusHistory(
         Guid nodeId,
         ServerDbContext db,
         int? skip,
@@ -952,7 +950,7 @@ public static class NodeEndpoints
         return TypedResults.Ok(events);
     }
 
-    private static async Task<Results<Ok<RotateCertificateResponse>, NotFound<ErrorResponse>, BadRequest<ErrorResponse>, ForbidHttpResult>> RotateCertificate(
+    private async Task<Results<Ok<RotateCertificateResponse>, NotFound<ErrorResponse>, BadRequest<ErrorResponse>, ForbidHttpResult>> RotateCertificate(
         Guid nodeId,
         RotateCertificateRequest request,
         ClaimsPrincipal user,
@@ -993,7 +991,7 @@ public static class NodeEndpoints
         });
     }
 
-    private static async Task<Results<Ok<NodeLcmConfigResponse>, NotFound<ErrorResponse>, ForbidHttpResult>> GetNodeLcmConfig(
+    private async Task<Results<Ok<NodeLcmConfigResponse>, NotFound<ErrorResponse>, ForbidHttpResult>> GetNodeLcmConfig(
         Guid nodeId,
         ClaimsPrincipal user,
         IWebHostEnvironment env,
@@ -1026,7 +1024,7 @@ public static class NodeEndpoints
         });
     }
 
-    private static async Task<Results<Ok<NodeLcmConfigResponse>, NotFound<ErrorResponse>>> UpdateNodeLcmConfig(
+    private async Task<Results<Ok<NodeLcmConfigResponse>, NotFound<ErrorResponse>>> UpdateNodeLcmConfig(
         Guid nodeId,
         UpdateNodeLcmConfigRequest request,
         ServerDbContext db,
@@ -1051,7 +1049,7 @@ public static class NodeEndpoints
         });
     }
 
-    private static async Task<Results<NoContent, NotFound<ErrorResponse>, ForbidHttpResult>> ReportNodeLcmConfig(
+    private async Task<Results<NoContent, NotFound<ErrorResponse>, ForbidHttpResult>> ReportNodeLcmConfig(
         Guid nodeId,
         ReportNodeLcmConfigRequest request,
         ClaimsPrincipal user,
@@ -1081,4 +1079,43 @@ public static class NodeEndpoints
 
         return TypedResults.NoContent();
     }
+
+    [LoggerMessage(EventId = EventIds.GettingNodeConfiguration, Level = LogLevel.Debug, Message = "GetNodeConfiguration called for nodeId: {NodeId}")]
+    private partial void LogGettingNodeConfiguration(Guid nodeId);
+
+    [LoggerMessage(EventId = EventIds.NodeConfigurationFound, Level = LogLevel.Debug, Message = "NodeConfigurations lookup: nodeConfig is {Found}")]
+    private partial void LogNodeConfigurationFound(bool found);
+
+    [LoggerMessage(EventId = EventIds.NodeConfigurationContentSetFromAssignment, Level = LogLevel.Debug, Message = "Set configContent from NodeConfigurations")]
+    private partial void LogNodeConfigurationContentSetFromAssignment();
+
+    [LoggerMessage(EventId = EventIds.NodeConfigurationFallback, Level = LogLevel.Debug, Message = "Fallback: node found: {NodeFound}, ConfigurationName: {ConfigurationName}")]
+    private partial void LogNodeConfigurationFallback(bool nodeFound, string? configurationName);
+
+    [LoggerMessage(EventId = EventIds.LookingForConfigurationByName, Level = LogLevel.Debug, Message = "Looking for config with name: {ConfigName}")]
+    private partial void LogLookingForConfigurationByName(string configName);
+
+    [LoggerMessage(EventId = EventIds.ConfigurationByNameFound, Level = LogLevel.Debug, Message = "Config found: {Found}")]
+    private partial void LogConfigurationByNameFound(bool found);
+
+    [LoggerMessage(EventId = EventIds.ConfigurationVersionDetails, Level = LogLevel.Debug, Message = "Found config '{ConfigName}' with {VersionCount} versions, activeVersion: {ActiveVersion}")]
+    private partial void LogConfigurationVersionDetails(string configName, int versionCount, string? activeVersion);
+
+    [LoggerMessage(EventId = EventIds.ConfigurationFileDetails, Level = LogLevel.Debug, Message = "Found {FileCount} files, mainFile found: {MainFileFound}")]
+    private partial void LogConfigurationFileDetails(int fileCount, bool mainFileFound);
+
+    [LoggerMessage(EventId = EventIds.NodeConfigurationContentSetFromFallback, Level = LogLevel.Debug, Message = "Set configContent from fallback: {ConfigContent}")]
+    private partial void LogNodeConfigurationContentSetFromFallback(string configContent);
+
+    [LoggerMessage(EventId = EventIds.NoConfigurationFoundForNode, Level = LogLevel.Warning, Message = "No configuration found for node {NodeId}")]
+    private partial void LogNoConfigurationFoundForNode(Guid nodeId);
+
+    [LoggerMessage(EventId = EventIds.ReturningNodeConfiguration, Level = LogLevel.Debug, Message = "Returning Ok with content: '{ConfigContent}'")]
+    private partial void LogReturningNodeConfiguration(string? configContent);
+}
+
+public static class NodeEndpointExtensions
+{
+    public static void MapNodeEndpoints(this IEndpointRouteBuilder app)
+        => app.ServiceProvider.GetRequiredService<NodeEndpoints>().MapNodeEndpoints(app);
 }

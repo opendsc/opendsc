@@ -43,7 +43,7 @@ public sealed class PublishResult
     public string? UpdatedPrereleaseChannel { get; init; }
 }
 
-public sealed class ConfigurationService : IConfigurationService
+public sealed partial class ConfigurationService : IConfigurationService
 {
     private readonly ServerDbContext _db;
     private readonly IOptions<ServerConfig> _serverConfig;
@@ -87,25 +87,25 @@ public sealed class ConfigurationService : IConfigurationService
         {
             if (string.IsNullOrWhiteSpace(name))
             {
-                _logger.LogWarning("Configuration name is required");
+                LogConfigurationNameRequired();
                 return false;
             }
 
             if (files.Count == 0)
             {
-                _logger.LogWarning("At least one file is required");
+                LogFilesRequired();
                 return false;
             }
 
             if (await _db.Configurations.AnyAsync(c => c.Name == name))
             {
-                _logger.LogWarning("Configuration '{Name}' already exists", name);
+                LogConfigurationAlreadyExists(name);
                 return false;
             }
 
             if (!files.Any(f => f.Name == entryPoint))
             {
-                _logger.LogWarning("Entry point file '{EntryPoint}' not found in uploaded files", entryPoint);
+                LogEntryPointNotFoundInUploadedFiles(entryPoint);
                 return false;
             }
 
@@ -213,7 +213,7 @@ public sealed class ConfigurationService : IConfigurationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating configuration '{Name}'", name);
+            LogErrorCreatingConfiguration(ex, name);
             return false;
         }
     }
@@ -232,13 +232,13 @@ public sealed class ConfigurationService : IConfigurationService
 
             if (configuration == null)
             {
-                _logger.LogWarning("Configuration '{Name}' not found", name);
+                LogConfigurationNotFound(name);
                 return false;
             }
 
             if (await _db.ConfigurationVersions.AnyAsync(v => v.ConfigurationId == configuration.Id && v.Version == version))
             {
-                _logger.LogWarning("Version '{Version}' already exists for configuration '{Name}'", version, name);
+                LogVersionAlreadyExists(version, name);
                 return false;
             }
 
@@ -347,7 +347,7 @@ public sealed class ConfigurationService : IConfigurationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating version '{Version}' for configuration '{Name}'", version, name);
+            LogErrorCreatingVersion(ex, version, name);
             return false;
         }
     }
@@ -363,7 +363,7 @@ public sealed class ConfigurationService : IConfigurationService
 
             if (configuration == null)
             {
-                _logger.LogWarning("Configuration '{Name}' not found", name);
+                LogConfigurationNotFound(name);
                 return false;
             }
 
@@ -372,13 +372,13 @@ public sealed class ConfigurationService : IConfigurationService
 
             if (sourceConfigVersion == null)
             {
-                _logger.LogWarning("Source version '{Version}' not found for configuration '{Name}'", sourceVersion, name);
+                LogSourceVersionNotFound(sourceVersion, name);
                 return false;
             }
 
             if (await _db.ConfigurationVersions.AnyAsync(v => v.ConfigurationId == configuration.Id && v.Version == newVersion))
             {
-                _logger.LogWarning("Version '{Version}' already exists for configuration '{Name}'", newVersion, name);
+                LogVersionAlreadyExists(newVersion, name);
                 return false;
             }
 
@@ -400,7 +400,7 @@ public sealed class ConfigurationService : IConfigurationService
 
             if (!Directory.Exists(sourceVersionDir))
             {
-                _logger.LogWarning("Source version directory not found: {SourceDir}", sourceVersionDir);
+                LogSourceVersionDirectoryNotFound(sourceVersionDir);
                 return false;
             }
 
@@ -413,7 +413,7 @@ public sealed class ConfigurationService : IConfigurationService
 
                 if (!File.Exists(sourceFilePath))
                 {
-                    _logger.LogWarning("Source file not found: {FilePath}", sourceFilePath);
+                    LogSourceFileNotFound(sourceFilePath);
                     continue;
                 }
 
@@ -487,7 +487,7 @@ public sealed class ConfigurationService : IConfigurationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating version '{NewVersion}' from existing version '{SourceVersion}' for configuration '{Name}'", newVersion, sourceVersion, name);
+            LogErrorCreatingVersionFromExisting(ex, newVersion, sourceVersion, name);
             return false;
         }
     }
@@ -503,7 +503,7 @@ public sealed class ConfigurationService : IConfigurationService
 
             if (configuration == null)
             {
-                _logger.LogWarning("Configuration '{Name}' not found", name);
+                LogConfigurationNotFound(name);
                 return false;
             }
 
@@ -512,13 +512,13 @@ public sealed class ConfigurationService : IConfigurationService
 
             if (configVersion == null)
             {
-                _logger.LogWarning("Version '{Version}' not found for configuration '{Name}'", version, name);
+                LogVersionNotFound(version, name);
                 return false;
             }
 
             if (configVersion.Status != ConfigurationVersionStatus.Draft)
             {
-                _logger.LogWarning("Cannot add files to published version '{Version}'", version);
+                LogCannotAddFilesToPublishedVersion(version);
                 return false;
             }
 
@@ -532,7 +532,7 @@ public sealed class ConfigurationService : IConfigurationService
                 // Check if file already exists in this version
                 if (configVersion.Files.Any(f => f.RelativePath == relativePath))
                 {
-                    _logger.LogWarning("File '{FilePath}' already exists in version '{Version}'", relativePath, version);
+                    LogFileAlreadyExistsInVersion(relativePath, version);
                     continue;
                 }
 
@@ -571,7 +571,7 @@ public sealed class ConfigurationService : IConfigurationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error adding files to version '{Version}' for configuration '{Name}'", version, name);
+            LogErrorAddingFilesToVersion(ex, version, name);
             return false;
         }
     }
@@ -657,7 +657,7 @@ public sealed class ConfigurationService : IConfigurationService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to parse publish response, but publish succeeded");
+                    LogFailedToParsePublishResponse(ex);
                     return new PublishResult { Success = true };
                 }
             }
@@ -679,7 +679,7 @@ public sealed class ConfigurationService : IConfigurationService
 
             // Other error
             var errorContent = await response.Content.ReadAsStringAsync();
-            _logger.LogError("Failed to publish version {Version} for {Name}: {Error}", version, name, errorContent);
+            LogFailedToPublishVersion(version, name, errorContent);
             return new PublishResult
             {
                 Success = false,
@@ -688,7 +688,7 @@ public sealed class ConfigurationService : IConfigurationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error publishing version {Version} for configuration {Name}", version, name);
+            LogErrorPublishingVersion(ex, version, name);
             return new PublishResult
             {
                 Success = false,
@@ -708,7 +708,7 @@ public sealed class ConfigurationService : IConfigurationService
 
             if (configuration == null)
             {
-                _logger.LogWarning("Configuration '{Name}' not found", name);
+                LogConfigurationNotFound(name);
                 return false;
             }
 
@@ -726,7 +726,7 @@ public sealed class ConfigurationService : IConfigurationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting configuration '{Name}'", name);
+            LogErrorDeletingConfiguration(ex, name);
             return false;
         }
     }
@@ -742,7 +742,7 @@ public sealed class ConfigurationService : IConfigurationService
 
             if (configuration == null)
             {
-                _logger.LogWarning("Configuration '{Name}' not found", name);
+                LogConfigurationNotFound(name);
                 return false;
             }
 
@@ -751,7 +751,7 @@ public sealed class ConfigurationService : IConfigurationService
 
             if (configVersion == null)
             {
-                _logger.LogWarning("Version '{Version}' not found for configuration '{Name}'", version, name);
+                LogVersionNotFound(version, name);
                 return false;
             }
 
@@ -770,7 +770,7 @@ public sealed class ConfigurationService : IConfigurationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting version '{Version}' for configuration '{Name}'", version, name);
+            LogErrorDeletingVersion(ex, version, name);
             return false;
         }
     }
@@ -786,7 +786,7 @@ public sealed class ConfigurationService : IConfigurationService
 
             if (configuration == null)
             {
-                _logger.LogWarning("Configuration '{Name}' not found", name);
+                LogConfigurationNotFound(name);
                 return false;
             }
 
@@ -795,13 +795,13 @@ public sealed class ConfigurationService : IConfigurationService
 
             if (configVersion == null)
             {
-                _logger.LogWarning("Version '{Version}' not found for configuration '{Name}'", version, name);
+                LogVersionNotFound(version, name);
                 return false;
             }
 
             if (configVersion.Status != ConfigurationVersionStatus.Draft)
             {
-                _logger.LogWarning("Cannot delete files from published version '{Version}'", version);
+                LogCannotDeleteFilesFromPublishedVersion(version);
                 return false;
             }
 
@@ -810,7 +810,7 @@ public sealed class ConfigurationService : IConfigurationService
 
             if (configFile == null)
             {
-                _logger.LogWarning("File '{FilePath}' not found in version '{Version}'", filePath, version);
+                LogFileNotFoundInVersion(filePath, version);
                 return false;
             }
 
@@ -829,7 +829,7 @@ public sealed class ConfigurationService : IConfigurationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting file '{FilePath}' from version '{Version}' for configuration '{Name}'", filePath, version, name);
+            LogErrorDeletingFileFromVersion(ex, filePath, version, name);
             return false;
         }
     }
@@ -845,19 +845,19 @@ public sealed class ConfigurationService : IConfigurationService
 
             if (configVersion == null)
             {
-                _logger.LogWarning("Version '{Version}' not found for configuration '{Name}'", version, name);
+                LogVersionNotFound(version, name);
                 return false;
             }
 
             if (configVersion.Status != ConfigurationVersionStatus.Draft)
             {
-                _logger.LogWarning("Cannot change entry point of published version '{Version}'", version);
+                LogCannotChangeEntryPointOfPublishedVersion(version);
                 return false;
             }
 
             if (!configVersion.Files.Any(f => string.Equals(f.RelativePath, entryPoint, StringComparison.OrdinalIgnoreCase)))
             {
-                _logger.LogWarning("Entry point file '{EntryPoint}' not found in version '{Version}'", entryPoint, version);
+                LogEntryPointFileNotFoundInVersion(entryPoint, version);
                 return false;
             }
 
@@ -867,7 +867,7 @@ public sealed class ConfigurationService : IConfigurationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error changing entry point for version '{Version}' of configuration '{Name}'", version, name);
+            LogErrorChangingEntryPoint(ex, version, name);
             return false;
         }
     }
@@ -881,7 +881,7 @@ public sealed class ConfigurationService : IConfigurationService
 
             if (!File.Exists(fullPath))
             {
-                _logger.LogWarning("File not found: {FilePath}", fullPath);
+                LogFileNotFound(fullPath);
                 return null;
             }
 
@@ -896,7 +896,7 @@ public sealed class ConfigurationService : IConfigurationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error downloading file '{FilePath}' from configuration '{Name}' version '{Version}'", filePath, name, version);
+            LogErrorDownloadingFile(ex, filePath, name, version);
             return null;
         }
     }
@@ -967,7 +967,7 @@ public sealed class ConfigurationService : IConfigurationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error saving file '{FilePath}' in version '{Version}' for configuration '{Name}'", filePath, version, name);
+            LogErrorSavingFile(ex, filePath, version, name);
             return false;
         }
     }
@@ -1048,4 +1048,94 @@ public sealed class ConfigurationService : IConfigurationService
 
         return result;
     }
+
+    [LoggerMessage(EventId = EventIds.ConfigurationNameRequired, Level = LogLevel.Warning, Message = "Configuration name is required")]
+    private partial void LogConfigurationNameRequired();
+
+    [LoggerMessage(EventId = EventIds.FilesRequired, Level = LogLevel.Warning, Message = "At least one file is required")]
+    private partial void LogFilesRequired();
+
+    [LoggerMessage(EventId = EventIds.ConfigurationAlreadyExists, Level = LogLevel.Warning, Message = "Configuration '{Name}' already exists")]
+    private partial void LogConfigurationAlreadyExists(string name);
+
+    [LoggerMessage(EventId = EventIds.EntryPointNotFoundInUploadedFiles, Level = LogLevel.Warning, Message = "Entry point file '{EntryPoint}' not found in uploaded files")]
+    private partial void LogEntryPointNotFoundInUploadedFiles(string entryPoint);
+
+    [LoggerMessage(EventId = EventIds.ErrorCreatingConfiguration, Level = LogLevel.Error, Message = "Error creating configuration '{Name}'")]
+    private partial void LogErrorCreatingConfiguration(Exception ex, string name);
+
+    [LoggerMessage(EventId = EventIds.ConfigurationNotFound, Level = LogLevel.Warning, Message = "Configuration '{Name}' not found")]
+    private partial void LogConfigurationNotFound(string name);
+
+    [LoggerMessage(EventId = EventIds.VersionAlreadyExists, Level = LogLevel.Warning, Message = "Version '{Version}' already exists for configuration '{Name}'")]
+    private partial void LogVersionAlreadyExists(string version, string name);
+
+    [LoggerMessage(EventId = EventIds.ErrorCreatingVersion, Level = LogLevel.Error, Message = "Error creating version '{Version}' for configuration '{Name}'")]
+    private partial void LogErrorCreatingVersion(Exception ex, string version, string name);
+
+    [LoggerMessage(EventId = EventIds.SourceVersionNotFound, Level = LogLevel.Warning, Message = "Source version '{Version}' not found for configuration '{Name}'")]
+    private partial void LogSourceVersionNotFound(string version, string name);
+
+    [LoggerMessage(EventId = EventIds.ErrorCreatingVersionFromExisting, Level = LogLevel.Error, Message = "Error creating version '{NewVersion}' from existing version '{SourceVersion}' for configuration '{Name}'")]
+    private partial void LogErrorCreatingVersionFromExisting(Exception ex, string newVersion, string sourceVersion, string name);
+
+    [LoggerMessage(EventId = EventIds.SourceVersionDirectoryNotFound, Level = LogLevel.Warning, Message = "Source version directory not found: {SourceDir}")]
+    private partial void LogSourceVersionDirectoryNotFound(string sourceDir);
+
+    [LoggerMessage(EventId = EventIds.SourceFileNotFound, Level = LogLevel.Warning, Message = "Source file not found: {FilePath}")]
+    private partial void LogSourceFileNotFound(string filePath);
+
+    [LoggerMessage(EventId = EventIds.CannotAddFilesToPublishedVersion, Level = LogLevel.Warning, Message = "Cannot add files to published version '{Version}'")]
+    private partial void LogCannotAddFilesToPublishedVersion(string version);
+
+    [LoggerMessage(EventId = EventIds.FileAlreadyExistsInVersion, Level = LogLevel.Warning, Message = "File '{FilePath}' already exists in version '{Version}'")]
+    private partial void LogFileAlreadyExistsInVersion(string filePath, string version);
+
+    [LoggerMessage(EventId = EventIds.ErrorAddingFilesToVersion, Level = LogLevel.Error, Message = "Error adding files to version '{Version}' for configuration '{Name}'")]
+    private partial void LogErrorAddingFilesToVersion(Exception ex, string version, string name);
+
+    [LoggerMessage(EventId = EventIds.FailedToParsePublishResponse, Level = LogLevel.Warning, Message = "Failed to parse publish response, but publish succeeded")]
+    private partial void LogFailedToParsePublishResponse(Exception ex);
+
+    [LoggerMessage(EventId = EventIds.FailedToPublishVersion, Level = LogLevel.Error, Message = "Failed to publish version {Version} for {Name}: {Error}")]
+    private partial void LogFailedToPublishVersion(string version, string name, string error);
+
+    [LoggerMessage(EventId = EventIds.ErrorPublishingVersion, Level = LogLevel.Error, Message = "Error publishing version {Version} for configuration {Name}")]
+    private partial void LogErrorPublishingVersion(Exception ex, string version, string name);
+
+    [LoggerMessage(EventId = EventIds.ErrorDeletingConfiguration, Level = LogLevel.Error, Message = "Error deleting configuration '{Name}'")]
+    private partial void LogErrorDeletingConfiguration(Exception ex, string name);
+
+    [LoggerMessage(EventId = EventIds.VersionNotFound, Level = LogLevel.Warning, Message = "Version '{Version}' not found for configuration '{Name}'")]
+    private partial void LogVersionNotFound(string version, string name);
+
+    [LoggerMessage(EventId = EventIds.ErrorDeletingVersion, Level = LogLevel.Error, Message = "Error deleting version '{Version}' for configuration '{Name}'")]
+    private partial void LogErrorDeletingVersion(Exception ex, string version, string name);
+
+    [LoggerMessage(EventId = EventIds.CannotDeleteFilesFromPublishedVersion, Level = LogLevel.Warning, Message = "Cannot delete files from published version '{Version}'")]
+    private partial void LogCannotDeleteFilesFromPublishedVersion(string version);
+
+    [LoggerMessage(EventId = EventIds.FileNotFoundInVersion, Level = LogLevel.Warning, Message = "File '{FilePath}' not found in version '{Version}'")]
+    private partial void LogFileNotFoundInVersion(string filePath, string version);
+
+    [LoggerMessage(EventId = EventIds.ErrorDeletingFileFromVersion, Level = LogLevel.Error, Message = "Error deleting file '{FilePath}' from version '{Version}' for configuration '{Name}'")]
+    private partial void LogErrorDeletingFileFromVersion(Exception ex, string filePath, string version, string name);
+
+    [LoggerMessage(EventId = EventIds.CannotChangeEntryPointOfPublishedVersion, Level = LogLevel.Warning, Message = "Cannot change entry point of published version '{Version}'")]
+    private partial void LogCannotChangeEntryPointOfPublishedVersion(string version);
+
+    [LoggerMessage(EventId = EventIds.EntryPointFileNotFoundInVersion, Level = LogLevel.Warning, Message = "Entry point file '{EntryPoint}' not found in version '{Version}'")]
+    private partial void LogEntryPointFileNotFoundInVersion(string entryPoint, string version);
+
+    [LoggerMessage(EventId = EventIds.ErrorChangingEntryPoint, Level = LogLevel.Error, Message = "Error changing entry point for version '{Version}' of configuration '{Name}'")]
+    private partial void LogErrorChangingEntryPoint(Exception ex, string version, string name);
+
+    [LoggerMessage(EventId = EventIds.FileNotFound, Level = LogLevel.Warning, Message = "File not found: {FilePath}")]
+    private partial void LogFileNotFound(string filePath);
+
+    [LoggerMessage(EventId = EventIds.ErrorDownloadingFile, Level = LogLevel.Error, Message = "Error downloading file '{FilePath}' from configuration '{Name}' version '{Version}'")]
+    private partial void LogErrorDownloadingFile(Exception ex, string filePath, string name, string version);
+
+    [LoggerMessage(EventId = EventIds.ErrorSavingFile, Level = LogLevel.Error, Message = "Error saving file '{FilePath}' in version '{Version}' for configuration '{Name}'")]
+    private partial void LogErrorSavingFile(Exception ex, string filePath, string version, string name);
 }

@@ -16,7 +16,7 @@ public interface IParameterCompatibilityService
     CompatibilityReport CompareSchemas(string? oldSchemaJson, string? newSchemaJson, string oldVersion, string newVersion);
 }
 
-public sealed class ParameterCompatibilityService : IParameterCompatibilityService
+public sealed partial class ParameterCompatibilityService(ILogger<ParameterCompatibilityService> logger) : IParameterCompatibilityService
 {
     public CompatibilityReport CompareSchemas(string? oldSchemaJson, string? newSchemaJson, string oldVersion, string newVersion)
     {
@@ -151,6 +151,13 @@ public sealed class ParameterCompatibilityService : IParameterCompatibilityServi
                 }
             }
         }
+
+        if (breakingChanges.Count > 0)
+        {
+            LogCompatibilityBreakingChangesDetected(breakingChanges.Count, oldVersion, newVersion);
+        }
+
+        LogSchemaComparisonComplete(breakingChanges.Count, nonBreakingChanges.Count, oldVersion, newVersion);
 
         return new CompatibilityReport
         {
@@ -421,6 +428,12 @@ public sealed class ParameterCompatibilityService : IParameterCompatibilityServi
         public int? MinLength { get; set; }
         public int? MaxLength { get; set; }
     }
+
+    [LoggerMessage(EventId = EventIds.CompatibilityBreakingChangesDetected, Level = LogLevel.Warning, Message = "{BreakingCount} breaking change(s) detected between schema versions {OldVersion} and {NewVersion}")]
+    private partial void LogCompatibilityBreakingChangesDetected(int breakingCount, string oldVersion, string newVersion);
+
+    [LoggerMessage(EventId = EventIds.SchemaComparisonComplete, Level = LogLevel.Debug, Message = "Schema comparison complete: {BreakingCount} breaking, {NonBreakingCount} non-breaking changes between {OldVersion} and {NewVersion}")]
+    private partial void LogSchemaComparisonComplete(int breakingCount, int nonBreakingCount, string oldVersion, string newVersion);
 }
 
 public sealed class CompatibilityReport

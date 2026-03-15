@@ -4,6 +4,8 @@
 
 using AwesomeAssertions;
 
+using Microsoft.Extensions.Logging.Abstractions;
+
 using OpenDsc.Server.Services;
 
 using Xunit;
@@ -17,7 +19,7 @@ public class ParameterValidatorTests
 
     public ParameterValidatorTests()
     {
-        _validator = new ParameterValidator();
+        _validator = new ParameterValidator(NullLogger<ParameterValidator>.Instance);
         _schemaBuilder = new ParameterSchemaBuilder();
     }
 

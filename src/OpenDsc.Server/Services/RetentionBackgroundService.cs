@@ -110,18 +110,18 @@ public sealed partial class RetentionBackgroundService(
         LogStopping();
     }
 
-    [LoggerMessage(EventId = 6001, Level = LogLevel.Information, Message = "Retention background service starting")]
+    [LoggerMessage(EventId = EventIds.RetentionServiceStarting, Level = LogLevel.Information, Message = "Retention background service starting")]
     private partial void LogStarting();
 
-    [LoggerMessage(EventId = 6002, Level = LogLevel.Information, Message = "Running scheduled retention cleanup")]
+    [LoggerMessage(EventId = EventIds.RetentionServiceRunning, Level = LogLevel.Information, Message = "Running scheduled retention cleanup")]
     private partial void LogRunning();
 
-    [LoggerMessage(EventId = 6003, Level = LogLevel.Information, Message = "Scheduled retention cleanup completed")]
+    [LoggerMessage(EventId = EventIds.RetentionServiceCompleted, Level = LogLevel.Information, Message = "Scheduled retention cleanup completed")]
     private partial void LogCompleted();
 
-    [LoggerMessage(EventId = 6004, Level = LogLevel.Error, Message = "Scheduled retention cleanup failed")]
+    [LoggerMessage(EventId = EventIds.RetentionServiceFailed, Level = LogLevel.Error, Message = "Scheduled retention cleanup failed")]
     private partial void LogError(Exception ex);
 
-    [LoggerMessage(EventId = 6005, Level = LogLevel.Information, Message = "Retention background service stopping")]
+    [LoggerMessage(EventId = EventIds.RetentionServiceStopping, Level = LogLevel.Information, Message = "Retention background service stopping")]
     private partial void LogStopping();
 }
