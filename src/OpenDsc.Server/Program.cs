@@ -83,6 +83,11 @@ builder.Services.AddScoped<IParameterService, ParameterService>();
 builder.Services.AddScoped<IJsonYamlConverter, JsonYamlConverter>();
 builder.Services.AddSingleton<NodeEndpoints>();
 
+#if WINDOWS
+builder.Services.AddWindowsService();
+builder.Logging.AddEventLog();
+#endif
+
 var app = builder.Build();
 
 await app.InitializeDatabaseAsync();
