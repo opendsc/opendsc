@@ -198,13 +198,13 @@ flowchart TD
     CHECKSUMCHECK -- No + local hash matches --> USECACHE[Use cached\nconfiguration path]
     CHECKSUMCHECK -- Yes --> DLSTATUS[UpdateLcmStatus\n→ Downloading]
     DLSTATUS --> DOWNLOAD[GetConfigurationBundleAsync\ndownload ZIP]
-    DOWNLOAD --> EXTRACT[Extract ZIP\n(path-traversal safe)\nto pull cache dir]
+    DOWNLOAD --> EXTRACT[Extract ZIP - path-traversal safe\nto pull cache dir]
     EXTRACT --> CHECKSUMSTORE[Persist checksum\nentryPoint\nparametersFile]
     CHECKSUMSTORE --> USECACHE
     USECACHE --> DSCTEST[DscExecutor.ExecuteTestAsync\ndsc config test --file entryPoint]
     DSCTEST --> REPORT[SubmitReportAsync\nPOST /api/v1/nodes/id/reports]
     REPORT --> STATUSUPDATE[UpdateLcmStatusAsync\n→ Compliant / NonCompliant]
-    STATUSUPDATE --> WAIT[InterruptibleDelayAsync\n(ConfigurationModeInterval)]
+    STATUSUPDATE --> WAIT[InterruptibleDelayAsync\nConfigurationModeInterval]
     WAIT --> APPLYCONF
 ```
 
@@ -212,7 +212,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    GET[GetConfigurationPathAsync\n(same as Monitor up to download)] --> TEST[ExecuteTestAsync\ndsc config test]
+    GET[GetConfigurationPathAsync\nsame as Monitor up to download] --> TEST[ExecuteTestAsync\ndsc config test]
     TEST --> DESIRED{All resources\nin desired state?}
     DESIRED -- Yes --> REPORT_PASS[SubmitReportAsync\noperation=Test, compliant=true]
     DESIRED -- No --> DSCSET[ExecuteSetAsync\ndsc config set]
