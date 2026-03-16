@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+    xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui"
+    xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+
+    <Package
+        Name="OpenDSC Server"
+        Manufacturer="Thomas Nieto"
+        Version="$(Version)"
+        UpgradeCode="9A8B7C6D-E5F4-4132-A2B3-C4D5E6F70001">
+
+        <MediaTemplate EmbedCab="yes" />
+
+        <MajorUpgrade
+            DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+
+        <Property Id="ARPURLINFOABOUT" Value="https://github.com/OpenDSC/OpenDSC" />
+        <Property Id="ARPHELPLINK" Value="https://github.com/OpenDSC/OpenDSC/issues" />
+
+        <WixVariable Id="WixUILicenseRtf" Value="$(LicenseRtfPath)" />
+        <ui:WixUI Id="WixUI_Minimal" />
+
+        <StandardDirectory Id="ProgramFiles64Folder">
+            <Directory Id="INSTALLFOLDER" Name="OpenDSC">
+                <Directory Id="ServerRootFolder" Name="Server">
+                </Directory>
+            </Directory>
+        </StandardDirectory>
+
+        <StandardDirectory Id="CommonAppDataFolder">
+            <Directory Id="ProgramDataOpenDscFolder" Name="OpenDSC">
+                <Directory Id="ServerDataFolder" Name="Server">
+                </Directory>
+            </Directory>
+        </StandardDirectory>
+
+        <Feature
+            Id="ProductFeature"
+            Title="Server"
+            Level="1">
+
+            <ComponentGroupRef Id="AppFiles" />
+            <ComponentRef Id="ServerService" />
+            <ComponentRef Id="ServerDataDirectory" />
+        </Feature>
+
+        <ComponentGroup Id="AppFiles" Directory="ServerRootFolder">
+            <Files Include="$(var.ProjectDir)..\..\..\artifacts\Server\**">
+                <Exclude
+                    Files="$(var.ProjectDir)..\..\..\artifacts\Server\**\appsettings.Testing.json" />
+                <Exclude Files="$(var.ProjectDir)..\..\..\artifacts\Server\**\*.pdb" />
+                <Exclude Files="$(var.ProjectDir)..\..\..\artifacts\Server\OpenDsc.Server.exe" />
+            </Files>
+        </ComponentGroup>
+
+        <Component
+            Id="ServerService"
+            Directory="ServerRootFolder"
+            Guid="A1B2C3D4-E5F6-4789-ABCD-EF0123456789">
+
+            <File
+                Id="ServerExecutable"
+                Source="$(var.ProjectDir)..\..\..\artifacts\Server\OpenDsc.Server.exe"
+                KeyPath="yes" />
+
+            <ServiceInstall
+                Id="InstallServerService"
+                Name="OpenDscServer"
+                DisplayName="OpenDSC Server"
+                Description="Provides centralized configuration management for DSC nodes"
+                Type="ownProcess"
+                Start="auto"
+                Account="NT AUTHORITY\NetworkService"
+                ErrorControl="normal"
+                Interactive="no" />
+
+            <ServiceControl
+                Id="StartServerService"
+                Name="OpenDscServer"
+                Start="install"
+                Stop="both"
+                Remove="uninstall"
+                Wait="yes" />
+
+            <util:EventSource
+                Name="OpenDsc.Server"
+                Log="Application"
+                EventMessageFile="[#ServerExecutable]" />
+
+        </Component>
+
+        <Component
+            Id="ServerDataDirectory"
+            Directory="ServerDataFolder"
+            Guid="B2C3D4E5-F6A7-4890-BCDE-F01234567890">
+
+            <CreateFolder>
+                <Permission
+                    User="Administrators"
+                    GenericAll="yes" />
+
+                <Permission
+                    User="SYSTEM"
+                    GenericAll="yes" />
+
+                <Permission
+                    User="NT AUTHORITY\NetworkService"
+                    GenericRead="yes"
+                    GenericWrite="yes"
+                    GenericExecute="yes" />
+            </CreateFolder>
+        </Component>
+
+    </Package>
+</Wix>
