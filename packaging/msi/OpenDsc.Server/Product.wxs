@@ -70,7 +70,7 @@
                 Description="Provides centralized configuration management for DSC nodes"
                 Type="ownProcess"
                 Start="auto"
-                Account="NT AUTHORITY\NetworkService"
+                Account="LocalSystem"
                 ErrorControl="normal"
                 Interactive="no" />
 
