@@ -4,7 +4,6 @@
 
 using System.Text.Json.Serialization;
 
-using OpenDsc.Lcm.Contracts;
 using OpenDsc.Schema;
 
 namespace OpenDsc.Lcm;
