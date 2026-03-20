@@ -71,7 +71,11 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
 
         var taskPath = task.Path.Replace($"\\{task.Name}", string.Empty);
 
-        if (!string.IsNullOrEmpty(taskPath) && !taskPath.EndsWith('\\'))
+        if (string.IsNullOrEmpty(taskPath))
+        {
+            taskPath = Schema.DefaultTaskPath;
+        }
+        else if (!taskPath.EndsWith('\\'))
         {
             taskPath += '\\';
         }
@@ -338,7 +342,11 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
             }
 
             var taskPath = task.Path.Replace($"\\{task.Name}", string.Empty);
-            if (!string.IsNullOrEmpty(taskPath) && !taskPath.EndsWith('\\'))
+            if (string.IsNullOrEmpty(taskPath))
+            {
+                taskPath = Schema.DefaultTaskPath;
+            }
+            else if (!taskPath.EndsWith('\\'))
             {
                 taskPath += '\\';
             }
