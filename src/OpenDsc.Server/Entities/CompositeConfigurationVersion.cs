@@ -9,9 +9,8 @@ public sealed class CompositeConfigurationVersion
     public Guid Id { get; set; }
     public required Guid CompositeConfigurationId { get; set; }
     public required string Version { get; set; }
-    public bool IsDraft { get; set; } = true;
+    public ConfigurationVersionStatus Status { get; set; } = ConfigurationVersionStatus.Draft;
     public string? PrereleaseChannel { get; set; }
-    public bool IsArchived { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public string? CreatedBy { get; set; }
 

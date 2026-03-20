@@ -1,0 +1,163 @@
+@* Copyright (c) Thomas Nieto - All Rights Reserved *@
+@* You may use, distribute and modify this code under the *@
+@* terms of the MIT license. *@
+
+@using System.Text
+@using Microsoft.AspNetCore.Components.Forms
+@using OpenDsc.Server.Services
+@inject IConfigurationService ApiClient
+@inject ISnackbar Snackbar
+@inject IConfiguration Config
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body1" Class="mb-3">
+            Create a new file in <strong>@ConfigurationName</strong> version <strong>@Version</strong>
+        </MudText>
+
+        <MudTextField @bind-Value="fileName"
+                      Label="File Name"
+                      Variant="Variant.Outlined"
+                      Required="true"
+                      Class="mb-3"
+                      Immediate="true"
+                      HelperText="e.g., config.dsc.yaml, settings.json"
+                      Error="@(!string.IsNullOrWhiteSpace(fileName) && !IsValidFileName(fileName))"
+                      ErrorText="Invalid file name or extension. Only .yaml, .yml, and .json files are allowed." />
+
+        <MudTextField @bind-Value="fileContent"
+                      Label="File Content"
+                      Variant="Variant.Outlined"
+                      Lines="15"
+                      Required="true"
+                      Class="mb-3"
+                      HelperText="Enter the file content" />
+
+        @if (!string.IsNullOrWhiteSpace(validationError))
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-3">@validationError</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(!IsValid() || isSubmitting)">
+            @if (isSubmitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+            }
+            else
+            {
+                <text>Create File</text>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter]
+    public string ConfigurationName { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Version { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback OnFileCreated { get; set; }
+
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private string fileName = string.Empty;
+    private string fileContent = string.Empty;
+    private bool isSubmitting = false;
+    private string? validationError;
+
+    private bool IsValidFileName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return false;
+
+        // Check for invalid path characters
+        if (name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+            return false;
+
+        // Check for valid extension
+        return name.EndsWith(".yaml", StringComparison.OrdinalIgnoreCase) ||
+               name.EndsWith(".yml", StringComparison.OrdinalIgnoreCase) ||
+               name.EndsWith(".json", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private bool IsValid()
+    {
+        return !string.IsNullOrWhiteSpace(fileName) &&
+               !string.IsNullOrWhiteSpace(fileContent) &&
+               IsValidFileName(fileName);
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private async Task Submit()
+    {
+        if (!IsValid())
+            return;
+
+        isSubmitting = true;
+        validationError = null;
+
+        try
+        {
+            // Create an in-memory file from the content
+            var bytes = Encoding.UTF8.GetBytes(fileContent);
+            var browserFile = new ManualBrowserFile(fileName, bytes);
+
+            var success = await ApiClient.AddFilesToVersionAsync(
+                ConfigurationName,
+                Version,
+                new[] { browserFile });
+
+            if (success)
+            {
+                Snackbar.Add($"File '{fileName}' created successfully", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+                await OnFileCreated.InvokeAsync();
+            }
+            else
+            {
+                validationError = "Failed to create file. The file may already exist or the version may not be a draft.";
+            }
+        }
+        catch (Exception ex)
+        {
+            validationError = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    // Helper class to create IBrowserFile from manual content
+    private sealed class ManualBrowserFile(string name, byte[] bytes) : IBrowserFile
+    {
+        public string Name { get; } = name;
+        public DateTimeOffset LastModified { get; } = DateTimeOffset.UtcNow;
+        public long Size { get; } = bytes.Length;
+        public string ContentType { get; } = name.EndsWith(".json", StringComparison.OrdinalIgnoreCase)
+            ? "application/json"
+            : "application/x-yaml";
+
+        public Stream OpenReadStream(long maxAllowedSize = 512000, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if ((long)bytes.Length > maxAllowedSize)
+            {
+                throw new InvalidOperationException($"The file size ({bytes.Length} bytes) exceeds the maximum allowed size ({maxAllowedSize} bytes).");
+            }
+
+            return new MemoryStream(bytes);
+        }
+    }
+}

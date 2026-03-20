@@ -2,12 +2,12 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
 using Microsoft.EntityFrameworkCore;
+
+using NuGet.Versioning;
 
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
@@ -17,7 +17,10 @@ using YamlDotNet.Serialization.NamingConventions;
 
 namespace OpenDsc.Server.Services;
 
-public partial class ParameterSchemaService(ServerDbContext dbContext) : IParameterSchemaService
+public partial class ParameterSchemaService(
+    ServerDbContext dbContext,
+    IParameterSchemaBuilder schemaBuilder,
+    ILogger<ParameterSchemaService> logger) : IParameterSchemaService
 {
     private static readonly IDeserializer YamlDeserializer = new DeserializerBuilder()
         .WithNamingConvention(CamelCaseNamingConvention.Instance)
@@ -26,19 +29,6 @@ public partial class ParameterSchemaService(ServerDbContext dbContext) : IParame
 
     [GeneratedRegex(@"^(?<major>0|[1-9]\d*)\.(?<minor>0|[1-9]\d*)\.(?<patch>0|[1-9]\d*)(?:-(?<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$")]
     private static partial Regex SemVerRegex();
-
-    public string CalculateSchemaHash(string schemaDefinition)
-    {
-        if (string.IsNullOrWhiteSpace(schemaDefinition))
-        {
-            return string.Empty;
-        }
-
-        var normalized = NormalizeSchemaDefinition(schemaDefinition);
-        var bytes = Encoding.UTF8.GetBytes(normalized);
-        var hashBytes = SHA256.HashData(bytes);
-        return Convert.ToHexString(hashBytes).ToLowerInvariant();
-    }
 
     public Task<string?> ParseParameterBlockAsync(string configurationContent, CancellationToken cancellationToken = default)
     {
@@ -84,14 +74,6 @@ public partial class ParameterSchemaService(ServerDbContext dbContext) : IParame
             return new SchemaChanges(removedParams.Count > 0, false, false, removedParams, [], []);
         }
 
-        var oldHash = CalculateSchemaHash(oldSchemaDefinition);
-        var newHash = CalculateSchemaHash(newSchemaDefinition);
-
-        if (oldHash == newHash)
-        {
-            return new SchemaChanges(false, false, true, [], [], []);
-        }
-
         var oldParams = ExtractParameterNames(oldSchemaDefinition);
         var newParams = ExtractParameterNames(newSchemaDefinition);
 
@@ -100,8 +82,15 @@ public partial class ParameterSchemaService(ServerDbContext dbContext) : IParame
 
         var hasBreaking = removed.Count > 0;
         var hasAdditive = added.Count > 0;
+        var isIdentical = removed.Count == 0 && added.Count == 0;
 
-        return new SchemaChanges(hasBreaking, hasAdditive, false, removed, [], added);
+        LogSchemaChangesDetected(removed.Count, added.Count);
+        if (hasBreaking)
+        {
+            LogBreakingSchemaChangesDetected(removed.Count, string.Join(", ", removed));
+        }
+
+        return new SchemaChanges(hasBreaking, hasAdditive, isIdentical, removed, [], added);
     }
 
     public SemVerValidationResult ValidateSemVerCompliance(string newVersion, string? oldVersion, SchemaChanges changes)
@@ -166,6 +155,56 @@ public partial class ParameterSchemaService(ServerDbContext dbContext) : IParame
         return new SemVerValidationResult(violations.Count == 0, expectedComponent, violations);
     }
 
+    public async Task<ParameterSchema> GenerateAndStoreSchemaAsync(Guid configurationId, string parametersJson, string version, CancellationToken cancellationToken = default)
+    {
+        if (!SemanticVersion.TryParse(version, out var semVer))
+        {
+            throw new ArgumentException($"Invalid semantic version: {version}", nameof(version));
+        }
+
+        // Parse parameters from JSON
+        var parametersDict = JsonSerializer.Deserialize<Dictionary<string, ParameterDefinition>>(parametersJson);
+        if (parametersDict == null)
+        {
+            throw new ArgumentException("Invalid parameters JSON", nameof(parametersJson));
+        }
+
+        // Build JSON Schema
+        var jsonSchema = schemaBuilder.BuildJsonSchema(parametersDict);
+        var schemaString = schemaBuilder.SerializeSchema(jsonSchema);
+
+        // Check if schema already exists for this configuration
+        var existingSchema = await dbContext.ParameterSchemas
+            .FirstOrDefaultAsync(s => s.ConfigurationId == configurationId, cancellationToken);
+
+        if (existingSchema != null)
+        {
+            // Update existing schema
+            existingSchema.GeneratedJsonSchema = schemaString;
+            existingSchema.SchemaVersion = version;
+            existingSchema.UpdatedAt = DateTimeOffset.UtcNow;
+        }
+        else
+        {
+            // Create new schema
+            existingSchema = new ParameterSchema
+            {
+                Id = Guid.NewGuid(),
+                ConfigurationId = configurationId,
+                GeneratedJsonSchema = schemaString,
+                SchemaVersion = version,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow
+            };
+
+            dbContext.ParameterSchemas.Add(existingSchema);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return existingSchema;
+    }
+
     public async Task<ParameterSchema?> FindOrCreateSchemaAsync(Guid configurationId, string? schemaDefinition, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(schemaDefinition))
@@ -173,54 +212,11 @@ public partial class ParameterSchemaService(ServerDbContext dbContext) : IParame
             return null;
         }
 
-        var hash = CalculateSchemaHash(schemaDefinition);
-
+        // Try to find existing schema for this configuration
         var existingSchema = await dbContext.ParameterSchemas
-            .FirstOrDefaultAsync(s => s.ConfigurationId == configurationId && s.SchemaHash == hash, cancellationToken);
+            .FirstOrDefaultAsync(s => s.ConfigurationId == configurationId, cancellationToken);
 
-        if (existingSchema != null)
-        {
-            return existingSchema;
-        }
-
-        var newSchema = new ParameterSchema
-        {
-            Id = Guid.NewGuid(),
-            ConfigurationId = configurationId,
-            SchemaHash = hash,
-            SchemaDefinition = schemaDefinition,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        dbContext.ParameterSchemas.Add(newSchema);
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        return newSchema;
-    }
-
-    private static string NormalizeSchemaDefinition(string schemaDefinition)
-    {
-        try
-        {
-            var obj = JsonSerializer.Deserialize<Dictionary<string, object>>(schemaDefinition);
-            if (obj == null)
-            {
-                return schemaDefinition;
-            }
-
-            var sortedKeys = obj.Keys.OrderBy(k => k, StringComparer.Ordinal).ToList();
-            var normalized = new Dictionary<string, object>();
-            foreach (var key in sortedKeys)
-            {
-                normalized[key] = obj[key];
-            }
-
-            return JsonSerializer.Serialize(normalized, new JsonSerializerOptions { WriteIndented = false });
-        }
-        catch
-        {
-            return schemaDefinition;
-        }
+        return existingSchema;
     }
 
     private static List<string> ExtractParameterNames(string? schemaDefinition)
@@ -260,4 +256,10 @@ public partial class ParameterSchemaService(ServerDbContext dbContext) : IParame
             int.Parse(match.Groups["patch"].Value)
         );
     }
+
+    [LoggerMessage(EventId = EventIds.SchemaChangesDetected, Level = LogLevel.Debug, Message = "Schema changes detected: {RemovedCount} removed, {AddedCount} added")]
+    private partial void LogSchemaChangesDetected(int removedCount, int addedCount);
+
+    [LoggerMessage(EventId = EventIds.BreakingSchemaChangesDetected, Level = LogLevel.Warning, Message = "Breaking schema changes detected: {RemovedCount} parameter(s) removed ({RemovedParameters})")]
+    private partial void LogBreakingSchemaChangesDetected(int removedCount, string removedParameters);
 }

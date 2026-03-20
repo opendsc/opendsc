@@ -1,0 +1,193 @@
+@attribute [Authorize(Policy = "settings.write")]
+@inject ServerDbContext Db
+@inject ISnackbar Snackbar
+@using Microsoft.EntityFrameworkCore
+@using OpenDsc.Server.Services
+
+<MudCard Class="mt-4">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">Global Retention Policy</MudText>
+            <MudText Typo="Typo.body2">
+                Configure how many historical versions are retained. Per-configuration overrides can be set on each configuration's settings page.
+            </MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
+    <MudCardContent>
+        @if (settingsLoading)
+        {
+            <MudProgressLinear Indeterminate="true" />
+        }
+        else
+        {
+            <div class="d-flex align-center gap-6 mb-4">
+                <MudSwitch @bind-Value="retentionEnabled" Label="Enable scheduled auto-purge" Color="Color.Primary" />
+                <MudSwitch @bind-Value="keepReleaseVersions" Label="Always keep release versions" Color="Color.Primary" />
+            </div>
+
+            <MudGrid>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="keepVersions" Label="Keep Versions" Variant="Variant.Outlined"
+                                  InputType="InputType.Number"
+                                  HelperText="Number of most-recent non-draft versions to keep per item." />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="keepDays" Label="Keep Days" Variant="Variant.Outlined"
+                                  InputType="InputType.Number"
+                                  HelperText="Versions newer than this age (days) are always kept." />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="scheduleIntervalHours" Label="Schedule Interval (hours)" Variant="Variant.Outlined"
+                                  InputType="InputType.Number"
+                                  HelperText="How often the background cleanup job runs automatically." />
+                </MudItem>
+            </MudGrid>
+
+            @if (settingsSaveError is not null)
+            {
+                <MudAlert Severity="Severity.Error" Class="mt-3">@settingsSaveError</MudAlert>
+            }
+
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveSettings"
+                       Disabled="@settingsSaving" Class="mt-4">
+                @if (settingsSaving)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                }
+                Save
+            </MudButton>
+        }
+    </MudCardContent>
+</MudCard>
+
+<MudCard Class="mt-4">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">Reports &amp; LCM Status Events</MudText>
+            <MudText Typo="Typo.body2">
+                These records accumulate on every LCM cycle. The defaults below are applied per node.
+            </MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
+    <MudCardContent>
+        @if (settingsLoading)
+        {
+            <MudProgressLinear Indeterminate="true" />
+        }
+        else
+        {
+            <MudGrid>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="reportKeepCount" Label="Reports per Node" Variant="Variant.Outlined"
+                                  InputType="InputType.Number"
+                                  HelperText="Maximum number of compliance reports to keep per node." />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="reportKeepDays" Label="Report Keep Days" Variant="Variant.Outlined"
+                                  InputType="InputType.Number"
+                                  HelperText="Reports older than this many days are candidates for deletion." />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="statusEventKeepCount" Label="Status Events per Node" Variant="Variant.Outlined"
+                                  InputType="InputType.Number"
+                                  HelperText="Maximum number of LCM status events to keep per node." />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="statusEventKeepDays" Label="Status Event Keep Days" Variant="Variant.Outlined"
+                                  InputType="InputType.Number"
+                                  HelperText="Status events older than this many days are candidates for deletion." />
+                </MudItem>
+            </MudGrid>
+
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveSettings"
+                       Disabled="@settingsSaving" Class="mt-4">
+                @if (settingsSaving)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                }
+                Save
+            </MudButton>
+        }
+    </MudCardContent>
+</MudCard>
+
+
+
+@code {
+    // Settings state
+    private bool settingsLoading = true;
+    private bool settingsSaving;
+    private string? settingsSaveError;
+    private bool retentionEnabled;
+    private int keepVersions = 10;
+    private int keepDays = 90;
+    private bool keepReleaseVersions = true;
+    private int scheduleIntervalHours = 24;
+    private int reportKeepCount = 1000;
+    private int reportKeepDays = 30;
+    private int statusEventKeepCount = 200;
+    private int statusEventKeepDays = 7;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSettings();
+    }
+
+    private async Task LoadSettings()
+    {
+        settingsLoading = true;
+        var settings = await Db.ServerSettings.FirstOrDefaultAsync();
+        if (settings is not null)
+        {
+            retentionEnabled = settings.RetentionEnabled;
+            keepVersions = settings.RetentionKeepVersions;
+            keepDays = settings.RetentionKeepDays;
+            keepReleaseVersions = settings.RetentionKeepReleaseVersions;
+            scheduleIntervalHours = (int)settings.RetentionScheduleInterval.TotalHours;
+            reportKeepCount = settings.RetentionReportKeepCount;
+            reportKeepDays = settings.RetentionReportKeepDays;
+            statusEventKeepCount = settings.RetentionStatusEventKeepCount;
+            statusEventKeepDays = settings.RetentionStatusEventKeepDays;
+        }
+
+        settingsLoading = false;
+    }
+
+    private async Task SaveSettings()
+    {
+        settingsSaveError = null;
+        settingsSaving = true;
+        StateHasChanged();
+
+        try
+        {
+            var settings = await Db.ServerSettings.FirstOrDefaultAsync();
+            if (settings is null)
+            {
+                Snackbar.Add("Server settings not found.", Severity.Error);
+                return;
+            }
+
+            settings.RetentionEnabled = retentionEnabled;
+            settings.RetentionKeepVersions = keepVersions;
+            settings.RetentionKeepDays = keepDays;
+            settings.RetentionKeepReleaseVersions = keepReleaseVersions;
+            settings.RetentionScheduleInterval = TimeSpan.FromHours(scheduleIntervalHours);
+            settings.RetentionReportKeepCount = reportKeepCount;
+            settings.RetentionReportKeepDays = reportKeepDays;
+            settings.RetentionStatusEventKeepCount = statusEventKeepCount;
+            settings.RetentionStatusEventKeepDays = statusEventKeepDays;
+            await Db.SaveChangesAsync();
+            Snackbar.Add("Retention policy saved.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            settingsSaveError = $"Error saving settings: {ex.Message}";
+        }
+        finally
+        {
+            settingsSaving = false;
+        }
+    }
+
+}

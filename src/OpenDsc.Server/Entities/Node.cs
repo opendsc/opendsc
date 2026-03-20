@@ -2,6 +2,8 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
+using OpenDsc.Lcm.Contracts;
+
 namespace OpenDsc.Server.Entities;
 
 /// <summary>
@@ -23,6 +25,44 @@ public sealed class Node
     /// Name of the configuration assigned to this node.
     /// </summary>
     public string? ConfigurationName { get; set; }
+
+    /// <summary>
+    /// Whether the node pulls its configuration from the server or manages it locally.
+    /// </summary>
+    public ConfigurationSource ConfigurationSource { get; set; } = ConfigurationSource.Pull;
+
+    /// <summary>
+    /// The LCM operating mode reported by the node.
+    /// </summary>
+    public ConfigurationMode? ConfigurationMode { get; set; }
+
+    /// <summary>
+    /// The LCM configuration mode interval reported by the node.
+    /// </summary>
+    public TimeSpan? ConfigurationModeInterval { get; set; }
+
+    /// <summary>
+    /// Whether the node submits compliance reports to the server.
+    /// </summary>
+    public bool? ReportCompliance { get; set; }
+
+    /// <summary>
+    /// The desired LCM operating mode set by the server administrator.
+    /// Overrides the node's local setting when non-null.
+    /// </summary>
+    public ConfigurationMode? DesiredConfigurationMode { get; set; }
+
+    /// <summary>
+    /// The desired LCM configuration mode interval set by the server administrator.
+    /// Overrides the node's local setting when non-null.
+    /// </summary>
+    public TimeSpan? DesiredConfigurationModeInterval { get; set; }
+
+    /// <summary>
+    /// Whether compliance reporting should be enabled, as set by the server administrator.
+    /// Overrides the node's local setting when non-null.
+    /// </summary>
+    public bool? DesiredReportCompliance { get; set; }
 
     /// <summary>
     /// SHA256 thumbprint of the node's client certificate.
@@ -50,6 +90,11 @@ public sealed class Node
     public NodeStatus Status { get; set; } = NodeStatus.Unknown;
 
     /// <summary>
+    /// Current operational state of the LCM agent running on this node.
+    /// </summary>
+    public LcmStatus LcmStatus { get; set; } = LcmStatus.Unknown;
+
+    /// <summary>
     /// When the node was registered.
     /// </summary>
     public DateTimeOffset CreatedAt { get; set; }
@@ -58,6 +103,11 @@ public sealed class Node
     /// Navigation property for reports.
     /// </summary>
     public ICollection<Report> Reports { get; set; } = [];
+
+    /// <summary>
+    /// Navigation property for status events.
+    /// </summary>
+    public ICollection<NodeStatusEvent> StatusEvents { get; set; } = [];
 }
 
 /// <summary>

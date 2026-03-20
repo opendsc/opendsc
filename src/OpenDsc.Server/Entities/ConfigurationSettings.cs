@@ -15,6 +15,12 @@ public sealed class ConfigurationSettings
     public bool? AllowPreReleaseVersions { get; set; }
     public bool? RequireApprovalForPublish { get; set; }
 
+    // ---- Retention Policy Overrides ----
+    public bool? RetentionEnabled { get; set; }
+    public int? RetentionKeepVersions { get; set; }
+    public int? RetentionKeepDays { get; set; }
+    public bool? RetentionKeepReleaseVersions { get; set; }
+
     public DateTimeOffset UpdatedAt { get; set; }
     public string? UpdatedBy { get; set; }
 

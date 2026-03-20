@@ -21,8 +21,21 @@ public sealed class ServerFixture : IAsyncLifetime
     public string BaseUrl { get; private set; } = string.Empty;
     public string AdminApiKey { get; private set; } = "test-admin-key-12345";
     public string RegistrationKey { get; private set; } = "test-registration-key-12345";
+    public bool IsDockerAvailable { get; private set; } = true;
 
     public async Task InitializeAsync()
+    {
+        try
+        {
+            await InitializeDockerAsync();
+        }
+        catch (Exception)
+        {
+            IsDockerAvailable = false;
+        }
+    }
+
+    private async Task InitializeDockerAsync()
     {
         // Create SQLite database for the server
         _sqliteDbPath = Path.Combine(Path.GetTempPath(), $"opendsc-test-{Guid.NewGuid()}.db");
@@ -112,20 +125,27 @@ public sealed class ServerFixture : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
-        if (_serverContainer is not null)
+        try
         {
-            await _serverContainer.StopAsync();
-            await _serverContainer.DisposeAsync();
-        }
+            if (_serverContainer is not null)
+            {
+                await _serverContainer.StopAsync();
+                await _serverContainer.DisposeAsync();
+            }
 
-        if (_serverImage is not null)
+            if (_serverImage is not null)
+            {
+                await _serverImage.DisposeAsync();
+            }
+        }
+        catch (Exception)
         {
-            await _serverImage.DisposeAsync();
+            // Ignore cleanup errors when Docker is not available
         }
 
         if (!string.IsNullOrEmpty(_sqliteDbPath) && File.Exists(_sqliteDbPath))
         {
-            File.Delete(_sqliteDbPath);
+            try { File.Delete(_sqliteDbPath); } catch (IOException) { }
         }
     }
 }

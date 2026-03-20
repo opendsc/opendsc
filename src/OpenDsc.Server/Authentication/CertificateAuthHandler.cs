@@ -17,12 +17,13 @@ namespace OpenDsc.Server.Authentication;
 /// <summary>
 /// Authentication handler for certificate-based authentication.
 /// </summary>
-public sealed class CertificateAuthHandler(
+public sealed partial class CertificateAuthHandler(
     IOptionsMonitor<AuthenticationSchemeOptions> options,
-    ILoggerFactory logger,
+    ILoggerFactory loggerFactory,
     UrlEncoder encoder,
-    IServiceScopeFactory scopeFactory)
-    : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
+    IServiceScopeFactory scopeFactory,
+    ILogger<CertificateAuthHandler> logger)
+    : AuthenticationHandler<AuthenticationSchemeOptions>(options, loggerFactory, encoder)
 {
     /// <summary>
     /// Authentication scheme name for node certificates.
@@ -63,7 +64,7 @@ public sealed class CertificateAuthHandler(
                         var testIdentity = new ClaimsIdentity(testClaims, Scheme.Name);
                         var testPrincipal = new ClaimsPrincipal(testIdentity);
                         var testTicket = new AuthenticationTicket(testPrincipal, Scheme.Name);
-
+                        LogCertAuthTestModeBypass(testNodeId);
                         return AuthenticateResult.Success(testTicket);
                     }
                 }
@@ -85,11 +86,13 @@ public sealed class CertificateAuthHandler(
 
         if (DateTime.UtcNow > clientCert.NotAfter)
         {
+            LogCertAuthCertificateExpired(thumbprint);
             return AuthenticateResult.Fail("Certificate has expired");
         }
 
         if (!ValidateCertificateChain(clientCert))
         {
+            LogCertAuthChainValidationFailed(thumbprint);
             return AuthenticateResult.Fail("Certificate chain validation failed");
         }
 
@@ -102,11 +105,13 @@ public sealed class CertificateAuthHandler(
 
         if (node is null)
         {
+            LogCertAuthNodeNotFound(thumbprint);
             return AuthenticateResult.Fail("Certificate not registered");
         }
 
         if (DateTime.UtcNow > node.CertificateNotAfter)
         {
+            LogCertAuthRegisteredCertificateExpired(node.Fqdn);
             return AuthenticateResult.Fail("Registered certificate has expired");
         }
 
@@ -122,7 +127,7 @@ public sealed class CertificateAuthHandler(
         var identity = new ClaimsIdentity(claims, Scheme.Name);
         var principal = new ClaimsPrincipal(identity);
         var ticket = new AuthenticationTicket(principal, Scheme.Name);
-
+        LogCertAuthSuccess(node.Fqdn, node.Id);
         return AuthenticateResult.Success(ticket);
     }
 
@@ -164,4 +169,22 @@ public sealed class CertificateAuthHandler(
 
         return true;
     }
+
+    [LoggerMessage(EventId = EventIds.CertAuthTestModeBypass, Level = LogLevel.Debug, Message = "Test mode: bypassing certificate auth for node {NodeId}")]
+    private partial void LogCertAuthTestModeBypass(Guid nodeId);
+
+    [LoggerMessage(EventId = EventIds.CertAuthCertificateExpired, Level = LogLevel.Warning, Message = "Certificate with thumbprint {Thumbprint} has expired")]
+    private partial void LogCertAuthCertificateExpired(string thumbprint);
+
+    [LoggerMessage(EventId = EventIds.CertAuthChainValidationFailed, Level = LogLevel.Warning, Message = "Certificate chain validation failed for thumbprint {Thumbprint}")]
+    private partial void LogCertAuthChainValidationFailed(string thumbprint);
+
+    [LoggerMessage(EventId = EventIds.CertAuthNodeNotFound, Level = LogLevel.Warning, Message = "No node registered for certificate thumbprint {Thumbprint}")]
+    private partial void LogCertAuthNodeNotFound(string thumbprint);
+
+    [LoggerMessage(EventId = EventIds.CertAuthRegisteredCertificateExpired, Level = LogLevel.Warning, Message = "Registered certificate for node {Fqdn} has expired")]
+    private partial void LogCertAuthRegisteredCertificateExpired(string fqdn);
+
+    [LoggerMessage(EventId = EventIds.CertAuthSuccess, Level = LogLevel.Debug, Message = "Certificate authentication succeeded for node {Fqdn} ({NodeId})")]
+    private partial void LogCertAuthSuccess(string fqdn, Guid nodeId);
 }

@@ -3,10 +3,16 @@
 // terms of the MIT license.
 
 using System.Net;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 using AwesomeAssertions;
 
+using Microsoft.EntityFrameworkCore;
+
+using OpenDsc.Lcm.Contracts;
 using OpenDsc.Server.Contracts;
+using OpenDsc.Server.Data;
 using OpenDsc.Server.Endpoints;
 
 using Xunit;
@@ -18,6 +24,12 @@ public class NodeEndpointsTests : IClassFixture<ServerWebApplicationFactory>
 {
     private readonly ServerWebApplicationFactory _factory;
     private readonly HttpClient _client;
+
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        Converters = { new JsonStringEnumConverter() }
+    };
 
     public NodeEndpointsTests(ServerWebApplicationFactory factory)
     {
@@ -117,7 +129,7 @@ public class NodeEndpointsTests : IClassFixture<ServerWebApplicationFactory>
         var response = await adminClient.GetAsync("/api/v1/nodes/");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var nodes = await response.Content.ReadFromJsonAsync<List<NodeSummary>>();
+        var nodes = await response.Content.ReadFromJsonAsync<List<NodeSummary>>(JsonOptions);
         nodes.Should().NotBeNull();
         nodes!.Should().NotBeEmpty();
         nodes.Should().Contain(n => n.Fqdn == "list-test.example.com");
@@ -139,7 +151,7 @@ public class NodeEndpointsTests : IClassFixture<ServerWebApplicationFactory>
         var response = await adminClient.GetAsync($"/api/v1/nodes/{registerResult!.NodeId}");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var node = await response.Content.ReadFromJsonAsync<NodeSummary>();
+        var node = await response.Content.ReadFromJsonAsync<NodeSummary>(JsonOptions);
         node.Should().NotBeNull();
         node!.Id.Should().Be(registerResult.NodeId);
         node.Fqdn.Should().Be("getnode-test.example.com");
@@ -226,7 +238,7 @@ public class NodeEndpointsTests : IClassFixture<ServerWebApplicationFactory>
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         var nodeResponse = await adminClient.GetAsync($"/api/v1/nodes/{registerResult.NodeId}");
-        var node = await nodeResponse.Content.ReadFromJsonAsync<NodeSummary>();
+        var node = await nodeResponse.Content.ReadFromJsonAsync<NodeSummary>(JsonOptions);
         node!.ConfigurationName.Should().Be("test-assign-config");
     }
 
@@ -269,6 +281,45 @@ public class NodeEndpointsTests : IClassFixture<ServerWebApplicationFactory>
     }
 
     [Fact]
+    public async Task GetConfigurationChecksum_ReturnsChecksumAndEntryPoint()
+    {
+        // Register node
+        var registerRequest = new RegisterNodeRequest
+        {
+            Fqdn = "checksum-entrypoint-test.example.com",
+            RegistrationKey = "test-registration-key"
+        };
+        var registerResponse = await _client.PostAsJsonAsync("/api/v1/nodes/register", registerRequest);
+        var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>();
+
+        using var adminClient = _factory.CreateAuthenticatedClient();
+
+        // Create and publish a configuration
+        var configName = $"checksum-entrypoint-config-{Guid.NewGuid():N}";
+        using var configContent = new MultipartFormDataContent();
+        configContent.Add(new StringContent(configName), "name");
+        configContent.Add(new StringContent("deploy.dsc.yaml"), "entryPoint");
+        var configFile = new ByteArrayContent("resources: []"u8.ToArray());
+        configFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+        configContent.Add(configFile, "files", "deploy.dsc.yaml");
+        var createResponse = await adminClient.PostAsync("/api/v1/configurations", configContent);
+        var configDto = await createResponse.Content.ReadFromJsonAsync<ConfigurationDetailsDto>();
+        await adminClient.PutAsync($"/api/v1/configurations/{configName}/versions/{configDto!.LatestVersion}/publish", null);
+
+        // Assign configuration to node
+        var assignRequest = new AssignConfigurationRequest { ConfigurationName = configName };
+        await adminClient.PutAsJsonAsync($"/api/v1/nodes/{registerResult!.NodeId}/configuration", assignRequest);
+
+        // Get checksum - should include entry point
+        var checksumResponse = await _client.GetAsync($"/api/v1/nodes/{registerResult.NodeId}/configuration/checksum");
+        checksumResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var checksum = await checksumResponse.Content.ReadFromJsonAsync<ConfigurationChecksumResponse>();
+        checksum.Should().NotBeNull();
+        checksum!.Checksum.Should().NotBeNullOrEmpty();
+        checksum.EntryPoint.Should().Be("deploy.dsc.yaml");
+    }
+
+    [Fact]
     public async Task AssignConfiguration_WithNonExistentConfiguration_ReturnsNotFound()
     {
         var registerRequest = new RegisterNodeRequest
@@ -290,6 +341,302 @@ public class NodeEndpointsTests : IClassFixture<ServerWebApplicationFactory>
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
         var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
         error!.Error.Should().Contain("Configuration not found");
+    }
+
+    [Fact]
+    public async Task AssignConfiguration_WithMajorVersionConstraint_ReturnsNoContent()
+    {
+        var fqdn = $"major-version-test-{Guid.NewGuid():N}.example.com";
+        var registerResponse = await _client.PostAsJsonAsync("/api/v1/nodes/register",
+            new RegisterNodeRequest { Fqdn = fqdn, RegistrationKey = "test-registration-key" });
+        var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>();
+
+        using var adminClient = _factory.CreateAuthenticatedClient();
+
+        var configName = $"major-version-config-{Guid.NewGuid():N}";
+        await CreateAndPublishConfigVersion(adminClient, configName, "1.0.0", "main.dsc.yaml");
+        await CreateAndPublishConfigVersion(adminClient, configName, "2.0.0", "main.dsc.yaml", isNew: false);
+
+        var assignRequest = new AssignConfigurationRequest
+        {
+            ConfigurationName = configName,
+            MajorVersion = 1
+        };
+        var response = await adminClient.PutAsJsonAsync(
+            $"/api/v1/nodes/{registerResult!.NodeId}/configuration", assignRequest);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task AssignConfiguration_WithMajorVersionConstraint_NoMatchingVersion_ReturnsBadRequest()
+    {
+        var fqdn = $"major-version-noexist-{Guid.NewGuid():N}.example.com";
+        var registerResponse = await _client.PostAsJsonAsync("/api/v1/nodes/register",
+            new RegisterNodeRequest { Fqdn = fqdn, RegistrationKey = "test-registration-key" });
+        var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>();
+
+        using var adminClient = _factory.CreateAuthenticatedClient();
+
+        var configName = $"major-version-nomatch-{Guid.NewGuid():N}";
+        await CreateAndPublishConfigVersion(adminClient, configName, "1.0.0", "main.dsc.yaml");
+        await CreateAndPublishConfigVersion(adminClient, configName, "2.0.0", "main.dsc.yaml", isNew: false);
+
+        var assignRequest = new AssignConfigurationRequest
+        {
+            ConfigurationName = configName,
+            MajorVersion = 3
+        };
+        var response = await adminClient.PutAsJsonAsync(
+            $"/api/v1/nodes/{registerResult!.NodeId}/configuration", assignRequest);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        error!.Error.Should().Contain("No published version satisfies");
+    }
+
+    [Fact]
+    public async Task AssignConfiguration_WithPrereleaseChannel_AllowsPrereleaseVersions()
+    {
+        var fqdn = $"prerelease-channel-test-{Guid.NewGuid():N}.example.com";
+        var registerResponse = await _client.PostAsJsonAsync("/api/v1/nodes/register",
+            new RegisterNodeRequest { Fqdn = fqdn, RegistrationKey = "test-registration-key" });
+        var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>();
+
+        using var adminClient = _factory.CreateAuthenticatedClient();
+
+        // Only publish a prerelease version
+        var configName = $"prerelease-channel-config-{Guid.NewGuid():N}";
+        await CreateAndPublishConfigVersion(adminClient, configName, "1.0.0-rc.1", "main.dsc.yaml");
+
+        var assignRequest = new AssignConfigurationRequest
+        {
+            ConfigurationName = configName,
+            PrereleaseChannel = "rc"
+        };
+        var response = await adminClient.PutAsJsonAsync(
+            $"/api/v1/nodes/{registerResult!.NodeId}/configuration", assignRequest);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task AssignConfiguration_WithNoChannel_ExcludesPrereleaseVersions_ReturnsBadRequest()
+    {
+        var fqdn = $"no-channel-prerelease-{Guid.NewGuid():N}.example.com";
+        var registerResponse = await _client.PostAsJsonAsync("/api/v1/nodes/register",
+            new RegisterNodeRequest { Fqdn = fqdn, RegistrationKey = "test-registration-key" });
+        var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>();
+
+        using var adminClient = _factory.CreateAuthenticatedClient();
+
+        // Only publish a prerelease — no stable version exists
+        var configName = $"prerelease-only-config-{Guid.NewGuid():N}";
+        await CreateAndPublishConfigVersion(adminClient, configName, "1.0.0-beta.1", "main.dsc.yaml");
+
+        // No channel set → only stable versions qualify
+        var assignRequest = new AssignConfigurationRequest { ConfigurationName = configName };
+        var response = await adminClient.PutAsJsonAsync(
+            $"/api/v1/nodes/{registerResult!.NodeId}/configuration", assignRequest);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        error!.Error.Should().Contain("No published version satisfies");
+    }
+
+    [Fact]
+    public async Task AssignConfiguration_WithoutConstraints_UsesSemverOrdering()
+    {
+        // Publishes 2.0.0 first then 1.0.1 — semver ordering should resolve 2.0.0, not 1.0.1
+        var fqdn = $"semver-ordering-test-{Guid.NewGuid():N}.example.com";
+        var registerResponse = await _client.PostAsJsonAsync("/api/v1/nodes/register",
+            new RegisterNodeRequest { Fqdn = fqdn, RegistrationKey = "test-registration-key" });
+        var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>();
+
+        using var adminClient = _factory.CreateAuthenticatedClient();
+
+        var configName = $"semver-ordering-config-{Guid.NewGuid():N}";
+        await CreateAndPublishConfigVersion(adminClient, configName, "2.0.0", "main.dsc.yaml");
+        await CreateAndPublishConfigVersion(adminClient, configName, "1.0.1", "main.dsc.yaml", isNew: false);
+
+        var assignRequest = new AssignConfigurationRequest { ConfigurationName = configName };
+        var response = await adminClient.PutAsJsonAsync(
+            $"/api/v1/nodes/{registerResult!.NodeId}/configuration", assignRequest);
+
+        // Assignment succeeds — endpoint chose 2.0.0 (semver highest), not the most recently published 1.0.1
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    /// <summary>
+    /// Creates a new configuration with an initial version (isNew=true) or adds a version to
+    /// an existing configuration (isNew=false), then publishes it.
+    /// </summary>
+    private static async Task CreateAndPublishConfigVersion(
+        HttpClient adminClient,
+        string configName,
+        string version,
+        string entryPoint,
+        bool isNew = true)
+    {
+        if (isNew)
+        {
+            using var content = new MultipartFormDataContent();
+            content.Add(new StringContent(configName), "name");
+            content.Add(new StringContent(entryPoint), "entryPoint");
+            content.Add(new StringContent(version), "version");
+            var file = new ByteArrayContent("resources: []"u8.ToArray());
+            file.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+            content.Add(file, "files", entryPoint);
+            await adminClient.PostAsync("/api/v1/configurations", content);
+        }
+        else
+        {
+            using var content = new MultipartFormDataContent();
+            content.Add(new StringContent(version), "version");
+            content.Add(new StringContent(entryPoint), "entryPoint");
+            var file = new ByteArrayContent("resources: []"u8.ToArray());
+            file.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+            content.Add(file, "files", entryPoint);
+            await adminClient.PostAsync($"/api/v1/configurations/{configName}/versions", content);
+        }
+
+        await adminClient.PutAsync($"/api/v1/configurations/{configName}/versions/{version}/publish", null);
+    }
+
+    [Fact]
+    public async Task UnassignConfiguration_WithAssignedNode_ReturnsNoContent()
+    {
+        var fqdn = $"unassign-test-{Guid.NewGuid():N}.example.com";
+        var registerResponse = await _client.PostAsJsonAsync("/api/v1/nodes/register",
+            new RegisterNodeRequest { Fqdn = fqdn, RegistrationKey = "test-registration-key" });
+        var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>();
+
+        using var adminClient = _factory.CreateAuthenticatedClient();
+
+        var configName = $"unassign-config-{Guid.NewGuid():N}";
+        await CreateAndPublishConfigVersion(adminClient, configName, "1.0.0", "main.dsc.yaml");
+
+        await adminClient.PutAsJsonAsync($"/api/v1/nodes/{registerResult!.NodeId}/configuration",
+            new AssignConfigurationRequest { ConfigurationName = configName, MajorVersion = 1 });
+
+        var response = await adminClient.DeleteAsync($"/api/v1/nodes/{registerResult.NodeId}/configuration");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task UnassignConfiguration_WhenNotAssigned_ReturnsNoContent()
+    {
+        var fqdn = $"unassign-notassigned-{Guid.NewGuid():N}.example.com";
+        var registerResponse = await _client.PostAsJsonAsync("/api/v1/nodes/register",
+            new RegisterNodeRequest { Fqdn = fqdn, RegistrationKey = "test-registration-key" });
+        var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>();
+
+        using var adminClient = _factory.CreateAuthenticatedClient();
+
+        var response = await adminClient.DeleteAsync($"/api/v1/nodes/{registerResult!.NodeId}/configuration");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task UnassignConfiguration_WithNonExistentNode_ReturnsNotFound()
+    {
+        using var adminClient = _factory.CreateAuthenticatedClient();
+
+        var response = await adminClient.DeleteAsync($"/api/v1/nodes/{Guid.NewGuid()}/configuration");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task GetConfigurationChecksum_WithNoParameterFiles_ReturnsNullParametersFile()
+    {
+        // Register node
+        var fqdn = $"no-params-checksum-{Guid.NewGuid():N}.example.com";
+        var registerResponse = await _client.PostAsJsonAsync("/api/v1/nodes/register",
+            new RegisterNodeRequest { Fqdn = fqdn, RegistrationKey = "test-registration-key" });
+        var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>();
+
+        using var adminClient = _factory.CreateAuthenticatedClient();
+
+        // Create and publish a configuration (UseServerManagedParameters defaults to true)
+        var configName = $"no-params-config-{Guid.NewGuid():N}";
+        await CreateAndPublishConfigVersion(adminClient, configName, "1.0.0", "main.dsc.yaml");
+
+        // Assign configuration to node
+        await adminClient.PutAsJsonAsync($"/api/v1/nodes/{registerResult!.NodeId}/configuration",
+            new AssignConfigurationRequest { ConfigurationName = configName });
+
+        // Get checksum — no parameter files defined, so ParametersFile should be null
+        var checksumResponse = await _client.GetAsync($"/api/v1/nodes/{registerResult.NodeId}/configuration/checksum");
+        checksumResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var checksum = await checksumResponse.Content.ReadFromJsonAsync<ConfigurationChecksumResponse>();
+        checksum.Should().NotBeNull();
+        checksum!.ParametersFile.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetConfigurationChecksum_WithActiveParameterFile_ReturnsParametersFileName()
+    {
+        // Register node
+        var fqdn = $"with-params-checksum-{Guid.NewGuid():N}.example.com";
+        var registerResponse = await _client.PostAsJsonAsync("/api/v1/nodes/register",
+            new RegisterNodeRequest { Fqdn = fqdn, RegistrationKey = "test-registration-key" });
+        var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>();
+
+        using var adminClient = _factory.CreateAuthenticatedClient();
+
+        // Create and publish a configuration with UseServerManagedParameters=true (explicit)
+        var configName = $"with-params-config-{Guid.NewGuid():N}";
+        using var createContent = new MultipartFormDataContent();
+        createContent.Add(new StringContent(configName), "name");
+        createContent.Add(new StringContent("main.dsc.yaml"), "entryPoint");
+        createContent.Add(new StringContent("1.0.0"), "version");
+        createContent.Add(new StringContent("true"), "useServerManagedParameters");
+        var configFile = new ByteArrayContent("resources: []"u8.ToArray());
+        configFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+        createContent.Add(configFile, "files", "main.dsc.yaml");
+        await adminClient.PostAsync("/api/v1/configurations", createContent);
+        await adminClient.PutAsync($"/api/v1/configurations/{configName}/versions/1.0.0/publish", null);
+
+        // Get configuration ID from the database
+        Guid configId;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
+            var cfg = await db.Configurations.FirstOrDefaultAsync(c => c.Name == configName);
+            configId = cfg!.Id;
+        }
+
+        // Upload a parameter file for the Default scope
+        var defaultScopeTypeId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+        var paramRequest = new
+        {
+            version = "1.0.0",
+            content = "parameters:\n  setting: value\n",
+            contentType = "application/x-yaml",
+            isDraft = false
+        };
+        var uploadResponse = await adminClient.PutAsJsonAsync(
+            $"/api/v1/parameters/{defaultScopeTypeId}/{configId}", paramRequest);
+        uploadResponse.EnsureSuccessStatusCode();
+
+        // Publish the parameter file
+        var activateResponse = await adminClient.PutAsync(
+            $"/api/v1/parameters/{defaultScopeTypeId}/{configId}/versions/1.0.0/publish", null);
+        activateResponse.EnsureSuccessStatusCode();
+
+        // Assign configuration to node
+        await adminClient.PutAsJsonAsync($"/api/v1/nodes/{registerResult!.NodeId}/configuration",
+            new AssignConfigurationRequest { ConfigurationName = configName });
+
+        // Get checksum — active parameter file exists, so ParametersFile should be set
+        var checksumResponse = await _client.GetAsync($"/api/v1/nodes/{registerResult.NodeId}/configuration/checksum");
+        checksumResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var checksum = await checksumResponse.Content.ReadFromJsonAsync<ConfigurationChecksumResponse>();
+        checksum.Should().NotBeNull();
+        checksum!.ParametersFile.Should().Be("parameters.yaml");
     }
 
 }

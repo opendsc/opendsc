@@ -15,6 +15,7 @@
     <Project Path="src/OpenDsc.Resource.Windows/OpenDsc.Resource.Windows.csproj" />
     <Project Path="src/OpenDsc.Resource.SqlServer/OpenDsc.Resource.SqlServer.csproj" />
     <Project Path="src/OpenDsc.Resource.Xml/OpenDsc.Resource.Xml.csproj" />
+    <Project Path="src/OpenDsc.Lcm.Contracts/OpenDsc.Lcm.Contracts.csproj" />
     <Project Path="src/OpenDsc.Lcm/OpenDsc.Lcm.csproj" />
     <Project Path="src/OpenDsc.Server/OpenDsc.Server.csproj" />
   </Folder>

@@ -1,0 +1,111 @@
+@* Copyright (c) Thomas Nieto - All Rights Reserved
+   You may use, distribute and modify this code under the
+   terms of the MIT license. *@
+
+@namespace OpenDsc.Server.Components.Pages
+@using System.Reflection
+@using System.Text.Json
+@inject ServerDbContext Db
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.subtitle2" Class="mb-2">Scopes</MudText>
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-2">
+            Only select scopes that your account already has permission to use.
+        </MudText>
+        <MudPaper Outlined="true" Class="pa-3" Style="max-height: 300px; overflow-y: auto;">
+            @foreach (var permission in _availablePermissions)
+            {
+                <MudCheckBox @bind-Value="@_selectedPermissions[permission]"
+                             Label="@permission"
+                             Dense="true" />
+            }
+        </MudPaper>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@_isLoading">
+            @if (_isLoading)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                <span>Saving...</span>
+            }
+            else
+            {
+                <span>Save</span>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter]
+    public PersonalAccessToken Token { get; set; } = default!;
+
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private List<string> _availablePermissions = [];
+    private Dictionary<string, bool> _selectedPermissions = new();
+    private bool _isLoading;
+
+    protected override void OnInitialized()
+    {
+        var fields = typeof(Permissions).GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy);
+
+        _availablePermissions = fields
+            .Where(f => f.IsLiteral && !f.IsInitOnly && f.FieldType == typeof(string))
+            .Select(f => f.GetValue(null)?.ToString() ?? "")
+            .Where(v => !string.IsNullOrEmpty(v))
+            .OrderBy(v => v)
+            .ToList();
+
+        var currentScopes = new List<string>();
+        try
+        {
+            currentScopes = JsonSerializer.Deserialize<List<string>>(Token.Scopes) ?? [];
+        }
+        catch { }
+
+        foreach (var permission in _availablePermissions)
+        {
+            _selectedPermissions[permission] = currentScopes.Contains(permission);
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task Submit()
+    {
+        _isLoading = true;
+
+        try
+        {
+            var token = await Db.PersonalAccessTokens.FindAsync(Token.Id);
+            if (token == null)
+            {
+                Snackbar.Add("Token not found.", Severity.Error);
+                return;
+            }
+
+            var scopes = _selectedPermissions
+                .Where(kv => kv.Value)
+                .Select(kv => kv.Key)
+                .ToArray();
+
+            token.Scopes = JsonSerializer.Serialize(scopes);
+            await Db.SaveChangesAsync();
+
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to update scopes: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}

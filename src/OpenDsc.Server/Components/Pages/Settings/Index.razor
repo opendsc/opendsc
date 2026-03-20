@@ -1,0 +1,218 @@
+@page "/settings"
+@attribute [Authorize(Policy = "settings.read")]
+@inject ServerDbContext Db
+@inject ISnackbar Snackbar
+@using OpenDsc.Lcm.Contracts
+
+<PageTitle>Settings</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Server Settings</MudText>
+
+<MudTabs Elevation="4" Rounded="true" Color="Color.Primary">
+    <MudTabPanel Text="Registration Keys" Icon="@Icons.Material.Filled.Key">
+        <RegistrationKeys />
+    </MudTabPanel>
+    <MudTabPanel Text="Server Settings" Icon="@Icons.Material.Filled.Settings">
+        <MudCard Class="mt-4">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">General Settings</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                @if (serverSettingsLoading)
+                {
+                    <MudProgressLinear Indeterminate="true" />
+                }
+                else
+                {
+                    <MudTextField @bind-Value="certificateRotationDays" Label="Certificate Rotation Interval (days)" Variant="Variant.Outlined" Class="mb-3"
+                                  HelperText="How long before the LCM should rotate its client certificate." InputType="InputType.Number" />
+
+                    <MudTextField @bind-Value="stalenessMultiplier" Label="Staleness Multiplier" Variant="Variant.Outlined" Class="mb-3"
+                                  HelperText="A node is considered stale when it hasn't checked in for (Interval × Multiplier). Default is 2.0." InputType="InputType.Number" />
+
+                    @if (serverSettingsSaveError is not null)
+                    {
+                        <MudAlert Severity="Severity.Error" Class="mb-3">@serverSettingsSaveError</MudAlert>
+                    }
+
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveServerSettings" Disabled="@serverSettingsSaving">
+                        @if (serverSettingsSaving)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        }
+                        Save
+                    </MudButton>
+                }
+            </MudCardContent>
+        </MudCard>
+    </MudTabPanel>
+    <MudTabPanel Text="LCM Defaults" Icon="@Icons.Material.Filled.Tune">
+        <MudCard Class="mt-4">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">Default LCM Settings</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                @if (lcmDefaultsLoading)
+                {
+                    <MudProgressLinear Indeterminate="true" />
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Info" Class="mb-4">
+                        These values are used as defaults for all nodes. A node-level override takes precedence over the server default. Clearing a value removes the server default and lets nodes use their own local setting.
+                    </MudAlert>
+
+                    <MudSelect T="ConfigurationMode?" @bind-Value="defaultConfigMode" Label="Default Configuration Mode" Variant="Variant.Outlined" Class="mb-3" Clearable="true"
+                               HelperText="Monitor: check compliance only. Remediate: automatically fix drift. Leave empty for no server default.">
+                        <MudSelectItem T="ConfigurationMode?" Value="@((ConfigurationMode?)null)">No server default</MudSelectItem>
+                        <MudSelectItem T="ConfigurationMode?" Value="@((ConfigurationMode?)ConfigurationMode.Monitor)">Monitor</MudSelectItem>
+                        <MudSelectItem T="ConfigurationMode?" Value="@((ConfigurationMode?)ConfigurationMode.Remediate)">Remediate</MudSelectItem>
+                    </MudSelect>
+
+                    <MudTextField @bind-Value="defaultIntervalText" Label="Default Configuration Interval (hh:mm:ss)" Variant="Variant.Outlined" Class="mb-3"
+                                  HelperText="How often the LCM runs, e.g. 00:15:00 for 15 minutes. Leave empty for no server default."
+                                  Clearable="true" />
+
+                    <MudSelect T="bool?" @bind-Value="defaultReportCompliance" Label="Default Report Compliance" Variant="Variant.Outlined" Class="mb-3" Clearable="true"
+                               HelperText="Whether nodes submit compliance reports to this server. Leave empty for no server default.">
+                        <MudSelectItem T="bool?" Value="@((bool?)null)">No server default</MudSelectItem>
+                        <MudSelectItem T="bool?" Value="@((bool?)true)">Yes</MudSelectItem>
+                        <MudSelectItem T="bool?" Value="@((bool?)false)">No</MudSelectItem>
+                    </MudSelect>
+
+                    @if (lcmDefaultsSaveError is not null)
+                    {
+                        <MudAlert Severity="Severity.Error" Class="mb-3">@lcmDefaultsSaveError</MudAlert>
+                    }
+
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveLcmDefaults" Disabled="@lcmDefaultsSaving">
+                        @if (lcmDefaultsSaving)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        }
+                        Save
+                    </MudButton>
+                }
+            </MudCardContent>
+        </MudCard>
+    </MudTabPanel>
+    <MudTabPanel Text="Scopes" Icon="@Icons.Material.Filled.Category">
+        <Scopes />
+    </MudTabPanel>
+    <MudTabPanel Text="Retention Policies" Icon="@Icons.Material.Filled.History">
+        <RetentionPolicies />
+    </MudTabPanel>
+    <MudTabPanel Text="Run History" Icon="@Icons.Material.Filled.ManageHistory">
+        <RetentionHistory />
+    </MudTabPanel>
+</MudTabs>
+
+@code {
+    // Server Settings state
+    private bool serverSettingsLoading = true;
+    private bool serverSettingsSaving;
+    private string? serverSettingsSaveError;
+    private int certificateRotationDays = 60;
+    private double stalenessMultiplier = 2.0;
+
+    // LCM Defaults state
+    private bool lcmDefaultsLoading = true;
+    private bool lcmDefaultsSaving;
+    private string? lcmDefaultsSaveError;
+    private ConfigurationMode? defaultConfigMode;
+    private string? defaultIntervalText;
+    private bool? defaultReportCompliance;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var settings = await Db.ServerSettings.FirstOrDefaultAsync();
+        if (settings is not null)
+        {
+            certificateRotationDays = (int)settings.CertificateRotationInterval.TotalDays;
+            stalenessMultiplier = settings.StalenessMultiplier;
+            defaultConfigMode = settings.DefaultConfigurationMode;
+            defaultIntervalText = settings.DefaultConfigurationModeInterval?.ToString(@"hh\:mm\:ss");
+            defaultReportCompliance = settings.DefaultReportCompliance;
+        }
+
+        serverSettingsLoading = false;
+        lcmDefaultsLoading = false;
+    }
+
+    private async Task SaveServerSettings()
+    {
+        serverSettingsSaveError = null;
+        serverSettingsSaving = true;
+        StateHasChanged();
+
+        try
+        {
+            var settings = await Db.ServerSettings.FirstOrDefaultAsync();
+            if (settings is null)
+            {
+                Snackbar.Add("Server settings not found.", Severity.Error);
+                return;
+            }
+
+            settings.CertificateRotationInterval = TimeSpan.FromDays(certificateRotationDays);
+            settings.StalenessMultiplier = stalenessMultiplier;
+            await Db.SaveChangesAsync();
+            Snackbar.Add("Server settings saved.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            serverSettingsSaveError = $"Error saving settings: {ex.Message}";
+        }
+        finally
+        {
+            serverSettingsSaving = false;
+        }
+    }
+
+    private async Task SaveLcmDefaults()
+    {
+        lcmDefaultsSaveError = null;
+        lcmDefaultsSaving = true;
+        StateHasChanged();
+
+        try
+        {
+            TimeSpan? interval = null;
+            if (!string.IsNullOrWhiteSpace(defaultIntervalText))
+            {
+                if (!TimeSpan.TryParse(defaultIntervalText, out var parsed))
+                {
+                    lcmDefaultsSaveError = "Invalid interval format. Use hh:mm:ss (e.g. 00:15:00).";
+                    return;
+                }
+                interval = parsed;
+            }
+
+            var settings = await Db.ServerSettings.FirstOrDefaultAsync();
+            if (settings is null)
+            {
+                Snackbar.Add("Server settings not found.", Severity.Error);
+                return;
+            }
+
+            settings.DefaultConfigurationMode = defaultConfigMode;
+            settings.DefaultConfigurationModeInterval = interval;
+            settings.DefaultReportCompliance = defaultReportCompliance;
+            await Db.SaveChangesAsync();
+            Snackbar.Add("LCM defaults saved.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            lcmDefaultsSaveError = $"Error saving LCM defaults: {ex.Message}";
+        }
+        finally
+        {
+            lcmDefaultsSaving = false;
+        }
+    }
+}
+

@@ -3,8 +3,8 @@
 ## Overview
 
 The OpenDSC Pull Server provides a multi-user authentication system with
-enterprise-grade access control for managing DSC configurations at scale.
-This guide explains the key concepts and how to use them effectively.
+enterprise-grade access control for managing DSC configurations at scale. This
+guide explains the key concepts and how to use them effectively.
 
 ## Getting Started
 
@@ -81,10 +81,60 @@ sequenceDiagram
 - Support non-expiring tokens (if configured by administrator)
 - Ideal for CI/CD pipelines, monitoring systems, etc.
 
+### For LCM Agents (mTLS)
+
+**Mutual TLS** - For nodes managed by the OpenDSC LCM service:
+
+- Each node generates a self-signed client certificate on first run
+- The certificate is presented during TLS handshake
+- The server validates the certificate thumbprint against its database
+- No passwords or tokens needed after initial registration
+
+#### Node Bootstrap Sequence
+
+When a new LCM agent starts for the first time (no `NodeId` configured):
+
+```mermaid
+sequenceDiagram
+    participant LCM as LCM Agent
+    participant PubAPI as GET /api/v1/settings/public
+    participant RegAPI as POST /api/v1/nodes/register
+    participant NodeAPI as Node API (mTLS)
+
+    LCM->>PubAPI: Fetch public settings (no auth)
+    PubAPI->>LCM: { certificateRotationInterval: "60.00:00:00" }
+    LCM->>LCM: Generate self-signed cert<br/>(lifetime = interval × 1.5)
+    LCM->>RegAPI: Register (RegistrationKey + cert in TLS)
+    RegAPI->>LCM: { nodeId: "..." }
+    LCM->>LCM: Persist nodeId + interval to appsettings.json
+
+    Note over LCM,NodeAPI: Subsequent cycles
+    LCM->>NodeAPI: Authenticated requests using cert thumbprint
+```
+
+The `GET /api/v1/settings/public` endpoint is intentionally unauthenticated.
+This allows nodes to fetch the `CertificateRotationInterval` **before**
+generating their certificate, ensuring the cert lifetime matches the server's
+expectations.
+
+#### Certificate Rotation
+
+After initial registration, the LCM rotates its certificate automatically when
+`now >= cert.NotBefore + CertificateRotationInterval`.
+
+The new cert is sent to the server via `POST
+/api/v1/nodes/{nodeId}/rotate-certificate` before the old one is switched out.
+
+The `CertificateRotationInterval` can be configured server-wide via:
+
+- `PUT /api/v1/settings` → `certificateRotationInterval` (applies globally)
+- `GET /api/v1/nodes/{nodeId}/lcm-config` → per-node override pushed to the
+  agent
+
 ## Authorization Model
 
-The Pull Server uses a **two-tier authorization system**: global permissions
-and resource-level permissions.
+The Pull Server uses a **two-tier authorization system**: global permissions and
+resource-level permissions.
 
 ```mermaid
 graph TB
@@ -152,8 +202,8 @@ The Pull Server comes with three predefined roles:
 
 ## Working with Groups
 
-Groups simplify permission management by letting you assign permissions to
-teams rather than individuals.
+Groups simplify permission management by letting you assign permissions to teams
+rather than individuals.
 
 ```mermaid
 graph LR
@@ -335,9 +385,9 @@ Parameters have separate permissions from configurations:
   - Operations team can update database connection strings without editing
     configs
 
-**Security Note:** Secrets should use DSC's `secret()` function. The Pull
-Server stores these as-is and lets the DSC engine handle decryption at runtime
-on the node.
+**Security Note:** Secrets should use DSC's `secret()` function. The Pull Server
+stores these as-is and lets the DSC engine handle decryption at runtime on the
+node.
 
 ## Security Best Practices
 
@@ -436,9 +486,9 @@ Viewer) cover most common scenarios.
 
 ### What happens when a user leaves the company?
 
-Simply delete or disable their user account. Service accounts and
-configurations they created remain intact. This is why service accounts are
-recommended for automation - they're independent of any person.
+Simply delete or disable their user account. Service accounts and configurations
+they created remain intact. This is why service accounts are recommended for
+automation - they're independent of any person.
 
 ### How do I reset a locked account?
 

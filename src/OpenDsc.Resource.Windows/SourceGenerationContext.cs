@@ -34,7 +34,7 @@ namespace OpenDsc.Resource.Windows;
 [JsonSerializable(typeof(ScheduledTask.LogonTriggerConfig), TypeInfoPropertyName = "LogonTriggerConfig")]
 [JsonSerializable(typeof(DayOfWeek), TypeInfoPropertyName = "DayOfWeek")]
 [JsonSerializable(typeof(TaskInstancesPolicy), TypeInfoPropertyName = "TaskInstancesPolicy")]
-[JsonSerializable(typeof(TaskCompatibility), TypeInfoPropertyName = "TaskCompatibility")]
+[JsonSerializable(typeof(ScheduledTask.TaskCompatibilityLevel), TypeInfoPropertyName = "TaskCompatibilityLevel")]
 [JsonSerializable(typeof(TaskLogonType), TypeInfoPropertyName = "TaskLogonType")]
 [JsonSerializable(typeof(ProcessPriorityClass), TypeInfoPropertyName = "ProcessPriorityClass")]
 [JsonSerializable(typeof(UserRight.Schema), TypeInfoPropertyName = "UserRightSchema")]

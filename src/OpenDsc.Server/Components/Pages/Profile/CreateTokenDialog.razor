@@ -1,0 +1,129 @@
+@* Copyright (c) Thomas Nieto - All Rights Reserved
+   You may use, distribute and modify this code under the
+   terms of the MIT license. *@
+
+@namespace OpenDsc.Server.Components.Pages
+@using System.Reflection
+@inject IPersonalAccessTokenService PatService
+@inject IUserContextService UserContext
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="_name"
+                      Label="Token Name"
+                      Variant="Variant.Outlined"
+                      Required="true"
+                      HelperText="A descriptive name to identify this token"
+                      Class="mb-3" />
+
+        <MudDatePicker @bind-Date="_expiresAt"
+                       Label="Expiration Date (optional)"
+                       Variant="Variant.Outlined"
+                       MinDate="@DateTime.Today.AddDays(1)"
+                       Clearable="true"
+                       Class="mb-3" />
+
+        <MudText Typo="Typo.subtitle2" Class="mb-2">Scopes</MudText>
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-2">
+            Only select scopes that your account already has permission to use.
+        </MudText>
+        <MudPaper Outlined="true" Class="pa-3 mb-1" Style="max-height: 300px; overflow-y: auto;">
+            @foreach (var permission in _availablePermissions)
+            {
+                <MudCheckBox @bind-Value="@_selectedPermissions[permission]"
+                             Label="@permission"
+                             Dense="true" />
+            }
+        </MudPaper>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary"
+                   OnClick="Submit"
+                   Disabled="@(string.IsNullOrWhiteSpace(_name) || _isLoading)">
+            @if (_isLoading)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                <span>Creating...</span>
+            }
+            else
+            {
+                <span>Create Token</span>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private string _name = string.Empty;
+    private DateTime? _expiresAt;
+    private bool _isLoading;
+
+    private List<string> _availablePermissions = [];
+    private Dictionary<string, bool> _selectedPermissions = new();
+
+    protected override void OnInitialized()
+    {
+        var fields = typeof(Permissions).GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy);
+
+        _availablePermissions = fields
+            .Where(f => f.IsLiteral && !f.IsInitOnly && f.FieldType == typeof(string))
+            .Select(f => f.GetValue(null)?.ToString() ?? "")
+            .Where(v => !string.IsNullOrEmpty(v))
+            .OrderBy(v => v)
+            .ToList();
+
+        foreach (var permission in _availablePermissions)
+        {
+            _selectedPermissions[permission] = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task Submit()
+    {
+        var userId = UserContext.GetCurrentUserId();
+        if (userId == null)
+        {
+            Snackbar.Add("Not authenticated", Severity.Error);
+            return;
+        }
+
+        _isLoading = true;
+
+        try
+        {
+            var scopes = _selectedPermissions
+                .Where(kv => kv.Value)
+                .Select(kv => kv.Key)
+                .ToArray();
+
+            DateTimeOffset? expiresAt = _expiresAt.HasValue
+                ? new DateTimeOffset(_expiresAt.Value, TimeSpan.Zero)
+                : null;
+
+            var (plaintext, metadata) = await PatService.CreateTokenAsync(
+                userId.Value,
+                _name,
+                scopes,
+                expiresAt);
+
+            MudDialog.Close(DialogResult.Ok(new CreateTokenResult(plaintext, metadata)));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to create token: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    public sealed record CreateTokenResult(string PlaintextToken, PersonalAccessToken Metadata);
+}

@@ -1,0 +1,117 @@
+@using MudBlazor
+@using OpenDsc.Server.Services
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body1" Class="mb-4">
+            Version <strong>@Report.NewVersion</strong> contains breaking changes that are not allowed for this version update.
+            Major version @Report.NewMajorVersion is required for breaking changes.
+        </MudText>
+
+        @if (Report.BreakingChanges.Count > 0)
+        {
+            <MudText Typo="Typo.h6" Class="mb-2">
+                <MudIcon Icon="@Icons.Material.Filled.Error" Color="Color.Error" Size="Size.Small" />
+                Breaking Changes (@Report.BreakingChanges.Count)
+            </MudText>
+            <MudPaper Class="mb-4 pa-3" Elevation="1">
+                @foreach (var change in Report.BreakingChanges)
+                {
+                    <MudAlert Severity="Severity.Error" Dense="true" Class="mb-2">
+                        <MudText Typo="Typo.body2"><strong>@change.ParameterName</strong>: @change.Description</MudText>
+                        @if (!string.IsNullOrEmpty(change.OldValue) || !string.IsNullOrEmpty(change.NewValue))
+                        {
+                            <MudText Typo="Typo.caption">
+                                @if (!string.IsNullOrEmpty(change.OldValue))
+                                {
+                                    <text>Old: @change.OldValue</text>
+                                }
+                                @if (!string.IsNullOrEmpty(change.OldValue) && !string.IsNullOrEmpty(change.NewValue))
+                                {
+                                    <text> → </text>
+                                }
+                                @if (!string.IsNullOrEmpty(change.NewValue))
+                                {
+                                    <text>New: @change.NewValue</text>
+                                }
+                            </MudText>
+                        }
+                    </MudAlert>
+                }
+            </MudPaper>
+        }
+
+        @if (Report.NonBreakingChanges.Count > 0)
+        {
+            <MudText Typo="Typo.h6" Class="mb-2">
+                <MudIcon Icon="@Icons.Material.Filled.Info" Color="Color.Info" Size="Size.Small" />
+                Non-Breaking Changes (@Report.NonBreakingChanges.Count)
+            </MudText>
+            <MudPaper Class="mb-4 pa-3" Elevation="1">
+                @foreach (var change in Report.NonBreakingChanges)
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">
+                        <MudText Typo="Typo.body2"><strong>@change.ParameterName</strong>: @change.Description</MudText>
+                    </MudAlert>
+                }
+            </MudPaper>
+        }
+
+        @if (Report.AffectedParameterFiles.Count > 0)
+        {
+            <MudText Typo="Typo.h6" Class="mb-2">
+                <MudIcon Icon="@Icons.Material.Filled.Assignment" Color="Color.Warning" Size="Size.Small" />
+                Affected Parameter Files (@Report.AffectedParameterFiles.Count)
+            </MudText>
+            <MudPaper Class="pa-3" Elevation="1">
+                <MudTable Items="@Report.AffectedParameterFiles" Dense="true" Hover="true" Elevation="0">
+                    <HeaderContent>
+                        <MudTh>Scope</MudTh>
+                        <MudTh>Version</MudTh>
+                        <MudTh>Status</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Scope">
+                            <MudText Typo="Typo.body2">
+                                @context.ScopeTypeName
+                                @if (!string.IsNullOrEmpty(context.ScopeValue))
+                                {
+                                    <text> / @context.ScopeValue</text>
+                                }
+                            </MudText>
+                        </MudTd>
+                        <MudTd DataLabel="Version">@context.Version</MudTd>
+                        <MudTd DataLabel="Status">
+                            @if (context.NeedsMigration)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Warning">Needs Migration</MudChip>
+                            }
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudPaper>
+        }
+
+        <MudText Typo="Typo.body2" Class="mt-4">
+            <strong>Recommendation:</strong> Increment the major version number (e.g., @Report.NewMajorVersion.0.0) to allow these breaking changes.
+        </MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close" Color="Color.Primary" Variant="Variant.Filled">
+            Close
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public required CompatibilityReport Report { get; set; }
+
+    private void Close()
+    {
+        MudDialog.Close();
+    }
+}
