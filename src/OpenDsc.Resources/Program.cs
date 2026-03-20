@@ -100,7 +100,7 @@ command
     .AddResource<FileSystemAclNs.Resource, FileSystemAclNs.Schema>(fileSystemAclResource)
     .AddResource<ScheduledTaskNs.Resource, ScheduledTaskNs.Schema>(scheduledTaskResource)
     .AddResource<UserRightNs.Resource, UserRightNs.Schema>(userRightResource)
-    .AddResource<PasswordPolicyNs.Resource, PasswordPolicyNs.Schema>(passwordPolicyResource);
+    .AddResource<PasswordPolicyNs.Resource, PasswordPolicyNs.Schema>(passwordPolicyResource)
     .AddResource<AccountLockoutPolicyNs.Resource, AccountLockoutPolicyNs.Schema>(accountLockoutPolicyResource);
 #endif
 
