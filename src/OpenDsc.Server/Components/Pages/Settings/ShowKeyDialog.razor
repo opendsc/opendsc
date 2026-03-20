@@ -30,8 +30,15 @@
 
     private async Task CopyToClipboard()
     {
-        await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", Key);
-        Snackbar.Add("Registration key copied to clipboard", Severity.Success);
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", Key);
+            Snackbar.Add("Registration key copied to clipboard", Severity.Success);
+        }
+        catch (Exception)
+        {
+            Snackbar.Add("Failed to copy to clipboard. Please copy the key manually.", Severity.Error);
+        }
     }
 
     private void Close()

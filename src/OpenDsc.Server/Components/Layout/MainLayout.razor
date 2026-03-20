@@ -5,6 +5,7 @@
 @inject ProtectedLocalStorage LocalStorage
 @inject ServerDbContext Db
 @inject NavigationManager Navigation
+@inject ILogger<MainLayout> Logger
 
 <MudThemeProvider @ref="_mudThemeProvider" @bind-IsDarkMode="_isDarkMode" />
 <MudPopoverProvider />
@@ -120,8 +121,15 @@
 
     private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
-        await CheckPasswordChangeRequiredAsync();
-        await InvokeAsync(StateHasChanged);
+        try
+        {
+            await CheckPasswordChangeRequiredAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error checking password change requirement on navigation");
+        }
     }
 
     private async Task CheckPasswordChangeRequiredAsync()

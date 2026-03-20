@@ -149,6 +149,15 @@
             : "application/x-yaml";
 
         public Stream OpenReadStream(long maxAllowedSize = 512000, CancellationToken cancellationToken = default)
-            => new MemoryStream(bytes);
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if ((long)bytes.Length > maxAllowedSize)
+            {
+                throw new InvalidOperationException($"The file size ({bytes.Length} bytes) exceeds the maximum allowed size ({maxAllowedSize} bytes).");
+            }
+
+            return new MemoryStream(bytes);
+        }
     }
 }

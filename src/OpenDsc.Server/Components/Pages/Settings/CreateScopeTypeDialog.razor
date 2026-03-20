@@ -49,8 +49,10 @@
         {
             var now = DateTimeOffset.UtcNow;
 
-            // Load all existing scope types
-            var allScopeTypes = await Db.ScopeTypes.ToListAsync();
+            // Load all existing scope types in a deterministic order
+            var allScopeTypes = await Db.ScopeTypes
+                .OrderBy(s => s.Precedence)
+                .ToListAsync();
 
             // Find Node scope (should be last/highest precedence)
             var nodeScope = allScopeTypes.FirstOrDefault(s => s.IsSystem && s.Name == "Node");
