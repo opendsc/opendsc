@@ -15,6 +15,7 @@ using FileSystemAclNs = OpenDsc.Resource.Windows.FileSystem.Acl;
 using ScheduledTaskNs = OpenDsc.Resource.Windows.ScheduledTask;
 using UserRightNs = OpenDsc.Resource.Windows.UserRight;
 using PasswordPolicyNs = OpenDsc.Resource.Windows.PasswordPolicy;
+using AccountLockoutPolicyNs = OpenDsc.Resource.Windows.AccountLockoutPolicy;
 #endif
 
 using SqlServerLoginNs = OpenDsc.Resource.SqlServer.Login;
@@ -52,6 +53,7 @@ var fileSystemAclResource = new FileSystemAclNs.Resource(OpenDsc.Resource.Window
 var scheduledTaskResource = new ScheduledTaskNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
 var userRightResource = new UserRightNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
 var passwordPolicyResource = new PasswordPolicyNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
+var accountLockoutPolicyResource = new AccountLockoutPolicyNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
 #endif
 
 var sqlServerLoginResource = new SqlServerLoginNs.Resource(OpenDsc.Resource.SqlServer.SourceGenerationContext.Default);
@@ -99,6 +101,7 @@ command
     .AddResource<ScheduledTaskNs.Resource, ScheduledTaskNs.Schema>(scheduledTaskResource)
     .AddResource<UserRightNs.Resource, UserRightNs.Schema>(userRightResource)
     .AddResource<PasswordPolicyNs.Resource, PasswordPolicyNs.Schema>(passwordPolicyResource);
+    .AddResource<AccountLockoutPolicyNs.Resource, AccountLockoutPolicyNs.Schema>(accountLockoutPolicyResource);
 #endif
 
 command.AddResource<SqlServerLoginNs.Resource, SqlServerLoginNs.Schema>(sqlServerLoginResource);

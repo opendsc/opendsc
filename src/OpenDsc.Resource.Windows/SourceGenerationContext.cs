@@ -39,6 +39,7 @@ namespace OpenDsc.Resource.Windows;
 [JsonSerializable(typeof(ProcessPriorityClass), TypeInfoPropertyName = "ProcessPriorityClass")]
 [JsonSerializable(typeof(UserRight.Schema), TypeInfoPropertyName = "UserRightSchema")]
 [JsonSerializable(typeof(PasswordPolicy.Schema), TypeInfoPropertyName = "PasswordPolicySchema")]
+[JsonSerializable(typeof(AccountLockoutPolicy.Schema), TypeInfoPropertyName = "AccountLockoutPolicySchema")]
 public partial class SourceGenerationContext : JsonSerializerContext
 {
 }
