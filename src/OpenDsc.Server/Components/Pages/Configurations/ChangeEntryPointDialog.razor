@@ -1,0 +1,101 @@
+@* Copyright (c) Thomas Nieto - All Rights Reserved *@
+@* You may use, distribute and modify this code under the *@
+@* terms of the MIT license. *@
+
+@using OpenDsc.Server.Services
+@inject IConfigurationService ApiClient
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body1" Class="mb-4">
+            Select the entry point file for <strong>@ConfigurationName</strong> version <strong>@VersionNumber</strong>.
+        </MudText>
+
+        <MudSelect T="string" @bind-Value="selectedFile" Label="Entry Point" Variant="Variant.Outlined" Required="true"
+            HelperText="The file DSC will use as the configuration entry point">
+            @foreach (var file in AvailableFiles)
+            {
+                <MudSelectItem T="string" Value="@file">
+                    @if (string.Equals(file, CurrentEntryPoint, StringComparison.OrdinalIgnoreCase))
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.Flag" Size="Size.Small" Color="Color.Secondary" Class="mr-1" />
+                    }
+                    @file
+                </MudSelectItem>
+            }
+        </MudSelect>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(!IsValid() || isSubmitting)">
+            @if (isSubmitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+            }
+            else
+            {
+                <text>Set Entry Point</text>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter]
+    public string ConfigurationName { get; set; } = string.Empty;
+
+    [Parameter]
+    public string VersionNumber { get; set; } = string.Empty;
+
+    [Parameter]
+    public string CurrentEntryPoint { get; set; } = string.Empty;
+
+    [Parameter]
+    public List<string> AvailableFiles { get; set; } = [];
+
+    [Parameter]
+    public EventCallback OnEntryPointChanged { get; set; }
+
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private string selectedFile = string.Empty;
+    private bool isSubmitting = false;
+
+    protected override void OnParametersSet()
+    {
+        selectedFile = CurrentEntryPoint;
+    }
+
+    private bool IsValid() =>
+    !string.IsNullOrWhiteSpace(selectedFile) &&
+    !string.Equals(selectedFile, CurrentEntryPoint, StringComparison.OrdinalIgnoreCase);
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task Submit()
+    {
+        isSubmitting = true;
+
+        try
+        {
+            var success = await ApiClient.ChangeVersionEntryPointAsync(ConfigurationName, VersionNumber, selectedFile);
+
+            if (success)
+            {
+                Snackbar.Add($"Entry point changed to '{selectedFile}'", Severity.Success);
+                await OnEntryPointChanged.InvokeAsync();
+                MudDialog.Close();
+            }
+            else
+            {
+                Snackbar.Add("Failed to change entry point", Severity.Error);
+            }
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}

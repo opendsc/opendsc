@@ -36,6 +36,11 @@ public static class AuthenticationEndpoints
             .WithDescription("Ends the current session.")
             .RequireAuthorization();
 
+        group.MapGet("/logout-redirect", (Delegate)LogoutRedirect)
+            .WithSummary("Logout and redirect")
+            .WithDescription("Signs out the current session and redirects to the login page.")
+            .AllowAnonymous();
+
         group.MapGet("/me", GetCurrentUser)
             .WithSummary("Get current user info")
             .WithDescription("Returns information about the authenticated user.")
@@ -133,6 +138,12 @@ public static class AuthenticationEndpoints
     {
         await httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         return TypedResults.NoContent();
+    }
+
+    private static async Task<IResult> LogoutRedirect(HttpContext httpContext)
+    {
+        await httpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        return Results.Redirect("/login");
     }
 
     private static async Task<Results<Ok<CurrentUserResponse>, UnauthorizedHttpResult>> GetCurrentUser(

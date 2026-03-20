@@ -1,0 +1,107 @@
+@using NuGet.Versioning
+@inject ServerDbContext Db
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body1" Class="mb-3">
+            Creating new version for: <strong>@CompositeName</strong>
+        </MudText>
+
+        <MudTextField @bind-Value="version"
+                      Label="Version"
+                      Variant="Variant.Outlined"
+                      Required="true"
+                      Class="mb-3"
+                      Immediate="true"
+                      Error="@(!string.IsNullOrWhiteSpace(version) && !SemanticVersion.TryParse(version, out _))"
+                      ErrorText="Version must follow semantic versioning (e.g., 1.0.0, 2.1.3-alpha)"
+                      HelperText="Semantic version: major.minor.patch[-prerelease][+metadata]" />
+
+        @if (!string.IsNullOrWhiteSpace(validationError))
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-3">@validationError</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(!IsValid() || isSubmitting)">
+            @if (isSubmitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+            }
+            else
+            {
+                <text>Create Version</text>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter]
+    public string CompositeName { get; set; } = string.Empty;
+
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private string version = string.Empty;
+    private bool isSubmitting;
+    private string? validationError;
+
+    private bool IsValid() =>
+        !string.IsNullOrWhiteSpace(version) && SemanticVersion.TryParse(version, out _);
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task Submit()
+    {
+        validationError = null;
+        isSubmitting = true;
+
+        try
+        {
+            var composite = await Db.CompositeConfigurations
+                .FirstOrDefaultAsync(c => c.Name == CompositeName);
+
+            if (composite is null)
+            {
+                validationError = $"Composite configuration '{CompositeName}' not found.";
+                return;
+            }
+
+            if (await Db.CompositeConfigurationVersions.AnyAsync(v =>
+                    v.CompositeConfigurationId == composite.Id && v.Version == version))
+            {
+                validationError = $"Version '{version}' already exists.";
+                return;
+            }
+
+            var sv = SemanticVersion.Parse(version);
+            var newVersion = new CompositeConfigurationVersion
+            {
+                Id = Guid.NewGuid(),
+                CompositeConfigurationId = composite.Id,
+                Version = version,
+                PrereleaseChannel = string.IsNullOrEmpty(sv.Release) ? null : sv.Release,
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+
+            Db.CompositeConfigurationVersions.Add(newVersion);
+
+            composite.UpdatedAt = DateTimeOffset.UtcNow;
+            await Db.SaveChangesAsync();
+
+            Snackbar.Add($"Version '{version}' created as draft", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(version));
+        }
+        catch (Exception ex)
+        {
+            validationError = $"Error creating version: {ex.Message}";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}

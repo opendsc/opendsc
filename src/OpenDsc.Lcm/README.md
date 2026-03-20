@@ -90,7 +90,7 @@ Create a configuration file in the platform-specific location:
 {
   "LCM": {
     "ConfigurationMode": "Remediate",
-    "ConfigurationPath": "/etc/opendsc/config/main.dsc.yaml",
+    "ConfigurationPath": "/etc/opendsc/config/local/main.dsc.yaml",
     "ConfigurationModeInterval": "00:15:00"
   }
 }
@@ -102,7 +102,7 @@ Create a configuration file in the platform-specific location:
 {
   "LCM": {
     "ConfigurationMode": "Monitor",
-    "ConfigurationPath": "/Library/OpenDSC/config/main.dsc.yaml",
+    "ConfigurationPath": "/Library/OpenDSC/config/local/main.dsc.yaml",
     "ConfigurationModeInterval": "00:30:00"
   }
 }
@@ -137,7 +137,8 @@ All settings must be under the `"LCM"` section in JSON configuration:
 | --- | --- | --- | --- |
 | `ConfigurationMode` | string | `Monitor` | Operating mode: `Monitor` or `Remediate` |
 | `ConfigurationSource` | string | `Local` | Configuration source: `Local` or `Pull` |
-| `ConfigurationPath` | string | `{ConfigDir}/config/main.dsc.yaml` | Full path to the main DSC configuration file |
+| `ConfigurationPath` | string | `{ConfigDir}/config/local/main.dsc.yaml` | Full path to the main DSC configuration file |
+
 | `ConfigurationModeInterval` | timespan | `00:15:00` | Interval between checks (format: `hh:mm:ss`) |
 | `DscExecutablePath` | string | `null` | Path to DSC executable (defaults to PATH) |
 
@@ -235,7 +236,7 @@ $env:LCM_DscExecutablePath = "C:\Program Files\dsc\dsc.exe"
 **Linux/macOS (Bash):**
 
 ```sh
-export LCM_ConfigurationPath="/etc/opendsc/config/main.dsc.yaml"
+export LCM_ConfigurationPath="/etc/opendsc/config/local/main.dsc.yaml"
 export LCM_ConfigurationMode="Remediate"
 export LCM_ConfigurationModeInterval="00:15:00"
 
@@ -254,7 +255,7 @@ export LCM_ConfigurationModeInterval="00:15:00"
 ```sh
 ./artifacts/Lcm/OpenDsc.Lcm \
   --LCM:ConfigurationMode=Remediate \
-  --LCM:ConfigurationPath=/etc/opendsc/config/main.dsc.yaml \
+  --LCM:ConfigurationPath=/etc/opendsc/config/local/main.dsc.yaml \
   --LCM:ConfigurationModeInterval=00:15:00
 ```
 
@@ -563,7 +564,7 @@ Verify the configuration path:
 Test-Path "C:\configs\main.dsc.yaml"
 
 # Linux/macOS
-ls -l /etc/opendsc/config/main.dsc.yaml
+ls -l /etc/opendsc/config/local/main.dsc.yaml
 ```
 
 Check LCM logs for the actual path being used.

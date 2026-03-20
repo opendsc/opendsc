@@ -7,6 +7,7 @@ using System.Text.Json;
 using AwesomeAssertions;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
@@ -31,7 +32,7 @@ public class PersonalAccessTokenServiceTests : IDisposable
 
         _dbContext = new ServerDbContext(options);
         var passwordHasher = new PasswordHasher();
-        _tokenService = new PersonalAccessTokenService(_dbContext, passwordHasher);
+        _tokenService = new PersonalAccessTokenService(_dbContext, passwordHasher, NullLogger<PersonalAccessTokenService>.Instance);
 
         // Seed test user
         _dbContext.Users.Add(new User

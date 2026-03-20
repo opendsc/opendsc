@@ -1,0 +1,165 @@
+@* Copyright (c) Thomas Nieto - All Rights Reserved *@
+@* You may use, distribute and modify this code under the *@
+@* terms of the MIT license. *@
+
+@rendermode InteractiveServer
+
+@using MudBlazor
+@using BlazorMonaco
+@using BlazorMonaco.Editor
+@using OpenDsc.Server.Services
+@inject IParameterService ParameterApiClient
+@inject ISnackbar Snackbar
+@inject ThemeService ThemeService
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+            Editing draft version @ParameterVersion
+        </MudText>
+
+        <MudText Typo="Typo.subtitle2" Class="mb-2">Parameter Content (YAML)</MudText>
+        @if (isLoading)
+        {
+            <MudProgressCircular Indeterminate="true" />
+            <MudText Typo="Typo.caption">Loading parameter content...</MudText>
+        }
+        else
+        {
+            <div style="height: 500px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
+                <StandaloneCodeEditor @ref="_editor"
+                                      Id="parameter-edit-editor"
+                                      ConstructionOptions="GetEditorOptions"
+                                      CssClass="monaco-editor-container" />
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="SaveParameter"
+                   Disabled="@(isLoading || isSaving)">
+            @if (isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Save
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public Guid ParameterId { get; set; }
+
+    [Parameter]
+    public Guid ScopeTypeId { get; set; }
+
+    [Parameter]
+    public Guid ConfigurationId { get; set; }
+
+    [Parameter]
+    public string? ScopeValue { get; set; }
+
+    [Parameter]
+    public string ParameterVersion { get; set; } = string.Empty;
+
+    private StandaloneCodeEditor? _editor;
+    private string? initialContent;
+    private bool isLoading = true;
+    private bool isSaving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadParameterContent();
+    }
+
+    private async Task LoadParameterContent()
+    {
+        isLoading = true;
+
+        try
+        {
+            initialContent = await ParameterApiClient.GetParameterContentAsync(ParameterId);
+
+            if (initialContent == null)
+            {
+                Snackbar.Add("Failed to load parameter content", Severity.Error);
+                initialContent = "# Failed to load content";
+            }
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private StandaloneEditorConstructionOptions GetEditorOptions(StandaloneCodeEditor editor)
+    {
+        return new StandaloneEditorConstructionOptions
+        {
+            AutomaticLayout = true,
+            Language = "yaml",
+            Value = initialContent ?? "",
+            Theme = ThemeService.IsDarkMode ? "vs-dark" : "vs",
+            LineNumbers = "on",
+            Minimap = new EditorMinimapOptions { Enabled = false },
+            ScrollBeyondLastLine = false,
+            FontSize = 14,
+            FontFamily = "'Cascadia Code', 'Courier New', monospace",
+            TabSize = 2,
+            InsertSpaces = true,
+            WordWrap = "off"
+        };
+    }
+
+    private async Task SaveParameter()
+    {
+        if (_editor == null)
+        {
+            return;
+        }
+
+        isSaving = true;
+
+        try
+        {
+            var content = await _editor.GetValue();
+
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                Snackbar.Add("Parameter content cannot be empty", Severity.Warning);
+                return;
+            }
+
+            var (success, errorMessage) = await ParameterApiClient.UpdateParameterDraftAsync(ParameterId, content);
+
+            if (success)
+            {
+                Snackbar.Add($"Draft parameter saved", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+            {
+                Snackbar.Add($"Failed to save parameter: {errorMessage}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+}

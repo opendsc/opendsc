@@ -13,6 +13,8 @@ using Microsoft.Extensions.Options;
 
 using Moq;
 
+using OpenDsc.Lcm.Contracts;
+
 using Xunit;
 
 namespace OpenDsc.Lcm.Tests;

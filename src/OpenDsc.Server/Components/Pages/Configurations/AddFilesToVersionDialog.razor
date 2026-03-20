@@ -1,0 +1,166 @@
+@* Copyright (c) Thomas Nieto - All Rights Reserved *@
+@* You may use, distribute and modify this code under the *@
+@* terms of the MIT license. *@
+
+@using Microsoft.AspNetCore.Components.Forms
+@using OpenDsc.Server.Services
+@inject IConfigurationService ApiClient
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body1" Class="mb-3">
+            Add files to <strong>@ConfigurationName</strong> version <strong>@Version</strong>
+        </MudText>
+
+        <MudText Typo="Typo.body2" Class="mb-2">Configuration Files</MudText>
+        <InputFile OnChange="OnFilesSelected" multiple accept=".yaml,.yml,.json" class="mud-input-file" />
+
+        @if (selectedFiles.Count > 0)
+        {
+            <MudChipSet T="string" Class="mt-2">
+                @foreach (var file in selectedFiles)
+                {
+                    <MudChip T="string" Size="Size.Small" OnClose="@(() => RemoveFile(file))">
+                        @file.Name
+                    </MudChip>
+                }
+            </MudChipSet>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(validationError))
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-3">@validationError</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(!IsValid() || isSubmitting)">
+            @if (isSubmitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+            }
+            else
+            {
+                <text>Add Files</text>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter]
+    public string ConfigurationName { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Version { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback OnFilesAdded { get; set; }
+
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private bool isSubmitting = false;
+    private List<IBrowserFile> selectedFiles = [];
+    private string? validationError;
+
+    private void OnFilesSelected(InputFileChangeEventArgs e)
+    {
+        validationError = null;
+        selectedFiles.Clear();
+
+        foreach (var file in e.GetMultipleFiles(20))
+        {
+            if (!file.Name.EndsWith(".yaml", StringComparison.OrdinalIgnoreCase) &&
+                !file.Name.EndsWith(".yml", StringComparison.OrdinalIgnoreCase) &&
+                !file.Name.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+            {
+                validationError = $"Invalid file type: {file.Name}. Only .yaml, .yml, and .json files are allowed.";
+                selectedFiles.Clear();
+                return;
+            }
+
+            if (file.Size > 10 * 1024 * 1024)
+            {
+                validationError = $"File {file.Name} exceeds 10MB limit.";
+                selectedFiles.Clear();
+                return;
+            }
+
+            selectedFiles.Add(file);
+        }
+    }
+
+    private void RemoveFile(IBrowserFile file)
+    {
+        selectedFiles.Remove(file);
+        validationError = null;
+    }
+
+    private bool IsValid()
+    {
+        if (selectedFiles.Count == 0)
+        {
+            return false;
+        }
+
+        return string.IsNullOrWhiteSpace(validationError);
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private async Task Submit()
+    {
+        if (!IsValid())
+            return;
+
+        isSubmitting = true;
+        validationError = null;
+
+        try
+        {
+            var success = await ApiClient.AddFilesToVersionAsync(
+                ConfigurationName,
+                Version,
+                selectedFiles);
+
+            if (success)
+            {
+                Snackbar.Add($"Added {selectedFiles.Count} file(s) to version {Version}", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+                await OnFilesAdded.InvokeAsync();
+            }
+            else
+            {
+                validationError = "Failed to add files. Please check server logs.";
+            }
+        }
+        catch (Exception ex)
+        {
+            validationError = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}
+
+<style>
+    .mud-input-file {
+        border: 2px dashed var(--mud-palette-divider);
+        border-radius: 4px;
+        padding: 16px;
+        text-align: center;
+        cursor: pointer;
+        transition: border-color 0.2s;
+    }
+
+    .mud-input-file:hover {
+        border-color: var(--mud-palette-primary);
+    }
+</style>

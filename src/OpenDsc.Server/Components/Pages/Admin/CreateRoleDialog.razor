@@ -1,0 +1,101 @@
+@using Microsoft.EntityFrameworkCore
+@using System.Text.Json
+@using System.Reflection
+@using MudBlazor
+@using OpenDsc.Server.Authorization
+@inject ServerDbContext Db
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="name" Label="Role Name" Variant="Variant.Outlined" Required="true" Class="mb-3" />
+        <MudTextField @bind-Value="description" Label="Description" Variant="Variant.Outlined" Lines="2" Class="mb-3" />
+        <MudText Typo="Typo.subtitle2" Class="mb-2">Permissions:</MudText>
+        <MudPaper Class="pa-3" Style="max-height: 400px; overflow-y: auto;">
+            @foreach (var permission in availablePermissions)
+            {
+                <MudCheckBox @bind-Value="@selectedPermissions[permission]" Label="@permission" Dense="true" />
+            }
+        </MudPaper>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@string.IsNullOrWhiteSpace(name)">Create</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter]
+    public EventCallback OnRoleCreated { get; set; }
+
+    private string name = string.Empty;
+    private string? description;
+    private List<string> availablePermissions = [];
+    private Dictionary<string, bool> selectedPermissions = new();
+
+    protected override void OnInitialized()
+    {
+        var permissionsType = typeof(Permissions);
+        var fields = permissionsType.GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy);
+
+        availablePermissions = fields
+            .Where(f => f.IsLiteral && !f.IsInitOnly && f.FieldType == typeof(string))
+            .Select(f => f.GetValue(null)?.ToString() ?? "")
+            .Where(v => !string.IsNullOrEmpty(v))
+            .OrderBy(v => v)
+            .ToList();
+
+        foreach (var permission in availablePermissions)
+        {
+            selectedPermissions[permission] = false;
+        }
+    }
+
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private async Task Submit()
+    {
+        try
+        {
+            var existingRole = await Db.Roles
+                .FirstOrDefaultAsync(r => r.Name == name);
+
+            if (existingRole != null)
+            {
+                Snackbar.Add("Role name already exists", Severity.Error);
+                return;
+            }
+
+            var permissions = selectedPermissions
+                .Where(kvp => kvp.Value)
+                .Select(kvp => kvp.Key)
+                .ToArray();
+
+            var role = new Role
+            {
+                Id = Guid.NewGuid(),
+                Name = name,
+                Description = string.IsNullOrWhiteSpace(description) ? null : description,
+                IsSystemRole = false,
+                Permissions = JsonSerializer.Serialize(permissions),
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+
+            Db.Roles.Add(role);
+            await Db.SaveChangesAsync();
+
+            Snackbar.Add($"Role '{name}' created successfully", Severity.Success);
+            await OnRoleCreated.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error creating role: {ex.Message}", Severity.Error);
+        }
+    }
+}

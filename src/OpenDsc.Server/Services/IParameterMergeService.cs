@@ -7,4 +7,6 @@ namespace OpenDsc.Server.Services;
 public interface IParameterMergeService
 {
     Task<string?> MergeParametersAsync(Guid nodeId, Guid configurationId, CancellationToken cancellationToken = default);
+
+    Task<MergeResult?> MergeParametersWithProvenanceAsync(Guid nodeId, Guid configurationId, CancellationToken cancellationToken = default);
 }

@@ -10,7 +10,6 @@ public sealed class CompositeConfiguration
     public required string Name { get; set; }
     public string? Description { get; set; }
     public string EntryPoint { get; set; } = "main.dsc.yaml";
-    public bool IsServerManaged { get; set; } = true;
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? UpdatedAt { get; set; }
 

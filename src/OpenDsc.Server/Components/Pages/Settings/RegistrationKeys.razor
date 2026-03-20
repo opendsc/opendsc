@@ -1,0 +1,188 @@
+@attribute [Authorize(Policy = "settings.write")]
+@inject ServerDbContext Db
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<MudCard Class="mt-4">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">Node Registration Keys</MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateKey" StartIcon="@Icons.Material.Filled.Add">
+                Create Key
+            </MudButton>
+        </CardHeaderActions>
+    </MudCardHeader>
+    <MudCardContent>
+        @if (isLoading)
+        {
+            <MudProgressLinear Indeterminate="true" />
+        }
+        else
+        {
+            <MudDataGrid T="RegistrationKey" Items="@registrationKeys" Hover="true" Dense="true" sortable="true">
+                <Columns>
+                    <TemplateColumn Title="Key">
+                        <CellTemplate>
+                            <code>@context.Item.Key.Substring(0, Math.Min(16, context.Item.Key.Length))...</code>
+                        </CellTemplate>
+                    </TemplateColumn>
+                    <TemplateColumn Title="Description">
+                        <CellTemplate>
+                            @if (!string.IsNullOrEmpty(context.Item.Description))
+                            {
+                                <MudText>@context.Item.Description</MudText>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">No description</MudText>
+                            }
+                        </CellTemplate>
+                    </TemplateColumn>
+                    <PropertyColumn Property="x => x.CreatedAt" Title="Created">
+                        <CellTemplate>
+                            @context.Item.CreatedAt.LocalDateTime.ToString("g")
+                        </CellTemplate>
+                    </PropertyColumn>
+                    <PropertyColumn Property="x => x.ExpiresAt" Title="Expires">
+                        <CellTemplate>
+                            @context.Item.ExpiresAt.LocalDateTime.ToString("g")
+                        </CellTemplate>
+                    </PropertyColumn>
+                    <TemplateColumn Title="Uses">
+                        <CellTemplate>
+                            @if (context.Item.MaxUses.HasValue)
+                            {
+                                <span>@context.Item.CurrentUses / @context.Item.MaxUses</span>
+                            }
+                            else
+                            {
+                                <span>@context.Item.CurrentUses (unlimited)</span>
+                            }
+                        </CellTemplate>
+                    </TemplateColumn>
+                    <TemplateColumn Title="Status" Sortable="false">
+                        <CellTemplate>
+                            @if (context.Item.IsRevoked)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Error">Revoked</MudChip>
+                            }
+                            else if (context.Item.ExpiresAt < DateTimeOffset.UtcNow)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Warning">Expired</MudChip>
+                            }
+                            else if (context.Item.MaxUses.HasValue && context.Item.CurrentUses >= context.Item.MaxUses.Value)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Warning">Max Uses Reached</MudChip>
+                            }
+                            else
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Success">Active</MudChip>
+                            }
+                        </CellTemplate>
+                    </TemplateColumn>
+                    <TemplateColumn Title="Actions" Sortable="false">
+                        <CellTemplate>
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                           Size="Size.Small"
+                                           Color="Color.Default"
+                                           OnClick="@(() => EditKeyDescription(context.Item))" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                           Size="Size.Small"
+                                           Color="Color.Error"
+                                           OnClick="@(() => DeleteKey(context.Item))" />
+                        </CellTemplate>
+                    </TemplateColumn>
+                </Columns>
+            </MudDataGrid>
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    private List<RegistrationKey> registrationKeys = [];
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadKeysAsync();
+    }
+
+    private async Task LoadKeysAsync()
+    {
+        isLoading = true;
+        try
+        {
+            var keys = await Db.RegistrationKeys.ToListAsync();
+            registrationKeys = keys.OrderByDescending(k => k.CreatedAt).ToList();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading registration keys: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task CreateKey()
+    {
+        var parameters = new DialogParameters<CreateKeyDialog>
+        {
+            { x => x.OnKeyCreated, EventCallback.Factory.Create(this, LoadKeysAsync) }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true
+        };
+
+        await DialogService.ShowAsync<CreateKeyDialog>("Create Registration Key", parameters, options);
+    }
+
+    private async Task EditKeyDescription(RegistrationKey key)
+    {
+        var parameters = new DialogParameters<EditKeyDescriptionDialog>
+        {
+            { x => x.Key, key },
+            { x => x.OnUpdated, EventCallback.Factory.Create(this, LoadKeysAsync) }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+
+        await DialogService.ShowAsync<EditKeyDescriptionDialog>("Edit Description", parameters, options);
+    }
+
+    private async Task DeleteKey(RegistrationKey key)
+    {
+        var result = await DialogService.ShowMessageBox(
+            "Delete Registration Key",
+            $"Are you sure you want to delete the registration key?",
+            yesText: "Delete",
+            cancelText: "Cancel");
+
+        if (result == true)
+        {
+            try
+            {
+                Db.RegistrationKeys.Remove(key);
+                await Db.SaveChangesAsync();
+                Snackbar.Add("Registration key deleted", Severity.Success);
+                await LoadKeysAsync();
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error deleting key: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+}

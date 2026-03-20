@@ -4,6 +4,8 @@
 
 using System.Text.Json.Serialization;
 
+using OpenDsc.Server.Entities;
+
 namespace OpenDsc.Server.Contracts;
 
 /// <summary>
@@ -26,11 +28,6 @@ public sealed class CreateCompositeConfigurationRequest
     /// Entry point filename for the generated orchestrator configuration.
     /// </summary>
     public string EntryPoint { get; set; } = "main.dsc.yaml";
-
-    /// <summary>
-    /// Whether this composite configuration uses server-managed parameters.
-    /// </summary>
-    public bool IsServerManaged { get; set; } = true;
 }
 
 /// <summary>
@@ -159,11 +156,6 @@ public sealed class CompositeConfigurationDetailsDto
     public string EntryPoint { get; set; } = string.Empty;
 
     /// <summary>
-    /// Whether this uses server-managed parameters.
-    /// </summary>
-    public bool IsServerManaged { get; set; }
-
-    /// <summary>
     /// All versions of this composite configuration.
     /// </summary>
     public List<CompositeConfigurationVersionDto> Versions { get; set; } = [];
@@ -195,14 +187,9 @@ public sealed class CompositeConfigurationVersionDto
     public string Version { get; set; } = string.Empty;
 
     /// <summary>
-    /// Whether this is a draft version.
+    /// The version's status.
     /// </summary>
-    public bool IsDraft { get; set; }
-
-    /// <summary>
-    /// Whether this version is archived.
-    /// </summary>
-    public bool IsArchived { get; set; }
+    public ConfigurationVersionStatus Status { get; set; }
 
     /// <summary>
     /// Optional prerelease channel.

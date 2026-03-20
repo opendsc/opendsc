@@ -6,6 +6,8 @@ using AwesomeAssertions;
 
 using Microsoft.Extensions.Options;
 
+using OpenDsc.Lcm.Contracts;
+
 using Xunit;
 
 namespace OpenDsc.Lcm.IntegrationTests;

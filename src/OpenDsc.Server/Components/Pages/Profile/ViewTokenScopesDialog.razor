@@ -1,0 +1,52 @@
+@* Copyright (c) Thomas Nieto - All Rights Reserved
+   You may use, distribute and modify this code under the
+   terms of the MIT license. *@
+
+@namespace OpenDsc.Server.Components.Pages
+@using System.Text.Json
+
+<MudDialog>
+    <DialogContent>
+        @if (_scopes.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary">This token has no scopes assigned.</MudText>
+        }
+        else
+        {
+            <MudText Typo="Typo.subtitle2" Class="mb-3">Scopes granted to this token:</MudText>
+            <MudStack Row="true" Wrap="Wrap.Wrap" Spacing="1">
+                @foreach (var scope in _scopes)
+                {
+                    <MudChip T="string" Color="Color.Primary" Size="Size.Small">@scope</MudChip>
+                }
+            </MudStack>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter]
+    public PersonalAccessToken Token { get; set; } = default!;
+
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private List<string> _scopes = [];
+
+    protected override void OnParametersSet()
+    {
+        try
+        {
+            _scopes = JsonSerializer.Deserialize<List<string>>(Token.Scopes) ?? [];
+        }
+        catch
+        {
+            _scopes = [];
+        }
+    }
+
+    private void Close() => MudDialog.Close();
+}

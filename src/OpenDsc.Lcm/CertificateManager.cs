@@ -18,6 +18,7 @@ public partial class CertificateManager : ICertificateManager
 {
     private readonly IOptionsMonitor<LcmConfig> _lcmMonitor;
     private readonly ILogger<CertificateManager> _logger;
+    private TimeSpan? _overrideRotationInterval;
 
     public CertificateManager(
         IOptionsMonitor<LcmConfig> lcmMonitor,
@@ -56,6 +57,7 @@ public partial class CertificateManager : ICertificateManager
     /// </summary>
     private X509Certificate2? GetOrCreateManagedCertificate(PullServerSettings pullServer)
     {
+        var rotationInterval = _overrideRotationInterval ?? pullServer.CertificateRotationInterval;
         var certPath = pullServer.CertificatePath;
 
         if (string.IsNullOrWhiteSpace(certPath))
@@ -79,7 +81,8 @@ public partial class CertificateManager : ICertificateManager
                     pullServer.CertificatePassword,
                     X509KeyStorageFlags.Exportable | X509KeyStorageFlags.PersistKeySet);
 
-                if (existingCert.NotAfter > DateTimeOffset.UtcNow.AddDays(30))
+                var minimumValidity = rotationInterval / 4;
+                if (existingCert.NotAfter > DateTimeOffset.UtcNow + minimumValidity)
                 {
                     LogCertificateLoaded(existingCert.Thumbprint);
                     return existingCert;
@@ -94,7 +97,7 @@ public partial class CertificateManager : ICertificateManager
             }
         }
 
-        var newCert = GenerateSelfSignedCertificate();
+        var newCert = GenerateSelfSignedCertificate(rotationInterval);
         SaveCertificate(newCert, certPath, pullServer.CertificatePassword);
         pullServer.CertificateThumbprint = newCert.Thumbprint;
         LogCertificateGenerated(newCert.Thumbprint);
@@ -134,7 +137,7 @@ public partial class CertificateManager : ICertificateManager
     /// <summary>
     /// Generates a new self-signed certificate.
     /// </summary>
-    private X509Certificate2 GenerateSelfSignedCertificate()
+    private X509Certificate2 GenerateSelfSignedCertificate(TimeSpan rotationInterval)
     {
         using var rsa = RSA.Create(2048);
 
@@ -149,7 +152,8 @@ public partial class CertificateManager : ICertificateManager
                 [new Oid("1.3.6.1.5.5.7.3.2")], // Client Authentication
                 false));
 
-        var cert = request.CreateSelfSigned(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddDays(90));
+        var lifetime = rotationInterval + rotationInterval / 2;
+        var cert = request.CreateSelfSigned(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow + lifetime);
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
@@ -170,6 +174,14 @@ public partial class CertificateManager : ICertificateManager
     }
 
     /// <summary>
+    /// Overrides the rotation interval used when creating a new managed certificate.
+    /// </summary>
+    public void SetRotationInterval(TimeSpan interval)
+    {
+        _overrideRotationInterval = interval;
+    }
+
+    /// <summary>
     /// Checks if the current certificate needs rotation.
     /// </summary>
     public bool ShouldRotateCertificate(X509Certificate2? cert, PullServerSettings pullServer)
@@ -184,9 +196,7 @@ public partial class CertificateManager : ICertificateManager
             return false;
         }
 
-        var totalLifetime = cert.NotAfter - cert.NotBefore;
-        var rotationThreshold = totalLifetime * 2 / 3;
-        var rotationTime = cert.NotBefore + rotationThreshold;
+        var rotationTime = cert.NotBefore + (_overrideRotationInterval ?? pullServer.CertificateRotationInterval);
 
         return DateTimeOffset.UtcNow >= rotationTime;
     }
@@ -209,7 +219,7 @@ public partial class CertificateManager : ICertificateManager
             return null;
         }
 
-        var newCert = GenerateSelfSignedCertificate();
+        var newCert = GenerateSelfSignedCertificate(pullServer.CertificateRotationInterval);
         SaveCertificate(newCert, certPath, pullServer.CertificatePassword);
         pullServer.CertificateThumbprint = newCert.Thumbprint;
         LogCertificateRotated(newCert.Thumbprint);
@@ -220,7 +230,7 @@ public partial class CertificateManager : ICertificateManager
     [LoggerMessage(EventId = EventIds.PullServerNotConfigured, Level = LogLevel.Error, Message = "Pull server not configured")]
     private partial void LogPullServerNotConfigured();
 
-    [LoggerMessage(EventId = EventIds.CertificateLoaded, Level = LogLevel.Information, Message = "Certificate loaded: {Thumbprint}")]
+    [LoggerMessage(EventId = EventIds.CertificateLoaded, Level = LogLevel.Debug, Message = "Certificate loaded: {Thumbprint}")]
     private partial void LogCertificateLoaded(string thumbprint);
 
     [LoggerMessage(EventId = EventIds.CertificateExpiringSoon, Level = LogLevel.Warning, Message = "Certificate {Thumbprint} expiring soon: {ExpirationDate}")]
@@ -238,7 +248,7 @@ public partial class CertificateManager : ICertificateManager
     [LoggerMessage(EventId = EventIds.CertificateNotFoundInStore, Level = LogLevel.Error, Message = "Certificate not found in store: {Thumbprint}")]
     private partial void LogCertificateNotFoundInStore(string thumbprint);
 
-    [LoggerMessage(EventId = EventIds.CertificateLoadedFromStore, Level = LogLevel.Information, Message = "Certificate loaded from store: {Thumbprint}")]
+    [LoggerMessage(EventId = EventIds.CertificateLoadedFromStore, Level = LogLevel.Debug, Message = "Certificate loaded from store: {Thumbprint}")]
     private partial void LogCertificateLoadedFromStore(string thumbprint);
 
     [LoggerMessage(EventId = EventIds.CertificateRotated, Level = LogLevel.Information, Message = "Certificate rotated: {Thumbprint}")]

@@ -42,7 +42,7 @@ public interface IResourceAuthorizationService
 /// <summary>
 /// Resource authorization service implementation.
 /// </summary>
-public class ResourceAuthorizationService(ServerDbContext db) : IResourceAuthorizationService
+public sealed partial class ResourceAuthorizationService(ServerDbContext db, ILogger<ResourceAuthorizationService> logger) : IResourceAuthorizationService
 {
     public async Task<bool> CanReadConfigurationAsync(Guid userId, Guid configurationId)
     {
@@ -223,6 +223,7 @@ public class ResourceAuthorizationService(ServerDbContext db) : IResourceAuthori
         }
 
         await db.SaveChangesAsync();
+        LogPermissionGrantedConfiguration(configurationId, principalId, permission);
     }
 
     public async Task GrantCompositeConfigurationPermissionAsync(Guid compositeConfigurationId, Guid principalId, PrincipalType principalType, ResourcePermission permission, Guid grantedByUserId)
@@ -251,6 +252,7 @@ public class ResourceAuthorizationService(ServerDbContext db) : IResourceAuthori
         }
 
         await db.SaveChangesAsync();
+        LogPermissionGrantedCompositeConfiguration(compositeConfigurationId, principalId, permission);
     }
 
     public async Task GrantParameterPermissionAsync(Guid parameterId, Guid principalId, PrincipalType principalType, ResourcePermission permission, Guid grantedByUserId)
@@ -279,6 +281,7 @@ public class ResourceAuthorizationService(ServerDbContext db) : IResourceAuthori
         }
 
         await db.SaveChangesAsync();
+        LogPermissionGrantedParameter(parameterId, principalId, permission);
     }
 
     public async Task RevokeConfigurationPermissionAsync(Guid configurationId, Guid principalId, PrincipalType principalType)
@@ -290,6 +293,7 @@ public class ResourceAuthorizationService(ServerDbContext db) : IResourceAuthori
         {
             db.ConfigurationPermissions.Remove(permission);
             await db.SaveChangesAsync();
+            LogPermissionRevokedConfiguration(configurationId, principalId);
         }
     }
 
@@ -302,6 +306,7 @@ public class ResourceAuthorizationService(ServerDbContext db) : IResourceAuthori
         {
             db.CompositeConfigurationPermissions.Remove(permission);
             await db.SaveChangesAsync();
+            LogPermissionRevokedCompositeConfiguration(compositeConfigurationId, principalId);
         }
     }
 
@@ -314,6 +319,7 @@ public class ResourceAuthorizationService(ServerDbContext db) : IResourceAuthori
         {
             db.ParameterPermissions.Remove(permission);
             await db.SaveChangesAsync();
+            LogPermissionRevokedParameter(parameterId, principalId);
         }
     }
 
@@ -435,4 +441,22 @@ public class ResourceAuthorizationService(ServerDbContext db) : IResourceAuthori
             .Where(p => p.ParameterId == parameterId)
             .ToListAsync();
     }
+
+    [LoggerMessage(EventId = EventIds.PermissionGrantedConfiguration, Level = LogLevel.Information, Message = "Permission {Permission} granted on configuration {ConfigurationId} to principal {PrincipalId}")]
+    private partial void LogPermissionGrantedConfiguration(Guid configurationId, Guid principalId, ResourcePermission permission);
+
+    [LoggerMessage(EventId = EventIds.PermissionRevokedConfiguration, Level = LogLevel.Information, Message = "Permission revoked on configuration {ConfigurationId} from principal {PrincipalId}")]
+    private partial void LogPermissionRevokedConfiguration(Guid configurationId, Guid principalId);
+
+    [LoggerMessage(EventId = EventIds.PermissionGrantedCompositeConfiguration, Level = LogLevel.Information, Message = "Permission {Permission} granted on composite configuration {CompositeConfigurationId} to principal {PrincipalId}")]
+    private partial void LogPermissionGrantedCompositeConfiguration(Guid compositeConfigurationId, Guid principalId, ResourcePermission permission);
+
+    [LoggerMessage(EventId = EventIds.PermissionRevokedCompositeConfiguration, Level = LogLevel.Information, Message = "Permission revoked on composite configuration {CompositeConfigurationId} from principal {PrincipalId}")]
+    private partial void LogPermissionRevokedCompositeConfiguration(Guid compositeConfigurationId, Guid principalId);
+
+    [LoggerMessage(EventId = EventIds.PermissionGrantedParameter, Level = LogLevel.Information, Message = "Permission {Permission} granted on parameter {ParameterId} to principal {PrincipalId}")]
+    private partial void LogPermissionGrantedParameter(Guid parameterId, Guid principalId, ResourcePermission permission);
+
+    [LoggerMessage(EventId = EventIds.PermissionRevokedParameter, Level = LogLevel.Information, Message = "Permission revoked on parameter {ParameterId} from principal {PrincipalId}")]
+    private partial void LogPermissionRevokedParameter(Guid parameterId, Guid principalId);
 }

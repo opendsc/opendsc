@@ -29,6 +29,10 @@ public static class RegistrationKeyEndpoints
             .WithSummary("List registration keys")
             .WithDescription("Returns all registration keys with their usage statistics.");
 
+        group.MapPut("/{keyId:guid}", UpdateRegistrationKey)
+            .WithSummary("Update registration key")
+            .WithDescription("Updates the description of a registration key.");
+
         group.MapDelete("/{keyId:guid}", RevokeRegistrationKey)
             .WithSummary("Revoke registration key")
             .WithDescription("Revokes a registration key, preventing further use.");
@@ -50,7 +54,8 @@ public static class RegistrationKeyEndpoints
             CreatedAt = DateTimeOffset.UtcNow,
             MaxUses = request.MaxUses,
             CurrentUses = 0,
-            IsRevoked = false
+            IsRevoked = false,
+            Description = request.Description
         };
 
         db.RegistrationKeys.Add(registrationKey);
@@ -64,7 +69,8 @@ public static class RegistrationKeyEndpoints
             CreatedAt = registrationKey.CreatedAt,
             MaxUses = registrationKey.MaxUses,
             CurrentUses = registrationKey.CurrentUses,
-            IsRevoked = registrationKey.IsRevoked
+            IsRevoked = registrationKey.IsRevoked,
+            Description = registrationKey.Description
         });
     }
 
@@ -82,11 +88,40 @@ public static class RegistrationKeyEndpoints
                 CreatedAt = k.CreatedAt,
                 MaxUses = k.MaxUses,
                 CurrentUses = k.CurrentUses,
-                IsRevoked = k.IsRevoked
+                IsRevoked = k.IsRevoked,
+                Description = k.Description
             })
             .ToListAsync(cancellationToken);
 
         return TypedResults.Ok(keys);
+    }
+
+    private static async Task<Results<Ok<RegistrationKeyResponse>, NotFound<ErrorResponse>>> UpdateRegistrationKey(
+        Guid keyId,
+        UpdateRegistrationKeyRequest request,
+        ServerDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var key = await db.RegistrationKeys.FindAsync([keyId], cancellationToken);
+        if (key is null)
+        {
+            return TypedResults.NotFound(new ErrorResponse { Error = "Registration key not found." });
+        }
+
+        key.Description = request.Description;
+        await db.SaveChangesAsync(cancellationToken);
+
+        return TypedResults.Ok(new RegistrationKeyResponse
+        {
+            Id = key.Id,
+            Key = null,
+            ExpiresAt = key.ExpiresAt,
+            CreatedAt = key.CreatedAt,
+            MaxUses = key.MaxUses,
+            CurrentUses = key.CurrentUses,
+            IsRevoked = key.IsRevoked,
+            Description = key.Description
+        });
     }
 
     private static async Task<Results<NoContent, NotFound<ErrorResponse>>> RevokeRegistrationKey(

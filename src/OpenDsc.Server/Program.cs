@@ -2,17 +2,33 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
+using System.Runtime.InteropServices;
+
 using Microsoft.AspNetCore.Server.Kestrel.Https;
+
+using MudBlazor.Services;
 
 using OpenDsc.Server;
 using OpenDsc.Server.Authentication;
+using OpenDsc.Server.Components;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Endpoints;
+using OpenDsc.Server.Middleware;
 using OpenDsc.Server.Services;
 
 using Scalar.AspNetCore;
 
-var builder = WebApplication.CreateSlimBuilder(args);
+var builder = WebApplication.CreateBuilder(args);
+
+var configDir = ServerPaths.GetServerConfigDirectory();
+builder.Configuration
+    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
+    .AddJsonFile(Path.Combine(configDir, "appsettings.json"), optional: true, reloadOnChange: true)
+    .AddEnvironmentVariables()
+    .AddCommandLine(args);
+
+builder.Services.Configure<ServerConfig>(builder.Configuration.GetSection("Server:Data"));
 
 builder.WebHost.ConfigureKestrel((context, options) =>
 {
@@ -20,7 +36,7 @@ builder.WebHost.ConfigureKestrel((context, options) =>
     {
         options.ConfigureHttpsDefaults(httpsOptions =>
         {
-            httpsOptions.ClientCertificateMode = ClientCertificateMode.RequireCertificate;
+            httpsOptions.ClientCertificateMode = ClientCertificateMode.AllowCertificate;
             httpsOptions.AllowAnyClientCertificate();
         });
     }
@@ -33,15 +49,63 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 
 builder.Services.AddSingleton(SourceGenerationContext.Default.Options);
 
+builder.Services.AddHttpContextAccessor();
+
 builder.Services.AddOpenApi();
+
+builder.Services.AddRazorComponents()
+    .AddInteractiveServerComponents();
+
+builder.Services.AddMudServices();
+
+builder.Services.AddScoped<ThemeService>();
 
 builder.Services.AddServerDatabase(builder.Configuration);
 builder.Services.AddServerAuthentication(builder.Environment);
 
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy("reports.write", policy => policy.RequireAuthenticatedUser())
+    .AddPolicy("configurations.read", policy => policy.RequireAuthenticatedUser())
+    .AddPolicy("configurations.write", policy => policy.RequireAuthenticatedUser())
+    .AddPolicy("parameters.read", policy => policy.RequireAuthenticatedUser())
+    .AddPolicy("parameters.write", policy => policy.RequireAuthenticatedUser())
+    .AddPolicy("settings.read", policy => policy.RequireAuthenticatedUser())
+    .AddPolicy("settings.write", policy => policy.RequireAuthenticatedUser());
+
 builder.Services.AddSingleton<IParameterMerger, ParameterMerger>();
 builder.Services.AddScoped<IParameterMergeService, ParameterMergeService>();
 builder.Services.AddScoped<IParameterSchemaService, ParameterSchemaService>();
+builder.Services.AddScoped<IParameterSchemaBuilder, ParameterSchemaBuilder>();
+builder.Services.AddScoped<IParameterValidator, ParameterValidator>();
+builder.Services.AddScoped<IParameterCompatibilityService, ParameterCompatibilityService>();
 builder.Services.AddScoped<IVersionRetentionService, VersionRetentionService>();
+builder.Services.AddHostedService<RetentionBackgroundService>();
+builder.Services.AddScoped<IConfigurationService, ConfigurationService>();
+builder.Services.AddScoped<IParameterService, ParameterService>();
+builder.Services.AddScoped<IJsonYamlConverter, JsonYamlConverter>();
+builder.Services.AddSingleton<NodeEndpoints>();
+
+if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+{
+    builder.Logging.AddSystemdConsole(options =>
+    {
+        options.IncludeScopes = false;
+        options.TimestampFormat = "HH:mm:ss ";
+    });
+}
+else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+{
+    builder.Logging.AddSimpleConsole(options =>
+    {
+        options.SingleLine = true;
+        options.TimestampFormat = "HH:mm:ss ";
+    });
+}
+
+#if WINDOWS
+builder.Services.AddWindowsService();
+builder.Logging.AddEventLog();
+#endif
 
 var app = builder.Build();
 
@@ -58,8 +122,16 @@ if (app.Environment.IsDevelopment())
     });
 }
 
+app.UseStaticFiles();
+
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseMiddleware<PasswordChangeEnforcementMiddleware>();
+
+app.UseAntiforgery();
+
+app.MapRazorComponents<App>()
+    .AddInteractiveServerRenderMode();
 
 app.MapAuthenticationEndpoints();
 app.MapUserEndpoints();
@@ -76,6 +148,7 @@ app.MapCompositeConfigurationEndpoints();
 app.MapReportEndpoints();
 app.MapSettingsEndpoints();
 app.MapValidationSettingsEndpoints();
+app.MapRetentionSettingsEndpoints();
 app.MapConfigurationSettingsEndpoints();
 app.MapRegistrationKeyEndpoints();
 app.MapRetentionEndpoints();

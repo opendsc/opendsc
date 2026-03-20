@@ -7,7 +7,9 @@ using System.Net;
 
 using AwesomeAssertions;
 
+using OpenDsc.Lcm.Contracts;
 using OpenDsc.Server.Contracts;
+using OpenDsc.Server.Entities;
 using OpenDsc.Server.FunctionalTests.DatabaseProviders;
 
 using Xunit;
@@ -65,6 +67,15 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
     public async Task CreateVersionAndPublish_WorksCorrectly()
     {
         var compositeName = $"composite-version-{Guid.NewGuid()}";
+        var childName = $"child-pub-{Guid.NewGuid()}";
+
+        using var childContent = new MultipartFormDataContent();
+        childContent.Add(new StringContent(childName), "name");
+        childContent.Add(new StringContent("main.dsc.yaml"), "entryPoint");
+        var childFile = new ByteArrayContent("resources: []"u8.ToArray());
+        childFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+        childContent.Add(childFile, "files", "main.dsc.yaml");
+        await AuthClient.PostAsync("/api/v1/configurations", childContent);
 
         var createRequest = new CreateCompositeConfigurationRequest
         {
@@ -80,14 +91,20 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
         versionResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
         var versionDto = await versionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDto>();
-        versionDto!.IsDraft.Should().BeTrue();
+        versionDto!.Status.Should().Be(ConfigurationVersionStatus.Draft);
+
+        var addChildRequest = new AddChildConfigurationRequest
+        {
+            ChildConfigurationName = childName
+        };
+        await AuthClient.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto!.Version}/children", addChildRequest);
 
         var publishResponse = await AuthClient.PutAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto.Version}/publish", null);
         publishResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var getVersionResponse = await AuthClient.GetAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto.Version}");
         var publishedVersion = await getVersionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDto>();
-        publishedVersion!.IsDraft.Should().BeFalse();
+        publishedVersion!.Status.Should().Be(ConfigurationVersionStatus.Published);
     }
 
     [Fact]
@@ -143,6 +160,7 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
         child1File.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         child1Content.Add(child1File, "files", "main.dsc.yaml");
         await AuthClient.PostAsync("/api/v1/configurations", child1Content);
+        await AuthClient.PutAsync($"/api/v1/configurations/{childName1}/versions/1.0.0/publish", null);
 
         using var child2Content = new MultipartFormDataContent();
         child2Content.Add(new StringContent(childName2), "name");
@@ -151,6 +169,7 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
         child2File.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         child2Content.Add(child2File, "files", "main.dsc.yaml");
         await AuthClient.PostAsync("/api/v1/configurations", child2Content);
+        await AuthClient.PutAsync($"/api/v1/configurations/{childName2}/versions/1.0.0/publish", null);
 
         var createCompositeRequest = new CreateCompositeConfigurationRequest
         {
