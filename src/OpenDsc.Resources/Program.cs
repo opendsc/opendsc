@@ -14,6 +14,7 @@ using OptionalFeatureNs = OpenDsc.Resource.Windows.OptionalFeature;
 using FileSystemAclNs = OpenDsc.Resource.Windows.FileSystem.Acl;
 using ScheduledTaskNs = OpenDsc.Resource.Windows.ScheduledTask;
 using UserRightNs = OpenDsc.Resource.Windows.UserRight;
+using AuditPolicyNs = OpenDsc.Resource.Windows.AuditPolicy;
 #endif
 
 using SqlServerLoginNs = OpenDsc.Resource.SqlServer.Login;
@@ -50,6 +51,7 @@ var optionalFeatureResource = new OptionalFeatureNs.Resource(OpenDsc.Resource.Wi
 var fileSystemAclResource = new FileSystemAclNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
 var scheduledTaskResource = new ScheduledTaskNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
 var userRightResource = new UserRightNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
+var auditPolicyResource = new AuditPolicyNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
 #endif
 
 var sqlServerLoginResource = new SqlServerLoginNs.Resource(OpenDsc.Resource.SqlServer.SourceGenerationContext.Default);
@@ -95,7 +97,8 @@ command
     .AddResource<OptionalFeatureNs.Resource, OptionalFeatureNs.Schema>(optionalFeatureResource)
     .AddResource<FileSystemAclNs.Resource, FileSystemAclNs.Schema>(fileSystemAclResource)
     .AddResource<ScheduledTaskNs.Resource, ScheduledTaskNs.Schema>(scheduledTaskResource)
-    .AddResource<UserRightNs.Resource, UserRightNs.Schema>(userRightResource);
+    .AddResource<UserRightNs.Resource, UserRightNs.Schema>(userRightResource)
+    .AddResource<AuditPolicyNs.Resource, AuditPolicyNs.Schema>(auditPolicyResource);
 #endif
 
 command.AddResource<SqlServerLoginNs.Resource, SqlServerLoginNs.Schema>(sqlServerLoginResource);
