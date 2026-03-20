@@ -40,7 +40,7 @@
                 Id = Guid.NewGuid(),
                 Key = keyValue,
                 CreatedAt = DateTimeOffset.UtcNow,
-                ExpiresAt = new DateTimeOffset(expirationDate!.Value),
+                ExpiresAt = new DateTimeOffset(DateTime.SpecifyKind(expirationDate!.Value, DateTimeKind.Unspecified), TimeSpan.Zero),
                 MaxUses = maxUses > 0 ? maxUses : null,
                 CurrentUses = 0,
                 IsRevoked = false,

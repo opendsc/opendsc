@@ -1,12 +1,8 @@
 @page "/login"
 @rendermode InteractiveServer
-@using System.Text.Json
-@using Microsoft.EntityFrameworkCore
 @using MudBlazor
-@using OpenDsc.Server.Data
-@using OpenDsc.Server.Entities
-@using OpenDsc.Server.Services
 @inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
 
 <MudContainer MaxWidth="MaxWidth.Small" Style="display: flex; align-items: center; justify-content: center; min-height: 100vh;">
     <MudCard Style="width: 100%; max-width: 400px;">
@@ -69,45 +65,15 @@
 
         try
         {
-            // Use JavaScript to call login API and handle the response
-            await JSRuntime.InvokeVoidAsync("eval", $@"
-                (async function() {{
-                    try {{
-                        const response = await fetch('/api/v1/auth/login', {{
-                            method: 'POST',
-                            headers: {{ 'Content-Type': 'application/json' }},
-                            body: JSON.stringify({{
-                                username: {System.Text.Json.JsonSerializer.Serialize(loginModel.Username)},
-                                password: {System.Text.Json.JsonSerializer.Serialize(loginModel.Password)}
-                            }})
-                        }});
-
-                        if (!response.ok) {{
-                            throw new Error('Invalid username or password');
-                        }}
-
-                        const data = await response.json();
-                        if (data.requirePasswordChange) {{
-                            window.location.href = '/change-password';
-                        }} else {{
-                            window.location.href = '/';
-                        }}
-                    }} catch (error) {{
-                        window.loginError = error.message;
-                    }}
-                }})();
-            ");
-
-            // Wait a bit for the redirect or error
-            await Task.Delay(500);
-
-            // Check if there was an error
-            var error = await JSRuntime.InvokeAsync<string>("eval", "window.loginError || ''");
-            if (!string.IsNullOrEmpty(error))
+            var result = await JSRuntime.InvokeAsync<LoginResult>("loginApi.login", loginModel.Username, loginModel.Password);
+            if (!result.Success)
             {
-                errorMessage = error;
-                await JSRuntime.InvokeVoidAsync("eval", "window.loginError = null");
+                errorMessage = result.Error ?? "Invalid username or password";
+                return;
             }
+
+            var redirectUrl = result.RequirePasswordChange ? "/change-password" : "/";
+            Navigation.NavigateTo(redirectUrl, forceLoad: true);
         }
         catch (Exception ex)
         {
@@ -123,5 +89,12 @@
     {
         public string Username { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
+    }
+
+    private sealed class LoginResult
+    {
+        public bool Success { get; set; }
+        public string? Error { get; set; }
+        public bool RequirePasswordChange { get; set; }
     }
 }

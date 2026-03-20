@@ -1,5 +1,5 @@
 @page "/access-denied"
-@inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
 
 <MudContainer MaxWidth="MaxWidth.Medium" Class="mt-8">
     <div class="d-flex flex-column align-center">
@@ -16,8 +16,8 @@
 </MudContainer>
 
 @code {
-    private async Task Logout()
+    private void Logout()
     {
-        await JSRuntime.InvokeVoidAsync("eval", "fetch('/api/v1/auth/logout', { method: 'POST' }).then(() => location.href = '/login')");
+        Navigation.NavigateTo("/api/v1/auth/logout-redirect", forceLoad: true);
     }
 }

@@ -78,9 +78,13 @@
             newScopeType.Precedence = -(allScopeTypes.Count + 1);
             await Db.SaveChangesAsync();
 
-            // Phase 2: Renumber - Default first, new scopes, Node last
+            // Phase 2: Renumber - Default first, other system scopes, user scopes, new scope, Node last
             var defaultScope = allScopeTypes.FirstOrDefault(s => s.IsSystem && s.Name == "Default");
-            var otherScopes = allScopeTypes.Where(s => !s.IsSystem).OrderBy(s => s.CreatedAt).ToList();
+            var otherSystemScopes = allScopeTypes
+                .Where(s => s.IsSystem && s.Name != "Default" && s.Name != "Node")
+                .OrderBy(s => s.Precedence)
+                .ToList();
+            var userScopes = allScopeTypes.Where(s => !s.IsSystem).OrderBy(s => s.CreatedAt).ToList();
 
             int precedence = 0;
             if (defaultScope != null)
@@ -88,7 +92,12 @@
                 defaultScope.Precedence = precedence++;
             }
 
-            foreach (var scope in otherScopes)
+            foreach (var scope in otherSystemScopes)
+            {
+                scope.Precedence = precedence++;
+            }
+
+            foreach (var scope in userScopes)
             {
                 scope.Precedence = precedence++;
             }

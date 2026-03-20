@@ -110,8 +110,7 @@
         {
             // Create an in-memory file from the content
             var bytes = Encoding.UTF8.GetBytes(fileContent);
-            var stream = new MemoryStream(bytes);
-            var browserFile = new ManualBrowserFile(fileName, stream, bytes.Length);
+            var browserFile = new ManualBrowserFile(fileName, bytes);
 
             var success = await ApiClient.AddFilesToVersionAsync(
                 ConfigurationName,
@@ -140,30 +139,16 @@
     }
 
     // Helper class to create IBrowserFile from manual content
-    private class ManualBrowserFile : IBrowserFile
+    private sealed class ManualBrowserFile(string name, byte[] bytes) : IBrowserFile
     {
-        private readonly MemoryStream _stream;
-
-        public ManualBrowserFile(string name, MemoryStream stream, long size)
-        {
-            Name = name;
-            _stream = stream;
-            Size = size;
-            LastModified = DateTimeOffset.UtcNow;
-            ContentType = name.EndsWith(".json", StringComparison.OrdinalIgnoreCase)
-                ? "application/json"
-                : "application/x-yaml";
-        }
-
-        public string Name { get; }
-        public DateTimeOffset LastModified { get; }
-        public long Size { get; }
-        public string ContentType { get; }
+        public string Name { get; } = name;
+        public DateTimeOffset LastModified { get; } = DateTimeOffset.UtcNow;
+        public long Size { get; } = bytes.Length;
+        public string ContentType { get; } = name.EndsWith(".json", StringComparison.OrdinalIgnoreCase)
+            ? "application/json"
+            : "application/x-yaml";
 
         public Stream OpenReadStream(long maxAllowedSize = 512000, CancellationToken cancellationToken = default)
-        {
-            _stream.Position = 0;
-            return _stream;
-        }
+            => new MemoryStream(bytes);
     }
 }

@@ -196,7 +196,7 @@ public partial class CertificateManager : ICertificateManager
             return false;
         }
 
-        var rotationTime = cert.NotBefore + pullServer.CertificateRotationInterval;
+        var rotationTime = cert.NotBefore + (_overrideRotationInterval ?? pullServer.CertificateRotationInterval);
 
         return DateTimeOffset.UtcNow >= rotationTime;
     }
