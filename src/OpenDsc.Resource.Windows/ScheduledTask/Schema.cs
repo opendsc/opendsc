@@ -136,7 +136,7 @@ public sealed class Schema
 
     [Description("Task Scheduler compatibility level.")]
     [Nullable(false)]
-    public TaskCompatibility? Compatibility { get; set; }
+    public TaskCompatibilityLevel? Compatibility { get; set; }
 
     [Description("Do not start the task in a Remote Desktop session (requires V2_1 or later).")]
     [Nullable(false)]

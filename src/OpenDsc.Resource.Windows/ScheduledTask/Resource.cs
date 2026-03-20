@@ -116,7 +116,7 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
             IdleRestartOnIdle = task.Definition.Settings.IdleSettings.RestartOnIdle,
             IdleStopOnIdleEnd = task.Definition.Settings.IdleSettings.StopOnIdleEnd,
             Hidden = task.Definition.Settings.Hidden,
-            Compatibility = task.Definition.Settings.Compatibility,
+            Compatibility = (TaskCompatibilityLevel)(int)task.Definition.Settings.Compatibility,
             DisallowStartOnRemoteAppSession = task.Definition.Settings.DisallowStartOnRemoteAppSession,
             LogonType = task.Definition.Principal.LogonType
         };
@@ -229,7 +229,7 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
 
         if (instance.Compatibility is not null)
         {
-            td.Settings.Compatibility = instance.Compatibility.Value;
+            td.Settings.Compatibility = (Microsoft.Win32.TaskScheduler.TaskCompatibility)(int)instance.Compatibility.Value;
         }
 
         if (instance.DisallowStartOnRemoteAppSession is not null)
@@ -387,7 +387,7 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
                 IdleRestartOnIdle = task.Definition.Settings.IdleSettings.RestartOnIdle,
                 IdleStopOnIdleEnd = task.Definition.Settings.IdleSettings.StopOnIdleEnd,
                 Hidden = task.Definition.Settings.Hidden,
-                Compatibility = task.Definition.Settings.Compatibility,
+                Compatibility = (TaskCompatibilityLevel)(int)task.Definition.Settings.Compatibility,
                 DisallowStartOnRemoteAppSession = task.Definition.Settings.DisallowStartOnRemoteAppSession,
                 LogonType = task.Definition.Principal.LogonType
             };
