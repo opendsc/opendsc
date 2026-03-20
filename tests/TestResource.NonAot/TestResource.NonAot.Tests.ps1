@@ -1,7 +1,7 @@
 Describe 'TestResource.NonAot' {
     BeforeAll {
         $configuration = if ($env:BUILD_CONFIGURATION) { $env:BUILD_CONFIGURATION } else { 'Release' }
-        $publishPath = Join-Path $PSScriptRoot "..\..\artifacts\TestResource.NonAot" | Resolve-Path | Select-Object -ExpandProperty ProviderPath
+        $publishPath = Join-Path $PSScriptRoot '..\..\artifacts\TestResource.NonAot' | Resolve-Path | Select-Object -ExpandProperty ProviderPath
         $env:DSC_RESOURCE_PATH = $publishPath
         $script:tempTestFile = Join-Path $TestDrive 'test-file.txt'
         $exeSuffix = if ($IsWindows) { '.exe' } else { '' }
@@ -27,8 +27,8 @@ Describe 'TestResource.NonAot' {
             $script:nonAotResource.description | Should -Be 'Non-AOT test resource for file existence.'
         }
 
-        It 'Should have tags including non-aot' {
-            $script:nonAotResource.manifest.tags | Should -Contain 'non-aot'
+        It 'Should have tags including nonAot' {
+            $script:nonAotResource.manifest.tags | Should -Contain 'nonAot'
             $script:nonAotResource.manifest.tags | Should -Contain 'test'
             $script:nonAotResource.manifest.tags | Should -Contain 'file'
         }
