@@ -9,11 +9,6 @@ namespace OpenDsc.Server.Services;
 public interface IParameterSchemaService
 {
     /// <summary>
-    /// Calculates SHA256 hash of parameter schema definition.
-    /// </summary>
-    string CalculateSchemaHash(string schemaDefinition);
-
-    /// <summary>
     /// Parses parameter block from DSC configuration YAML.
     /// </summary>
     Task<string?> ParseParameterBlockAsync(string configurationContent, CancellationToken cancellationToken = default);
@@ -32,6 +27,11 @@ public interface IParameterSchemaService
     /// Finds or creates parameter schema for a configuration version.
     /// </summary>
     Task<ParameterSchema?> FindOrCreateSchemaAsync(Guid configurationId, string? schemaDefinition, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Generates JSON Schema from DSC parameters and stores it.
+    /// </summary>
+    Task<ParameterSchema> GenerateAndStoreSchemaAsync(Guid configurationId, string parametersJson, string version, CancellationToken cancellationToken = default);
 }
 
 public record SchemaChanges(

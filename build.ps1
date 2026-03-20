@@ -107,6 +107,16 @@ if (-not $SkipBuild) {
                 }
             }
 
+            Write-Host 'Building Pull Server...' -ForegroundColor Cyan
+            $serverProj = Join-Path $PSScriptRoot 'src\OpenDsc.Server\OpenDsc.Server.csproj'
+            if (Test-Path $serverProj) {
+                $serverDir = Join-Path $PSScriptRoot 'artifacts\Server'
+                dotnet publish $serverProj -c $Configuration -f net10.0-windows -o $serverDir -p:GenerateDocumentationFile=false
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Build failed for OpenDsc.Server with exit code $LASTEXITCODE"
+                }
+            }
+
             if ($Portable) {
                 Write-Host 'Building self-contained portable version...' -ForegroundColor Cyan
                 $portableDir = Join-Path $PSScriptRoot 'artifacts\portable'
@@ -160,6 +170,17 @@ if (-not $SkipBuild) {
                     throw "Build failed for LCM MSI installer with exit code $LASTEXITCODE"
                 }
                 Write-Host 'LCM MSI installer built successfully!' -ForegroundColor Green
+                Write-Host "Output location: $msiDir" -ForegroundColor Green
+            }
+
+            Write-Host 'Building Server MSI installer...' -ForegroundColor Cyan
+            $serverWixProj = Join-Path $PSScriptRoot 'packaging\msi\OpenDsc.Server\OpenDsc.Server.wixproj'
+            if (Test-Path $serverWixProj) {
+                dotnet build $serverWixProj -c $Configuration
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Build failed for Server MSI installer with exit code $LASTEXITCODE"
+                }
+                Write-Host 'Server MSI installer built successfully!' -ForegroundColor Green
                 Write-Host "Output location: $msiDir" -ForegroundColor Green
             }
         }

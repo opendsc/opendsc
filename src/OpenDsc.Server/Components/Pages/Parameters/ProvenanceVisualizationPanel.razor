@@ -1,0 +1,395 @@
+@* Copyright (c) Thomas Nieto - All Rights Reserved *@
+@* You may use, distribute and modify this code under the *@
+@* terms of the MIT license. *@
+
+@rendermode InteractiveServer
+@implements IDisposable
+
+@using Microsoft.EntityFrameworkCore
+@using MudBlazor
+@using BlazorMonaco
+@using BlazorMonaco.Editor
+@using OpenDsc.Server.Entities
+@using OpenDsc.Server.Services
+@using NuGet.Versioning
+@using static OpenDsc.Server.Endpoints.ParameterEndpoints
+@inject IParameterService ParameterApiClient
+@inject ServerDbContext Db
+@inject ThemeService ThemeService
+@inject IJSRuntime JSRuntime
+
+<MudCard>
+    <MudCardContent>
+        <MudGrid Class="mb-2">
+            <MudItem xs="12" sm="6">
+                <MudAutocomplete T="Node"
+                                 @bind-Value="selectedNode"
+                                 @bind-Value:after="OnNodeChanged"
+                                 Label="Node"
+                                 Variant="Variant.Outlined"
+                                 SearchFunc="SearchNodesAsync"
+                                 ToStringFunc="@(n => n?.Fqdn ?? string.Empty)"
+                                 Clearable="true"
+                                 ResetValueOnEmptyText="true"
+                                 CoerceText="true" />
+            </MudItem>
+            <MudItem xs="12" sm="6" class="d-flex align-center">
+                @if (selectedNode != null && configurationName != null)
+                {
+                    <div>
+                        <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary)">Configuration</MudText>
+                        <MudText Typo="Typo.body1">@configurationName</MudText>
+                    </div>
+                }
+                else if (selectedNode != null && !isLoading)
+                {
+                    <MudAlert Severity="Severity.Warning" Dense="true">This node has no assigned configuration.</MudAlert>
+                }
+                @if (selectedNode != null && configurationName != null && provenanceData != null)
+                {
+                    <div class="d-flex align-center gap-2 mt-1">
+                        @if (!string.IsNullOrEmpty(provenanceData.PrereleaseChannel))
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Warning">Channel: @provenanceData.PrereleaseChannel</MudChip>
+                        }
+                        else
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Default">Stable only</MudChip>
+                        }
+                    </div>
+                }
+            </MudItem>
+        </MudGrid>
+
+        @if (selectedNode == null)
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Text">
+                Select a node to view parameter provenance.
+            </MudAlert>
+        }
+        else if (isLoading)
+        {
+            <MudProgressLinear Indeterminate="true" />
+        }
+        else if (provenanceData == null || provenanceData.Provenance.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Text">
+                No active parameters found for this node and configuration.
+            </MudAlert>
+        }
+        else
+        {
+            var overriddenCount = provenanceData.Provenance.Values.Count(p => p.OverriddenBy?.Count > 0);
+            var scopeCount = provenanceData.Provenance.Values.Select(p => GetScopeLabel(p)).Distinct().Count();
+
+            <div class="d-flex align-center gap-2 mb-3">
+                <MudChip T="string" Size="Size.Small">@provenanceData.Provenance.Count parameters</MudChip>
+                @if (overriddenCount > 0)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Warning">@overriddenCount overridden</MudChip>
+                }
+                <MudChip T="string" Size="Size.Small" Color="Color.Info">@scopeCount @(scopeCount == 1 ? "scope" : "scopes") contributing</MudChip>
+            </div>
+
+            <div class="provenance-tree">
+                <div style="display: grid; grid-template-columns: 1fr 220px 1fr 76px; padding: 4px 0; border-bottom: 1px solid var(--mud-palette-divider); margin-bottom: 4px;">
+                    <MudText Typo="Typo.caption" Style="font-weight: 600; color: var(--mud-palette-text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">Parameter</MudText>
+                    <MudText Typo="Typo.caption" Style="font-weight: 600; color: var(--mud-palette-text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">Value</MudText>
+                    <MudText Typo="Typo.caption" Style="font-weight: 600; color: var(--mud-palette-text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">Source</MudText>
+                    <MudText Typo="Typo.caption" Style="font-weight: 600; color: var(--mud-palette-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; text-align: center;">Overrides</MudText>
+                </div>
+                @foreach (var treeNode in treeRoots)
+                {
+                    @RenderTreeNode(treeNode, 0)
+                }
+            </div>
+
+            <MudExpansionPanels Class="mt-4" Elevation="0">
+                <MudExpansionPanel Text="Merged Output (YAML)" Dense="true">
+                    <div style="height: 400px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
+                        <StandaloneCodeEditor @ref="_mergedEditor"
+                                              Id="provenance-merged-editor"
+                                              ConstructionOptions="GetMergedEditorOptions"
+                                              CssClass="monaco-editor-container" />
+                    </div>
+                </MudExpansionPanel>
+            </MudExpansionPanels>
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    private List<Node> nodes = [];
+    private Node? selectedNode;
+    private Guid? selectedConfigurationId;
+    private string? configurationName;
+    private bool isLoading;
+    private ParameterProvenanceDto? provenanceData;
+    private List<ProvenanceTreeNode> treeRoots = [];
+    private StandaloneCodeEditor? _mergedEditor;
+    private string mergedYamlContent = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Db.ChangeTracker.Clear();
+        nodes = await Db.Nodes.AsNoTracking().OrderBy(n => n.Fqdn).ToListAsync();
+        ThemeService.OnThemeChanged += OnThemeChanged;
+    }
+
+    private async Task<IEnumerable<Node>> SearchNodesAsync(string value, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return nodes;
+        }
+
+        return nodes.Where(n => n.Fqdn.Contains(value, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private async Task OnNodeChanged()
+    {
+        provenanceData = null;
+        treeRoots = [];
+        selectedConfigurationId = null;
+        configurationName = null;
+
+        if (selectedNode == null)
+        {
+            return;
+        }
+
+        isLoading = true;
+        StateHasChanged();
+
+        var nodeConfig = await Db.NodeConfigurations
+            .Include(nc => nc.Configuration)
+            .FirstOrDefaultAsync(nc => nc.NodeId == selectedNode.Id);
+
+        if (nodeConfig?.ConfigurationId == null)
+        {
+            isLoading = false;
+            return;
+        }
+
+        selectedConfigurationId = nodeConfig.ConfigurationId;
+        configurationName = nodeConfig.Configuration?.Name;
+
+        provenanceData = await ParameterApiClient.GetNodeParameterProvenanceAsync(
+            selectedNode.Id, selectedConfigurationId.Value);
+
+        if (provenanceData != null)
+        {
+            treeRoots = BuildTree(provenanceData.Provenance);
+            mergedYamlContent = provenanceData.MergedParameters ?? string.Empty;
+        }
+        else
+        {
+            mergedYamlContent = string.Empty;
+        }
+
+        if (_mergedEditor != null)
+        {
+            await _mergedEditor.SetValue(mergedYamlContent);
+        }
+
+        isLoading = false;
+    }
+
+    private StandaloneEditorConstructionOptions GetMergedEditorOptions(StandaloneCodeEditor editor)
+    {
+        return new StandaloneEditorConstructionOptions
+        {
+            AutomaticLayout = true,
+            Language = "yaml",
+            Value = mergedYamlContent,
+            Theme = ThemeService.IsDarkMode ? "vs-dark" : "vs",
+            ReadOnly = true,
+            LineNumbers = "on",
+            Minimap = new EditorMinimapOptions { Enabled = false },
+            ScrollBeyondLastLine = false,
+            FontSize = 14,
+            FontFamily = "'Cascadia Code', 'Courier New', monospace",
+            TabSize = 2,
+            InsertSpaces = true,
+            WordWrap = "off"
+        };
+    }
+
+    private async void OnThemeChanged()
+    {
+        await Global.SetTheme(JSRuntime, ThemeService.IsDarkMode ? "vs-dark" : "vs");
+    }
+
+    public void Dispose()
+    {
+        ThemeService.OnThemeChanged -= OnThemeChanged;
+    }
+
+    private static List<ProvenanceTreeNode> BuildTree(Dictionary<string, ParameterSourceInfo> provenance)
+    {
+        var root = new ProvenanceTreeNode("__root__", "", false);
+
+        foreach (var kvp in provenance.OrderBy(k => k.Key))
+        {
+            var segments = kvp.Key.Split('.');
+            var current = root;
+
+            for (var i = 0; i < segments.Length; i++)
+            {
+                var segment = segments[i];
+                var isLeaf = i == segments.Length - 1;
+                var path = string.Join(".", segments[..(i + 1)]);
+
+                var existing = current.Children.FirstOrDefault(c => c.Name == segment);
+                if (existing == null)
+                {
+                    var child = new ProvenanceTreeNode(segment, path, isLeaf);
+                    if (isLeaf)
+                    {
+                        child.SourceInfo = kvp.Value;
+                    }
+                    current.Children.Add(child);
+                    current = child;
+                }
+                else
+                {
+                    current = existing;
+                }
+            }
+        }
+
+        return root.Children;
+    }
+
+    // Each row uses a CSS grid with 4 columns: 1fr | 220px | 1fr | 52px
+    // Indentation is a spacer inside column 1 only — value/source/count always align with the header.
+    private RenderFragment RenderTreeNode(ProvenanceTreeNode node, int depth) => __builder =>
+    {
+        var indentPx = depth * 20;
+        const string rowGrid = "display: grid; grid-template-columns: 1fr 220px 1fr 76px; align-items: center; min-height: 32px;";
+
+        if (!node.IsLeaf)
+        {
+            <div style="@rowGrid cursor-pointer; border-radius: 4px;"
+                 @onclick="() => node.IsExpanded = !node.IsExpanded">
+                <div class="d-flex align-center py-1">
+                    <span style="width: @(indentPx)px; flex-shrink: 0; display: inline-block;"></span>
+                    <MudIcon Icon="@(node.IsExpanded ? Icons.Material.Filled.ExpandMore : Icons.Material.Filled.ChevronRight)"
+                             Size="Size.Small" Style="color: var(--mud-palette-text-secondary); flex-shrink: 0;" />
+                    <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Small" Class="mx-1"
+                             Style="color: var(--mud-palette-warning-default); flex-shrink: 0;" />
+                    <MudText Typo="Typo.body2" Style="font-family: monospace; font-weight: 600;">@node.Name</MudText>
+                </div>
+                <div></div>
+                <div></div>
+                <div></div>
+            </div>
+
+            @if (node.IsExpanded)
+            {
+                @foreach (var child in node.Children.OrderBy(c => c.IsLeaf ? 1 : 0).ThenBy(c => c.Name))
+                {
+                    @RenderTreeNode(child, depth + 1)
+                }
+            }
+        }
+        else if (node.SourceInfo != null)
+        {
+            var info = node.SourceInfo;
+            var overrideCount = info.OverriddenBy?.Count ?? 0;
+            var scopeColor = GetScopeColor(info.ScopeTypeName);
+            var scopeLabel = GetScopeLabel(info);
+            var rowStyle = overrideCount > 0 ? $"{rowGrid} cursor-pointer; border-radius: 4px;" : $"{rowGrid} border-radius: 4px;";
+            var chevronColor = overrideCount > 0 ? "var(--mud-palette-text-secondary)" : "transparent";
+
+            <div style="@rowStyle"
+                 @onclick="() => { if (overrideCount > 0) node.ShowOverrides = !node.ShowOverrides; }">
+                <div class="d-flex align-center py-1">
+                    <span style="width: @(indentPx)px; flex-shrink: 0; display: inline-block;"></span>
+                    <MudIcon Icon="@(node.ShowOverrides && overrideCount > 0 ? Icons.Material.Filled.ExpandMore : Icons.Material.Filled.ChevronRight)"
+                             Size="Size.Small" Class="mr-1"
+                             Style="@($"color: {chevronColor}; flex-shrink: 0;")" />
+                    <MudText Typo="Typo.body2" Style="font-family: monospace;">@node.Name</MudText>
+                </div>
+                <MudTooltip Text="@(FormatValue(info.Value, full: true))" Placement="Placement.Top">
+                    <MudText Typo="Typo.body2" Style="font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 8px;">
+                        @FormatValue(info.Value)
+                    </MudText>
+                </MudTooltip>
+                <div class="d-flex align-center">
+                    <MudChip T="string" Size="Size.Small" Color="@scopeColor" Variant="Variant.Filled">@scopeLabel</MudChip>
+                    @if (!string.IsNullOrEmpty(info.ResolvedVersion))
+                    {
+                        <MudTooltip Text="@($"Resolved from v{info.ResolvedVersion}")">
+                            <MudChip T="string" Size="Size.Small" Color="@(info.IsPrerelease ? Color.Warning : Color.Default)" Variant="Variant.Outlined" Class="ml-1">v@info.ResolvedVersion</MudChip>
+                        </MudTooltip>
+                    }
+                </div>
+                <div style="text-align: center;">
+                    @if (overrideCount > 0)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined"
+                                 Style="min-width: 0; font-weight: 600;">@overrideCount</MudChip>
+                    }
+                </div>
+            </div>
+
+            @if (node.ShowOverrides && info.OverriddenBy != null)
+            {
+                @foreach (var ov in info.OverriddenBy.OrderByDescending(o => o.Precedence))
+                {
+                    var ovColor = GetScopeColor(ov.ScopeTypeName);
+                    var ovLabel = ov.ScopeValue != null ? $"{ov.ScopeTypeName} / {ov.ScopeValue}" : ov.ScopeTypeName;
+                    <div style="@rowGrid opacity: 0.65;">
+                        <div class="d-flex align-center py-1">
+                            <span style="width: @(indentPx + 20)px; flex-shrink: 0; display: inline-block;"></span>
+                            <MudIcon Icon="@Icons.Material.Filled.SubdirectoryArrowRight" Size="Size.Small"
+                                     Style="color: var(--mud-palette-text-disabled); flex-shrink: 0;" />
+                        </div>
+                        <MudText Typo="Typo.body2" Style="font-family: monospace; text-decoration: line-through; padding-right: 8px;">
+                            @FormatValue(ov.Value)
+                        </MudText>
+                        <div>
+                            <MudChip T="string" Size="Size.Small" Color="@ovColor" Variant="Variant.Outlined">@ovLabel</MudChip>
+                        </div>
+                        <div></div>
+                    </div>
+                }
+            }
+        }
+    };
+
+    private static string FormatValue(object? value, bool full = false)
+    {
+        if (value == null) return "null";
+        var str = value is System.Text.Json.JsonElement el ? el.ToString() : value.ToString() ?? "null";
+        if (!full && str.Length > 40)
+        {
+            return str[..37] + "...";
+        }
+        return str;
+    }
+
+    private static Color GetScopeColor(string scopeTypeName) => scopeTypeName switch
+    {
+        "Default" => Color.Default,
+        "Region" => Color.Primary,
+        "Environment" => Color.Tertiary,
+        "Node" => Color.Warning,
+        _ => Color.Secondary
+    };
+
+    private static string GetScopeLabel(ParameterSourceInfo info) =>
+        info.ScopeValue != null ? $"{info.ScopeTypeName} / {info.ScopeValue}" : info.ScopeTypeName;
+
+    private sealed class ProvenanceTreeNode(string name, string path, bool isLeaf)
+    {
+        public string Name { get; } = name;
+        public string Path { get; } = path;
+        public bool IsLeaf { get; } = isLeaf;
+        public bool IsExpanded { get; set; } = true;
+        public bool ShowOverrides { get; set; }
+        public ParameterSourceInfo? SourceInfo { get; set; }
+        public List<ProvenanceTreeNode> Children { get; } = [];
+    }
+}

@@ -4,6 +4,8 @@
 
 using System.ComponentModel.DataAnnotations;
 
+using OpenDsc.Lcm.Contracts;
+
 namespace OpenDsc.Lcm;
 
 /// <summary>
@@ -26,7 +28,7 @@ public class LcmConfig
     /// <summary>
     /// Full path to the main DSC configuration file. Used when ConfigurationSource is Local.
     /// </summary>
-    public string ConfigurationPath { get; set; } = Path.Combine(ConfigPaths.GetLcmConfigDirectory(), "config", "main.dsc.yaml");
+    public string ConfigurationPath { get; set; } = Path.Combine(ConfigPaths.GetLcmConfigDirectory(), "config", "local", "main.dsc.yaml");
 
     /// <summary>
     /// Interval between DSC operations (for Monitor and Remediate modes).
@@ -83,6 +85,11 @@ public class PullServerSettings
     public string? CertificatePassword { get; set; }
 
     /// <summary>
+    /// The interval at which the managed client certificate should be rotated.
+    /// </summary>
+    public TimeSpan CertificateRotationInterval { get; set; } = TimeSpan.FromDays(60);
+
+    /// <summary>
     /// The registration key for initial node registration.
     /// </summary>
     public string? RegistrationKey { get; set; }
@@ -91,6 +98,22 @@ public class PullServerSettings
     /// The cached checksum of the current configuration.
     /// </summary>
     public string? ConfigurationChecksum { get; set; }
+
+    /// <summary>
+    /// The cached entry point file name within the configuration bundle.
+    /// </summary>
+    public string? ConfigurationEntryPoint { get; set; }
+
+    /// <summary>
+    /// The cached parameters file path within the extracted configuration bundle.
+    /// </summary>
+    public string? ConfigurationParametersFile { get; set; }
+
+    /// <summary>
+    /// A locally computed content hash of all files in the pull extract directory.
+    /// Used to detect manual modifications to the extracted bundle.
+    /// </summary>
+    public string? LocalContentHash { get; set; }
 
     /// <summary>
     /// Whether to submit compliance reports to the server.
@@ -114,34 +137,4 @@ public enum CertificateSource
     Platform
 }
 
-/// <summary>
-/// The source of configuration documents.
-/// </summary>
-public enum ConfigurationSource
-{
-    /// <summary>
-    /// Use a local configuration file.
-    /// </summary>
-    Local,
 
-    /// <summary>
-    /// Pull configuration from a remote server.
-    /// </summary>
-    Pull
-}
-
-/// <summary>
-/// LCM service operating modes.
-/// </summary>
-public enum ConfigurationMode
-{
-    /// <summary>
-    /// Monitor mode: Run 'dsc config test' periodically.
-    /// </summary>
-    Monitor,
-
-    /// <summary>
-    /// Remediate mode: Run 'dsc config test' and apply corrections as needed.
-    /// </summary>
-    Remediate
-}

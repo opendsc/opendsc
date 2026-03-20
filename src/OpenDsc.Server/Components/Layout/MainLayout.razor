@@ -1,0 +1,199 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+@using System.Security.Claims
+@inject ThemeService ThemeService
+@inject ProtectedLocalStorage LocalStorage
+@inject ServerDbContext Db
+@inject NavigationManager Navigation
+@inject ILogger<MainLayout> Logger
+
+<MudThemeProvider @ref="_mudThemeProvider" @bind-IsDarkMode="_isDarkMode" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudAppBar Elevation="1">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" />
+        <MudText Typo="Typo.h6" Class="ml-3">OpenDSC Server</MudText>
+        <MudSpacer />
+        <AuthorizeView>
+            <Authorized>
+                <MudTooltip Text="@(_isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode")">
+                    <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+                                   Color="Color.Inherit"
+                                   OnClick="ToggleTheme" />
+                </MudTooltip>
+                <MudMenu AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                    <ActivatorContent>
+                        <MudIconButton Icon="@Icons.Material.Filled.AccountCircle" Color="Color.Inherit" />
+                    </ActivatorContent>
+                    <ChildContent>
+                        <MudMenuItem Disabled="true">@context.User.Identity?.Name</MudMenuItem>
+                        <MudDivider />
+                        @if (!_requirePasswordChange)
+                        {
+                            <MudMenuItem Href="/profile" Icon="@Icons.Material.Filled.Person">My Profile</MudMenuItem>
+                            <MudDivider />
+                        }
+                        <MudMenuItem OnClick="HandleLogout" Icon="@Icons.Material.Filled.Logout">Logout</MudMenuItem>
+                    </ChildContent>
+                </MudMenu>
+            </Authorized>
+        </AuthorizeView>
+    </MudAppBar>
+
+    <AuthorizeView>
+        <Authorized>
+            @if (!_requirePasswordChange)
+            {
+            <MudDrawer @bind-Open="_drawerOpen" Elevation="1" ClipMode="DrawerClipMode.Always">
+                <MudNavMenu>
+                    <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">Dashboard</MudNavLink>
+                    <MudNavLink Href="/nodes" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Computer">Nodes</MudNavLink>
+                    <MudNavLink Href="/configurations" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Settings">Configurations</MudNavLink>
+                    <MudNavLink Href="/composite-configurations" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.AccountTree">Composite Configurations</MudNavLink>
+                    <MudNavLink Href="/parameters" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Tune">Parameters</MudNavLink>
+                    <MudNavLink Href="/reports" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Assessment">Reports</MudNavLink>
+
+                    <AuthorizeView Policy="settings.read" Context="settingsAuth">
+                        <Authorized>
+                            <MudDivider Class="my-2" />
+                            <MudNavLink Href="/settings" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.AdminPanelSettings">Settings</MudNavLink>
+                        </Authorized>
+                    </AuthorizeView>
+
+                    <AuthorizeView Policy="users.manage" Context="adminAuth">
+                        <Authorized>
+                            <MudNavLink Href="/admin" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.SupervisorAccount">Administration</MudNavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                </MudNavMenu>
+            </MudDrawer>
+            }
+        </Authorized>
+    </AuthorizeView>
+
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4 mb-4">
+            @if (_requirePasswordChange && !new Uri(Navigation.Uri).AbsolutePath.Equals("/change-password", StringComparison.OrdinalIgnoreCase))
+            {
+                <MudAlert Severity="Severity.Warning" Class="mb-4" Icon="@Icons.Material.Filled.Lock">
+                    You must change your password before continuing.
+                    <MudButton Href="/change-password" Variant="Variant.Text" Color="Color.Warning" Class="ml-2">Change Password</MudButton>
+                </MudAlert>
+            }
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    private bool _drawerOpen = true;
+    private MudThemeProvider _mudThemeProvider = default!;
+    private bool _isDarkMode;
+    private bool _requirePasswordChange;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Navigation.LocationChanged += OnLocationChanged;
+        await CheckPasswordChangeRequiredAsync();
+        await base.OnInitializedAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await ThemeService.InitializeAsync(LocalStorage);
+            _isDarkMode = ThemeService.IsDarkMode;
+
+            ThemeService.OnThemeChanged += OnThemeChanged;
+
+            StateHasChanged();
+        }
+
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        try
+        {
+            await CheckPasswordChangeRequiredAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error checking password change requirement on navigation");
+        }
+    }
+
+    private async Task CheckPasswordChangeRequiredAsync()
+    {
+        if (AuthenticationState is null) return;
+
+        var authState = await AuthenticationState;
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated != true)
+        {
+            _requirePasswordChange = false;
+            return;
+        }
+
+        var userIdValue = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!Guid.TryParse(userIdValue, out var userId))
+        {
+            _requirePasswordChange = false;
+            return;
+        }
+
+        _requirePasswordChange = await Db.Users
+            .AsNoTracking()
+            .Where(u => u.Id == userId)
+            .Select(u => u.RequirePasswordChange)
+            .FirstOrDefaultAsync();
+
+        if (_requirePasswordChange)
+        {
+            var currentPath = new Uri(Navigation.Uri).AbsolutePath;
+            if (!currentPath.Equals("/change-password", StringComparison.OrdinalIgnoreCase))
+            {
+                Navigation.NavigateTo("/change-password");
+            }
+        }
+    }
+
+    private void OnThemeChanged()
+    {
+        _isDarkMode = ThemeService.IsDarkMode;
+        StateHasChanged();
+    }
+
+    private async Task ToggleTheme()
+    {
+        await ThemeService.ToggleAsync(LocalStorage);
+        _isDarkMode = ThemeService.IsDarkMode;
+        StateHasChanged();
+    }
+
+    private void ToggleDrawer()
+    {
+        _drawerOpen = !_drawerOpen;
+    }
+
+    private void HandleLogout()
+    {
+        Navigation.NavigateTo("/api/v1/auth/logout-redirect", forceLoad: true);
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+        ThemeService.OnThemeChanged -= OnThemeChanged;
+    }
+}

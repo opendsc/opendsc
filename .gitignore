@@ -4,3 +4,4 @@ artifacts/
 /dsc/
 *.db*
 TestResults/
+Data/

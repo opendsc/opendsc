@@ -1,0 +1,1270 @@
+@page "/nodes/{id:guid}"
+@attribute [Authorize(Policy = "nodes.read")]
+@inject ServerDbContext Db
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@using OpenDsc.Lcm.Contracts
+@using NuGet.Versioning
+@using OpenDsc.Server.Entities
+
+<PageTitle>Node Details</PageTitle>
+
+@if (node == null)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+else
+{
+    <MudText Typo="Typo.h4" Class="mb-4">Node: @node.Fqdn</MudText>
+
+    <MudTabs Elevation="4" Rounded="true" Color="Color.Primary">
+        <MudTabPanel Text="Info" Icon="@Icons.Material.Filled.Info">
+            <MudCard Class="mt-4">
+                <MudCardContent>
+                    <MudSimpleTable Dense="true">
+                        <tbody>
+                            <tr>
+                                <td><strong>FQDN:</strong></td>
+                                <td>@node.Fqdn</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Status:</strong></td>
+                                <td>
+                                    <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(node.Status)">
+                                        @node.Status
+                                    </MudChip>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>LCM Status:</strong></td>
+                                <td>
+                                    <MudChip T="string" Size="Size.Small" Color="@GetLcmStatusColor(node.LcmStatus)">
+                                        @node.LcmStatus
+                                    </MudChip>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Configuration:</strong></td>
+                                <td>@(node.ConfigurationName ?? "Not assigned")</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Certificate Thumbprint:</strong></td>
+                                <td><code>@node.CertificateThumbprint</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Certificate Subject:</strong></td>
+                                <td>@node.CertificateSubject</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Certificate Expiration:</strong></td>
+                                <td>@node.CertificateNotAfter.LocalDateTime.ToString("g")</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Last Check-In:</strong></td>
+                                <td>@(node.LastCheckIn?.LocalDateTime.ToString("g") ?? "Never")</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Created:</strong></td>
+                                <td>@node.CreatedAt.LocalDateTime.ToString("g")</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Configuration Source:</strong></td>
+                                <td>
+                                    <MudChip T="string" Size="Size.Small" Color="@(node.ConfigurationSource == ConfigurationSource.Pull ? Color.Primary : Color.Default)">
+                                        @node.ConfigurationSource
+                                    </MudChip>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </MudSimpleTable>
+                </MudCardContent>
+            </MudCard>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Configuration" Icon="@Icons.Material.Filled.Settings">
+            <MudCard Class="mt-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Assigned Configuration</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    @if (nodeConfig != null)
+                    {
+                        <MudAlert Severity="Severity.Info" Class="mb-4">
+                            Currently assigned (@(nodeConfig.CompositeConfigurationId.HasValue ? "Composite" : "Regular")):
+                            <strong>@node.ConfigurationName</strong>
+                            @if (nodeConfig.MajorVersion.HasValue)
+                            {
+                                <span> &mdash; Major v@(nodeConfig.MajorVersion)</span>
+                            }
+                            @if (!string.IsNullOrEmpty(nodeConfig.PrereleaseChannel))
+                            {
+                                <span> &mdash; Channel: <code>@nodeConfig.PrereleaseChannel</code></span>
+                            }
+                        </MudAlert>
+                    }
+                    else
+                    {
+                        <MudAlert Severity="Severity.Warning" Class="mb-4">
+                            No configuration assigned to this node.
+                        </MudAlert>
+                    }
+
+                    <MudToggleGroup T="string" @bind-Value="selectedConfigType" @bind-Value:after="OnConfigTypeChanged" Color="Color.Primary" Class="mb-3">
+                        <MudToggleItem Value="@("Regular")">Regular</MudToggleItem>
+                        <MudToggleItem Value="@("Composite")">Composite</MudToggleItem>
+                    </MudToggleGroup>
+
+                    @if (selectedConfigType == "Composite")
+                    {
+                        <MudSelect @bind-Value="selectedCompositeConfigurationName"
+                                   @bind-Value:after="OnCompositeConfigurationChanged"
+                                   Label="Select Composite Configuration" Variant="Variant.Outlined" Class="mb-3" Clearable="true">
+                            @foreach (var cc in compositeConfigurations)
+                            {
+                                <MudSelectItem Value="@cc.Name">@cc.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                    }
+                    else
+                    {
+                        <MudSelect @bind-Value="selectedConfigurationName"
+                                   @bind-Value:after="OnConfigurationChanged"
+                                   Label="Select Configuration" Variant="Variant.Outlined" Class="mb-3" Clearable="true">
+                            @foreach (var config in configurations)
+                            {
+                                <MudSelectItem Value="@config.Name">@config.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                    }
+
+                    <MudSelect T="int?"
+                               @bind-Value="selectedMajorVersion"
+                               Label="Major Version"
+                               Variant="Variant.Outlined"
+                               Class="mb-3"
+                               Disabled="@(!HasConfigSelected() || !availableMajorVersions.Any())"
+                               HelperText="Select the major version to track (e.g. v1 tracks 1.x.y).">
+                        @foreach (var major in availableMajorVersions)
+                        {
+                            <MudSelectItem T="int?" Value="@((int?)major)">v@(major)</MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    <MudTextField @bind-Value="selectedPrereleaseChannel"
+                                  Label="Prerelease Channel (optional)"
+                                  Variant="Variant.Outlined"
+                                  Class="mb-3"
+                                  Immediate="true"
+                                  Validation="@(new Func<string?, string?>(ValidatePrereleaseChannel))"
+                                  HelperText="Minimum prerelease threshold (e.g. 'rc', 'beta'). Leave empty for stable-only." />
+
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               OnClick="AssignConfiguration"
+                               Disabled="@(!HasConfigSelected() || !selectedMajorVersion.HasValue)">
+                        Assign Configuration
+                    </MudButton>
+
+                    @if (nodeConfig != null)
+                    {
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Error"
+                                   OnClick="UnassignConfiguration"
+                                   Class="ml-2">
+                            Unassign
+                        </MudButton>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Tags" Icon="@Icons.Material.Filled.Label">
+            <MudCard Class="mt-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Node Tags</MudText>
+                    </CardHeaderContent>
+                    <CardHeaderActions>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Disabled="@(!CanAddTag)" OnClick="ToggleAddTag">
+                            Add Tag
+                        </MudButton>
+                    </CardHeaderActions>
+                </MudCardHeader>
+                <MudCardContent>
+                    @if (showAddTag)
+                    {
+                        <MudCard Class="mb-4" Outlined="true">
+                            <MudCardContent>
+                                <MudText Typo="Typo.h6" Class="mb-3">@(editingTag != null ? "Edit Tag" : "Add New Tag")</MudText>
+                                <MudSelect @bind-Value="selectedScopeTypeId" @bind-Value:after="@OnScopeTypeChanged" Label="Scope Type" Variant="Variant.Outlined" Class="mb-3" T="Guid?" Disabled="@(editingTag != null)">
+                                    @foreach (var scopeType in FilteredScopeTypes)
+                                    {
+                                        <MudSelectItem Value="@((Guid?)scopeType.Id)">@scopeType.Name</MudSelectItem>
+                                    }
+                                </MudSelect>
+
+                                @if (selectedScopeTypeId.HasValue)
+                                {
+                                    var currentType = availableScopeTypes.FirstOrDefault(st => st.Id == selectedScopeTypeId.Value);
+                                    var isNode = currentType?.Name == "Node";
+                                    var isRestricted = currentType?.ValueMode == ScopeValueMode.Restricted;
+                                    var isUnrestricted = !isNode && !isRestricted;
+
+                                    if (isNode)
+                                    {
+                                        <MudSelect T="Guid?" @bind-Value="selectedScopeValueId" Label="Node" Variant="Variant.Outlined" Class="mb-3">
+                                            @foreach (var n in nodesForType)
+                                            {
+                                                <MudSelectItem Value="@((Guid?)n.Id)">@n.Fqdn</MudSelectItem>
+                                            }
+                                        </MudSelect>
+                                    }
+                                    else if (isRestricted)
+                                    {
+                                        <MudSelect T="Guid?" @bind-Value="selectedScopeValueId" Label="Scope Value" Variant="Variant.Outlined" Class="mb-3">
+                                            @foreach (var scopeValue in GetScopeValuesForType(selectedScopeTypeId.Value))
+                                            {
+                                                <MudSelectItem Value="@((Guid?)scopeValue.Id)">@scopeValue.Value</MudSelectItem>
+                                            }
+                                        </MudSelect>
+                                    }
+                                    else if (isUnrestricted)
+                                    {
+                                        <MudAutocomplete T="string" @bind-Value="selectedScopeValueText" Label="Scope Value" Variant="Variant.Outlined" Class="mb-3"
+                                                     SearchFunc="SearchScopeValueTexts" CoerceValue="true" Clearable="true" />
+                                    }
+                                }
+
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="AddTag" Disabled="@(!HasValueSelection)">
+                                    @(editingTag != null ? "Save" : "Add")
+                                </MudButton>
+                                <MudButton Variant="Variant.Outlined" OnClick="CancelAddOrEdit">
+                                    Cancel
+                                </MudButton>
+                            </MudCardContent>
+                        </MudCard>
+                    }
+
+                    @if (nodeTags.Any())
+                    {
+                        <MudTable Items="@nodeTags" Hover="true" Dense="true">
+                            <HeaderContent>
+                                <MudTh>Scope Type</MudTh>
+                                <MudTh>Value</MudTh>
+                                <MudTh>Assigned</MudTh>
+                                <MudTh>Actions</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd>@context.ScopeValue.ScopeType.Name</MudTd>
+                                <MudTd>@context.ScopeValue.Value</MudTd>
+                                <MudTd>@context.AssignedAt.LocalDateTime.ToString("g")</MudTd>
+                                <MudTd>
+                                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                   Size="Size.Small"
+                                                   Color="Color.Primary"
+                                                   OnClick="@(() => StartEditTag(context))" />
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                   Size="Size.Small"
+                                                   Color="Color.Error"
+                                                   OnClick="@(() => RemoveTag(context))" />
+                                </MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+                    else
+                    {
+                        <MudAlert Severity="Severity.Info">No tags assigned to this node.</MudAlert>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudTabPanel>
+
+        <MudTabPanel Text="LCM Configuration" Icon="@Icons.Material.Filled.Tune">
+            <MudCard Class="mt-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Desired LCM Configuration</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudAlert Severity="Severity.Info" Class="mb-4">
+                        These values are sent to the node on its next check-in. A node-level value overrides the server default, which in turn overrides the node's own local setting. Clearing a value here causes the node to fall back to the server default (if configured) or its local setting.
+                    </MudAlert>
+
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">Current node configuration</MudText>
+                    <MudSimpleTable Dense="true" Class="mb-4">
+                        <tbody>
+                            <tr>
+                                <td><strong>Mode:</strong></td>
+                                <td>@currentModeText</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Interval:</strong></td>
+                                <td>@currentIntervalText</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Report compliance:</strong></td>
+                                <td>@currentReportText</td>
+                            </tr>
+                        </tbody>
+                    </MudSimpleTable>
+
+                    <MudSelect T="ConfigurationMode?" @bind-Value="desiredConfigMode" Label="Configuration Mode" Variant="Variant.Outlined" Class="mb-3" Clearable="true"
+                               HelperText="Monitor: check compliance only. Remediate: automatically fix drift. Leave empty to use the server default or the node's own setting.">
+                        <MudSelectItem T="ConfigurationMode?" Value="@((ConfigurationMode?)null)">Use server default / node default</MudSelectItem>
+                        <MudSelectItem T="ConfigurationMode?" Value="@((ConfigurationMode?)ConfigurationMode.Monitor)">Monitor</MudSelectItem>
+                        <MudSelectItem T="ConfigurationMode?" Value="@((ConfigurationMode?)ConfigurationMode.Remediate)">Remediate</MudSelectItem>
+                    </MudSelect>
+
+                    <MudTextField @bind-Value="desiredIntervalText" Label="Configuration Interval (hh:mm:ss)" Variant="Variant.Outlined" Class="mb-3"
+                                  HelperText="How often the LCM runs, e.g. 00:15:00 for 15 minutes. Leave empty to use the server default or the node's own setting."
+                                  Clearable="true" />
+
+                    <MudSelect T="bool?" @bind-Value="desiredReportCompliance" Label="Report Compliance" Variant="Variant.Outlined" Class="mb-3" Clearable="true"
+                               HelperText="Whether the node submits compliance reports to this server. Leave empty to use the server default or the node's own setting.">
+                        <MudSelectItem T="bool?" Value="@((bool?)null)">Use server default / node default</MudSelectItem>
+                        <MudSelectItem T="bool?" Value="@((bool?)true)">Yes</MudSelectItem>
+                        <MudSelectItem T="bool?" Value="@((bool?)false)">No</MudSelectItem>
+                    </MudSelect>
+
+                    @if (lcmConfigSaveError is not null)
+                    {
+                        <MudAlert Severity="Severity.Error" Class="mb-3">@lcmConfigSaveError</MudAlert>
+                    }
+
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveLcmConfig" Disabled="@lcmConfigSaving">
+                        @if (lcmConfigSaving)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        }
+                        Save
+                    </MudButton>
+                </MudCardContent>
+            </MudCard>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Reports" Icon="@Icons.Material.Filled.Assessment">
+            <MudCard Class="mt-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Recent Compliance Reports</MudText>
+                    </CardHeaderContent>
+                    <CardHeaderActions>
+                        <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="RefreshReportsAsync" />
+                    </CardHeaderActions>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudGrid Class="mb-3">
+                        <MudItem xs="12" md="4">
+                            <MudSelect T="string" Label="Filter by Status" @bind-Value="_reportStatusFilter"
+                                       @bind-Value:after="ApplyReportFilter" Clearable="true">
+                                <MudSelectItem Value="@("Compliant")">Compliant</MudSelectItem>
+                                <MudSelectItem Value="@("NonCompliant")">Non-Compliant</MudSelectItem>
+                                <MudSelectItem Value="@("Error")">Error</MudSelectItem>
+                            </MudSelect>
+                        </MudItem>
+                        <MudItem xs="12" md="4">
+                            <MudSelect T="string" Label="Filter by Operation" @bind-Value="_reportOperationFilter"
+                                       @bind-Value:after="ApplyReportFilter" Clearable="true">
+                                <MudSelectItem Value="@("Get")">Get</MudSelectItem>
+                                <MudSelectItem Value="@("Set")">Set</MudSelectItem>
+                                <MudSelectItem Value="@("Test")">Test</MudSelectItem>
+                                <MudSelectItem Value="@("Export")">Export</MudSelectItem>
+                            </MudSelect>
+                        </MudItem>
+                        <MudItem xs="12" md="4">
+                            <MudDateRangePicker @bind-DateRange="_reportDateRange"
+                                                @bind-DateRange:after="ApplyReportFilter"
+                                                Label="Date range"
+                                                Variant="Variant.Outlined"
+                                                DateFormat="yyyy-MM-dd" />
+                        </MudItem>
+                    </MudGrid>
+                    @if (!reports.Any())
+                    {
+                        <MudText Align="Align.Center" Class="pa-4">No reports yet</MudText>
+                    }
+                    else if (filteredReports.Any())
+                    {
+                        <MudDataGrid T="Report" Items="@filteredReports" Hover="true" Dense="true" sortable="true" sort-by="@((Report r) => r.Timestamp)" sort-direction="SortDirection.Descending" @bind-RowsPerPage="_reportRowsPerPage">
+                            <Columns>
+                                <PropertyColumn Property="x => x.Timestamp" Title="Timestamp" InitialDirection="SortDirection.Descending">
+                                    <CellTemplate>
+                                        @context.Item.Timestamp.LocalDateTime.ToString("g")
+                                    </CellTemplate>
+                                </PropertyColumn>
+                                <PropertyColumn Property="x => x.Operation" Title="Operation" />
+                                <TemplateColumn Title="Status" Sortable="false">
+                                    <CellTemplate>
+                                        @if (context.Item.HadErrors)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Error">Error</MudChip>
+                                        }
+                                        else if (context.Item.InDesiredState)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Success">Compliant</MudChip>
+                                        }
+                                        else
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Warning">Non-Compliant</MudChip>
+                                        }
+                                    </CellTemplate>
+                                </TemplateColumn>
+                                <TemplateColumn Title="Actions" Sortable="false">
+                                    <CellTemplate>
+                                        <MudTooltip Text="View Details">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                                                           Size="Size.Small"
+                                                           Variant="Variant.Text"
+                                                           OnClick="@(() => ViewReportDetails(context.Item.Id))" />
+                                        </MudTooltip>
+                                    </CellTemplate>
+                                </TemplateColumn>
+                            </Columns>
+                            <PagerContent>
+                                <MudDataGridPager T="Report" PageSizeOptions="@(new int[] { 10, 25, 50, 100 })" />
+                            </PagerContent>
+                        </MudDataGrid>
+                    }
+                    else
+                    {
+                        <MudText Align="Align.Center" Class="pa-4">No reports in the selected date range.</MudText>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Status History" Icon="@Icons.Material.Filled.Timeline">
+            <MudCard Class="mt-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">LCM Status History</MudText>
+                    </CardHeaderContent>
+                    <CardHeaderActions>
+                        <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="RefreshStatusHistoryAsync" />
+                    </CardHeaderActions>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudGrid Class="mb-3">
+                        <MudItem xs="12" md="6">
+                            <MudSelect T="string" Label="Filter by LCM Status" @bind-Value="_statusLcmFilter"
+                                       @bind-Value:after="ApplyStatusFilter" Clearable="true">
+                                <MudSelectItem Value="@("Unknown")">Unknown</MudSelectItem>
+                                <MudSelectItem Value="@("Idle")">Idle</MudSelectItem>
+                                <MudSelectItem Value="@("Downloading")">Downloading</MudSelectItem>
+                                <MudSelectItem Value="@("Testing")">Testing</MudSelectItem>
+                                <MudSelectItem Value="@("Remediating")">Remediating</MudSelectItem>
+                                <MudSelectItem Value="@("Error")">Error</MudSelectItem>
+                            </MudSelect>
+                        </MudItem>
+                        <MudItem xs="12" md="6">
+                            <MudDateRangePicker @bind-DateRange="_statusDateRange"
+                                                @bind-DateRange:after="ApplyStatusFilter"
+                                                Label="Date range"
+                                                Variant="Variant.Outlined"
+                                                DateFormat="yyyy-MM-dd" />
+                        </MudItem>
+                    </MudGrid>
+                    @if (!statusEvents.Any())
+                    {
+                        <MudText Align="Align.Center" Class="pa-4">No status events recorded</MudText>
+                    }
+                    else if (filteredStatusEvents.Any())
+                    {
+                        <MudDataGrid T="NodeStatusEvent" Items="@filteredStatusEvents" Hover="true" Dense="true" sortable="true" sort-by="@((NodeStatusEvent e) => e.Timestamp)" sort-direction="SortDirection.Descending" @bind-RowsPerPage="_statusRowsPerPage">
+                            <Columns>
+                                <PropertyColumn Property="x => x.Timestamp" Title="Timestamp">
+                                    <CellTemplate>
+                                        @context.Item.Timestamp.LocalDateTime.ToString("g")
+                                    </CellTemplate>
+                                </PropertyColumn>
+                                <TemplateColumn Title="LCM Status" Sortable="false">
+                                    <CellTemplate>
+                                        @if (context.Item.LcmStatus.HasValue)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="@GetLcmStatusColor(context.Item.LcmStatus.Value)">
+                                                @context.Item.LcmStatus.Value
+                                            </MudChip>
+                                        }
+                                        else
+                                        {
+                                            <MudText>&#x2014;</MudText>
+                                        }
+                                    </CellTemplate>
+                                </TemplateColumn>
+                            </Columns>
+                            <PagerContent>
+                                <MudDataGridPager T="NodeStatusEvent" PageSizeOptions="@(new int[] { 10, 25, 50, 100 })" />
+                            </PagerContent>
+                        </MudDataGrid>
+                    }
+                    else
+                    {
+                        <MudText Align="Align.Center" Class="pa-4">No status events in the selected date range.</MudText>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudTabPanel>
+    </MudTabs>
+
+    <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" Class="mt-4" OnClick="@(() => Navigation.NavigateTo("/nodes"))">
+        Back to Nodes
+    </MudButton>
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private Node? node;
+    private NodeConfiguration? nodeConfig;
+    private List<Report> reports = [];
+    private List<Report> filteredReports = [];
+    private MudBlazor.DateRange _reportDateRange = new(DateTime.Today.AddDays(-7), DateTime.Today);
+    private string? _reportStatusFilter;
+    private string? _reportOperationFilter;
+    private int _reportRowsPerPage = 25;
+    private List<NodeStatusEvent> statusEvents = [];
+    private List<NodeStatusEvent> filteredStatusEvents = [];
+    private MudBlazor.DateRange _statusDateRange = new(DateTime.Today.AddDays(-7), DateTime.Today);
+    private string? _statusLcmFilter;
+    private int _statusRowsPerPage = 25;
+    private List<Configuration> configurations = [];
+    private List<CompositeConfiguration> compositeConfigurations = [];
+    private string? selectedConfigurationName;
+    private string? selectedCompositeConfigurationName;
+    private string selectedConfigType = "Regular";
+    private int? selectedMajorVersion;
+    private string? selectedPrereleaseChannel;
+    private List<int> availableMajorVersions = [];
+    private List<NodeTag> nodeTags = [];
+    private List<ScopeType> availableScopeTypes = [];
+    private List<ScopeValue> availableScopeValues = [];
+    private List<Node> nodesForType = [];
+    private string? selectedScopeValueText;
+
+    // LCM Configuration state
+    private ConfigurationMode? desiredConfigMode;
+    private string? desiredIntervalText;
+    private bool? desiredReportCompliance;
+    private bool lcmConfigSaving;
+    private string? lcmConfigSaveError;
+
+    // current values displayed in info table
+    private string currentModeText = "—";
+    private string currentIntervalText = "—";
+    private string currentReportText = "—";
+
+    private bool IsUnrestrictedScopeType(Guid scopeTypeId)
+    {
+        var st = availableScopeTypes.FirstOrDefault(t => t.Id == scopeTypeId);
+        if (st == null) return false;
+        if (st.Name == "Node") return false;
+        return st.ValueMode != ScopeValueMode.Restricted;
+    }
+
+    private bool IsRestrictedScopeType(Guid scopeTypeId)
+    {
+        var st = availableScopeTypes.FirstOrDefault(t => t.Id == scopeTypeId);
+        return st?.ValueMode == ScopeValueMode.Restricted;
+    }
+    private bool showAddTag;
+    private Guid? selectedScopeTypeId;
+    private Guid? selectedScopeValueId;
+
+    private NodeTag? editingTag;
+
+    private IEnumerable<ScopeType> FilteredScopeTypes =>
+        availableScopeTypes.Where(st =>
+            editingTag != null ? st.Id == editingTag.ScopeValue.ScopeTypeId
+            : !nodeTags.Any(nt => nt.ScopeValue.ScopeTypeId == st.Id));
+
+    private bool CanAddTag => editingTag != null || FilteredScopeTypes.Any();
+
+    private bool HasValueSelection
+    {
+        get
+        {
+            if (!selectedScopeTypeId.HasValue) return false;
+            if (IsUnrestrictedScopeType(selectedScopeTypeId.Value))
+            {
+                return !string.IsNullOrWhiteSpace(selectedScopeValueText);
+            }
+            return selectedScopeValueId.HasValue;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            node = await Db.Nodes.FindAsync(Id);
+            if (node != null)
+            {
+                selectedConfigurationName = node.ConfigurationName;
+                desiredConfigMode = node.DesiredConfigurationMode;
+                desiredIntervalText = node.DesiredConfigurationModeInterval?.ToString(@"hh\:mm\:ss");
+                desiredReportCompliance = node.DesiredReportCompliance;
+
+                // compute texts for current values
+                currentModeText = node.ConfigurationMode?.ToString() ?? "—";
+                currentIntervalText = node.ConfigurationModeInterval.HasValue
+                    ? node.ConfigurationModeInterval.Value.ToString(@"hh\:mm\:ss")
+                    : "—";
+                currentReportText = node.ReportCompliance == true ? "Yes"
+                    : node.ReportCompliance == false ? "No"
+                    : "—";
+
+                nodeConfig = await Db.NodeConfigurations
+                    .FirstOrDefaultAsync(nc => nc.NodeId == Id);
+
+                if (nodeConfig != null)
+                {
+                    selectedMajorVersion = nodeConfig.MajorVersion;
+                    selectedPrereleaseChannel = nodeConfig.PrereleaseChannel;
+                    if (nodeConfig.CompositeConfigurationId.HasValue)
+                    {
+                        selectedConfigType = "Composite";
+                        selectedCompositeConfigurationName = node.ConfigurationName;
+                    }
+                }
+
+                configurations = await Db.Configurations
+                    .Include(c => c.Versions.Where(v => v.Status == ConfigurationVersionStatus.Published))
+                    .Where(c => c.Versions.Any(v => v.Status == ConfigurationVersionStatus.Published))
+                    .OrderBy(c => c.Name)
+                    .ToListAsync();
+
+                compositeConfigurations = await Db.CompositeConfigurations
+                    .Include(c => c.Versions.Where(v => v.Status == ConfigurationVersionStatus.Published))
+                    .Where(c => c.Versions.Any(v => v.Status == ConfigurationVersionStatus.Published))
+                    .OrderBy(c => c.Name)
+                    .ToListAsync();
+
+                if (selectedConfigType == "Composite")
+                {
+                    OnCompositeConfigurationChanged();
+                }
+                else
+                {
+                    OnConfigurationChanged();
+                }
+
+                if (nodeConfig != null)
+                {
+                    selectedMajorVersion = nodeConfig.MajorVersion;
+                }
+
+                await LoadReportsAsync();
+                await LoadStatusEventsAsync();
+
+                await LoadTagsAsync();
+                await LoadScopeDataAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading node: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task LoadTagsAsync()
+    {
+        nodeTags = await Db.NodeTags
+            .Where(nt => nt.NodeId == Id)
+            .Include(nt => nt.ScopeValue)
+                .ThenInclude(sv => sv.ScopeType)
+            .OrderBy(nt => nt.ScopeValue.ScopeType.Precedence)
+            .ThenBy(nt => nt.ScopeValue.Value)
+            .ToListAsync();
+
+        // clear any in-progress editing when the list changes
+        editingTag = null;
+    }
+
+    private async Task LoadScopeDataAsync()
+    {
+        availableScopeTypes = await Db.ScopeTypes
+            .Where(st => st.Name != "Node" && st.Name != "Default")
+            .OrderByDescending(st => st.Precedence)
+            .ToListAsync();
+
+        availableScopeValues = await Db.ScopeValues
+            .Include(sv => sv.ScopeType)
+            .OrderBy(sv => sv.Value)
+            .ToListAsync();
+
+        // preload nodes for node-scope dropdown
+        nodesForType = await Db.Nodes
+            .OrderBy(n => n.Fqdn)
+            .ToListAsync();
+    }
+
+    private async Task LoadReportsAsync()
+    {
+        var nodeReports = await Db.Reports
+            .Where(r => r.NodeId == Id)
+            .ToListAsync();
+
+        reports = nodeReports
+            .OrderByDescending(r => r.Timestamp)
+            .ToList();
+        ApplyReportFilter();
+    }
+
+    private void ApplyReportFilter()
+    {
+        filteredReports = reports.Where(r =>
+        {
+            if (_reportDateRange?.Start.HasValue == true && r.Timestamp.LocalDateTime.Date < _reportDateRange.Start.Value.Date)
+                return false;
+            if (_reportDateRange?.End.HasValue == true && r.Timestamp.LocalDateTime.Date > _reportDateRange.End.Value.Date)
+                return false;
+            if (!string.IsNullOrEmpty(_reportStatusFilter))
+            {
+                bool matchesStatus = _reportStatusFilter switch
+                {
+                    "Error" => r.HadErrors,
+                    "Compliant" => !r.HadErrors && r.InDesiredState,
+                    "NonCompliant" => !r.HadErrors && !r.InDesiredState,
+                    _ => true
+                };
+                if (!matchesStatus) return false;
+            }
+            if (!string.IsNullOrEmpty(_reportOperationFilter) && r.Operation.ToString() != _reportOperationFilter)
+                return false;
+            return true;
+        }).ToList();
+    }
+
+    private async Task LoadStatusEventsAsync()
+    {
+        statusEvents = (await Db.NodeStatusEvents
+            .Where(e => e.NodeId == Id)
+            .OrderByDescending(e => e.Id)
+            .ToListAsync())
+            .OrderByDescending(e => e.Timestamp)
+            .ToList();
+        ApplyStatusFilter();
+    }
+
+    private void ApplyStatusFilter()
+    {
+        filteredStatusEvents = statusEvents.Where(e =>
+        {
+            if (_statusDateRange?.Start.HasValue == true && e.Timestamp.LocalDateTime.Date < _statusDateRange.Start.Value.Date)
+                return false;
+            if (_statusDateRange?.End.HasValue == true && e.Timestamp.LocalDateTime.Date > _statusDateRange.End.Value.Date)
+                return false;
+            if (!string.IsNullOrEmpty(_statusLcmFilter) && e.LcmStatus?.ToString() != _statusLcmFilter)
+                return false;
+            return true;
+        }).ToList();
+    }
+
+    private async Task RefreshReportsAsync()
+    {
+        try
+        {
+            await LoadReportsAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error refreshing reports: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task RefreshStatusHistoryAsync()
+    {
+        try
+        {
+            await LoadStatusEventsAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error refreshing status history: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void OnConfigurationChanged()
+    {
+        selectedMajorVersion = null;
+
+        if (!string.IsNullOrEmpty(selectedConfigurationName))
+        {
+            var config = configurations.FirstOrDefault(c => c.Name == selectedConfigurationName);
+            availableMajorVersions = config?.Versions
+                .Select(v => NuGet.Versioning.SemanticVersion.TryParse(v.Version, out var sv) ? sv.Major : -1)
+                .Where(m => m >= 0)
+                .Distinct()
+                .OrderBy(m => m)
+                .ToList() ?? [];
+        }
+        else
+        {
+            availableMajorVersions = [];
+        }
+    }
+
+    private void OnCompositeConfigurationChanged()
+    {
+        selectedMajorVersion = null;
+
+        if (!string.IsNullOrEmpty(selectedCompositeConfigurationName))
+        {
+            var cc = compositeConfigurations.FirstOrDefault(c => c.Name == selectedCompositeConfigurationName);
+            availableMajorVersions = cc?.Versions
+                .Select(v => NuGet.Versioning.SemanticVersion.TryParse(v.Version, out var sv) ? sv.Major : -1)
+                .Where(m => m >= 0)
+                .Distinct()
+                .OrderBy(m => m)
+                .ToList() ?? [];
+        }
+        else
+        {
+            availableMajorVersions = [];
+        }
+    }
+
+    private void OnConfigTypeChanged()
+    {
+        selectedMajorVersion = null;
+        availableMajorVersions = [];
+    }
+
+    private bool HasConfigSelected() => selectedConfigType == "Composite"
+        ? !string.IsNullOrEmpty(selectedCompositeConfigurationName)
+        : !string.IsNullOrEmpty(selectedConfigurationName);
+
+    private string? ValidatePrereleaseChannel(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return null;
+        }
+
+        return SemanticVersion.TryParse($"0.0.0-{value}", out _)
+            ? null
+            : "Must be a valid semver prerelease identifier (e.g. 'beta', 'rc.1')";
+    }
+
+    private async Task SaveLcmConfig()
+    {
+        if (node is null) return;
+
+        lcmConfigSaveError = null;
+        lcmConfigSaving = true;
+        StateHasChanged();
+
+        try
+        {
+            TimeSpan? interval = null;
+            if (!string.IsNullOrWhiteSpace(desiredIntervalText))
+            {
+                if (!TimeSpan.TryParse(desiredIntervalText, out var parsed))
+                {
+                    lcmConfigSaveError = "Invalid interval format. Use hh:mm:ss (e.g. 00:15:00).";
+                    return;
+                }
+                interval = parsed;
+            }
+
+            node.DesiredConfigurationMode = desiredConfigMode;
+            node.DesiredConfigurationModeInterval = interval;
+            node.DesiredReportCompliance = desiredReportCompliance;
+            await Db.SaveChangesAsync();
+
+            Snackbar.Add("LCM configuration saved", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            lcmConfigSaveError = $"Error saving LCM configuration: {ex.Message}";
+        }
+        finally
+        {
+            lcmConfigSaving = false;
+        }
+    }
+
+    private async Task AssignConfiguration()
+    {
+        if (node == null) return;
+
+        if (selectedConfigType == "Composite")
+        {
+            await AssignCompositeConfigurationInternal();
+        }
+        else
+        {
+            await AssignRegularConfigurationInternal();
+        }
+    }
+
+    private async Task AssignRegularConfigurationInternal()
+    {
+        if (node == null || string.IsNullOrEmpty(selectedConfigurationName)) return;
+
+        try
+        {
+            var config = await Db.Configurations
+                .Include(c => c.Versions.Where(v => v.Status == ConfigurationVersionStatus.Published))
+                .FirstOrDefaultAsync(c => c.Name == selectedConfigurationName);
+
+            if (config is null)
+            {
+                Snackbar.Add("Configuration not found.", Severity.Error);
+                return;
+            }
+
+            var channel = string.IsNullOrWhiteSpace(selectedPrereleaseChannel) ? null : selectedPrereleaseChannel;
+            var eligible = VersionResolver.ResolveVersion(config.Versions, v => v.Version, selectedMajorVersion, channel);
+
+            if (eligible is null)
+            {
+                Snackbar.Add("No published version satisfies the specified major version and prerelease channel constraints.", Severity.Error);
+                return;
+            }
+
+            nodeConfig = await Db.NodeConfigurations.FirstOrDefaultAsync(nc => nc.NodeId == Id);
+            if (nodeConfig is null)
+            {
+                nodeConfig = new NodeConfiguration
+                {
+                    NodeId = Id,
+                    ConfigurationId = config.Id,
+                    MajorVersion = selectedMajorVersion,
+                    PrereleaseChannel = channel
+                };
+                Db.NodeConfigurations.Add(nodeConfig);
+            }
+            else
+            {
+                nodeConfig.CompositeConfigurationId = null;
+                nodeConfig.ActiveCompositeVersion = null;
+                nodeConfig.ConfigurationId = config.Id;
+                nodeConfig.ActiveVersion = null;
+                nodeConfig.MajorVersion = selectedMajorVersion;
+                nodeConfig.PrereleaseChannel = channel;
+            }
+
+            node.ConfigurationName = selectedConfigurationName;
+            await Db.SaveChangesAsync();
+
+            Snackbar.Add($"Configuration '{selectedConfigurationName}' assigned successfully", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error assigning configuration: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task AssignCompositeConfigurationInternal()
+    {
+        if (node == null || string.IsNullOrEmpty(selectedCompositeConfigurationName)) return;
+
+        try
+        {
+            var composite = await Db.CompositeConfigurations
+                .Include(c => c.Versions.Where(v => v.Status == ConfigurationVersionStatus.Published))
+                .FirstOrDefaultAsync(c => c.Name == selectedCompositeConfigurationName);
+
+            if (composite is null)
+            {
+                Snackbar.Add("Composite configuration not found.", Severity.Error);
+                return;
+            }
+
+            var channel = string.IsNullOrWhiteSpace(selectedPrereleaseChannel) ? null : selectedPrereleaseChannel;
+            var eligible = VersionResolver.ResolveVersion(composite.Versions, v => v.Version, selectedMajorVersion, channel);
+
+            if (eligible is null)
+            {
+                Snackbar.Add("No published version satisfies the specified major version and prerelease channel constraints.", Severity.Error);
+                return;
+            }
+
+            nodeConfig = await Db.NodeConfigurations.FirstOrDefaultAsync(nc => nc.NodeId == Id);
+            if (nodeConfig is null)
+            {
+                nodeConfig = new NodeConfiguration
+                {
+                    NodeId = Id,
+                    CompositeConfigurationId = composite.Id,
+                    MajorVersion = selectedMajorVersion,
+                    PrereleaseChannel = channel
+                };
+                Db.NodeConfigurations.Add(nodeConfig);
+            }
+            else
+            {
+                nodeConfig.ConfigurationId = null;
+                nodeConfig.ActiveVersion = null;
+                nodeConfig.CompositeConfigurationId = composite.Id;
+                nodeConfig.ActiveCompositeVersion = null;
+                nodeConfig.MajorVersion = selectedMajorVersion;
+                nodeConfig.PrereleaseChannel = channel;
+            }
+
+            node.ConfigurationName = selectedCompositeConfigurationName;
+            await Db.SaveChangesAsync();
+
+            Snackbar.Add($"Composite configuration '{selectedCompositeConfigurationName}' assigned successfully", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error assigning composite configuration: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task UnassignConfiguration()
+    {
+        if (node == null) return;
+
+        try
+        {
+            if (nodeConfig is not null)
+            {
+                Db.NodeConfigurations.Remove(nodeConfig);
+                nodeConfig = null;
+            }
+
+            node.ConfigurationName = null;
+            selectedConfigurationName = null;
+            selectedMajorVersion = null;
+            selectedPrereleaseChannel = null;
+            availableMajorVersions = [];
+            await Db.SaveChangesAsync();
+
+            Snackbar.Add("Configuration unassigned successfully", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error unassigning configuration: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private Color GetStatusColor(NodeStatus status) => status switch
+    {
+        NodeStatus.Compliant => Color.Success,
+        NodeStatus.NonCompliant => Color.Warning,
+        NodeStatus.Error => Color.Error,
+        _ => Color.Default
+    };
+
+    private Color GetLcmStatusColor(LcmStatus status) => status switch
+    {
+        LcmStatus.Idle => Color.Success,
+        LcmStatus.Testing => Color.Info,
+        LcmStatus.Downloading => Color.Info,
+        LcmStatus.Remediating => Color.Info,
+        LcmStatus.Error => Color.Error,
+        _ => Color.Default
+    };
+
+    private void ViewReportDetails(Guid id)
+    {
+        Navigation.NavigateTo($"/reports/{id}");
+    }
+
+    private List<ScopeValue> GetScopeValuesForType(Guid scopeTypeId)
+    {
+        return availableScopeValues
+            .Where(sv => sv.ScopeTypeId == scopeTypeId)
+            .ToList();
+    }
+
+    private List<string> GetScopeValueTextsForType(Guid scopeTypeId)
+    {
+        return availableScopeValues
+            .Where(sv => sv.ScopeTypeId == scopeTypeId)
+            .Select(sv => sv.Value)
+            .Distinct()
+            .OrderBy(v => v)
+            .ToList();
+    }
+
+    private Task<IEnumerable<string>?> SearchScopeValueTexts(string value, CancellationToken token)
+    {
+        IEnumerable<string> list = selectedScopeTypeId.HasValue
+            ? GetScopeValueTextsForType(selectedScopeTypeId.Value)
+            : Array.Empty<string>();
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            list = list.Where(v => v.Contains(value, StringComparison.OrdinalIgnoreCase));
+        }
+        return Task.FromResult<IEnumerable<string>?>(list);
+    }
+    private async Task AddTag()
+    {
+        if (node == null || !selectedScopeTypeId.HasValue)
+            return;
+
+        var currentType = availableScopeTypes.FirstOrDefault(st => st.Id == selectedScopeTypeId.Value);
+        var isRestricted = currentType?.ValueMode == ScopeValueMode.Restricted;
+        var isNode = currentType?.Name == "Node";
+        var isUnrestricted = !isRestricted && !isNode;
+
+
+        if (!isUnrestricted && !selectedScopeValueId.HasValue)
+            return; // nothing selected for non-unrestricted type
+        if (isUnrestricted && string.IsNullOrWhiteSpace(selectedScopeValueText))
+            return;
+
+        try
+        {
+            // resolve the scope value identifier, creating a new ScopeValue record if necessary
+            Guid scopeValueId;
+            if (isUnrestricted)
+            {
+                var text = selectedScopeValueText!.Trim();
+                var existingValue = await Db.ScopeValues
+                    .FirstOrDefaultAsync(sv => sv.ScopeTypeId == selectedScopeTypeId.Value && sv.Value == text);
+                if (existingValue == null)
+                {
+                    existingValue = new ScopeValue
+                    {
+                        Id = Guid.NewGuid(),
+                        ScopeTypeId = selectedScopeTypeId.Value,
+                        Value = text,
+                        CreatedAt = DateTimeOffset.UtcNow
+                    };
+                    Db.ScopeValues.Add(existingValue);
+                    await Db.SaveChangesAsync();
+                    availableScopeValues.Add(existingValue);
+                }
+                scopeValueId = existingValue.Id;
+            }
+            else
+            {
+                scopeValueId = selectedScopeValueId!.Value;
+            }
+
+            if (editingTag != null)
+            {
+                // if the value didn't change, nothing to do
+                if (editingTag.ScopeValueId == scopeValueId)
+                {
+                    CancelAddOrEdit();
+                    return;
+                }
+
+                Db.NodeTags.Remove(editingTag);
+                await Db.SaveChangesAsync();
+
+                var newTag = new NodeTag
+                {
+                    NodeId = Id,
+                    ScopeValueId = scopeValueId,
+                    AssignedAt = DateTimeOffset.UtcNow
+                };
+                Db.NodeTags.Add(newTag);
+                await Db.SaveChangesAsync();
+                Snackbar.Add("Tag updated successfully", Severity.Success);
+            }
+            else
+            {
+                if (selectedScopeTypeId.HasValue && nodeTags.Any(nt => nt.ScopeValue.ScopeTypeId == selectedScopeTypeId.Value))
+                {
+                    Snackbar.Add("A tag for that scope type already exists.", Severity.Warning);
+                    return;
+                }
+
+                var existingTag = await Db.NodeTags
+                    .FirstOrDefaultAsync(nt => nt.NodeId == Id && nt.ScopeValueId == scopeValueId);
+
+                if (existingTag != null)
+                {
+                    Snackbar.Add("This tag is already assigned to this node.", Severity.Warning);
+                    return;
+                }
+
+                var nodeTag = new NodeTag
+                {
+                    NodeId = Id,
+                    ScopeValueId = scopeValueId,
+                    AssignedAt = DateTimeOffset.UtcNow
+                };
+
+                Db.NodeTags.Add(nodeTag);
+                await Db.SaveChangesAsync();
+                Snackbar.Add("Tag added successfully", Severity.Success);
+            }
+
+            await LoadTagsAsync();
+
+            selectedScopeTypeId = null;
+            selectedScopeValueId = null;
+            selectedScopeValueText = null;
+            showAddTag = false;
+            editingTag = null;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error adding tag: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task RemoveTag(NodeTag tag)
+    {
+        try
+        {
+            Db.NodeTags.Remove(tag);
+            await Db.SaveChangesAsync();
+
+            await LoadTagsAsync();
+
+            Snackbar.Add("Tag removed successfully", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error removing tag: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void OnScopeTypeChanged()
+    {
+        // clear any previously selected value when the type changes
+        selectedScopeValueId = null;
+        selectedScopeValueText = null;
+    }
+
+    private void ToggleAddTag()
+    {
+        if (editingTag != null)
+        {
+            CancelAddOrEdit();
+        }
+        else
+        {
+            showAddTag = !showAddTag;
+        }
+    }
+
+    private void StartEditTag(NodeTag tag)
+    {
+        editingTag = tag;
+        showAddTag = true;
+        selectedScopeTypeId = tag.ScopeValue.ScopeTypeId;
+        if (IsUnrestrictedScopeType(selectedScopeTypeId.Value))
+        {
+            selectedScopeValueText = tag.ScopeValue.Value;
+            selectedScopeValueId = null;
+        }
+        else
+        {
+            selectedScopeValueId = tag.ScopeValueId;
+            selectedScopeValueText = null;
+        }
+    }
+
+    private void CancelAddOrEdit()
+    {
+        editingTag = null;
+        showAddTag = false;
+        selectedScopeTypeId = null;
+        selectedScopeValueId = null;
+        selectedScopeValueText = null;
+    }
+}

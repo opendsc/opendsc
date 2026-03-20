@@ -104,9 +104,9 @@ public static class ScopeValueEndpoints
             return TypedResults.NotFound();
         }
 
-        if (!scopeType.AllowsValues)
+        if (scopeType.ValueMode != ScopeValueMode.Restricted)
         {
-            return TypedResults.BadRequest($"Scope type '{scopeType.Name}' does not allow values");
+            return TypedResults.BadRequest($"Scope type '{scopeType.Name}' does not use restricted values. Only restricted scope types can have predefined values.");
         }
 
         if (string.IsNullOrWhiteSpace(request.Value))

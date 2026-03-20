@@ -15,7 +15,7 @@ namespace OpenDsc.Server.Services;
 /// <summary>
 /// Transforms claims to include permissions from user roles and group roles.
 /// </summary>
-public class GroupClaimsTransformation(ServerDbContext db) : IClaimsTransformation
+public sealed partial class GroupClaimsTransformation(ServerDbContext db, ILogger<GroupClaimsTransformation> logger) : IClaimsTransformation
 {
     public async Task<ClaimsPrincipal> TransformAsync(ClaimsPrincipal principal)
     {
@@ -34,6 +34,7 @@ public class GroupClaimsTransformation(ServerDbContext db) : IClaimsTransformati
         }
 
         principal.AddIdentity(identity);
+        LogClaimsTransformed(userId, permissions.Count);
         return principal;
     }
 
@@ -138,4 +139,7 @@ public class GroupClaimsTransformation(ServerDbContext db) : IClaimsTransformati
 
         return permissions;
     }
+
+    [LoggerMessage(EventId = EventIds.ClaimsTransformed, Level = LogLevel.Debug, Message = "Claims transformation resolved {PermissionCount} permissions for user {UserId}")]
+    private partial void LogClaimsTransformed(Guid userId, int permissionCount);
 }

@@ -4,9 +4,11 @@
 
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 using OpenDsc.Server.Authentication;
+using OpenDsc.Server.Authorization;
 using OpenDsc.Server.Contracts;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
@@ -73,6 +75,18 @@ public static class CompositeConfigurationEndpoints
         group.MapDelete("/{name}/versions/{version}/children/{childId}", RemoveChildConfiguration)
             .WithName("RemoveChildConfiguration")
             .WithDescription("Remove a child configuration from a draft composite version");
+
+        group.MapGet("/{name}/permissions", GetCompositeConfigurationPermissions)
+            .WithName("GetCompositeConfigurationPermissions")
+            .WithDescription("List all permission grants on a composite configuration");
+
+        group.MapPut("/{name}/permissions", GrantCompositeConfigurationPermission)
+            .WithName("GrantCompositeConfigurationPermission")
+            .WithDescription("Grant or update a permission on a composite configuration");
+
+        group.MapDelete("/{name}/permissions/{principalType}/{principalId:guid}", RevokeCompositeConfigurationPermission)
+            .WithName("RevokeCompositeConfigurationPermission")
+            .WithDescription("Revoke a permission on a composite configuration");
     }
 
     private static async Task<Ok<List<CompositeConfigurationSummaryDto>>> GetCompositeConfigurations(
@@ -100,7 +114,7 @@ public static class CompositeConfigurationEndpoints
             Description = c.Description,
             EntryPoint = c.EntryPoint,
             VersionCount = c.Versions.Count,
-            LatestVersion = c.Versions.OrderByDescending(v => v.CreatedAt).Select(v => v.Version).FirstOrDefault(),
+            LatestVersion = VersionResolver.LatestSemver(c.Versions.Select(v => v.Version)),
             CreatedAt = c.CreatedAt
         }).ToList();
 
@@ -129,7 +143,6 @@ public static class CompositeConfigurationEndpoints
             Name = request.Name,
             Description = request.Description,
             EntryPoint = request.EntryPoint,
-            IsServerManaged = request.IsServerManaged,
             CreatedAt = DateTimeOffset.UtcNow
         };
 
@@ -137,7 +150,7 @@ public static class CompositeConfigurationEndpoints
         await db.SaveChangesAsync();
 
         var userId = userContext.GetCurrentUserId();
-        if (userId.HasValue)
+        if (userId.HasValue && !await authService.HasGlobalPermissionAsync(userId.Value, Permissions.CompositeConfigurations_AdminOverride))
         {
             await authService.GrantCompositeConfigurationPermissionAsync(
                 composite.Id,
@@ -153,7 +166,6 @@ public static class CompositeConfigurationEndpoints
             Name = composite.Name,
             Description = composite.Description,
             EntryPoint = composite.EntryPoint,
-            IsServerManaged = composite.IsServerManaged,
             Versions = [],
             CreatedAt = composite.CreatedAt,
             UpdatedAt = composite.UpdatedAt
@@ -191,13 +203,11 @@ public static class CompositeConfigurationEndpoints
             Name = composite.Name,
             Description = composite.Description,
             EntryPoint = composite.EntryPoint,
-            IsServerManaged = composite.IsServerManaged,
             Versions = composite.Versions.OrderByDescending(v => v.CreatedAt).Select(v => new CompositeConfigurationVersionDto
             {
                 Id = v.Id,
                 Version = v.Version,
-                IsDraft = v.IsDraft,
-                IsArchived = v.IsArchived,
+                Status = v.Status,
                 PrereleaseChannel = v.PrereleaseChannel,
                 Items = v.Items.OrderBy(i => i.Order).Select(i => new CompositeConfigurationItemDto
                 {
@@ -286,7 +296,6 @@ public static class CompositeConfigurationEndpoints
             Id = Guid.NewGuid(),
             CompositeConfigurationId = composite.Id,
             Version = request.Version,
-            IsDraft = true,
             PrereleaseChannel = request.PrereleaseChannel,
             CreatedAt = DateTimeOffset.UtcNow
         };
@@ -301,8 +310,7 @@ public static class CompositeConfigurationEndpoints
         {
             Id = version.Id,
             Version = version.Version,
-            IsDraft = version.IsDraft,
-            IsArchived = version.IsArchived,
+            Status = version.Status,
             PrereleaseChannel = version.PrereleaseChannel,
             Items = [],
             CreatedAt = version.CreatedAt,
@@ -339,8 +347,7 @@ public static class CompositeConfigurationEndpoints
         {
             Id = v.Id,
             Version = v.Version,
-            IsDraft = v.IsDraft,
-            IsArchived = v.IsArchived,
+            Status = v.Status,
             PrereleaseChannel = v.PrereleaseChannel,
             Items = v.Items.OrderBy(i => i.Order).Select(i => new CompositeConfigurationItemDto
             {
@@ -385,8 +392,7 @@ public static class CompositeConfigurationEndpoints
         {
             Id = compositeVersion.Id,
             Version = compositeVersion.Version,
-            IsDraft = compositeVersion.IsDraft,
-            IsArchived = compositeVersion.IsArchived,
+            Status = compositeVersion.Status,
             PrereleaseChannel = compositeVersion.PrereleaseChannel,
             Items = compositeVersion.Items.OrderBy(i => i.Order).Select(i => new CompositeConfigurationItemDto
             {
@@ -412,6 +418,7 @@ public static class CompositeConfigurationEndpoints
     {
         var compositeVersion = await db.CompositeConfigurationVersions
             .Include(v => v.CompositeConfiguration)
+            .Include(v => v.Items)
             .FirstOrDefaultAsync(v => v.CompositeConfiguration.Name == name && v.Version == version);
 
         if (compositeVersion is null)
@@ -425,12 +432,17 @@ public static class CompositeConfigurationEndpoints
             return TypedResults.Forbid();
         }
 
-        if (!compositeVersion.IsDraft)
+        if (compositeVersion.Status != ConfigurationVersionStatus.Draft)
         {
             return TypedResults.BadRequest(new ErrorResponse { Error = "Version is already published" });
         }
 
-        compositeVersion.IsDraft = false;
+        if (!compositeVersion.Items.Any())
+        {
+            return TypedResults.BadRequest(new ErrorResponse { Error = "Cannot publish a composite configuration version with no child configurations" });
+        }
+
+        compositeVersion.Status = ConfigurationVersionStatus.Published;
         compositeVersion.CompositeConfiguration.UpdatedAt = DateTimeOffset.UtcNow;
 
         await db.SaveChangesAsync();
@@ -461,7 +473,7 @@ public static class CompositeConfigurationEndpoints
             return TypedResults.Forbid();
         }
 
-        if (!compositeVersion.IsDraft)
+        if (compositeVersion.Status != ConfigurationVersionStatus.Draft)
         {
             return TypedResults.BadRequest(new ErrorResponse { Error = "Cannot delete published version" });
         }
@@ -501,7 +513,7 @@ public static class CompositeConfigurationEndpoints
             return TypedResults.Forbid();
         }
 
-        if (!compositeVersion.IsDraft)
+        if (compositeVersion.Status != ConfigurationVersionStatus.Draft)
         {
             return TypedResults.BadRequest(new ErrorResponse { Error = "Cannot modify published version" });
         }
@@ -598,7 +610,7 @@ public static class CompositeConfigurationEndpoints
             return TypedResults.Forbid();
         }
 
-        if (!item.CompositeConfigurationVersion.IsDraft)
+        if (item.CompositeConfigurationVersion.Status != ConfigurationVersionStatus.Draft)
         {
             return TypedResults.BadRequest(new ErrorResponse { Error = "Cannot modify published version" });
         }
@@ -659,7 +671,7 @@ public static class CompositeConfigurationEndpoints
             return TypedResults.Forbid();
         }
 
-        if (!item.CompositeConfigurationVersion.IsDraft)
+        if (item.CompositeConfigurationVersion.Status != ConfigurationVersionStatus.Draft)
         {
             return TypedResults.BadRequest(new ErrorResponse { Error = "Cannot modify published version" });
         }
@@ -670,5 +682,130 @@ public static class CompositeConfigurationEndpoints
         await db.SaveChangesAsync();
 
         return TypedResults.NoContent();
+    }
+
+    private static async Task<Results<Ok<List<PermissionEntryDto>>, NotFound, ForbidHttpResult>> GetCompositeConfigurationPermissions(
+        string name,
+        ServerDbContext db,
+        IResourceAuthorizationService authService,
+        IUserContextService userContext)
+    {
+        var composite = await db.CompositeConfigurations.FirstOrDefaultAsync(c => c.Name == name);
+        if (composite is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null || !await authService.CanManageCompositeConfigurationAsync(userId.Value, composite.Id))
+        {
+            return TypedResults.Forbid();
+        }
+
+        var acl = await authService.GetCompositeConfigurationAclAsync(composite.Id);
+        var result = await BuildPermissionEntries(
+            acl.Select(p => (p.PrincipalType, p.PrincipalId, p.PermissionLevel, p.GrantedAt, p.GrantedByUserId)), db);
+        return TypedResults.Ok(result);
+    }
+
+    private static async Task<Results<Ok, BadRequest<string>, NotFound, ForbidHttpResult>> GrantCompositeConfigurationPermission(
+        string name,
+        [FromBody] PermissionGrantRequest request,
+        ServerDbContext db,
+        IResourceAuthorizationService authService,
+        IUserContextService userContext)
+    {
+        var composite = await db.CompositeConfigurations.FirstOrDefaultAsync(c => c.Name == name);
+        if (composite is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null || !await authService.CanManageCompositeConfigurationAsync(userId.Value, composite.Id))
+        {
+            return TypedResults.Forbid();
+        }
+
+        if (!Enum.TryParse<PrincipalType>(request.PrincipalType, ignoreCase: true, out var principalType))
+        {
+            return TypedResults.BadRequest($"Invalid principal type '{request.PrincipalType}'. Must be 'User' or 'Group'.");
+        }
+
+        if (!Enum.TryParse<ResourcePermission>(request.Level, ignoreCase: true, out var level))
+        {
+            return TypedResults.BadRequest($"Invalid permission level '{request.Level}'. Must be 'Read', 'Modify', or 'Manage'.");
+        }
+
+        if (principalType == PrincipalType.User && !await db.Users.AnyAsync(u => u.Id == request.PrincipalId))
+        {
+            return TypedResults.NotFound();
+        }
+
+        if (principalType == PrincipalType.Group && !await db.Groups.AnyAsync(g => g.Id == request.PrincipalId))
+        {
+            return TypedResults.NotFound();
+        }
+
+        await authService.GrantCompositeConfigurationPermissionAsync(composite.Id, request.PrincipalId, principalType, level, userId.Value);
+        return TypedResults.Ok();
+    }
+
+    private static async Task<Results<NoContent, BadRequest<string>, NotFound, ForbidHttpResult>> RevokeCompositeConfigurationPermission(
+        string name,
+        string principalType,
+        Guid principalId,
+        ServerDbContext db,
+        IResourceAuthorizationService authService,
+        IUserContextService userContext)
+    {
+        var composite = await db.CompositeConfigurations.FirstOrDefaultAsync(c => c.Name == name);
+        if (composite is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null || !await authService.CanManageCompositeConfigurationAsync(userId.Value, composite.Id))
+        {
+            return TypedResults.Forbid();
+        }
+
+        if (!Enum.TryParse<PrincipalType>(principalType, ignoreCase: true, out var parsedPrincipalType))
+        {
+            return TypedResults.BadRequest($"Invalid principal type '{principalType}'. Must be 'User' or 'Group'.");
+        }
+
+        await authService.RevokeCompositeConfigurationPermissionAsync(composite.Id, principalId, parsedPrincipalType);
+        return TypedResults.NoContent();
+    }
+
+    private static async Task<List<PermissionEntryDto>> BuildPermissionEntries(
+        IEnumerable<(PrincipalType PrincipalType, Guid PrincipalId, ResourcePermission Level, DateTimeOffset GrantedAt, Guid? GrantedByUserId)> entries,
+        ServerDbContext db)
+    {
+        var list = entries.ToList();
+        var userIds = list.Where(e => e.PrincipalType == PrincipalType.User).Select(e => e.PrincipalId).ToList();
+        var groupIds = list.Where(e => e.PrincipalType == PrincipalType.Group).Select(e => e.PrincipalId).ToList();
+
+        var userNames = await db.Users
+            .Where(u => userIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, u => u.Username);
+
+        var groupNames = await db.Groups
+            .Where(g => groupIds.Contains(g.Id))
+            .ToDictionaryAsync(g => g.Id, g => g.Name);
+
+        return list.Select(e => new PermissionEntryDto
+        {
+            PrincipalType = e.PrincipalType.ToString(),
+            PrincipalId = e.PrincipalId,
+            PrincipalName = e.PrincipalType == PrincipalType.User
+                ? userNames.GetValueOrDefault(e.PrincipalId, "Unknown")
+                : groupNames.GetValueOrDefault(e.PrincipalId, "Unknown"),
+            Level = e.Level.ToString(),
+            GrantedAt = e.GrantedAt,
+            GrantedByUserId = e.GrantedByUserId
+        }).ToList();
     }
 }

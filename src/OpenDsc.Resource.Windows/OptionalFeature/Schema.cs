@@ -13,7 +13,7 @@ namespace OpenDsc.Resource.Windows.OptionalFeature;
 [AdditionalProperties(false)]
 public sealed class Schema
 {
-    [Pattern(@"^[a-zA-Z0-9\-\.]+$")]
+    [Pattern(@"^[a-zA-Z0-9\-\._]+$")]
     [Description("The name of the Windows feature to manage.")]
     public required string Name { get; set; } = string.Empty;
 

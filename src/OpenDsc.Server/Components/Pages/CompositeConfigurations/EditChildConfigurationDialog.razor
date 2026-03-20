@@ -1,0 +1,112 @@
+@using NuGet.Versioning
+@inject ServerDbContext Db
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body1" Class="mb-3">
+            Editing <strong>@Item.ChildConfiguration.Name</strong> in version <strong>@VersionString</strong>
+        </MudText>
+
+        <MudSelect @bind-Value="selectedMajorVersion"
+                   T="int?"
+                   Label="Major Version"
+                   Variant="Variant.Outlined"
+                   Class="mb-3"
+                   Required="true"
+                   HelperText="Select the major version to track">
+            @foreach (var major in availableMajorVersions)
+            {
+                <MudSelectItem T="int?" Value="@((int?)major)">v@(major)</MudSelectItem>
+            }
+        </MudSelect>
+
+        @if (!string.IsNullOrWhiteSpace(validationError))
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-3">@validationError</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(!IsValid() || isSubmitting)">
+            @if (isSubmitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+            }
+            else
+            {
+                <text>Save</text>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter]
+    public string CompositeName { get; set; } = string.Empty;
+
+    [Parameter]
+    public string VersionString { get; set; } = string.Empty;
+
+    [Parameter]
+    public CompositeConfigurationItem Item { get; set; } = default!;
+
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private List<int> availableMajorVersions = [];
+    private int? selectedMajorVersion;
+    private bool isSubmitting;
+    private string? validationError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        selectedMajorVersion = Item.MajorVersion;
+
+        var versions = await Db.ConfigurationVersions
+            .Where(v => v.ConfigurationId == Item.ChildConfigurationId && v.Status == ConfigurationVersionStatus.Published)
+            .Select(v => v.Version)
+            .ToListAsync();
+
+        availableMajorVersions = versions
+            .Select(v => SemanticVersion.TryParse(v, out var sv) ? sv.Major : -1)
+            .Where(m => m >= 0)
+            .Distinct()
+            .OrderBy(m => m)
+            .ToList();
+    }
+
+    private bool IsValid() => selectedMajorVersion.HasValue;
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task Submit()
+    {
+        validationError = null;
+        isSubmitting = true;
+
+        try
+        {
+            var item = await Db.CompositeConfigurationItems.FindAsync(Item.Id);
+            if (item is null)
+            {
+                validationError = "Child configuration item not found.";
+                return;
+            }
+
+            item.MajorVersion = selectedMajorVersion;
+            await Db.SaveChangesAsync();
+
+            Snackbar.Add("Major version updated", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            validationError = $"Error updating major version: {ex.Message}";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}

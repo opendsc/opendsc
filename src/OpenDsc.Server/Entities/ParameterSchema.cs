@@ -8,9 +8,10 @@ public sealed class ParameterSchema
 {
     public Guid Id { get; set; }
     public required Guid ConfigurationId { get; set; }
-    public required string SchemaHash { get; set; }
-    public required string SchemaDefinition { get; set; }
+    public string? GeneratedJsonSchema { get; set; }
+    public string? SchemaVersion { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset? UpdatedAt { get; set; }
 
     public Configuration Configuration { get; set; } = null!;
     public ICollection<ConfigurationVersion> ConfigurationVersions { get; set; } = [];

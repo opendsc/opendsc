@@ -141,4 +141,27 @@ public class ReportEndpointsTests : IDisposable
         reports.Should().NotBeNull();
         reports!.Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task SubmitReport_DoesNotCreateStatusHistoryEvent()
+    {
+        var nodeId = await RegisterTestNodeAsync();
+
+        using var nodeClient = _factory.CreateClient();
+        var reportResponse = await nodeClient.PostAsJsonAsync($"/api/v1/nodes/{nodeId}/reports", new SubmitReportRequest
+        {
+            Operation = DscOperation.Test,
+            Result = new DscResult { HadErrors = false, Messages = [], Results = [] }
+        });
+
+        reportResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        // Compliance reports no longer create status history events — verify the history is empty
+        using var adminClient = _factory.CreateAuthenticatedClient();
+        var historyResponse = await adminClient.GetAsync($"/api/v1/nodes/{nodeId}/status-history");
+        historyResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var events = await historyResponse.Content.ReadFromJsonAsync<List<NodeStatusEventSummary>>();
+        events.Should().NotBeNull();
+        events!.Should().BeEmpty();
+    }
 }

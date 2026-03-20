@@ -4,6 +4,7 @@
 
 using Microsoft.EntityFrameworkCore;
 
+using OpenDsc.Lcm.Contracts;
 using OpenDsc.Server.Entities;
 
 namespace OpenDsc.Server.Data;
@@ -84,6 +85,11 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
     public DbSet<Report> Reports => Set<Report>();
 
     /// <summary>
+    /// Node status events (LCM operational transitions and compliance changes).
+    /// </summary>
+    public DbSet<NodeStatusEvent> NodeStatusEvents => Set<NodeStatusEvent>();
+
+    /// <summary>
     /// Registration keys for node authorization.
     /// </summary>
     public DbSet<RegistrationKey> RegistrationKeys => Set<RegistrationKey>();
@@ -158,6 +164,11 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
     /// </summary>
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
+    /// <summary>
+    /// Retention cleanup run history.
+    /// </summary>
+    public DbSet<RetentionRun> RetentionRuns => Set<RetentionRun>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -172,6 +183,7 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
             entity.Property(e => e.CertificateThumbprint).HasMaxLength(64).IsRequired();
             entity.Property(e => e.CertificateSubject).HasMaxLength(500).IsRequired();
             entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(20);
+            entity.Property(e => e.LcmStatus).HasConversion<string>().HasMaxLength(20);
         });
 
         modelBuilder.Entity<Configuration>(entity =>
@@ -179,7 +191,6 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.Name).IsUnique();
             entity.Property(e => e.Name).HasMaxLength(255).IsRequired();
-            entity.Property(e => e.EntryPoint).HasMaxLength(500).IsRequired();
         });
 
         modelBuilder.Entity<ConfigurationVersion>(entity =>
@@ -187,6 +198,7 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => new { e.ConfigurationId, e.Version }).IsUnique();
             entity.Property(e => e.Version).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.EntryPoint).HasMaxLength(500).IsRequired();
             entity.Property(e => e.PrereleaseChannel).HasMaxLength(50);
             entity.Property(e => e.CreatedBy).HasMaxLength(255);
 
@@ -217,6 +229,7 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
             entity.HasIndex(e => e.Precedence).IsUnique();
             entity.Property(e => e.Name).HasMaxLength(100).IsRequired();
             entity.Property(e => e.Description).HasMaxLength(500);
+            entity.Property(e => e.IsEnabled).HasDefaultValue(true);
         });
 
         modelBuilder.Entity<ScopeValue>(entity =>
@@ -251,7 +264,7 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
         {
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => new { e.ParameterSchemaId, e.ScopeTypeId, e.ScopeValue, e.Version }).IsUnique();
-            entity.HasIndex(e => new { e.ParameterSchemaId, e.ScopeTypeId, e.ScopeValue, e.IsActive });
+            entity.HasIndex(e => new { e.ParameterSchemaId, e.ScopeTypeId, e.ScopeValue, e.Status });
             entity.Property(e => e.Version).HasMaxLength(50).IsRequired();
             entity.Property(e => e.ScopeValue).HasMaxLength(255);
             entity.Property(e => e.ContentType).HasMaxLength(100);
@@ -342,12 +355,30 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
+        modelBuilder.Entity<NodeStatusEvent>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.NodeId);
+            entity.HasIndex(e => e.Timestamp);
+            entity.Property(e => e.LcmStatus)
+                .HasMaxLength(20)
+                .HasConversion(
+                    v => v.HasValue ? v.Value.ToString() : null,
+                    v => v != null ? Enum.Parse<LcmStatus>(v) : (LcmStatus?)null);
+
+            entity.HasOne(e => e.Node)
+                .WithMany(n => n.StatusEvents)
+                .HasForeignKey(e => e.NodeId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         modelBuilder.Entity<RegistrationKey>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.Key).IsUnique();
             entity.HasIndex(e => e.ExpiresAt);
             entity.Property(e => e.Key).HasMaxLength(64).IsRequired();
+            entity.Property(e => e.Description).HasMaxLength(500);
         });
 
         modelBuilder.Entity<ServerSettings>(entity =>
@@ -358,14 +389,29 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
         modelBuilder.Entity<ParameterSchema>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.HasIndex(e => new { e.ConfigurationId, e.SchemaHash });
-            entity.Property(e => e.SchemaHash).HasMaxLength(64).IsRequired();
-            entity.Property(e => e.SchemaDefinition).IsRequired();
+            entity.HasIndex(e => e.ConfigurationId);
 
             entity.HasOne(e => e.Configuration)
                 .WithMany()
                 .HasForeignKey(e => e.ConfigurationId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ParameterFile>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.ParameterSchemaId, e.MajorVersion, e.ScopeTypeId, e.ScopeValue, e.Version }).IsUnique();
+            entity.HasIndex(e => new { e.ParameterSchemaId, e.MajorVersion, e.ScopeTypeId, e.ScopeValue, e.Status });
+
+            entity.HasOne(e => e.ParameterSchema)
+                .WithMany(p => p.ParameterFiles)
+                .HasForeignKey(e => e.ParameterSchemaId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.ScopeType)
+                .WithMany(p => p.ParameterFiles)
+                .HasForeignKey(e => e.ScopeTypeId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<ValidationSettings>(entity =>
@@ -558,6 +604,23 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
             entity.Property(e => e.IpAddress).HasMaxLength(45);
         });
 
+        modelBuilder.Entity<RetentionRun>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.StartedAt);
+            entity.HasIndex(e => e.VersionType);
+            entity.Property(e => e.VersionType).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.Error).HasMaxLength(2000);
+            entity.Property(e => e.StartedAt)
+                .HasConversion(
+                    v => v.ToUnixTimeMilliseconds(),
+                    v => DateTimeOffset.FromUnixTimeMilliseconds(v));
+            entity.Property(e => e.CompletedAt)
+                .HasConversion(
+                    v => v.HasValue ? (long?)v.Value.ToUnixTimeMilliseconds() : null,
+                    v => v.HasValue ? (DateTimeOffset?)DateTimeOffset.FromUnixTimeMilliseconds(v.Value) : null);
+        });
+
         SeedDefaultScopeTypes(modelBuilder);
         SeedDefaultValidationSettings(modelBuilder);
     }
@@ -590,10 +653,11 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
             {
                 Id = Guid.Parse("00000000-0000-0000-0000-000000000001"),
                 Name = "Default",
-                Description = "Default parameters applied to all configurations",
+                Description = "Default configuration parameters",
                 Precedence = 0,
                 IsSystem = true,
-                AllowsValues = false,
+                IsEnabled = true,
+                ValueMode = ScopeValueMode.Unrestricted,
                 CreatedAt = now
             },
             new ScopeType
@@ -603,7 +667,8 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
                 Description = "Node-specific parameter overrides matched by FQDN",
                 Precedence = 1,
                 IsSystem = true,
-                AllowsValues = true,
+                IsEnabled = true,
+                ValueMode = ScopeValueMode.Unrestricted,
                 CreatedAt = now
             }
         );

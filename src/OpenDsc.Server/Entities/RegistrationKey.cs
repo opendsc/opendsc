@@ -43,4 +43,9 @@ public sealed class RegistrationKey
     /// Whether the key has been revoked.
     /// </summary>
     public bool IsRevoked { get; set; }
+
+    /// <summary>
+    /// Optional description of the key's intended usage or purpose.
+    /// </summary>
+    public string? Description { get; set; }
 }

@@ -55,7 +55,7 @@ public class DscExecutorTests
         var buildArgumentsMethod = typeof(DscExecutor).GetMethod("BuildArguments",
             BindingFlags.NonPublic | BindingFlags.Static);
 
-        var result = buildArgumentsMethod!.Invoke(null, ["test", "/path/to/config.yaml", LogLevel.Information]) as List<string>;
+        var result = buildArgumentsMethod!.Invoke(null, ["test", "/path/to/config.yaml", LogLevel.Information, null]) as List<string>;
 
         result.Should().NotBeNull();
         result.Should().Contain("--trace-level");
@@ -80,7 +80,7 @@ public class DscExecutorTests
         var buildArgumentsMethod = typeof(DscExecutor).GetMethod("BuildArguments",
             BindingFlags.NonPublic | BindingFlags.Static);
 
-        var result = buildArgumentsMethod!.Invoke(null, [operation, "/path/config.yaml", LogLevel.Debug]) as List<string>;
+        var result = buildArgumentsMethod!.Invoke(null, [operation, "/path/config.yaml", LogLevel.Debug, null]) as List<string>;
 
         result.Should().Contain(operation);
     }

@@ -84,7 +84,7 @@
         Wait="yes" />
 
       <util:EventSource
-        Name="OpenDSC LCM"
+        Name="OpenDsc.Lcm"
         Log="Application"
         EventMessageFile="[#LcmExecutable]" />
 

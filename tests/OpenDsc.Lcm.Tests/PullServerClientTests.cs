@@ -18,6 +18,7 @@ using Microsoft.Extensions.Options;
 using Moq;
 using Moq.Protected;
 
+using OpenDsc.Lcm.Contracts;
 using OpenDsc.Schema;
 
 using Xunit;
@@ -30,6 +31,7 @@ public sealed class PullServerClientTests
     private readonly Mock<ILogger<PullServerClient>> _loggerMock;
     private readonly Mock<IOptionsMonitor<LcmConfig>> _configMonitorMock;
     private readonly Mock<ICertificateManager> _certificateManagerMock;
+    private readonly Mock<IHttpClientFactory> _httpClientFactoryMock;
     private readonly HttpClient _httpClient;
     private readonly LcmConfig _config;
 
@@ -39,6 +41,7 @@ public sealed class PullServerClientTests
         _loggerMock = new Mock<ILogger<PullServerClient>>();
         _configMonitorMock = new Mock<IOptionsMonitor<LcmConfig>>();
         _certificateManagerMock = new Mock<ICertificateManager>();
+        _httpClientFactoryMock = new Mock<IHttpClientFactory>();
 
         _config = new LcmConfig
         {
@@ -90,7 +93,7 @@ public sealed class PullServerClientTests
                 })
             });
 
-        var client = new PullServerClient(_httpClient, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
+        var client = new PullServerClient(_httpClient, _httpClientFactoryMock.Object, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
 
         var result = await client.RegisterAsync();
 
@@ -112,7 +115,7 @@ public sealed class PullServerClientTests
 
         _configMonitorMock.Setup(x => x.CurrentValue).Returns(configWithoutPullServer);
 
-        var client = new PullServerClient(_httpClient, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
+        var client = new PullServerClient(_httpClient, _httpClientFactoryMock.Object, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
 
         var result = await client.RegisterAsync();
 
@@ -133,7 +136,7 @@ public sealed class PullServerClientTests
                 Content = new StringContent("{\"error\":\"Invalid registration key\"}", Encoding.UTF8, "application/json")
             });
 
-        var client = new PullServerClient(_httpClient, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
+        var client = new PullServerClient(_httpClient, _httpClientFactoryMock.Object, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
 
         var result = await client.RegisterAsync();
 
@@ -155,7 +158,7 @@ public sealed class PullServerClientTests
                 StatusCode = HttpStatusCode.OK
             });
 
-        var client = new PullServerClient(_httpClient, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
+        var client = new PullServerClient(_httpClient, _httpClientFactoryMock.Object, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
 
         // Create a test certificate for rotation
         using var rsa = System.Security.Cryptography.RSA.Create(2048);
@@ -188,7 +191,7 @@ public sealed class PullServerClientTests
                 Content = new StringContent(configContent, Encoding.UTF8, "application/yaml")
             });
 
-        var client = new PullServerClient(_httpClient, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
+        var client = new PullServerClient(_httpClient, _httpClientFactoryMock.Object, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
 
         var result = await client.GetConfigurationAsync();
 
@@ -209,7 +212,7 @@ public sealed class PullServerClientTests
 
         _configMonitorMock.Setup(x => x.CurrentValue).Returns(configWithoutPullServer);
 
-        var client = new PullServerClient(_httpClient, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
+        var client = new PullServerClient(_httpClient, _httpClientFactoryMock.Object, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
 
         var result = await client.GetConfigurationAsync();
 
@@ -221,7 +224,8 @@ public sealed class PullServerClientTests
     {
         var response = new ConfigurationChecksumResponse
         {
-            Checksum = "new-checksum-456"
+            Checksum = "new-checksum-456",
+            EntryPoint = "main.dsc.yaml"
         };
 
         _httpMessageHandlerMock.Protected()
@@ -240,11 +244,13 @@ public sealed class PullServerClientTests
                 })
             });
 
-        var client = new PullServerClient(_httpClient, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
+        var client = new PullServerClient(_httpClient, _httpClientFactoryMock.Object, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
 
         var result = await client.GetConfigurationChecksumAsync();
 
-        result.Should().Be(response.Checksum);
+        result.Should().NotBeNull();
+        result!.Checksum.Should().Be(response.Checksum);
+        result.EntryPoint.Should().Be(response.EntryPoint);
     }
 
     [Fact]
@@ -269,7 +275,7 @@ public sealed class PullServerClientTests
                 })
             });
 
-        var client = new PullServerClient(_httpClient, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
+        var client = new PullServerClient(_httpClient, _httpClientFactoryMock.Object, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
 
         var result = await client.HasConfigurationChangedAsync();
 
@@ -298,7 +304,7 @@ public sealed class PullServerClientTests
                 })
             });
 
-        var client = new PullServerClient(_httpClient, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
+        var client = new PullServerClient(_httpClient, _httpClientFactoryMock.Object, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
 
         var result = await client.HasConfigurationChangedAsync();
 
@@ -320,7 +326,7 @@ public sealed class PullServerClientTests
                 StatusCode = HttpStatusCode.OK
             });
 
-        var client = new PullServerClient(_httpClient, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
+        var client = new PullServerClient(_httpClient, _httpClientFactoryMock.Object, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
 
         var result = new DscResult
         {
@@ -354,7 +360,7 @@ public sealed class PullServerClientTests
 
         _configMonitorMock.Setup(x => x.CurrentValue).Returns(configWithoutPullServer);
 
-        var client = new PullServerClient(_httpClient, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
+        var client = new PullServerClient(_httpClient, _httpClientFactoryMock.Object, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
 
         var result = new DscResult
         {
@@ -423,6 +429,70 @@ public sealed class PullServerClientTests
         httpClient.BaseAddress.Should().Be(new Uri("https://localhost:5001"));
 
         certManagerMock.Verify(x => x.GetClientCertificate(), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateLcmStatusAsync_WithValidNodeId_SendsPutRequest()
+    {
+        _httpMessageHandlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.Is<HttpRequestMessage>(req =>
+                    req.Method == HttpMethod.Put &&
+                    req.RequestUri!.AbsolutePath.Contains("/lcm-status")),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.NoContent
+            });
+
+        var client = new PullServerClient(_httpClient, _httpClientFactoryMock.Object, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
+
+        await client.UpdateLcmStatusAsync(LcmStatus.Testing, CancellationToken.None);
+
+        _httpMessageHandlerMock.Protected().Verify(
+            "SendAsync",
+            Times.Once(),
+            ItExpr.Is<HttpRequestMessage>(req =>
+                req.Method == HttpMethod.Put &&
+                req.RequestUri!.AbsolutePath.Contains("/lcm-status")),
+            ItExpr.IsAny<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task UpdateLcmStatusAsync_WithNullNodeId_DoesNotSendRequest()
+    {
+        _config.PullServer!.NodeId = null;
+
+        var client = new PullServerClient(_httpClient, _httpClientFactoryMock.Object, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
+
+        await client.UpdateLcmStatusAsync(LcmStatus.Idle, CancellationToken.None);
+
+        _httpMessageHandlerMock.Protected().Verify(
+            "SendAsync",
+            Times.Never(),
+            ItExpr.IsAny<HttpRequestMessage>(),
+            ItExpr.IsAny<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task UpdateLcmStatusAsync_WhenServerFails_DoesNotThrow()
+    {
+        _httpMessageHandlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.InternalServerError
+            });
+
+        var client = new PullServerClient(_httpClient, _httpClientFactoryMock.Object, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
+
+        var act = async () => await client.UpdateLcmStatusAsync(LcmStatus.Error, CancellationToken.None);
+
+        await act.Should().NotThrowAsync();
     }
 
     private static X509Certificate2 GenerateTestCertificate()

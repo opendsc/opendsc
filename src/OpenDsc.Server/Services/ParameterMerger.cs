@@ -176,9 +176,9 @@ public sealed class ParameterMerger : IParameterMerger
             return [];
         }
 
-        var result = new Dictionary<string, object?>(objects[0]);
+        var result = new Dictionary<string, object?>();
 
-        for (int i = 1; i < objects.Count; i++)
+        for (int i = 0; i < objects.Count; i++)
         {
             MergeIntoWithProvenance(result, objects[i], sources, i, path, provenance);
         }
@@ -222,14 +222,23 @@ public sealed class ParameterMerger : IParameterMerger
 
             if (!target.TryGetValue(kvp.Key, out var existingValue))
             {
-                target[kvp.Key] = kvp.Value;
-                provenance[currentPath] = new ParameterProvenance
+                if (kvp.Value is Dictionary<string, object?> newDict)
                 {
-                    ScopeTypeName = sources[currentIndex].ScopeTypeName,
-                    ScopeValue = sources[currentIndex].ScopeValue,
-                    Precedence = sources[currentIndex].Precedence,
-                    Value = kvp.Value
-                };
+                    var nestedTarget = new Dictionary<string, object?>();
+                    target[kvp.Key] = nestedTarget;
+                    MergeIntoWithProvenance(nestedTarget, newDict, sources, currentIndex, currentPath, provenance);
+                }
+                else
+                {
+                    target[kvp.Key] = kvp.Value;
+                    provenance[currentPath] = new ParameterProvenance
+                    {
+                        ScopeTypeName = sources[currentIndex].ScopeTypeName,
+                        ScopeValue = sources[currentIndex].ScopeValue,
+                        Precedence = sources[currentIndex].Precedence,
+                        Value = kvp.Value
+                    };
+                }
                 continue;
             }
 

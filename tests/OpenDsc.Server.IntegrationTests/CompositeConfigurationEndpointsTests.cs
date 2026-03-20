@@ -8,6 +8,7 @@ using System.Net.Http.Headers;
 using AwesomeAssertions;
 
 using OpenDsc.Server.Contracts;
+using OpenDsc.Server.Entities;
 
 using Xunit;
 
@@ -326,7 +327,7 @@ public class CompositeConfigurationEndpointsTests : IDisposable
         var version = await response.Content.ReadFromJsonAsync<CompositeConfigurationVersionDto>();
         version.Should().NotBeNull();
         version!.Version.Should().Be("1.0.0");
-        version.IsDraft.Should().BeTrue();
+        version.Status.Should().Be(ConfigurationVersionStatus.Draft);
     }
 
     [Fact]
@@ -344,12 +345,18 @@ public class CompositeConfigurationEndpointsTests : IDisposable
     {
         using var client = CreateAuthenticatedClient();
 
+        var childConfigName = await CreateTestConfigurationAsync(client, "child-pub-draft-test");
+
         var createRequest = new CreateCompositeConfigurationRequest { Name = "pub-test", EntryPoint = "main.dsc.yaml" };
         var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest);
         var compositeId = createResponse.Headers.Location!.ToString().Split('/').Last();
 
         var versionRequest = new CreateCompositeConfigurationVersionRequest { Version = "1.0.0" };
-        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest);
+        var versionResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest);
+        var versionId = versionResponse.Headers.Location!.ToString().Split('/').Last();
+
+        var addChildRequest = new AddChildConfigurationRequest { ChildConfigurationName = childConfigName, Order = 0 };
+        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/{versionId}/children", addChildRequest);
 
         var response = await client.PutAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/publish", null);
 
@@ -357,7 +364,7 @@ public class CompositeConfigurationEndpointsTests : IDisposable
 
         var getResponse = await client.GetAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0");
         var version = await getResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDto>();
-        version!.IsDraft.Should().BeFalse();
+        version!.Status.Should().Be(ConfigurationVersionStatus.Published);
     }
 
     [Fact]
@@ -365,17 +372,42 @@ public class CompositeConfigurationEndpointsTests : IDisposable
     {
         using var client = CreateAuthenticatedClient();
 
+        var childConfigName = await CreateTestConfigurationAsync(client, "child-pub-again-test");
+
         var createRequest = new CreateCompositeConfigurationRequest { Name = "pub-again-test", EntryPoint = "main.dsc.yaml" };
+        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest);
+        var compositeId = createResponse.Headers.Location!.ToString().Split('/').Last();
+
+        var versionRequest = new CreateCompositeConfigurationVersionRequest { Version = "1.0.0" };
+        var versionResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest);
+        var versionId = versionResponse.Headers.Location!.ToString().Split('/').Last();
+
+        var addChildRequest = new AddChildConfigurationRequest { ChildConfigurationName = childConfigName, Order = 0 };
+        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/{versionId}/children", addChildRequest);
+
+        await client.PutAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/publish", null);
+        var response = await client.PutAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/publish", null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task PublishVersion_NoChildren_ReturnsBadRequest()
+    {
+        using var client = CreateAuthenticatedClient();
+
+        var createRequest = new CreateCompositeConfigurationRequest { Name = "pub-empty-test", EntryPoint = "main.dsc.yaml" };
         var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest);
         var compositeId = createResponse.Headers.Location!.ToString().Split('/').Last();
 
         var versionRequest = new CreateCompositeConfigurationVersionRequest { Version = "1.0.0" };
         await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest);
 
-        await client.PutAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/publish", null);
         var response = await client.PutAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/publish", null);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        error!.Error.Should().Contain("no child configurations");
     }
 
     [Fact]
@@ -416,6 +448,9 @@ public class CompositeConfigurationEndpointsTests : IDisposable
 
         var versionRequest = new CreateCompositeConfigurationVersionRequest { Version = "1.0.0" };
         await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest);
+        var initChildName = await CreateTestConfigurationAsync(client, "del-pub-ver-child");
+        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/children",
+            new AddChildConfigurationRequest { ChildConfigurationName = initChildName, Order = 0 });
         await client.PutAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/publish", null);
 
         var response = await client.DeleteAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0");
@@ -475,6 +510,9 @@ public class CompositeConfigurationEndpointsTests : IDisposable
 
         var versionRequest = new CreateCompositeConfigurationVersionRequest { Version = "1.0.0" };
         await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest);
+        var initChildName = await CreateTestConfigurationAsync(client, "add-to-pub-init");
+        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/children",
+            new AddChildConfigurationRequest { ChildConfigurationName = initChildName, Order = 0 });
         await client.PutAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/publish", null);
 
         var addChildRequest = new AddChildConfigurationRequest { ChildConfigurationName = childConfigName, Order = 0 };
@@ -692,6 +730,10 @@ public class CompositeConfigurationEndpointsTests : IDisposable
         var versionResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions", versionRequest);
         versionResponse.EnsureSuccessStatusCode();
 
+        var childName = await CreateTestConfigurationAsync(client, "node-assigned-child");
+        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/1.0.0/children",
+            new AddChildConfigurationRequest { ChildConfigurationName = childName, Order = 0 });
+
         var publishResponse = await client.PutAsync($"/api/v1/composite-configurations/{compositeName}/versions/1.0.0/publish", null);
         publishResponse.EnsureSuccessStatusCode();
 
@@ -765,6 +807,10 @@ public class CompositeConfigurationEndpointsTests : IDisposable
         var versionRequest = new CreateCompositeConfigurationVersionRequest { Version = version };
         var versionResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions", versionRequest);
         versionResponse.EnsureSuccessStatusCode();
+
+        var childName = await CreateTestConfigurationAsync(client, "del-pub-ver-child-2");
+        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{version}/children",
+            new AddChildConfigurationRequest { ChildConfigurationName = childName, Order = 0 });
 
         var publishResponse = await client.PutAsync($"/api/v1/composite-configurations/{compositeName}/versions/{version}/publish", null);
         publishResponse.EnsureSuccessStatusCode();
@@ -894,6 +940,10 @@ public class CompositeConfigurationEndpointsTests : IDisposable
         var versionResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions", versionRequest);
         versionResponse.EnsureSuccessStatusCode();
 
+        var initConfig = await CreateTestConfigurationAsync(client, "child-config-published-init");
+        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{version}/children",
+            new AddChildConfigurationRequest { ChildConfigurationName = initConfig });
+
         var publishResponse = await client.PutAsync($"/api/v1/composite-configurations/{compositeName}/versions/{version}/publish", null);
         publishResponse.EnsureSuccessStatusCode();
 
@@ -966,6 +1016,7 @@ public class CompositeConfigurationEndpointsTests : IDisposable
         var compositeName = "test-composite-remove-published";
         var version = "1.0.0";
         await CreateTestConfigurationAsync(client, "child-config-remove-published");
+        var childForPublish = await CreateTestConfigurationAsync(client, "child-config-remove-pub-init");
 
         // Create composite
         var createRequest = new CreateCompositeConfigurationRequest
@@ -981,6 +1032,9 @@ public class CompositeConfigurationEndpointsTests : IDisposable
         var versionRequest = new CreateCompositeConfigurationVersionRequest { Version = version };
         var versionResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions", versionRequest);
         versionResponse.EnsureSuccessStatusCode();
+
+        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{version}/children",
+            new AddChildConfigurationRequest { ChildConfigurationName = childForPublish });
 
         var publishResponse = await client.PutAsync($"/api/v1/composite-configurations/{compositeName}/versions/{version}/publish", null);
         publishResponse.EnsureSuccessStatusCode();
