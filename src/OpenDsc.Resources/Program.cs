@@ -14,6 +14,7 @@ using OptionalFeatureNs = OpenDsc.Resource.Windows.OptionalFeature;
 using FileSystemAclNs = OpenDsc.Resource.Windows.FileSystem.Acl;
 using ScheduledTaskNs = OpenDsc.Resource.Windows.ScheduledTask;
 using UserRightNs = OpenDsc.Resource.Windows.UserRight;
+using PasswordPolicyNs = OpenDsc.Resource.Windows.PasswordPolicy;
 using AccountLockoutPolicyNs = OpenDsc.Resource.Windows.AccountLockoutPolicy;
 #endif
 
@@ -51,6 +52,7 @@ var optionalFeatureResource = new OptionalFeatureNs.Resource(OpenDsc.Resource.Wi
 var fileSystemAclResource = new FileSystemAclNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
 var scheduledTaskResource = new ScheduledTaskNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
 var userRightResource = new UserRightNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
+var passwordPolicyResource = new PasswordPolicyNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
 var accountLockoutPolicyResource = new AccountLockoutPolicyNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
 #endif
 
@@ -98,6 +100,7 @@ command
     .AddResource<FileSystemAclNs.Resource, FileSystemAclNs.Schema>(fileSystemAclResource)
     .AddResource<ScheduledTaskNs.Resource, ScheduledTaskNs.Schema>(scheduledTaskResource)
     .AddResource<UserRightNs.Resource, UserRightNs.Schema>(userRightResource)
+    .AddResource<PasswordPolicyNs.Resource, PasswordPolicyNs.Schema>(passwordPolicyResource)
     .AddResource<AccountLockoutPolicyNs.Resource, AccountLockoutPolicyNs.Schema>(accountLockoutPolicyResource);
 #endif
 
