@@ -94,7 +94,7 @@ View, Function, Sequence.
 
 ```yaml
 # Grant SELECT permission on the Customers table to the AppReader user
-$schema: https://schemas.microsoft.com/dsc/2024/03/configuration
+$schema: https://aka.ms/dsc/schemas/v3/bundled/config/document.json
 resources:
   - name: Grant SELECT on Customers table
     type: OpenDsc.SqlServer/ObjectPermission
@@ -113,7 +113,7 @@ resources:
 
 ```yaml
 # Grant EXECUTE permission on a stored procedure
-$schema: https://schemas.microsoft.com/dsc/2024/03/configuration
+$schema: https://aka.ms/dsc/schemas/v3/bundled/config/document.json
 resources:
   - name: Grant EXECUTE on GetCustomerOrders procedure
     type: OpenDsc.SqlServer/ObjectPermission
@@ -131,7 +131,7 @@ resources:
 
 ```yaml
 # Deny DELETE permission on a view
-$schema: https://schemas.microsoft.com/dsc/2024/03/configuration
+$schema: https://aka.ms/dsc/schemas/v3/bundled/config/document.json
 resources:
   - name: Deny DELETE on CustomerSummary view
     type: OpenDsc.SqlServer/ObjectPermission
@@ -149,7 +149,7 @@ resources:
 
 ```yaml
 # Grant SELECT with the ability to grant to others
-$schema: https://schemas.microsoft.com/dsc/2024/03/configuration
+$schema: https://aka.ms/dsc/schemas/v3/bundled/config/document.json
 resources:
   - name: Grant SELECT with GRANT on Products
     type: OpenDsc.SqlServer/ObjectPermission
@@ -168,7 +168,7 @@ resources:
 
 ```yaml
 # Grant SELECT on all objects in a schema
-$schema: https://schemas.microsoft.com/dsc/2024/03/configuration
+$schema: https://aka.ms/dsc/schemas/v3/bundled/config/document.json
 resources:
   - name: Grant SELECT on Reports schema
     type: OpenDsc.SqlServer/ObjectPermission
@@ -185,7 +185,7 @@ resources:
 
 ```yaml
 # Grant EXECUTE on a user-defined function
-$schema: https://schemas.microsoft.com/dsc/2024/03/configuration
+$schema: https://aka.ms/dsc/schemas/v3/bundled/config/document.json
 resources:
   - name: Grant EXECUTE on CalculateTax function
     type: OpenDsc.SqlServer/ObjectPermission
@@ -203,7 +203,7 @@ resources:
 
 ```yaml
 # Revoke SELECT permission from a user
-$schema: https://schemas.microsoft.com/dsc/2024/03/configuration
+$schema: https://aka.ms/dsc/schemas/v3/bundled/config/document.json
 resources:
   - name: Revoke SELECT on Employees table
     type: OpenDsc.SqlServer/ObjectPermission
@@ -221,7 +221,7 @@ resources:
 
 ```yaml
 # Use SQL authentication to connect
-$schema: https://schemas.microsoft.com/dsc/2024/03/configuration
+$schema: https://aka.ms/dsc/schemas/v3/bundled/config/document.json
 resources:
   - name: Grant INSERT on Orders (SQL Auth)
     type: OpenDsc.SqlServer/ObjectPermission

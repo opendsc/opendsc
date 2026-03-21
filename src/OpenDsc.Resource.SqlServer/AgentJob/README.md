@@ -197,7 +197,7 @@ dsc resource export -r OpenDsc.SqlServer/AgentJob
 ## DSC Configuration Example
 
 ```yaml
-$schema: https://aka.ms/dsc/schemas/v3/config/document.json
+$schema: https://aka.ms/dsc/schemas/v3/bundled/config/document.json
 resources:
   - name: Create backup job
     type: OpenDsc.SqlServer/AgentJob
