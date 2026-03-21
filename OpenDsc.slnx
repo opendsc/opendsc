@@ -32,5 +32,6 @@
     <Project Path="tests/OpenDsc.Server.FunctionalTests/OpenDsc.Server.FunctionalTests.csproj" />
     <Project Path="tests/OpenDsc.Lcm.FunctionalTests/OpenDsc.Lcm.FunctionalTests.csproj" />
     <Project Path="tests/OpenDsc.Schema.Tests/OpenDsc.Schema.Tests.csproj" />
+    <Project Path="tests/OpenDsc.Resource.Windows.Tests/OpenDsc.Resource.Windows.Tests.csproj" />
   </Folder>
 </Solution>
