@@ -34,9 +34,8 @@ Describe 'Windows Audit Policy Resource' -Tag 'Windows' -Skip:(!$IsWindows) {
 
             $result = dsc resource get -r OpenDsc.Windows/AuditPolicy --input $inputJson | ConvertFrom-Json
             $result.actualState.subcategory | Should -Be 'File System'
-            # Setting should be an array (may contain 'Success', 'Failure', or be empty)
-            $result.actualState.setting | Should -BeOfType [System.Object[]]
-            $result.actualState.setting | Should -BeIn @('Success', 'Failure', $null)
+            # Setting may be $null (empty), a string (single value), or array (multiple values) after ConvertFrom-Json
+            @($result.actualState.setting) | Where-Object { $_ } | Should -BeIn @('Success', 'Failure')
         }
 
         It 'should handle different subcategory names' {
@@ -46,7 +45,8 @@ Describe 'Windows Audit Policy Resource' -Tag 'Windows' -Skip:(!$IsWindows) {
 
             $result = dsc resource get -r OpenDsc.Windows/AuditPolicy --input $inputJson | ConvertFrom-Json
             $result.actualState.subcategory | Should -Be 'Logon'
-            $result.actualState.setting | Should -BeOfType [System.Object[]]
+            # Setting may be $null, a string (single value), or array (multiple values) after ConvertFrom-Json
+            @($result.actualState.setting) | Where-Object { $_ } | Should -BeIn @('Success', 'Failure')
         }
     }
 
