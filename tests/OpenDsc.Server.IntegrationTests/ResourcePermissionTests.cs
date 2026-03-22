@@ -7,7 +7,6 @@ using System.Net;
 using AwesomeAssertions;
 
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 
 using OpenDsc.Server.Contracts;
 using OpenDsc.Server.Data;
