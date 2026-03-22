@@ -19,19 +19,6 @@ public sealed class OptionalFeatureTests
 {
     private readonly OptionalFeatureResource _resource = new(SourceGenerationContext.Default);
 
-    private bool IsDismAvailable()
-    {
-        try
-        {
-            _resource.Get(new OptionalFeatureSchema { Name = "NonExistentFeature_12345_XYZ" });
-            return true;
-        }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("Failed to initialize DISM API", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-    }
-
     [Fact]
     public void GetSchema_ReturnsValidJson()
     {
@@ -52,14 +39,9 @@ public sealed class OptionalFeatureTests
         attr.Version.ToString().Should().NotBeNullOrEmpty();
     }
 
-    [Fact]
+    [RequiresDismFact]
     public void Get_NonExistentFeature_ReturnsExistFalse()
     {
-        if (!IsDismAvailable())
-        {
-            return;
-        }
-
         var schema = new OptionalFeatureSchema { Name = "NonExistentFeature_12345_XYZ" };
 
         var result = _resource.Get(schema);
@@ -68,14 +50,9 @@ public sealed class OptionalFeatureTests
         result.Name.Should().Be("NonExistentFeature_12345_XYZ");
     }
 
-    [Fact]
+    [RequiresDismFact]
     public void Get_ExistingFeature_ReturnsState()
     {
-        if (!IsDismAvailable())
-        {
-            return;
-        }
-
         const string featureName = "TelnetClient";
 
         var schema = new OptionalFeatureSchema { Name = featureName };
@@ -88,22 +65,12 @@ public sealed class OptionalFeatureTests
         result.Description.Should().NotBeNull();
     }
 
-    [Fact]
+    [RequiresDismFact]
     public void Export_NoFilter_ReturnsFeatures()
     {
-        if (!IsDismAvailable())
-        {
-            return;
-        }
-
         var results = _resource.Export(null).ToList();
 
         results.Should().NotBeEmpty();
         results.Should().AllSatisfy(r => r.Name.Should().NotBeNull());
-    }
-
-    [Fact(Skip = "Enabling/disabling Windows optional features is destructive for CI environments; run manually when needed.")]
-    public void Set_FeatureState_Skipped()
-    {
     }
 }

@@ -66,11 +66,6 @@ public sealed class SymbolicLinkTests
     [RequiresAdminFact]
     public void Get_ExistingFileSymlink_ReturnsProperties()
     {
-        if (!IsAdministrator())
-        {
-            return;
-        }
-
         var target = Path.Combine(Path.GetTempPath(), $"symlink_target_file_{Guid.NewGuid():N}.txt");
         var link = Path.Combine(Path.GetTempPath(), $"symlink_file_{Guid.NewGuid():N}.lnk");
 
@@ -105,11 +100,6 @@ public sealed class SymbolicLinkTests
     [RequiresAdminFact]
     public void Get_ExistingDirectorySymlink_ReturnsProperties()
     {
-        if (!IsAdministrator())
-        {
-            return;
-        }
-
         var target = Path.Combine(Path.GetTempPath(), $"symlink_target_dir_{Guid.NewGuid():N}");
         var link = Path.Combine(Path.GetTempPath(), $"symlink_dir_{Guid.NewGuid():N}");
 
@@ -144,11 +134,6 @@ public sealed class SymbolicLinkTests
     [RequiresAdminFact]
     public void Set_NewFileSymlink_CreatesLink()
     {
-        if (!IsAdministrator())
-        {
-            return;
-        }
-
         var target = Path.Combine(Path.GetTempPath(), $"symlink_set_target_file_{Guid.NewGuid():N}.txt");
         var link = Path.Combine(Path.GetTempPath(), $"symlink_set_file_{Guid.NewGuid():N}.lnk");
 
@@ -181,11 +166,6 @@ public sealed class SymbolicLinkTests
     [RequiresAdminFact]
     public void Set_NewDirectorySymlink_CreatesLink()
     {
-        if (!IsAdministrator())
-        {
-            return;
-        }
-
         var target = Path.Combine(Path.GetTempPath(), $"symlink_set_target_dir_{Guid.NewGuid():N}");
         var link = Path.Combine(Path.GetTempPath(), $"symlink_set_dir_{Guid.NewGuid():N}");
 
@@ -218,11 +198,6 @@ public sealed class SymbolicLinkTests
     [RequiresAdminFact]
     public void Set_TargetDoesNotExist_ThrowsArgumentException()
     {
-        if (!IsAdministrator())
-        {
-            return;
-        }
-
         var target = Path.Combine(Path.GetTempPath(), $"symlink_missing_target_{Guid.NewGuid():N}");
         var link = Path.Combine(Path.GetTempPath(), $"symlink_missing_{Guid.NewGuid():N}");
 
@@ -237,11 +212,6 @@ public sealed class SymbolicLinkTests
     [RequiresAdminFact]
     public void Set_UpdateExistingSymlink_ChangesTarget()
     {
-        if (!IsAdministrator())
-        {
-            return;
-        }
-
         var target1 = Path.Combine(Path.GetTempPath(), $"symlink_update_target1_{Guid.NewGuid():N}.txt");
         var target2 = Path.Combine(Path.GetTempPath(), $"symlink_update_target2_{Guid.NewGuid():N}.txt");
         var link = Path.Combine(Path.GetTempPath(), $"symlink_update_{Guid.NewGuid():N}.lnk");
@@ -280,11 +250,6 @@ public sealed class SymbolicLinkTests
     [RequiresAdminFact]
     public void Delete_ExistingSymlink_RemovesLink()
     {
-        if (!IsAdministrator())
-        {
-            return;
-        }
-
         var target = Path.Combine(Path.GetTempPath(), $"symlink_delete_target_{Guid.NewGuid():N}.txt");
         var link = Path.Combine(Path.GetTempPath(), $"symlink_delete_{Guid.NewGuid():N}.lnk");
 
@@ -307,11 +272,6 @@ public sealed class SymbolicLinkTests
     [RequiresAdminFact]
     public void Delete_NonExistentSymlink_DoesNotThrow()
     {
-        if (!IsAdministrator())
-        {
-            return;
-        }
-
         var link = Path.Combine(Path.GetTempPath(), $"symlink_delete_nonexistent_{Guid.NewGuid():N}");
 
         var act = () => _resource.Delete(new LinkSchema { Path = link, Target = Path.Combine(Path.GetTempPath(), "x"), Exist = false });
