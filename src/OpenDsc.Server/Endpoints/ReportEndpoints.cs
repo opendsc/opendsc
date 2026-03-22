@@ -92,6 +92,7 @@ public static class ReportEndpoints
 
         db.Reports.Add(report);
 
+        var previousStatus = node.Status;
         node.LastCheckIn = DateTimeOffset.UtcNow;
         node.Status = report.HadErrors ? NodeStatus.Error
             : report.InDesiredState ? NodeStatus.Compliant
@@ -118,6 +119,8 @@ public static class ReportEndpoints
         ServerDbContext db,
         int? skip,
         int? take,
+        DateTimeOffset? from,
+        DateTimeOffset? to,
         CancellationToken cancellationToken)
     {
         var nodeExists = await db.Nodes.AnyAsync(n => n.Id == nodeId, cancellationToken);
@@ -126,10 +129,12 @@ public static class ReportEndpoints
             return TypedResults.NotFound(new ErrorResponse { Error = "Node not found." });
         }
 
-        var reports = await db.Reports
+        var allReports = await db.Reports
             .AsNoTracking()
             .Include(r => r.Node)
             .Where(r => r.NodeId == nodeId)
+            .Where(r => from == null || r.Timestamp >= from)
+            .Where(r => to == null || r.Timestamp <= to)
             .Select(r => new ReportSummary
             {
                 Id = r.Id,
@@ -142,24 +147,28 @@ public static class ReportEndpoints
             })
             .ToListAsync(cancellationToken);
 
-        var orderedReports = reports
+        var reports = allReports
             .OrderByDescending(r => r.Timestamp)
             .Skip(skip ?? 0)
             .Take(take ?? 100)
             .ToList();
 
-        return TypedResults.Ok(orderedReports);
+        return TypedResults.Ok(reports);
     }
 
     private static async Task<Ok<List<ReportSummary>>> GetAllReports(
         ServerDbContext db,
         int? skip,
         int? take,
+        DateTimeOffset? from,
+        DateTimeOffset? to,
         CancellationToken cancellationToken)
     {
-        var reports = await db.Reports
+        var allReports = await db.Reports
             .AsNoTracking()
             .Include(r => r.Node)
+            .Where(r => from == null || r.Timestamp >= from)
+            .Where(r => to == null || r.Timestamp <= to)
             .Select(r => new ReportSummary
             {
                 Id = r.Id,
@@ -172,13 +181,13 @@ public static class ReportEndpoints
             })
             .ToListAsync(cancellationToken);
 
-        var orderedReports = reports
+        var reports = allReports
             .OrderByDescending(r => r.Timestamp)
             .Skip(skip ?? 0)
             .Take(take ?? 100)
             .ToList();
 
-        return TypedResults.Ok(orderedReports);
+        return TypedResults.Ok(reports);
     }
 
     private static async Task<Results<Ok<ReportDetails>, NotFound<ErrorResponse>>> GetReport(

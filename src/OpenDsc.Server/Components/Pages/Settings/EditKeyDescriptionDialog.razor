@@ -1,0 +1,53 @@
+@using MudBlazor
+@inject ServerDbContext Db
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="description" Label="Description" Variant="Variant.Outlined" Lines="3"
+                      HelperText="Describe the intended usage or purpose of this key (e.g. IIS team servers)" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public RegistrationKey Key { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback OnUpdated { get; set; }
+
+    private string? description;
+
+    protected override void OnParametersSet()
+    {
+        description = Key.Description;
+    }
+
+    private async Task Save()
+    {
+        try
+        {
+            Key.Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+            await Db.SaveChangesAsync();
+            Snackbar.Add("Description updated", Severity.Success);
+            MudDialog.Close();
+            await OnUpdated.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error updating description: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+}

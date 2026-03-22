@@ -1,0 +1,635 @@
+@* Copyright (c) Thomas Nieto - All Rights Reserved *@
+@* You may use, distribute and modify this code under the *@
+@* terms of the MIT license. *@
+
+@rendermode InteractiveServer
+
+@using MudBlazor
+@using BlazorMonaco
+@using BlazorMonaco.Editor
+@using OpenDsc.Server.Services
+@using Microsoft.EntityFrameworkCore
+@using System.Text.Json
+@using NuGet.Versioning
+@inject IParameterService ParameterApiClient
+@inject ServerDbContext Db
+@inject ISnackbar Snackbar
+@inject ThemeService ThemeService
+@inject IJsonYamlConverter JsonYamlConverter
+@inject IDialogService DialogService
+@inject IJSRuntime JSRuntime
+
+<MudDialog>
+    <DialogContent>
+        @if (LockScope && InitialMajorVersion.HasValue)
+        {
+            <MudTextField @bind-Value="versionString"
+                          @bind-Value:after="OnVersionChanged"
+                          Label="Version"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          Immediate="true"
+                          HelperText="@($"Semantic version: {InitialMajorVersion}.minor.patch[-prerelease][+metadata]")"
+                          Error="@(versionError != null)"
+                          ErrorText="@versionError" />
+        }
+        else
+        {
+            <ScopeSelector @bind-SelectedConfigurationId="selectedConfigurationId"
+                           @bind-SelectedConfigurationId:after="OnConfigurationChanged"
+                           @bind-SelectedScopeTypeId="selectedScopeTypeId"
+                           @bind-SelectedScopeValue="selectedScopeValue"
+                           Locked="@LockScope" />
+
+            <MudGrid Class="mt-4">
+                <MudItem xs="12" sm="3">
+                    <MudSelect T="int?" @bind-Value="selectedMajor"
+                               @bind-Value:after="OnMajorVersionChanged"
+                               Label="Major Version"
+                               Variant="Variant.Outlined"
+                               Required="true"
+                               Disabled="@(InitialMajorVersion.HasValue || !selectedConfigurationId.HasValue || availableMajors.Count == 0)"
+                               HelperText="@(availableMajors.Count == 0 && selectedConfigurationId.HasValue ? "No schemas found" : "Select major")">
+                        @foreach (var major in availableMajors)
+                        {
+                            <MudSelectItem T="int?" Value="major">@(major)</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="minorPatch"
+                                  Label="Minor.Patch"
+                                  Variant="Variant.Outlined"
+                                  Required="true"
+                                  HelperText="e.g. 0.0" />
+                </MudItem>
+            </MudGrid>
+        }
+
+        @if (!isPassthrough)
+        {
+            <div Class="d-flex justify-space-between align-center mt-4 mb-2">
+                <MudText Typo="Typo.subtitle2">Parameter Content (YAML)</MudText>
+                @if (selectedConfigurationId.HasValue)
+                {
+                    <MudButton Size="Size.Small"
+                               Variant="Variant.Text"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Schema"
+                               OnClick="OpenSchemaDialog"
+                               Disabled="@(currentSchema == null)">
+                        View Schema
+                    </MudButton>
+                }
+            </div>
+            <div style="height: 400px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
+                <StandaloneCodeEditor @ref="_editor"
+                                      Id="parameter-create-editor"
+                                      ConstructionOptions="GetEditorOptions"
+                                      CssClass="monaco-editor-container" />
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="CreateParameter"
+                   Disabled="@(!IsValid() || isCreating)">
+            @if (isCreating)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Create
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@if (showSchemaDialog && currentSchema != null)
+{
+    <MudDialog @bind-Visible="showSchemaDialog" Options="@(new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.ExtraLarge, FullWidth = true })">
+        <DialogContent>
+            <MudText Typo="Typo.h6" Class="mb-3">Parameter Schema</MudText>
+            <MudCard Outlined="true">
+                <MudCardContent>
+                    <MudText Typo="Typo.caption">Configuration: @currentConfiguration?.Name</MudText>
+                    <br />
+                    <MudText Typo="Typo.caption" Class="mb-3">Schema Version: v@(currentSchema.SchemaVersion ?? "unknown")</MudText>
+
+                    <div class="d-flex justify-end mb-2">
+                        <MudButtonGroup>
+                            <MudButton Variant="@(schemaViewFormat == SchemaFormat.Yaml ? Variant.Filled : Variant.Text)"
+                                       Color="@(schemaViewFormat == SchemaFormat.Yaml ? Color.Primary : Color.Default)"
+                                       Style="@(schemaViewFormat == SchemaFormat.Yaml ? "" : "opacity: 0.6")"
+                                       OnClick="@(() => SwitchSchemaFormat(SchemaFormat.Yaml))">
+                                YAML
+                            </MudButton>
+                            <MudButton Variant="@(schemaViewFormat == SchemaFormat.Json ? Variant.Filled : Variant.Text)"
+                                       Color="@(schemaViewFormat == SchemaFormat.Json ? Color.Primary : Color.Default)"
+                                       Style="@(schemaViewFormat == SchemaFormat.Json ? "" : "opacity: 0.6")"
+                                       OnClick="@(() => SwitchSchemaFormat(SchemaFormat.Json))">
+                                JSON
+                            </MudButton>
+                        </MudButtonGroup>
+                    </div>
+                    <div style="height: 500px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
+                        <StandaloneCodeEditor @ref="_schemaEditor"
+                                              Id="parameter-schema-viewer"
+                                              ConstructionOptions="GetSchemaEditorOptions"
+                                              CssClass="monaco-editor-container" />
+                    </div>
+                </MudCardContent>
+            </MudCard>
+        </DialogContent>
+        <DialogActions>
+            <MudButton OnClick="CloseSchemaDialog">Close</MudButton>
+        </DialogActions>
+    </MudDialog>
+}
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public Guid? InitialConfigurationId { get; set; }
+    [Parameter] public Guid? InitialScopeTypeId { get; set; }
+    [Parameter] public string? InitialScopeValue { get; set; }
+    [Parameter] public bool LockScope { get; set; }
+    [Parameter] public string? InitialContent { get; set; }
+    [Parameter] public bool InitialIsPassthrough { get; set; }
+    [Parameter] public int? InitialMajorVersion { get; set; }
+
+    private StandaloneCodeEditor? _editor;
+    private Guid? selectedConfigurationId;
+    private Guid? selectedScopeTypeId;
+    private string? selectedScopeValue;
+    private List<int> availableMajors = [];
+    private int? selectedMajor;
+    private string minorPatch = "0.0";
+    private string versionString = "0.0.0";
+    private string? versionError;
+    private bool isPassthrough;
+    private bool isCreating;
+
+    private List<ScopeType> scopeTypes = [];
+    private string defaultEditorValue = "parameters:\n  setting1: value1\n  setting2: value2\n";
+    private ParameterSchema? currentSchema;
+    private Configuration? currentConfiguration;
+    private bool showSchemaDialog;
+    private StandaloneCodeEditor? _schemaEditor;
+    private SchemaFormat schemaViewFormat = SchemaFormat.Yaml;
+    private string _currentSchemaContent = string.Empty;
+    private string _editorInitialValue = string.Empty;
+
+    private enum SchemaFormat
+    {
+        Json,
+        Yaml
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        isPassthrough = InitialIsPassthrough;
+        _editorInitialValue = InitialContent ?? defaultEditorValue;
+        await LoadScopeTypesAsync();
+
+        if (InitialConfigurationId.HasValue)
+        {
+            selectedConfigurationId = InitialConfigurationId.Value;
+            selectedScopeTypeId = InitialScopeTypeId;
+            selectedScopeValue = InitialScopeValue;
+            await OnConfigurationChanged();
+        }
+    }
+
+    private async Task OnConfigurationChanged()
+    {
+        if (!selectedConfigurationId.HasValue)
+        {
+            currentSchema = null;
+            currentConfiguration = null;
+            availableMajors = [];
+            selectedMajor = null;
+            if (_editor != null)
+            {
+                await _editor.SetValue(defaultEditorValue);
+            }
+            return;
+        }
+
+        availableMajors = await ParameterApiClient.GetAvailableMajorVersionsAsync(selectedConfigurationId.Value);
+        selectedMajor = InitialMajorVersion ?? (availableMajors.Count > 0 ? availableMajors[0] : null);
+
+        await LoadSchemaForSelectedMajorAsync();
+        await SuggestNextPatchAsync();
+    }
+
+    private async Task OnMajorVersionChanged()
+    {
+        await LoadSchemaForSelectedMajorAsync();
+        await SuggestNextPatchAsync();
+    }
+
+    private async Task SuggestNextPatchAsync()
+    {
+        if (!selectedConfigurationId.HasValue || !selectedScopeTypeId.HasValue || !selectedMajor.HasValue)
+        {
+            minorPatch = "0.0";
+            if (LockScope && InitialMajorVersion.HasValue)
+                versionString = $"{InitialMajorVersion}.0.0";
+            return;
+        }
+
+        var allVersions = await ParameterApiClient.GetParameterVersionsAsync(
+            selectedScopeTypeId.Value,
+            selectedConfigurationId.Value,
+            selectedScopeValue);
+
+        var latestInMajor = allVersions
+            .Where(v => v.MajorVersion == selectedMajor.Value && SemanticVersion.TryParse(v.Version, out _))
+            .Select(v => SemanticVersion.Parse(v.Version))
+            .OrderByDescending(v => v)
+            .FirstOrDefault();
+
+        minorPatch = latestInMajor != null
+            ? $"{latestInMajor.Minor}.{latestInMajor.Patch + 1}"
+            : "0.0";
+
+        if (LockScope && InitialMajorVersion.HasValue)
+            versionString = $"{InitialMajorVersion}.{minorPatch}";
+    }
+
+    private void OnVersionChanged()
+    {
+        if (string.IsNullOrWhiteSpace(versionString))
+        {
+            versionError = null;
+            return;
+        }
+
+        if (!SemanticVersion.TryParse(versionString.Trim(), out var parsed))
+        {
+            versionError = "Not a valid semantic version (e.g., 1.2.3)";
+            return;
+        }
+
+        if (InitialMajorVersion.HasValue && parsed.Major != InitialMajorVersion.Value)
+        {
+            versionError = $"Major version must be {InitialMajorVersion} (e.g., {InitialMajorVersion}.0.0)";
+            return;
+        }
+
+        versionError = null;
+    }
+
+    private async Task LoadSchemaForSelectedMajorAsync()
+    {
+        if (!selectedConfigurationId.HasValue || !selectedMajor.HasValue)
+        {
+            currentSchema = null;
+            currentConfiguration = null;
+            var fallback = InitialContent ?? defaultEditorValue;
+            _editorInitialValue = fallback;
+            if (_editor != null)
+                await _editor.SetValue(fallback);
+            return;
+        }
+
+        var allSchemas = await Db.ParameterSchemas
+            .Include(ps => ps.Configuration)
+            .Where(ps => ps.ConfigurationId == selectedConfigurationId.Value)
+            .ToListAsync();
+
+        currentSchema = allSchemas.FirstOrDefault(ps =>
+            !string.IsNullOrEmpty(ps.SchemaVersion) &&
+            NuGet.Versioning.SemanticVersion.TryParse(ps.SchemaVersion, out var sv) &&
+            sv.Major == selectedMajor.Value);
+
+        currentConfiguration = currentSchema?.Configuration
+            ?? allSchemas.FirstOrDefault()?.Configuration;
+
+        if (currentConfiguration == null)
+        {
+            currentConfiguration = await Db.Configurations.FindAsync(selectedConfigurationId.Value);
+        }
+
+        string newValue;
+        if (currentSchema != null && !string.IsNullOrWhiteSpace(currentSchema.GeneratedJsonSchema) && InitialContent == null)
+        {
+            var template = GenerateYamlTemplateFromSchema(currentSchema.GeneratedJsonSchema);
+            newValue = !string.IsNullOrWhiteSpace(template) ? template : defaultEditorValue;
+        }
+        else
+        {
+            newValue = InitialContent ?? defaultEditorValue;
+        }
+
+        _editorInitialValue = newValue;
+        if (_editor != null)
+            await _editor.SetValue(newValue);
+    }
+
+    private string GenerateYamlTemplateFromSchema(string jsonSchema)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(jsonSchema);
+            var root = doc.RootElement;
+
+            // Look for properties under "properties" key
+            if (!root.TryGetProperty("properties", out var topLevelProperties))
+            {
+                return defaultEditorValue;
+            }
+
+            // Check if there's a nested "parameters" property (DSC parameter schema pattern)
+            JsonElement properties;
+            JsonElement? requiredElement = null;
+
+            if (topLevelProperties.TryGetProperty("parameters", out var parametersProperty) &&
+                parametersProperty.TryGetProperty("properties", out var nestedProperties))
+            {
+                // Use nested properties under "parameters"
+                properties = nestedProperties;
+
+                // Get required from nested parameters object
+                if (parametersProperty.TryGetProperty("required", out var nestedRequired))
+                {
+                    requiredElement = nestedRequired;
+                }
+            }
+            else
+            {
+                // Use top-level properties directly (fallback for non-DSC schemas)
+                properties = topLevelProperties;
+
+                // Get required from root
+                if (root.TryGetProperty("required", out var topRequired))
+                {
+                    requiredElement = topRequired;
+                }
+            }
+
+            var requiredProps = new HashSet<string>();
+            if (requiredElement.HasValue && requiredElement.Value.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var prop in requiredElement.Value.EnumerateArray())
+                {
+                    if (prop.ValueKind == JsonValueKind.String)
+                    {
+                        requiredProps.Add(prop.GetString() ?? "");
+                    }
+                }
+            }
+
+            var lines = new List<string> { "parameters:" };
+
+            foreach (var property in properties.EnumerateObject())
+            {
+                var propName = property.Name;
+                var propValue = property.Value;
+
+                var isRequired = requiredProps.Contains(propName);
+                var prefix = isRequired ? "  " : "  # ";
+
+                // Get default value if available
+                string defaultValue = "value";
+                if (propValue.TryGetProperty("default", out var defaultProp))
+                {
+                    defaultValue = defaultProp.ValueKind switch
+                    {
+                        JsonValueKind.String => defaultProp.GetString() ?? "value",
+                        JsonValueKind.Number => defaultProp.GetRawText(),
+                        JsonValueKind.True => "true",
+                        JsonValueKind.False => "false",
+                        _ => "value"
+                    };
+                }
+                else if (propValue.TryGetProperty("type", out var typeProp))
+                {
+                    var typeStr = typeProp.GetString();
+                    defaultValue = typeStr switch
+                    {
+                        "string" => "\"\"",
+                        "number" or "integer" => "0",
+                        "boolean" => "false",
+                        "array" => "[]",
+                        "object" => "{}",
+                        _ => "value"
+                    };
+                }
+
+                var description = "";
+                if (propValue.TryGetProperty("description", out var descProp) && descProp.ValueKind == JsonValueKind.String)
+                {
+                    description = $" # {descProp.GetString()}";
+                }
+
+                lines.Add($"{prefix}{propName}: {defaultValue}{description}");
+            }
+
+            return string.Join("\n", lines) + "\n";
+        }
+        catch
+        {
+            return defaultEditorValue;
+        }
+    }
+
+    private async Task LoadScopeTypesAsync()
+    {
+        scopeTypes = await Db.ScopeTypes.ToListAsync();
+    }
+
+    private StandaloneEditorConstructionOptions GetEditorOptions(StandaloneCodeEditor editor)
+    {
+        return new StandaloneEditorConstructionOptions
+        {
+            AutomaticLayout = true,
+            Language = "yaml",
+            Value = _editorInitialValue,
+            Theme = ThemeService.IsDarkMode ? "vs-dark" : "vs",
+            LineNumbers = "on",
+            Minimap = new EditorMinimapOptions { Enabled = false },
+            ScrollBeyondLastLine = false,
+            FontSize = 14,
+            FontFamily = "'Cascadia Code', 'Courier New', monospace",
+            TabSize = 2,
+            InsertSpaces = true,
+            WordWrap = "off"
+        };
+    }
+
+    private bool IsValid()
+    {
+        if (LockScope && InitialMajorVersion.HasValue)
+        {
+            return versionError == null
+                && !string.IsNullOrWhiteSpace(versionString)
+                && SemanticVersion.TryParse(versionString.Trim(), out _);
+        }
+
+        if (!selectedConfigurationId.HasValue ||
+            !selectedScopeTypeId.HasValue ||
+            !selectedMajor.HasValue ||
+            string.IsNullOrWhiteSpace(minorPatch))
+        {
+            return false;
+        }
+
+        var currentScopeType = scopeTypes.FirstOrDefault(st => st.Id == selectedScopeTypeId.Value);
+        if (currentScopeType is null)
+        {
+            return false;
+        }
+
+        if (currentScopeType.Name == "Default")
+        {
+            return true;
+        }
+
+        return !string.IsNullOrWhiteSpace(selectedScopeValue);
+    }
+
+    private async Task CreateParameter()
+    {
+        if (!IsValid() || (!isPassthrough && _editor == null))
+        {
+            return;
+        }
+
+        isCreating = true;
+
+        try
+        {
+            string? content = null;
+
+            if (!isPassthrough)
+            {
+                content = await _editor!.GetValue();
+
+                if (string.IsNullOrWhiteSpace(content))
+                {
+                    Snackbar.Add("Parameter content cannot be empty", Severity.Warning);
+                    return;
+                }
+            }
+
+            var fullVersion = LockScope && InitialMajorVersion.HasValue
+                ? versionString.Trim()
+                : $"{selectedMajor}.{minorPatch.Trim()}";
+
+            var (success, errorMessage) = await ParameterApiClient.CreateOrUpdateParameterAsync(
+                selectedScopeTypeId!.Value,
+                selectedConfigurationId!.Value,
+                selectedScopeValue,
+                fullVersion,
+                content,
+                isPassthrough);
+
+            if (success)
+            {
+                Snackbar.Add("Parameter created successfully", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+            {
+                Snackbar.Add($"Failed to create parameter: {errorMessage}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isCreating = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private async Task OpenSchemaDialog()
+    {
+        if (currentSchema == null)
+        {
+            return;
+        }
+
+        schemaViewFormat = SchemaFormat.Yaml;
+        showSchemaDialog = true;
+
+        await Task.Delay(100);
+        await UpdateSchemaEditorContent();
+    }
+
+    private async Task SwitchSchemaFormat(SchemaFormat format)
+    {
+        schemaViewFormat = format;
+        await UpdateSchemaEditorContent();
+    }
+
+    private async Task UpdateSchemaEditorContent()
+    {
+        if (_schemaEditor == null || currentSchema == null || string.IsNullOrWhiteSpace(currentSchema.GeneratedJsonSchema))
+        {
+            return;
+        }
+
+        var content = schemaViewFormat == SchemaFormat.Yaml
+            ? JsonYamlConverter.ConvertJsonToYaml(currentSchema.GeneratedJsonSchema)
+            : FormatJson(currentSchema.GeneratedJsonSchema);
+
+        _currentSchemaContent = content;
+        await _schemaEditor.SetValue(content);
+
+        var language = schemaViewFormat == SchemaFormat.Yaml ? "yaml" : "json";
+        var model = await _schemaEditor.GetModel();
+        if (model != null)
+        {
+            await Global.SetModelLanguage(JSRuntime, model, language);
+        }
+    }
+
+    private string FormatJson(string json)
+    {
+        try
+        {
+            var jsonObj = System.Text.Json.JsonSerializer.Deserialize<object>(json);
+            return System.Text.Json.JsonSerializer.Serialize(jsonObj, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        }
+        catch
+        {
+            return json;
+        }
+    }
+
+    private StandaloneEditorConstructionOptions GetSchemaEditorOptions(StandaloneCodeEditor editor)
+    {
+        return new StandaloneEditorConstructionOptions
+        {
+            AutomaticLayout = true,
+            Language = schemaViewFormat == SchemaFormat.Yaml ? "yaml" : "json",
+            Value = _currentSchemaContent,
+            Theme = ThemeService.IsDarkMode ? "vs-dark" : "vs",
+            ReadOnly = true,
+            LineNumbers = "on",
+            Minimap = new EditorMinimapOptions { Enabled = false },
+            ScrollBeyondLastLine = false,
+            FontSize = 14,
+            FontFamily = "'Cascadia Code', 'Courier New', monospace",
+            TabSize = 2,
+            InsertSpaces = true,
+            WordWrap = "off"
+        };
+    }
+
+    private void CloseSchemaDialog()
+    {
+        showSchemaDialog = false;
+        _currentSchemaContent = string.Empty;
+    }
+}

@@ -1,0 +1,106 @@
+@using NuGet.Versioning
+@inject ServerDbContext Db
+@inject ISnackbar Snackbar
+@inject IResourceAuthorizationService AuthService
+@inject IUserContextService UserContext
+@inject NavigationManager Navigation
+
+<MudDialog>
+    <DialogContent>
+        <MudTextField @bind-Value="name"
+                      Label="Name"
+                      Variant="Variant.Outlined"
+                      Required="true"
+                      Class="mb-3"
+                      HelperText="Unique identifier for the composite configuration" />
+
+        <MudTextField @bind-Value="description"
+                      Label="Description"
+                      Variant="Variant.Outlined"
+                      Lines="2"
+                      Class="mb-3"
+                      HelperText="Optional description" />
+
+        @if (!string.IsNullOrWhiteSpace(validationError))
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-3">@validationError</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(!IsValid() || isSubmitting)">
+            @if (isSubmitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+            }
+            else
+            {
+                <text>Create</text>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private string name = string.Empty;
+    private string? description;
+    private bool isSubmitting;
+    private string? validationError;
+
+    private bool IsValid() => !string.IsNullOrWhiteSpace(name);
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task Submit()
+    {
+        validationError = null;
+        isSubmitting = true;
+
+        try
+        {
+            if (await Db.CompositeConfigurations.AnyAsync(c => c.Name == name))
+            {
+                validationError = $"Composite configuration '{name}' already exists.";
+                return;
+            }
+
+            var composite = new CompositeConfiguration
+            {
+                Id = Guid.NewGuid(),
+                Name = name,
+                Description = string.IsNullOrWhiteSpace(description) ? null : description,
+                EntryPoint = "main.dsc.yaml",
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+
+            Db.CompositeConfigurations.Add(composite);
+            await Db.SaveChangesAsync();
+
+            var userId = UserContext.GetCurrentUserId();
+            if (userId.HasValue)
+            {
+                await AuthService.GrantCompositeConfigurationPermissionAsync(
+                    composite.Id,
+                    userId.Value,
+                    PrincipalType.User,
+                    ResourcePermission.Manage,
+                    userId.Value);
+            }
+
+            Snackbar.Add($"Composite configuration '{name}' created", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(name));
+            Navigation.NavigateTo($"/composite-configurations/{Uri.EscapeDataString(name)}");
+        }
+        catch (Exception ex)
+        {
+            validationError = $"Error creating composite configuration: {ex.Message}";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}

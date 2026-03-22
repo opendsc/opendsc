@@ -1,0 +1,258 @@
+@using Microsoft.EntityFrameworkCore
+@using MudBlazor
+@using OpenDsc.Server.Entities
+@using Microsoft.Extensions.Logging
+@inject ServerDbContext Db
+@inject ILogger<ScopeSelector> Logger
+
+<MudGrid>
+    <MudItem xs="12" sm="4">
+        <MudSelect T="Guid?" Value="@selectedConfigurationId" ValueChanged="@OnConfigurationChanged"
+                   Label="Configuration" Variant="Variant.Outlined"
+                   Clearable="true" Disabled="@Locked">
+            @foreach (var config in configurations)
+            {
+                <MudSelectItem Value="@((Guid?)config.Id)">@config.Name</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="12" sm="4">
+        <MudSelect T="Guid?" Value="@selectedScopeTypeId" ValueChanged="@OnScopeTypeChanged"
+                   Label="Scope Type" Variant="Variant.Outlined"
+                   Clearable="true" Disabled="@(Locked || !selectedConfigurationId.HasValue)">
+            @foreach (var scopeType in scopeTypes)
+            {
+                <MudSelectItem Value="@((Guid?)scopeType.Id)">@scopeType.Name</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="12" sm="4">
+        @{
+            var isDefaultScope = currentScopeType?.Name == "Default";
+            var isNodeScope = currentScopeType?.Name == "Node";
+            var isRestricted = currentScopeType?.ValueMode == ScopeValueMode.Restricted;
+        }
+
+        @if (isNodeScope)
+        {
+            <MudSelect T="string" Value="@selectedScopeValue" ValueChanged="@OnScopeValueChanged" Label="Node" Variant="Variant.Outlined"
+                       Clearable="true" Disabled="@(Locked || !selectedScopeTypeId.HasValue || isDefaultScope)"
+                       HelperText="Select a registered node">
+                @foreach (var node in nodes)
+                {
+                    <MudSelectItem Value="@node.Fqdn">@node.Fqdn</MudSelectItem>
+                }
+            </MudSelect>
+        }
+        else if (isRestricted)
+        {
+            <MudSelect T="string" Value="@selectedScopeValue" ValueChanged="@OnScopeValueChanged" Label="Scope Value" Variant="Variant.Outlined"
+                       Clearable="true" Disabled="@(Locked || !selectedScopeTypeId.HasValue || isDefaultScope)">
+                @foreach (var scopeValue in scopeValues)
+                {
+                    <MudSelectItem Value="@scopeValue.Value">@scopeValue.Value</MudSelectItem>
+                }
+            </MudSelect>
+        }
+        else
+        {
+            <MudAutocomplete T="string" Value="@selectedScopeValue" ValueChanged="@OnScopeValueChanged" Label="Scope Value" Variant="Variant.Outlined"
+                             Clearable="true" Disabled="@(Locked || !selectedScopeTypeId.HasValue || isDefaultScope)"
+                             SearchFunc="@SearchUnrestrictedScopeValuesAsync"
+                             Strict="false"
+                             CoerceValue="true"
+                             HelperText="@(isDefaultScope ? "Not applicable for Default scope" : "Select existing or enter a new scope value")" />
+        }
+    </MudItem>
+</MudGrid>
+
+@code {
+#pragma warning disable BL0007 // Component parameter should be auto property
+    [Parameter]
+    public Guid? SelectedConfigurationId
+    {
+        get => selectedConfigurationId;
+        set
+        {
+            if (selectedConfigurationId != value)
+            {
+                selectedConfigurationId = value;
+                _ = SelectedConfigurationIdChanged.InvokeAsync(value);
+            }
+        }
+    }
+
+    [Parameter]
+    public EventCallback<Guid?> SelectedConfigurationIdChanged { get; set; }
+
+    [Parameter]
+    public Guid? SelectedScopeTypeId
+    {
+        get => selectedScopeTypeId;
+        set => selectedScopeTypeId = value;
+    }
+
+    [Parameter]
+    public EventCallback<Guid?> SelectedScopeTypeIdChanged { get; set; }
+
+    [Parameter]
+    public string? SelectedScopeValue
+    {
+        get => selectedScopeValue;
+        set
+        {
+            if (selectedScopeValue != value)
+            {
+                selectedScopeValue = value;
+                _ = SelectedScopeValueChanged.InvokeAsync(value);
+            }
+        }
+    }
+
+    [Parameter]
+    public EventCallback<string?> SelectedScopeValueChanged { get; set; }
+
+    [Parameter]
+    public bool Locked { get; set; }
+#pragma warning restore BL0007
+
+    private Guid? selectedConfigurationId;
+    private Guid? selectedScopeTypeId;
+    private string? selectedScopeValue;
+
+    private List<Configuration> configurations = [];
+    private List<ScopeType> scopeTypes = [];
+    private List<ScopeValue> scopeValues = [];
+    private List<Node> nodes = [];
+    private List<string> unrestrictedScopeValues = [];
+    private ScopeType? currentScopeType;
+
+    private async Task OnConfigurationChanged(Guid? value)
+    {
+        if (selectedConfigurationId == value)
+        {
+            return;
+        }
+
+        selectedConfigurationId = value;
+        await SelectedConfigurationIdChanged.InvokeAsync(value);
+        StateHasChanged();
+    }
+
+    private async Task OnScopeTypeChanged(Guid? value)
+    {
+        // Allow clearing: if both are null, don't skip
+        if (value.HasValue && selectedScopeTypeId == value)
+        {
+            Logger.LogInformation("OnScopeTypeChanged - value unchanged, skipping");
+            return;
+        }
+
+        selectedScopeTypeId = value;
+        await SelectedScopeTypeIdChanged.InvokeAsync(value);
+
+        selectedScopeValue = null;
+        await SelectedScopeValueChanged.InvokeAsync(null);
+
+        if (value.HasValue)
+        {
+            await LoadScopeValuesAsync();
+        }
+        else
+        {
+            scopeValues = [];
+            nodes = [];
+            currentScopeType = null;
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task OnScopeValueChanged(string? value)
+    {
+        selectedScopeValue = value;
+        await SelectedScopeValueChanged.InvokeAsync(value);
+    }
+
+    private Task<IEnumerable<string>?> SearchUnrestrictedScopeValuesAsync(string value, CancellationToken token)
+    {
+        IEnumerable<string> results = string.IsNullOrWhiteSpace(value)
+            ? unrestrictedScopeValues
+            : unrestrictedScopeValues.Where(v => v.Contains(value, StringComparison.OrdinalIgnoreCase));
+
+        return Task.FromResult<IEnumerable<string>?>(results);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadConfigurationsAsync();
+        await LoadScopeTypesAsync();
+    }
+
+    private async Task LoadConfigurationsAsync()
+    {
+        configurations = await Db.Configurations
+            .OrderBy(c => c.Name)
+            .ToListAsync();
+    }
+
+    private async Task LoadScopeTypesAsync()
+    {
+        scopeTypes = await Db.ScopeTypes
+            .Where(st => st.IsEnabled)
+            .OrderBy(st => st.Precedence)
+            .ToListAsync();
+    }
+
+    private async Task LoadScopeValuesAsync()
+    {
+        if (!selectedScopeTypeId.HasValue)
+        {
+            scopeValues = [];
+            nodes = [];
+            unrestrictedScopeValues = [];
+            currentScopeType = null;
+            StateHasChanged();
+            return;
+        }
+
+        currentScopeType = scopeTypes.FirstOrDefault(st => st.Id == selectedScopeTypeId.Value);
+
+        if (currentScopeType == null)
+        {
+            scopeValues = [];
+            nodes = [];
+            StateHasChanged();
+            return;
+        }
+
+        if (currentScopeType.Name == "Node")
+        {
+            nodes = await Db.Nodes
+                .OrderBy(n => n.Fqdn)
+                .ToListAsync();
+            scopeValues = [];
+        }
+        else if (currentScopeType.ValueMode == ScopeValueMode.Restricted)
+        {
+            scopeValues = await Db.ScopeValues
+                .Where(sv => sv.ScopeTypeId == selectedScopeTypeId.Value)
+                .OrderBy(sv => sv.Value)
+                .ToListAsync();
+            nodes = [];
+        }
+        else
+        {
+            unrestrictedScopeValues = await Db.ParameterFiles
+                .Where(pf => pf.ScopeTypeId == selectedScopeTypeId.Value && pf.ScopeValue != null)
+                .Select(pf => pf.ScopeValue!)
+                .Distinct()
+                .OrderBy(v => v)
+                .ToListAsync();
+            scopeValues = [];
+            nodes = [];
+        }
+
+        StateHasChanged();
+    }
+}

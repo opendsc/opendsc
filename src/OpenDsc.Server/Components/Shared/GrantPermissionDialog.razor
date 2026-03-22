@@ -1,0 +1,131 @@
+@* Copyright (c) Thomas Nieto - All Rights Reserved
+   You may use, distribute and modify this code under the
+   terms of the MIT license. *@
+
+@inject ServerDbContext Db
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(IsEditMode ? "Edit Permission" : "Grant Permission")</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3">
+            @if (IsEditMode)
+            {
+                <MudField Label="Principal" Variant="Variant.Outlined">@EditPrincipalName</MudField>
+            }
+            else
+            {
+                <MudSelect T="string" Value="@principalType" ValueChanged="OnPrincipalTypeChanged"
+                           Label="Principal Type" Variant="Variant.Outlined"
+                           HelperText="Grant permission to an individual user or a group">
+                    <MudSelectItem Value="@("User")">User</MudSelectItem>
+                    <MudSelectItem Value="@("Group")">Group</MudSelectItem>
+                </MudSelect>
+
+                @if (principalType == "User")
+                {
+                    <MudSelect T="Guid?" @bind-Value="selectedPrincipalId" Label="User" Variant="Variant.Outlined"
+                               HelperText="Select the user to grant permission to">
+                        @foreach (var user in users.Where(u => !ExistingUserIds.Contains(u.Id)))
+                        {
+                            <MudSelectItem T="Guid?" Value="@user.Id">@user.Username</MudSelectItem>
+                        }
+                    </MudSelect>
+                }
+                else
+                {
+                    <MudSelect T="Guid?" @bind-Value="selectedPrincipalId" Label="Group" Variant="Variant.Outlined"
+                               HelperText="Select the group to grant permission to">
+                        @foreach (var group in groups.Where(g => !ExistingGroupIds.Contains(g.Id)))
+                        {
+                            <MudSelectItem T="Guid?" Value="@group.Id">@group.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                }
+            }
+
+            <MudSelect T="string" @bind-Value="level" Label="Permission Level" Variant="Variant.Outlined"
+                       HelperText="Read: view only · Modify: create/update · Manage: full control including permissions">
+                <MudSelectItem Value="@("Read")">Read</MudSelectItem>
+                <MudSelectItem Value="@("Modify")">Modify</MudSelectItem>
+                <MudSelectItem Value="@("Manage")">Manage</MudSelectItem>
+            </MudSelect>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit"
+                   Disabled="@(!IsEditMode && !selectedPrincipalId.HasValue)">
+            @(IsEditMode ? "Save" : "Grant")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    /// <summary>User IDs that already have a permission on this resource — excluded from the user list.</summary>
+    [Parameter] public HashSet<Guid> ExistingUserIds { get; set; } = [];
+
+    /// <summary>Group IDs that already have a permission on this resource — excluded from the group list.</summary>
+    [Parameter] public HashSet<Guid> ExistingGroupIds { get; set; } = [];
+
+    /// <summary>When set, the dialog opens in edit mode for this principal.</summary>
+    [Parameter] public Guid? EditPrincipalId { get; set; }
+
+    [Parameter] public string? EditPrincipalType { get; set; }
+
+    [Parameter] public string? EditPrincipalName { get; set; }
+
+    /// <summary>Pre-selected permission level. Defaults to "Read".</summary>
+    [Parameter] public string InitialLevel { get; set; } = "Read";
+
+    private bool IsEditMode => EditPrincipalId.HasValue;
+
+    private string principalType = "User";
+    private Guid? selectedPrincipalId;
+    private string level = "Read";
+
+    private List<User> users = [];
+    private List<Group> groups = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        level = InitialLevel;
+        if (IsEditMode && EditPrincipalType is not null)
+        {
+            principalType = EditPrincipalType;
+        }
+
+        users = await Db.Users.OrderBy(u => u.Username).ToListAsync();
+        groups = await Db.Groups.OrderBy(g => g.Name).ToListAsync();
+    }
+
+    private void OnPrincipalTypeChanged(string newType)
+    {
+        principalType = newType;
+        selectedPrincipalId = null;
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Submit()
+    {
+        var principalId = IsEditMode ? EditPrincipalId!.Value : selectedPrincipalId;
+        var type = IsEditMode ? EditPrincipalType! : principalType;
+
+        if (!IsEditMode && !selectedPrincipalId.HasValue)
+        {
+            return;
+        }
+
+        MudDialog.Close(DialogResult.Ok(new PermissionGrantRequest
+        {
+            PrincipalType = type,
+            PrincipalId = principalId!.Value,
+            Level = level
+        }));
+    }
+}

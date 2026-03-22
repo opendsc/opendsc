@@ -4,9 +4,11 @@
 
 using System.Text.Json.Serialization;
 
+using OpenDsc.Lcm.Contracts;
 using OpenDsc.Schema;
 using OpenDsc.Server.Contracts;
 using OpenDsc.Server.Endpoints;
+using OpenDsc.Server.Entities;
 using OpenDsc.Server.Services;
 
 namespace OpenDsc.Server;
@@ -21,8 +23,11 @@ namespace OpenDsc.Server;
 [JsonSerializable(typeof(RegisterNodeResponse))]
 [JsonSerializable(typeof(RotateCertificateRequest))]
 [JsonSerializable(typeof(RotateCertificateResponse))]
+[JsonSerializable(typeof(UpdateLcmStatusRequest))]
 [JsonSerializable(typeof(NodeSummary))]
 [JsonSerializable(typeof(List<NodeSummary>))]
+[JsonSerializable(typeof(NodeStatusEventSummary))]
+[JsonSerializable(typeof(List<NodeStatusEventSummary>))]
 [JsonSerializable(typeof(AssignConfigurationRequest))]
 [JsonSerializable(typeof(ConfigurationChecksumResponse))]
 // Configuration contracts
@@ -30,6 +35,7 @@ namespace OpenDsc.Server;
 [JsonSerializable(typeof(List<ConfigurationSummaryDto>))]
 [JsonSerializable(typeof(ConfigurationDetailsDto))]
 [JsonSerializable(typeof(CreateConfigurationDto))]
+[JsonSerializable(typeof(UpdateConfigurationDto))]
 [JsonSerializable(typeof(ConfigurationVersionDto))]
 [JsonSerializable(typeof(List<ConfigurationVersionDto>))]
 [JsonSerializable(typeof(CreateConfigurationVersionDto))]
@@ -60,6 +66,7 @@ namespace OpenDsc.Server;
 [JsonSerializable(typeof(ServerSettingsResponse))]
 [JsonSerializable(typeof(UpdateServerSettingsRequest))]
 [JsonSerializable(typeof(CreateRegistrationKeyRequest))]
+[JsonSerializable(typeof(UpdateRegistrationKeyRequest))]
 [JsonSerializable(typeof(RegistrationKeyResponse))]
 [JsonSerializable(typeof(List<RegistrationKeyResponse>))]
 [JsonSerializable(typeof(ErrorResponse))]
@@ -131,11 +138,25 @@ namespace OpenDsc.Server;
 [JsonSerializable(typeof(UpdateRoleRequest))]
 // Retention contracts
 [JsonSerializable(typeof(CleanupRequest))]
+[JsonSerializable(typeof(RecordCleanupRequest))]
 [JsonSerializable(typeof(VersionRetentionResult))]
 [JsonSerializable(typeof(List<VersionDeletionInfo>))]
+[JsonSerializable(typeof(RetentionRunDto))]
+[JsonSerializable(typeof(List<RetentionRunDto>))]
+[JsonSerializable(typeof(RetentionSettingsDto))]
+[JsonSerializable(typeof(UpdateRetentionSettingsRequest))]
+// Parameter validation
+[JsonSerializable(typeof(ValidationError))]
+[JsonSerializable(typeof(List<ValidationError>))]
+[JsonSerializable(typeof(ValidationResult))]
+[JsonSerializable(typeof(CompatibilityReport))]
+[JsonSerializable(typeof(SchemaChange))]
+[JsonSerializable(typeof(ParameterFileMigrationStatus))]
 // Schema types
 [JsonSerializable(typeof(DscResult))]
 [JsonSerializable(typeof(DscOperation))]
+// Enums
+[JsonSerializable(typeof(ScopeValueMode))]
 public partial class SourceGenerationContext : JsonSerializerContext
 {
 }

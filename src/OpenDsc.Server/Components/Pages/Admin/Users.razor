@@ -1,0 +1,177 @@
+@using Microsoft.EntityFrameworkCore
+@inject ServerDbContext Db
+@inject ISnackbar Snackbar
+@inject IDialogService Dialog
+
+<MudCard Class="mt-4">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">Users</MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateUser" StartIcon="@Icons.Material.Filled.Add">
+                Create User
+            </MudButton>
+        </CardHeaderActions>
+    </MudCardHeader>
+    <MudCardContent>
+        <MudDataGrid T="User" Items="@users" Hover="true" Dense="true" Loading="@loading" SortMode="SortMode.Single">
+            <Columns>
+                <PropertyColumn Property="x => x.Username" Title="Username" />
+                <PropertyColumn Property="x => x.Email" Title="Email" />
+                <PropertyColumn Property="x => x.AccountType" Title="Account Type" />
+                <TemplateColumn Title="Status" SortBy="@(x => GetStatusSortKey(x))">
+                    <CellTemplate>
+                        @if (!context.Item.IsActive)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Default">Inactive</MudChip>
+                        }
+                        else if (context.Item.LockoutEnd.HasValue && context.Item.LockoutEnd.Value > DateTimeOffset.UtcNow)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Error">Locked</MudChip>
+                        }
+                        else if (context.Item.RequirePasswordChange)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Warning">Password Reset Required</MudChip>
+                        }
+                        else
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Success">Active</MudChip>
+                        }
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="Roles" SortBy="@(x => GetUserRoleCount(x.Id))">
+                    <CellTemplate>@GetUserRoleCount(context.Item.Id)</CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn Title="Groups" SortBy="@(x => GetUserGroupCount(x.Id))">
+                    <CellTemplate>@GetUserGroupCount(context.Item.Id)</CellTemplate>
+                </TemplateColumn>
+                <PropertyColumn Property="x => x.CreatedAt" Title="Created">
+                    <CellTemplate>@context.Item.CreatedAt.LocalDateTime.ToString("g")</CellTemplate>
+                </PropertyColumn>
+                <TemplateColumn Title="Actions" Sortable="false">
+                    <CellTemplate>
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                       Size="Size.Small"
+                                       OnClick="@(() => EditUser(context.Item))" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                       Size="Size.Small"
+                                       Color="Color.Error"
+                                       OnClick="@(() => DeleteUser(context.Item))"
+                                       Disabled="@context.Item.Username.Equals("admin", StringComparison.OrdinalIgnoreCase)" />
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+        </MudDataGrid>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    private List<User> users = [];
+    private Dictionary<Guid, int> userRoleCounts = new();
+    private Dictionary<Guid, int> userGroupCounts = new();
+    private bool loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsersAsync();
+    }
+
+    private async Task LoadUsersAsync()
+    {
+        loading = true;
+        try
+        {
+            users = await Db.Users
+                .OrderBy(u => u.Username)
+                .ToListAsync();
+
+            var roleCountsQuery = await Db.Set<UserRole>()
+                .GroupBy(ur => ur.UserId)
+                .Select(g => new { UserId = g.Key, Count = g.Count() })
+                .ToListAsync();
+            userRoleCounts = roleCountsQuery.ToDictionary(x => x.UserId, x => x.Count);
+
+            var groupCountsQuery = await Db.Set<UserGroup>()
+                .GroupBy(ug => ug.UserId)
+                .Select(g => new { UserId = g.Key, Count = g.Count() })
+                .ToListAsync();
+            userGroupCounts = groupCountsQuery.ToDictionary(x => x.UserId, x => x.Count);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private int GetStatusSortKey(User u)
+    {
+        if (!u.IsActive) return 3;
+        if (u.LockoutEnd.HasValue && u.LockoutEnd.Value > DateTimeOffset.UtcNow) return 2;
+        if (u.RequirePasswordChange) return 1;
+        return 0;
+    }
+
+    private int GetUserRoleCount(Guid userId)
+    {
+        return userRoleCounts.TryGetValue(userId, out var count) ? count : 0;
+    }
+
+    private int GetUserGroupCount(Guid userId)
+    {
+        return userGroupCounts.TryGetValue(userId, out var count) ? count : 0;
+    }
+
+    private async Task CreateUser()
+    {
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var parameters = new DialogParameters<CreateUserDialog>
+        {
+            { x => x.OnUserCreated, EventCallback.Factory.Create(this, LoadUsersAsync) }
+        };
+
+        await Dialog.ShowAsync<CreateUserDialog>("Create User", parameters, options);
+    }
+
+    private async Task EditUser(User user)
+    {
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var parameters = new DialogParameters<EditUserDialog>
+        {
+            { x => x.UserId, user.Id },
+            { x => x.OnUserUpdated, EventCallback.Factory.Create(this, LoadUsersAsync) }
+        };
+
+        await Dialog.ShowAsync<EditUserDialog>("Edit User", parameters, options);
+    }
+
+    private async Task DeleteUser(User user)
+    {
+        if (user.Username.Equals("admin", StringComparison.OrdinalIgnoreCase))
+        {
+            Snackbar.Add("Cannot delete the admin user", Severity.Warning);
+            return;
+        }
+
+        var confirmed = await Dialog.ShowMessageBox(
+            "Confirm Delete",
+            $"Delete user '{user.Username}'? This will remove all role and group assignments.",
+            yesText: "Delete",
+            cancelText: "Cancel");
+
+        if (confirmed == true)
+        {
+            try
+            {
+                Db.Users.Remove(user);
+                await Db.SaveChangesAsync();
+                await LoadUsersAsync();
+                Snackbar.Add($"User '{user.Username}' deleted successfully", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error deleting user: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+}

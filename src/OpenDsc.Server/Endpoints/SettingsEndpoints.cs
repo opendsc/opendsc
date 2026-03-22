@@ -3,8 +3,8 @@
 // terms of the MIT license.
 
 using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.EntityFrameworkCore;
 
+using OpenDsc.Lcm.Contracts;
 using OpenDsc.Server.Authorization;
 using OpenDsc.Server.Contracts;
 using OpenDsc.Server.Data;
@@ -17,6 +17,12 @@ public static class SettingsEndpoints
 {
     public static void MapSettingsEndpoints(this IEndpointRouteBuilder app)
     {
+        app.MapGet("/api/v1/settings/public", GetPublicSettings)
+            .AllowAnonymous()
+            .WithTags("Settings")
+            .WithSummary("Get public server settings")
+            .WithDescription("Returns settings that nodes need before authenticating, such as the certificate rotation interval.");
+
         var group = app.MapGroup("/api/v1/settings")
             .RequireAuthorization(Permissions.ServerSettings_Write)
             .WithTags("Settings");
@@ -32,13 +38,37 @@ public static class SettingsEndpoints
         group.MapPost("/registration-keys", RotateRegistrationKey)
             .WithSummary("Rotate registration key")
             .WithDescription("Generates a new registration key for node registration.");
+
+        group.MapGet("/lcm-defaults", GetLcmDefaults)
+            .WithSummary("Get server LCM defaults")
+            .WithDescription("Returns the server-wide default LCM settings applied to all nodes unless overridden at the node level.");
+
+        group.MapPut("/lcm-defaults", UpdateLcmDefaults)
+            .WithSummary("Update server LCM defaults")
+            .WithDescription("Updates the server-wide default LCM settings. Null values clear the corresponding default.");
+    }
+
+    private static async Task<Results<Ok<PublicSettingsResponse>, NotFound<ErrorResponse>>> GetPublicSettings(
+        ServerDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var settings = await db.ServerSettings.FindAsync([1], cancellationToken);
+        if (settings is null)
+        {
+            return TypedResults.NotFound(new ErrorResponse { Error = "Server settings not found." });
+        }
+
+        return TypedResults.Ok(new PublicSettingsResponse
+        {
+            CertificateRotationInterval = settings.CertificateRotationInterval
+        });
     }
 
     private static async Task<Results<Ok<ServerSettingsResponse>, NotFound<ErrorResponse>>> GetSettings(
         ServerDbContext db,
         CancellationToken cancellationToken)
     {
-        var settings = await db.ServerSettings.FirstOrDefaultAsync(cancellationToken);
+        var settings = await db.ServerSettings.FindAsync([1], cancellationToken);
         if (settings is null)
         {
             return TypedResults.NotFound(new ErrorResponse { Error = "Server settings not found." });
@@ -46,7 +76,8 @@ public static class SettingsEndpoints
 
         return TypedResults.Ok(new ServerSettingsResponse
         {
-            CertificateRotationInterval = settings.CertificateRotationInterval
+            CertificateRotationInterval = settings.CertificateRotationInterval,
+            StalenessMultiplier = settings.StalenessMultiplier
         });
     }
 
@@ -55,7 +86,7 @@ public static class SettingsEndpoints
         ServerDbContext db,
         CancellationToken cancellationToken)
     {
-        var settings = await db.ServerSettings.FirstOrDefaultAsync(cancellationToken);
+        var settings = await db.ServerSettings.FindAsync([1], cancellationToken);
         if (settings is null)
         {
             return TypedResults.NotFound(new ErrorResponse { Error = "Server settings not found." });
@@ -66,11 +97,17 @@ public static class SettingsEndpoints
             settings.CertificateRotationInterval = request.CertificateRotationInterval.Value;
         }
 
+        if (request.StalenessMultiplier.HasValue)
+        {
+            settings.StalenessMultiplier = request.StalenessMultiplier.Value;
+        }
+
         await db.SaveChangesAsync(cancellationToken);
 
         return TypedResults.Ok(new ServerSettingsResponse
         {
-            CertificateRotationInterval = settings.CertificateRotationInterval
+            CertificateRotationInterval = settings.CertificateRotationInterval,
+            StalenessMultiplier = settings.StalenessMultiplier
         });
     }
 
@@ -102,6 +139,48 @@ public static class SettingsEndpoints
             ExpiresAt = expiresAt,
             MaxUses = null,
             CurrentUses = 0
+        });
+    }
+
+    private static async Task<Results<Ok<ServerLcmDefaultsResponse>, NotFound<ErrorResponse>>> GetLcmDefaults(
+        ServerDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var settings = await db.ServerSettings.FindAsync([1], cancellationToken);
+        if (settings is null)
+        {
+            return TypedResults.NotFound(new ErrorResponse { Error = "Server settings not found." });
+        }
+
+        return TypedResults.Ok(new ServerLcmDefaultsResponse
+        {
+            DefaultConfigurationMode = settings.DefaultConfigurationMode,
+            DefaultConfigurationModeInterval = settings.DefaultConfigurationModeInterval,
+            DefaultReportCompliance = settings.DefaultReportCompliance
+        });
+    }
+
+    private static async Task<Results<Ok<ServerLcmDefaultsResponse>, NotFound<ErrorResponse>>> UpdateLcmDefaults(
+        UpdateServerLcmDefaultsRequest request,
+        ServerDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var settings = await db.ServerSettings.FindAsync([1], cancellationToken);
+        if (settings is null)
+        {
+            return TypedResults.NotFound(new ErrorResponse { Error = "Server settings not found." });
+        }
+
+        settings.DefaultConfigurationMode = request.DefaultConfigurationMode;
+        settings.DefaultConfigurationModeInterval = request.DefaultConfigurationModeInterval;
+        settings.DefaultReportCompliance = request.DefaultReportCompliance;
+        await db.SaveChangesAsync(cancellationToken);
+
+        return TypedResults.Ok(new ServerLcmDefaultsResponse
+        {
+            DefaultConfigurationMode = settings.DefaultConfigurationMode,
+            DefaultConfigurationModeInterval = settings.DefaultConfigurationModeInterval,
+            DefaultReportCompliance = settings.DefaultReportCompliance
         });
     }
 }

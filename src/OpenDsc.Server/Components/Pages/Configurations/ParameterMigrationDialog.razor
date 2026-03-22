@@ -1,0 +1,111 @@
+@using MudBlazor
+@using OpenDsc.Server.Services
+@using System.Text.Json
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.MergeType" Class="mr-2" />
+            Parameter Migration Required
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText Typo="Typo.body1" Class="mb-4">
+            The following parameter files need to be migrated to the new schema.
+            Review the validation errors and resolve them manually.
+        </MudText>
+
+        @if (MigrationFiles == null || !MigrationFiles.Any())
+        {
+            <MudText Typo="Typo.body2" Color="Color.Success">
+                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" Color="Color.Success" />
+                All parameter files are compatible with the new schema!
+            </MudText>
+        }
+        else
+        {
+            @foreach (var file in MigrationFiles)
+            {
+                <MudCard Class="mb-3" Elevation="2">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">
+                                @file.ScopeTypeName
+                                @if (!string.IsNullOrEmpty(file.ScopeValue))
+                                {
+                                    <text> / @file.ScopeValue</text>
+                                }
+                            </MudText>
+                            <MudText Typo="Typo.caption">Version: @file.Version</MudText>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            @if (file.NeedsMigration)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Warning">Migration Required</MudChip>
+                            }
+                            else
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Success">Validated</MudChip>
+                            }
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        @if (file.Errors?.Count > 0)
+                        {
+                            <MudText Typo="Typo.subtitle2" Class="mb-2">Validation Errors:</MudText>
+                            @foreach (var error in file.Errors)
+                            {
+                                <MudAlert Severity="Severity.Error" Dense="true" Class="mb-2">
+                                    <MudText Typo="Typo.body2">
+                                        <strong>@error.Path:</strong> @error.Message
+                                    </MudText>
+                                    @if (!string.IsNullOrEmpty(error.Code))
+                                    {
+                                        <MudText Typo="Typo.caption">Code: @error.Code</MudText>
+                                    }
+                                </MudAlert>
+                            }
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Success">
+                                <MudIcon Icon="@Icons.Material.Filled.Check" Size="Size.Small" />
+                                No validation errors
+                            </MudText>
+                        }
+                    </MudCardContent>
+                </MudCard>
+            }
+
+            <MudAlert Severity="Severity.Info" Class="mt-4">
+                <MudText Typo="Typo.body2">
+                    <strong>Next Steps:</strong>
+                </MudText>
+                <ul class="pl-4">
+                    <li>Review each validation error above</li>
+                    <li>Navigate to the Parameters section to edit the affected parameter files</li>
+                    <li>Update parameter values to match the new schema requirements</li>
+                    <li>Once all errors are resolved, you can activate the parameter versions</li>
+                </ul>
+            </MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close" Color="Color.Primary" Variant="Variant.Filled">
+            Close
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public List<ParameterFileMigrationStatus>? MigrationFiles { get; set; }
+
+    private void Close()
+    {
+        MudDialog.Close();
+    }
+}

@@ -36,6 +36,7 @@ internal static class EventIds
     public const int DscCommandCompleted = 3001;
     public const int DscTestStarting = 3002;
     public const int DscSetStarting = 3003;
+    public const int DscTraceLevelConfigured = 3004;
     public const int DscTestCompleted = 3010;
     public const int DscTestCompletedWithIssues = 3011;
     public const int DscSetCompleted = 3012;
@@ -67,6 +68,35 @@ internal static class EventIds
     public const int CertificateRotatedOnPullServer = 6005;
     public const int ConfigurationEntryPointNotFound = 6006;
     public const int ConfigurationExtractedFromBundle = 6007;
+    public const int LcmStatusUpdateFailed = 6008;
+    public const int LcmStatusUpdateError = 6009;
+    public const int ConfigurationChecksumUnchanged = 6010;
+    public const int ServerChecksumChanged = 6011;
+    public const int LocalContentHashMismatch = 6012;
+    public const int ServerLcmConfigApplied = 6013;
+    public const int FailedToApplyServerLcmConfig = 6014;
+    public const int ReportLcmConfigFailed = 6015;
+    public const int FailedToPersistCertificateRotationInterval = 6016;
+    public const int RegistrationKeyNotConfigured = 6017;
+    public const int RegistrationFailed = 6018;
+    public const int RegistrationResponseInvalid = 6019;
+    public const int NodeRegistered = 6020;
+    public const int RegistrationError = 6021;
+    public const int ConfigurationChecksumCheckError = 6022;
+    public const int ConfigurationDownloadFailed = 6023;
+    public const int ConfigurationDownloadError = 6024;
+    public const int ReportSubmissionFailed = 6025;
+    public const int ReportSubmitted = 6026;
+    public const int ReportSubmissionError = 6027;
+    public const int CertificateRotationFailed = 6028;
+    public const int CertificateRotationError = 6029;
+    public const int FqdnResolutionFailed = 6030;
+    public const int BundleDownloadFailed = 6031;
+    public const int BundleDownloaded = 6032;
+    public const int BundleDownloadError = 6033;
+    public const int LcmConfigFetchError = 6034;
+    public const int ReportLcmConfigError = 6035;
+    public const int PublicSettingsFetchError = 6036;
 
     // Certificate Management Events: 7000-7099
     public const int CertificateLoaded = 7000;

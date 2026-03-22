@@ -2,6 +2,8 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -10,6 +12,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
+using OpenDsc.Lcm.Contracts;
 using OpenDsc.Schema;
 
 namespace OpenDsc.Lcm;
@@ -48,6 +51,12 @@ public partial class LcmWorker(
 
             _currentMode = lcmMonitor.CurrentValue.ConfigurationMode;
             LogOperatingInMode(_currentMode);
+
+            var startupConfig = lcmMonitor.CurrentValue;
+            if (startupConfig.ConfigurationSource == ConfigurationSource.Pull && startupConfig.PullServer?.NodeId is not null)
+            {
+                await pullServerClient.ReportLcmConfigAsync(stoppingToken);
+            }
 
             while (!stoppingToken.IsCancellationRequested)
             {
@@ -118,6 +127,11 @@ public partial class LcmWorker(
             LogModeChangeDetected(_currentMode, newConfig.ConfigurationMode);
             _modeChangeCts?.Cancel();
         }
+
+        if (newConfig.ConfigurationSource == ConfigurationSource.Pull && newConfig.PullServer?.NodeId is not null)
+        {
+            _ = pullServerClient.ReportLcmConfigAsync();
+        }
     }
 
     private async Task ExecuteMonitorModeAsync(LcmConfig config, CancellationToken stoppingToken, CancellationToken modeChangeToken)
@@ -136,20 +150,26 @@ public partial class LcmWorker(
 
             try
             {
+                await EnsureLocalModeRegisteredAsync(currentConfig, stoppingToken);
+
                 var configPath = await GetConfigurationPathAsync(currentConfig, stoppingToken);
 
                 if (string.IsNullOrWhiteSpace(configPath) || !File.Exists(configPath))
                 {
                     LogConfigurationNotAvailableSkippingDscTest();
+                    await UpdatePullServerLcmStatusAsync(currentConfig, LcmStatus.Idle, stoppingToken);
                 }
                 else
                 {
+                    var parametersPath = currentConfig.PullServer?.ConfigurationParametersFile;
                     var traceLevel = GetTraceLevelFromConfiguration(configuration);
+                    await UpdatePullServerLcmStatusAsync(currentConfig, LcmStatus.Testing, stoppingToken);
                     LogDscTestStarting();
-                    var (result, exitCode) = await dscExecutor.ExecuteTestAsync(configPath, currentConfig, traceLevel, stoppingToken);
+                    var (result, exitCode) = await dscExecutor.ExecuteTestAsync(configPath, currentConfig, traceLevel, parametersPath, stoppingToken);
                     LogDscTestResult(result, exitCode);
 
                     await SubmitReportAsync(currentConfig, DscOperation.Test, result, stoppingToken);
+                    await UpdatePullServerLcmStatusAsync(currentConfig, LcmStatus.Idle, stoppingToken);
                 }
 
                 await InterruptibleDelayAsync(currentInterval, currentInterval, stoppingToken, modeChangeToken);
@@ -165,6 +185,7 @@ public partial class LcmWorker(
             catch (Exception ex)
             {
                 LogErrorDuringMonitorCycle(ex);
+                await UpdatePullServerLcmStatusAsync(currentConfig, LcmStatus.Error, stoppingToken);
                 var errorDelay = TimeSpan.FromSeconds(Math.Min(currentInterval.TotalSeconds, 60));
                 await InterruptibleDelayAsync(errorDelay, currentInterval, stoppingToken, modeChangeToken);
             }
@@ -188,17 +209,22 @@ public partial class LcmWorker(
 
             try
             {
+                await EnsureLocalModeRegisteredAsync(currentConfig, stoppingToken);
+
                 var configPath = await GetConfigurationPathAsync(currentConfig, stoppingToken);
 
                 if (string.IsNullOrWhiteSpace(configPath) || !File.Exists(configPath))
                 {
                     LogConfigurationNotAvailableSkippingDscOperations(currentConfig.ConfigurationPath!);
+                    await UpdatePullServerLcmStatusAsync(currentConfig, LcmStatus.Idle, stoppingToken);
                 }
                 else
                 {
+                    var parametersPath = currentConfig.PullServer?.ConfigurationParametersFile;
                     var traceLevel = GetTraceLevelFromConfiguration(configuration);
+                    await UpdatePullServerLcmStatusAsync(currentConfig, LcmStatus.Testing, stoppingToken);
                     LogDscTestStarting();
-                    var (testResult, testExitCode) = await dscExecutor.ExecuteTestAsync(configPath, currentConfig, traceLevel, stoppingToken);
+                    var (testResult, testExitCode) = await dscExecutor.ExecuteTestAsync(configPath, currentConfig, traceLevel, parametersPath, stoppingToken);
                     LogDscTestResult(testResult, testExitCode);
 
                     var configPathAfterTest = lcmMonitor.CurrentValue.ConfigurationPath;
@@ -208,26 +234,26 @@ public partial class LcmWorker(
                         continue;
                     }
 
-                    var needsCorrection = (testResult.Results?.Count(r =>
-                    {
-                        var testOp = JsonSerializer.Deserialize(r.Result, OpenDsc.Schema.SourceGenerationContext.Default.DscTestOperationResult);
-                        return testOp?.InDesiredState == false;
-                    }) ?? 0) > 0;
+                    var needsCorrection = testResult.Results is not null &&
+                        GetLeafTestResults(testResult.Results).Any(t => !t.TestOp.InDesiredState);
 
                     if (needsCorrection)
                     {
                         LogResourcesNotInDesiredStateApplyingCorrections();
                         traceLevel = GetTraceLevelFromConfiguration(configuration);
+                        await UpdatePullServerLcmStatusAsync(currentConfig, LcmStatus.Remediating, stoppingToken);
                         LogDscSetStarting();
-                        var (setResult, setExitCode) = await dscExecutor.ExecuteSetAsync(configPath, currentConfig, traceLevel, stoppingToken);
+                        var (setResult, setExitCode) = await dscExecutor.ExecuteSetAsync(configPath, currentConfig, traceLevel, parametersPath, stoppingToken);
                         LogDscSetResult(setResult, setExitCode);
 
                         await SubmitReportAsync(currentConfig, DscOperation.Set, setResult, stoppingToken);
+                        await UpdatePullServerLcmStatusAsync(currentConfig, LcmStatus.Idle, stoppingToken);
                     }
                     else
                     {
                         LogAllResourcesAreInDesiredState();
                         await SubmitReportAsync(currentConfig, DscOperation.Test, testResult, stoppingToken);
+                        await UpdatePullServerLcmStatusAsync(currentConfig, LcmStatus.Idle, stoppingToken);
                     }
                 }
 
@@ -244,6 +270,7 @@ public partial class LcmWorker(
             catch (Exception ex)
             {
                 LogErrorDuringRemediateCycle(ex);
+                await UpdatePullServerLcmStatusAsync(currentConfig, LcmStatus.Error, stoppingToken);
                 var errorDelay = TimeSpan.FromSeconds(Math.Min(currentInterval.TotalSeconds, 60));
                 await InterruptibleDelayAsync(errorDelay, currentInterval, stoppingToken, modeChangeToken);
             }
@@ -268,36 +295,79 @@ public partial class LcmWorker(
 
         if (config.PullServer.NodeId is null)
         {
+            var publicSettings = await pullServerClient.GetPublicSettingsAsync(cancellationToken);
+            if (publicSettings is not null)
+            {
+                certificateManager.SetRotationInterval(publicSettings.CertificateRotationInterval);
+                config.PullServer.CertificateRotationInterval = publicSettings.CertificateRotationInterval;
+                await PersistCertificateRotationIntervalAsync(publicSettings.CertificateRotationInterval, cancellationToken);
+            }
+
             var registrationResult = await pullServerClient.RegisterAsync(cancellationToken);
-            if (registrationResult is null)
+            if (registrationResult is not null)
+            {
+                config.PullServer.NodeId = registrationResult.NodeId;
+                await PersistNodeIdAsync(config.PullServer.NodeId.Value, cancellationToken);
+            }
+            else
             {
                 return null;
             }
-
-            config.PullServer.NodeId = registrationResult.NodeId;
-            await PersistNodeIdAsync(config.PullServer.NodeId.Value, cancellationToken);
         }
 
+        await ApplyServerLcmConfigAsync(cancellationToken);
         await CheckAndRotateCertificateAsync(config.PullServer, cancellationToken);
 
         var hasChanged = await pullServerClient.HasConfigurationChangedAsync(cancellationToken);
-        if (!hasChanged && !string.IsNullOrWhiteSpace(config.ConfigurationPath) && File.Exists(config.ConfigurationPath))
+        if (!hasChanged)
         {
-            return config.ConfigurationPath;
+            var cachedExtractDir = GetPullExtractDirectory();
+            var cachedEntryPoint = config.PullServer.ConfigurationEntryPoint ?? "main.dsc.yaml";
+            var cachedPath = Path.Combine(cachedExtractDir, cachedEntryPoint);
+            if (File.Exists(cachedPath) && !string.IsNullOrEmpty(config.PullServer.LocalContentHash))
+            {
+                var currentLocalHash = await ComputeLocalContentHashAsync(cachedExtractDir, cancellationToken);
+                if (currentLocalHash == config.PullServer.LocalContentHash)
+                {
+                    LogConfigurationChecksumUnchanged(cachedPath);
+                    return cachedPath;
+                }
+
+                LogLocalContentHashMismatch(cachedPath);
+            }
+        }
+        else
+        {
+            LogServerChecksumChanged();
         }
 
+        await pullServerClient.UpdateLcmStatusAsync(LcmStatus.Downloading, cancellationToken);
         var bundleStream = await pullServerClient.GetConfigurationBundleAsync(cancellationToken);
         if (bundleStream is null)
         {
-            return !string.IsNullOrWhiteSpace(config.ConfigurationPath) && File.Exists(config.ConfigurationPath)
-                ? config.ConfigurationPath
-                : null;
+            var cachedExtractDir = GetPullExtractDirectory();
+            var cachedEntryPoint = config.PullServer.ConfigurationEntryPoint ?? "main.dsc.yaml";
+            var cachedPath = Path.Combine(cachedExtractDir, cachedEntryPoint);
+            return File.Exists(cachedPath) ? cachedPath : null;
         }
 
-        var checksum = await pullServerClient.GetConfigurationChecksumAsync(cancellationToken);
-        config.PullServer.ConfigurationChecksum = checksum;
+        var checksumResponse = await pullServerClient.GetConfigurationChecksumAsync(cancellationToken);
+        config.PullServer.ConfigurationChecksum = checksumResponse?.Checksum;
+        if (checksumResponse?.EntryPoint is not null)
+        {
+            config.PullServer.ConfigurationEntryPoint = checksumResponse.EntryPoint;
+        }
 
-        var extractDir = Path.Combine(ConfigPaths.GetLcmConfigDirectory(), "config", "pull");
+        var extractDir = GetPullExtractDirectory();
+
+        config.PullServer.ConfigurationParametersFile = checksumResponse?.ParametersFile is not null
+            ? Path.Combine(extractDir, checksumResponse.ParametersFile)
+            : null;
+        if (Directory.Exists(extractDir))
+        {
+            Directory.Delete(extractDir, recursive: true);
+        }
+
         Directory.CreateDirectory(extractDir);
 
         using (bundleStream)
@@ -329,15 +399,8 @@ public partial class LcmWorker(
             }
         }
 
-        var entryPointPath = Path.Combine(extractDir, "main.dsc.yaml");
-        if (!File.Exists(entryPointPath))
-        {
-            var yamlFiles = Directory.GetFiles(extractDir, "*.dsc.yaml", SearchOption.TopDirectoryOnly);
-            if (yamlFiles.Length > 0)
-            {
-                entryPointPath = yamlFiles[0];
-            }
-        }
+        var entryPointFile = config.PullServer!.ConfigurationEntryPoint ?? "main.dsc.yaml";
+        var entryPointPath = Path.Combine(extractDir, entryPointFile);
 
         if (!File.Exists(entryPointPath))
         {
@@ -345,8 +408,111 @@ public partial class LcmWorker(
             return null;
         }
 
+        var localContentHash = await ComputeLocalContentHashAsync(extractDir, cancellationToken);
+        config.PullServer.LocalContentHash = localContentHash;
+        await PersistConfigurationChecksumAsync(config.PullServer.ConfigurationChecksum, config.PullServer.ConfigurationEntryPoint, localContentHash, cancellationToken);
         LogConfigurationExtractedFromBundle(entryPointPath);
         return entryPointPath;
+    }
+
+    protected static async Task<string> ComputeLocalContentHashAsync(string extractDir, CancellationToken cancellationToken)
+    {
+        if (!Directory.Exists(extractDir))
+        {
+            return string.Empty;
+        }
+
+        var parts = new List<string>();
+        foreach (var filePath in Directory.GetFiles(extractDir, "*", SearchOption.AllDirectories).OrderBy(f => f, StringComparer.OrdinalIgnoreCase))
+        {
+            var relativePath = Path.GetRelativePath(extractDir, filePath).Replace('\\', '/');
+            var fileBytes = await File.ReadAllBytesAsync(filePath, cancellationToken);
+            var fileHash = Convert.ToHexString(SHA256.HashData(fileBytes)).ToLowerInvariant();
+            parts.Add($"{relativePath}:{fileHash}");
+        }
+
+        if (parts.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var combined = string.Join("|", parts);
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(combined));
+        return Convert.ToHexString(hash).ToLowerInvariant();
+    }
+
+    /// <summary>
+    /// Fetches the server-managed desired LCM configuration and persists any changed values.
+    /// </summary>
+    private async Task ApplyServerLcmConfigAsync(CancellationToken cancellationToken)
+    {
+        var serverConfig = await pullServerClient.GetLcmConfigAsync(cancellationToken);
+        if (serverConfig is null)
+        {
+            return;
+        }
+
+        if (serverConfig.ConfigurationMode is null && serverConfig.ConfigurationModeInterval is null && serverConfig.ReportCompliance is null && serverConfig.CertificateRotationInterval is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var configPath = GetLcmConfigPath();
+            var configDir = Path.GetDirectoryName(configPath);
+            if (!string.IsNullOrWhiteSpace(configDir) && !Directory.Exists(configDir))
+            {
+                Directory.CreateDirectory(configDir);
+            }
+
+            JsonNode configNode;
+            if (File.Exists(configPath))
+            {
+                var existingJson = await File.ReadAllTextAsync(configPath, cancellationToken);
+                configNode = JsonNode.Parse(existingJson) ?? new JsonObject();
+            }
+            else
+            {
+                configNode = new JsonObject();
+            }
+
+            var lcmNode = configNode["LCM"] as JsonObject ?? new JsonObject();
+            var pullServerNode = lcmNode["PullServer"] as JsonObject ?? new JsonObject();
+
+            if (serverConfig.ConfigurationMode is not null)
+            {
+                lcmNode["ConfigurationMode"] = serverConfig.ConfigurationMode.Value.ToString();
+            }
+
+            if (serverConfig.ConfigurationModeInterval is not null)
+            {
+                lcmNode["ConfigurationModeInterval"] = serverConfig.ConfigurationModeInterval.Value.ToString(TimeSpanFormat);
+            }
+
+            if (serverConfig.ReportCompliance is not null)
+            {
+                pullServerNode["ReportCompliance"] = serverConfig.ReportCompliance.Value;
+            }
+
+            if (serverConfig.CertificateRotationInterval is not null)
+            {
+                pullServerNode["CertificateRotationInterval"] = serverConfig.CertificateRotationInterval.Value.ToString(TimeSpanFormat);
+            }
+
+            lcmNode["PullServer"] = pullServerNode;
+            configNode["LCM"] = lcmNode;
+
+            var options = new JsonSerializerOptions { WriteIndented = true };
+            var updatedJson = configNode.ToJsonString(options);
+            await File.WriteAllTextAsync(configPath, updatedJson, cancellationToken);
+
+            LogServerLcmConfigApplied();
+        }
+        catch (Exception ex)
+        {
+            LogFailedToApplyServerLcmConfig(ex);
+        }
     }
 
     /// <summary>
@@ -356,7 +522,7 @@ public partial class LcmWorker(
     {
         try
         {
-            var configPath = ConfigPaths.GetLcmConfigPath();
+            var configPath = GetLcmConfigPath();
             var configDir = Path.GetDirectoryName(configPath);
             if (!string.IsNullOrWhiteSpace(configDir) && !Directory.Exists(configDir))
             {
@@ -393,6 +559,114 @@ public partial class LcmWorker(
     }
 
     /// <summary>
+    /// Persists the configuration checksum and entry point to the configuration file.
+    /// </summary>
+    private async Task PersistCertificateRotationIntervalAsync(TimeSpan interval, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var configPath = GetLcmConfigPath();
+            var configDir = Path.GetDirectoryName(configPath);
+            if (!string.IsNullOrWhiteSpace(configDir) && !Directory.Exists(configDir))
+            {
+                Directory.CreateDirectory(configDir);
+            }
+
+            JsonNode configNode;
+            if (File.Exists(configPath))
+            {
+                var existingJson = await File.ReadAllTextAsync(configPath, cancellationToken);
+                configNode = JsonNode.Parse(existingJson) ?? new JsonObject();
+            }
+            else
+            {
+                configNode = new JsonObject();
+            }
+
+            var lcmNode = configNode["LCM"] as JsonObject ?? new JsonObject();
+            var pullServerNode = lcmNode["PullServer"] as JsonObject ?? new JsonObject();
+            pullServerNode["CertificateRotationInterval"] = interval.ToString(TimeSpanFormat);
+            lcmNode["PullServer"] = pullServerNode;
+            configNode["LCM"] = lcmNode;
+
+            var options = new JsonSerializerOptions { WriteIndented = true };
+            var updatedJson = configNode.ToJsonString(options);
+            await File.WriteAllTextAsync(configPath, updatedJson, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            LogFailedToPersistCertificateRotationInterval(ex);
+        }
+    }
+
+    /// <summary>
+    /// Persists the configuration checksum and entry point to the configuration file.
+    /// </summary>
+    private async Task PersistConfigurationChecksumAsync(string? checksum, string? entryPoint, string? localContentHash, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var configPath = GetLcmConfigPath();
+            var configDir = Path.GetDirectoryName(configPath);
+            if (!string.IsNullOrWhiteSpace(configDir) && !Directory.Exists(configDir))
+            {
+                Directory.CreateDirectory(configDir);
+            }
+
+            JsonNode configNode;
+            if (File.Exists(configPath))
+            {
+                var existingJson = await File.ReadAllTextAsync(configPath, cancellationToken);
+                configNode = JsonNode.Parse(existingJson) ?? new JsonObject();
+            }
+            else
+            {
+                configNode = new JsonObject();
+            }
+
+            var lcmNode = configNode["LCM"] as JsonObject ?? new JsonObject();
+            var pullServerNode = lcmNode["PullServer"] as JsonObject ?? new JsonObject();
+            if (checksum is not null)
+            {
+                pullServerNode["ConfigurationChecksum"] = checksum;
+            }
+            else
+            {
+                pullServerNode.Remove("ConfigurationChecksum");
+            }
+
+            if (entryPoint is not null)
+            {
+                pullServerNode["ConfigurationEntryPoint"] = entryPoint;
+            }
+            else
+            {
+                pullServerNode.Remove("ConfigurationEntryPoint");
+            }
+
+            if (localContentHash is not null)
+            {
+                pullServerNode["LocalContentHash"] = localContentHash;
+            }
+            else
+            {
+                pullServerNode.Remove("LocalContentHash");
+            }
+
+            lcmNode["PullServer"] = pullServerNode;
+            configNode["LCM"] = lcmNode;
+
+            var options = new JsonSerializerOptions { WriteIndented = true };
+            var updatedJson = configNode.ToJsonString(options);
+            await File.WriteAllTextAsync(configPath, updatedJson, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            LogFailedToPersistNodeId(ex);
+        }
+    }
+
+    /// <summary>
     /// Checks if the certificate needs rotation and rotates it if necessary.
     /// </summary>
     private async Task CheckAndRotateCertificateAsync(PullServerSettings pullServer, CancellationToken cancellationToken)
@@ -421,12 +695,42 @@ public partial class LcmWorker(
         }
     }
 
+    private async Task UpdatePullServerLcmStatusAsync(LcmConfig config, LcmStatus status, CancellationToken cancellationToken)
+    {
+        if (config.PullServer is null)
+        {
+            return;
+        }
+
+        await pullServerClient.UpdateLcmStatusAsync(status, cancellationToken);
+    }
+
+    private async Task EnsureLocalModeRegisteredAsync(LcmConfig config, CancellationToken cancellationToken)
+    {
+        if (config.ConfigurationSource != ConfigurationSource.Local || config.PullServer is null)
+        {
+            return;
+        }
+
+        if (config.PullServer.NodeId is null)
+        {
+            var registrationResult = await pullServerClient.RegisterAsync(cancellationToken);
+            if (registrationResult is not null)
+            {
+                config.PullServer.NodeId = registrationResult.NodeId;
+                await PersistNodeIdAsync(config.PullServer.NodeId.Value, cancellationToken);
+            }
+        }
+
+        await CheckAndRotateCertificateAsync(config.PullServer, cancellationToken);
+    }
+
     /// <summary>
     /// Submits a compliance report to the pull server if configured.
     /// </summary>
     private async Task SubmitReportAsync(LcmConfig config, DscOperation operation, DscResult result, CancellationToken cancellationToken)
     {
-        if (config.ConfigurationSource != ConfigurationSource.Pull)
+        if (config.PullServer?.NodeId is null)
         {
             return;
         }
@@ -438,6 +742,12 @@ public partial class LcmWorker(
 
         await pullServerClient.SubmitReportAsync(operation, result, cancellationToken);
     }
+
+    protected virtual string GetPullExtractDirectory() =>
+        Path.Combine(ConfigPaths.GetLcmConfigDirectory(), "config", "pull");
+
+    protected virtual string GetLcmConfigPath() =>
+        ConfigPaths.GetLcmConfigPath();
 
     private async Task InterruptibleDelayAsync(TimeSpan delay, TimeSpan originalInterval, CancellationToken stoppingToken, CancellationToken modeChangeToken)
     {
@@ -466,13 +776,11 @@ public partial class LcmWorker(
 
     private void LogDscTestResult(DscResult result, int exitCode)
     {
-        bool allInDesiredState = result.Results?.All(r =>
-        {
-            var testOp = JsonSerializer.Deserialize(r.Result, SourceGenerationContext.Default.DscTestOperationResult);
-            return testOp?.InDesiredState == true;
-        }) ?? true;
+        var leafResults = result.Results is not null
+            ? GetLeafTestResults(result.Results).ToList()
+            : [];
 
-        if (allInDesiredState)
+        if (leafResults.All(t => t.TestOp.InDesiredState))
         {
             LogDscOperationCompletedSuccessfully("Test");
         }
@@ -481,36 +789,51 @@ public partial class LcmWorker(
             LogDscOperationCompletedWithIssues("Test", exitCode);
         }
 
-        if (result.Results?.Count > 0)
+        if (leafResults.Count > 0)
         {
-            var totalResources = result.Results!.Count;
-            var inDesiredState = result.Results.Count(r =>
-            {
-                var testOp = JsonSerializer.Deserialize(r.Result, SourceGenerationContext.Default.DscTestOperationResult);
-                return testOp?.InDesiredState == true;
-            });
-            var notInDesiredState = result.Results.Count(r =>
-            {
-                var testOp = JsonSerializer.Deserialize(r.Result, SourceGenerationContext.Default.DscTestOperationResult);
-                return testOp?.InDesiredState == false;
-            });
+            var totalResources = leafResults.Count;
+            var inDesiredState = leafResults.Count(t => t.TestOp.InDesiredState);
+            var notInDesiredState = leafResults.Count(t => !t.TestOp.InDesiredState);
 
             LogResourceStatus(inDesiredState, totalResources, notInDesiredState);
 
             if (logger.IsEnabled(LogLevel.Warning))
             {
-                foreach (var resource in result.Results.Where(r =>
+                foreach (var (type, name, _) in leafResults.Where(t => !t.TestOp.InDesiredState))
                 {
-                    var testOp = JsonSerializer.Deserialize(r.Result, SourceGenerationContext.Default.DscTestOperationResult);
-                    return testOp?.InDesiredState == false;
-                }))
-                {
-                    LogResourceNotInDesiredState(resource.Type, resource.Name);
+                    LogResourceNotInDesiredState(type, name);
                 }
             }
         }
 
         LogRestartRequirements(result);
+    }
+
+    private static IEnumerable<(string Type, string Name, DscTestOperationResult TestOp)> GetLeafTestResults(
+        IEnumerable<DscResourceResult> results)
+    {
+        foreach (var r in results)
+        {
+            if (r.Result.ValueKind == JsonValueKind.Array)
+            {
+                var nested = JsonSerializer.Deserialize(r.Result, SourceGenerationContext.Default.ListDscResourceResult);
+                if (nested is not null)
+                {
+                    foreach (var item in GetLeafTestResults(nested))
+                    {
+                        yield return item;
+                    }
+                }
+            }
+            else if (r.Result.ValueKind == JsonValueKind.Object)
+            {
+                var testOp = JsonSerializer.Deserialize(r.Result, SourceGenerationContext.Default.DscTestOperationResult);
+                if (testOp is not null)
+                {
+                    yield return (r.Type, r.Name, testOp);
+                }
+            }
+        }
     }
 
     private void LogDscSetResult(DscResult result, int exitCode)
@@ -671,6 +994,24 @@ public partial class LcmWorker(
     [LoggerMessage(EventId = EventIds.ConfigurationExtractedFromBundle, Level = LogLevel.Information, Message = "Configuration extracted from bundle: {ConfigurationPath}")]
     private partial void LogConfigurationExtractedFromBundle(string configurationPath);
 
-    [LoggerMessage(EventId = 9999, Level = LogLevel.Debug, Message = "Trace level for DSC operations: {TraceLevel}")]
+    [LoggerMessage(EventId = EventIds.ConfigurationChecksumUnchanged, Level = LogLevel.Debug, Message = "Configuration checksum unchanged, using cached configuration: {ConfigurationPath}")]
+    private partial void LogConfigurationChecksumUnchanged(string configurationPath);
+
+    [LoggerMessage(EventId = EventIds.ServerChecksumChanged, Level = LogLevel.Information, Message = "Server configuration checksum has changed, downloading bundle")]
+    private partial void LogServerChecksumChanged();
+
+    [LoggerMessage(EventId = EventIds.LocalContentHashMismatch, Level = LogLevel.Information, Message = "Local content hash mismatch (files may have been modified), re-downloading bundle: {ConfigurationPath}")]
+    private partial void LogLocalContentHashMismatch(string configurationPath);
+
+    [LoggerMessage(EventId = EventIds.DscTraceLevelConfigured, Level = LogLevel.Debug, Message = "Trace level for DSC operations: {TraceLevel}")]
     private partial void LogTraceLevelForDsc(LogLevel traceLevel);
+
+    [LoggerMessage(EventId = EventIds.ServerLcmConfigApplied, Level = LogLevel.Information, Message = "Server-managed LCM configuration applied")]
+    private partial void LogServerLcmConfigApplied();
+
+    [LoggerMessage(EventId = EventIds.FailedToApplyServerLcmConfig, Level = LogLevel.Error, Message = "Failed to apply server-managed LCM configuration")]
+    private partial void LogFailedToApplyServerLcmConfig(Exception ex);
+
+    [LoggerMessage(EventId = EventIds.FailedToPersistCertificateRotationInterval, Level = LogLevel.Error, Message = "Failed to persist certificate rotation interval to configuration")]
+    private partial void LogFailedToPersistCertificateRotationInterval(Exception ex);
 }

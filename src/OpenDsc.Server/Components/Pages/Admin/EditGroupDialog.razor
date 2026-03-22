@@ -1,0 +1,160 @@
+@using Microsoft.EntityFrameworkCore
+@using MudBlazor
+@inject ServerDbContext Db
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        @if (group != null)
+        {
+            <MudTextField @bind-Value="group.Name" Label="Group Name" Variant="Variant.Outlined" Required="true" Class="mb-3" />
+            <MudTextField @bind-Value="group.Description" Label="Description" Variant="Variant.Outlined" Lines="2" Class="mb-3" />
+
+            <MudText Typo="Typo.subtitle2" Class="mb-2 mt-4">Members:</MudText>
+            <MudPaper Class="pa-3 mb-3" Style="max-height: 300px; overflow-y: auto;">
+                @if (availableUsers.Count == 0)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">No users available</MudText>
+                }
+                else
+                {
+                    @foreach (var user in availableUsers)
+                    {
+                        <MudCheckBox @bind-Value="@selectedMembers[user.Id]"
+                                     Label="@($"{user.Username} ({user.Email})")"
+                                     Dense="true" />
+                    }
+                }
+            </MudPaper>
+
+            <MudText Typo="Typo.subtitle2" Class="mb-2">Roles:</MudText>
+            <MudPaper Class="pa-3" Style="max-height: 300px; overflow-y: auto;">
+                @if (availableRoles.Count == 0)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">No roles available</MudText>
+                }
+                else
+                {
+                    @foreach (var role in availableRoles)
+                    {
+                        <MudCheckBox @bind-Value="@selectedRoles[role.Id]"
+                                     Label="@role.Name"
+                                     Dense="true" />
+                    }
+                }
+            </MudPaper>
+        }
+        else
+        {
+            <MudProgressCircular Indeterminate="true" />
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(group == null || string.IsNullOrWhiteSpace(group.Name))">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter]
+    public Guid GroupId { get; set; }
+
+    [Parameter]
+    public EventCallback OnGroupUpdated { get; set; }
+
+    private Group? group;
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private List<User> availableUsers = [];
+    private List<Role> availableRoles = [];
+    private Dictionary<Guid, bool> selectedMembers = new();
+    private Dictionary<Guid, bool> selectedRoles = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        group = await Db.Groups.FindAsync(GroupId);
+
+        availableUsers = await Db.Users
+            .Where(u => u.AccountType == AccountType.User && u.IsActive)
+            .OrderBy(u => u.Username)
+            .ToListAsync();
+
+        availableRoles = await Db.Roles
+            .OrderBy(r => r.Name)
+            .ToListAsync();
+
+        var existingMembers = await Db.UserGroups
+            .Where(ug => ug.GroupId == GroupId)
+            .Select(ug => ug.UserId)
+            .ToListAsync();
+
+        var existingRoles = await Db.GroupRoles
+            .Where(gr => gr.GroupId == GroupId)
+            .Select(gr => gr.RoleId)
+            .ToListAsync();
+
+        foreach (var user in availableUsers)
+        {
+            selectedMembers[user.Id] = existingMembers.Contains(user.Id);
+        }
+
+        foreach (var role in availableRoles)
+        {
+            selectedRoles[role.Id] = existingRoles.Contains(role.Id);
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private async Task Submit()
+    {
+        if (group == null)
+            return;
+
+        try
+        {
+            group.ModifiedAt = DateTimeOffset.UtcNow;
+
+            // Update members
+            var currentMembers = await Db.UserGroups
+                .Where(ug => ug.GroupId == GroupId)
+                .ToListAsync();
+
+            var selectedUserIds = selectedMembers.Where(kvp => kvp.Value).Select(kvp => kvp.Key).ToHashSet();
+            var currentUserIds = currentMembers.Select(ug => ug.UserId).ToHashSet();
+
+            var toAdd = selectedUserIds.Except(currentUserIds).Select(userId => new UserGroup { UserId = userId, GroupId = GroupId });
+            var toRemove = currentMembers.Where(ug => !selectedUserIds.Contains(ug.UserId));
+
+            Db.UserGroups.AddRange(toAdd);
+            Db.UserGroups.RemoveRange(toRemove);
+
+            // Update roles
+            var currentRoles = await Db.GroupRoles
+                .Where(gr => gr.GroupId == GroupId)
+                .ToListAsync();
+
+            var selectedRoleIds = selectedRoles.Where(kvp => kvp.Value).Select(kvp => kvp.Key).ToHashSet();
+            var currentRoleIds = currentRoles.Select(gr => gr.RoleId).ToHashSet();
+
+            var rolesToAdd = selectedRoleIds.Except(currentRoleIds).Select(roleId => new GroupRole { GroupId = GroupId, RoleId = roleId });
+            var rolesToRemove = currentRoles.Where(gr => !selectedRoleIds.Contains(gr.RoleId));
+
+            Db.GroupRoles.AddRange(rolesToAdd);
+            Db.GroupRoles.RemoveRange(rolesToRemove);
+
+            await Db.SaveChangesAsync();
+
+            Snackbar.Add($"Group '{group.Name}' updated successfully", Severity.Success);
+            await OnGroupUpdated.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error updating group: {ex.Message}", Severity.Error);
+        }
+    }
+}

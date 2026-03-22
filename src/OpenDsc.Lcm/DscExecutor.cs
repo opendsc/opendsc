@@ -16,14 +16,14 @@ public partial class DscExecutor(ILogger<DscExecutor> logger, ILoggerFactory log
 {
     private readonly ILogger _dscLogger = loggerFactory.CreateLogger("DSC");
 
-    public async Task<(DscResult Result, int ExitCode)> ExecuteTestAsync(string configPath, LcmConfig config, LogLevel traceLevel, CancellationToken cancellationToken = default)
+    public async Task<(DscResult Result, int ExitCode)> ExecuteTestAsync(string configPath, LcmConfig config, LogLevel traceLevel, string? parametersPath = null, CancellationToken cancellationToken = default)
     {
-        return await ExecuteCommandAsync("test", configPath, config, traceLevel, cancellationToken);
+        return await ExecuteCommandAsync("test", configPath, config, traceLevel, parametersPath, cancellationToken);
     }
 
-    public async Task<(DscResult Result, int ExitCode)> ExecuteSetAsync(string configPath, LcmConfig config, LogLevel traceLevel, CancellationToken cancellationToken = default)
+    public async Task<(DscResult Result, int ExitCode)> ExecuteSetAsync(string configPath, LcmConfig config, LogLevel traceLevel, string? parametersPath = null, CancellationToken cancellationToken = default)
     {
-        return await ExecuteCommandAsync("set", configPath, config, traceLevel, cancellationToken);
+        return await ExecuteCommandAsync("set", configPath, config, traceLevel, parametersPath, cancellationToken);
     }
 
     private static string? FindExecutableInPath()
@@ -37,9 +37,9 @@ public partial class DscExecutor(ILogger<DscExecutor> logger, ILoggerFactory log
             .FirstOrDefault(File.Exists);
     }
 
-    protected virtual async Task<(DscResult Result, int ExitCode)> ExecuteCommandAsync(string operation, string configPath, LcmConfig config, LogLevel traceLevel, CancellationToken cancellationToken)
+    protected virtual async Task<(DscResult Result, int ExitCode)> ExecuteCommandAsync(string operation, string configPath, LcmConfig config, LogLevel traceLevel, string? parametersPath, CancellationToken cancellationToken)
     {
-        var arguments = BuildArguments(operation, configPath, traceLevel);
+        var arguments = BuildArguments(operation, configPath, traceLevel, parametersPath);
 
 #pragma warning disable CA1873
         if (logger.IsEnabled(LogLevel.Debug))
@@ -84,18 +84,27 @@ public partial class DscExecutor(ILogger<DscExecutor> logger, ILoggerFactory log
         return (result, exitCode);
     }
 
-    private static List<string> BuildArguments(string operation, string configPath, LogLevel traceLevel)
+    private static List<string> BuildArguments(string operation, string configPath, LogLevel traceLevel, string? parametersPath)
     {
         var arguments = new List<string>
         {
             "--trace-level", MapLogLevelToTraceLevel(traceLevel),
             "--trace-format", "json",
             "--progress-format", "none",
-            "config",
-            operation,
-            "--file", configPath,
-            "--output-format", "json"
+            "config"
         };
+
+        if (!string.IsNullOrWhiteSpace(parametersPath))
+        {
+            arguments.Add("--parameters-file");
+            arguments.Add(parametersPath);
+        }
+
+        arguments.Add(operation);
+        arguments.Add("--file");
+        arguments.Add(configPath);
+        arguments.Add("--output-format");
+        arguments.Add("json");
 
         return arguments;
     }

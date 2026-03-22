@@ -22,12 +22,13 @@ public class PersonalAccessTokenOptions : AuthenticationSchemeOptions
 /// <summary>
 /// Authentication handler for Personal Access Token authentication.
 /// </summary>
-public sealed class PersonalAccessTokenHandler(
+public sealed partial class PersonalAccessTokenHandler(
     IOptionsMonitor<PersonalAccessTokenOptions> options,
-    ILoggerFactory logger,
+    ILoggerFactory loggerFactory,
     UrlEncoder encoder,
-    IServiceScopeFactory scopeFactory)
-    : AuthenticationHandler<PersonalAccessTokenOptions>(options, logger, encoder)
+    IServiceScopeFactory scopeFactory,
+    ILogger<PersonalAccessTokenHandler> logger)
+    : AuthenticationHandler<PersonalAccessTokenOptions>(options, loggerFactory, encoder)
 {
     /// <summary>
     /// Authentication scheme name for Personal Access Tokens.
@@ -64,6 +65,7 @@ public sealed class PersonalAccessTokenHandler(
         var result = await patService.ValidateTokenAsync(token);
         if (result == null)
         {
+            LogPatHandlerInvalidToken();
             return AuthenticateResult.Fail("Invalid or expired token");
         }
 
@@ -94,6 +96,13 @@ public sealed class PersonalAccessTokenHandler(
             await updatePatService.UpdateLastUsedAsync(tokenId, ipAddress);
         });
 
+        LogPatHandlerSuccess(userId);
         return AuthenticateResult.Success(ticket);
     }
+
+    [LoggerMessage(EventId = EventIds.PatHandlerInvalidToken, Level = LogLevel.Warning, Message = "Personal access token validation failed: invalid or expired token")]
+    private partial void LogPatHandlerInvalidToken();
+
+    [LoggerMessage(EventId = EventIds.PatHandlerSuccess, Level = LogLevel.Debug, Message = "Personal access token authentication succeeded for user {UserId}")]
+    private partial void LogPatHandlerSuccess(Guid userId);
 }

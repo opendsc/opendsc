@@ -22,8 +22,27 @@ public static class DatabaseExtensions
         IConfiguration configuration)
     {
         var provider = configuration.GetValue("Database:Provider", "SQLite")!;
-        var connectionString = configuration.GetValue<string>("Database:ConnectionString")
-            ?? "Data Source=opendsc-server.db";
+        var explicitConnectionString = configuration.GetValue<string>("Database:ConnectionString");
+
+        string connectionString;
+        if (explicitConnectionString is not null)
+        {
+            connectionString = explicitConnectionString;
+        }
+        else if (provider.Equals("SQLite", StringComparison.OrdinalIgnoreCase))
+        {
+            var serverConfig = new ServerConfig();
+            configuration.GetSection("Server:Data").Bind(serverConfig);
+            var dbDir = serverConfig.DatabaseDirectory;
+            Directory.CreateDirectory(dbDir);
+            connectionString = $"Data Source={Path.Combine(dbDir, "opendsc-server.db")}";
+        }
+        else
+        {
+            throw new InvalidOperationException(
+                $"A connection string must be provided for the '{provider}' database provider. " +
+                "Set 'Database:ConnectionString' in appsettings.json.");
+        }
 
         services.AddDbContext<ServerDbContext>(options =>
         {
@@ -72,11 +91,13 @@ public static class DatabaseExtensions
             await DatabaseSeeder.SeedDefaultGroupsAsync(context, logger);
             await DatabaseSeeder.SeedSystemScopeTypesAsync(context, logger);
             await DatabaseSeeder.SeedInitialAdminAsync(context, passwordHasher, logger);
+            await DatabaseSeeder.SeedServerSettingsAsync(context, logger);
 
             if (environment.IsEnvironment("Testing"))
             {
                 await SeedTestRegistrationKeyAsync(context, logger);
                 await SeedTestDataAsync(context, logger);
+                await DisableAdminPasswordChangeRequirementAsync(context);
             }
         }
         catch (Exception ex)
@@ -105,6 +126,7 @@ public static class DatabaseExtensions
             await DatabaseSeeder.SeedDefaultGroupsAsync(context, logger);
             await DatabaseSeeder.SeedSystemScopeTypesAsync(context, logger);
             await DatabaseSeeder.SeedInitialAdminAsync(context, passwordHasher, logger);
+            await DatabaseSeeder.SeedServerSettingsAsync(context, logger);
             await SeedTestRegistrationKeyAsync(context, logger);
             await SeedTestDataAsync(context, logger);
         }
@@ -112,6 +134,18 @@ public static class DatabaseExtensions
         {
             logger.LogError(ex, "Failed to initialize database");
             throw;
+        }
+    }
+
+    private static async Task DisableAdminPasswordChangeRequirementAsync(ServerDbContext context)
+    {
+        var admin = await context.Users
+            .FirstOrDefaultAsync(u => u.Username == "admin");
+
+        if (admin != null && admin.RequirePasswordChange)
+        {
+            admin.RequirePasswordChange = false;
+            await context.SaveChangesAsync();
         }
     }
 
@@ -171,24 +205,12 @@ public static class DatabaseExtensions
             return;
         }
 
-        // Seed server settings
-        var serverSettingsExists = await context.ServerSettings.AnyAsync();
-        if (!serverSettingsExists)
-        {
-            context.ServerSettings.Add(new ServerSettings
-            {
-                Id = 1,
-                CertificateRotationInterval = TimeSpan.FromDays(60)
-            });
-        }
-
         var config = new Configuration
         {
             Id = Guid.NewGuid(),
             Name = "test-config",
             Description = "Test configuration",
-            EntryPoint = "main.dsc.yaml",
-            IsServerManaged = true,
+            UseServerManagedParameters = true,
             CreatedAt = DateTimeOffset.UtcNow
         };
 
@@ -199,7 +221,8 @@ public static class DatabaseExtensions
             Id = Guid.NewGuid(),
             ConfigurationId = config.Id,
             Version = "1.0.0",
-            IsDraft = false,
+            EntryPoint = "main.dsc.yaml",
+            Status = ConfigurationVersionStatus.Published,
             CreatedAt = DateTimeOffset.UtcNow
         };
 

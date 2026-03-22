@@ -81,12 +81,24 @@
     "multipleInstances": {
       "description": "Policy for handling multiple instances of the task.",
       "type": "string",
-      "enum": ["Parallel", "Queue", "IgnoreNew", "StopExisting"]
+      "enum": [
+        "Parallel",
+        "Queue",
+        "IgnoreNew",
+        "StopExisting"
+      ]
     },
     "priority": {
       "description": "Task process priority.",
       "type": "string",
-      "enum": ["Idle", "BelowNormal", "Normal", "AboveNormal", "High", "RealTime"]
+      "enum": [
+        "Idle",
+        "BelowNormal",
+        "Normal",
+        "AboveNormal",
+        "High",
+        "RealTime"
+      ]
     },
     "restartCount": {
       "description": "Number of times to attempt to restart the task on failure.",
@@ -130,7 +142,15 @@
     "compatibility": {
       "description": "Task Scheduler compatibility level.",
       "type": "string",
-      "enum": ["AT", "V1", "V2", "V2_1", "V2_2", "V2_3"]
+      "enum": [
+        "AT",
+        "V1",
+        "V2",
+        "V2_1",
+        "V2_2",
+        "V2_3",
+        "V2_4"
+      ]
     },
     "disallowStartOnRemoteAppSession": {
       "description": "Do not start the task in a Remote Desktop session (requires V2_1 or later).",
@@ -139,7 +159,15 @@
     "logonType": {
       "description": "The security logon method for the task.",
       "type": "string",
-      "enum": ["None", "Password", "S4U", "Interactive", "Group", "ServiceAccount", "InteractiveOrPassword"]
+      "enum": [
+        "None",
+        "Password",
+        "S4U",
+        "InteractiveToken",
+        "Group",
+        "ServiceAccount",
+        "InteractiveTokenOrPassword"
+      ]
     },
     "_exist": {
       "description": "Indicates whether the scheduled task should exist.",
@@ -148,7 +176,9 @@
     }
   },
   "additionalProperties": false,
-  "required": ["taskName"],
+  "required": [
+    "taskName"
+  ],
   "$definitions": {
     "Trigger": {
       "oneOf": [
@@ -159,7 +189,9 @@
               "$ref": "#/$definitions/TimeTriggerConfig"
             }
           },
-          "required": ["time"],
+          "required": [
+            "time"
+          ],
           "additionalProperties": false
         },
         {
@@ -169,7 +201,9 @@
               "$ref": "#/$definitions/DailyTriggerConfig"
             }
           },
-          "required": ["daily"],
+          "required": [
+            "daily"
+          ],
           "additionalProperties": false
         },
         {
@@ -179,7 +213,9 @@
               "$ref": "#/$definitions/WeeklyTriggerConfig"
             }
           },
-          "required": ["weekly"],
+          "required": [
+            "weekly"
+          ],
           "additionalProperties": false
         },
         {
@@ -189,7 +225,9 @@
               "$ref": "#/$definitions/BootTriggerConfig"
             }
           },
-          "required": ["boot"],
+          "required": [
+            "boot"
+          ],
           "additionalProperties": false
         },
         {
@@ -199,7 +237,9 @@
               "$ref": "#/$definitions/LogonTriggerConfig"
             }
           },
-          "required": ["logon"],
+          "required": [
+            "logon"
+          ],
           "additionalProperties": false
         }
       ]
@@ -243,7 +283,9 @@
           "type": "string"
         }
       },
-      "required": ["startBoundary"],
+      "required": [
+        "startBoundary"
+      ],
       "additionalProperties": false
     },
     "DailyTriggerConfig": {
@@ -290,7 +332,9 @@
           "minimum": 1
         }
       },
-      "required": ["startBoundary"],
+      "required": [
+        "startBoundary"
+      ],
       "additionalProperties": false
     },
     "WeeklyTriggerConfig": {
@@ -336,7 +380,15 @@
           "type": "array",
           "items": {
             "type": "string",
-            "enum": ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+            "enum": [
+              "Sunday",
+              "Monday",
+              "Tuesday",
+              "Wednesday",
+              "Thursday",
+              "Friday",
+              "Saturday"
+            ]
           },
           "uniqueItems": true
         },
@@ -346,7 +398,10 @@
           "minimum": 1
         }
       },
-      "required": ["startBoundary", "daysOfWeek"],
+      "required": [
+        "startBoundary",
+        "daysOfWeek"
+      ],
       "additionalProperties": false
     },
     "BootTriggerConfig": {
@@ -441,7 +496,9 @@
           "type": "string"
         }
       },
-      "required": ["path"],
+      "required": [
+        "path"
+      ],
       "additionalProperties": false
     }
   }

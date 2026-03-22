@@ -2,6 +2,7 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
+using System.Net.Security;
 using System.Runtime.InteropServices;
 
 using Microsoft.Extensions.Configuration;
@@ -42,14 +43,22 @@ var httpClientBuilder = builder.Services.AddHttpClient<PullServerClient>((sp, cl
 httpClientBuilder.ConfigurePrimaryHttpMessageHandler(sp =>
 {
     var certificateManager = sp.GetRequiredService<ICertificateManager>();
-    var cert = certificateManager.GetClientCertificate();
-
-    var handler = new HttpClientHandler();
-    if (cert is not null)
+    var handler = new SocketsHttpHandler();
+    handler.SslOptions = new SslClientAuthenticationOptions
     {
-        handler.ClientCertificates.Add(cert);
-    }
+        LocalCertificateSelectionCallback = (_, _, _, _, _) => certificateManager.GetClientCertificate()
+    };
     return handler;
+});
+
+builder.Services.AddHttpClient(PullServerClient.AnonymousClientName, (sp, client) =>
+{
+    var lcmMonitor = sp.GetRequiredService<IOptionsMonitor<LcmConfig>>();
+    var pullServer = lcmMonitor.CurrentValue.PullServer;
+    if (pullServer is not null && !string.IsNullOrWhiteSpace(pullServer.ServerUrl))
+    {
+        client.BaseAddress = new Uri(pullServer.ServerUrl);
+    }
 });
 
 builder.Services.AddHostedService<LcmWorker>();

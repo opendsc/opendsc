@@ -56,7 +56,7 @@ created, distributed queries can be run against this server.
 
 ```yaml
 # get.dsc.yaml
-$schema: https://aka.ms/dsc/2023/10/config/document.schema.json
+$schema: https://aka.ms/dsc/schemas/v3/bundled/config/document.json
 resources:
   - name: Check linked server
     type: OpenDsc.SqlServer/LinkedServer
@@ -73,7 +73,7 @@ dsc config get --file get.dsc.yaml
 
 ```yaml
 # set-sqlserver.dsc.yaml
-$schema: https://aka.ms/dsc/2023/10/config/document.schema.json
+$schema: https://aka.ms/dsc/schemas/v3/bundled/config/document.json
 resources:
   - name: Create SQL Server linked server
     type: OpenDsc.SqlServer/LinkedServer
@@ -95,7 +95,7 @@ dsc config set --file set-sqlserver.dsc.yaml
 
 ```yaml
 # set-timeout.dsc.yaml
-$schema: https://aka.ms/dsc/2023/10/config/document.schema.json
+$schema: https://aka.ms/dsc/schemas/v3/bundled/config/document.json
 resources:
   - name: Create linked server with custom timeouts
     type: OpenDsc.SqlServer/LinkedServer
@@ -117,7 +117,7 @@ dsc config set --file set-timeout.dsc.yaml
 
 ```yaml
 # set-provider-string.dsc.yaml
-$schema: https://aka.ms/dsc/2023/10/config/document.schema.json
+$schema: https://aka.ms/dsc/schemas/v3/bundled/config/document.json
 resources:
   - name: Create linked server with provider string
     type: OpenDsc.SqlServer/LinkedServer
@@ -137,7 +137,7 @@ dsc config set --file set-provider-string.dsc.yaml
 
 ```yaml
 # delete.dsc.yaml
-$schema: https://aka.ms/dsc/2023/10/config/document.schema.json
+$schema: https://aka.ms/dsc/schemas/v3/bundled/config/document.json
 resources:
   - name: Remove linked server
     type: OpenDsc.SqlServer/LinkedServer

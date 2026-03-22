@@ -9,7 +9,7 @@ using OpenDsc.Resource;
 
 namespace TestResource.NonAot;
 
-[DscResource("OpenDsc.Test/NonAotFile", Description = "Non-AOT test resource for file existence.", Tags = ["test", "file", "non-aot"], SetReturn = SetReturn.StateAndDiff, TestReturn = TestReturn.StateAndDiff)]
+[DscResource("OpenDsc.Test/NonAotFile", Description = "Non-AOT test resource for file existence.", Tags = ["test", "file", "nonAot"], SetReturn = SetReturn.StateAndDiff, TestReturn = TestReturn.StateAndDiff)]
 [ExitCode(0, Description = "Success")]
 [ExitCode(1, Exception = typeof(Exception), Description = "Error")]
 [ExitCode(2, Exception = typeof(JsonException), Description = "Invalid JSON")]

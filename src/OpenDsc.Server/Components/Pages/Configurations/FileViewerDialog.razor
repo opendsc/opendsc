@@ -1,0 +1,524 @@
+@* Copyright (c) Thomas Nieto - All Rights Reserved *@
+@* You may use, distribute and modify this code under the *@
+@* terms of the MIT license. *@
+
+@rendermode InteractiveServer
+
+@using MudBlazor
+@using BlazorMonaco
+@using BlazorMonaco.Editor
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.JSInterop
+@using OpenDsc.Server.Services
+@using Microsoft.Extensions.Options
+@inject ISnackbar Snackbar
+@inject IOptions<ServerConfig> ServerConfig
+@inject ThemeService ThemeService
+@inject ServerDbContext Db
+@inject IJSRuntime JSRuntime
+@inject IParameterService ParameterApiClient
+@inject IConfigurationService ConfigApiClient
+
+<MudDialog>
+    <DialogContent>
+        <div class="d-flex align-center justify-space-between mb-2">
+            <MudText Typo="Typo.body2" Color="Color.Secondary">Version @Version @(IsEditMode ? "(Editing)" : "(Read-only)")</MudText>
+            @if (!IsEditMode)
+            {
+                <MudButtonGroup Size="Size.Small">
+                    <MudButton OnClick="@(() => SwitchMode(ViewMode.View))"
+                               Variant="@(currentMode == ViewMode.View ? Variant.Filled : Variant.Text)"
+                               Color="@(currentMode == ViewMode.View ? Color.Primary : Color.Default)"
+                               Style="@(currentMode == ViewMode.View ? "" : "opacity: 0.6")">
+                        <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" Class="mr-1" />
+                        View
+                    </MudButton>
+                    <MudButton OnClick="@(() => SwitchMode(ViewMode.Compare))"
+                               Variant="@(currentMode == ViewMode.Compare ? Variant.Filled : Variant.Text)"
+                               Color="@(currentMode == ViewMode.Compare ? Color.Primary : Color.Default)"
+                               Style="@(currentMode == ViewMode.Compare ? "" : "opacity: 0.6")"
+                               Disabled="@(availableVersions.Count < 2 || string.IsNullOrEmpty(compareVersion))">
+                        <MudIcon Icon="@Icons.Material.Filled.CompareArrows" Size="Size.Small" Class="mr-1" />
+                        Compare
+                    </MudButton>
+                </MudButtonGroup>
+            }
+        </div>
+
+        @if (currentMode == ViewMode.Compare)
+        {
+            <MudSelect T="string"
+                       Value="@compareVersion"
+                       Label="Compare with version"
+                       Variant="Variant.Outlined"
+                       Class="mb-3"
+                       Disabled="isLoading"
+                       ValueChanged="OnCompareVersionChanged">
+                @foreach (var v in availableVersions.Where(v => v != Version))
+                {
+                    <MudSelectItem Value="@v">Version @v</MudSelectItem>
+                }
+            </MudSelect>
+        }
+
+        @if (isLoading)
+        {
+            <MudProgressCircular Indeterminate="true" />
+            <MudText Typo="Typo.caption">Loading file...</MudText>
+        }
+        else if (fileContent != null)
+        {
+            @if (currentMode == ViewMode.View)
+            {
+                <div style="height: 600px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
+                    <StandaloneCodeEditor @ref="_editor"
+                                          Id="file-editor-config"
+                                          ConstructionOptions="GetEditorOptions"
+                                          CssClass="file-viewer-editor" />
+                </div>
+            }
+            else
+            {
+                <div style="height: 600px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
+                    <StandaloneDiffEditor @ref="_diffEditor"
+                                          Id="file-diff-editor"
+                                          ConstructionOptions="GetDiffEditorOptions"
+                                          CssClass="file-viewer-editor" />
+                </div>
+            }
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Error">Failed to load file content.</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        @if (IsEditMode)
+        {
+            <MudButton OnClick="SaveFile"
+                       Color="Color.Primary"
+                       Variant="Variant.Filled"
+                       Disabled="@(isLoading || currentMode == ViewMode.Compare)">
+                Save
+            </MudButton>
+        }
+        <MudButton OnClick="Cancel">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public string ConfigurationName { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Version { get; set; } = string.Empty;
+
+    [Parameter]
+    public string FilePath { get; set; } = string.Empty;
+
+    [Parameter]
+    public string ContentType { get; set; } = string.Empty;
+
+    [Parameter]
+    public bool IsEditMode { get; set; }
+
+    [Parameter]
+    public string? Content { get; set; }
+
+    [Parameter]
+    public Guid? ParameterFileId { get; set; }
+
+    [Parameter]
+    public Guid? ParameterConfigurationId { get; set; }
+
+    [Parameter]
+    public Guid? ParameterScopeTypeId { get; set; }
+
+    [Parameter]
+    public string? ParameterScopeValue { get; set; }
+
+    private enum ViewMode { View, Compare }
+
+    private StandaloneCodeEditor? _editor;
+    private StandaloneDiffEditor? _diffEditor;
+    private string? fileContent;
+    private string? compareFileContent;
+    private bool isLoading = true;
+    private ViewMode currentMode = ViewMode.View;
+    private List<string> availableVersions = new();
+    private string compareVersion = string.Empty;
+    private TextModel? _originalModel;
+    private TextModel? _modifiedModel;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // If content is provided directly (parameter mode), use it
+        if (!string.IsNullOrEmpty(Content))
+        {
+            fileContent = Content;
+            isLoading = false;
+
+            // Load available versions for parameters
+            if (ParameterConfigurationId.HasValue && ParameterScopeTypeId.HasValue)
+            {
+                await LoadParameterVersions();
+            }
+
+            StateHasChanged();
+            return;
+        }
+
+        // Configuration mode - load from file system
+        await LoadAvailableVersions();
+        await LoadFileContent();
+    }
+
+    private StandaloneEditorConstructionOptions GetEditorOptions(StandaloneCodeEditor editor)
+    {
+        return new StandaloneEditorConstructionOptions
+        {
+            AutomaticLayout = true,
+            Language = DetectLanguage(),
+            Value = fileContent ?? "",
+            ReadOnly = !IsEditMode,
+            Theme = ThemeService.IsDarkMode ? "vs-dark" : "vs",
+            LineNumbers = "on",
+            Minimap = new EditorMinimapOptions { Enabled = false },
+            ScrollBeyondLastLine = false,
+            FontSize = 14,
+            FontFamily = "'Cascadia Code', 'Courier New', monospace",
+            TabSize = 2,
+            InsertSpaces = true,
+            WordWrap = "off"
+        };
+    }
+
+    private StandaloneDiffEditorConstructionOptions GetDiffEditorOptions(StandaloneDiffEditor editor)
+    {
+        return new StandaloneDiffEditorConstructionOptions
+        {
+            AutomaticLayout = true,
+            OriginalEditable = false,
+            ReadOnly = true,
+            Theme = ThemeService.IsDarkMode ? "vs-dark" : "vs",
+            RenderSideBySide = true,
+            IgnoreTrimWhitespace = false
+        };
+    }
+
+    private string DetectLanguage()
+    {
+        var extension = Path.GetExtension(FilePath).ToLowerInvariant();
+        return extension switch
+        {
+            ".yaml" or ".yml" => "yaml",
+            ".json" => "json",
+            ".ps1" => "powershell",
+            ".sh" => "shell",
+            ".cs" => "csharp",
+            ".xml" => "xml",
+            ".md" => "markdown",
+            _ => "plaintext"
+        };
+    }
+
+    private async Task LoadAvailableVersions()
+    {
+        try
+        {
+            var config = await Db.Configurations
+                .Include(c => c.Versions)
+                .FirstOrDefaultAsync(c => c.Name == ConfigurationName);
+
+            if (config != null)
+            {
+                availableVersions = config.Versions
+                    .OrderByDescending(v => v.CreatedAt)
+                    .Select(v => v.Version)
+                    .ToList();
+
+                if (availableVersions.Count > 1)
+                {
+                    var currentIndex = availableVersions.IndexOf(Version);
+                    if (currentIndex >= 0)
+                    {
+                        if (currentIndex < availableVersions.Count - 1)
+                        {
+                            compareVersion = availableVersions[currentIndex + 1];
+                        }
+                        else if (currentIndex == availableVersions.Count - 1)
+                        {
+                            compareVersion = availableVersions[currentIndex - 1];
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading versions: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task SwitchMode(ViewMode mode)
+    {
+        currentMode = mode;
+
+        if (mode == ViewMode.Compare && !string.IsNullOrEmpty(compareVersion))
+        {
+            await LoadCompareFileContent();
+            await UpdateDiffEditor();
+        }
+    }
+
+    private async Task OnCompareVersionChanged(string newVersion)
+    {
+        compareVersion = newVersion;
+        if (currentMode == ViewMode.Compare && !string.IsNullOrEmpty(compareVersion))
+        {
+            await LoadCompareFileContent();
+        }
+    }
+
+    private async Task LoadCompareFileContent()
+    {
+        if (string.IsNullOrEmpty(compareVersion))
+            return;
+
+        try
+        {
+            // Parameter mode - load via API
+            if (ParameterConfigurationId.HasValue && ParameterScopeTypeId.HasValue)
+            {
+                var parameterSchema = await Db.ParameterSchemas
+                    .FirstOrDefaultAsync(ps => ps.ConfigurationId == ParameterConfigurationId.Value);
+
+                if (parameterSchema != null)
+                {
+                    var parameterFile = await Db.ParameterFiles
+                        .FirstOrDefaultAsync(pf =>
+                            pf.ParameterSchemaId == parameterSchema.Id &&
+                            pf.ScopeTypeId == ParameterScopeTypeId.Value &&
+                            pf.ScopeValue == ParameterScopeValue &&
+                            pf.Version == compareVersion);
+
+                    if (parameterFile != null)
+                    {
+                        if (parameterFile.IsPassthrough)
+                        {
+                            compareFileContent = "// Passthrough version (no content)";
+                        }
+                        else
+                        {
+                            compareFileContent = await ParameterApiClient.GetParameterContentAsync(parameterFile.Id);
+                            if (string.IsNullOrEmpty(compareFileContent))
+                            {
+                                compareFileContent = "// Unable to load parameter content";
+                                Snackbar.Add($"Failed to load version {compareVersion}", Severity.Warning);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        compareFileContent = "// Parameter version does not exist";
+                        Snackbar.Add($"Version {compareVersion} not found", Severity.Warning);
+                    }
+                }
+                else
+                {
+                    compareFileContent = "// Parameter schema not found";
+                }
+
+                await UpdateDiffEditor();
+                return;
+            }
+
+            // Configuration mode - load from file system
+            var dataDir = ServerConfig.Value.ConfigurationsDirectory;
+            var versionDir = Path.Combine(dataDir, ConfigurationName, $"v{compareVersion}");
+            var fullPath = Path.Combine(versionDir, FilePath);
+
+            if (File.Exists(fullPath))
+            {
+                compareFileContent = await File.ReadAllTextAsync(fullPath);
+            }
+            else
+            {
+                compareFileContent = "// File does not exist in this version";
+                Snackbar.Add($"File not found in version {compareVersion}", Severity.Warning);
+            }
+
+            await UpdateDiffEditor();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading comparison file: {ex.Message}", Severity.Error);
+            compareFileContent = null;
+        }
+    }
+
+    private async Task UpdateDiffEditor()
+    {
+        if (_diffEditor != null && !string.IsNullOrEmpty(compareFileContent) && !string.IsNullOrEmpty(fileContent))
+        {
+            // Dispose existing models to avoid "model already exists" error
+            if (_originalModel != null)
+            {
+                await _originalModel.DisposeModel();
+            }
+            if (_modifiedModel != null)
+            {
+                await _modifiedModel.DisposeModel();
+            }
+
+            // Create new models with unique URIs based on timestamp
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            _originalModel = await BlazorMonaco.Editor.Global.CreateModel(
+                JSRuntime,
+                compareFileContent,
+                DetectLanguage(),
+                $"file://compare-{timestamp}/{compareVersion}/{FilePath}"
+            );
+
+            _modifiedModel = await BlazorMonaco.Editor.Global.CreateModel(
+                JSRuntime,
+                fileContent,
+                DetectLanguage(),
+                $"file://current-{timestamp}/{Version}/{FilePath}"
+            );
+
+            await _diffEditor.SetModel(new DiffEditorModel
+            {
+                Original = _originalModel,
+                Modified = _modifiedModel
+            });
+        }
+    }
+
+    private async Task LoadFileContent()
+    {
+        isLoading = true;
+
+        try
+        {
+            var dataDir = ServerConfig.Value.ConfigurationsDirectory;
+            var versionDir = Path.Combine(dataDir, ConfigurationName, $"v{Version}");
+            var fullPath = Path.Combine(versionDir, FilePath);
+
+            if (File.Exists(fullPath))
+            {
+                fileContent = await File.ReadAllTextAsync(fullPath);
+
+                if (string.IsNullOrWhiteSpace(fileContent))
+                {
+                    Snackbar.Add($"File is empty: {FilePath}", Severity.Warning);
+                }
+            }
+            else
+            {
+                Snackbar.Add($"File not found: {fullPath}", Severity.Error);
+                fileContent = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading file: {ex.Message}", Severity.Error);
+            fileContent = null;
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SaveFile()
+    {
+        if (_editor == null)
+        {
+            Snackbar.Add("Editor not initialized", Severity.Error);
+            return;
+        }
+
+        if (currentMode == ViewMode.Compare)
+        {
+            Snackbar.Add("Cannot save in compare mode", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            var content = await _editor!.GetValue();
+
+            var success = await ConfigApiClient.SaveFileAsync(ConfigurationName, Version, FilePath, content ?? "");
+
+            if (success)
+            {
+                Snackbar.Add("File saved successfully", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+            {
+                Snackbar.Add("Error saving file", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error saving file: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private async Task LoadParameterVersions()
+    {
+        if (!ParameterConfigurationId.HasValue || !ParameterScopeTypeId.HasValue)
+            return;
+
+        try
+        {
+            var parameterSchema = await Db.ParameterSchemas
+                .FirstOrDefaultAsync(ps => ps.ConfigurationId == ParameterConfigurationId.Value);
+
+            if (parameterSchema != null)
+            {
+                var versions = await Db.ParameterFiles
+                    .Where(pf =>
+                        pf.ParameterSchemaId == parameterSchema.Id &&
+                        pf.ScopeTypeId == ParameterScopeTypeId.Value &&
+                        pf.ScopeValue == ParameterScopeValue)
+                    .Select(pf => new { pf.Version, pf.CreatedAt })
+                    .ToListAsync();
+
+                availableVersions = versions
+                    .OrderByDescending(pf => pf.CreatedAt)
+                    .Select(pf => pf.Version)
+                    .ToList();
+
+                // Set default compare version to most recent version other than current
+                if (availableVersions.Count > 1)
+                {
+                    var currentFile = await Db.ParameterFiles.FindAsync(ParameterFileId);
+                    if (currentFile != null)
+                    {
+                        compareVersion = availableVersions.FirstOrDefault(v => v != currentFile.Version) ?? string.Empty;
+                    }
+                    else
+                    {
+                        compareVersion = availableVersions.Skip(1).FirstOrDefault() ?? string.Empty;
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading parameter versions: {ex.Message}", Severity.Error);
+        }
+    }
+}

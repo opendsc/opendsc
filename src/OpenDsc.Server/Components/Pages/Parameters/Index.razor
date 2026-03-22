@@ -1,0 +1,354 @@
+@page "/parameters"
+@attribute [Authorize(Policy = "parameters.read")]
+@rendermode InteractiveServer
+
+@using Microsoft.EntityFrameworkCore
+@using OpenDsc.Server.Services
+@using OpenDsc.Server.Entities
+@using MudBlazor
+@using BlazorMonaco
+@using BlazorMonaco.Editor
+@using NuGet.Versioning
+@inject ServerDbContext Db
+@inject IJsonYamlConverter JsonYamlConverter
+@inject ThemeService ThemeService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Parameters</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Parameter Management</MudText>
+
+<MudTabs Elevation="4" Rounded="true" Color="Color.Primary" ApplyEffectsToContainer="true" PanelClass="pa-6">
+    <MudTabPanel Text="Overview" Icon="@Icons.Material.Filled.Info">
+        <MudCard>
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">Parameter Schemas by Configuration</MudText>
+                </CardHeaderContent>
+                <CardHeaderActions>
+                    <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadDataAsync" />
+                </CardHeaderActions>
+            </MudCardHeader>
+            <MudCardContent>
+                @if (loading)
+                {
+                    <MudProgressLinear Indeterminate="true" />
+                }
+                else if (groupedSchemas.Any())
+                {
+                    <MudExpansionPanels MultiExpansion="true" Class="mt-2">
+                        @foreach (var group in groupedSchemas)
+                        {
+                            <MudExpansionPanel Expanded="false">
+                                <TitleContent>
+                                    <div class="d-flex align-center gap-2">
+                                        <MudText Typo="Typo.h6">@group.ConfigurationName</MudText>
+                                        <MudChip T="string"
+                                                 Size="Size.Small">
+                                            @group.Schemas.Count
+                                            @(group.Schemas.Count == 1 ? "schema" : "schemas")
+                                        </MudChip>
+                                    </div>
+                                </TitleContent>
+                                <ChildContent>
+                                    <MudDataGrid T="ParameterSchema" Items="@group.Schemas" Hover="true" Dense="true">
+                                        <Columns>
+                                            <PropertyColumn Property="x => x.SchemaVersion" Title="Schema Version" InitialDirection="SortDirection.Descending" />
+                                            <TemplateColumn Title="Parameter Files" Sortable="false">
+                                                <CellTemplate>
+                                                    <MudChip T="string" Size="Size.Small">@context.Item.ParameterFiles.Count</MudChip>
+                                                </CellTemplate>
+                                            </TemplateColumn>
+                                            <PropertyColumn Property="x => x.CreatedAt" Title="Created">
+                                                <CellTemplate>
+                                                    @context.Item.CreatedAt.LocalDateTime.ToString("g")
+                                                </CellTemplate>
+                                            </PropertyColumn>
+                                            <TemplateColumn Title="Actions" Sortable="false">
+                                                <CellTemplate>
+                                                    <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => ViewSchema(context.Item))">
+                                                        View Schema
+                                                    </MudButton>
+                                                    <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => ViewFiles(context.Item))">
+                                                        View Files
+                                                    </MudButton>
+                                                </CellTemplate>
+                                            </TemplateColumn>
+                                        </Columns>
+                                    </MudDataGrid>
+                                </ChildContent>
+                            </MudExpansionPanel>
+                        }
+                    </MudExpansionPanels>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Info">No parameter schemas found.</MudAlert>
+                }
+            </MudCardContent>
+        </MudCard>
+    </MudTabPanel>
+
+    <MudTabPanel Text="Versions" Icon="@Icons.Material.Filled.History">
+        <VersionManagementPanel />
+    </MudTabPanel>
+
+    <MudTabPanel Text="Provenance" Icon="@Icons.Material.Filled.AccountTree">
+        <ProvenanceVisualizationPanel />
+    </MudTabPanel>
+</MudTabs>
+
+@if (selectedSchema != null && showSchemaDialog)
+{
+    <MudDialog @bind-Visible="showSchemaDialog" Options="@(new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.ExtraLarge, FullWidth = true })">
+        <DialogContent>
+            <MudText Typo="Typo.h6" Class="mb-3">Schema Definition</MudText>
+            <MudCard Outlined="true">
+                <MudCardContent>
+                    <MudText Typo="Typo.caption">Configuration: @selectedConfiguration?.Name</MudText>
+                    <br />
+                    <MudText Typo="Typo.caption" Class="mb-3">Schema Version: v@(selectedSchema.SchemaVersion ?? "unknown")</MudText>
+                    @if (!string.IsNullOrWhiteSpace(selectedSchema.GeneratedJsonSchema))
+                    {
+                        <div class="d-flex justify-end mb-2">
+                            <MudButtonGroup>
+                                <MudButton Variant="@(schemaViewFormat == SchemaFormat.Yaml ? Variant.Filled : Variant.Text)"
+                                           Color="@(schemaViewFormat == SchemaFormat.Yaml ? Color.Primary : Color.Default)"
+                                           Style="@(schemaViewFormat == SchemaFormat.Yaml ? "" : "opacity: 0.6")"
+                                           OnClick="@(() => SwitchSchemaFormat(SchemaFormat.Yaml))">
+                                    YAML
+                                </MudButton>
+                                <MudButton Variant="@(schemaViewFormat == SchemaFormat.Json ? Variant.Filled : Variant.Text)"
+                                           Color="@(schemaViewFormat == SchemaFormat.Json ? Color.Primary : Color.Default)"
+                                           Style="@(schemaViewFormat == SchemaFormat.Json ? "" : "opacity: 0.6")"
+                                           OnClick="@(() => SwitchSchemaFormat(SchemaFormat.Json))">
+                                    JSON
+                                </MudButton>
+                            </MudButtonGroup>
+                        </div>
+                        <div style="height: 500px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
+                            <StandaloneCodeEditor @ref="_schemaEditor"
+                                                  Id="schema-viewer-editor"
+                                                  ConstructionOptions="GetSchemaEditorOptions"
+                                                  CssClass="monaco-editor-container" />
+                        </div>
+                    }
+                    else
+                    {
+                        <MudAlert Severity="Severity.Warning">
+                            No JSON schema generated for this parameter schema.
+                        </MudAlert>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </DialogContent>
+    </MudDialog>
+}
+
+@if (selectedSchema != null && showFilesDialog)
+{
+    <MudDialog @bind-Visible="showFilesDialog" Options="new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Large, FullWidth = true }">
+        <DialogContent>
+            <MudText Typo="Typo.h6" Class="mb-3">Parameter Files</MudText>
+            <MudText Typo="Typo.caption" Class="mb-3">Configuration: @selectedConfiguration?.Name</MudText>
+
+            @if (selectedSchemaFiles.Any())
+            {
+                <MudDataGrid T="ParameterFile" Items="@selectedSchemaFiles" Hover="true" Dense="true">
+                    <Columns>
+                        <TemplateColumn Title="Scope Type">
+                            <CellTemplate>
+                                @context.Item.ScopeType.Name
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <TemplateColumn Title="Scope Value">
+                            <CellTemplate>
+                                @(context.Item.ScopeValue ?? "-")
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <PropertyColumn Property="x => x.Version" Title="Version" />
+                        <TemplateColumn Title="Status" Sortable="false">
+                            <CellTemplate>
+                                @if (context.Item.Status == ParameterVersionStatus.Published)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Success">Active</MudChip>
+                                }
+                                @if (context.Item.Status == ParameterVersionStatus.Draft)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Info">Draft</MudChip>
+                                }
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <PropertyColumn Property="x => x.CreatedAt" Title="Created">
+                            <CellTemplate>
+                                @context.Item.CreatedAt.LocalDateTime.ToString("g")
+                            </CellTemplate>
+                        </PropertyColumn>
+                    </Columns>
+                </MudDataGrid>
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Info">No parameter files for this schema.</MudAlert>
+            }
+        </DialogContent>
+    </MudDialog>
+}
+
+@code {
+    private List<SchemaGroup> groupedSchemas = [];
+    private ParameterSchema? selectedSchema;
+    private Configuration? selectedConfiguration;
+    private List<ParameterFile> selectedSchemaFiles = [];
+    private bool showSchemaDialog;
+    private bool showFilesDialog;
+    private bool loading = true;
+    private StandaloneCodeEditor? _schemaEditor;
+    private SchemaFormat schemaViewFormat = SchemaFormat.Yaml;
+    private string _currentSchemaContent = string.Empty;
+
+    private enum SchemaFormat
+    {
+        Json,
+        Yaml
+    }
+
+    public class SchemaGroup
+    {
+        public string ConfigurationName { get; set; } = string.Empty;
+        public List<ParameterSchema> Schemas { get; set; } = [];
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        loading = true;
+        try
+        {
+            var schemas = await Db.ParameterSchemas
+                .Include(ps => ps.Configuration)
+                .Include(ps => ps.ParameterFiles)
+                .ToListAsync();
+
+            schemas = schemas
+                .OrderBy(ps => ps.Configuration.Name)
+                .ThenBy(ps => ps.CreatedAt)
+                .ToList();
+
+            // after grouping we'll sort each list by schema version descending
+            // this ensures tables default to highest version first
+            groupedSchemas = schemas
+                .GroupBy(ps => ps.Configuration.Name)
+                .Select(g => new SchemaGroup
+                {
+                    ConfigurationName = g.Key,
+                    Schemas = g.OrderByDescending(s => {
+                        var ver = s.SchemaVersion ?? string.Empty;
+                        return SemanticVersion.TryParse(ver, out var sv) ? sv : new SemanticVersion(0,0,0);
+                    }).ToList()
+                })
+                .ToList();
+            // skip the previous grouping below since replaced
+            return;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task ViewSchema(ParameterSchema schema)
+    {
+        selectedSchema = schema;
+        selectedConfiguration = schema.Configuration;
+        schemaViewFormat = SchemaFormat.Yaml;
+        showSchemaDialog = true;
+
+        await Task.Delay(100);
+        await UpdateSchemaEditorContent();
+    }
+
+    private async Task SwitchSchemaFormat(SchemaFormat format)
+    {
+        schemaViewFormat = format;
+        await UpdateSchemaEditorContent();
+    }
+
+    private async Task UpdateSchemaEditorContent()
+    {
+        if (_schemaEditor == null || selectedSchema == null || string.IsNullOrWhiteSpace(selectedSchema.GeneratedJsonSchema))
+        {
+            return;
+        }
+
+        var content = schemaViewFormat == SchemaFormat.Yaml
+            ? JsonYamlConverter.ConvertJsonToYaml(selectedSchema.GeneratedJsonSchema)
+            : FormatJson(selectedSchema.GeneratedJsonSchema);
+
+        _currentSchemaContent = content;
+        await _schemaEditor.SetValue(content);
+
+        var language = schemaViewFormat == SchemaFormat.Yaml ? "yaml" : "json";
+        var model = await _schemaEditor.GetModel();
+        if (model != null)
+        {
+            await Global.SetModelLanguage(JSRuntime, model, language);
+        }
+    }
+
+    private string FormatJson(string json)
+    {
+        try
+        {
+            var jsonObj = System.Text.Json.JsonSerializer.Deserialize(json, typeof(object));
+            return System.Text.Json.JsonSerializer.Serialize(jsonObj, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        }
+        catch
+        {
+            return json;
+        }
+    }
+
+    private StandaloneEditorConstructionOptions GetSchemaEditorOptions(StandaloneCodeEditor editor)
+    {
+        return new StandaloneEditorConstructionOptions
+        {
+            AutomaticLayout = true,
+            Language = schemaViewFormat == SchemaFormat.Yaml ? "yaml" : "json",
+            Value = _currentSchemaContent,
+            Theme = ThemeService.IsDarkMode ? "vs-dark" : "vs",
+            ReadOnly = true,
+            LineNumbers = "on",
+            Minimap = new EditorMinimapOptions { Enabled = false },
+            ScrollBeyondLastLine = false,
+            FontSize = 14,
+            FontFamily = "'Cascadia Code', 'Courier New', monospace",
+            TabSize = 2,
+            InsertSpaces = true,
+            WordWrap = "off"
+        };
+    }
+
+    private async Task ViewFiles(ParameterSchema schema)
+    {
+        selectedSchema = schema;
+        selectedConfiguration = schema.Configuration;
+
+        selectedSchemaFiles = await Db.ParameterFiles
+            .Where(pf => pf.ParameterSchemaId == schema.Id)
+            .Include(pf => pf.ScopeType)
+            .OrderBy(pf => pf.ScopeType.Precedence)
+            .ThenBy(pf => pf.ScopeValue)
+            .ThenBy(pf => pf.Version)
+            .ToListAsync();
+
+        showFilesDialog = true;
+    }
+}
+
+
+

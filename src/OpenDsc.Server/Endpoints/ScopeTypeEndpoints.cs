@@ -44,6 +44,14 @@ public static class ScopeTypeEndpoints
             .WithName("DeleteScopeType")
             .WithDescription("Delete a scope type (blocked if system scope, has scope values, or has parameters)");
 
+        group.MapPatch("/{id:guid}/enable", EnableScopeType)
+            .WithName("EnableScopeType")
+            .WithDescription("Enable a system scope type so it participates in parameter merging");
+
+        group.MapPatch("/{id:guid}/disable", DisableScopeType)
+            .WithName("DisableScopeType")
+            .WithDescription("Disable a system scope type (blocked if it has published parameter files)");
+
         return app;
     }
 
@@ -58,7 +66,8 @@ public static class ScopeTypeEndpoints
                 Description = st.Description,
                 Precedence = st.Precedence,
                 IsSystem = st.IsSystem,
-                AllowsValues = st.AllowsValues,
+                IsEnabled = st.IsEnabled,
+                ValueMode = st.ValueMode,
                 CreatedAt = st.CreatedAt,
                 UpdatedAt = st.UpdatedAt
             })
@@ -80,7 +89,8 @@ public static class ScopeTypeEndpoints
                 Description = st.Description,
                 Precedence = st.Precedence,
                 IsSystem = st.IsSystem,
-                AllowsValues = st.AllowsValues,
+                IsEnabled = st.IsEnabled,
+                ValueMode = st.ValueMode,
                 CreatedAt = st.CreatedAt,
                 UpdatedAt = st.UpdatedAt
             })
@@ -135,7 +145,7 @@ public static class ScopeTypeEndpoints
             Description = request.Description,
             Precedence = newPrecedence,
             IsSystem = false,
-            AllowsValues = request.AllowsValues ?? true,
+            ValueMode = request.ValueMode ?? ScopeValueMode.Unrestricted,
             CreatedAt = DateTimeOffset.UtcNow
         };
 
@@ -149,7 +159,8 @@ public static class ScopeTypeEndpoints
             Description = scopeType.Description,
             Precedence = scopeType.Precedence,
             IsSystem = scopeType.IsSystem,
-            AllowsValues = scopeType.AllowsValues,
+            IsEnabled = scopeType.IsEnabled,
+            ValueMode = scopeType.ValueMode,
             CreatedAt = scopeType.CreatedAt,
             UpdatedAt = scopeType.UpdatedAt
         };
@@ -188,7 +199,8 @@ public static class ScopeTypeEndpoints
             Description = scopeType.Description,
             Precedence = scopeType.Precedence,
             IsSystem = scopeType.IsSystem,
-            AllowsValues = scopeType.AllowsValues,
+            IsEnabled = scopeType.IsEnabled,
+            ValueMode = scopeType.ValueMode,
             CreatedAt = scopeType.CreatedAt,
             UpdatedAt = scopeType.UpdatedAt
         };
@@ -255,7 +267,8 @@ public static class ScopeTypeEndpoints
                 Description = st.Description,
                 Precedence = st.Precedence,
                 IsSystem = st.IsSystem,
-                AllowsValues = st.AllowsValues,
+                IsEnabled = st.IsEnabled,
+                ValueMode = st.ValueMode,
                 CreatedAt = st.CreatedAt,
                 UpdatedAt = st.UpdatedAt
             })
@@ -270,6 +283,7 @@ public static class ScopeTypeEndpoints
     {
         var scopeType = await db.ScopeTypes
             .Include(st => st.ScopeValues)
+            .ThenInclude(sv => sv.NodeTags)
             .Include(st => st.ParameterFiles)
             .FirstOrDefaultAsync(st => st.Id == id);
 
@@ -283,14 +297,17 @@ public static class ScopeTypeEndpoints
             return TypedResults.Conflict($"Cannot delete system scope type '{scopeType.Name}'");
         }
 
-        if (scopeType.ScopeValues.Count > 0)
+        bool hasUsedValue = scopeType.ScopeValues.Any(v => v.NodeTags.Any());
+        if (hasUsedValue)
         {
-            return TypedResults.Conflict($"Cannot delete scope type '{scopeType.Name}' because it has {scopeType.ScopeValues.Count} scope values");
+            return TypedResults.Conflict(
+                $"Cannot delete scope type '{scopeType.Name}' because one or more values are assigned to nodes");
         }
 
         if (scopeType.ParameterFiles.Count > 0)
         {
-            return TypedResults.Conflict($"Cannot delete scope type '{scopeType.Name}' because it has {scopeType.ParameterFiles.Count} parameter files");
+            return TypedResults.Conflict(
+                $"Cannot delete scope type '{scopeType.Name}' because it has {scopeType.ParameterFiles.Count} parameter files");
         }
 
         var allScopeTypes = await db.ScopeTypes.OrderBy(st => st.Precedence).ToListAsync();
@@ -308,6 +325,81 @@ public static class ScopeTypeEndpoints
 
         return TypedResults.NoContent();
     }
+
+    private static async Task<Results<Ok<ScopeTypeDto>, NotFound, BadRequest<string>>> EnableScopeType(
+        Guid id,
+        ServerDbContext db)
+    {
+        var scopeType = await db.ScopeTypes.FirstOrDefaultAsync(st => st.Id == id);
+        if (scopeType is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        if (!scopeType.IsSystem)
+        {
+            return TypedResults.BadRequest("Only system scope types support enable/disable");
+        }
+
+        scopeType.IsEnabled = true;
+        scopeType.UpdatedAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync();
+
+        return TypedResults.Ok(new ScopeTypeDto
+        {
+            Id = scopeType.Id,
+            Name = scopeType.Name,
+            Description = scopeType.Description,
+            Precedence = scopeType.Precedence,
+            IsSystem = scopeType.IsSystem,
+            IsEnabled = scopeType.IsEnabled,
+            ValueMode = scopeType.ValueMode,
+            CreatedAt = scopeType.CreatedAt,
+            UpdatedAt = scopeType.UpdatedAt
+        });
+    }
+
+    private static async Task<Results<Ok<ScopeTypeDto>, NotFound, BadRequest<string>>> DisableScopeType(
+        Guid id,
+        ServerDbContext db)
+    {
+        var scopeType = await db.ScopeTypes.FirstOrDefaultAsync(st => st.Id == id);
+        if (scopeType is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        if (!scopeType.IsSystem)
+        {
+            return TypedResults.BadRequest("Only system scope types support enable/disable");
+        }
+
+        var publishedCount = await db.ParameterFiles
+            .CountAsync(pf => pf.ScopeTypeId == id && pf.Status == ParameterVersionStatus.Published);
+
+        if (publishedCount > 0)
+        {
+            return TypedResults.BadRequest(
+                $"Cannot disable scope type '{scopeType.Name}': {publishedCount} published parameter file(s) exist. Archive or delete them first.");
+        }
+
+        scopeType.IsEnabled = false;
+        scopeType.UpdatedAt = DateTimeOffset.UtcNow;
+        await db.SaveChangesAsync();
+
+        return TypedResults.Ok(new ScopeTypeDto
+        {
+            Id = scopeType.Id,
+            Name = scopeType.Name,
+            Description = scopeType.Description,
+            Precedence = scopeType.Precedence,
+            IsSystem = scopeType.IsSystem,
+            IsEnabled = scopeType.IsEnabled,
+            ValueMode = scopeType.ValueMode,
+            CreatedAt = scopeType.CreatedAt,
+            UpdatedAt = scopeType.UpdatedAt
+        });
+    }
 }
 
 public sealed class ScopeTypeDto
@@ -317,7 +409,8 @@ public sealed class ScopeTypeDto
     public string? Description { get; init; }
     public required int Precedence { get; init; }
     public required bool IsSystem { get; init; }
-    public required bool AllowsValues { get; init; }
+    public required bool IsEnabled { get; init; }
+    public required ScopeValueMode ValueMode { get; init; }
     public required DateTimeOffset CreatedAt { get; init; }
     public DateTimeOffset? UpdatedAt { get; init; }
 }
@@ -326,7 +419,7 @@ public sealed class CreateScopeTypeRequest
 {
     public required string Name { get; init; }
     public string? Description { get; init; }
-    public bool? AllowsValues { get; init; }
+    public ScopeValueMode? ValueMode { get; init; }
 }
 
 public sealed class UpdateScopeTypeRequest

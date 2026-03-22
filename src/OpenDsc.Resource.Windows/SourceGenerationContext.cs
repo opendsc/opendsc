@@ -34,12 +34,14 @@ namespace OpenDsc.Resource.Windows;
 [JsonSerializable(typeof(ScheduledTask.LogonTriggerConfig), TypeInfoPropertyName = "LogonTriggerConfig")]
 [JsonSerializable(typeof(DayOfWeek), TypeInfoPropertyName = "DayOfWeek")]
 [JsonSerializable(typeof(TaskInstancesPolicy), TypeInfoPropertyName = "TaskInstancesPolicy")]
-[JsonSerializable(typeof(TaskCompatibility), TypeInfoPropertyName = "TaskCompatibility")]
+[JsonSerializable(typeof(ScheduledTask.TaskCompatibilityLevel), TypeInfoPropertyName = "TaskCompatibilityLevel")]
 [JsonSerializable(typeof(TaskLogonType), TypeInfoPropertyName = "TaskLogonType")]
 [JsonSerializable(typeof(ProcessPriorityClass), TypeInfoPropertyName = "ProcessPriorityClass")]
 [JsonSerializable(typeof(UserRight.Schema), TypeInfoPropertyName = "UserRightSchema")]
 [JsonSerializable(typeof(AuditPolicy.Schema), TypeInfoPropertyName = "AuditPolicySchema")]
 [JsonSerializable(typeof(AuditPolicy.AuditSetting), TypeInfoPropertyName = "AuditSetting")]
+[JsonSerializable(typeof(PasswordPolicy.Schema), TypeInfoPropertyName = "PasswordPolicySchema")]
+[JsonSerializable(typeof(AccountLockoutPolicy.Schema), TypeInfoPropertyName = "AccountLockoutPolicySchema")]
 public partial class SourceGenerationContext : JsonSerializerContext
 {
 }

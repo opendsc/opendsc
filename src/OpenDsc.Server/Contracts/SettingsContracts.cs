@@ -2,6 +2,8 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
+using OpenDsc.Lcm.Contracts;
+
 namespace OpenDsc.Server.Contracts;
 
 /// <summary>
@@ -13,6 +15,11 @@ public sealed class ServerSettingsResponse
     /// How often nodes should rotate their certificates (informational).
     /// </summary>
     public TimeSpan CertificateRotationInterval { get; set; }
+
+    /// <summary>
+    /// Multiplier applied to a node's ConfigurationModeInterval to determine staleness threshold.
+    /// </summary>
+    public double StalenessMultiplier { get; set; }
 }
 
 /// <summary>
@@ -24,6 +31,53 @@ public sealed class UpdateServerSettingsRequest
     /// How often nodes should rotate their certificates (informational).
     /// </summary>
     public TimeSpan? CertificateRotationInterval { get; set; }
+
+    /// <summary>
+    /// Multiplier applied to a node's ConfigurationModeInterval to determine staleness threshold.
+    /// </summary>
+    public double? StalenessMultiplier { get; set; }
+}
+
+/// <summary>
+/// Server-wide LCM default settings response.
+/// </summary>
+public sealed class ServerLcmDefaultsResponse
+{
+    /// <summary>
+    /// Server-wide default LCM operating mode. Null means no server default is set.
+    /// </summary>
+    public ConfigurationMode? DefaultConfigurationMode { get; set; }
+
+    /// <summary>
+    /// Server-wide default LCM configuration mode interval. Null means no server default is set.
+    /// </summary>
+    public TimeSpan? DefaultConfigurationModeInterval { get; set; }
+
+    /// <summary>
+    /// Server-wide default compliance reporting setting. Null means no server default is set.
+    /// </summary>
+    public bool? DefaultReportCompliance { get; set; }
+}
+
+/// <summary>
+/// Request to update server-wide LCM default settings. Null values clear the corresponding default.
+/// </summary>
+public sealed class UpdateServerLcmDefaultsRequest
+{
+    /// <summary>
+    /// Server-wide default LCM operating mode. Set to null to clear the default.
+    /// </summary>
+    public ConfigurationMode? DefaultConfigurationMode { get; set; }
+
+    /// <summary>
+    /// Server-wide default LCM configuration mode interval. Set to null to clear the default.
+    /// </summary>
+    public TimeSpan? DefaultConfigurationModeInterval { get; set; }
+
+    /// <summary>
+    /// Server-wide default compliance reporting setting. Set to null to clear the default.
+    /// </summary>
+    public bool? DefaultReportCompliance { get; set; }
 }
 
 /// <summary>
@@ -40,6 +94,22 @@ public sealed class CreateRegistrationKeyRequest
     /// Maximum number of times this key can be used (null = unlimited).
     /// </summary>
     public int? MaxUses { get; set; }
+
+    /// <summary>
+    /// Optional description of the key's intended usage or purpose.
+    /// </summary>
+    public string? Description { get; set; }
+}
+
+/// <summary>
+/// Request to update a registration key.
+/// </summary>
+public sealed class UpdateRegistrationKeyRequest
+{
+    /// <summary>
+    /// Description of the key's intended usage or purpose.
+    /// </summary>
+    public string? Description { get; set; }
 }
 
 /// <summary>
@@ -81,6 +151,11 @@ public sealed class RegistrationKeyResponse
     /// Whether the key is revoked.
     /// </summary>
     public bool IsRevoked { get; set; }
+
+    /// <summary>
+    /// Optional description of the key's intended usage or purpose.
+    /// </summary>
+    public string? Description { get; set; }
 }
 
 /// <summary>

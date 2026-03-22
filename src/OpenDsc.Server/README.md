@@ -228,8 +228,12 @@ authentication:
 
 **Client Certificate Requirement:**
 
-- All HTTPS connections require a client certificate
-- Configured via `ClientCertificateMode.RequireCertificate` in Kestrel
+- HTTPS endpoints accept client certificates but they are not required for
+  every request (browsers don’t normally supply one).
+- The server only validates certificates on the node API paths; the Blazor
+  web UI and admin endpoints are reachable without a client cert.
+- Implementation uses `ClientCertificateMode.AllowCertificate` in Kestrel while
+  `CertificateAuthHandler` enforces mTLS for node operations.
 - The server extracts and validates the certificate thumbprint during
   registration
 

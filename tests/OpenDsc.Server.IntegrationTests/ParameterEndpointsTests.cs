@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 
 using OpenDsc.Server.Contracts;
 using OpenDsc.Server.Data;
+using OpenDsc.Server.Entities;
 
 using Xunit;
 
@@ -80,8 +81,7 @@ public class ParameterEndpointsTests : IDisposable
         var result = await response.Content.ReadFromJsonAsync<ParameterFileDto>();
         result.Should().NotBeNull();
         result!.Version.Should().Be("1.0.0");
-        result.IsDraft.Should().BeFalse();
-        result.IsActive.Should().BeFalse();
+        result.Status.Should().Be(ParameterVersionStatus.Draft);
     }
 
     [Fact]
@@ -136,15 +136,14 @@ public class ParameterEndpointsTests : IDisposable
         await client.PutAsJsonAsync($"/api/v1/parameters/{scopeTypeId}/{configId}", createRequest);
 
         // Act
-        var response = await client.PutAsync($"/api/v1/parameters/{scopeTypeId}/{configId}/versions/1.0.0/activate", null);
+        var response = await client.PutAsync($"/api/v1/parameters/{scopeTypeId}/{configId}/versions/1.0.0/publish", null);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var result = await response.Content.ReadFromJsonAsync<ParameterFileDto>();
         result.Should().NotBeNull();
         result!.Version.Should().Be("1.0.0");
-        result.IsActive.Should().BeTrue();
-        result.IsDraft.Should().BeFalse();
+        result.Status.Should().Be(ParameterVersionStatus.Published);
     }
 
     [Fact]
@@ -193,7 +192,7 @@ public class ParameterEndpointsTests : IDisposable
         };
 
         await client.PutAsJsonAsync($"/api/v1/parameters/{scopeTypeId}/{configId}", createRequest);
-        await client.PutAsync($"/api/v1/parameters/{scopeTypeId}/{configId}/versions/1.0.0/activate", null);
+        await client.PutAsync($"/api/v1/parameters/{scopeTypeId}/{configId}/versions/1.0.0/publish", null);
 
         // Act
         var response = await client.DeleteAsync($"/api/v1/parameters/{scopeTypeId}/{configId}/versions/1.0.0");
@@ -209,6 +208,15 @@ public class ParameterEndpointsTests : IDisposable
         using var client = CreateAuthenticatedClient();
         var configName = $"test-config-{Guid.NewGuid()}";
         var configId = await CreateTestConfigurationAsync(client, configName);
+
+        // Create and publish a configuration version so assignment succeeds
+        using var versionContent = new MultipartFormDataContent();
+        versionContent.Add(new StringContent("1.0.0"), "version");
+        var versionFile = new ByteArrayContent("resources: []"u8.ToArray());
+        versionFile.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+        versionContent.Add(versionFile, "files", "main.dsc.yaml");
+        await client.PostAsync($"/api/v1/configurations/{configName}/versions", versionContent);
+        await client.PutAsync($"/api/v1/configurations/{configName}/versions/1.0.0/publish", null);
 
         // Register a node
         var registerRequest = new RegisterNodeRequest { Fqdn = "test-node.example.com", RegistrationKey = "test-lcm-registration-key" };
@@ -246,6 +254,351 @@ public class ParameterEndpointsTests : IDisposable
         result!.NodeId.Should().Be(nodeId);
         result.ConfigurationId.Should().Be(configId);
     }
+
+    [Fact]
+    public async Task ValidateParameterFile_WithValidParameters_ReturnsSuccess()
+    {
+        // Arrange
+        using var client = CreateAuthenticatedClient();
+        var configName = $"validate-test-{Guid.NewGuid()}";
+        var configId = await CreateTestConfigurationAsync(client, configName);
+
+        // Create parameter schema
+        var schemaContent = @"{
+  ""parameters"": {
+    ""appName"": { ""type"": ""string"" },
+    ""port"": { ""type"": ""int"", ""minValue"": 1, ""maxValue"": 65535 }
+  }
+}";
+
+        using var schemaRequest = new MultipartFormDataContent();
+        schemaRequest.Add(new StringContent("1.0.0"), "version");
+        var schemaFile = new ByteArrayContent(System.Text.Encoding.UTF8.GetBytes(schemaContent));
+        schemaFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+        schemaRequest.Add(schemaFile, "parametersFile", "parameters.json");
+
+        await client.PutAsync($"/api/v1/configurations/{configName}/parameters", schemaRequest);
+
+        // Act - Validate a parameter file
+        var paramContent = @"{
+  ""parameters"": {
+    ""appName"": ""MyApp"",
+    ""port"": 8080
+  }
+}";
+
+        var validateResponse = await client.PostAsync(
+            $"/api/v1/configurations/{configName}/parameters/validate?version=1.0.0",
+            new StringContent(paramContent, System.Text.Encoding.UTF8, "application/json"));
+
+        // Assert
+        validateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await validateResponse.Content.ReadFromJsonAsync<ValidationResultDto>();
+        result.Should().NotBeNull();
+        result!.IsValid.Should().BeTrue();
+        result.Errors.Should().BeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task ValidateParameterFile_WithInvalidParameters_ReturnsErrors()
+    {
+        // Arrange
+        using var client = CreateAuthenticatedClient();
+        var configName = $"validate-test-{Guid.NewGuid()}";
+        await CreateTestConfigurationAsync(client, configName);
+
+        // Create parameter schema
+        var schemaContent = @"{
+  ""parameters"": {
+    ""appName"": { ""type"": ""string"" },
+    ""port"": { ""type"": ""int"", ""minValue"": 1, ""maxValue"": 65535 }
+  }
+}";
+
+        using var schemaRequest = new MultipartFormDataContent();
+        schemaRequest.Add(new StringContent("1.0.0"), "version");
+        var schemaFile = new ByteArrayContent(System.Text.Encoding.UTF8.GetBytes(schemaContent));
+        schemaFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+        schemaRequest.Add(schemaFile, "parametersFile", "parameters.json");
+
+        await client.PutAsync($"/api/v1/configurations/{configName}/parameters", schemaRequest);
+
+        // Act - Validate with invalid port value
+        var paramContent = @"{
+  ""parameters"": {
+    ""appName"": ""MyApp"",
+    ""port"": 99999
+  }
+}";
+
+        var validateResponse = await client.PostAsync(
+            $"/api/v1/configurations/{configName}/parameters/validate?version=1.0.0",
+            new StringContent(paramContent, System.Text.Encoding.UTF8, "application/json"));
+
+        // Assert
+        validateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await validateResponse.Content.ReadFromJsonAsync<ValidationResultDto>();
+        result.Should().NotBeNull();
+        result!.IsValid.Should().BeFalse();
+        result.Errors.Should().NotBeNullOrEmpty();
+        result.Errors.Should().Contain(e => e.Path.Contains("port"));
+    }
+
+    private async Task<(Guid ScopeTypeId, Guid ScopeValueId)> CreateRestrictedScopeTypeWithValueAsync(
+        HttpClient client, string scopeTypeName, string scopeValue)
+    {
+        // Create restricted scope type
+        var scopeTypeRequest = new { name = scopeTypeName, valueMode = "Restricted" };
+        var scopeTypeResponse = await client.PostAsJsonAsync("/api/v1/scope-types", scopeTypeRequest);
+        scopeTypeResponse.EnsureSuccessStatusCode();
+        var scopeTypeDto = await scopeTypeResponse.Content.ReadFromJsonAsync<ScopeTypeSimpleDto>();
+        var scopeTypeId = scopeTypeDto!.Id;
+
+        // Create scope value
+        var scopeValueRequest = new { value = scopeValue };
+        var scopeValueResponse = await client.PostAsJsonAsync($"/api/v1/scope-types/{scopeTypeId}/values", scopeValueRequest);
+        scopeValueResponse.EnsureSuccessStatusCode();
+        var scopeValueDto = await scopeValueResponse.Content.ReadFromJsonAsync<ScopeValueSimpleDto>();
+        var scopeValueId = scopeValueDto!.Id;
+
+        return (scopeTypeId, scopeValueId);
+    }
+
+    [Fact]
+    public async Task CreateOrUpdateParameter_WithRestrictedScopeType_AndValidScopeValue_CreatesParameter()
+    {
+        // Arrange
+        using var client = CreateAuthenticatedClient();
+        var configId = await CreateTestConfigurationAsync(client, $"test-config-{Guid.NewGuid()}");
+
+        var (scopeTypeId, _) = await CreateRestrictedScopeTypeWithValueAsync(client, $"Environment-{Guid.NewGuid()}", "Development");
+
+        var request = new
+        {
+            scopeValue = "Development",
+            version = "1.0.0",
+            content = "parameters:\n  setting1: value1\n",
+            contentType = "application/x-yaml",
+            isDraft = true
+        };
+
+        // Act
+        var response = await client.PutAsJsonAsync($"/api/v1/parameters/{scopeTypeId}/{configId}", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<ParameterFileDto>();
+        result.Should().NotBeNull();
+        result!.ScopeValue.Should().Be("Development");
+        result.Status.Should().Be(ParameterVersionStatus.Draft);
+    }
+
+    [Fact]
+    public async Task CreateOrUpdateParameter_WithRestrictedScopeType_AndNoScopeValue_ReturnsBadRequest()
+    {
+        // Arrange
+        using var client = CreateAuthenticatedClient();
+        var configId = await CreateTestConfigurationAsync(client, $"test-config-{Guid.NewGuid()}");
+
+        var (scopeTypeId, _) = await CreateRestrictedScopeTypeWithValueAsync(client, $"Environment-{Guid.NewGuid()}", "Development");
+
+        var request = new
+        {
+            // scopeValue intentionally omitted — scope type is Restricted so this should fail
+            version = "1.0.0",
+            content = "parameters:\n  setting1: value1\n",
+            contentType = "application/x-yaml",
+            isDraft = true
+        };
+
+        // Act
+        var response = await client.PutAsJsonAsync($"/api/v1/parameters/{scopeTypeId}/{configId}", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task CreateOrUpdateParameter_WithRestrictedScopeType_AndInvalidScopeValue_ReturnsBadRequest()
+    {
+        // Arrange
+        using var client = CreateAuthenticatedClient();
+        var configId = await CreateTestConfigurationAsync(client, $"test-config-{Guid.NewGuid()}");
+
+        var (scopeTypeId, _) = await CreateRestrictedScopeTypeWithValueAsync(client, $"Environment-{Guid.NewGuid()}", "Development");
+
+        var request = new
+        {
+            scopeValue = "NonExistentValue",
+            version = "1.0.0",
+            content = "parameters:\n  setting1: value1\n",
+            contentType = "application/x-yaml",
+            isDraft = true
+        };
+
+        // Act
+        var response = await client.PutAsJsonAsync($"/api/v1/parameters/{scopeTypeId}/{configId}", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    // ── Node scope type ──────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task CreateOrUpdateParameter_WithNodeScopeType_AndNoScopeValue_ReturnsBadRequest()
+    {
+        using var client = CreateAuthenticatedClient();
+        var configId = await CreateTestConfigurationAsync(client, $"test-config-{Guid.NewGuid()}");
+
+        var nodeScopeTypeId = Guid.Parse("00000000-0000-0000-0000-000000000002");
+
+        var request = new
+        {
+            // scopeValue intentionally omitted
+            version = "1.0.0",
+            content = "parameters:\n  setting1: value1\n",
+            contentType = "application/x-yaml",
+            isDraft = true
+        };
+
+        var response = await client.PutAsJsonAsync($"/api/v1/parameters/{nodeScopeTypeId}/{configId}", request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task CreateOrUpdateParameter_WithNodeScopeType_AndUnregisteredNode_ReturnsBadRequest()
+    {
+        using var client = CreateAuthenticatedClient();
+        var configId = await CreateTestConfigurationAsync(client, $"test-config-{Guid.NewGuid()}");
+
+        var nodeScopeTypeId = Guid.Parse("00000000-0000-0000-0000-000000000002");
+
+        var request = new
+        {
+            scopeValue = "not-registered.example.com",
+            version = "1.0.0",
+            content = "parameters:\n  setting1: value1\n",
+            contentType = "application/x-yaml",
+            isDraft = true
+        };
+
+        var response = await client.PutAsJsonAsync($"/api/v1/parameters/{nodeScopeTypeId}/{configId}", request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    // ── Default scope type ───────────────────────────────────────────────────
+
+    [Fact]
+    public async Task CreateOrUpdateParameter_WithDefaultScopeType_AndScopeValueProvided_ReturnsBadRequest()
+    {
+        using var client = CreateAuthenticatedClient();
+        var configId = await CreateTestConfigurationAsync(client, $"test-config-{Guid.NewGuid()}");
+
+        var defaultScopeTypeId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+
+        var request = new
+        {
+            scopeValue = "should-not-be-allowed",
+            version = "1.0.0",
+            content = "parameters:\n  setting1: value1\n",
+            contentType = "application/x-yaml",
+            isDraft = true
+        };
+
+        var response = await client.PutAsJsonAsync($"/api/v1/parameters/{defaultScopeTypeId}/{configId}", request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task CreateOrUpdateParameter_WithDefaultScopeType_AndNoScopeValue_Succeeds()
+    {
+        using var client = CreateAuthenticatedClient();
+        var configId = await CreateTestConfigurationAsync(client, $"test-config-{Guid.NewGuid()}");
+
+        var defaultScopeTypeId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+
+        var request = new
+        {
+            version = "1.0.0",
+            content = "parameters:\n  setting1: value1\n",
+            contentType = "application/x-yaml",
+            isDraft = true
+        };
+
+        var response = await client.PutAsJsonAsync($"/api/v1/parameters/{defaultScopeTypeId}/{configId}", request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<ParameterFileDto>();
+        result.Should().NotBeNull();
+        result!.ScopeValue.Should().BeNullOrEmpty();
+        result.Status.Should().Be(ParameterVersionStatus.Draft);
+    }
+
+    // ── Unrestricted (user-created) scope type ───────────────────────────────
+
+    [Fact]
+    public async Task CreateOrUpdateParameter_WithUnrestrictedScopeType_AndNoScopeValue_ReturnsBadRequest()
+    {
+        using var client = CreateAuthenticatedClient();
+        var configId = await CreateTestConfigurationAsync(client, $"test-config-{Guid.NewGuid()}");
+
+        var scopeTypeRequest = new { name = $"Region-{Guid.NewGuid()}", valueMode = "Unrestricted" };
+        var scopeTypeResponse = await client.PostAsJsonAsync("/api/v1/scope-types", scopeTypeRequest);
+        scopeTypeResponse.EnsureSuccessStatusCode();
+        var scopeTypeDto = await scopeTypeResponse.Content.ReadFromJsonAsync<ScopeTypeSimpleDto>();
+
+        var request = new
+        {
+            // scopeValue intentionally omitted
+            version = "1.0.0",
+            content = "parameters:\n  setting1: value1\n",
+            contentType = "application/x-yaml",
+            isDraft = true
+        };
+
+        var response = await client.PutAsJsonAsync($"/api/v1/parameters/{scopeTypeDto!.Id}/{configId}", request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task CreateOrUpdateParameter_WithUnrestrictedScopeType_AndScopeValue_Succeeds()
+    {
+        using var client = CreateAuthenticatedClient();
+        var configId = await CreateTestConfigurationAsync(client, $"test-config-{Guid.NewGuid()}");
+
+        var scopeTypeRequest = new { name = $"Region-{Guid.NewGuid()}", valueMode = "Unrestricted" };
+        var scopeTypeResponse = await client.PostAsJsonAsync("/api/v1/scope-types", scopeTypeRequest);
+        scopeTypeResponse.EnsureSuccessStatusCode();
+        var scopeTypeDto = await scopeTypeResponse.Content.ReadFromJsonAsync<ScopeTypeSimpleDto>();
+
+        var request = new
+        {
+            scopeValue = "us-west",
+            version = "1.0.0",
+            content = "parameters:\n  setting1: value1\n",
+            contentType = "application/x-yaml",
+            isDraft = true
+        };
+
+        var response = await client.PutAsJsonAsync($"/api/v1/parameters/{scopeTypeDto!.Id}/{configId}", request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<ParameterFileDto>();
+        result.Should().NotBeNull();
+        result!.ScopeValue.Should().Be("us-west");
+        result.Status.Should().Be(ParameterVersionStatus.Draft);
+    }
+}
+
+public sealed class ValidationResultDto
+{
+    public required bool IsValid { get; init; }
+    public ValidationErrorDto[]? Errors { get; init; }
 }
 
 public sealed class ParameterFileDto
@@ -255,9 +608,10 @@ public sealed class ParameterFileDto
     public required Guid ConfigurationId { get; init; }
     public string? ScopeValue { get; init; }
     public required string Version { get; init; }
+    public required int MajorVersion { get; init; }
     public required string Checksum { get; init; }
-    public required bool IsActive { get; init; }
-    public required bool IsDraft { get; init; }
+    public required ParameterVersionStatus Status { get; init; }
+    public required bool IsPassthrough { get; init; }
     public required DateTimeOffset CreatedAt { get; init; }
 }
 
@@ -265,8 +619,7 @@ public sealed class ConfigurationSummaryDto
 {
     public required string Name { get; init; }
     public string? Description { get; init; }
-    public required string EntryPoint { get; init; }
-    public required bool IsServerManaged { get; init; }
+    public required bool UseServerManagedParameters { get; init; }
     public required int VersionCount { get; init; }
     public string? LatestVersion { get; init; }
     public required DateTimeOffset CreatedAt { get; init; }
@@ -314,4 +667,16 @@ public sealed class ScopeInfo
     public string? ScopeValue { get; init; }
     public required int Precedence { get; init; }
     public required object? Value { get; init; }
+}
+
+public sealed class ScopeTypeSimpleDto
+{
+    public required Guid Id { get; init; }
+    public required string Name { get; init; }
+}
+
+public sealed class ScopeValueSimpleDto
+{
+    public required Guid Id { get; init; }
+    public required string Value { get; init; }
 }

@@ -10,6 +10,7 @@ public sealed class CompositeConfigurationItem
     public required Guid CompositeConfigurationVersionId { get; set; }
     public required Guid ChildConfigurationId { get; set; }
     public string? ActiveVersion { get; set; }
+    public int? MajorVersion { get; set; }
     public int Order { get; set; }
 
     public CompositeConfigurationVersion CompositeConfigurationVersion { get; set; } = null!;

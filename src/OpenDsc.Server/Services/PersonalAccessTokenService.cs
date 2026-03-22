@@ -62,9 +62,10 @@ public interface IPersonalAccessTokenService
 /// <summary>
 /// Personal Access Token service implementation.
 /// </summary>
-public class PersonalAccessTokenService(
+public sealed partial class PersonalAccessTokenService(
     ServerDbContext db,
-    IPasswordHasher passwordHasher) : IPersonalAccessTokenService
+    IPasswordHasher passwordHasher,
+    ILogger<PersonalAccessTokenService> logger) : IPersonalAccessTokenService
 {
     private const int TokenBodyLength = 40;
     private const string TokenPrefix = "pat_";
@@ -115,6 +116,7 @@ public class PersonalAccessTokenService(
         db.PersonalAccessTokens.Add(patEntity);
         await db.SaveChangesAsync();
 
+        LogPatCreated(userId);
         return (token, patEntity);
     }
 
@@ -153,6 +155,7 @@ public class PersonalAccessTokenService(
             }
         }
 
+        LogPatValidationFailed();
         return null;
     }
 
@@ -164,6 +167,7 @@ public class PersonalAccessTokenService(
             token.IsRevoked = true;
             token.RevokedAt = DateTimeOffset.UtcNow;
             await db.SaveChangesAsync();
+            LogPatRevoked(tokenId);
         }
     }
 
@@ -186,4 +190,13 @@ public class PersonalAccessTokenService(
             await db.SaveChangesAsync();
         }
     }
+
+    [LoggerMessage(EventId = EventIds.PatCreated, Level = LogLevel.Information, Message = "Personal access token created for user {UserId}")]
+    private partial void LogPatCreated(Guid userId);
+
+    [LoggerMessage(EventId = EventIds.PatValidationFailed, Level = LogLevel.Warning, Message = "Personal access token validation failed: no matching token found")]
+    private partial void LogPatValidationFailed();
+
+    [LoggerMessage(EventId = EventIds.PatRevoked, Level = LogLevel.Information, Message = "Personal access token {TokenId} revoked")]
+    private partial void LogPatRevoked(Guid tokenId);
 }
