@@ -112,4 +112,79 @@ public sealed class PasswordPolicyTests
             });
         }
     }
+
+    [RequiresAdminFact]
+    public void Set_MinPasswordAgeDays_UpdatesPolicy()
+    {
+        var original = _resource.Get(new PasswordPolicySchema());
+        const uint targetMinAge = 1;
+
+        try
+        {
+            _resource.Set(new PasswordPolicySchema { MinimumPasswordAgeDays = targetMinAge });
+
+            var updated = _resource.Get(new PasswordPolicySchema());
+            updated.MinimumPasswordAgeDays.Should().Be(targetMinAge);
+        }
+        finally
+        {
+            _resource.Set(new PasswordPolicySchema
+            {
+                MinimumPasswordLength = original.MinimumPasswordLength,
+                MaximumPasswordAgeDays = original.MaximumPasswordAgeDays,
+                MinimumPasswordAgeDays = original.MinimumPasswordAgeDays,
+                PasswordHistoryLength = original.PasswordHistoryLength
+            });
+        }
+    }
+
+    [RequiresAdminFact]
+    public void Set_PasswordHistoryLength_UpdatesPolicy()
+    {
+        var original = _resource.Get(new PasswordPolicySchema());
+        const uint targetHistory = 5;
+
+        try
+        {
+            _resource.Set(new PasswordPolicySchema { PasswordHistoryLength = targetHistory });
+
+            var updated = _resource.Get(new PasswordPolicySchema());
+            updated.PasswordHistoryLength.Should().Be(targetHistory);
+        }
+        finally
+        {
+            _resource.Set(new PasswordPolicySchema
+            {
+                MinimumPasswordLength = original.MinimumPasswordLength,
+                MaximumPasswordAgeDays = original.MaximumPasswordAgeDays,
+                MinimumPasswordAgeDays = original.MinimumPasswordAgeDays,
+                PasswordHistoryLength = original.PasswordHistoryLength
+            });
+        }
+    }
+
+    [RequiresAdminFact]
+    public void Set_MaxPasswordAgeZero_MeansNeverExpire()
+    {
+        var original = _resource.Get(new PasswordPolicySchema());
+        const uint neverExpire = 0;
+
+        try
+        {
+            _resource.Set(new PasswordPolicySchema { MaximumPasswordAgeDays = neverExpire });
+
+            var updated = _resource.Get(new PasswordPolicySchema());
+            updated.MaximumPasswordAgeDays.Should().Be(neverExpire);
+        }
+        finally
+        {
+            _resource.Set(new PasswordPolicySchema
+            {
+                MinimumPasswordLength = original.MinimumPasswordLength,
+                MaximumPasswordAgeDays = original.MaximumPasswordAgeDays,
+                MinimumPasswordAgeDays = original.MinimumPasswordAgeDays,
+                PasswordHistoryLength = original.PasswordHistoryLength
+            });
+        }
+    }
 }

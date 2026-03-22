@@ -376,6 +376,35 @@ public sealed class ElementTests
     }
 
     [Fact]
+    public void Set_UpdateExistingTextContent_ReplacesValue()
+    {
+        var tempFile = Path.Combine(Path.GetTempPath(), $"set_update_value_{Guid.NewGuid():N}.xml");
+        File.WriteAllText(tempFile, "<?xml version=\"1.0\" encoding=\"UTF-8\"?><configuration><setting>OldValue</setting></configuration>");
+
+        try
+        {
+            _resource.Set(new XmlElementSchema
+            {
+                Path = tempFile,
+                XPath = "/configuration/setting",
+                Value = "NewValue"
+            });
+
+            var result = _resource.Get(new XmlElementSchema
+            {
+                Path = tempFile,
+                XPath = "/configuration/setting"
+            });
+
+            result.Value.Should().Be("NewValue");
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
     public void Set_PreservesUtf8Encoding()
     {
         var tempFile = Path.Combine(Path.GetTempPath(), $"encoding_{Guid.NewGuid():N}.xml");

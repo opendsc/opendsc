@@ -116,4 +116,56 @@ public sealed class PermissionTests
             File.Delete(tempFile);
         }
     }
+
+    [NonWindowsFact]
+    public void Get_ExistingDirectory_ReturnsModeOwnerGroup()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"permdir_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            var result = _resource.Get(new PermissionSchema { Path = tempDir });
+
+            result.Path.Should().Be(tempDir);
+            result.Mode.Should().NotBeNullOrEmpty();
+            result.Mode!.Should().Match(@"^0?[0-7]{3}$");
+            result.Owner.Should().NotBeNullOrEmpty();
+            result.Group.Should().NotBeNullOrEmpty();
+        }
+        finally
+        {
+            Directory.Delete(tempDir);
+        }
+    }
+
+    [NonWindowsFact]
+    public void Set_NonExistentPath_ThrowsFileNotFoundException()
+    {
+        var invalidPath = Path.Combine(Path.GetTempPath(), $"nonexistent_set_{Guid.NewGuid():N}");
+
+        var act = () => _resource.Set(new PermissionSchema { Path = invalidPath, Mode = "0644" });
+
+        act.Should().Throw<FileNotFoundException>();
+    }
+
+    [NonWindowsFact]
+    public void Set_ModeOnDirectory_UpdatesMode()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"setmode_dir_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            _resource.Set(new PermissionSchema { Path = tempDir, Mode = "0755" });
+
+            var result = _resource.Get(new PermissionSchema { Path = tempDir });
+
+            result.Mode.Should().Match(@"^0?755$");
+        }
+        finally
+        {
+            Directory.Delete(tempDir);
+        }
+    }
 }

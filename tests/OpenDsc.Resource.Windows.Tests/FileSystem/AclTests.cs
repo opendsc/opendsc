@@ -21,7 +21,7 @@ public sealed class AclTests
 {
     private static AclResource CreateResource() => new(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
 
-    [WindowsOnlyFact]
+    [Fact]
     public void GetSchema_ReturnsValidJson()
     {
         var resource = CreateResource();
@@ -33,7 +33,7 @@ public sealed class AclTests
         schemaProperty.GetString().Should().Be("https://json-schema.org/draft/2020-12/schema");
     }
 
-    [WindowsOnlyFact]
+    [Fact]
     public void DscResourceAttribute_HasCorrectTypeAndVersion()
     {
         var attr = typeof(AclResource).GetCustomAttributes(typeof(DscResourceAttribute), false).OfType<DscResourceAttribute>().SingleOrDefault();

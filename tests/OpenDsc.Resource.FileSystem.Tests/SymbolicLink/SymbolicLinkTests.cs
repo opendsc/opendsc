@@ -320,4 +320,40 @@ public sealed class SymbolicLinkTests
 
         act.Should().NotThrow();
     }
+
+    [Fact]
+    public void Get_RegularFile_ReturnsExistFalse()
+    {
+        var tempFile = Path.Combine(Path.GetTempPath(), $"regular_file_{Guid.NewGuid():N}.txt");
+        System.IO.File.WriteAllText(tempFile, "content");
+
+        try
+        {
+            var result = _resource.Get(new LinkSchema { Path = tempFile, Target = Path.Combine(Path.GetTempPath(), "x") });
+
+            result.Exist.Should().BeFalse();
+        }
+        finally
+        {
+            System.IO.File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public void Get_RegularDirectory_ReturnsExistFalse()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"regular_dir_{Guid.NewGuid():N}");
+        System.IO.Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            var result = _resource.Get(new LinkSchema { Path = tempDir, Target = Path.Combine(Path.GetTempPath(), "x") });
+
+            result.Exist.Should().BeFalse();
+        }
+        finally
+        {
+            System.IO.Directory.Delete(tempDir);
+        }
+    }
 }

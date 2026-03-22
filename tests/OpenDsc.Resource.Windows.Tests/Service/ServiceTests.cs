@@ -189,4 +189,126 @@ public sealed class ServiceTests
 
         result.Exist.Should().BeFalse();
     }
+
+    [Fact]
+    public void Set_InvalidStatus_ThrowsArgumentException()
+    {
+        var schema = new ServiceSchema { Name = "AnyService", Status = ServiceControllerStatus.StartPending };
+
+        var act = () => _resource.Set(schema);
+
+        act.Should().Throw<ArgumentException>().WithMessage("*Invalid service status*");
+    }
+
+    [Fact]
+    public void Set_InvalidStartType_ThrowsArgumentException()
+    {
+        var schema = new ServiceSchema { Name = "AnyService", StartType = ServiceStartMode.Boot };
+
+        var act = () => _resource.Set(schema);
+
+        act.Should().Throw<ArgumentException>().WithMessage("*Invalid service start type*");
+    }
+
+    [WindowsOnlyFact]
+    public void Set_NewService_WithoutPath_ThrowsArgumentException()
+    {
+        var serviceName = $"DscTestService_{Guid.NewGuid():N}";
+
+        var act = () => _resource.Set(new ServiceSchema
+        {
+            Name = serviceName,
+            StartType = ServiceStartMode.Manual
+        });
+
+        act.Should().Throw<ArgumentException>().WithMessage("*Path*");
+    }
+
+    [WindowsOnlyFact]
+    public void Set_NewService_WithoutStartType_ThrowsArgumentException()
+    {
+        var serviceName = $"DscTestService_{Guid.NewGuid():N}";
+
+        var act = () => _resource.Set(new ServiceSchema
+        {
+            Name = serviceName,
+            Path = @"C:\Windows\System32\cmd.exe"
+        });
+
+        act.Should().Throw<ArgumentException>().WithMessage("*StartType*");
+    }
+
+    [RequiresAdminFact]
+    public void Set_ExistingService_UpdatesDisplayName()
+    {
+        var testServicePath = Path.GetFullPath(Path.Combine("..", "..", "..", "..", "artifacts", "TestService", "TestService.exe"));
+
+        if (!File.Exists(testServicePath))
+        {
+            return;
+        }
+
+        var serviceName = $"DscTestService_{Guid.NewGuid():N}";
+
+        try
+        {
+            _resource.Set(new ServiceSchema
+            {
+                Name = serviceName,
+                Path = testServicePath,
+                StartType = ServiceStartMode.Manual
+            });
+
+            _resource.Set(new ServiceSchema
+            {
+                Name = serviceName,
+                DisplayName = "Updated Display Name"
+            });
+
+            var actual = _resource.Get(new ServiceSchema { Name = serviceName });
+
+            actual.DisplayName.Should().Be("Updated Display Name");
+        }
+        finally
+        {
+            try { _resource.Delete(new ServiceSchema { Name = serviceName }); } catch { }
+        }
+    }
+
+    [RequiresAdminFact]
+    public void Set_ExistingService_UpdatesDescription()
+    {
+        var testServicePath = Path.GetFullPath(Path.Combine("..", "..", "..", "..", "artifacts", "TestService", "TestService.exe"));
+
+        if (!File.Exists(testServicePath))
+        {
+            return;
+        }
+
+        var serviceName = $"DscTestService_{Guid.NewGuid():N}";
+
+        try
+        {
+            _resource.Set(new ServiceSchema
+            {
+                Name = serviceName,
+                Path = testServicePath,
+                StartType = ServiceStartMode.Manual
+            });
+
+            _resource.Set(new ServiceSchema
+            {
+                Name = serviceName,
+                Description = "Updated service description"
+            });
+
+            var actual = _resource.Get(new ServiceSchema { Name = serviceName });
+
+            actual.Description.Should().Be("Updated service description");
+        }
+        finally
+        {
+            try { _resource.Delete(new ServiceSchema { Name = serviceName }); } catch { }
+        }
+    }
 }

@@ -48,6 +48,27 @@ public sealed class ExpandTests : IDisposable
     }
 
     [Fact]
+    public void GetSchema_ReturnsValidJson()
+    {
+        var schemaJson = _resource.GetSchema();
+        var doc = System.Text.Json.JsonDocument.Parse(schemaJson);
+
+        doc.RootElement.GetProperty("$schema").GetString()
+            .Should().Be("https://json-schema.org/draft/2020-12/schema");
+    }
+
+    [Fact]
+    public void DscResourceAttribute_HasCorrectTypeAndVersion()
+    {
+        var attr = typeof(ExpandResource).GetCustomAttributes(typeof(DscResourceAttribute), false)
+            .OfType<DscResourceAttribute>().SingleOrDefault();
+
+        attr.Should().NotBeNull();
+        attr!.Type.Should().Be("OpenDsc.Archive.Zip/Expand");
+        attr.Version.ToString().Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
     public void Get_ReturnsSameArchiveInfo()
     {
         var archivePath = GetTempPath("test.zip");

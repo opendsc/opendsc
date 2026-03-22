@@ -50,6 +50,27 @@ public sealed class ScheduledTaskTests
         };
     }
 
+    [Fact]
+    public void GetSchema_ReturnsValidJson()
+    {
+        var schemaJson = _resource.GetSchema();
+        var doc = System.Text.Json.JsonDocument.Parse(schemaJson);
+
+        doc.RootElement.GetProperty("$schema").GetString()
+            .Should().Be("https://json-schema.org/draft/2020-12/schema");
+    }
+
+    [Fact]
+    public void DscResourceAttribute_HasCorrectTypeAndVersion()
+    {
+        var attr = typeof(ScheduledTaskResource).GetCustomAttributes(typeof(DscResourceAttribute), false)
+            .OfType<DscResourceAttribute>().SingleOrDefault();
+
+        attr.Should().NotBeNull();
+        attr!.Type.Should().Be("OpenDsc.Windows/ScheduledTask");
+        attr.Version.ToString().Should().NotBeNullOrEmpty();
+    }
+
     [WindowsOnlyFact]
     public void Get_NonExistentTask_ReturnsExistFalse()
     {

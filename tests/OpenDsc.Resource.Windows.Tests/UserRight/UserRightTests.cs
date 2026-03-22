@@ -200,4 +200,28 @@ public sealed class UserRightTests
         results.Should().NotBeEmpty();
         results.All(r => !string.IsNullOrWhiteSpace(r.Principal)).Should().BeTrue();
     }
+
+    [RequiresAdminFact]
+    public void Get_PrincipalWithNoMatchingRights_ReturnsEmptyRights()
+    {
+        var userName = CreateUserName();
+        const OpenDsc.Resource.Windows.UserRight.UserRight right = OpenDsc.Resource.Windows.UserRight.UserRight.SeShutdownPrivilege;
+
+        try
+        {
+            CreateLocalUser(userName);
+
+            var result = _resource.Get(new UserRightSchema
+            {
+                Principal = userName,
+                Rights = new[] { right }
+            });
+
+            result.Rights.Should().NotContain(right);
+        }
+        finally
+        {
+            DeleteLocalUser(userName);
+        }
+    }
 }

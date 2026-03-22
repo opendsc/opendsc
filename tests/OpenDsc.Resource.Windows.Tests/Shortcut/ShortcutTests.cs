@@ -144,4 +144,123 @@ public sealed class ShortcutTests
         var result = _resource.Get(new ShortcutSchema { Path = shortcutPath });
         result.Exist.Should().BeFalse();
     }
+
+    [WindowsOnlyFact]
+    public void Delete_NonExistentShortcut_DoesNotThrow()
+    {
+        var shortcutPath = Path.Combine(Path.GetTempPath(), $"nonexistent_{Guid.NewGuid():N}.lnk");
+
+        var act = () => _resource.Delete(new ShortcutSchema { Path = shortcutPath });
+
+        act.Should().NotThrow();
+    }
+
+    [WindowsOnlyFact]
+    public void Set_ShortcutWithArguments_StoresArguments()
+    {
+        var shortcutPath = Path.Combine(Path.GetTempPath(), $"shortcut_args_{Guid.NewGuid():N}.lnk");
+        var targetPath = Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.Windows), "System32", "notepad.exe");
+
+        try
+        {
+            _resource.Set(new ShortcutSchema
+            {
+                Path = shortcutPath,
+                TargetPath = targetPath,
+                Arguments = "/arg1 /arg2"
+            });
+
+            var actual = _resource.Get(new ShortcutSchema { Path = shortcutPath });
+
+            actual.Arguments.Should().Be("/arg1 /arg2");
+        }
+        finally
+        {
+            if (File.Exists(shortcutPath))
+            {
+                File.Delete(shortcutPath);
+            }
+        }
+    }
+
+    [WindowsOnlyFact]
+    public void Set_ShortcutWithWorkingDirectory_StoresWorkingDirectory()
+    {
+        var shortcutPath = Path.Combine(Path.GetTempPath(), $"shortcut_wd_{Guid.NewGuid():N}.lnk");
+        var targetPath = Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.Windows), "System32", "notepad.exe");
+        var workingDir = System.Environment.GetFolderPath(System.Environment.SpecialFolder.Windows);
+
+        try
+        {
+            _resource.Set(new ShortcutSchema
+            {
+                Path = shortcutPath,
+                TargetPath = targetPath,
+                WorkingDirectory = workingDir
+            });
+
+            var actual = _resource.Get(new ShortcutSchema { Path = shortcutPath });
+
+            actual.WorkingDirectory.Should().NotBeNullOrEmpty();
+            actual.WorkingDirectory!.Equals(workingDir, StringComparison.OrdinalIgnoreCase).Should().BeTrue();
+        }
+        finally
+        {
+            if (File.Exists(shortcutPath))
+            {
+                File.Delete(shortcutPath);
+            }
+        }
+    }
+
+    [WindowsOnlyFact]
+    public void Set_InvalidDirectory_ThrowsDirectoryNotFoundException()
+    {
+        var shortcutPath = Path.Combine(Path.GetTempPath(), $"nonexistent_dir_{Guid.NewGuid():N}", "shortcut.lnk");
+        var targetPath = Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.Windows), "System32", "notepad.exe");
+
+        var act = () => _resource.Set(new ShortcutSchema
+        {
+            Path = shortcutPath,
+            TargetPath = targetPath
+        });
+
+        act.Should().Throw<DirectoryNotFoundException>();
+    }
+
+    [WindowsOnlyFact]
+    public void Get_ExistingShortcut_ReturnsAllProperties()
+    {
+        var shortcutPath = Path.Combine(Path.GetTempPath(), $"shortcut_allprops_{Guid.NewGuid():N}.lnk");
+        var targetPath = Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.Windows), "System32", "notepad.exe");
+        var workingDir = System.Environment.GetFolderPath(System.Environment.SpecialFolder.Windows);
+
+        try
+        {
+            _resource.Set(new ShortcutSchema
+            {
+                Path = shortcutPath,
+                TargetPath = targetPath,
+                Arguments = "/test",
+                WorkingDirectory = workingDir,
+                Description = "All properties test"
+            });
+
+            var actual = _resource.Get(new ShortcutSchema { Path = shortcutPath });
+
+            actual.Path.Should().Be(shortcutPath);
+            actual.TargetPath.Should().NotBeNullOrEmpty();
+            actual.Arguments.Should().Be("/test");
+            actual.WorkingDirectory.Should().NotBeNullOrEmpty();
+            actual.Description.Should().Be("All properties test");
+            actual.Exist.Should().BeNull();
+        }
+        finally
+        {
+            if (File.Exists(shortcutPath))
+            {
+                File.Delete(shortcutPath);
+            }
+        }
+    }
 }

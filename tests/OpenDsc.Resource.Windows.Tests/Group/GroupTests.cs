@@ -253,4 +253,14 @@ public sealed class GroupTests
             _resource.Delete(new GroupSchema { GroupName = groupName });
         }
     }
+
+    [WindowsOnlyFact]
+    public void Delete_NonExistentGroup_DoesNotThrow()
+    {
+        var groupName = "NonExistGroup_DSC_99";
+
+        var act = () => _resource.Delete(new GroupSchema { GroupName = groupName });
+
+        act.Should().NotThrow();
+    }
 }

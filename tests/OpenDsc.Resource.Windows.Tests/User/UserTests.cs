@@ -186,4 +186,201 @@ public sealed class UserTests
             _resource.Delete(new UserSchema { UserName = userName });
         }
     }
+
+    [WindowsOnlyFact]
+    public void Set_NewUser_WithoutPassword_ThrowsArgumentException()
+    {
+        var userName = CreateUserName();
+
+        var act = () => _resource.Set(new UserSchema { UserName = userName });
+
+        act.Should().Throw<ArgumentException>().WithMessage("*Password*");
+    }
+
+    [WindowsOnlyFact]
+    public void Delete_NonExistentUser_DoesNotThrow()
+    {
+        var act = () => _resource.Delete(new UserSchema { UserName = "NonExistUser_DSC_DoesNotExist" });
+
+        act.Should().NotThrow();
+    }
+
+    [RequiresAdminFact]
+    public void Get_ExistingUser_ReturnsAllProperties()
+    {
+        var userName = CreateUserName();
+
+        try
+        {
+            _resource.Set(new UserSchema
+            {
+                UserName = userName,
+                Password = "P@ssw0rd!123",
+                FullName = "Full Name Test",
+                Description = "Description Test",
+                Disabled = false,
+                PasswordNeverExpires = true,
+                UserMayNotChangePassword = false
+            });
+
+            var result = _resource.Get(new UserSchema { UserName = userName });
+
+            result.UserName.Should().Be(userName);
+            result.FullName.Should().Be("Full Name Test");
+            result.Description.Should().Be("Description Test");
+            result.Disabled.Should().BeFalse();
+            result.PasswordNeverExpires.Should().BeTrue();
+            result.UserMayNotChangePassword.Should().BeFalse();
+        }
+        finally
+        {
+            _resource.Delete(new UserSchema { UserName = userName });
+        }
+    }
+
+    [RequiresAdminFact]
+    public void Set_ExistingUser_UpdatesFullName()
+    {
+        var userName = CreateUserName();
+
+        try
+        {
+            _resource.Set(new UserSchema
+            {
+                UserName = userName,
+                Password = "P@ssw0rd!123",
+                FullName = "Original Name"
+            });
+
+            _resource.Set(new UserSchema
+            {
+                UserName = userName,
+                FullName = "Updated Name"
+            });
+
+            var result = _resource.Get(new UserSchema { UserName = userName });
+
+            result.FullName.Should().Be("Updated Name");
+        }
+        finally
+        {
+            _resource.Delete(new UserSchema { UserName = userName });
+        }
+    }
+
+    [RequiresAdminFact]
+    public void Set_ExistingUser_UpdatesPassword()
+    {
+        var userName = CreateUserName();
+
+        try
+        {
+            _resource.Set(new UserSchema
+            {
+                UserName = userName,
+                Password = "P@ssw0rd!123",
+                FullName = "Password Update Test"
+            });
+
+            var act = () => _resource.Set(new UserSchema
+            {
+                UserName = userName,
+                Password = "NewP@ssw0rd!456"
+            });
+
+            act.Should().NotThrow();
+        }
+        finally
+        {
+            _resource.Delete(new UserSchema { UserName = userName });
+        }
+    }
+
+    [RequiresAdminFact]
+    public void Set_ExistingUser_SetPasswordNeverExpires()
+    {
+        var userName = CreateUserName();
+
+        try
+        {
+            _resource.Set(new UserSchema
+            {
+                UserName = userName,
+                Password = "P@ssw0rd!123"
+            });
+
+            _resource.Set(new UserSchema
+            {
+                UserName = userName,
+                PasswordNeverExpires = true
+            });
+
+            var result = _resource.Get(new UserSchema { UserName = userName });
+
+            result.PasswordNeverExpires.Should().BeTrue();
+        }
+        finally
+        {
+            _resource.Delete(new UserSchema { UserName = userName });
+        }
+    }
+
+    [RequiresAdminFact]
+    public void Set_ExistingUser_SetUserMayNotChangePassword()
+    {
+        var userName = CreateUserName();
+
+        try
+        {
+            _resource.Set(new UserSchema
+            {
+                UserName = userName,
+                Password = "P@ssw0rd!123"
+            });
+
+            _resource.Set(new UserSchema
+            {
+                UserName = userName,
+                UserMayNotChangePassword = true
+            });
+
+            var result = _resource.Get(new UserSchema { UserName = userName });
+
+            result.UserMayNotChangePassword.Should().BeTrue();
+        }
+        finally
+        {
+            _resource.Delete(new UserSchema { UserName = userName });
+        }
+    }
+
+    [RequiresAdminFact]
+    public void Set_ExistingUser_ReenableAccount()
+    {
+        var userName = CreateUserName();
+
+        try
+        {
+            _resource.Set(new UserSchema
+            {
+                UserName = userName,
+                Password = "P@ssw0rd!123",
+                Disabled = true
+            });
+
+            _resource.Set(new UserSchema
+            {
+                UserName = userName,
+                Disabled = false
+            });
+
+            var result = _resource.Get(new UserSchema { UserName = userName });
+
+            result.Disabled.Should().BeFalse();
+        }
+        finally
+        {
+            _resource.Delete(new UserSchema { UserName = userName });
+        }
+    }
 }

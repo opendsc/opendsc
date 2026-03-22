@@ -158,4 +158,110 @@ public sealed class ValueTests
             File.Delete(tempFile);
         }
     }
+
+    [Fact]
+    public void Set_ExistingValue_UpdatesValue()
+    {
+        var tempFile = Path.Combine(Path.GetTempPath(), $"jsonvalue_{Guid.NewGuid():N}.json");
+        File.WriteAllText(tempFile, "{ \"config\": { \"name\": \"original\" } }", System.Text.Encoding.UTF8);
+
+        try
+        {
+            _resource.Set(new ValueSchema { Path = tempFile, JsonPath = "$.config.name", Value = JsonDocument.Parse("\"updated\"").RootElement });
+
+            var result = _resource.Get(new ValueSchema { Path = tempFile, JsonPath = "$.config.name" });
+            result.Value?.GetString().Should().Be("updated");
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public void Set_NestedPath_CreatesParentNodes()
+    {
+        var tempFile = Path.Combine(Path.GetTempPath(), $"jsonvalue_{Guid.NewGuid():N}.json");
+        File.WriteAllText(tempFile, "{ }", System.Text.Encoding.UTF8);
+
+        try
+        {
+            _resource.Set(new ValueSchema { Path = tempFile, JsonPath = "$.a.b.c", Value = JsonDocument.Parse("\"deep\"").RootElement });
+
+            var result = _resource.Get(new ValueSchema { Path = tempFile, JsonPath = "$.a.b.c" });
+            result.Value?.GetString().Should().Be("deep");
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public void Set_ObjectValue_CreatesObject()
+    {
+        var tempFile = Path.Combine(Path.GetTempPath(), $"jsonvalue_{Guid.NewGuid():N}.json");
+        File.WriteAllText(tempFile, "{ \"config\": {} }", System.Text.Encoding.UTF8);
+
+        try
+        {
+            _resource.Set(new ValueSchema { Path = tempFile, JsonPath = "$.config.db", Value = JsonDocument.Parse("{ \"host\": \"localhost\", \"port\": 5432 }").RootElement });
+
+            var parsed = JsonDocument.Parse(File.ReadAllText(tempFile));
+            parsed.RootElement.GetProperty("config").GetProperty("db").GetProperty("host").GetString().Should().Be("localhost");
+            parsed.RootElement.GetProperty("config").GetProperty("db").GetProperty("port").GetInt32().Should().Be(5432);
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public void Set_BooleanValue_CreatesTrue()
+    {
+        var tempFile = Path.Combine(Path.GetTempPath(), $"jsonvalue_{Guid.NewGuid():N}.json");
+        File.WriteAllText(tempFile, "{ \"config\": {} }", System.Text.Encoding.UTF8);
+
+        try
+        {
+            _resource.Set(new ValueSchema { Path = tempFile, JsonPath = "$.config.enabled", Value = JsonDocument.Parse("true").RootElement });
+
+            var parsed = JsonDocument.Parse(File.ReadAllText(tempFile));
+            parsed.RootElement.GetProperty("config").GetProperty("enabled").GetBoolean().Should().BeTrue();
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public void Set_NullValue_CreatesJsonNull()
+    {
+        var tempFile = Path.Combine(Path.GetTempPath(), $"jsonvalue_{Guid.NewGuid():N}.json");
+        File.WriteAllText(tempFile, "{ \"config\": {} }", System.Text.Encoding.UTF8);
+
+        try
+        {
+            _resource.Set(new ValueSchema { Path = tempFile, JsonPath = "$.config.value", Value = JsonDocument.Parse("null").RootElement });
+
+            var parsed = JsonDocument.Parse(File.ReadAllText(tempFile));
+            parsed.RootElement.GetProperty("config").GetProperty("value").ValueKind.Should().Be(JsonValueKind.Null);
+        }
+        finally
+        {
+            File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public void Delete_NonExistentFile_DoesNotThrow()
+    {
+        var tempFile = Path.Combine(Path.GetTempPath(), $"nonexistent_{Guid.NewGuid():N}.json");
+
+        var act = () => _resource.Delete(new ValueSchema { Path = tempFile, JsonPath = "$.config.value", Exist = false });
+
+        act.Should().NotThrow();
+    }
 }

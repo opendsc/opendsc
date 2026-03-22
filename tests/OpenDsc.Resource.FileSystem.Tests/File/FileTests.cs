@@ -126,4 +126,40 @@ public sealed class FileTests
 
         act.Should().NotThrow();
     }
+
+    [Fact]
+    public void Set_NullContent_ExistingFile_DoesNotOverwrite()
+    {
+        var tempFile = Path.Combine(Path.GetTempPath(), $"null_content_existing_{Guid.NewGuid():N}.txt");
+        System.IO.File.WriteAllText(tempFile, "keep this");
+
+        try
+        {
+            _resource.Set(new FileSchema { Path = tempFile, Content = null });
+
+            System.IO.File.ReadAllText(tempFile).Should().Be("keep this");
+        }
+        finally
+        {
+            System.IO.File.Delete(tempFile);
+        }
+    }
+
+    [Fact]
+    public void Set_NullContent_NewFile_CreatesEmptyFile()
+    {
+        var tempFile = Path.Combine(Path.GetTempPath(), $"null_content_new_{Guid.NewGuid():N}.txt");
+
+        try
+        {
+            _resource.Set(new FileSchema { Path = tempFile, Content = null });
+
+            System.IO.File.Exists(tempFile).Should().BeTrue();
+            System.IO.File.ReadAllText(tempFile).Should().BeEmpty();
+        }
+        finally
+        {
+            System.IO.File.Delete(tempFile);
+        }
+    }
 }

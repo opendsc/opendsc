@@ -163,4 +163,116 @@ public sealed class DirectoryTests
 
         act.Should().NotThrow();
     }
+
+    [Fact]
+    public void Test_ExistingDirectory_NoSourcePath_InDesiredState()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"test_existing_{Guid.NewGuid():N}");
+        System.IO.Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            var result = _resource.Test(new DirectorySchema { Path = tempDir });
+
+            result.ActualState.InDesiredState.Should().BeTrue();
+        }
+        finally
+        {
+            System.IO.Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Test_NonExistentDirectory_NotInDesiredState()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"test_nonexistent_{Guid.NewGuid():N}");
+
+        var result = _resource.Test(new DirectorySchema { Path = tempDir });
+
+        result.ActualState.InDesiredState.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Test_DirectoryWithSourcePath_MatchesSource_InDesiredState()
+    {
+        var sourceDir = Path.Combine(Path.GetTempPath(), $"test_source_{Guid.NewGuid():N}");
+        var targetDir = Path.Combine(Path.GetTempPath(), $"test_target_{Guid.NewGuid():N}");
+        var filePath = Path.Combine(sourceDir, "file.txt");
+
+        System.IO.Directory.CreateDirectory(sourceDir);
+        System.IO.File.WriteAllText(filePath, "hello");
+        _resource.Set(new DirectorySchema { Path = targetDir, SourcePath = sourceDir });
+
+        try
+        {
+            var result = _resource.Test(new DirectorySchema { Path = targetDir, SourcePath = sourceDir });
+
+            result.ActualState.InDesiredState.Should().BeTrue();
+        }
+        finally
+        {
+            if (System.IO.Directory.Exists(sourceDir))
+            {
+                System.IO.Directory.Delete(sourceDir, recursive: true);
+            }
+
+            if (System.IO.Directory.Exists(targetDir))
+            {
+                System.IO.Directory.Delete(targetDir, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void Test_DirectoryWithSourcePath_OutOfSync_NotInDesiredState()
+    {
+        var sourceDir = Path.Combine(Path.GetTempPath(), $"test_source_oos_{Guid.NewGuid():N}");
+        var targetDir = Path.Combine(Path.GetTempPath(), $"test_target_oos_{Guid.NewGuid():N}");
+
+        System.IO.Directory.CreateDirectory(sourceDir);
+        System.IO.File.WriteAllText(Path.Combine(sourceDir, "a.txt"), "original");
+        _resource.Set(new DirectorySchema { Path = targetDir, SourcePath = sourceDir });
+
+        System.IO.File.WriteAllText(Path.Combine(sourceDir, "b.txt"), "extra");
+
+        try
+        {
+            var result = _resource.Test(new DirectorySchema { Path = targetDir, SourcePath = sourceDir });
+
+            result.ActualState.InDesiredState.Should().BeFalse();
+        }
+        finally
+        {
+            if (System.IO.Directory.Exists(sourceDir))
+            {
+                System.IO.Directory.Delete(sourceDir, recursive: true);
+            }
+
+            if (System.IO.Directory.Exists(targetDir))
+            {
+                System.IO.Directory.Delete(targetDir, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void Set_NonExistentSourcePath_ThrowsIOException()
+    {
+        var targetDir = Path.Combine(Path.GetTempPath(), $"set_missing_src_{Guid.NewGuid():N}");
+        var sourceDir = Path.Combine(Path.GetTempPath(), $"nonexistent_src_{Guid.NewGuid():N}");
+
+        try
+        {
+            var act = () => _resource.Set(new DirectorySchema { Path = targetDir, SourcePath = sourceDir });
+
+            act.Should().Throw<IOException>();
+        }
+        finally
+        {
+            if (System.IO.Directory.Exists(targetDir))
+            {
+                System.IO.Directory.Delete(targetDir, recursive: true);
+            }
+        }
+    }
 }

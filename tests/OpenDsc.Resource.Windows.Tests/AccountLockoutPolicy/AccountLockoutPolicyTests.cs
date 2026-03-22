@@ -126,4 +126,17 @@ public sealed class AccountLockoutPolicyTests
             });
         }
     }
+
+    [RequiresAdminFact]
+    public void Set_ObservationWindowExceedsDuration_ThrowsArgumentException()
+    {
+        var act = () => _resource.Set(new AccountLockoutPolicySchema
+        {
+            LockoutThreshold = 5,
+            LockoutDurationMinutes = 10,
+            LockoutObservationWindowMinutes = 20
+        });
+
+        act.Should().Throw<ArgumentException>();
+    }
 }
