@@ -44,7 +44,7 @@ public sealed class UserTests
         attr.Version.ToString().Should().NotBeNullOrEmpty();
     }
 
-    [WindowsOnlyFact]
+    [Fact]
     public void Get_NonExistentUser_ReturnsExistFalse()
     {
         var userName = "NonExistUser_12345_UnitTest";
@@ -187,7 +187,7 @@ public sealed class UserTests
         }
     }
 
-    [WindowsOnlyFact]
+    [Fact]
     public void Set_NewUser_WithoutPassword_ThrowsArgumentException()
     {
         var userName = CreateUserName();
@@ -197,7 +197,7 @@ public sealed class UserTests
         act.Should().Throw<ArgumentException>().WithMessage("*Password*");
     }
 
-    [WindowsOnlyFact]
+    [Fact]
     public void Delete_NonExistentUser_DoesNotThrow()
     {
         var act = () => _resource.Delete(new UserSchema { UserName = "NonExistUser_DSC_DoesNotExist" });

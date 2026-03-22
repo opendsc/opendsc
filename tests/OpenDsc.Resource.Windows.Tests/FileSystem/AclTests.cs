@@ -44,7 +44,7 @@ public sealed class AclTests
         attr.Version!.ToString().Should().NotBeNullOrWhiteSpace();
     }
 
-    [WindowsOnlyFact]
+    [Fact]
     public void Get_NonExistentPath_ThrowsFileNotFoundException()
     {
         var resource = CreateResource();
@@ -53,7 +53,7 @@ public sealed class AclTests
         Assert.Throws<FileNotFoundException>(() => resource.Get(new DscSchema { Path = path }));
     }
 
-    [WindowsOnlyFact]
+    [Fact]
     public void Get_ExistingFile_ReturnsAcl()
     {
         var path = Path.Combine(Path.GetTempPath(), "DscAclTest_" + Guid.NewGuid() + ".txt");

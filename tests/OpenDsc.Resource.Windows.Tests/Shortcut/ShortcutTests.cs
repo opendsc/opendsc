@@ -43,7 +43,7 @@ public sealed class ShortcutTests
         attr.Version.ToString().Should().NotBeNullOrEmpty();
     }
 
-    [WindowsOnlyFact]
+    [Fact]
     public void Get_NonExistentShortcut_ReturnsExistFalse()
     {
         var shortcutPath = Path.Combine(Path.GetTempPath(), $"nonexistent_{Guid.NewGuid():N}.lnk");
@@ -54,7 +54,7 @@ public sealed class ShortcutTests
         result.Path.Should().Be(shortcutPath);
     }
 
-    [WindowsOnlyFact]
+    [Fact]
     public void Set_NewShortcut_CreatesLnkFile()
     {
         var shortcutPath = Path.Combine(Path.GetTempPath(), $"shortcut_{Guid.NewGuid():N}.lnk");
@@ -87,7 +87,7 @@ public sealed class ShortcutTests
         }
     }
 
-    [WindowsOnlyFact]
+    [Fact]
     public void Set_ExistingShortcut_UpdatesTarget()
     {
         var shortcutPath = Path.Combine(Path.GetTempPath(), $"shortcut_{Guid.NewGuid():N}.lnk");
@@ -125,7 +125,7 @@ public sealed class ShortcutTests
         }
     }
 
-    [WindowsOnlyFact]
+    [Fact]
     public void Delete_ExistingShortcut_RemovesFile()
     {
         var shortcutPath = Path.Combine(Path.GetTempPath(), $"shortcut_{Guid.NewGuid():N}.lnk");
@@ -145,7 +145,7 @@ public sealed class ShortcutTests
         result.Exist.Should().BeFalse();
     }
 
-    [WindowsOnlyFact]
+    [Fact]
     public void Delete_NonExistentShortcut_DoesNotThrow()
     {
         var shortcutPath = Path.Combine(Path.GetTempPath(), $"nonexistent_{Guid.NewGuid():N}.lnk");
@@ -155,7 +155,7 @@ public sealed class ShortcutTests
         act.Should().NotThrow();
     }
 
-    [WindowsOnlyFact]
+    [Fact]
     public void Set_ShortcutWithArguments_StoresArguments()
     {
         var shortcutPath = Path.Combine(Path.GetTempPath(), $"shortcut_args_{Guid.NewGuid():N}.lnk");
@@ -183,7 +183,7 @@ public sealed class ShortcutTests
         }
     }
 
-    [WindowsOnlyFact]
+    [Fact]
     public void Set_ShortcutWithWorkingDirectory_StoresWorkingDirectory()
     {
         var shortcutPath = Path.Combine(Path.GetTempPath(), $"shortcut_wd_{Guid.NewGuid():N}.lnk");
@@ -213,7 +213,7 @@ public sealed class ShortcutTests
         }
     }
 
-    [WindowsOnlyFact]
+    [Fact]
     public void Set_InvalidDirectory_ThrowsDirectoryNotFoundException()
     {
         var shortcutPath = Path.Combine(Path.GetTempPath(), $"nonexistent_dir_{Guid.NewGuid():N}", "shortcut.lnk");
@@ -228,7 +228,7 @@ public sealed class ShortcutTests
         act.Should().Throw<DirectoryNotFoundException>();
     }
 
-    [WindowsOnlyFact]
+    [Fact]
     public void Get_ExistingShortcut_ReturnsAllProperties()
     {
         var shortcutPath = Path.Combine(Path.GetTempPath(), $"shortcut_allprops_{Guid.NewGuid():N}.lnk");

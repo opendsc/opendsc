@@ -41,7 +41,7 @@ public sealed class AccountLockoutPolicyTests
         attr.Version.ToString().Should().NotBeNullOrEmpty();
     }
 
-    [WindowsOnlyFact]
+    [Fact]
     public void Get_CurrentPolicy_ReturnsValidPolicy()
     {
         var result = _resource.Get(new AccountLockoutPolicySchema());

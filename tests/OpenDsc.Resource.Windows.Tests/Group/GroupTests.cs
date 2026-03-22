@@ -88,7 +88,7 @@ public sealed class GroupTests
         attr.Version.ToString().Should().NotBeNullOrEmpty();
     }
 
-    [WindowsOnlyFact]
+    [Fact]
     public void Get_NonExistentGroup_ReturnsExistFalse()
     {
         var groupName = "NonExistGroup_12345_UnitTest";
@@ -99,7 +99,7 @@ public sealed class GroupTests
         result.GroupName.Should().Be(groupName);
     }
 
-    [WindowsOnlyFact]
+    [Fact]
     public void Get_BuiltInAdministratorsGroup_ReturnsGroup()
     {
         var result = _resource.Get(new GroupSchema { GroupName = "Administrators" });
@@ -254,7 +254,7 @@ public sealed class GroupTests
         }
     }
 
-    [WindowsOnlyFact]
+    [Fact]
     public void Delete_NonExistentGroup_DoesNotThrow()
     {
         var groupName = "NonExistGroup_DSC_99";

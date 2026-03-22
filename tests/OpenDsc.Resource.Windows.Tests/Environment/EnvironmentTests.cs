@@ -42,7 +42,7 @@ public sealed class EnvironmentTests
         attr.Version.ToString().Should().NotBeNullOrEmpty();
     }
 
-    [WindowsOnlyFact]
+    [Fact]
     public void Get_NonExistentVariable_ReturnsExistFalse()
     {
         var schema = new EnvironmentSchema { Name = "NonExistentVariable_12345_XYZ" };
@@ -53,7 +53,7 @@ public sealed class EnvironmentTests
         result.Name.Should().Be("NonExistentVariable_12345_XYZ");
     }
 
-    [WindowsOnlyFact]
+    [Fact]
     public void Get_ExistingUserVariable_ReturnsValue()
     {
         SysEnv.SetEnvironmentVariable("TestVar_GetExisting_XUnit", "TestValue_GetExisting", EnvironmentVariableTarget.User);
@@ -72,7 +72,7 @@ public sealed class EnvironmentTests
         }
     }
 
-    [WindowsOnlyFact]
+    [Fact]
     public void Get_MachineScopedVariable_ReturnsValue()
     {
         var machineVars = SysEnv.GetEnvironmentVariables(EnvironmentVariableTarget.Machine);
@@ -96,7 +96,7 @@ public sealed class EnvironmentTests
         result.Scope.Should().Be(DscScope.Machine);
     }
 
-    [WindowsOnlyFact]
+    [Fact]
     public void Set_NewUserVariable_CreatesVariable()
     {
         var schema = new EnvironmentSchema { Name = "TestVar_SetCreate_XUnit", Value = "TestValue123" };
@@ -114,7 +114,7 @@ public sealed class EnvironmentTests
         }
     }
 
-    [WindowsOnlyFact]
+    [Fact]
     public void Set_ExistingUserVariable_UpdatesValue()
     {
         SysEnv.SetEnvironmentVariable("TestVar_SetUpdate_XUnit", "OriginalValue", EnvironmentVariableTarget.User);
@@ -132,7 +132,7 @@ public sealed class EnvironmentTests
         }
     }
 
-    [WindowsOnlyFact]
+    [Fact]
     public void Set_VariableWithSpecialCharacters_SavesCorrectly()
     {
         const string value = @"C:\Path\With Spaces;D:\Another\Path";
@@ -151,7 +151,7 @@ public sealed class EnvironmentTests
         }
     }
 
-    [WindowsOnlyFact]
+    [Fact]
     public void Set_NullValue_ThrowsArgumentException()
     {
         var schema = new EnvironmentSchema { Name = "TestVar_SetNull_XUnit", Value = null };
@@ -161,7 +161,7 @@ public sealed class EnvironmentTests
         act.Should().Throw<ArgumentException>();
     }
 
-    [WindowsOnlyFact]
+    [Fact]
     public void Delete_ExistingVariable_RemovesVariable()
     {
         SysEnv.SetEnvironmentVariable("TestVar_Delete_XUnit", "ToBeDeleted", EnvironmentVariableTarget.User);
@@ -179,7 +179,7 @@ public sealed class EnvironmentTests
         }
     }
 
-    [WindowsOnlyFact]
+    [Fact]
     public void Delete_NonExistentVariable_DoesNotThrow()
     {
         var act = () => _resource.Delete(new EnvironmentSchema { Name = "NonExistentVar_Delete_XUnit" });
@@ -187,7 +187,7 @@ public sealed class EnvironmentTests
         act.Should().NotThrow();
     }
 
-    [WindowsOnlyFact]
+    [Fact]
     public void Export_ReturnsAllVariables()
     {
         var results = _resource.Export(null).ToList();
@@ -196,7 +196,7 @@ public sealed class EnvironmentTests
         results.Should().AllSatisfy(r => r.Name.Should().NotBeNull());
     }
 
-    [WindowsOnlyFact]
+    [Fact]
     public void Export_IncludesMachineScopedVariables()
     {
         var results = _resource.Export(null).ToList();

@@ -71,7 +71,7 @@ public sealed class ScheduledTaskTests
         attr.Version.ToString().Should().NotBeNullOrEmpty();
     }
 
-    [WindowsOnlyFact]
+    [Fact]
     public void Get_NonExistentTask_ReturnsExistFalse()
     {
         var taskName = $"opendsc-scheduledtask-{Guid.NewGuid():N}";

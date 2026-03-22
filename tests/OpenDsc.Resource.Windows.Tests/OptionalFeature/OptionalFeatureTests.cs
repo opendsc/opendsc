@@ -54,7 +54,7 @@ public sealed class OptionalFeatureTests
         attr.Version.ToString().Should().NotBeNullOrEmpty();
     }
 
-    [WindowsOnlyFact]
+    [Fact]
     public void Get_NonExistentFeature_ReturnsExistFalse()
     {
         if (!IsDismAvailable())
@@ -70,7 +70,7 @@ public sealed class OptionalFeatureTests
         result.Name.Should().Be("NonExistentFeature_12345_XYZ");
     }
 
-    [WindowsOnlyFact]
+    [Fact]
     public void Get_ExistingFeature_ReturnsState()
     {
         if (!IsDismAvailable())
@@ -90,7 +90,7 @@ public sealed class OptionalFeatureTests
         result.Description.Should().NotBeNull();
     }
 
-    [WindowsOnlyFact]
+    [Fact]
     public void Export_NoFilter_ReturnsFeatures()
     {
         if (!IsDismAvailable())

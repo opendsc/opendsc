@@ -44,7 +44,7 @@ public sealed class ServiceTests
         attr.Version.ToString().Should().NotBeNullOrEmpty();
     }
 
-    [WindowsOnlyFact]
+    [Fact]
     public void Get_NonExistentService_ReturnsExistFalse()
     {
         var schema = new ServiceSchema { Name = "NonExistentService_12345" };
@@ -55,7 +55,7 @@ public sealed class ServiceTests
         result.Name.Should().Be("NonExistentService_12345");
     }
 
-    [WindowsOnlyFact]
+    [Fact]
     public void Get_ExistingBuiltinService_ReturnsState()
     {
         var schema = new ServiceSchema { Name = "Spooler" };
@@ -69,7 +69,7 @@ public sealed class ServiceTests
         result.StartType.Should().NotBeNull();
     }
 
-    [WindowsOnlyFact]
+    [Fact]
     public void Export_NoFilter_ReturnsServices()
     {
         var results = _resource.Export(null).ToList();
@@ -210,7 +210,7 @@ public sealed class ServiceTests
         act.Should().Throw<ArgumentException>().WithMessage("*Invalid service start type*");
     }
 
-    [WindowsOnlyFact]
+    [Fact]
     public void Set_NewService_WithoutPath_ThrowsArgumentException()
     {
         var serviceName = $"DscTestService_{Guid.NewGuid():N}";
@@ -224,7 +224,7 @@ public sealed class ServiceTests
         act.Should().Throw<ArgumentException>().WithMessage("*Path*");
     }
 
-    [WindowsOnlyFact]
+    [Fact]
     public void Set_NewService_WithoutStartType_ThrowsArgumentException()
     {
         var serviceName = $"DscTestService_{Guid.NewGuid():N}";
