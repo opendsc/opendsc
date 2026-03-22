@@ -7,8 +7,6 @@ using System.Text.Json;
 
 using AwesomeAssertions;
 
-using OpenDsc.Schema;
-
 using Xunit;
 
 using AccountLockoutPolicyResource = OpenDsc.Resource.Windows.AccountLockoutPolicy.Resource;

@@ -2,19 +2,15 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
-using System;
-using System.IO;
-using System.Linq;
-
 using AwesomeAssertions;
 
 using Xunit;
 
+using Action = OpenDsc.Resource.Windows.ScheduledTask.Action;
+using LogonTriggerConfig = OpenDsc.Resource.Windows.ScheduledTask.LogonTriggerConfig;
 using ScheduledTaskResource = OpenDsc.Resource.Windows.ScheduledTask.Resource;
 using ScheduledTaskSchema = OpenDsc.Resource.Windows.ScheduledTask.Schema;
 using Trigger = OpenDsc.Resource.Windows.ScheduledTask.Trigger;
-using LogonTriggerConfig = OpenDsc.Resource.Windows.ScheduledTask.LogonTriggerConfig;
-using Action = OpenDsc.Resource.Windows.ScheduledTask.Action;
 
 namespace OpenDsc.Resource.Windows.Tests.ScheduledTask;
 

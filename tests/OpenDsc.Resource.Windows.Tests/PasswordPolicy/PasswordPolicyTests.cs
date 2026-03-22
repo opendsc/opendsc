@@ -7,8 +7,6 @@ using System.Text.Json;
 
 using AwesomeAssertions;
 
-using OpenDsc.Schema;
-
 using Xunit;
 
 using PasswordPolicyResource = OpenDsc.Resource.Windows.PasswordPolicy.Resource;

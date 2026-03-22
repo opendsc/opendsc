@@ -2,7 +2,6 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
-using System.IO;
 using System.Reflection;
 using System.Security.Principal;
 using System.Text.Json;
@@ -10,7 +9,6 @@ using System.Text.Json;
 using AwesomeAssertions;
 
 using Xunit;
-using Xunit.Sdk;
 
 using LinkResource = OpenDsc.Resource.FileSystem.SymbolicLink.Resource;
 using LinkSchema = OpenDsc.Resource.FileSystem.SymbolicLink.Schema;
@@ -65,7 +63,7 @@ public sealed class SymbolicLinkTests
         result.Path.Should().Be(tempLink);
     }
 
-    [Fact]
+    [RequiresAdminFact]
     public void Get_ExistingFileSymlink_ReturnsProperties()
     {
         if (!IsAdministrator())
@@ -104,7 +102,7 @@ public sealed class SymbolicLinkTests
         }
     }
 
-    [Fact]
+    [RequiresAdminFact]
     public void Get_ExistingDirectorySymlink_ReturnsProperties()
     {
         if (!IsAdministrator())
@@ -143,7 +141,7 @@ public sealed class SymbolicLinkTests
         }
     }
 
-    [Fact]
+    [RequiresAdminFact]
     public void Set_NewFileSymlink_CreatesLink()
     {
         if (!IsAdministrator())
@@ -180,7 +178,7 @@ public sealed class SymbolicLinkTests
         }
     }
 
-    [Fact]
+    [RequiresAdminFact]
     public void Set_NewDirectorySymlink_CreatesLink()
     {
         if (!IsAdministrator())
@@ -217,7 +215,7 @@ public sealed class SymbolicLinkTests
         }
     }
 
-    [Fact]
+    [RequiresAdminFact]
     public void Set_TargetDoesNotExist_ThrowsArgumentException()
     {
         if (!IsAdministrator())
@@ -236,7 +234,7 @@ public sealed class SymbolicLinkTests
         System.IO.Directory.Exists(link).Should().BeFalse();
     }
 
-    [Fact]
+    [RequiresAdminFact]
     public void Set_UpdateExistingSymlink_ChangesTarget()
     {
         if (!IsAdministrator())
@@ -279,7 +277,7 @@ public sealed class SymbolicLinkTests
         }
     }
 
-    [Fact]
+    [RequiresAdminFact]
     public void Delete_ExistingSymlink_RemovesLink()
     {
         if (!IsAdministrator())
@@ -306,7 +304,7 @@ public sealed class SymbolicLinkTests
         }
     }
 
-    [Fact]
+    [RequiresAdminFact]
     public void Delete_NonExistentSymlink_DoesNotThrow()
     {
         if (!IsAdministrator())

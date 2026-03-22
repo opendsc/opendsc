@@ -2,17 +2,16 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
-using System;
-using System.IO;
-using System.Linq;
 using System.Security.AccessControl;
 
 using AwesomeAssertions;
-using AclResource = OpenDsc.Resource.Windows.FileSystem.Acl.Resource;
-using AclAccessRule = OpenDsc.Resource.Windows.FileSystem.Acl.AccessRule;
-using DscSchema = OpenDsc.Resource.Windows.FileSystem.Acl.Schema;
-using DscFileSystemRights = OpenDsc.Resource.Windows.FileSystem.Acl.FileSystemRights;
+
 using Xunit;
+
+using AclAccessRule = OpenDsc.Resource.Windows.FileSystem.Acl.AccessRule;
+using AclResource = OpenDsc.Resource.Windows.FileSystem.Acl.Resource;
+using DscFileSystemRights = OpenDsc.Resource.Windows.FileSystem.Acl.FileSystemRights;
+using DscSchema = OpenDsc.Resource.Windows.FileSystem.Acl.Schema;
 
 namespace OpenDsc.Resource.Windows.Tests.FileSystem;
 

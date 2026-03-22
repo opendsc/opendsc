@@ -3,14 +3,11 @@
 // terms of the MIT license.
 
 using System.DirectoryServices.AccountManagement;
-using System.Linq;
 using System.Reflection;
 using System.Security.Principal;
 using System.Text.Json;
 
 using AwesomeAssertions;
-
-using OpenDsc.Schema;
 
 using Xunit;
 

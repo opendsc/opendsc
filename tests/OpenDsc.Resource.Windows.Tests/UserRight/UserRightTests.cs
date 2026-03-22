@@ -2,13 +2,9 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
-using System.Linq;
 using System.Reflection;
-using System.Security.Principal;
 
 using AwesomeAssertions;
-
-using OpenDsc.Schema;
 
 using Xunit;
 

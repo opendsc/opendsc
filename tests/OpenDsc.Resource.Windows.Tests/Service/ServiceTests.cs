@@ -2,15 +2,11 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
-using System.IO;
-using System.Linq;
 using System.Reflection;
 using System.ServiceProcess;
 using System.Text.Json;
 
 using AwesomeAssertions;
-
-using OpenDsc.Schema;
 
 using Xunit;
 
@@ -83,9 +79,9 @@ public sealed class ServiceTests
     {
         var testServicePath = Path.GetFullPath(Path.Combine("..", "..", "..", "..", "artifacts", "TestService", "TestService.exe"));
 
+        // Skip if test artifact is missing
         if (!File.Exists(testServicePath))
         {
-            // If test artifact is missing, skip gracefully.
             return;
         }
 
@@ -125,6 +121,7 @@ public sealed class ServiceTests
     {
         var testServicePath = Path.GetFullPath(Path.Combine("..", "..", "..", "..", "artifacts", "TestService", "TestService.exe"));
 
+        // Skip if test artifact is missing
         if (!File.Exists(testServicePath))
         {
             return;
@@ -169,6 +166,7 @@ public sealed class ServiceTests
     {
         var testServicePath = Path.GetFullPath(Path.Combine("..", "..", "..", "..", "artifacts", "TestService", "TestService.exe"));
 
+        // Skip if test artifact is missing
         if (!File.Exists(testServicePath))
         {
             return;
@@ -243,6 +241,7 @@ public sealed class ServiceTests
     {
         var testServicePath = Path.GetFullPath(Path.Combine("..", "..", "..", "..", "artifacts", "TestService", "TestService.exe"));
 
+        // Skip if test artifact is missing
         if (!File.Exists(testServicePath))
         {
             return;
@@ -280,6 +279,7 @@ public sealed class ServiceTests
     {
         var testServicePath = Path.GetFullPath(Path.Combine("..", "..", "..", "..", "artifacts", "TestService", "TestService.exe"));
 
+        // Skip if test artifact is missing
         if (!File.Exists(testServicePath))
         {
             return;

@@ -7,8 +7,6 @@ using System.Text.Json;
 
 using AwesomeAssertions;
 
-using OpenDsc.Resource.Windows.OptionalFeature;
-
 using Xunit;
 
 using OptionalFeatureResource = OpenDsc.Resource.Windows.OptionalFeature.Resource;

@@ -2,15 +2,14 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
-using System.IO;
 using System.Reflection;
+using System.Runtime.Versioning;
 using System.Text.Json;
 
 using AwesomeAssertions;
 
-using OpenDsc.Resource.Posix.FileSystem.Permission;
 using OpenDsc.Resource.Posix.Tests.Helpers;
-using System.Runtime.Versioning;
+
 using Xunit;
 
 using PermissionResource = OpenDsc.Resource.Posix.FileSystem.Permission.Resource;

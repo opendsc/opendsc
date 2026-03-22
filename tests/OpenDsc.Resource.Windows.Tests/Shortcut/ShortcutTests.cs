@@ -2,14 +2,10 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
-using System;
-using System.IO;
 using System.Reflection;
 using System.Text.Json;
 
 using AwesomeAssertions;
-
-using OpenDsc.Schema;
 
 using Xunit;
 
