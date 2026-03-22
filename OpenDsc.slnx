@@ -36,5 +36,6 @@
     <Project Path="tests/OpenDsc.Resource.FileSystem.Tests/OpenDsc.Resource.FileSystem.Tests.csproj" />
     <Project Path="tests/OpenDsc.Resource.Xml.Tests/OpenDsc.Resource.Xml.Tests.csproj" />
     <Project Path="tests/OpenDsc.Resource.Json.Tests/OpenDsc.Resource.Json.Tests.csproj" />
+    <Project Path="tests/OpenDsc.Resource.Archive.Tests/OpenDsc.Resource.Archive.Tests.csproj" />
   </Folder>
 </Solution>
