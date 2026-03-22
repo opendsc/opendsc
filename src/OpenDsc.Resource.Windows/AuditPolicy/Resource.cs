@@ -122,7 +122,7 @@ public sealed class Resource(JsonSerializerContext context)
         var guid = GetSubcategoryGuid(instance.Subcategory);
         var currentPolicy = AuditPolicyApi.QueryAuditPolicy(guid);
 
-        var desiredFlags = ConvertToAuditFlags(instance.Setting ?? AuditSetting.None);
+        var desiredFlags = ConvertToAuditFlags(instance.Setting);
 
         if (currentPolicy.AuditingInformation != desiredFlags)
         {
@@ -142,37 +142,40 @@ public sealed class Resource(JsonSerializerContext context)
         return guid;
     }
 
-    private static AuditSetting ConvertToAuditSetting(uint flags)
+    private static AuditSetting[] ConvertToAuditSetting(uint flags)
     {
-        var setting = AuditSetting.None;
+        var settings = new List<AuditSetting>();
 
         if ((flags & AuditPolicyApi.POLICY_AUDIT_EVENT_SUCCESS) != 0)
         {
-            setting |= AuditSetting.Success;
+            settings.Add(AuditSetting.Success);
         }
         if ((flags & AuditPolicyApi.POLICY_AUDIT_EVENT_FAILURE) != 0)
         {
-            setting |= AuditSetting.Failure;
+            settings.Add(AuditSetting.Failure);
         }
 
-        return setting;
+        return [.. settings];
     }
 
-    private static uint ConvertToAuditFlags(AuditSetting setting)
+    private static uint ConvertToAuditFlags(AuditSetting[]? setting)
     {
-        if (setting == AuditSetting.None)
+        if (setting is null or { Length: 0 })
         {
             return AuditPolicyApi.POLICY_AUDIT_EVENT_NONE;
         }
 
         uint flags = 0;
-        if (setting.HasFlag(AuditSetting.Success))
+        foreach (var s in setting)
         {
-            flags |= AuditPolicyApi.POLICY_AUDIT_EVENT_SUCCESS;
-        }
-        if (setting.HasFlag(AuditSetting.Failure))
-        {
-            flags |= AuditPolicyApi.POLICY_AUDIT_EVENT_FAILURE;
+            if (s == AuditSetting.Success)
+            {
+                flags |= AuditPolicyApi.POLICY_AUDIT_EVENT_SUCCESS;
+            }
+            else if (s == AuditSetting.Failure)
+            {
+                flags |= AuditPolicyApi.POLICY_AUDIT_EVENT_FAILURE;
+            }
         }
 
         return flags;
