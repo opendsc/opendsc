@@ -138,6 +138,26 @@ if (-not $SkipBuild) {
                     throw "Portable build failed for OpenDsc.Resources with exit code $LASTEXITCODE"
                 }
 
+                Write-Host 'Building self-contained portable version for OpenDsc.Server...' -ForegroundColor Cyan
+                $portableServerDir = Join-Path $portableDir 'Server'
+                New-Item -ItemType Directory -Path $portableServerDir -Force | Out-Null
+                dotnet publish $serverProj `
+                    --configuration $Configuration `
+                    --runtime win-x64 `
+                    --self-contained true `
+                    -f net10.0-windows `
+                    -p:PublishSingleFile=true `
+                    -p:IncludeNativeLibrariesForSelfExtract=true `
+                    -p:EnableCompressionInSingleFile=false `
+                    -p:DebugType=None `
+                    -p:DebugSymbols=false `
+                    -p:GenerateDocumentationFile=false `
+                    -p:CopyOutputSymbolsToPublishDirectory=false `
+                    --output $portableServerDir
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Portable build failed for OpenDsc.Server with exit code $LASTEXITCODE"
+                }
+
                 Write-Host 'Creating portable ZIP archive...' -ForegroundColor Cyan
                 $zipDir = Join-Path $PSScriptRoot 'artifacts\zip'
                 New-Item -ItemType Directory -Path $zipDir -Force | Out-Null
@@ -234,6 +254,26 @@ if (-not $SkipBuild) {
                 throw "Portable build failed for OpenDsc.Resources with exit code $LASTEXITCODE"
             }
 
+            Write-Host 'Building self-contained portable version for OpenDsc.Server (Linux)...' -ForegroundColor Cyan
+            $portableServerDir = Join-Path $portableLinuxDir 'Server'
+            New-Item -ItemType Directory -Path $portableServerDir -Force | Out-Null
+            dotnet publish $serverProj `
+                --configuration $Configuration `
+                --runtime linux-x64 `
+                --self-contained true `
+                -f net10.0 `
+                -p:PublishSingleFile=true `
+                -p:IncludeNativeLibrariesForSelfExtract=true `
+                -p:EnableCompressionInSingleFile=false `
+                -p:DebugType=None `
+                -p:DebugSymbols=false `
+                -p:GenerateDocumentationFile=false `
+                -p:CopyOutputSymbolsToPublishDirectory=false `
+                --output $portableServerDir
+            if ($LASTEXITCODE -ne 0) {
+                throw "Portable build failed for OpenDsc.Server with exit code $LASTEXITCODE"
+            }
+
             Write-Host 'Creating portable ZIP archive for Linux...' -ForegroundColor Cyan
             $zipDir = Join-Path $PSScriptRoot 'artifacts\zip'
             New-Item -ItemType Directory -Path $zipDir -Force | Out-Null
@@ -281,6 +321,26 @@ if (-not $SkipBuild) {
                 --output $portableMacDir
             if ($LASTEXITCODE -ne 0) {
                 throw "Portable build failed for OpenDsc.Resources with exit code $LASTEXITCODE"
+            }
+
+            Write-Host 'Building self-contained portable version for OpenDsc.Server (macOS)...' -ForegroundColor Cyan
+            $portableServerDir = Join-Path $portableMacDir 'Server'
+            New-Item -ItemType Directory -Path $portableServerDir -Force | Out-Null
+            dotnet publish $serverProj `
+                --configuration $Configuration `
+                --runtime osx-arm64 `
+                --self-contained true `
+                -f net10.0 `
+                -p:PublishSingleFile=true `
+                -p:IncludeNativeLibrariesForSelfExtract=true `
+                -p:EnableCompressionInSingleFile=false `
+                -p:DebugType=None `
+                -p:DebugSymbols=false `
+                -p:GenerateDocumentationFile=false `
+                -p:CopyOutputSymbolsToPublishDirectory=false `
+                --output $portableServerDir
+            if ($LASTEXITCODE -ne 0) {
+                throw "Portable build failed for OpenDsc.Server with exit code $LASTEXITCODE"
             }
 
             Write-Host 'Creating portable ZIP archive for macOS...' -ForegroundColor Cyan
