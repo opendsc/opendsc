@@ -34,6 +34,10 @@ and this project adheres to [Semantic Versioning][semver].
 - Add OpenDsc.Windows/PasswordPolicy resource (#80)
 - Add OpenDsc.Windows/AuditPolicy resource (#70)
 
+### Fixed
+
+- Fix directory resource when target directory exists (#92)
+
 ### Removed
 
 - Remove _exist property for ACL resource (#52)
