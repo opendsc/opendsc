@@ -1,6 +1,6 @@
 Describe 'Directory Resource' -Tag 'Windows', 'Linux', 'macOS' {
     BeforeAll {
-        $publishDir = Join-Path $PSScriptRoot "..\..\artifacts\publish"
+        $publishDir = Join-Path $PSScriptRoot '..\..\artifacts\publish'
         if (Test-Path $publishDir) {
             $env:DSC_RESOURCE_PATH = $publishDir
         }
@@ -22,7 +22,7 @@ Describe 'Directory Resource' -Tag 'Windows', 'Linux', 'macOS' {
             $result.capabilities | Should -Contain 'delete'
             $result.capabilities | Should -Contain 'test'
         }
-}
+    }
 
     Context 'Get Operation' -Tag 'Get' {
         It 'should return _exist=false for non-existent directory' {
@@ -67,6 +67,51 @@ Describe 'Directory Resource' -Tag 'Windows', 'Linux', 'macOS' {
             $getResult = dsc resource get -r OpenDsc.FileSystem/Directory --input $verifyJson | ConvertFrom-Json
             $getResult.actualState._exist | Should -BeNullOrEmpty
         }
+
+        It 'should reseed existing directory from source path' {
+            $sourceDir = Join-Path $TestDrive 'ReseedSource'
+            $targetDir = Join-Path $TestDrive 'ReseedTarget'
+
+            New-Item -ItemType Directory -Path $sourceDir | Out-Null
+            'foo' | Out-File (Join-Path $sourceDir 'file.txt')
+
+            New-Item -ItemType Directory -Path $targetDir | Out-Null
+            'bar' | Out-File (Join-Path $targetDir 'file.txt')
+
+            $inputJson = @{
+                path       = $targetDir
+                sourcePath = $sourceDir
+            } | ConvertTo-Json -Compress
+
+            dsc resource set -r OpenDsc.FileSystem/Directory --input $inputJson | Out-Null
+
+            Get-Content (Join-Path $targetDir 'file.txt') | Should -Be 'foo'
+            Test-Path $targetDir | Should -Be $true
+        }
+
+        It 'should not re-copy when target matches source' {
+            $sourceDir = Join-Path $TestDrive 'ReseedSourceNoOp'
+            $targetDir = Join-Path $TestDrive 'ReseedTargetNoOp'
+
+            New-Item -ItemType Directory -Path $sourceDir | Out-Null
+            'foo' | Out-File (Join-Path $sourceDir 'file.txt')
+
+            New-Item -ItemType Directory -Path $targetDir | Out-Null
+            'foo' | Out-File (Join-Path $targetDir 'file.txt')
+
+            $inputJson = @{
+                path       = $targetDir
+                sourcePath = $sourceDir
+            } | ConvertTo-Json -Compress
+
+            $initialWriteTime = (Get-Item (Join-Path $targetDir 'file.txt')).LastWriteTimeUtc
+
+            Start-Sleep -Milliseconds 100
+            dsc resource set -r OpenDsc.FileSystem/Directory --input $inputJson | Out-Null
+
+            $afterWriteTime = (Get-Item (Join-Path $targetDir 'file.txt')).LastWriteTimeUtc
+            $afterWriteTime | Should -Be $initialWriteTime
+        }
     }
 
     Context 'Delete Operation' -Tag 'Delete' {
@@ -100,7 +145,7 @@ Describe 'Directory Resource' -Tag 'Windows', 'Linux', 'macOS' {
             'sub content' | Out-File (Join-Path $sourceDir 'SubDir\file2.txt')
 
             $inputJson = @{
-                path = $targetDir
+                path       = $targetDir
                 sourcePath = $sourceDir
             } | ConvertTo-Json -Compress
 
@@ -127,7 +172,7 @@ Describe 'Directory Resource' -Tag 'Windows', 'Linux', 'macOS' {
             'modified' | Out-File (Join-Path $targetDir 'file.txt')
 
             $inputJson = @{
-                path = $targetDir
+                path       = $targetDir
                 sourcePath = $sourceDir
             } | ConvertTo-Json -Compress
 
@@ -147,7 +192,7 @@ Describe 'Directory Resource' -Tag 'Windows', 'Linux', 'macOS' {
             'extra' | Out-File (Join-Path $targetDir 'extra.txt')
 
             $inputJson = @{
-                path = $targetDir
+                path       = $targetDir
                 sourcePath = $sourceDir
             } | ConvertTo-Json -Compress
 
