@@ -75,13 +75,18 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         if (!System.IO.Directory.Exists(fullPath))
         {
             System.IO.Directory.CreateDirectory(fullPath);
-            if (!string.IsNullOrEmpty(instance.SourcePath))
+        }
+
+        if (!string.IsNullOrEmpty(instance.SourcePath))
+        {
+            var sourceFullPath = Path.GetFullPath(instance.SourcePath);
+            if (!System.IO.Directory.Exists(sourceFullPath))
             {
-                var sourceFullPath = Path.GetFullPath(instance.SourcePath);
-                if (!System.IO.Directory.Exists(sourceFullPath))
-                {
-                    throw new IOException("Source directory does not exist.");
-                }
+                throw new IOException("Source directory does not exist.");
+            }
+
+            if (!DirectoriesMatch(fullPath, sourceFullPath))
+            {
                 CopyDirectoryRecursively(sourceFullPath, fullPath);
             }
         }
