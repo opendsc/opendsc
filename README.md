@@ -50,6 +50,11 @@ managing Windows and cross-platform systems:
   (.lnk files)
 - **[OpenDsc.Windows/OptionalFeature][optionalfeature]** - Manage Windows
   optional features via DISM
+- **[OpenDsc.Windows/AccountLockoutPolicy][accountlockoutpolicy]** - Manage
+  Windows account lockout policy
+- **[OpenDsc.Windows/AuditPolicy][auditpolicy]** - Manage Windows audit policy
+- **[OpenDsc.Windows/PasswordPolicy][passwordpolicy]** - Manage Windows password
+  policy
 - **[OpenDsc.Windows.FileSystem/AccessControlList][acl]** - Manage file and
   directory permissions (ACLs)
 
@@ -65,6 +70,15 @@ managing Windows and cross-platform systems:
   Server database permissions
 - **[OpenDsc.SqlServer/ServerPermission][serverpermission]** - Manage SQL
   Server server permissions
+- **[OpenDsc.SqlServer/AgentJob][agentjob]** - Manage SQL Server Agent jobs
+- **[OpenDsc.SqlServer/Configuration][configuration]** - Manage SQL Server
+  configuration values
+- **[OpenDsc.SqlServer/DatabaseUser][databaseuser]** - Manage SQL Server database
+  users
+- **[OpenDsc.SqlServer/LinkedServer][linkedserver]** - Manage SQL Server linked
+  servers
+- **[OpenDsc.SqlServer/ObjectPermission][objectpermission]** - Manage SQL Server
+  object permissions
 
 ### Cross-Platform Resources
 
@@ -96,6 +110,9 @@ resources provide Unix-specific functionality not available on Windows.
 [userright]: src/OpenDsc.Resource.Windows/UserRight/README.md
 [shortcut]: src/OpenDsc.Resource.Windows/Shortcut/README.md
 [optionalfeature]: src/OpenDsc.Resource.Windows/OptionalFeature/README.md
+[accountlockoutpolicy]: src/OpenDsc.Resource.Windows/AccountLockoutPolicy/README.md
+[auditpolicy]: src/OpenDsc.Resource.Windows/AuditPolicy/README.md
+[passwordpolicy]: src/OpenDsc.Resource.Windows/PasswordPolicy/README.md
 [acl]: src/OpenDsc.Resource.Windows/FileSystem/Acl/README.md
 [login]: src/OpenDsc.Resource.SqlServer/Login/README.md
 [database]: src/OpenDsc.Resource.SqlServer/Database/README.md
@@ -103,6 +120,11 @@ resources provide Unix-specific functionality not available on Windows.
 [serverrole]: src/OpenDsc.Resource.SqlServer/ServerRole/README.md
 [databasepermission]: src/OpenDsc.Resource.SqlServer/DatabasePermission/README.md
 [serverpermission]: src/OpenDsc.Resource.SqlServer/ServerPermission/README.md
+[agentjob]: src/OpenDsc.Resource.SqlServer/AgentJob/README.md
+[configuration]: src/OpenDsc.Resource.SqlServer/Configuration/README.md
+[databaseuser]: src/OpenDsc.Resource.SqlServer/DatabaseUser/README.md
+[linkedserver]: src/OpenDsc.Resource.SqlServer/LinkedServer/README.md
+[objectpermission]: src/OpenDsc.Resource.SqlServer/ObjectPermission/README.md
 [file]: src/OpenDsc.Resource.FileSystem/File/README.md
 [directory]: src/OpenDsc.Resource.FileSystem/Directory/README.md
 [symlink]: src/OpenDsc.Resource.FileSystem/SymbolicLink/README.md

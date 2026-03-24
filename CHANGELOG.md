@@ -10,6 +10,34 @@ and this project adheres to [Semantic Versioning][semver].
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-3-24
+
+### Added
+
+- Add Zip resources (#43)
+- Add Local Configuration Manager (LCM) (#44)
+- Add SymbolicLink resource (#47)
+- Add scheduled task resource (#53)
+- Add Json value resource (#58)
+- Add SQL Server resources (#56, #61)
+- Add server (#62)
+- Add Export filter and set interface instances to nullable (#75)
+- Add mTLS node auth (#72)
+- Add OpenDsc.SqlServer/AgentJob resource (#65)
+- Add OpenDsc.SqlServer/Configuration resource (#66)
+- Add OpenDsc.SqlServer/LinkedServer resource (#67)
+- Add OpenDsc.SqlServer/ObjectPermission resource (#68)
+- Add OpenDsc.SqlServer/DatabaseUser resource (#69)
+- Add composite configuration (#77)
+- Add server UI (#86)
+- Add OpenDsc.Windows/AccountLockoutPolicy resource (#79)
+- Add OpenDsc.Windows/PasswordPolicy resource (#80)
+- Add OpenDsc.Windows/AuditPolicy resource (#70)
+
+### Removed
+
+- Remove _exist property for ACL resource (#52)
+
 ## [0.4.0] - 2025-12-23
 
 ### Added
@@ -66,7 +94,8 @@ and this project adheres to [Semantic Versioning][semver].
 
 - Initial release
 
-[Unreleased]: https://github.com/opendsc/opendsc/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/opendsc/opendsc/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/opendsc/opendsc/releases/tag/v0.5.0
 [0.4.0]: https://github.com/opendsc/opendsc/releases/tag/v0.4.0
 [0.3.1]: https://github.com/opendsc/opendsc/releases/tag/v0.3.1
 [0.3.0]: https://github.com/opendsc/opendsc/releases/tag/v0.3.0
