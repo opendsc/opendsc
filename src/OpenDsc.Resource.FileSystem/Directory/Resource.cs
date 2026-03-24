@@ -85,7 +85,10 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
                 throw new IOException("Source directory does not exist.");
             }
 
-            CopyDirectoryRecursively(sourceFullPath, fullPath);
+            if (!DirectoriesMatch(fullPath, sourceFullPath))
+            {
+                CopyDirectoryRecursively(sourceFullPath, fullPath);
+            }
         }
 
         return null;

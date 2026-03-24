@@ -88,6 +88,30 @@ Describe 'Directory Resource' -Tag 'Windows', 'Linux', 'macOS' {
             Get-Content (Join-Path $targetDir 'file.txt') | Should -Be 'foo'
             Test-Path $targetDir | Should -Be $true
         }
+
+        It 'should not re-copy when target matches source' {
+            $sourceDir = Join-Path $TestDrive 'ReseedSourceNoOp'
+            $targetDir = Join-Path $TestDrive 'ReseedTargetNoOp'
+
+            New-Item -ItemType Directory -Path $sourceDir | Out-Null
+            'foo' | Out-File (Join-Path $sourceDir 'file.txt')
+
+            New-Item -ItemType Directory -Path $targetDir | Out-Null
+            'foo' | Out-File (Join-Path $targetDir 'file.txt')
+
+            $inputJson = @{
+                path       = $targetDir
+                sourcePath = $sourceDir
+            } | ConvertTo-Json -Compress
+
+            $initialWriteTime = (Get-Item (Join-Path $targetDir 'file.txt')).LastWriteTimeUtc
+
+            Start-Sleep -Milliseconds 100
+            dsc resource set -r OpenDsc.FileSystem/Directory --input $inputJson | Out-Null
+
+            $afterWriteTime = (Get-Item (Join-Path $targetDir 'file.txt')).LastWriteTimeUtc
+            $afterWriteTime | Should -Be $initialWriteTime
+        }
     }
 
     Context 'Delete Operation' -Tag 'Delete' {
