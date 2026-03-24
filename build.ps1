@@ -119,8 +119,11 @@ if (-not $SkipBuild) {
 
             if ($Portable) {
                 Write-Host 'Building self-contained portable version...' -ForegroundColor Cyan
-                $portableDir = Join-Path $PSScriptRoot 'artifacts\portable'
-                New-Item -ItemType Directory -Path $portableDir -Force | Out-Null
+                $portableRoot = Join-Path $PSScriptRoot 'artifacts\portable\resources'
+                New-Item -ItemType Directory -Path $portableRoot -Force | Out-Null
+
+                $portableResourcesDir = Join-Path $portableRoot 'OpenDsc.Resources'
+                New-Item -ItemType Directory -Path $portableResourcesDir -Force | Out-Null
                 dotnet publish $resourcesProj `
                     --configuration $Configuration `
                     --runtime win-x64 `
@@ -133,13 +136,13 @@ if (-not $SkipBuild) {
                     -p:DebugSymbols=false `
                     -p:GenerateDocumentationFile=false `
                     -p:CopyOutputSymbolsToPublishDirectory=false `
-                    --output $portableDir
+                    --output $portableResourcesDir
                 if ($LASTEXITCODE -ne 0) {
                     throw "Portable build failed for OpenDsc.Resources with exit code $LASTEXITCODE"
                 }
 
                 Write-Host 'Building self-contained portable version for OpenDsc.Server...' -ForegroundColor Cyan
-                $portableServerDir = Join-Path $portableDir 'Server'
+                $portableServerDir = Join-Path $portableRoot 'OpenDsc.Server'
                 New-Item -ItemType Directory -Path $portableServerDir -Force | Out-Null
                 dotnet publish $serverProj `
                     --configuration $Configuration `
@@ -158,14 +161,21 @@ if (-not $SkipBuild) {
                     throw "Portable build failed for OpenDsc.Server with exit code $LASTEXITCODE"
                 }
 
-                Write-Host 'Creating portable ZIP archive...' -ForegroundColor Cyan
+                Write-Host 'Creating portable ZIP archive for OpenDsc.Resources...' -ForegroundColor Cyan
                 $zipDir = Join-Path $PSScriptRoot 'artifacts\zip'
                 New-Item -ItemType Directory -Path $zipDir -Force | Out-Null
-                $zipPath = Join-Path $zipDir "OpenDSC.Resources.Windows.Portable-$version.zip"
-                Compress-Archive -Path "$portableDir\*" -DestinationPath $zipPath -Force
-                Write-Host 'Self-contained portable version built successfully!' -ForegroundColor Green
-                Write-Host "Output location: $portableDir" -ForegroundColor Green
-                Write-Host "ZIP archive: $zipPath" -ForegroundColor Green
+                $resourcesZip = Join-Path $zipDir "OpenDSC.Resources.Windows.Portable-$version.zip"
+                Compress-Archive -Path "$portableResourcesDir\*" -DestinationPath $resourcesZip -Force
+
+                Write-Host 'Creating portable ZIP archive for OpenDsc.Server...' -ForegroundColor Cyan
+                $serverZip = Join-Path $zipDir "OpenDSC.Server.Windows.Portable-$version.zip"
+                Compress-Archive -Path "$portableServerDir\*" -DestinationPath $serverZip -Force
+
+                Write-Host 'Self-contained portable versions built successfully!' -ForegroundColor Green
+                Write-Host "OpenDsc.Resources output: $portableResourcesDir" -ForegroundColor Green
+                Write-Host "OpenDsc.Server output: $portableServerDir" -ForegroundColor Green
+                Write-Host "Resources ZIP: $resourcesZip" -ForegroundColor Green
+                Write-Host "Server ZIP: $serverZip" -ForegroundColor Green
             }
         }
 
@@ -235,8 +245,11 @@ if (-not $SkipBuild) {
 
         if ($Portable) {
             Write-Host 'Building self-contained portable version for Linux...' -ForegroundColor Cyan
-            $portableLinuxDir = Join-Path $PSScriptRoot 'artifacts\portable'
-            New-Item -ItemType Directory -Path $portableLinuxDir -Force | Out-Null
+            $portableRoot = Join-Path $PSScriptRoot 'artifacts\portable\resources'
+            New-Item -ItemType Directory -Path $portableRoot -Force | Out-Null
+
+            $portableResourcesDir = Join-Path $portableRoot 'OpenDsc.Resources'
+            New-Item -ItemType Directory -Path $portableResourcesDir -Force | Out-Null
             dotnet publish $resourcesProj `
                 --configuration $Configuration `
                 --runtime linux-x64 `
@@ -249,13 +262,13 @@ if (-not $SkipBuild) {
                 -p:DebugSymbols=false `
                 -p:GenerateDocumentationFile=false `
                 -p:CopyOutputSymbolsToPublishDirectory=false `
-                --output $portableLinuxDir
+                --output $portableResourcesDir
             if ($LASTEXITCODE -ne 0) {
                 throw "Portable build failed for OpenDsc.Resources with exit code $LASTEXITCODE"
             }
 
             Write-Host 'Building self-contained portable version for OpenDsc.Server (Linux)...' -ForegroundColor Cyan
-            $portableServerDir = Join-Path $portableLinuxDir 'Server'
+            $portableServerDir = Join-Path $portableRoot 'OpenDsc.Server'
             New-Item -ItemType Directory -Path $portableServerDir -Force | Out-Null
             dotnet publish $serverProj `
                 --configuration $Configuration `
@@ -274,14 +287,21 @@ if (-not $SkipBuild) {
                 throw "Portable build failed for OpenDsc.Server with exit code $LASTEXITCODE"
             }
 
-            Write-Host 'Creating portable ZIP archive for Linux...' -ForegroundColor Cyan
+            Write-Host 'Creating portable ZIP archive for OpenDsc.Resources (Linux)...' -ForegroundColor Cyan
             $zipDir = Join-Path $PSScriptRoot 'artifacts\zip'
             New-Item -ItemType Directory -Path $zipDir -Force | Out-Null
-            $zipPath = Join-Path $zipDir "OpenDSC.Resources.Linux.Portable-$version.zip"
-            Compress-Archive -Path "$portableLinuxDir\*" -DestinationPath $zipPath -Force
-            Write-Host 'Self-contained portable version for Linux built successfully!' -ForegroundColor Green
-            Write-Host "Output location: $portableLinuxDir" -ForegroundColor Green
-            Write-Host "ZIP archive: $zipPath" -ForegroundColor Green
+            $resourcesZip = Join-Path $zipDir "OpenDSC.Resources.Linux.Portable-$version.zip"
+            Compress-Archive -Path "$portableResourcesDir\*" -DestinationPath $resourcesZip -Force
+
+            Write-Host 'Creating portable ZIP archive for OpenDsc.Server (Linux)...' -ForegroundColor Cyan
+            $serverZip = Join-Path $zipDir "OpenDSC.Server.Linux.Portable-$version.zip"
+            Compress-Archive -Path "$portableServerDir\*" -DestinationPath $serverZip -Force
+
+            Write-Host 'Self-contained portable versions for Linux built successfully!' -ForegroundColor Green
+            Write-Host "OpenDsc.Resources output: $portableResourcesDir" -ForegroundColor Green
+            Write-Host "OpenDsc.Server output: $portableServerDir" -ForegroundColor Green
+            Write-Host "Resources ZIP: $resourcesZip" -ForegroundColor Green
+            Write-Host "Server ZIP: $serverZip" -ForegroundColor Green
         }
     } elseif ($IsMacOS) {
         $resourcesProj = Join-Path $PSScriptRoot 'src\OpenDsc.Resources\OpenDsc.Resources.csproj'
@@ -304,8 +324,11 @@ if (-not $SkipBuild) {
 
         if ($Portable) {
             Write-Host 'Building self-contained portable version for macOS...' -ForegroundColor Cyan
-            $portableMacDir = Join-Path $PSScriptRoot 'artifacts\portable'
-            New-Item -ItemType Directory -Path $portableMacDir -Force | Out-Null
+            $portableRoot = Join-Path $PSScriptRoot 'artifacts\portable\resources'
+            New-Item -ItemType Directory -Path $portableRoot -Force | Out-Null
+
+            $portableResourcesDir = Join-Path $portableRoot 'OpenDsc.Resources'
+            New-Item -ItemType Directory -Path $portableResourcesDir -Force | Out-Null
             dotnet publish $resourcesProj `
                 --configuration $Configuration `
                 --runtime osx-arm64 `
@@ -318,13 +341,13 @@ if (-not $SkipBuild) {
                 -p:DebugSymbols=false `
                 -p:GenerateDocumentationFile=false `
                 -p:CopyOutputSymbolsToPublishDirectory=false `
-                --output $portableMacDir
+                --output $portableResourcesDir
             if ($LASTEXITCODE -ne 0) {
                 throw "Portable build failed for OpenDsc.Resources with exit code $LASTEXITCODE"
             }
 
             Write-Host 'Building self-contained portable version for OpenDsc.Server (macOS)...' -ForegroundColor Cyan
-            $portableServerDir = Join-Path $portableMacDir 'Server'
+            $portableServerDir = Join-Path $portableRoot 'OpenDsc.Server'
             New-Item -ItemType Directory -Path $portableServerDir -Force | Out-Null
             dotnet publish $serverProj `
                 --configuration $Configuration `
@@ -343,14 +366,21 @@ if (-not $SkipBuild) {
                 throw "Portable build failed for OpenDsc.Server with exit code $LASTEXITCODE"
             }
 
-            Write-Host 'Creating portable ZIP archive for macOS...' -ForegroundColor Cyan
+            Write-Host 'Creating portable ZIP archive for OpenDsc.Resources (macOS)...' -ForegroundColor Cyan
             $zipDir = Join-Path $PSScriptRoot 'artifacts\zip'
             New-Item -ItemType Directory -Path $zipDir -Force | Out-Null
-            $zipPath = Join-Path $zipDir "OpenDSC.Resources.macOS.Portable-$version.zip"
-            Compress-Archive -Path "$portableMacDir\*" -DestinationPath $zipPath -Force
-            Write-Host 'Self-contained portable version for macOS built successfully!' -ForegroundColor Green
-            Write-Host "Output location: $portableMacDir" -ForegroundColor Green
-            Write-Host "ZIP archive: $zipPath" -ForegroundColor Green
+            $resourcesZip = Join-Path $zipDir "OpenDSC.Resources.macOS.Portable-$version.zip"
+            Compress-Archive -Path "$portableResourcesDir\*" -DestinationPath $resourcesZip -Force
+
+            Write-Host 'Creating portable ZIP archive for OpenDsc.Server (macOS)...' -ForegroundColor Cyan
+            $serverZip = Join-Path $zipDir "OpenDSC.Server.macOS.Portable-$version.zip"
+            Compress-Archive -Path "$portableServerDir\*" -DestinationPath $serverZip -Force
+
+            Write-Host 'Self-contained portable versions for macOS built successfully!' -ForegroundColor Green
+            Write-Host "OpenDsc.Resources output: $portableResourcesDir" -ForegroundColor Green
+            Write-Host "OpenDsc.Server output: $portableServerDir" -ForegroundColor Green
+            Write-Host "Resources ZIP: $resourcesZip" -ForegroundColor Green
+            Write-Host "Server ZIP: $serverZip" -ForegroundColor Green
         }
     }
 
