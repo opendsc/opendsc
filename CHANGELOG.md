@@ -10,17 +10,17 @@ and this project adheres to [Semantic Versioning][semver].
 
 ## [Unreleased]
 
-## [0.5.0] - 2026-3-24
+## [0.5.0] - 2026-03-24
 
 ### Added
 
-- Add Zip resources (#43)
+- Add ZIP resources (#43)
 - Add Local Configuration Manager (LCM) (#44)
 - Add SymbolicLink resource (#47)
-- Add scheduled task resource (#53)
-- Add Json value resource (#58)
+- Add Scheduled Task resource (#53)
+- Add JSON value resource (#58)
 - Add SQL Server resources (#56, #61)
-- Add server (#62)
+- Add Pull Server (#62)
 - Add Export filter and set interface instances to nullable (#75)
 - Add mTLS node auth (#72)
 - Add OpenDsc.SqlServer/AgentJob resource (#65)
