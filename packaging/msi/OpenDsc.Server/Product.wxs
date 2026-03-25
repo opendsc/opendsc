@@ -103,7 +103,7 @@
                     User="SYSTEM"
                     GenericAll="yes" />
 
-                <Permission
+                <util:PermissionEx
                     User="NT SERVICE\OpenDscServer"
                     GenericAll="yes" />
             </CreateFolder>
