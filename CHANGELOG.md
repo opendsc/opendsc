@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning][semver].
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-03-25
+
+### Fixed
+
+- Fix server msi install (#94)
+
 ## [0.5.0] - 2026-03-24
 
 ### Added
@@ -98,7 +104,8 @@ and this project adheres to [Semantic Versioning][semver].
 
 - Initial release
 
-[Unreleased]: https://github.com/opendsc/opendsc/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/opendsc/opendsc/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/opendsc/opendsc/releases/tag/v0.5.1
 [0.5.0]: https://github.com/opendsc/opendsc/releases/tag/v0.5.0
 [0.4.0]: https://github.com/opendsc/opendsc/releases/tag/v0.4.0
 [0.3.1]: https://github.com/opendsc/opendsc/releases/tag/v0.3.1
