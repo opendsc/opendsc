@@ -1,0 +1,87 @@
+---
+description: Reference for the OpenDsc.Archive.Zip/Compress resource, which creates ZIP archives.
+title: "OpenDsc.Archive.Zip/Compress"
+date: 2026-03-27
+topic: reference
+---
+
+# OpenDsc.Archive.Zip/Compress
+
+## Synopsis
+
+Creates ZIP archives from a source directory or file. Supports configurable
+compression levels
+and verifies whether the archive contents match the source.
+
+## Type name
+
+```plaintext
+OpenDsc.Archive.Zip/Compress
+```
+
+## Capabilities
+
+| Capability | Supported |
+| :--------- | :-------- |
+| Get        | Yes       |
+| Set        | Yes       |
+| Test       | Yes       |
+| Delete     | No        |
+| Export     | No        |
+
+## Properties
+
+| Property           | Type   | Required | Access     | Description                                                         |
+| :----------------- | :----- | :------- | :--------- | :------------------------------------------------------------------ |
+| `archivePath`      | string | Yes      | Read/Write | Path to the ZIP archive file to create.                             |
+| `sourcePath`       | string | Yes      | Read/Write | Path to the source directory or file.                               |
+| `compressionLevel` | string | No       | Read/Write | Compression level: `Optimal` (default), `Fastest`, `NoCompression`. |
+| `_inDesiredState`  | bool   | No       | Read-Only  | Whether the archive contents match the source.                      |
+
+## Examples
+
+### Example 1 — Create a ZIP archive
+
+```powershell
+dsc resource set -r OpenDsc.Archive.Zip/Compress --input '{"archivePath":"/tmp/backup.zip","sourcePath":"/var/data"}'
+```
+
+### Example 2 — Create with fastest compression
+
+```powershell
+dsc resource set -r OpenDsc.Archive.Zip/Compress --input '{
+  "archivePath": "C:\\Backups\\logs.zip",
+  "sourcePath": "C:\\Logs",
+  "compressionLevel": "Fastest"
+}'
+```
+
+### Example 3 — Configuration document
+
+```yaml
+$schema: https://aka.ms/dsc/schemas/v3/bundled/config/document.json
+resources:
+  - name: Archive application logs
+    type: OpenDsc.Archive.Zip/Compress
+    properties:
+      archivePath: /backups/app-logs.zip
+      sourcePath: /var/log/myapp
+      compressionLevel: Optimal
+```
+
+## Exit codes
+
+| Code | Description                |
+| :--- | :------------------------- |
+| 0    | Success                    |
+| 1    | Error                      |
+| 2    | Invalid JSON               |
+| 3    | Source path not found      |
+| 4    | Invalid argument           |
+| 5    | IO error                   |
+| 6    | Invalid or corrupt archive |
+
+## See also
+
+- [OpenDsc resource reference](../overview.md)
+- [OpenDsc.Archive.Zip/Expand](zip-expand.md)
