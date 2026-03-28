@@ -685,7 +685,7 @@ function New-OpenDscUri
     {
         if ($null -ne $PathParams[$key])
         {
-            $uri = $uri -replace "\{$key\}", $PathParams[$key]
+            $uri = $uri.Replace("{$key}", $PathParams[$key])
         }
     }
 
@@ -710,6 +710,20 @@ function New-OpenDscQueryString
         if ($BoundParameters.ContainsKey($paramName))
         {
             $value = $BoundParameters[$paramName]
+
+            if ($value -is [datetime])
+            {
+                $value = $value.ToUniversalTime().ToString('o')
+            }
+            elseif ($value -is [datetimeoffset])
+            {
+                $value = $value.ToUniversalTime().ToString('o')
+            }
+            elseif ($value -is [bool])
+            {
+                $value = $value.ToString().ToLower()
+            }
+
             $parts += '{0}={1}' -f $QueryMapping[$paramName], [uri]::EscapeDataString($value)
         }
     }
@@ -738,7 +752,14 @@ function New-OpenDscBody
     {
         if ($BoundParameters.ContainsKey($paramName))
         {
-            $body[$BodyMapping[$paramName]] = $BoundParameters[$paramName]
+            $value = $BoundParameters[$paramName]
+
+            if ($value -is [System.Management.Automation.SwitchParameter])
+            {
+                $value = [bool]$value
+            }
+
+            $body[$BodyMapping[$paramName]] = $value
         }
     }
 
@@ -814,7 +835,7 @@ function Submit-OpenDscRequest
 
         if ($errorBody)
         {
-            $message = if ($errorBody.title) { $errorBody.title } elseif ($errorBody.message) { $errorBody.message } else { $errorBody }
+            $message = if ($errorBody.title) { $errorBody.title } elseif ($errorBody.error) { $errorBody.error } elseif ($errorBody.message) { $errorBody.message } else { $errorBody }
             throw "OpenDsc API error ($statusCode): $message"
         }
 
@@ -875,7 +896,7 @@ function Submit-OpenDscMultipartRequest
 
         if ($errorBody)
         {
-            $message = if ($errorBody.title) { $errorBody.title } elseif ($errorBody.message) { $errorBody.message } else { $errorBody }
+            $message = if ($errorBody.title) { $errorBody.title } elseif ($errorBody.error) { $errorBody.error } elseif ($errorBody.message) { $errorBody.message } else { $errorBody }
             throw "OpenDsc API error ($statusCode): $message"
         }
 
@@ -892,8 +913,8 @@ function Submit-OpenDscMultipartRequest
         Connects to an OpenDsc Pull Server.
 
     .DESCRIPTION
-        Establishes a session to an OpenDsc Pull Server using a personal access token, API key,
-        or username/password credential. The session is stored in module state and used by all
+        Establishes a session to an OpenDsc Pull Server using a personal access token or
+        username/password credential. The session is stored in module state and used by all
         subsequent commands.
 
     .PARAMETER Server
@@ -904,9 +925,6 @@ function Submit-OpenDscMultipartRequest
 
     .PARAMETER Credential
         A PSCredential object for username/password authentication.
-
-    .PARAMETER ApiKey
-        An API key for X-API-Key header authentication.
 
     .EXAMPLE
         Connect-OpenDsc -Server 'https://dsc.example.com' -Token 'my-pat'
@@ -925,10 +943,7 @@ function Connect-OpenDsc
         [string]$Token,
 
         [Parameter(ParameterSetName = 'Credential', Mandatory)]
-        [pscredential]$Credential,
-
-        [Parameter(ParameterSetName = 'ApiKey', Mandatory)]
-        [string]$ApiKey
+        [System.Management.Automation.PSCredential]$Credential
     )
     process
     {
@@ -940,10 +955,6 @@ function Connect-OpenDsc
             'Token'
             {
                 $headers['Authorization'] = "Bearer $Token"
-            }
-            'ApiKey'
-            {
-                $headers['X-API-Key'] = $ApiKey
             }
             'Credential'
             {
