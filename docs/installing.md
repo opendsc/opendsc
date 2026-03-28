@@ -27,6 +27,21 @@ needs:
 
 ## Install on Windows
 
+### Using WinGet
+
+Install OpenDsc components directly from the Windows Package Manager:
+
+```powershell
+# Install DSC Resources
+winget install --id OpenDsc.Resources --source winget
+
+# Install the Local Configuration Manager
+winget install --id OpenDsc.Lcm --source winget
+
+# Install the Pull Server
+winget install --id OpenDsc.Server --source winget
+```
+
 ### Using MSI installers
 
 Download the MSI installers from the [OpenDsc releases][02] page. The following
