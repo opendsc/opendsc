@@ -27,13 +27,11 @@ Use retention policies when you need to:
 
 ### Using the web UI
 
-1. Navigate to **Settings → Retention**.
+1. Navigate to **Settings → Retention Policies**.
 2. Set the **Maximum versions to keep** value.
-3. Choose whether to retain published versions, all versions, or only the
-   latest.
+3. Choose whether to retain published versions or all versions.
 4. Click **Save**.
 
-<!-- TODO: Replace with actual screenshot -->
 ![Retention settings](media/retention-policies/retention-settings.png)
 
 ### Using PowerShell
@@ -58,8 +56,7 @@ You can override the global retention policy for individual configurations:
 2. Under **Settings**, configure the retention policy.
 3. Click **Save**.
 
-<!-- TODO: Replace with actual screenshot -->
-![Per-configuration retention](media/retention-policies/per-config-retention.png)
+![Configuration retention](media/retention-policies/per-config-retention.png)
 
 ### Using PowerShell
 

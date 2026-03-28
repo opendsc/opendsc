@@ -86,11 +86,9 @@ when they change.
 
 ## See also
 
-- [How to: Use composite configurations][01]
-- [Versioning concepts][02]
-- [Pull Server overview][03]
+- [Versioning concepts][01]
+- [Pull Server overview][02]
 
 <!-- Link references -->
-[01]: ../../guides/composite-configurations.md
-[02]: versioning.md
-[03]: overview.md
+[01]: versioning.md
+[02]: overview.md

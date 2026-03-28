@@ -38,7 +38,7 @@ On Linux and macOS, it includes only cross-platform and POSIX resources.
 
 Every OpenDsc resource has a fully qualified type name following this syntax:
 
-```
+```plaintext
 OpenDsc.<Area>/<Name>
 ```
 
@@ -105,4 +105,4 @@ the
 <!-- Link references -->
 [01]: ../../reference/resources/overview.md
 [02]: ../../get-started/index.md
-[03]: ../../../../concepts/resources/overview.md
+[03]: https://learn.microsoft.com/en-us/powershell/dsc/concepts/resources/overview?view=dsc-3.0

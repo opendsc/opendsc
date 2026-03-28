@@ -133,7 +133,7 @@ OpenDsc.Windows/Group                        Resource  0.1.0    gs-d----      Ma
 - Set up the [Pull Server][05].
 
 <!-- Link references -->
-[01]: https://learn.microsoft.com/powershell/dsc/install
+[01]: https://learn.microsoft.com/en-us/powershell/dsc/overview?view=dsc-3.0#installation
 [02]: https://github.com/opendsc/opendsc/releases
 [03]: get-started/index.md
 [04]: concepts/resources/overview.md

@@ -27,12 +27,11 @@ Use this guide when you need to:
 
 ### Using the web UI
 
-1. Navigate to **Admin → Users**.
-2. Click **Create**.
+1. Navigate to **Administration → Users**.
+2. Click **Create User**.
 3. Enter the username and password.
 4. Click **Save**.
 
-<!-- TODO: Replace with actual screenshot -->
 ![Create user dialog](media/manage-users-roles/create-user.png)
 
 ### Using PowerShell
@@ -51,12 +50,11 @@ Invoke-RestMethod -Uri 'http://localhost:5000/api/v1/users' `
 
 ### Using the web UI
 
-1. Navigate to **Admin → Groups**.
+1. Navigate to **Administration → Groups**.
 2. Click **Create**.
 3. Enter the group name and optionally add members.
 4. Click **Save**.
 
-<!-- TODO: Replace with actual screenshot -->
 ![Create group dialog](media/manage-users-roles/create-group.png)
 
 ### Using PowerShell
@@ -81,13 +79,12 @@ authorization with granular policies such as `nodes.read`,
 
 ### Using the web UI
 
-1. Navigate to **Admin → Roles**.
+1. Navigate to **Administration → Roles**.
 2. Click **Create** or edit an existing role.
 3. Select the policies to include in the role.
 4. Assign users or groups to the role.
 5. Click **Save**.
 
-<!-- TODO: Replace with actual screenshot -->
 ![Assign role dialog](media/manage-users-roles/assign-role.png)
 
 ### Using PowerShell
@@ -112,10 +109,10 @@ pipelines.
 
 1. Navigate to your user profile (click the user icon in the top right).
 2. Under **Personal Access Tokens**, click **Create**.
-3. Enter a description and expiration date.
-4. Click **Create** and copy the token value.
+3. Enter a name and optionally an expiration date.
+4. Select one of the available **scopes**
+5. Click **Create** and copy the token value.
 
-<!-- TODO: Replace with actual screenshot -->
 ![Create PAT](media/manage-users-roles/create-pat.png)
 
 ### Using PowerShell

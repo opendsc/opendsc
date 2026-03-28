@@ -20,7 +20,7 @@ resolved set for each node based on precedence rules.
 Parameters flow from the broadest scope to the narrowest. Narrower scopes
 override broader ones:
 
-```
+```plaintext
 Default → Custom scope types (ordered by precedence) → Node
 ```
 
@@ -64,7 +64,7 @@ For example, a node tagged with `Region: US-West` and `Environment: Production`
 receives
 parameters merged in this order:
 
-```
+```plaintext
 Default → Region/US-West → Environment/Production → Node/<fqdn>
 ```
 
@@ -142,11 +142,9 @@ versions before activation.
 
 ## See also
 
-- [How to: Set up parameter merging][01]
-- [Scope system][02]
-- [Parameter validation][03]
+- [Scope system][01]
+- [Parameter validation][02]
 
 <!-- Link references -->
-[01]: ../../guides/parameter-merging.md
-[02]: scope-system.md
-[03]: parameter-validation.md
+[01]: scope-system.md
+[02]: parameter-validation.md

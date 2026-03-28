@@ -18,7 +18,7 @@ installing the LCM, configuring it in local mode, and observing drift detection.
 ## Prerequisites
 
 - A Windows machine with [OpenDsc installed][01].
-- [DSC v3][02] version `3.0.0` or later.
+- [DSC v3][02] version `3.1.0` or later.
 - PowerShell 7 or later.
 - Administrator privileges.
 
@@ -186,7 +186,7 @@ For Pull mode configuration, see the [Pull Server setup tutorial][03].
 
 <!-- Link references -->
 [01]: ../installing.md
-[02]: https://learn.microsoft.com/powershell/dsc/install
+[02]: https://learn.microsoft.com/en-us/powershell/dsc/overview?view=dsc-3.0#installation
 [03]: pull-server-setup.md
 [04]: ../concepts/lcm/overview.md
 [05]: ../reference/resources/overview.md
