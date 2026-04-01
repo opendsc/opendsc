@@ -3,6 +3,7 @@
 // terms of the MIT license.
 
 using System;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 using Xunit;
@@ -17,7 +18,10 @@ internal sealed class RequiresDismFactAttribute : FactAttribute
     [DllImport("dismapi.dll", EntryPoint = "DismShutdown")]
     private static extern int DismShutdown();
 
-    public RequiresDismFactAttribute()
+    public RequiresDismFactAttribute(
+        [CallerFilePath] string? sourceFilePath = null,
+        [CallerLineNumber] int sourceLineNumber = -1)
+        : base(sourceFilePath, sourceLineNumber)
     {
         try
         {

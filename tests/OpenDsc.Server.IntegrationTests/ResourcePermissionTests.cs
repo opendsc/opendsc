@@ -20,26 +20,20 @@ namespace OpenDsc.Server.IntegrationTests;
 /// configurations, and that the permission management endpoints (grant/revoke/list) work.
 /// </summary>
 [Trait("Category", "Integration")]
-public class ResourcePermissionTests : IAsyncLifetime, IDisposable
+public class ResourcePermissionTests : IAsyncLifetime
 {
     private readonly ServerWebApplicationFactory _factory = new();
     private HttpClient _adminClient = null!;
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         _adminClient = await _factory.CreateAuthenticatedClientAsync();
     }
 
-    public Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         _adminClient?.Dispose();
-        return Task.CompletedTask;
-    }
-
-    public void Dispose()
-    {
-        _factory?.Dispose();
-        GC.SuppressFinalize(this);
+        await _factory.DisposeAsync();
     }
 
     // ─── Helpers ─────────────────────────────────────────────────────────────
@@ -84,7 +78,7 @@ public class ResourcePermissionTests : IAsyncLifetime, IDisposable
 
         using var noPrivClient = await _factory.CreateUnprivilegedUserAsync($"noacl-cfg-{Guid.NewGuid():N}");
 
-        var response = await noPrivClient.GetAsync($"/api/v1/configurations/{configName}");
+        var response = await noPrivClient.GetAsync($"/api/v1/configurations/{configName}", TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
@@ -101,10 +95,10 @@ public class ResourcePermissionTests : IAsyncLifetime, IDisposable
         // Grant Read permission via admin
         var grantResponse = await _adminClient.PutAsJsonAsync(
             $"/api/v1/configurations/{configName}/permissions",
-            new { principalType = "User", principalId = userId, level = "Read" });
+            new { principalType = "User", principalId = userId, level = "Read" }, TestContext.Current.CancellationToken);
         grantResponse.EnsureSuccessStatusCode();
 
-        var getResponse = await readerClient.GetAsync($"/api/v1/configurations/{configName}");
+        var getResponse = await readerClient.GetAsync($"/api/v1/configurations/{configName}", TestContext.Current.CancellationToken);
         getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
@@ -120,11 +114,11 @@ public class ResourcePermissionTests : IAsyncLifetime, IDisposable
 
         await _adminClient.PutAsJsonAsync(
             $"/api/v1/configurations/{configName}/permissions",
-            new { principalType = "User", principalId = userId, level = "Read" });
+            new { principalType = "User", principalId = userId, level = "Read" }, TestContext.Current.CancellationToken);
 
         var patchResponse = await readerClient.PatchAsJsonAsync(
             $"/api/v1/configurations/{configName}",
-            new { description = "hacked" });
+            new { description = "hacked" }, TestContext.Current.CancellationToken);
         patchResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
@@ -140,11 +134,11 @@ public class ResourcePermissionTests : IAsyncLifetime, IDisposable
 
         await _adminClient.PutAsJsonAsync(
             $"/api/v1/configurations/{configName}/permissions",
-            new { principalType = "User", principalId = userId, level = "Modify" });
+            new { principalType = "User", principalId = userId, level = "Modify" }, TestContext.Current.CancellationToken);
 
         var patchResponse = await modifierClient.PatchAsJsonAsync(
             $"/api/v1/configurations/{configName}",
-            new { description = "updated" });
+            new { description = "updated" }, TestContext.Current.CancellationToken);
         patchResponse.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
@@ -163,9 +157,9 @@ public class ResourcePermissionTests : IAsyncLifetime, IDisposable
         // Give only Read permission (not Manage)
         await _adminClient.PutAsJsonAsync(
             $"/api/v1/configurations/{configName}/permissions",
-            new { principalType = "User", principalId = userId, level = "Read" });
+            new { principalType = "User", principalId = userId, level = "Read" }, TestContext.Current.CancellationToken);
 
-        var response = await noManageClient.GetAsync($"/api/v1/configurations/{configName}/permissions");
+        var response = await noManageClient.GetAsync($"/api/v1/configurations/{configName}/permissions", TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
@@ -181,12 +175,12 @@ public class ResourcePermissionTests : IAsyncLifetime, IDisposable
 
         await _adminClient.PutAsJsonAsync(
             $"/api/v1/configurations/{configName}/permissions",
-            new { principalType = "User", principalId = granteeId, level = "Read" });
+            new { principalType = "User", principalId = granteeId, level = "Read" }, TestContext.Current.CancellationToken);
 
-        var response = await _adminClient.GetAsync($"/api/v1/configurations/{configName}/permissions");
+        var response = await _adminClient.GetAsync($"/api/v1/configurations/{configName}/permissions", TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var permissions = await response.Content.ReadFromJsonAsync<List<PermissionEntryDto>>();
+        var permissions = await response.Content.ReadFromJsonAsync<List<PermissionEntryDto>>(TestContext.Current.CancellationToken);
         permissions.Should().NotBeNullOrEmpty();
         permissions!.Should().ContainSingle(p => p.PrincipalId == granteeId && p.Level == "Read");
     }
@@ -199,7 +193,7 @@ public class ResourcePermissionTests : IAsyncLifetime, IDisposable
 
         var response = await _adminClient.PutAsJsonAsync(
             $"/api/v1/configurations/{configName}/permissions",
-            new { principalType = "User", principalId = Guid.NewGuid(), level = "SuperAdmin" });
+            new { principalType = "User", principalId = Guid.NewGuid(), level = "SuperAdmin" }, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -212,7 +206,7 @@ public class ResourcePermissionTests : IAsyncLifetime, IDisposable
 
         var response = await _adminClient.PutAsJsonAsync(
             $"/api/v1/configurations/{configName}/permissions",
-            new { principalType = "Robot", principalId = Guid.NewGuid(), level = "Read" });
+            new { principalType = "Robot", principalId = Guid.NewGuid(), level = "Read" }, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -230,19 +224,19 @@ public class ResourcePermissionTests : IAsyncLifetime, IDisposable
         // Grant
         await _adminClient.PutAsJsonAsync(
             $"/api/v1/configurations/{configName}/permissions",
-            new { principalType = "User", principalId = granteeId, level = "Read" });
+            new { principalType = "User", principalId = granteeId, level = "Read" }, TestContext.Current.CancellationToken);
 
         // Confirm granted
-        var canReadBefore = await granteeClient.GetAsync($"/api/v1/configurations/{configName}");
+        var canReadBefore = await granteeClient.GetAsync($"/api/v1/configurations/{configName}", TestContext.Current.CancellationToken);
         canReadBefore.StatusCode.Should().Be(HttpStatusCode.OK);
 
         // Revoke
         var revokeResponse = await _adminClient.DeleteAsync(
-            $"/api/v1/configurations/{configName}/permissions/User/{granteeId}");
+            $"/api/v1/configurations/{configName}/permissions/User/{granteeId}", TestContext.Current.CancellationToken);
         revokeResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         // Confirm revoked
-        var canReadAfter = await granteeClient.GetAsync($"/api/v1/configurations/{configName}");
+        var canReadAfter = await granteeClient.GetAsync($"/api/v1/configurations/{configName}", TestContext.Current.CancellationToken);
         canReadAfter.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
@@ -255,7 +249,7 @@ public class ResourcePermissionTests : IAsyncLifetime, IDisposable
         await CreateCompositeConfigurationAsync(name);
 
         using var noPrivClient = await _factory.CreateUnprivilegedUserAsync($"comp-nopriv-{Guid.NewGuid():N}");
-        var response = await noPrivClient.GetAsync($"/api/v1/composite-configurations/{name}");
+        var response = await noPrivClient.GetAsync($"/api/v1/composite-configurations/{name}", TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
@@ -271,9 +265,9 @@ public class ResourcePermissionTests : IAsyncLifetime, IDisposable
 
         await _adminClient.PutAsJsonAsync(
             $"/api/v1/composite-configurations/{name}/permissions",
-            new { principalType = "User", principalId = userId, level = "Read" });
+            new { principalType = "User", principalId = userId, level = "Read" }, TestContext.Current.CancellationToken);
 
-        var response = await readerClient.GetAsync($"/api/v1/composite-configurations/{name}");
+        var response = await readerClient.GetAsync($"/api/v1/composite-configurations/{name}", TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
@@ -291,12 +285,12 @@ public class ResourcePermissionTests : IAsyncLifetime, IDisposable
 
         await _adminClient.PutAsJsonAsync(
             $"/api/v1/composite-configurations/{name}/permissions",
-            new { principalType = "User", principalId = granteeId, level = "Modify" });
+            new { principalType = "User", principalId = granteeId, level = "Modify" }, TestContext.Current.CancellationToken);
 
-        var response = await _adminClient.GetAsync($"/api/v1/composite-configurations/{name}/permissions");
+        var response = await _adminClient.GetAsync($"/api/v1/composite-configurations/{name}/permissions", TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var permissions = await response.Content.ReadFromJsonAsync<List<PermissionEntryDto>>();
+        var permissions = await response.Content.ReadFromJsonAsync<List<PermissionEntryDto>>(TestContext.Current.CancellationToken);
         permissions.Should().NotBeNullOrEmpty();
         permissions!.Should().ContainSingle(p => p.PrincipalId == granteeId && p.Level == "Modify");
     }
@@ -313,16 +307,16 @@ public class ResourcePermissionTests : IAsyncLifetime, IDisposable
 
         await _adminClient.PutAsJsonAsync(
             $"/api/v1/composite-configurations/{name}/permissions",
-            new { principalType = "User", principalId = granteeId, level = "Read" });
+            new { principalType = "User", principalId = granteeId, level = "Read" }, TestContext.Current.CancellationToken);
 
-        var canReadBefore = await granteeClient.GetAsync($"/api/v1/composite-configurations/{name}");
+        var canReadBefore = await granteeClient.GetAsync($"/api/v1/composite-configurations/{name}", TestContext.Current.CancellationToken);
         canReadBefore.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var revokeResponse = await _adminClient.DeleteAsync(
-            $"/api/v1/composite-configurations/{name}/permissions/User/{granteeId}");
+            $"/api/v1/composite-configurations/{name}/permissions/User/{granteeId}", TestContext.Current.CancellationToken);
         revokeResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var canReadAfter = await granteeClient.GetAsync($"/api/v1/composite-configurations/{name}");
+        var canReadAfter = await granteeClient.GetAsync($"/api/v1/composite-configurations/{name}", TestContext.Current.CancellationToken);
         canReadAfter.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
@@ -341,24 +335,24 @@ public class ResourcePermissionTests : IAsyncLifetime, IDisposable
 
         // Create a group and add the user via admin endpoints
         var groupResponse = await _adminClient.PostAsJsonAsync("/api/v1/groups",
-            new { name = $"TestGroup-{Guid.NewGuid():N}", description = (string?)null });
+            new { name = $"TestGroup-{Guid.NewGuid():N}", description = (string?)null }, TestContext.Current.CancellationToken);
         groupResponse.EnsureSuccessStatusCode();
 
         var groupId = Guid.Parse(groupResponse.Headers.Location!.ToString().Split('/').Last());
 
         // SetGroupMembers uses a list of userIds
         var setMembersResponse = await _adminClient.PutAsJsonAsync($"/api/v1/groups/{groupId}/members",
-            new { userIds = new[] { memberId } });
+            new { userIds = new[] { memberId } }, TestContext.Current.CancellationToken);
         setMembersResponse.EnsureSuccessStatusCode();
 
         // Grant Read permission to the group
         var grantResponse = await _adminClient.PutAsJsonAsync(
             $"/api/v1/configurations/{configName}/permissions",
-            new { principalType = "Group", principalId = groupId, level = "Read" });
+            new { principalType = "Group", principalId = groupId, level = "Read" }, TestContext.Current.CancellationToken);
         grantResponse.EnsureSuccessStatusCode();
 
         // Member should now be able to read
-        var readResponse = await memberClient.GetAsync($"/api/v1/configurations/{configName}");
+        var readResponse = await memberClient.GetAsync($"/api/v1/configurations/{configName}", TestContext.Current.CancellationToken);
         readResponse.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 }

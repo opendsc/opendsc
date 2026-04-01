@@ -46,7 +46,7 @@ public class ReportEndpointsTests : IDisposable
         {
             Operation = DscOperation.Test,
             Result = new DscResult { HadErrors = false }
-        });
+        }, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -56,7 +56,7 @@ public class ReportEndpointsTests : IDisposable
     {
         using var client = _factory.CreateClient();
         var nodeId = Guid.NewGuid();
-        var response = await client.GetAsync($"/api/v1/nodes/{nodeId}/reports");
+        var response = await client.GetAsync($"/api/v1/nodes/{nodeId}/reports", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -68,10 +68,10 @@ public class ReportEndpointsTests : IDisposable
 
         using var client = _factory.CreateAuthenticatedClient();
 
-        var response = await client.GetAsync($"/api/v1/nodes/{nodeId}/reports");
+        var response = await client.GetAsync($"/api/v1/nodes/{nodeId}/reports", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var reports = await response.Content.ReadFromJsonAsync<List<ReportSummary>>();
+        var reports = await response.Content.ReadFromJsonAsync<List<ReportSummary>>(TestContext.Current.CancellationToken);
         reports.Should().NotBeNull();
     }
 
@@ -79,7 +79,7 @@ public class ReportEndpointsTests : IDisposable
     public async Task GetAllReports_WithoutAuth_ReturnsUnauthorized()
     {
         using var client = _factory.CreateClient();
-        var response = await client.GetAsync("/api/v1/reports");
+        var response = await client.GetAsync("/api/v1/reports", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -89,10 +89,10 @@ public class ReportEndpointsTests : IDisposable
     {
         using var client = _factory.CreateAuthenticatedClient();
 
-        var response = await client.GetAsync("/api/v1/reports");
+        var response = await client.GetAsync("/api/v1/reports", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var reports = await response.Content.ReadFromJsonAsync<List<ReportSummary>>();
+        var reports = await response.Content.ReadFromJsonAsync<List<ReportSummary>>(TestContext.Current.CancellationToken);
         reports.Should().NotBeNull();
     }
 
@@ -101,7 +101,7 @@ public class ReportEndpointsTests : IDisposable
     {
         using var client = _factory.CreateClient();
         var reportId = Guid.NewGuid();
-        var response = await client.GetAsync($"/api/v1/reports/{reportId}");
+        var response = await client.GetAsync($"/api/v1/reports/{reportId}", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -111,7 +111,7 @@ public class ReportEndpointsTests : IDisposable
     {
         using var client = _factory.CreateAuthenticatedClient();
 
-        var response = await client.GetAsync($"/api/v1/reports/{Guid.NewGuid()}");
+        var response = await client.GetAsync($"/api/v1/reports/{Guid.NewGuid()}", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -122,7 +122,7 @@ public class ReportEndpointsTests : IDisposable
         // Note: This test changed - nodes now authenticate via mTLS, not API keys
         // Testing admin report retrieval for non-existent report
         using var adminClient = _factory.CreateAuthenticatedClient("test-admin-key");
-        var getResponse = await adminClient.GetAsync($"/api/v1/reports/{Guid.NewGuid()}");
+        var getResponse = await adminClient.GetAsync($"/api/v1/reports/{Guid.NewGuid()}", TestContext.Current.CancellationToken);
 
         getResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -134,10 +134,10 @@ public class ReportEndpointsTests : IDisposable
         var nodeId = await RegisterTestNodeAsync();
 
         using var adminClient = _factory.CreateAuthenticatedClient();
-        var getResponse = await adminClient.GetAsync($"/api/v1/nodes/{nodeId}/reports");
+        var getResponse = await adminClient.GetAsync($"/api/v1/nodes/{nodeId}/reports", TestContext.Current.CancellationToken);
 
         getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var reports = await getResponse.Content.ReadFromJsonAsync<List<ReportSummary>>();
+        var reports = await getResponse.Content.ReadFromJsonAsync<List<ReportSummary>>(TestContext.Current.CancellationToken);
         reports.Should().NotBeNull();
         reports!.Should().BeEmpty();
     }
@@ -152,15 +152,15 @@ public class ReportEndpointsTests : IDisposable
         {
             Operation = DscOperation.Test,
             Result = new DscResult { HadErrors = false, Messages = [], Results = [] }
-        });
+        }, TestContext.Current.CancellationToken);
 
         reportResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
         // Compliance reports no longer create status history events — verify the history is empty
         using var adminClient = _factory.CreateAuthenticatedClient();
-        var historyResponse = await adminClient.GetAsync($"/api/v1/nodes/{nodeId}/status-history");
+        var historyResponse = await adminClient.GetAsync($"/api/v1/nodes/{nodeId}/status-history", TestContext.Current.CancellationToken);
         historyResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var events = await historyResponse.Content.ReadFromJsonAsync<List<NodeStatusEventSummary>>();
+        var events = await historyResponse.Content.ReadFromJsonAsync<List<NodeStatusEventSummary>>(TestContext.Current.CancellationToken);
         events.Should().NotBeNull();
         events!.Should().BeEmpty();
     }

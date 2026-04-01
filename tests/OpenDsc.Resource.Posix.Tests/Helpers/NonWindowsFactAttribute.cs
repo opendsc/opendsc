@@ -2,13 +2,18 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
+using System.Runtime.CompilerServices;
+
 using Xunit;
 
 namespace OpenDsc.Resource.Posix.Tests.Helpers;
 
 internal sealed class NonWindowsFactAttribute : FactAttribute
 {
-    public NonWindowsFactAttribute()
+    public NonWindowsFactAttribute(
+        [CallerFilePath] string? sourceFilePath = null,
+        [CallerLineNumber] int sourceLineNumber = -1)
+        : base(sourceFilePath, sourceLineNumber)
     {
         if (OperatingSystem.IsWindows())
         {

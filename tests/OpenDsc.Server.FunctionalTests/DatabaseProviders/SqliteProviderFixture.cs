@@ -12,7 +12,7 @@ public sealed class SqliteProviderFixture : DatabaseProviderFixture
 
     public override string ProviderName => "SQLite";
 
-    public override async Task InitializeAsync()
+    public override async ValueTask InitializeAsync()
     {
         var uniqueDbName = $"TestDb_{Guid.NewGuid():N}";
         var connectionString = $"DataSource={uniqueDbName};Mode=Memory;Cache=Shared";

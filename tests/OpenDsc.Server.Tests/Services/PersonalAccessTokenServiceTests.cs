@@ -65,7 +65,7 @@ public class PersonalAccessTokenServiceTests : IDisposable
 
 
         var savedToken = await _dbContext.PersonalAccessTokens
-            .FirstOrDefaultAsync(t => t.UserId == _testUserId && t.Name == name);
+            .FirstOrDefaultAsync(t => t.UserId == _testUserId && t.Name == name, TestContext.Current.CancellationToken);
 
         savedToken.Should().NotBeNull();
         savedToken!.Name.Should().Be(name);
@@ -86,7 +86,7 @@ public class PersonalAccessTokenServiceTests : IDisposable
         token.Should().NotBeNullOrEmpty();
 
         var savedToken = await _dbContext.PersonalAccessTokens
-            .FirstOrDefaultAsync(t => t.UserId == _testUserId && t.Name == name);
+            .FirstOrDefaultAsync(t => t.UserId == _testUserId && t.Name == name, TestContext.Current.CancellationToken);
 
         savedToken.Should().NotBeNull();
         savedToken!.ExpiresAt.Should().BeNull();
@@ -127,11 +127,11 @@ public class PersonalAccessTokenServiceTests : IDisposable
     public async Task RevokeTokenAsync_RevokesToken()
     {
         var (token, _) = await _tokenService.CreateTokenAsync(_testUserId, "Revoke Token", new[] { "read" }, null);
-        var tokenId = (await _dbContext.PersonalAccessTokens.FirstAsync(t => t.Name == "Revoke Token")).Id;
+        var tokenId = (await _dbContext.PersonalAccessTokens.FirstAsync(t => t.Name == "Revoke Token", TestContext.Current.CancellationToken)).Id;
 
         await _tokenService.RevokeTokenAsync(tokenId);
 
-        var revokedToken = await _dbContext.PersonalAccessTokens.FindAsync(tokenId);
+        var revokedToken = await _dbContext.PersonalAccessTokens.FindAsync([tokenId], TestContext.Current.CancellationToken);
         revokedToken.Should().NotBeNull();
         revokedToken!.IsRevoked.Should().BeTrue();
         revokedToken.RevokedAt.Should().NotBeNull();

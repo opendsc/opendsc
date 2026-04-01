@@ -51,7 +51,7 @@ public class NodeLcmConfigEndpointsTests : IDisposable
     {
         using var client = _factory.CreateClient();
         var nodeId = Guid.NewGuid();
-        var response = await client.GetAsync($"/api/v1/nodes/{nodeId}/lcm-config");
+        var response = await client.GetAsync($"/api/v1/nodes/{nodeId}/lcm-config", TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
@@ -61,10 +61,10 @@ public class NodeLcmConfigEndpointsTests : IDisposable
         var nodeId = await RegisterTestNodeAsync();
 
         using var client = _factory.CreateClient();
-        var response = await client.GetAsync($"/api/v1/nodes/{nodeId}/lcm-config");
+        var response = await client.GetAsync($"/api/v1/nodes/{nodeId}/lcm-config", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var config = await response.Content.ReadFromJsonAsync<NodeLcmConfigResponse>(JsonOptions);
+        var config = await response.Content.ReadFromJsonAsync<NodeLcmConfigResponse>(JsonOptions, TestContext.Current.CancellationToken);
         config.Should().NotBeNull();
         config!.ConfigurationMode.Should().BeNull();
         config.ConfigurationModeInterval.Should().BeNull();
@@ -84,15 +84,15 @@ public class NodeLcmConfigEndpointsTests : IDisposable
             ConfigurationModeInterval = TimeSpan.FromMinutes(10),
             ReportCompliance = true
         };
-        var updateResponse = await adminClient.PutAsJsonAsync($"/api/v1/nodes/{nodeId}/lcm-config", updateRequest);
+        var updateResponse = await adminClient.PutAsJsonAsync($"/api/v1/nodes/{nodeId}/lcm-config", updateRequest, TestContext.Current.CancellationToken);
         updateResponse.EnsureSuccessStatusCode();
 
         // Fetch via node endpoint
         using var nodeClient = _factory.CreateClient();
-        var response = await nodeClient.GetAsync($"/api/v1/nodes/{nodeId}/lcm-config");
+        var response = await nodeClient.GetAsync($"/api/v1/nodes/{nodeId}/lcm-config", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var config = await response.Content.ReadFromJsonAsync<NodeLcmConfigResponse>(JsonOptions);
+        var config = await response.Content.ReadFromJsonAsync<NodeLcmConfigResponse>(JsonOptions, TestContext.Current.CancellationToken);
         config.Should().NotBeNull();
         config!.ConfigurationMode.Should().Be(ConfigurationMode.Remediate);
         config.ConfigurationModeInterval.Should().Be(TimeSpan.FromMinutes(10));
@@ -104,7 +104,7 @@ public class NodeLcmConfigEndpointsTests : IDisposable
     {
         var fakeId = Guid.NewGuid();
         using var client = _factory.CreateClient();
-        var response = await client.GetAsync($"/api/v1/nodes/{fakeId}/lcm-config");
+        var response = await client.GetAsync($"/api/v1/nodes/{fakeId}/lcm-config", TestContext.Current.CancellationToken);
         response.StatusCode.Should().BeOneOf(HttpStatusCode.NotFound, HttpStatusCode.Forbidden, HttpStatusCode.Unauthorized);
     }
 
@@ -115,7 +115,7 @@ public class NodeLcmConfigEndpointsTests : IDisposable
     {
         using var client = _factory.CreateClient();
         var nodeId = Guid.NewGuid();
-        var response = await client.PutAsJsonAsync($"/api/v1/nodes/{nodeId}/lcm-config", new UpdateNodeLcmConfigRequest());
+        var response = await client.PutAsJsonAsync($"/api/v1/nodes/{nodeId}/lcm-config", new UpdateNodeLcmConfigRequest(), TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
@@ -132,10 +132,10 @@ public class NodeLcmConfigEndpointsTests : IDisposable
             ReportCompliance = false
         };
 
-        var response = await adminClient.PutAsJsonAsync($"/api/v1/nodes/{nodeId}/lcm-config", request);
+        var response = await adminClient.PutAsJsonAsync($"/api/v1/nodes/{nodeId}/lcm-config", request, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var result = await response.Content.ReadFromJsonAsync<NodeLcmConfigResponse>(JsonOptions);
+        var result = await response.Content.ReadFromJsonAsync<NodeLcmConfigResponse>(JsonOptions, TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
         result!.ConfigurationMode.Should().Be(ConfigurationMode.Remediate);
         result.ConfigurationModeInterval.Should().Be(TimeSpan.FromMinutes(30));
@@ -155,12 +155,12 @@ public class NodeLcmConfigEndpointsTests : IDisposable
             ReportCompliance = true
         };
 
-        await adminClient.PutAsJsonAsync($"/api/v1/nodes/{nodeId}/lcm-config", request);
+        await adminClient.PutAsJsonAsync($"/api/v1/nodes/{nodeId}/lcm-config", request, TestContext.Current.CancellationToken);
 
         // Verify persisted via node summary
-        var nodeResponse = await adminClient.GetAsync($"/api/v1/nodes/{nodeId}");
+        var nodeResponse = await adminClient.GetAsync($"/api/v1/nodes/{nodeId}", TestContext.Current.CancellationToken);
         nodeResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var node = await nodeResponse.Content.ReadFromJsonAsync<NodeSummary>(JsonOptions);
+        var node = await nodeResponse.Content.ReadFromJsonAsync<NodeSummary>(JsonOptions, TestContext.Current.CancellationToken);
         node.Should().NotBeNull();
         node!.DesiredConfigurationMode.Should().Be(ConfigurationMode.Monitor);
         node.DesiredConfigurationModeInterval.Should().Be(TimeSpan.FromMinutes(5));
@@ -180,7 +180,7 @@ public class NodeLcmConfigEndpointsTests : IDisposable
             ConfigurationMode = ConfigurationMode.Remediate,
             ConfigurationModeInterval = TimeSpan.FromMinutes(20),
             ReportCompliance = false
-        });
+        }, TestContext.Current.CancellationToken);
 
         // Then clear them
         var clearResponse = await adminClient.PutAsJsonAsync($"/api/v1/nodes/{nodeId}/lcm-config", new UpdateNodeLcmConfigRequest
@@ -188,10 +188,10 @@ public class NodeLcmConfigEndpointsTests : IDisposable
             ConfigurationMode = null,
             ConfigurationModeInterval = null,
             ReportCompliance = null
-        });
+        }, TestContext.Current.CancellationToken);
 
         clearResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var result = await clearResponse.Content.ReadFromJsonAsync<NodeLcmConfigResponse>(JsonOptions);
+        var result = await clearResponse.Content.ReadFromJsonAsync<NodeLcmConfigResponse>(JsonOptions, TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
         result!.ConfigurationMode.Should().BeNull();
         result.ConfigurationModeInterval.Should().BeNull();
@@ -203,7 +203,7 @@ public class NodeLcmConfigEndpointsTests : IDisposable
     {
         var fakeId = Guid.NewGuid();
         using var adminClient = _factory.CreateAuthenticatedClient();
-        var response = await adminClient.PutAsJsonAsync($"/api/v1/nodes/{fakeId}/lcm-config", new UpdateNodeLcmConfigRequest());
+        var response = await adminClient.PutAsJsonAsync($"/api/v1/nodes/{fakeId}/lcm-config", new UpdateNodeLcmConfigRequest(), TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
@@ -214,7 +214,7 @@ public class NodeLcmConfigEndpointsTests : IDisposable
     {
         using var client = _factory.CreateClient();
         var nodeId = Guid.NewGuid();
-        var response = await client.PutAsJsonAsync($"/api/v1/nodes/{nodeId}/reported-config", new ReportNodeLcmConfigRequest());
+        var response = await client.PutAsJsonAsync($"/api/v1/nodes/{nodeId}/reported-config", new ReportNodeLcmConfigRequest(), TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
@@ -231,7 +231,7 @@ public class NodeLcmConfigEndpointsTests : IDisposable
             ReportCompliance = true
         };
 
-        var response = await client.PutAsJsonAsync($"/api/v1/nodes/{nodeId}/reported-config", request);
+        var response = await client.PutAsJsonAsync($"/api/v1/nodes/{nodeId}/reported-config", request, TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
 
@@ -248,12 +248,12 @@ public class NodeLcmConfigEndpointsTests : IDisposable
             ReportCompliance = false
         };
 
-        await nodeClient.PutAsJsonAsync($"/api/v1/nodes/{nodeId}/reported-config", request);
+        await nodeClient.PutAsJsonAsync($"/api/v1/nodes/{nodeId}/reported-config", request, TestContext.Current.CancellationToken);
 
         using var adminClient = _factory.CreateAuthenticatedClient();
-        var nodeResponse = await adminClient.GetAsync($"/api/v1/nodes/{nodeId}");
+        var nodeResponse = await adminClient.GetAsync($"/api/v1/nodes/{nodeId}", TestContext.Current.CancellationToken);
         nodeResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var node = await nodeResponse.Content.ReadFromJsonAsync<NodeSummary>(JsonOptions);
+        var node = await nodeResponse.Content.ReadFromJsonAsync<NodeSummary>(JsonOptions, TestContext.Current.CancellationToken);
         node.Should().NotBeNull();
         node!.ConfigurationMode.Should().Be(ConfigurationMode.Remediate);
         node.ConfigurationModeInterval.Should().Be(TimeSpan.FromMinutes(20));
@@ -271,7 +271,7 @@ public class NodeLcmConfigEndpointsTests : IDisposable
         {
             ConfigurationMode = ConfigurationMode.Remediate,
             ReportCompliance = true
-        });
+        }, TestContext.Current.CancellationToken);
 
         // Node reports different current values
         using var nodeClient = _factory.CreateClient();
@@ -279,18 +279,18 @@ public class NodeLcmConfigEndpointsTests : IDisposable
         {
             ConfigurationMode = ConfigurationMode.Monitor,
             ReportCompliance = false
-        });
+        }, TestContext.Current.CancellationToken);
 
         // Desired values should be unchanged
-        var lcmConfigResponse = await nodeClient.GetAsync($"/api/v1/nodes/{nodeId}/lcm-config");
-        var desired = await lcmConfigResponse.Content.ReadFromJsonAsync<NodeLcmConfigResponse>(JsonOptions);
+        var lcmConfigResponse = await nodeClient.GetAsync($"/api/v1/nodes/{nodeId}/lcm-config", TestContext.Current.CancellationToken);
+        var desired = await lcmConfigResponse.Content.ReadFromJsonAsync<NodeLcmConfigResponse>(JsonOptions, TestContext.Current.CancellationToken);
         desired.Should().NotBeNull();
         desired!.ConfigurationMode.Should().Be(ConfigurationMode.Remediate);
         desired.ReportCompliance.Should().BeTrue();
 
         // Reported values should reflect what the node sent
-        var nodeResponse = await adminClient.GetAsync($"/api/v1/nodes/{nodeId}");
-        var node = await nodeResponse.Content.ReadFromJsonAsync<NodeSummary>(JsonOptions);
+        var nodeResponse = await adminClient.GetAsync($"/api/v1/nodes/{nodeId}", TestContext.Current.CancellationToken);
+        var node = await nodeResponse.Content.ReadFromJsonAsync<NodeSummary>(JsonOptions, TestContext.Current.CancellationToken);
         node!.ConfigurationMode.Should().Be(ConfigurationMode.Monitor);
         node.ReportCompliance.Should().BeFalse();
     }
@@ -300,7 +300,7 @@ public class NodeLcmConfigEndpointsTests : IDisposable
     {
         var fakeId = Guid.NewGuid();
         using var client = _factory.CreateClient();
-        var response = await client.PutAsJsonAsync($"/api/v1/nodes/{fakeId}/reported-config", new ReportNodeLcmConfigRequest());
+        var response = await client.PutAsJsonAsync($"/api/v1/nodes/{fakeId}/reported-config", new ReportNodeLcmConfigRequest(), TestContext.Current.CancellationToken);
         response.StatusCode.Should().BeOneOf(HttpStatusCode.NotFound, HttpStatusCode.Forbidden, HttpStatusCode.Unauthorized);
     }
 
@@ -318,14 +318,14 @@ public class NodeLcmConfigEndpointsTests : IDisposable
             DefaultConfigurationMode = ConfigurationMode.Remediate,
             DefaultConfigurationModeInterval = TimeSpan.FromMinutes(20),
             DefaultReportCompliance = true
-        });
+        }, TestContext.Current.CancellationToken);
 
         // Node has no overrides — should receive server defaults
         using var nodeClient = _factory.CreateClient();
-        var response = await nodeClient.GetAsync($"/api/v1/nodes/{nodeId}/lcm-config");
+        var response = await nodeClient.GetAsync($"/api/v1/nodes/{nodeId}/lcm-config", TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var config = await response.Content.ReadFromJsonAsync<NodeLcmConfigResponse>(JsonOptions);
+        var config = await response.Content.ReadFromJsonAsync<NodeLcmConfigResponse>(JsonOptions, TestContext.Current.CancellationToken);
         config.Should().NotBeNull();
         config!.ConfigurationMode.Should().Be(ConfigurationMode.Remediate);
         config.ConfigurationModeInterval.Should().Be(TimeSpan.FromMinutes(20));
@@ -344,7 +344,7 @@ public class NodeLcmConfigEndpointsTests : IDisposable
             DefaultConfigurationMode = ConfigurationMode.Monitor,
             DefaultConfigurationModeInterval = TimeSpan.FromMinutes(15),
             DefaultReportCompliance = false
-        });
+        }, TestContext.Current.CancellationToken);
 
         // Set node-level overrides that differ from server defaults
         await adminClient.PutAsJsonAsync($"/api/v1/nodes/{nodeId}/lcm-config", new UpdateNodeLcmConfigRequest
@@ -352,14 +352,14 @@ public class NodeLcmConfigEndpointsTests : IDisposable
             ConfigurationMode = ConfigurationMode.Remediate,
             ConfigurationModeInterval = TimeSpan.FromMinutes(5),
             ReportCompliance = true
-        });
+        }, TestContext.Current.CancellationToken);
 
         // Node override should win over server default
         using var nodeClient = _factory.CreateClient();
-        var response = await nodeClient.GetAsync($"/api/v1/nodes/{nodeId}/lcm-config");
+        var response = await nodeClient.GetAsync($"/api/v1/nodes/{nodeId}/lcm-config", TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var config = await response.Content.ReadFromJsonAsync<NodeLcmConfigResponse>(JsonOptions);
+        var config = await response.Content.ReadFromJsonAsync<NodeLcmConfigResponse>(JsonOptions, TestContext.Current.CancellationToken);
         config.Should().NotBeNull();
         config!.ConfigurationMode.Should().Be(ConfigurationMode.Remediate);
         config.ConfigurationModeInterval.Should().Be(TimeSpan.FromMinutes(5));
@@ -378,7 +378,7 @@ public class NodeLcmConfigEndpointsTests : IDisposable
             DefaultConfigurationMode = ConfigurationMode.Monitor,
             DefaultConfigurationModeInterval = TimeSpan.FromMinutes(30),
             DefaultReportCompliance = false
-        });
+        }, TestContext.Current.CancellationToken);
 
         // Node only overrides one field
         await adminClient.PutAsJsonAsync($"/api/v1/nodes/{nodeId}/lcm-config", new UpdateNodeLcmConfigRequest
@@ -386,13 +386,13 @@ public class NodeLcmConfigEndpointsTests : IDisposable
             ConfigurationMode = ConfigurationMode.Remediate,
             ConfigurationModeInterval = null,
             ReportCompliance = null
-        });
+        }, TestContext.Current.CancellationToken);
 
         using var nodeClient = _factory.CreateClient();
-        var response = await nodeClient.GetAsync($"/api/v1/nodes/{nodeId}/lcm-config");
+        var response = await nodeClient.GetAsync($"/api/v1/nodes/{nodeId}/lcm-config", TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var config = await response.Content.ReadFromJsonAsync<NodeLcmConfigResponse>(JsonOptions);
+        var config = await response.Content.ReadFromJsonAsync<NodeLcmConfigResponse>(JsonOptions, TestContext.Current.CancellationToken);
         config.Should().NotBeNull();
         // Node override wins for mode
         config!.ConfigurationMode.Should().Be(ConfigurationMode.Remediate);
@@ -414,24 +414,23 @@ public class NodeLcmConfigEndpointsTests : IDisposable
             DefaultConfigurationMode = ConfigurationMode.Monitor,
             DefaultConfigurationModeInterval = TimeSpan.FromMinutes(10),
             DefaultReportCompliance = true
-        });
+        }, TestContext.Current.CancellationToken);
         await adminClient.PutAsJsonAsync("/api/v1/settings/lcm-defaults", new UpdateServerLcmDefaultsRequest
         {
             DefaultConfigurationMode = null,
             DefaultConfigurationModeInterval = null,
             DefaultReportCompliance = null
-        });
+        }, TestContext.Current.CancellationToken);
 
         // With no node override and no server default, all fields should be null
         using var nodeClient = _factory.CreateClient();
-        var response = await nodeClient.GetAsync($"/api/v1/nodes/{nodeId}/lcm-config");
+        var response = await nodeClient.GetAsync($"/api/v1/nodes/{nodeId}/lcm-config", TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var config = await response.Content.ReadFromJsonAsync<NodeLcmConfigResponse>(JsonOptions);
+        var config = await response.Content.ReadFromJsonAsync<NodeLcmConfigResponse>(JsonOptions, TestContext.Current.CancellationToken);
         config.Should().NotBeNull();
         config!.ConfigurationMode.Should().BeNull();
         config.ConfigurationModeInterval.Should().BeNull();
         config.ReportCompliance.Should().BeNull();
     }
 }
-

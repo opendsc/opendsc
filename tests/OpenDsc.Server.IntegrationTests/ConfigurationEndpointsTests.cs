@@ -36,7 +36,7 @@ public class ConfigurationEndpointsTests : IDisposable
     public async Task GetConfigurations_WithoutAuth_ReturnsUnauthorized()
     {
         using var client = _factory.CreateClient();
-        var response = await client.GetAsync("/api/v1/configurations");
+        var response = await client.GetAsync("/api/v1/configurations", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -46,10 +46,10 @@ public class ConfigurationEndpointsTests : IDisposable
     {
         using var client = CreateAuthenticatedClient();
 
-        var response = await client.GetAsync("/api/v1/configurations");
+        var response = await client.GetAsync("/api/v1/configurations", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var configs = await response.Content.ReadFromJsonAsync<List<ConfigurationSummaryDto>>();
+        var configs = await response.Content.ReadFromJsonAsync<List<ConfigurationSummaryDto>>(TestContext.Current.CancellationToken);
         configs.Should().NotBeNull();
         configs.Should().HaveCount(1);
         configs![0].Name.Should().Be("test-config");
@@ -69,7 +69,7 @@ public class ConfigurationEndpointsTests : IDisposable
         mainFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         content.Add(mainFile, "files", "main.dsc.yaml");
 
-        var response = await client.PostAsync("/api/v1/configurations", content);
+        var response = await client.PostAsync("/api/v1/configurations", content, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         response.Headers.Location.Should().NotBeNull();
@@ -88,7 +88,7 @@ public class ConfigurationEndpointsTests : IDisposable
         file1.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         content1.Add(file1, "files", "main.dsc.yaml");
 
-        await client.PostAsync("/api/v1/configurations", content1);
+        await client.PostAsync("/api/v1/configurations", content1, TestContext.Current.CancellationToken);
 
         using var content2 = new MultipartFormDataContent();
         content2.Add(new StringContent("duplicate-config"), "name");
@@ -97,7 +97,7 @@ public class ConfigurationEndpointsTests : IDisposable
         file2.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         content2.Add(file2, "files", "main.dsc.yaml");
 
-        var response = await client.PostAsync("/api/v1/configurations", content2);
+        var response = await client.PostAsync("/api/v1/configurations", content2, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
@@ -113,12 +113,12 @@ public class ConfigurationEndpointsTests : IDisposable
         var file = new ByteArrayContent("content"u8.ToArray());
         file.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         content.Add(file, "files", "main.dsc.yaml");
-        await client.PostAsync("/api/v1/configurations", content);
+        await client.PostAsync("/api/v1/configurations", content, TestContext.Current.CancellationToken);
 
-        var response = await client.GetAsync("/api/v1/configurations/get-config-test");
+        var response = await client.GetAsync("/api/v1/configurations/get-config-test", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var config = await response.Content.ReadFromJsonAsync<ConfigurationDetailsDto>();
+        var config = await response.Content.ReadFromJsonAsync<ConfigurationDetailsDto>(TestContext.Current.CancellationToken);
         config.Should().NotBeNull();
         config!.Name.Should().Be("get-config-test");
     }
@@ -128,7 +128,7 @@ public class ConfigurationEndpointsTests : IDisposable
     {
         using var client = CreateAuthenticatedClient();
 
-        var response = await client.GetAsync("/api/v1/configurations/non-existent");
+        var response = await client.GetAsync("/api/v1/configurations/non-existent", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -144,13 +144,13 @@ public class ConfigurationEndpointsTests : IDisposable
         var file = new ByteArrayContent("content"u8.ToArray());
         file.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         content.Add(file, "files", "main.dsc.yaml");
-        await client.PostAsync("/api/v1/configurations", content);
+        await client.PostAsync("/api/v1/configurations", content, TestContext.Current.CancellationToken);
 
-        var response = await client.DeleteAsync("/api/v1/configurations/delete-config-test");
+        var response = await client.DeleteAsync("/api/v1/configurations/delete-config-test", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var getResponse = await client.GetAsync("/api/v1/configurations/delete-config-test");
+        var getResponse = await client.GetAsync("/api/v1/configurations/delete-config-test", TestContext.Current.CancellationToken);
         getResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
@@ -159,7 +159,7 @@ public class ConfigurationEndpointsTests : IDisposable
     {
         using var client = CreateAuthenticatedClient();
 
-        var response = await client.DeleteAsync("/api/v1/configurations/non-existent");
+        var response = await client.DeleteAsync("/api/v1/configurations/non-existent", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -175,7 +175,7 @@ public class ConfigurationEndpointsTests : IDisposable
         var file1 = new ByteArrayContent("content1"u8.ToArray());
         file1.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         content1.Add(file1, "files", "main.dsc.yaml");
-        await client.PostAsync("/api/v1/configurations", content1);
+        await client.PostAsync("/api/v1/configurations", content1, TestContext.Current.CancellationToken);
 
         using var content2 = new MultipartFormDataContent();
         content2.Add(new StringContent("config2"), "name");
@@ -183,12 +183,12 @@ public class ConfigurationEndpointsTests : IDisposable
         var file2 = new ByteArrayContent("content2"u8.ToArray());
         file2.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         content2.Add(file2, "files", "main.dsc.yaml");
-        await client.PostAsync("/api/v1/configurations", content2);
+        await client.PostAsync("/api/v1/configurations", content2, TestContext.Current.CancellationToken);
 
-        var response = await client.GetAsync("/api/v1/configurations");
+        var response = await client.GetAsync("/api/v1/configurations", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var configs = await response.Content.ReadFromJsonAsync<List<ConfigurationSummaryDto>>();
+        var configs = await response.Content.ReadFromJsonAsync<List<ConfigurationSummaryDto>>(TestContext.Current.CancellationToken);
         configs.Should().NotBeNull();
         configs!.Count.Should().BeGreaterThanOrEqualTo(2);
         configs.Should().Contain(c => c.Name == "config1");
@@ -206,7 +206,7 @@ public class ConfigurationEndpointsTests : IDisposable
         var configFile = new ByteArrayContent("initial"u8.ToArray());
         configFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         configContent.Add(configFile, "files", "main.dsc.yaml");
-        await client.PostAsync("/api/v1/configurations", configContent);
+        await client.PostAsync("/api/v1/configurations", configContent, TestContext.Current.CancellationToken);
 
         using var versionContent = new MultipartFormDataContent();
         versionContent.Add(new StringContent("2.0.0"), "version");
@@ -214,7 +214,7 @@ public class ConfigurationEndpointsTests : IDisposable
         versionFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         versionContent.Add(versionFile, "files", "main.dsc.yaml");
 
-        var response = await client.PostAsync("/api/v1/configurations/version-test-config/versions", versionContent);
+        var response = await client.PostAsync("/api/v1/configurations/version-test-config/versions", versionContent, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
     }
@@ -231,10 +231,10 @@ public class ConfigurationEndpointsTests : IDisposable
         var configFile = new ByteArrayContent("content"u8.ToArray());
         configFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         configContent.Add(configFile, "files", "main.dsc.yaml");
-        var createResponse = await client.PostAsync("/api/v1/configurations", configContent);
-        var configDto = await createResponse.Content.ReadFromJsonAsync<ConfigurationDetailsDto>();
+        var createResponse = await client.PostAsync("/api/v1/configurations", configContent, TestContext.Current.CancellationToken);
+        var configDto = await createResponse.Content.ReadFromJsonAsync<ConfigurationDetailsDto>(TestContext.Current.CancellationToken);
 
-        var response = await client.PutAsync($"/api/v1/configurations/publish-test-config/versions/{configDto!.LatestVersion}/publish", null);
+        var response = await client.PutAsync($"/api/v1/configurations/publish-test-config/versions/{configDto!.LatestVersion}/publish", null, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -265,12 +265,12 @@ resources: []
         configFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         configContent.Add(configFile, "files", "config.dsc.yaml");
 
-        var createResponse = await client.PostAsync("/api/v1/configurations", configContent);
+        var createResponse = await client.PostAsync("/api/v1/configurations", configContent, TestContext.Current.CancellationToken);
         createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
-        var configDto = await createResponse.Content.ReadFromJsonAsync<ConfigurationDetailsDto>();
+        var configDto = await createResponse.Content.ReadFromJsonAsync<ConfigurationDetailsDto>(TestContext.Current.CancellationToken);
 
         // Publish should succeed - entry point file should be found in v{version} directory
-        var publishResponse = await client.PutAsync($"/api/v1/configurations/{configName}/versions/{configDto!.LatestVersion}/publish", null);
+        var publishResponse = await client.PutAsync($"/api/v1/configurations/{configName}/versions/{configDto!.LatestVersion}/publish", null, TestContext.Current.CancellationToken);
 
         publishResponse.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -286,19 +286,19 @@ resources: []
         var configFile = new ByteArrayContent("v1"u8.ToArray());
         configFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         configContent.Add(configFile, "files", "main.dsc.yaml");
-        await client.PostAsync("/api/v1/configurations", configContent);
+        await client.PostAsync("/api/v1/configurations", configContent, TestContext.Current.CancellationToken);
 
         using var v2Content = new MultipartFormDataContent();
         v2Content.Add(new StringContent("2.0.0"), "version");
         var v2File = new ByteArrayContent("v2"u8.ToArray());
         v2File.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         v2Content.Add(v2File, "files", "main.dsc.yaml");
-        await client.PostAsync("/api/v1/configurations/versions-list-test/versions", v2Content);
+        await client.PostAsync("/api/v1/configurations/versions-list-test/versions", v2Content, TestContext.Current.CancellationToken);
 
-        var response = await client.GetAsync("/api/v1/configurations/versions-list-test/versions");
+        var response = await client.GetAsync("/api/v1/configurations/versions-list-test/versions", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var versions = await response.Content.ReadFromJsonAsync<List<ConfigurationVersionDto>>();
+        var versions = await response.Content.ReadFromJsonAsync<List<ConfigurationVersionDto>>(TestContext.Current.CancellationToken);
         versions.Should().NotBeNull();
         versions!.Count.Should().BeGreaterThanOrEqualTo(2);
     }
@@ -314,7 +314,7 @@ resources: []
         var configFile = new ByteArrayContent("v1content"u8.ToArray());
         configFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         configContent.Add(configFile, "files", "main.dsc.yaml");
-        await client.PostAsync("/api/v1/configurations", configContent);
+        await client.PostAsync("/api/v1/configurations", configContent, TestContext.Current.CancellationToken);
 
         using var versionContent = new MultipartFormDataContent();
         versionContent.Add(new StringContent("2.0.0"), "version");
@@ -323,12 +323,12 @@ resources: []
         versionFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         versionContent.Add(versionFile, "files", "main.bicep");
 
-        var response = await client.PostAsync("/api/v1/configurations/version-entrypoint-test/versions", versionContent);
+        var response = await client.PostAsync("/api/v1/configurations/version-entrypoint-test/versions", versionContent, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var versionsResponse = await client.GetAsync("/api/v1/configurations/version-entrypoint-test/versions");
-        var versions = await versionsResponse.Content.ReadFromJsonAsync<List<ConfigurationVersionDto>>();
+        var versionsResponse = await client.GetAsync("/api/v1/configurations/version-entrypoint-test/versions", TestContext.Current.CancellationToken);
+        var versions = await versionsResponse.Content.ReadFromJsonAsync<List<ConfigurationVersionDto>>(TestContext.Current.CancellationToken);
         versions.Should().NotBeNull();
         var v1 = versions!.FirstOrDefault(v => v.Version == "1.0.0");
         var v2 = versions.FirstOrDefault(v => v.Version == "2.0.0");
@@ -349,12 +349,12 @@ resources: []
         var configFile = new ByteArrayContent("v1"u8.ToArray());
         configFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         configContent.Add(configFile, "files", "config.dsc.yaml");
-        await client.PostAsync("/api/v1/configurations", configContent);
+        await client.PostAsync("/api/v1/configurations", configContent, TestContext.Current.CancellationToken);
 
-        var response = await client.GetAsync("/api/v1/configurations/versions-entrypoint-list-test/versions");
+        var response = await client.GetAsync("/api/v1/configurations/versions-entrypoint-list-test/versions", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var versions = await response.Content.ReadFromJsonAsync<List<ConfigurationVersionDto>>();
+        var versions = await response.Content.ReadFromJsonAsync<List<ConfigurationVersionDto>>(TestContext.Current.CancellationToken);
         versions.Should().NotBeNull();
         versions!.Should().HaveCount(1);
         versions[0].EntryPoint.Should().Be("config.dsc.yaml");
@@ -371,7 +371,7 @@ resources: []
         var configFile = new ByteArrayContent("v1content"u8.ToArray());
         configFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         configContent.Add(configFile, "files", "inherited.dsc.yaml");
-        await client.PostAsync("/api/v1/configurations", configContent);
+        await client.PostAsync("/api/v1/configurations", configContent, TestContext.Current.CancellationToken);
 
         // Create v2 without specifying entryPoint - should inherit from v1
         using var versionContent = new MultipartFormDataContent();
@@ -379,11 +379,11 @@ resources: []
         var versionFile = new ByteArrayContent("v2content"u8.ToArray());
         versionFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         versionContent.Add(versionFile, "files", "inherited.dsc.yaml");
-        var createV2Response = await client.PostAsync("/api/v1/configurations/inherit-entrypoint-test/versions", versionContent);
+        var createV2Response = await client.PostAsync("/api/v1/configurations/inherit-entrypoint-test/versions", versionContent, TestContext.Current.CancellationToken);
         createV2Response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var versionsResponse = await client.GetAsync("/api/v1/configurations/inherit-entrypoint-test/versions");
-        var versions = await versionsResponse.Content.ReadFromJsonAsync<List<ConfigurationVersionDto>>();
+        var versionsResponse = await client.GetAsync("/api/v1/configurations/inherit-entrypoint-test/versions", TestContext.Current.CancellationToken);
+        var versions = await versionsResponse.Content.ReadFromJsonAsync<List<ConfigurationVersionDto>>(TestContext.Current.CancellationToken);
         var v2 = versions!.FirstOrDefault(v => v.Version == "2.0.0");
         v2.Should().NotBeNull();
         v2!.EntryPoint.Should().Be("inherited.dsc.yaml");
@@ -400,7 +400,7 @@ resources: []
         var configFile = new ByteArrayContent("v1"u8.ToArray());
         configFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         configContent.Add(configFile, "files", "main.dsc.yaml");
-        var createResponse = await client.PostAsync("/api/v1/configurations", configContent);
+        var createResponse = await client.PostAsync("/api/v1/configurations", configContent, TestContext.Current.CancellationToken);
 
         using var v2Content = new MultipartFormDataContent();
         v2Content.Add(new StringContent("2.0.0"), "version");
@@ -408,10 +408,10 @@ resources: []
         var v2File = new ByteArrayContent("v2"u8.ToArray());
         v2File.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         v2Content.Add(v2File, "files", "main.dsc.yaml");
-        var v2Response = await client.PostAsync("/api/v1/configurations/delete-version-test/versions", v2Content);
-        var v2Dto = await v2Response.Content.ReadFromJsonAsync<ConfigurationVersionDto>();
+        var v2Response = await client.PostAsync("/api/v1/configurations/delete-version-test/versions", v2Content, TestContext.Current.CancellationToken);
+        var v2Dto = await v2Response.Content.ReadFromJsonAsync<ConfigurationVersionDto>(TestContext.Current.CancellationToken);
 
-        var response = await client.DeleteAsync($"/api/v1/configurations/delete-version-test/versions/{v2Dto!.Version}");
+        var response = await client.DeleteAsync($"/api/v1/configurations/delete-version-test/versions/{v2Dto!.Version}", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
@@ -429,7 +429,7 @@ resources: []
         var configFile = new ByteArrayContent("resources: []"u8.ToArray());
         configFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         configContent.Add(configFile, "files", "main.dsc.yaml");
-        var configResponse = await client.PostAsync("/api/v1/configurations", configContent);
+        var configResponse = await client.PostAsync("/api/v1/configurations", configContent, TestContext.Current.CancellationToken);
         configResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         configResponse.EnsureSuccessStatusCode();
 
@@ -444,7 +444,7 @@ resources: []
         var v1File = new ByteArrayContent(System.Text.Encoding.UTF8.GetBytes(v1Schema));
         v1File.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
         v1Request.Add(v1File, "parametersFile", "parameters.json");
-        var v1Response = await client.PutAsync($"/api/v1/configurations/{configName}/parameters", v1Request);
+        var v1Response = await client.PutAsync($"/api/v1/configurations/{configName}/parameters", v1Request, TestContext.Current.CancellationToken);
         v1Response.EnsureSuccessStatusCode();
 
         // Create v1.1.0 schema with breaking changes (removing required parameter)
@@ -458,11 +458,11 @@ resources: []
         var v1_1File = new ByteArrayContent(System.Text.Encoding.UTF8.GetBytes(v1_1Schema));
         v1_1File.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
         v1_1Request.Add(v1_1File, "parametersFile", "parameters.json");
-        var schemaResponse = await client.PutAsync($"/api/v1/configurations/{configName}/parameters", v1_1Request);
+        var schemaResponse = await client.PutAsync($"/api/v1/configurations/{configName}/parameters", v1_1Request, TestContext.Current.CancellationToken);
 
         // Attempt to publish - should fail due to breaking changes
         schemaResponse.StatusCode.Should().Be(HttpStatusCode.Conflict);
-        var publishResult = await schemaResponse.Content.ReadFromJsonAsync<PublishResultDto>();
+        var publishResult = await schemaResponse.Content.ReadFromJsonAsync<PublishResultDto>(TestContext.Current.CancellationToken);
         publishResult.Should().NotBeNull();
         publishResult!.Success.Should().BeFalse();
         publishResult.CompatibilityReport.Should().NotBeNull();
@@ -482,7 +482,7 @@ resources: []
         var configFile = new ByteArrayContent("resources: []"u8.ToArray());
         configFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         configContent.Add(configFile, "files", "main.dsc.yaml");
-        var configResponse = await client.PostAsync("/api/v1/configurations", configContent);
+        var configResponse = await client.PostAsync("/api/v1/configurations", configContent, TestContext.Current.CancellationToken);
         configResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         configResponse.EnsureSuccessStatusCode();
         configResponse.EnsureSuccessStatusCode();
@@ -498,7 +498,7 @@ resources: []
         var v1File = new ByteArrayContent(System.Text.Encoding.UTF8.GetBytes(v1Schema));
         v1File.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
         v1Request.Add(v1File, "parametersFile", "parameters.json");
-        var v1Response = await client.PutAsync($"/api/v1/configurations/{configName}/parameters", v1Request);
+        var v1Response = await client.PutAsync($"/api/v1/configurations/{configName}/parameters", v1Request, TestContext.Current.CancellationToken);
         v1Response.EnsureSuccessStatusCode();
 
         // Create v1.1.0 schema with non-breaking changes (adding optional parameter)
@@ -513,7 +513,7 @@ resources: []
         var v1_1File = new ByteArrayContent(System.Text.Encoding.UTF8.GetBytes(v1_1Schema));
         v1_1File.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
         v1_1Request.Add(v1_1File, "parametersFile", "parameters.json");
-        var schemaResponse = await client.PutAsync($"/api/v1/configurations/{configName}/parameters", v1_1Request);
+        var schemaResponse = await client.PutAsync($"/api/v1/configurations/{configName}/parameters", v1_1Request, TestContext.Current.CancellationToken);
 
         // Should succeed - non-breaking changes allowed in minor version
         schemaResponse.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -532,7 +532,7 @@ resources: []
         var configFile = new ByteArrayContent("resources: []"u8.ToArray());
         configFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         configContent.Add(configFile, "files", "main.dsc.yaml");
-        await client.PostAsync("/api/v1/configurations", configContent);
+        await client.PostAsync("/api/v1/configurations", configContent, TestContext.Current.CancellationToken);
 
         // Upload v1.0.0 parameter schema
         var v1Schema = @"{
@@ -545,7 +545,7 @@ resources: []
         var v1File = new ByteArrayContent(System.Text.Encoding.UTF8.GetBytes(v1Schema));
         v1File.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
         v1Request.Add(v1File, "parametersFile", "parameters.json");
-        await client.PutAsync($"/api/v1/configurations/{configName}/parameters", v1Request);
+        await client.PutAsync($"/api/v1/configurations/{configName}/parameters", v1Request, TestContext.Current.CancellationToken);
 
         // Create v2.0.0 schema with breaking changes (major version bump)
         var v2Schema = @"{
@@ -558,7 +558,7 @@ resources: []
         var v2File = new ByteArrayContent(System.Text.Encoding.UTF8.GetBytes(v2Schema));
         v2File.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
         v2Request.Add(v2File, "parametersFile", "parameters.json");
-        var schemaResponse = await client.PutAsync($"/api/v1/configurations/{configName}/parameters", v2Request);
+        var schemaResponse = await client.PutAsync($"/api/v1/configurations/{configName}/parameters", v2Request, TestContext.Current.CancellationToken);
 
         // Should succeed - breaking changes allowed with major version bump
         schemaResponse.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -576,10 +576,10 @@ resources: []
         var configFile = new ByteArrayContent("content"u8.ToArray());
         configFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         configContent.Add(configFile, "files", "main.dsc.yaml");
-        var createResponse = await client.PostAsync("/api/v1/configurations", configContent);
-        var configDto = await createResponse.Content.ReadFromJsonAsync<ConfigurationDetailsDto>();
+        var createResponse = await client.PostAsync("/api/v1/configurations", configContent, TestContext.Current.CancellationToken);
+        var configDto = await createResponse.Content.ReadFromJsonAsync<ConfigurationDetailsDto>(TestContext.Current.CancellationToken);
 
-        var response = await client.PutAsync($"/api/v1/configurations/cookie-auth-test-config/versions/{configDto!.LatestVersion}/publish", null);
+        var response = await client.PutAsync($"/api/v1/configurations/cookie-auth-test-config/versions/{configDto!.LatestVersion}/publish", null, TestContext.Current.CancellationToken);
 
         // Should succeed with cookie authentication
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -600,19 +600,19 @@ resources: []
         var configFile = new ByteArrayContent("resources: []"u8.ToArray());
         configFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         configContent.Add(configFile, "files", "main.dsc.yaml");
-        var createResponse = await client.PostAsync("/api/v1/configurations", configContent);
-        var configDto = await createResponse.Content.ReadFromJsonAsync<ConfigurationDetailsDto>();
+        var createResponse = await client.PostAsync("/api/v1/configurations", configContent, TestContext.Current.CancellationToken);
+        var configDto = await createResponse.Content.ReadFromJsonAsync<ConfigurationDetailsDto>(TestContext.Current.CancellationToken);
 
         // Publish the draft version
         var publishResponse = await client.PutAsync(
             $"/api/v1/configurations/{configName}/versions/{configDto!.LatestVersion}/publish",
-            null);
+            null, TestContext.Current.CancellationToken);
 
         // Verify response status is OK
         publishResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
         // Verify the response contains the updated version data
-        var publishedVersion = await publishResponse.Content.ReadFromJsonAsync<ConfigurationVersionDto>();
+        var publishedVersion = await publishResponse.Content.ReadFromJsonAsync<ConfigurationVersionDto>(TestContext.Current.CancellationToken);
         publishedVersion.Should().NotBeNull();
         publishedVersion!.Version.Should().Be(configDto.LatestVersion);
         // This is the key fix: Status must be Published after publishing
@@ -626,7 +626,7 @@ resources: []
         using var client = _factory.CreateClient();
 
         // Try to publish without authentication
-        var response = await client.PutAsync("/api/v1/configurations/test-config/versions/1.0.0/publish", null);
+        var response = await client.PutAsync("/api/v1/configurations/test-config/versions/1.0.0/publish", null, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -662,11 +662,11 @@ parameters:
         mainFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         createContent.Add(mainFile, "files", "main.dsc.yaml");
 
-        var createResponse = await client.PostAsync("/api/v1/configurations", createContent);
+        var createResponse = await client.PostAsync("/api/v1/configurations", createContent, TestContext.Current.CancellationToken);
         createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
         // Get the configuration details to verify parameter schema was created
-        var detailsResponse = await client.GetAsync($"/api/v1/configurations/{configName}");
+        var detailsResponse = await client.GetAsync($"/api/v1/configurations/{configName}", TestContext.Current.CancellationToken);
         detailsResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
         // Query the database directly to verify ParameterSchema was created
@@ -675,14 +675,14 @@ parameters:
 
         var configuration = await db.Configurations
             .Include(c => c.Versions)
-            .FirstOrDefaultAsync(c => c.Name == configName);
+            .FirstOrDefaultAsync(c => c.Name == configName, TestContext.Current.CancellationToken);
 
         configuration.Should().NotBeNull();
 
         // Query parameter schemas for this configuration
         var schemas = await db.ParameterSchemas
             .Where(ps => ps.ConfigurationId == configuration!.Id)
-            .ToListAsync();
+            .ToListAsync(TestContext.Current.CancellationToken);
 
         schemas.Should().NotBeEmpty("Parameter schema should be auto-generated from YAML");
 
@@ -724,7 +724,7 @@ parameters:
         mainFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         createContent.Add(mainFile, "files", "main.dsc.yaml");
 
-        var createResponse = await client.PostAsync("/api/v1/configurations", createContent);
+        var createResponse = await client.PostAsync("/api/v1/configurations", createContent, TestContext.Current.CancellationToken);
         createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
         // Create v2.0.0 with new parameters
@@ -745,7 +745,7 @@ parameters:
         v2File.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         v2Content.Add(v2File, "files", "main.dsc.yaml");
 
-        var v2Response = await client.PostAsync($"/api/v1/configurations/{configName}/versions", v2Content);
+        var v2Response = await client.PostAsync($"/api/v1/configurations/{configName}/versions", v2Content, TestContext.Current.CancellationToken);
         v2Response.StatusCode.Should().Be(HttpStatusCode.Created);
 
         // Verify both schema versions exist
@@ -753,13 +753,13 @@ parameters:
         var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
 
         var configuration = await db.Configurations
-            .FirstOrDefaultAsync(c => c.Name == configName);
+            .FirstOrDefaultAsync(c => c.Name == configName, TestContext.Current.CancellationToken);
 
         configuration.Should().NotBeNull();
 
         var schemas = await db.ParameterSchemas
             .Where(ps => ps.ConfigurationId == configuration!.Id)
-            .ToListAsync();
+            .ToListAsync(TestContext.Current.CancellationToken);
 
         schemas = schemas.OrderBy(ps => ps.SchemaVersion).ToList();
 
@@ -811,4 +811,3 @@ public sealed class ValidationErrorDto
     public required string Message { get; init; }
     public required string Code { get; init; }
 }
-

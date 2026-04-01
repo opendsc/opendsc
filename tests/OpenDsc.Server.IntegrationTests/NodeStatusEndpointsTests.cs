@@ -55,7 +55,7 @@ public class NodeStatusEndpointsTests : IDisposable
         var nodeId = Guid.NewGuid();
         var response = await client.PutAsJsonAsync(
             $"/api/v1/nodes/{nodeId}/lcm-status",
-            new UpdateLcmStatusRequest { LcmStatus = LcmStatus.Idle });
+            new UpdateLcmStatusRequest { LcmStatus = LcmStatus.Idle }, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -68,7 +68,7 @@ public class NodeStatusEndpointsTests : IDisposable
         using var client = _factory.CreateClient();
         var response = await client.PutAsJsonAsync(
             $"/api/v1/nodes/{nodeId}/lcm-status",
-            new UpdateLcmStatusRequest { LcmStatus = LcmStatus.Testing });
+            new UpdateLcmStatusRequest { LcmStatus = LcmStatus.Testing }, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
@@ -86,7 +86,7 @@ public class NodeStatusEndpointsTests : IDisposable
         // a non-existent node results in 403 Forbid (no node_id claim).
         var response = await client.PutAsJsonAsync(
             $"/api/v1/nodes/{fakeId}/lcm-status",
-            new UpdateLcmStatusRequest { LcmStatus = LcmStatus.Idle });
+            new UpdateLcmStatusRequest { LcmStatus = LcmStatus.Idle }, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().BeOneOf(HttpStatusCode.NotFound, HttpStatusCode.Forbidden, HttpStatusCode.Unauthorized);
     }
@@ -99,15 +99,15 @@ public class NodeStatusEndpointsTests : IDisposable
         using var client = _factory.CreateClient();
         var response = await client.PutAsJsonAsync(
             $"/api/v1/nodes/{nodeId}/lcm-status",
-            new UpdateLcmStatusRequest { LcmStatus = LcmStatus.Remediating });
+            new UpdateLcmStatusRequest { LcmStatus = LcmStatus.Remediating }, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         // Verify the status was persisted by fetching node summary
         using var adminClient = _factory.CreateAuthenticatedClient();
-        var nodeResponse = await adminClient.GetAsync($"/api/v1/nodes/{nodeId}");
+        var nodeResponse = await adminClient.GetAsync($"/api/v1/nodes/{nodeId}", TestContext.Current.CancellationToken);
         nodeResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var nodeSummary = await nodeResponse.Content.ReadFromJsonAsync<NodeSummary>(JsonOptions);
+        var nodeSummary = await nodeResponse.Content.ReadFromJsonAsync<NodeSummary>(JsonOptions, TestContext.Current.CancellationToken);
         nodeSummary!.LcmStatus.Should().Be(LcmStatus.Remediating.ToString());
     }
 
@@ -119,13 +119,13 @@ public class NodeStatusEndpointsTests : IDisposable
         using var client = _factory.CreateClient();
         await client.PutAsJsonAsync(
             $"/api/v1/nodes/{nodeId}/lcm-status",
-            new UpdateLcmStatusRequest { LcmStatus = LcmStatus.Idle });
+            new UpdateLcmStatusRequest { LcmStatus = LcmStatus.Idle }, TestContext.Current.CancellationToken);
 
         // Verify event was recorded in status history
         using var adminClient = _factory.CreateAuthenticatedClient();
-        var historyResponse = await adminClient.GetAsync($"/api/v1/nodes/{nodeId}/status-history");
+        var historyResponse = await adminClient.GetAsync($"/api/v1/nodes/{nodeId}/status-history", TestContext.Current.CancellationToken);
         historyResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var events = await historyResponse.Content.ReadFromJsonAsync<List<NodeStatusEventSummary>>();
+        var events = await historyResponse.Content.ReadFromJsonAsync<List<NodeStatusEventSummary>>(TestContext.Current.CancellationToken);
         events.Should().NotBeNull();
         events!.Should().ContainSingle(e => e.LcmStatus == LcmStatus.Idle.ToString());
     }
@@ -136,7 +136,7 @@ public class NodeStatusEndpointsTests : IDisposable
     public async Task GetStatusHistory_WithoutAuth_ReturnsUnauthorized()
     {
         using var client = _factory.CreateClient();
-        var response = await client.GetAsync($"/api/v1/nodes/{Guid.NewGuid()}/status-history");
+        var response = await client.GetAsync($"/api/v1/nodes/{Guid.NewGuid()}/status-history", TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
@@ -146,10 +146,10 @@ public class NodeStatusEndpointsTests : IDisposable
         var nodeId = await RegisterTestNodeAsync();
 
         using var adminClient = _factory.CreateAuthenticatedClient();
-        var response = await adminClient.GetAsync($"/api/v1/nodes/{nodeId}/status-history");
+        var response = await adminClient.GetAsync($"/api/v1/nodes/{nodeId}/status-history", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var events = await response.Content.ReadFromJsonAsync<List<NodeStatusEventSummary>>();
+        var events = await response.Content.ReadFromJsonAsync<List<NodeStatusEventSummary>>(TestContext.Current.CancellationToken);
         events.Should().NotBeNull();
         events!.Should().BeEmpty();
     }
@@ -158,7 +158,7 @@ public class NodeStatusEndpointsTests : IDisposable
     public async Task GetStatusHistory_WithAuth_NotFound_Returns404()
     {
         using var adminClient = _factory.CreateAuthenticatedClient();
-        var response = await adminClient.GetAsync($"/api/v1/nodes/{Guid.NewGuid()}/status-history");
+        var response = await adminClient.GetAsync($"/api/v1/nodes/{Guid.NewGuid()}/status-history", TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
@@ -172,13 +172,13 @@ public class NodeStatusEndpointsTests : IDisposable
         {
             await nodeClient.PutAsJsonAsync(
                 $"/api/v1/nodes/{nodeId}/lcm-status",
-                new UpdateLcmStatusRequest { LcmStatus = status });
+                new UpdateLcmStatusRequest { LcmStatus = status }, TestContext.Current.CancellationToken);
         }
 
         using var adminClient = _factory.CreateAuthenticatedClient();
-        var response = await adminClient.GetAsync($"/api/v1/nodes/{nodeId}/status-history");
+        var response = await adminClient.GetAsync($"/api/v1/nodes/{nodeId}/status-history", TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var events = await response.Content.ReadFromJsonAsync<List<NodeStatusEventSummary>>();
+        var events = await response.Content.ReadFromJsonAsync<List<NodeStatusEventSummary>>(TestContext.Current.CancellationToken);
         events.Should().NotBeNull();
         events!.Should().HaveCount(3);
     }

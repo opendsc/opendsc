@@ -3,7 +3,6 @@
 // terms of the MIT license.
 
 using Xunit;
-using Xunit.Sdk;
 
 namespace OpenDsc.Resource.Windows.Tests;
 
@@ -11,9 +10,6 @@ public abstract class WindowsTestBase
 {
     protected WindowsTestBase()
     {
-        if (!OperatingSystem.IsWindows())
-        {
-            throw new SkipException("Requires Windows");
-        }
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "Requires Windows");
     }
 }

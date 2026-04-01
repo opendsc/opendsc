@@ -27,10 +27,10 @@ public class RoleEndpointsTests : IClassFixture<ServerWebApplicationFactory>
     [Fact]
     public async Task GetRoles_ReturnsRoleList()
     {
-        var response = await _client.GetAsync("/api/v1/roles");
+        var response = await _client.GetAsync("/api/v1/roles", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var roles = await response.Content.ReadFromJsonAsync<List<RoleSummaryDto>>();
+        var roles = await response.Content.ReadFromJsonAsync<List<RoleSummaryDto>>(TestContext.Current.CancellationToken);
         roles.Should().NotBeNull();
         roles!.Should().Contain(r => r.Name == "Administrator");
         roles.Should().Contain(r => r.Name == "Operator");
@@ -41,14 +41,14 @@ public class RoleEndpointsTests : IClassFixture<ServerWebApplicationFactory>
     public async Task GetRole_WithValidId_ReturnsRoleDetails()
     {
         // Get the admin role
-        var listResponse = await _client.GetAsync("/api/v1/roles");
-        var roles = await listResponse.Content.ReadFromJsonAsync<List<RoleSummaryDto>>();
+        var listResponse = await _client.GetAsync("/api/v1/roles", TestContext.Current.CancellationToken);
+        var roles = await listResponse.Content.ReadFromJsonAsync<List<RoleSummaryDto>>(TestContext.Current.CancellationToken);
         var adminRole = roles!.First(r => r.Name == "Administrator");
 
-        var response = await _client.GetAsync($"/api/v1/roles/{adminRole.Id}");
+        var response = await _client.GetAsync($"/api/v1/roles/{adminRole.Id}", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var role = await response.Content.ReadFromJsonAsync<RoleDetailDto>();
+        var role = await response.Content.ReadFromJsonAsync<RoleDetailDto>(TestContext.Current.CancellationToken);
         role.Should().NotBeNull();
         role!.Name.Should().Be("Administrator");
         role.Description.Should().NotBeNullOrEmpty();
@@ -64,10 +64,10 @@ public class RoleEndpointsTests : IClassFixture<ServerWebApplicationFactory>
             Permissions = ["read", "write"]
         };
 
-        var response = await _client.PostAsJsonAsync("/api/v1/roles", createRequest);
+        var response = await _client.PostAsJsonAsync("/api/v1/roles", createRequest, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
-        var role = await response.Content.ReadFromJsonAsync<RoleDetailDto>();
+        var role = await response.Content.ReadFromJsonAsync<RoleDetailDto>(TestContext.Current.CancellationToken);
         role.Should().NotBeNull();
         role!.Name.Should().Be("TestRole");
         role.Description.Should().Be("A test role");
@@ -83,8 +83,8 @@ public class RoleEndpointsTests : IClassFixture<ServerWebApplicationFactory>
             Description = "Role to update",
             Permissions = ["read"]
         };
-        var createResponse = await _client.PostAsJsonAsync("/api/v1/roles", createRequest);
-        var createdRole = await createResponse.Content.ReadFromJsonAsync<RoleDetailDto>();
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/roles", createRequest, TestContext.Current.CancellationToken);
+        var createdRole = await createResponse.Content.ReadFromJsonAsync<RoleDetailDto>(TestContext.Current.CancellationToken);
 
         // Update the role
         var updateRequest = new UpdateRoleRequest
@@ -94,10 +94,10 @@ public class RoleEndpointsTests : IClassFixture<ServerWebApplicationFactory>
             Permissions = ["read", "write"]
         };
 
-        var updateResponse = await _client.PutAsJsonAsync($"/api/v1/roles/{createdRole!.Id}", updateRequest);
+        var updateResponse = await _client.PutAsJsonAsync($"/api/v1/roles/{createdRole!.Id}", updateRequest, TestContext.Current.CancellationToken);
 
         updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var updatedRole = await updateResponse.Content.ReadFromJsonAsync<RoleDetailDto>();
+        var updatedRole = await updateResponse.Content.ReadFromJsonAsync<RoleDetailDto>(TestContext.Current.CancellationToken);
         updatedRole.Should().NotBeNull();
         updatedRole!.Description.Should().Be("Updated role description");
     }
@@ -112,16 +112,16 @@ public class RoleEndpointsTests : IClassFixture<ServerWebApplicationFactory>
             Description = "Role to delete",
             Permissions = ["read"]
         };
-        var createResponse = await _client.PostAsJsonAsync("/api/v1/roles", createRequest);
-        var createdRole = await createResponse.Content.ReadFromJsonAsync<RoleDetailDto>();
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/roles", createRequest, TestContext.Current.CancellationToken);
+        var createdRole = await createResponse.Content.ReadFromJsonAsync<RoleDetailDto>(TestContext.Current.CancellationToken);
 
         // Delete the role
-        var deleteResponse = await _client.DeleteAsync($"/api/v1/roles/{createdRole!.Id}");
+        var deleteResponse = await _client.DeleteAsync($"/api/v1/roles/{createdRole!.Id}", TestContext.Current.CancellationToken);
 
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         // Verify role is gone
-        var getResponse = await _client.GetAsync($"/api/v1/roles/{createdRole.Id}");
+        var getResponse = await _client.GetAsync($"/api/v1/roles/{createdRole.Id}", TestContext.Current.CancellationToken);
         getResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 }
