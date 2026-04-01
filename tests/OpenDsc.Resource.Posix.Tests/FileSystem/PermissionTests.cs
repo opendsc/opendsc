@@ -66,7 +66,7 @@ public sealed class PermissionTests
 
             result.Path.Should().Be(tempFile);
             result.Mode.Should().NotBeNullOrEmpty();
-            result.Mode!.Should().Match(@"^0?[0-7]{3}$");
+            result.Mode!.Should().MatchRegex(@"^0?[0-7]{3}$");
             result.Owner.Should().NotBeNullOrEmpty();
             result.Group.Should().NotBeNullOrEmpty();
         }
@@ -88,7 +88,7 @@ public sealed class PermissionTests
 
             var result = _resource.Get(new PermissionSchema { Path = tempFile });
 
-            result.Mode.Should().Match(@"^0?644$");
+            result.Mode.Should().MatchRegex(@"^0?644$");
         }
         finally
         {
@@ -108,7 +108,7 @@ public sealed class PermissionTests
 
             var result = _resource.Get(new PermissionSchema { Path = tempFile });
 
-            result.Mode.Should().Match(@"^0?755$");
+            result.Mode.Should().MatchRegex(@"^0?755$");
         }
         finally
         {
@@ -128,7 +128,7 @@ public sealed class PermissionTests
 
             result.Path.Should().Be(tempDir);
             result.Mode.Should().NotBeNullOrEmpty();
-            result.Mode!.Should().Match(@"^0?[0-7]{3}$");
+            result.Mode!.Should().MatchRegex(@"^0?[0-7]{3}$");
             result.Owner.Should().NotBeNullOrEmpty();
             result.Group.Should().NotBeNullOrEmpty();
         }
@@ -160,7 +160,7 @@ public sealed class PermissionTests
 
             var result = _resource.Get(new PermissionSchema { Path = tempDir });
 
-            result.Mode.Should().Match(@"^0?755$");
+            result.Mode.Should().MatchRegex(@"^0?755$");
         }
         finally
         {
