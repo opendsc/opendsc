@@ -18,7 +18,7 @@ using SysEnv = System.Environment;
 namespace OpenDsc.Resource.Windows.Tests.Environment;
 
 [Trait("Category", "Integration")]
-public sealed class EnvironmentTests
+public sealed class EnvironmentTests : WindowsTestBase
 {
     private readonly EnvironmentResource _resource = new(SourceGenerationContext.Default);
 

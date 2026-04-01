@@ -15,7 +15,7 @@ using Trigger = OpenDsc.Resource.Windows.ScheduledTask.Trigger;
 namespace OpenDsc.Resource.Windows.Tests.ScheduledTask;
 
 [Trait("Category", "Integration")]
-public sealed class ScheduledTaskTests
+public sealed class ScheduledTaskTests : WindowsTestBase
 {
     private readonly ScheduledTaskResource _resource = new(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
 

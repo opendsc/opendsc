@@ -17,7 +17,7 @@ using GroupSchema = OpenDsc.Resource.Windows.Group.Schema;
 namespace OpenDsc.Resource.Windows.Tests.Group;
 
 [Trait("Category", "Integration")]
-public sealed class GroupTests
+public sealed class GroupTests : WindowsTestBase
 {
     private readonly GroupResource _resource = new(SourceGenerationContext.Default);
 

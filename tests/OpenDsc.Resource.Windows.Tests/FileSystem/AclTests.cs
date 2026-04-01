@@ -16,7 +16,7 @@ using DscSchema = OpenDsc.Resource.Windows.FileSystem.Acl.Schema;
 namespace OpenDsc.Resource.Windows.Tests.FileSystem;
 
 [Trait("Category", "Integration")]
-public sealed class AclTests
+public sealed class AclTests : WindowsTestBase
 {
     private static AclResource CreateResource() => new(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
 

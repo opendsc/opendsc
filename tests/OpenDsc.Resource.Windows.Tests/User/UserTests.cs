@@ -14,7 +14,7 @@ using UserSchema = OpenDsc.Resource.Windows.User.Schema;
 namespace OpenDsc.Resource.Windows.Tests.User;
 
 [Trait("Category", "Integration")]
-public sealed class UserTests
+public sealed class UserTests : WindowsTestBase
 {
     private readonly UserResource _resource = new(SourceGenerationContext.Default);
 

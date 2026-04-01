@@ -15,7 +15,7 @@ using AccountLockoutPolicySchema = OpenDsc.Resource.Windows.AccountLockoutPolicy
 namespace OpenDsc.Resource.Windows.Tests.AccountLockoutPolicy;
 
 [Trait("Category", "Integration")]
-public sealed class AccountLockoutPolicyTests
+public sealed class AccountLockoutPolicyTests : WindowsTestBase
 {
     private readonly AccountLockoutPolicyResource _resource = new(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
 

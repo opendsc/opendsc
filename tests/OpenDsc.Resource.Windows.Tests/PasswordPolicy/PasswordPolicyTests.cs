@@ -15,7 +15,7 @@ using PasswordPolicySchema = OpenDsc.Resource.Windows.PasswordPolicy.Schema;
 namespace OpenDsc.Resource.Windows.Tests.PasswordPolicy;
 
 [Trait("Category", "Integration")]
-public sealed class PasswordPolicyTests
+public sealed class PasswordPolicyTests : WindowsTestBase
 {
     private readonly PasswordPolicyResource _resource = new(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
 

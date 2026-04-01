@@ -15,7 +15,7 @@ using ShortcutSchema = OpenDsc.Resource.Windows.Shortcut.Schema;
 namespace OpenDsc.Resource.Windows.Tests.Shortcut;
 
 [Trait("Category", "Integration")]
-public sealed class ShortcutTests
+public sealed class ShortcutTests : WindowsTestBase
 {
     private readonly ShortcutResource _resource = new(SourceGenerationContext.Default);
 

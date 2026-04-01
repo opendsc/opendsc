@@ -16,7 +16,7 @@ using ServiceSchema = OpenDsc.Resource.Windows.Service.Schema;
 namespace OpenDsc.Resource.Windows.Tests.Service;
 
 [Trait("Category", "Integration")]
-public sealed class ServiceTests
+public sealed class ServiceTests : WindowsTestBase
 {
     private readonly ServiceResource _resource = new(SourceGenerationContext.Default);
 
