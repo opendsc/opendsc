@@ -2,8 +2,8 @@
 
 A C# library ecosystem for building Microsoft DSC v3 resources with ease,
 including a comprehensive set of built-in resources for Windows and
-cross-platform management, plus a Local Configuration Manager (LCM) service
-for continuous monitoring and remediation.
+cross-platform management, plus a Local Configuration Manager (LCM) service for
+continuous monitoring and remediation.
 
 ## Features
 
@@ -32,24 +32,29 @@ for continuous monitoring and remediation.
 
 ## Built-in Resources
 
-This repository includes a comprehensive set of DSC resources for
-managing Windows and cross-platform systems:
+This repository includes a comprehensive set of DSC resources for managing
+Windows and cross-platform systems:
 
 ### Windows Resources
 
 - **[OpenDsc.Windows/Environment][env]** - Manage Windows environment variables
-- **[OpenDsc.Windows/Group][group]** - Manage local Windows groups
-  and membership
+- **[OpenDsc.Windows/Group][group]** - Manage local Windows groups and
+  membership
 - **[OpenDsc.Windows/Service][service]** - Manage Windows services
 - **[OpenDsc.Windows/ScheduledTask][scheduledtask]** - Manage Windows scheduled
   tasks
 - **[OpenDsc.Windows/User][user]** - Manage local Windows user accounts
 - **[OpenDsc.Windows/UserRight][userright]** - Manage Windows user rights
   assignments (privileges)
-- **[OpenDsc.Windows/Shortcut][shortcut]** - Manage Windows shortcuts
-  (.lnk files)
+- **[OpenDsc.Windows/Shortcut][shortcut]** - Manage Windows shortcuts (.lnk
+  files)
 - **[OpenDsc.Windows/OptionalFeature][optionalfeature]** - Manage Windows
   optional features via DISM
+- **[OpenDsc.Windows/AccountLockoutPolicy][accountlockoutpolicy]** - Manage
+  Windows account lockout policy
+- **[OpenDsc.Windows/AuditPolicy][auditpolicy]** - Manage Windows audit policy
+- **[OpenDsc.Windows/PasswordPolicy][passwordpolicy]** - Manage Windows password
+  policy
 - **[OpenDsc.Windows.FileSystem/AccessControlList][acl]** - Manage file and
   directory permissions (ACLs)
 
@@ -63,8 +68,17 @@ managing Windows and cross-platform systems:
   roles
 - **[OpenDsc.SqlServer/DatabasePermission][databasepermission]** - Manage SQL
   Server database permissions
-- **[OpenDsc.SqlServer/ServerPermission][serverpermission]** - Manage SQL
-  Server server permissions
+- **[OpenDsc.SqlServer/ServerPermission][serverpermission]** - Manage SQL Server
+  server permissions
+- **[OpenDsc.SqlServer/AgentJob][agentjob]** - Manage SQL Server Agent jobs
+- **[OpenDsc.SqlServer/Configuration][configuration]** - Manage SQL Server
+  configuration values
+- **[OpenDsc.SqlServer/DatabaseUser][databaseuser]** - Manage SQL Server
+  database users
+- **[OpenDsc.SqlServer/LinkedServer][linkedserver]** - Manage SQL Server linked
+  servers
+- **[OpenDsc.SqlServer/ObjectPermission][objectpermission]** - Manage SQL Server
+  object permissions
 
 ### Cross-Platform Resources
 
@@ -85,8 +99,8 @@ POSIX (Portable Operating System Interface) resources are designed for Unix-like
 operating systems that follow POSIX standards, including Linux and macOS. These
 resources provide Unix-specific functionality not available on Windows.
 
-- **[OpenDsc.Posix.FileSystem/Permission][posixpermission]** - Manage POSIX
-  file and directory permissions and ownership
+- **[OpenDsc.Posix.FileSystem/Permission][posixpermission]** - Manage POSIX file
+  and directory permissions and ownership
 
 [env]: src/OpenDsc.Resource.Windows/Environment/README.md
 [group]: src/OpenDsc.Resource.Windows/Group/README.md
@@ -96,6 +110,9 @@ resources provide Unix-specific functionality not available on Windows.
 [userright]: src/OpenDsc.Resource.Windows/UserRight/README.md
 [shortcut]: src/OpenDsc.Resource.Windows/Shortcut/README.md
 [optionalfeature]: src/OpenDsc.Resource.Windows/OptionalFeature/README.md
+[accountlockoutpolicy]: src/OpenDsc.Resource.Windows/AccountLockoutPolicy/README.md
+[auditpolicy]: src/OpenDsc.Resource.Windows/AuditPolicy/README.md
+[passwordpolicy]: src/OpenDsc.Resource.Windows/PasswordPolicy/README.md
 [acl]: src/OpenDsc.Resource.Windows/FileSystem/Acl/README.md
 [login]: src/OpenDsc.Resource.SqlServer/Login/README.md
 [database]: src/OpenDsc.Resource.SqlServer/Database/README.md
@@ -103,6 +120,11 @@ resources provide Unix-specific functionality not available on Windows.
 [serverrole]: src/OpenDsc.Resource.SqlServer/ServerRole/README.md
 [databasepermission]: src/OpenDsc.Resource.SqlServer/DatabasePermission/README.md
 [serverpermission]: src/OpenDsc.Resource.SqlServer/ServerPermission/README.md
+[agentjob]: src/OpenDsc.Resource.SqlServer/AgentJob/README.md
+[configuration]: src/OpenDsc.Resource.SqlServer/Configuration/README.md
+[databaseuser]: src/OpenDsc.Resource.SqlServer/DatabaseUser/README.md
+[linkedserver]: src/OpenDsc.Resource.SqlServer/LinkedServer/README.md
+[objectpermission]: src/OpenDsc.Resource.SqlServer/ObjectPermission/README.md
 [file]: src/OpenDsc.Resource.FileSystem/File/README.md
 [directory]: src/OpenDsc.Resource.FileSystem/Directory/README.md
 [symlink]: src/OpenDsc.Resource.FileSystem/SymbolicLink/README.md
@@ -176,9 +198,9 @@ optionally remediates DSC configurations. It supports two operational modes:
 - **Remediate Mode** - Automatically applies corrections when drift is detected
   using `dsc config set`
 
-The LCM also supports pull mode, allowing it to download configurations from
-the OpenDSC Pull Server with automatic updates, API key rotation, and
-compliance reporting.
+The LCM also supports pull mode, allowing it to download configurations from the
+OpenDSC Pull Server with automatic updates, API key rotation, and compliance
+reporting.
 
 For detailed documentation, see the [LCM README][lcm-readme].
 
