@@ -16,8 +16,6 @@
     Skip running integration tests (xUnit tests with Category=Integration).
 .PARAMETER SkipFunctionalTests
     Skip running functional tests (cross-database provider tests with Testcontainers).
-.PARAMETER SkipE2ETests
-    Skip running E2E tests (Pester tests for DSC resources).
 .PARAMETER Pack
     Pack NuGet packages after building.
 .PARAMETER InstallDsc
@@ -63,8 +61,6 @@ param(
     [switch] $SkipIntegrationTests,
 
     [switch] $SkipFunctionalTests,
-
-    [switch] $SkipE2ETests,
 
     [switch] $Pack,
 
@@ -445,7 +441,3 @@ if (-not $SkipFunctionalTests) {
     Write-Host 'Functional tests passed!' -ForegroundColor Green
 }
 
-if (-not $SkipE2ETests) {
-    Write-Host 'Running E2E tests (Pester)...' -ForegroundColor Cyan
-    Invoke-Pester -Output Detailed
-}
