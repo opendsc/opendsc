@@ -74,6 +74,8 @@ param(
 
     [switch] $Msi,
 
+    [switch] $InstallSqlServer,
+
     [string] $GitHubToken
 )
 
@@ -414,6 +416,15 @@ if (-not $SkipUnitTests) {
 }
 
 if (-not $SkipIntegrationTests) {
+    if ($InstallSqlServer -or $env:GITHUB_ACTIONS) {
+        Write-Host 'Preparing SQL Server for integration tests...' -ForegroundColor Cyan
+        . (Join-Path $PSScriptRoot 'tools\Install-SqlServer.ps1')
+        $sqlServerAvailable = Initialize-SqlServerForTests
+        if (-not $sqlServerAvailable) {
+            Write-Warning 'SQL Server is not available. SQL Server integration tests may be skipped when no database instance is present.'
+        }
+    }
+
     Write-Host 'Running integration tests...' -ForegroundColor Cyan
     dotnet test --configuration $Configuration @testBuildArgs --filter 'Category=Integration' --logger 'console;verbosity=normal'
     if ($LASTEXITCODE -ne 0) {
