@@ -21,8 +21,11 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/TestResource.Aot/TestResource.Aot.csproj" />
+    <Project Path="tests/TestResource.Aot.Tests/TestResource.Aot.Tests.csproj" />
     <Project Path="tests/TestResource.Multi/TestResource.Multi.csproj" />
+    <Project Path="tests/TestResource.Multi.Tests/TestResource.Multi.Tests.csproj" />
     <Project Path="tests/TestResource.NonAot/TestResource.NonAot.csproj" />
+    <Project Path="tests/TestResource.NonAot.Tests/TestResource.NonAot.Tests.csproj" />
     <Project Path="tests/TestResource.Options/TestResource.Options.csproj" />
     <Project Path="tests/TestService/TestService.csproj" />
     <Project Path="tests/OpenDsc.Lcm.Tests/OpenDsc.Lcm.Tests.csproj" />

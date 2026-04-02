@@ -14,6 +14,6 @@ namespace TestResource.Multi;
 [JsonSerializable(typeof(FileSchema))]
 [JsonSerializable(typeof(UserSchema))]
 [JsonSerializable(typeof(ServiceSchema))]
-internal partial class SourceGenerationContext : JsonSerializerContext
+public partial class SourceGenerationContext : JsonSerializerContext
 {
 }
