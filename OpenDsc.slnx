@@ -38,5 +38,6 @@
     <Project Path="tests/OpenDsc.Resource.Json.Tests/OpenDsc.Resource.Json.Tests.csproj" />
     <Project Path="tests/OpenDsc.Resource.Archive.Tests/OpenDsc.Resource.Archive.Tests.csproj" />
     <Project Path="tests/OpenDsc.Resource.Posix.Tests/OpenDsc.Resource.Posix.Tests.csproj" />
+    <Project Path="tests/OpenDsc.Resource.SqlServer.Tests/OpenDsc.Resource.SqlServer.Tests.csproj" />
   </Folder>
 </Solution>
