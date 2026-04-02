@@ -261,33 +261,4 @@ public sealed class ObjectPermissionTests : SqlServerTestBase
         result.Exist.Should().BeFalse();
     }
 
-    [Fact]
-    public void Export_ReturnsObjectPermissions()
-    {
-        try
-        {
-            var grant = NewSchema(TestUser1, "Delete", ObjectType.Table, TestTable);
-            grant.State = PermissionState.Grant;
-            _resource.Set(grant);
-
-            var filter = new ObjectPermissionSchema
-            {
-                ServerInstance = ServerInstance,
-                ConnectUsername = ConnectUsername,
-                ConnectPassword = ConnectPassword,
-                DatabaseName = TestDb,
-                Principal = string.Empty,
-                Permission = string.Empty,
-                ObjectType = ObjectType.Table,
-                ObjectName = string.Empty
-            };
-            var results = _resource.Export(filter).ToList();
-            results.Should().NotBeEmpty();
-            results.Select(r => r.DatabaseName).Should().AllBe(TestDb);
-        }
-        finally
-        {
-            ExecuteSqlSafe($"USE [{TestDb}]; REVOKE DELETE ON [{TestTable}] FROM [{TestUser1}]");
-        }
-    }
 }

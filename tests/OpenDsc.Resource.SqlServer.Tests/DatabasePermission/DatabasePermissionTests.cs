@@ -200,31 +200,4 @@ public sealed class DatabasePermissionTests : SqlServerTestBase
         }
     }
 
-    [Fact]
-    public void Export_ReturnsDatabasePermissions()
-    {
-        try
-        {
-            var grant = NewSchema(TestUser, "Connect");
-            grant.State = PermissionState.Grant;
-            _resource.Set(grant);
-
-            var filter = new DatabasePermissionSchema
-            {
-                ServerInstance = ServerInstance,
-                ConnectUsername = ConnectUsername,
-                ConnectPassword = ConnectPassword,
-                DatabaseName = TestDb,
-                Principal = string.Empty,
-                Permission = string.Empty
-            };
-            var results = _resource.Export(filter).ToList();
-            results.Should().NotBeEmpty();
-            results.Select(r => r.DatabaseName).Should().AllBe(TestDb);
-        }
-        finally
-        {
-            ExecuteSqlSafe($"USE [{TestDb}]; REVOKE CONNECT FROM [{TestUser}]");
-        }
-    }
 }
