@@ -174,7 +174,56 @@ public sealed class Resource(JsonSerializerContext context)
 
     public IEnumerable<Schema> Export(Schema? filter)
     {
-        yield break;
+        var serverInstance = filter?.ServerInstance ?? Environment.GetEnvironmentVariable("SQLSERVER_INSTANCE") ?? ".";
+        var username = filter?.ConnectUsername ?? Environment.GetEnvironmentVariable("SQLSERVER_USERNAME");
+        var password = filter?.ConnectPassword ?? Environment.GetEnvironmentVariable("SQLSERVER_PASSWORD");
+        var principal = filter?.Principal;
+        var permissionFilter = filter?.Permission;
+
+        var server = SqlConnectionHelper.CreateConnection(serverInstance, username, password);
+
+        try
+        {
+            var permissions = string.IsNullOrWhiteSpace(principal)
+                ? server.EnumServerPermissions()
+                : server.EnumServerPermissions(principal);
+
+            foreach (ServerPermissionInfo permissionInfo in permissions)
+            {
+                foreach (var permissionName in GetPermissionNames(permissionInfo.PermissionType))
+                {
+                    if (!string.IsNullOrWhiteSpace(permissionFilter) &&
+                        !string.Equals(permissionName, permissionFilter, StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    yield return new Schema
+                    {
+                        ServerInstance = serverInstance,
+                        Principal = permissionInfo.Grantee,
+                        Permission = permissionName,
+                        State = permissionInfo.PermissionState,
+                        Grantor = permissionInfo.Grantor
+                    };
+                }
+            }
+        }
+        finally
+        {
+            if (server.ConnectionContext.IsOpen)
+            {
+                server.ConnectionContext.Disconnect();
+            }
+        }
+    }
+
+    private static IEnumerable<string> GetPermissionNames(ServerPermissionSet permissionSet)
+    {
+        return typeof(ServerPermissionSet)
+            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(p => p.PropertyType == typeof(bool) && (bool)(p.GetValue(permissionSet) ?? false))
+            .Select(p => p.Name);
     }
 
     private static bool HasPermission(ServerPermissionSet permissionSet, string permission)
