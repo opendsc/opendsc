@@ -14,11 +14,11 @@ public abstract class DatabaseProviderFixture : WebApplicationFactory<Program>, 
 
     public abstract string ProviderName { get; }
 
-    public abstract Task InitializeAsync();
+    public abstract ValueTask InitializeAsync();
 
     protected abstract Task CleanupAsync();
 
-    async Task IAsyncLifetime.DisposeAsync()
+    public override async ValueTask DisposeAsync()
     {
         await CleanupAsync();
         await base.DisposeAsync();

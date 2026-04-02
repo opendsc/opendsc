@@ -12,7 +12,7 @@ public sealed class PostgreSqlProviderFixture : DatabaseProviderFixture
 
     public override string ProviderName => "PostgreSQL";
 
-    public override async Task InitializeAsync()
+    public override async ValueTask InitializeAsync()
     {
         _container = new PostgreSqlBuilder()
             .WithImage("postgres:17-alpine")

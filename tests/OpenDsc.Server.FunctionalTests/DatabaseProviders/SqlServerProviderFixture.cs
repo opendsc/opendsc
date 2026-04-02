@@ -12,7 +12,7 @@ public sealed class SqlServerProviderFixture : DatabaseProviderFixture
 
     public override string ProviderName => "SqlServer";
 
-    public override async Task InitializeAsync()
+    public override async ValueTask InitializeAsync()
     {
         _container = new MsSqlBuilder()
             .WithImage("mcr.microsoft.com/mssql/server:2022-latest")

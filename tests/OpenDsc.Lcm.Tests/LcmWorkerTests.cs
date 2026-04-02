@@ -277,8 +277,8 @@ public class LcmWorkerTests
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
 
             await worker.StartAsync(cts.Token);
-            await Task.Delay(200, CancellationToken.None);
-            await worker.StopAsync(CancellationToken.None);
+            await Task.Delay(200, TestContext.Current.CancellationToken);
+            await worker.StopAsync(TestContext.Current.CancellationToken);
 
             dscExecutorMock.Protected()
                 .Verify("ExecuteCommandAsync", Times.AtLeastOnce(),
@@ -343,8 +343,8 @@ public class LcmWorkerTests
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
 
             await worker.StartAsync(cts.Token);
-            await Task.Delay(200, CancellationToken.None);
-            await worker.StopAsync(CancellationToken.None);
+            await Task.Delay(200, TestContext.Current.CancellationToken);
+            await worker.StopAsync(TestContext.Current.CancellationToken);
 
             dscExecutorMock.Protected()
                 .Verify("ExecuteCommandAsync", Times.AtLeastOnce(),
@@ -410,8 +410,8 @@ public class LcmWorkerTests
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
 
             await worker.StartAsync(cts.Token);
-            await Task.Delay(200, CancellationToken.None);
-            await worker.StopAsync(CancellationToken.None);
+            await Task.Delay(200, TestContext.Current.CancellationToken);
+            await worker.StopAsync(TestContext.Current.CancellationToken);
 
             dscExecutorMock.Protected()
                 .Verify("ExecuteCommandAsync", Times.AtLeastOnce(),
@@ -465,7 +465,7 @@ public class LcmWorkerTests
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
 
         await worker.StartAsync(cts.Token);
-        await Task.Delay(100, CancellationToken.None);
+        await Task.Delay(100, TestContext.Current.CancellationToken);
 
         lcmConfig.ConfigurationMode = ConfigurationMode.Remediate;
         foreach (var callback in changeCallbacks)
@@ -473,8 +473,8 @@ public class LcmWorkerTests
             callback(lcmConfig, "");
         }
 
-        await Task.Delay(100, CancellationToken.None);
-        await worker.StopAsync(CancellationToken.None);
+        await Task.Delay(100, TestContext.Current.CancellationToken);
+        await worker.StopAsync(TestContext.Current.CancellationToken);
 
         changeCallbacks.Should().HaveCountGreaterThan(0, "configuration change callback should be registered");
     }
@@ -522,8 +522,8 @@ public class LcmWorkerTests
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
 
             await worker.StartAsync(cts.Token);
-            await Task.Delay(1500, CancellationToken.None);
-            await worker.StopAsync(CancellationToken.None);
+            await Task.Delay(1500, TestContext.Current.CancellationToken);
+            await worker.StopAsync(TestContext.Current.CancellationToken);
 
             callCount.Should().BeGreaterThanOrEqualTo(2, "worker should retry after error");
         }
@@ -556,8 +556,8 @@ public class LcmWorkerTests
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
 
         await worker.StartAsync(cts.Token);
-        await Task.Delay(300, CancellationToken.None);
-        await worker.StopAsync(CancellationToken.None);
+        await Task.Delay(300, TestContext.Current.CancellationToken);
+        await worker.StopAsync(TestContext.Current.CancellationToken);
 
         dscExecutorMock.Protected()
             .Verify("ExecuteCommandAsync", Times.Never(),
@@ -605,12 +605,12 @@ public class LcmWorkerTests
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
 
             await worker.StartAsync(cts.Token);
-            await Task.Delay(200, CancellationToken.None);
+            await Task.Delay(200, TestContext.Current.CancellationToken);
 
             lcmConfig.ConfigurationModeInterval = TimeSpan.FromMilliseconds(100);
 
-            await Task.Delay(300, CancellationToken.None);
-            await worker.StopAsync(CancellationToken.None);
+            await Task.Delay(300, TestContext.Current.CancellationToken);
+            await worker.StopAsync(TestContext.Current.CancellationToken);
 
             dscExecutorMock.Protected()
                 .Verify("ExecuteCommandAsync", Times.AtLeastOnce(),
@@ -700,8 +700,8 @@ public class LcmWorkerTests
 
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             await worker.StartAsync(cts.Token);
-            await Task.Delay(1000, CancellationToken.None);
-            await worker.StopAsync(CancellationToken.None);
+            await Task.Delay(1000, TestContext.Current.CancellationToken);
+            await worker.StopAsync(TestContext.Current.CancellationToken);
 
             File.Exists(orphanedFile).Should().BeFalse("orphaned files must be removed when a new bundle is extracted");
             File.Exists(Path.Combine(extractDir, "main.dsc.yaml")).Should().BeTrue("the new bundle entry point must be present");
@@ -792,8 +792,8 @@ public class LcmWorkerTests
 
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             await worker.StartAsync(cts.Token);
-            await Task.Delay(1000, CancellationToken.None);
-            await worker.StopAsync(CancellationToken.None);
+            await Task.Delay(1000, TestContext.Current.CancellationToken);
+            await worker.StopAsync(TestContext.Current.CancellationToken);
 
             File.Exists(Path.Combine(extractDir, "main.dsc.yaml")).Should().BeTrue();
             File.Exists(Path.Combine(extractDir, "sub", "helper.dsc.yaml")).Should().BeTrue();
@@ -886,8 +886,8 @@ public class LcmWorkerTests
 
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
             await worker.StartAsync(cts.Token);
-            await Task.Delay(700, CancellationToken.None);
-            await worker.StopAsync(CancellationToken.None);
+            await Task.Delay(700, TestContext.Current.CancellationToken);
+            await worker.StopAsync(TestContext.Current.CancellationToken);
 
             lcmStatusRequests.Should().Contain(LcmStatus.Downloading, "status must be set to Downloading when a bundle download starts");
             lcmStatusRequests.Should().Contain(LcmStatus.Idle, "status must be reset to Idle after a failed bundle download");
@@ -905,7 +905,7 @@ public class LcmWorkerTests
     {
         var worker = CreateTestWorker(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString()));
         var result = await worker.CallComputeLocalContentHashAsync(
-            Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString()), CancellationToken.None);
+            Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString()), TestContext.Current.CancellationToken);
         result.Should().BeEmpty();
     }
 
@@ -917,7 +917,7 @@ public class LcmWorkerTests
         try
         {
             var worker = CreateTestWorker(dir);
-            var result = await worker.CallComputeLocalContentHashAsync(dir, CancellationToken.None);
+            var result = await worker.CallComputeLocalContentHashAsync(dir, TestContext.Current.CancellationToken);
             result.Should().BeEmpty();
         }
         finally { Directory.Delete(dir, recursive: true); }
@@ -930,10 +930,10 @@ public class LcmWorkerTests
         Directory.CreateDirectory(dir);
         try
         {
-            await File.WriteAllTextAsync(Path.Combine(dir, "main.dsc.yaml"), "# config");
+            await File.WriteAllTextAsync(Path.Combine(dir, "main.dsc.yaml"), "# config", TestContext.Current.CancellationToken);
             var worker = CreateTestWorker(dir);
-            var hash1 = await worker.CallComputeLocalContentHashAsync(dir, CancellationToken.None);
-            var hash2 = await worker.CallComputeLocalContentHashAsync(dir, CancellationToken.None);
+            var hash1 = await worker.CallComputeLocalContentHashAsync(dir, TestContext.Current.CancellationToken);
+            var hash2 = await worker.CallComputeLocalContentHashAsync(dir, TestContext.Current.CancellationToken);
             hash1.Should().NotBeEmpty();
             hash1.Should().Be(hash2);
         }
@@ -948,11 +948,11 @@ public class LcmWorkerTests
         try
         {
             var file = Path.Combine(dir, "main.dsc.yaml");
-            await File.WriteAllTextAsync(file, "# original");
+            await File.WriteAllTextAsync(file, "# original", TestContext.Current.CancellationToken);
             var worker = CreateTestWorker(dir);
-            var hashBefore = await worker.CallComputeLocalContentHashAsync(dir, CancellationToken.None);
-            await File.WriteAllTextAsync(file, "# modified");
-            var hashAfter = await worker.CallComputeLocalContentHashAsync(dir, CancellationToken.None);
+            var hashBefore = await worker.CallComputeLocalContentHashAsync(dir, TestContext.Current.CancellationToken);
+            await File.WriteAllTextAsync(file, "# modified", TestContext.Current.CancellationToken);
+            var hashAfter = await worker.CallComputeLocalContentHashAsync(dir, TestContext.Current.CancellationToken);
             hashBefore.Should().NotBe(hashAfter);
         }
         finally { Directory.Delete(dir, recursive: true); }
@@ -965,13 +965,13 @@ public class LcmWorkerTests
         Directory.CreateDirectory(Path.Combine(dir, "sub"));
         try
         {
-            await File.WriteAllTextAsync(Path.Combine(dir, "main.dsc.yaml"), "# main");
-            await File.WriteAllTextAsync(Path.Combine(dir, "sub", "helper.dsc.yaml"), "# helper");
+            await File.WriteAllTextAsync(Path.Combine(dir, "main.dsc.yaml"), "# main", TestContext.Current.CancellationToken);
+            await File.WriteAllTextAsync(Path.Combine(dir, "sub", "helper.dsc.yaml"), "# helper", TestContext.Current.CancellationToken);
             var worker = CreateTestWorker(dir);
-            var hashBefore = await worker.CallComputeLocalContentHashAsync(dir, CancellationToken.None);
+            var hashBefore = await worker.CallComputeLocalContentHashAsync(dir, TestContext.Current.CancellationToken);
 
-            await File.WriteAllTextAsync(Path.Combine(dir, "sub", "helper.dsc.yaml"), "# helper MODIFIED");
-            var hashAfter = await worker.CallComputeLocalContentHashAsync(dir, CancellationToken.None);
+            await File.WriteAllTextAsync(Path.Combine(dir, "sub", "helper.dsc.yaml"), "# helper MODIFIED", TestContext.Current.CancellationToken);
+            var hashAfter = await worker.CallComputeLocalContentHashAsync(dir, TestContext.Current.CancellationToken);
             hashBefore.Should().NotBe(hashAfter, "modifying a file in a subdirectory should change the overall hash");
         }
         finally { Directory.Delete(dir, recursive: true); }
@@ -984,11 +984,11 @@ public class LcmWorkerTests
         Directory.CreateDirectory(dir);
         try
         {
-            await File.WriteAllTextAsync(Path.Combine(dir, "main.dsc.yaml"), "# main");
+            await File.WriteAllTextAsync(Path.Combine(dir, "main.dsc.yaml"), "# main", TestContext.Current.CancellationToken);
             var worker = CreateTestWorker(dir);
-            var hashBefore = await worker.CallComputeLocalContentHashAsync(dir, CancellationToken.None);
-            await File.WriteAllTextAsync(Path.Combine(dir, "extra.dsc.yaml"), "# extra");
-            var hashAfter = await worker.CallComputeLocalContentHashAsync(dir, CancellationToken.None);
+            var hashBefore = await worker.CallComputeLocalContentHashAsync(dir, TestContext.Current.CancellationToken);
+            await File.WriteAllTextAsync(Path.Combine(dir, "extra.dsc.yaml"), "# extra", TestContext.Current.CancellationToken);
+            var hashAfter = await worker.CallComputeLocalContentHashAsync(dir, TestContext.Current.CancellationToken);
             hashBefore.Should().NotBe(hashAfter, "adding a new file should change the overall hash");
         }
         finally { Directory.Delete(dir, recursive: true); }
@@ -1001,10 +1001,10 @@ public class LcmWorkerTests
         Directory.CreateDirectory(extractDir);
         try
         {
-            await File.WriteAllTextAsync(Path.Combine(extractDir, "main.dsc.yaml"), "# config");
+            await File.WriteAllTextAsync(Path.Combine(extractDir, "main.dsc.yaml"), "# config", TestContext.Current.CancellationToken);
 
             var helperWorker = CreateTestWorker(extractDir);
-            var localHash = await helperWorker.CallComputeLocalContentHashAsync(extractDir, CancellationToken.None);
+            var localHash = await helperWorker.CallComputeLocalContentHashAsync(extractDir, TestContext.Current.CancellationToken);
 
             var nodeId = Guid.NewGuid();
             var lcmConfig = new LcmConfig
@@ -1072,8 +1072,8 @@ public class LcmWorkerTests
 
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
             await worker.StartAsync(cts.Token);
-            await Task.Delay(500, CancellationToken.None);
-            await worker.StopAsync(CancellationToken.None);
+            await Task.Delay(500, TestContext.Current.CancellationToken);
+            await worker.StopAsync(TestContext.Current.CancellationToken);
 
             bundleCallCount.Should().Be(0, "bundle should not be downloaded when server checksum and local hash both match");
         }
@@ -1087,7 +1087,7 @@ public class LcmWorkerTests
         Directory.CreateDirectory(extractDir);
         try
         {
-            await File.WriteAllTextAsync(Path.Combine(extractDir, "main.dsc.yaml"), "# config");
+            await File.WriteAllTextAsync(Path.Combine(extractDir, "main.dsc.yaml"), "# config", TestContext.Current.CancellationToken);
 
             var nodeId = Guid.NewGuid();
             var lcmConfig = new LcmConfig
@@ -1159,8 +1159,8 @@ public class LcmWorkerTests
 
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
             await worker.StartAsync(cts.Token);
-            await Task.Delay(500, CancellationToken.None);
-            await worker.StopAsync(CancellationToken.None);
+            await Task.Delay(500, TestContext.Current.CancellationToken);
+            await worker.StopAsync(TestContext.Current.CancellationToken);
 
             bundleCallCount.Should().BeGreaterThan(0, "bundle must be downloaded when no local hash is stored");
         }
@@ -1174,7 +1174,7 @@ public class LcmWorkerTests
         Directory.CreateDirectory(extractDir);
         try
         {
-            await File.WriteAllTextAsync(Path.Combine(extractDir, "main.dsc.yaml"), "# TAMPERED");
+            await File.WriteAllTextAsync(Path.Combine(extractDir, "main.dsc.yaml"), "# TAMPERED", TestContext.Current.CancellationToken);
 
             var nodeId = Guid.NewGuid();
             var lcmConfig = new LcmConfig
@@ -1246,8 +1246,8 @@ public class LcmWorkerTests
 
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
             await worker.StartAsync(cts.Token);
-            await Task.Delay(500, CancellationToken.None);
-            await worker.StopAsync(CancellationToken.None);
+            await Task.Delay(500, TestContext.Current.CancellationToken);
+            await worker.StopAsync(TestContext.Current.CancellationToken);
 
             bundleCallCount.Should().BeGreaterThan(0, "bundle must be re-downloaded when local hash does not match stored hash");
         }
@@ -1261,10 +1261,10 @@ public class LcmWorkerTests
         Directory.CreateDirectory(extractDir);
         try
         {
-            await File.WriteAllTextAsync(Path.Combine(extractDir, "main.dsc.yaml"), "# old config");
+            await File.WriteAllTextAsync(Path.Combine(extractDir, "main.dsc.yaml"), "# old config", TestContext.Current.CancellationToken);
 
             var helperWorker = CreateTestWorker(extractDir);
-            var localHash = await helperWorker.CallComputeLocalContentHashAsync(extractDir, CancellationToken.None);
+            var localHash = await helperWorker.CallComputeLocalContentHashAsync(extractDir, TestContext.Current.CancellationToken);
 
             var nodeId = Guid.NewGuid();
             var lcmConfig = new LcmConfig
@@ -1336,8 +1336,8 @@ public class LcmWorkerTests
 
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
             await worker.StartAsync(cts.Token);
-            await Task.Delay(500, CancellationToken.None);
-            await worker.StopAsync(CancellationToken.None);
+            await Task.Delay(500, TestContext.Current.CancellationToken);
+            await worker.StopAsync(TestContext.Current.CancellationToken);
 
             bundleCallCount.Should().BeGreaterThan(0, "bundle must be downloaded when server checksum has changed");
         }
@@ -1351,12 +1351,12 @@ public class LcmWorkerTests
         Directory.CreateDirectory(Path.Combine(extractDir, "sub"));
         try
         {
-            await File.WriteAllTextAsync(Path.Combine(extractDir, "main.dsc.yaml"), "# main");
-            await File.WriteAllTextAsync(Path.Combine(extractDir, "params.yaml"), "parameters: {}");
-            await File.WriteAllTextAsync(Path.Combine(extractDir, "sub", "helper.dsc.yaml"), "# helper");
+            await File.WriteAllTextAsync(Path.Combine(extractDir, "main.dsc.yaml"), "# main", TestContext.Current.CancellationToken);
+            await File.WriteAllTextAsync(Path.Combine(extractDir, "params.yaml"), "parameters: {}", TestContext.Current.CancellationToken);
+            await File.WriteAllTextAsync(Path.Combine(extractDir, "sub", "helper.dsc.yaml"), "# helper", TestContext.Current.CancellationToken);
 
             var helperWorker = CreateTestWorker(extractDir);
-            var localHash = await helperWorker.CallComputeLocalContentHashAsync(extractDir, CancellationToken.None);
+            var localHash = await helperWorker.CallComputeLocalContentHashAsync(extractDir, TestContext.Current.CancellationToken);
 
             var nodeId = Guid.NewGuid();
             var lcmConfig = new LcmConfig
@@ -1424,8 +1424,8 @@ public class LcmWorkerTests
 
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
             await worker.StartAsync(cts.Token);
-            await Task.Delay(500, CancellationToken.None);
-            await worker.StopAsync(CancellationToken.None);
+            await Task.Delay(500, TestContext.Current.CancellationToken);
+            await worker.StopAsync(TestContext.Current.CancellationToken);
 
             bundleCallCount.Should().Be(0, "multi-file bundle should not be re-downloaded when all file checksums match");
         }
@@ -1439,13 +1439,13 @@ public class LcmWorkerTests
         Directory.CreateDirectory(Path.Combine(extractDir, "sub"));
         try
         {
-            await File.WriteAllTextAsync(Path.Combine(extractDir, "main.dsc.yaml"), "# main");
-            await File.WriteAllTextAsync(Path.Combine(extractDir, "sub", "helper.dsc.yaml"), "# original helper");
+            await File.WriteAllTextAsync(Path.Combine(extractDir, "main.dsc.yaml"), "# main", TestContext.Current.CancellationToken);
+            await File.WriteAllTextAsync(Path.Combine(extractDir, "sub", "helper.dsc.yaml"), "# original helper", TestContext.Current.CancellationToken);
 
             var helperWorker = CreateTestWorker(extractDir);
-            var localHash = await helperWorker.CallComputeLocalContentHashAsync(extractDir, CancellationToken.None);
+            var localHash = await helperWorker.CallComputeLocalContentHashAsync(extractDir, TestContext.Current.CancellationToken);
 
-            await File.WriteAllTextAsync(Path.Combine(extractDir, "sub", "helper.dsc.yaml"), "# TAMPERED helper");
+            await File.WriteAllTextAsync(Path.Combine(extractDir, "sub", "helper.dsc.yaml"), "# TAMPERED helper", TestContext.Current.CancellationToken);
 
             var nodeId = Guid.NewGuid();
             var lcmConfig = new LcmConfig
@@ -1520,8 +1520,8 @@ public class LcmWorkerTests
 
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
             await worker.StartAsync(cts.Token);
-            await Task.Delay(500, CancellationToken.None);
-            await worker.StopAsync(CancellationToken.None);
+            await Task.Delay(500, TestContext.Current.CancellationToken);
+            await worker.StopAsync(TestContext.Current.CancellationToken);
 
             bundleCallCount.Should().BeGreaterThan(0, "modifying a file in a subdirectory should trigger re-download");
         }
@@ -1601,11 +1601,11 @@ public class LcmWorkerTests
 
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
             await worker.StartAsync(cts.Token);
-            await Task.Delay(500, CancellationToken.None);
-            await worker.StopAsync(CancellationToken.None);
+            await Task.Delay(500, TestContext.Current.CancellationToken);
+            await worker.StopAsync(TestContext.Current.CancellationToken);
 
             File.Exists(configFile).Should().BeTrue("config file should be written after extraction");
-            var json = await File.ReadAllTextAsync(configFile);
+            var json = await File.ReadAllTextAsync(configFile, TestContext.Current.CancellationToken);
             json.Should().Contain("server-checksum-abc", "checksum should be persisted");
             json.Should().Contain("LocalContentHash", "local content hash should be persisted");
             json.Should().Contain("ConfigurationEntryPoint", "entry point should be persisted");

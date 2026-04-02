@@ -21,8 +21,11 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/TestResource.Aot/TestResource.Aot.csproj" />
+    <Project Path="tests/TestResource.Aot.Tests/TestResource.Aot.Tests.csproj" />
     <Project Path="tests/TestResource.Multi/TestResource.Multi.csproj" />
+    <Project Path="tests/TestResource.Multi.Tests/TestResource.Multi.Tests.csproj" />
     <Project Path="tests/TestResource.NonAot/TestResource.NonAot.csproj" />
+    <Project Path="tests/TestResource.NonAot.Tests/TestResource.NonAot.Tests.csproj" />
     <Project Path="tests/TestResource.Options/TestResource.Options.csproj" />
     <Project Path="tests/TestService/TestService.csproj" />
     <Project Path="tests/OpenDsc.Lcm.Tests/OpenDsc.Lcm.Tests.csproj" />
@@ -32,5 +35,12 @@
     <Project Path="tests/OpenDsc.Server.FunctionalTests/OpenDsc.Server.FunctionalTests.csproj" />
     <Project Path="tests/OpenDsc.Lcm.FunctionalTests/OpenDsc.Lcm.FunctionalTests.csproj" />
     <Project Path="tests/OpenDsc.Schema.Tests/OpenDsc.Schema.Tests.csproj" />
+    <Project Path="tests/OpenDsc.Resource.Windows.Tests/OpenDsc.Resource.Windows.Tests.csproj" />
+    <Project Path="tests/OpenDsc.Resource.FileSystem.Tests/OpenDsc.Resource.FileSystem.Tests.csproj" />
+    <Project Path="tests/OpenDsc.Resource.Xml.Tests/OpenDsc.Resource.Xml.Tests.csproj" />
+    <Project Path="tests/OpenDsc.Resource.Json.Tests/OpenDsc.Resource.Json.Tests.csproj" />
+    <Project Path="tests/OpenDsc.Resource.Archive.Tests/OpenDsc.Resource.Archive.Tests.csproj" />
+    <Project Path="tests/OpenDsc.Resource.Posix.Tests/OpenDsc.Resource.Posix.Tests.csproj" />
+    <Project Path="tests/OpenDsc.Resource.SqlServer.Tests/OpenDsc.Resource.SqlServer.Tests.csproj" />
   </Folder>
 </Solution>

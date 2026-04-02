@@ -45,10 +45,10 @@ public sealed class ScopeValueEndpointsTests : IDisposable
         var scopeTypeId = await CreateScopeTypeAsync(client, "Environment");
         var request = new CreateScopeValueRequest { Value = "Production" };
 
-        var response = await client.PostAsJsonAsync($"/api/v1/scope-types/{scopeTypeId}/values", request, SourceGenerationContext.Default.Options);
+        var response = await client.PostAsJsonAsync($"/api/v1/scope-types/{scopeTypeId}/values", request, SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
-        var result = await response.Content.ReadFromJsonAsync<ScopeValueDto>(SourceGenerationContext.Default.Options);
+        var result = await response.Content.ReadFromJsonAsync<ScopeValueDto>(SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
         result!.Value.Should().Be("Production");
     }
 
@@ -57,12 +57,12 @@ public sealed class ScopeValueEndpointsTests : IDisposable
     {
         using var client = CreateAuthenticatedClient();
         var scopeTypeId = await CreateScopeTypeAsync(client, "Region");
-        await client.PostAsJsonAsync($"/api/v1/scope-types/{scopeTypeId}/values", new CreateScopeValueRequest { Value = "US" }, SourceGenerationContext.Default.Options);
+        await client.PostAsJsonAsync($"/api/v1/scope-types/{scopeTypeId}/values", new CreateScopeValueRequest { Value = "US" }, SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
 
-        var response = await client.GetAsync($"/api/v1/scope-types/{scopeTypeId}/values");
+        var response = await client.GetAsync($"/api/v1/scope-types/{scopeTypeId}/values", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var result = await response.Content.ReadFromJsonAsync<List<ScopeValueDto>>(SourceGenerationContext.Default.Options);
+        var result = await response.Content.ReadFromJsonAsync<List<ScopeValueDto>>(SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
         result!.Should().Contain(sv => sv.Value == "US");
     }
 
@@ -73,8 +73,8 @@ public sealed class ScopeValueEndpointsTests : IDisposable
         var scopeTypeId = await CreateScopeTypeAsync(client, "Location");
         var request = new CreateScopeValueRequest { Value = "TestValue1" };
 
-        await client.PostAsJsonAsync($"/api/v1/scope-types/{scopeTypeId}/values", request);
-        var response = await client.PostAsJsonAsync($"/api/v1/scope-types/{scopeTypeId}/values", request);
+        await client.PostAsJsonAsync($"/api/v1/scope-types/{scopeTypeId}/values", request, TestContext.Current.CancellationToken);
+        var response = await client.PostAsJsonAsync($"/api/v1/scope-types/{scopeTypeId}/values", request, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
@@ -84,11 +84,11 @@ public sealed class ScopeValueEndpointsTests : IDisposable
     {
         using var client = CreateAuthenticatedClient();
         var createScopeType = new CreateScopeTypeRequest { Name = "NoValuesScope", ValueMode = ScopeValueMode.Unrestricted };
-        var scopeTypeResponse = await client.PostAsJsonAsync("/api/v1/scope-types", createScopeType, SourceGenerationContext.Default.Options);
-        var scopeType = await scopeTypeResponse.Content.ReadFromJsonAsync<ScopeTypeDto>(SourceGenerationContext.Default.Options);
+        var scopeTypeResponse = await client.PostAsJsonAsync("/api/v1/scope-types", createScopeType, SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
+        var scopeType = await scopeTypeResponse.Content.ReadFromJsonAsync<ScopeTypeDto>(SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
 
         var request = new CreateScopeValueRequest { Value = "InvalidValue" };
-        var response = await client.PostAsJsonAsync($"/api/v1/scope-types/{scopeType!.Id}/values", request);
+        var response = await client.PostAsJsonAsync($"/api/v1/scope-types/{scopeType!.Id}/values", request, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -101,10 +101,10 @@ public sealed class ScopeValueEndpointsTests : IDisposable
         var valueId = await CreateScopeValueAsync(client, scopeTypeId, "DC1");
 
         var updateRequest = new UpdateScopeValueRequest { Description = "Primary datacenter" };
-        var response = await client.PutAsJsonAsync($"/api/v1/scope-types/{scopeTypeId}/values/{valueId}", updateRequest, SourceGenerationContext.Default.Options);
+        var response = await client.PutAsJsonAsync($"/api/v1/scope-types/{scopeTypeId}/values/{valueId}", updateRequest, SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var result = await response.Content.ReadFromJsonAsync<ScopeValueDto>(SourceGenerationContext.Default.Options);
+        var result = await response.Content.ReadFromJsonAsync<ScopeValueDto>(SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
         result!.Description.Should().Be("Primary datacenter");
     }
 
@@ -115,7 +115,7 @@ public sealed class ScopeValueEndpointsTests : IDisposable
         var scopeTypeId = await CreateScopeTypeAsync(client, "Zone");
         var valueId = await CreateScopeValueAsync(client, scopeTypeId, "Zone1");
 
-        var response = await client.DeleteAsync($"/api/v1/scope-types/{scopeTypeId}/values/{valueId}");
+        var response = await client.DeleteAsync($"/api/v1/scope-types/{scopeTypeId}/values/{valueId}", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
@@ -135,10 +135,10 @@ public sealed class ScopeValueEndpointsTests : IDisposable
         var scopeTypeId = await CreateScopeTypeAsync(client, "GetTest");
         var valueId = await CreateScopeValueAsync(client, scopeTypeId, "TestValue");
 
-        var response = await client.GetAsync($"/api/v1/scope-types/{scopeTypeId}/values/{valueId}");
+        var response = await client.GetAsync($"/api/v1/scope-types/{scopeTypeId}/values/{valueId}", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var result = await response.Content.ReadFromJsonAsync<ScopeValueDto>();
+        var result = await response.Content.ReadFromJsonAsync<ScopeValueDto>(TestContext.Current.CancellationToken);
         result!.Value.Should().Be("TestValue");
     }
 
@@ -148,7 +148,7 @@ public sealed class ScopeValueEndpointsTests : IDisposable
         using var client = CreateAuthenticatedClient();
         var scopeTypeId = await CreateScopeTypeAsync(client, "NotFoundTest");
 
-        var response = await client.GetAsync($"/api/v1/scope-types/{scopeTypeId}/values/{Guid.NewGuid()}");
+        var response = await client.GetAsync($"/api/v1/scope-types/{scopeTypeId}/values/{Guid.NewGuid()}", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -157,7 +157,7 @@ public sealed class ScopeValueEndpointsTests : IDisposable
     public async Task GetScopeValues_NonExistentScopeType_ReturnsNotFound()
     {
         using var client = CreateAuthenticatedClient();
-        var response = await client.GetAsync($"/api/v1/scope-types/{Guid.NewGuid()}/values");
+        var response = await client.GetAsync($"/api/v1/scope-types/{Guid.NewGuid()}/values", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -169,7 +169,7 @@ public sealed class ScopeValueEndpointsTests : IDisposable
         var scopeTypeId = await CreateScopeTypeAsync(client, "EmptyTest");
         var request = new CreateScopeValueRequest { Value = "" };
 
-        var response = await client.PostAsJsonAsync($"/api/v1/scope-types/{scopeTypeId}/values", request);
+        var response = await client.PostAsJsonAsync($"/api/v1/scope-types/{scopeTypeId}/values", request, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -181,7 +181,7 @@ public sealed class ScopeValueEndpointsTests : IDisposable
         var scopeTypeId = await CreateScopeTypeAsync(client, "InvalidCharsTest");
         var request = new CreateScopeValueRequest { Value = "Invalid Value!" };
 
-        var response = await client.PostAsJsonAsync($"/api/v1/scope-types/{scopeTypeId}/values", request);
+        var response = await client.PostAsJsonAsync($"/api/v1/scope-types/{scopeTypeId}/values", request, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -192,7 +192,7 @@ public sealed class ScopeValueEndpointsTests : IDisposable
         using var client = CreateAuthenticatedClient();
         var request = new CreateScopeValueRequest { Value = "Test" };
 
-        var response = await client.PostAsJsonAsync($"/api/v1/scope-types/{Guid.NewGuid()}/values", request);
+        var response = await client.PostAsJsonAsync($"/api/v1/scope-types/{Guid.NewGuid()}/values", request, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -204,7 +204,7 @@ public sealed class ScopeValueEndpointsTests : IDisposable
         var scopeTypeId = await CreateScopeTypeAsync(client, "UpdateNotFoundTest");
         var updateRequest = new UpdateScopeValueRequest { Description = "Test" };
 
-        var response = await client.PutAsJsonAsync($"/api/v1/scope-types/{scopeTypeId}/values/{Guid.NewGuid()}", updateRequest);
+        var response = await client.PutAsJsonAsync($"/api/v1/scope-types/{scopeTypeId}/values/{Guid.NewGuid()}", updateRequest, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -215,7 +215,7 @@ public sealed class ScopeValueEndpointsTests : IDisposable
         using var client = CreateAuthenticatedClient();
         var scopeTypeId = await CreateScopeTypeAsync(client, "DeleteNotFoundTest");
 
-        var response = await client.DeleteAsync($"/api/v1/scope-types/{scopeTypeId}/values/{Guid.NewGuid()}");
+        var response = await client.DeleteAsync($"/api/v1/scope-types/{scopeTypeId}/values/{Guid.NewGuid()}", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -226,19 +226,19 @@ public sealed class ScopeValueEndpointsTests : IDisposable
         using var client = CreateAuthenticatedClient();
 
         var regKeyRequest = new CreateRegistrationKeyRequest();
-        var registrationKeyResponse = await client.PostAsJsonAsync("/api/v1/admin/registration-keys", regKeyRequest);
-        var regKey = await registrationKeyResponse.Content.ReadFromJsonAsync<RegistrationKeyResponse>();
+        var registrationKeyResponse = await client.PostAsJsonAsync("/api/v1/admin/registration-keys", regKeyRequest, TestContext.Current.CancellationToken);
+        var regKey = await registrationKeyResponse.Content.ReadFromJsonAsync<RegistrationKeyResponse>(TestContext.Current.CancellationToken);
         string keyValue = regKey!.Key!;
 
-        var registerResponse = await client.PostAsJsonAsync("/api/v1/nodes/register", new RegisterNodeRequest { Fqdn = "deletetest.local", RegistrationKey = keyValue });
-        var nodeId = (await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>())!.NodeId;
+        var registerResponse = await client.PostAsJsonAsync("/api/v1/nodes/register", new RegisterNodeRequest { Fqdn = "deletetest.local", RegistrationKey = keyValue }, TestContext.Current.CancellationToken);
+        var nodeId = (await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>(TestContext.Current.CancellationToken))!.NodeId;
 
         var scopeTypeId = await CreateScopeTypeAsync(client, "DeleteWithTagsTest");
         var scopeValueId = await CreateScopeValueAsync(client, scopeTypeId, "TaggedValue");
 
-        await client.PostAsJsonAsync($"/api/v1/nodes/{nodeId}/tags", new AssignNodeTagRequest { ScopeValueId = scopeValueId });
+        await client.PostAsJsonAsync($"/api/v1/nodes/{nodeId}/tags", new AssignNodeTagRequest { ScopeValueId = scopeValueId }, TestContext.Current.CancellationToken);
 
-        var response = await client.DeleteAsync($"/api/v1/scope-types/{scopeTypeId}/values/{scopeValueId}");
+        var response = await client.DeleteAsync($"/api/v1/scope-types/{scopeTypeId}/values/{scopeValueId}", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }

@@ -33,10 +33,10 @@ public sealed class RetentionSettingsEndpointsTests : IDisposable
     {
         using var client = CreateAuthenticatedClient();
 
-        var response = await client.GetAsync("/api/v1/settings/retention");
+        var response = await client.GetAsync("/api/v1/settings/retention", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var dto = await response.Content.ReadFromJsonAsync<RetentionSettingsDto>();
+        var dto = await response.Content.ReadFromJsonAsync<RetentionSettingsDto>(TestContext.Current.CancellationToken);
         dto.Should().NotBeNull();
         dto!.Enabled.Should().BeFalse();
         dto.KeepVersions.Should().Be(10);
@@ -54,7 +54,7 @@ public sealed class RetentionSettingsEndpointsTests : IDisposable
     {
         using var client = _factory.CreateClient();
 
-        var response = await client.GetAsync("/api/v1/settings/retention");
+        var response = await client.GetAsync("/api/v1/settings/retention", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -77,12 +77,12 @@ public sealed class RetentionSettingsEndpointsTests : IDisposable
             StatusEventKeepDays = 3
         };
 
-        var putResponse = await client.PutAsJsonAsync("/api/v1/settings/retention", request);
+        var putResponse = await client.PutAsJsonAsync("/api/v1/settings/retention", request, TestContext.Current.CancellationToken);
         putResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var getResponse = await client.GetAsync("/api/v1/settings/retention");
+        var getResponse = await client.GetAsync("/api/v1/settings/retention", TestContext.Current.CancellationToken);
         getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var dto = await getResponse.Content.ReadFromJsonAsync<RetentionSettingsDto>();
+        var dto = await getResponse.Content.ReadFromJsonAsync<RetentionSettingsDto>(TestContext.Current.CancellationToken);
         dto.Should().NotBeNull();
         dto!.Enabled.Should().BeTrue();
         dto.KeepVersions.Should().Be(5);
@@ -104,14 +104,14 @@ public sealed class RetentionSettingsEndpointsTests : IDisposable
         await client.PutAsJsonAsync("/api/v1/settings/retention", new UpdateRetentionSettingsRequest
         {
             KeepVersions = 7
-        });
+        }, TestContext.Current.CancellationToken);
 
         // Update only one field
         var request = new UpdateRetentionSettingsRequest { KeepDays = 45 };
-        var putResponse = await client.PutAsJsonAsync("/api/v1/settings/retention", request);
+        var putResponse = await client.PutAsJsonAsync("/api/v1/settings/retention", request, TestContext.Current.CancellationToken);
         putResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var dto = await putResponse.Content.ReadFromJsonAsync<RetentionSettingsDto>();
+        var dto = await putResponse.Content.ReadFromJsonAsync<RetentionSettingsDto>(TestContext.Current.CancellationToken);
         dto.Should().NotBeNull();
         dto!.KeepVersions.Should().Be(7);
         dto.KeepDays.Should().Be(45);
@@ -123,7 +123,7 @@ public sealed class RetentionSettingsEndpointsTests : IDisposable
         using var client = _factory.CreateClient();
 
         var request = new UpdateRetentionSettingsRequest { Enabled = true };
-        var response = await client.PutAsJsonAsync("/api/v1/settings/retention", request);
+        var response = await client.PutAsJsonAsync("/api/v1/settings/retention", request, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }

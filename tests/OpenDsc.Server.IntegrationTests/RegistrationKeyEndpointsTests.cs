@@ -36,10 +36,10 @@ public class RegistrationKeyEndpointsTests : IDisposable
     {
         var client = CreateAuthenticatedClient();
 
-        var response = await client.GetAsync("/api/v1/admin/registration-keys");
+        var response = await client.GetAsync("/api/v1/admin/registration-keys", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var keys = await response.Content.ReadFromJsonAsync<List<RegistrationKeyResponse>>(JsonOptions);
+        var keys = await response.Content.ReadFromJsonAsync<List<RegistrationKeyResponse>>(JsonOptions, TestContext.Current.CancellationToken);
         keys.Should().NotBeNull();
     }
 
@@ -48,7 +48,7 @@ public class RegistrationKeyEndpointsTests : IDisposable
     {
         var client = _factory.CreateClient();
 
-        var response = await client.GetAsync("/api/v1/admin/registration-keys");
+        var response = await client.GetAsync("/api/v1/admin/registration-keys", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -64,10 +64,10 @@ public class RegistrationKeyEndpointsTests : IDisposable
             ExpiresAt = DateTimeOffset.UtcNow.AddDays(7)
         };
 
-        var response = await client.PostAsJsonAsync("/api/v1/admin/registration-keys", request);
+        var response = await client.PostAsJsonAsync("/api/v1/admin/registration-keys", request, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var result = await response.Content.ReadFromJsonAsync<RegistrationKeyResponse>(JsonOptions);
+        var result = await response.Content.ReadFromJsonAsync<RegistrationKeyResponse>(JsonOptions, TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
         result!.Key.Should().NotBeNullOrEmpty();
         result.Description.Should().BeNull();
@@ -83,10 +83,10 @@ public class RegistrationKeyEndpointsTests : IDisposable
             Description = "IIS team servers"
         };
 
-        var response = await client.PostAsJsonAsync("/api/v1/admin/registration-keys", request);
+        var response = await client.PostAsJsonAsync("/api/v1/admin/registration-keys", request, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var result = await response.Content.ReadFromJsonAsync<RegistrationKeyResponse>(JsonOptions);
+        var result = await response.Content.ReadFromJsonAsync<RegistrationKeyResponse>(JsonOptions, TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
         result!.Key.Should().NotBeNullOrEmpty();
         result.Description.Should().Be("IIS team servers");
@@ -102,12 +102,12 @@ public class RegistrationKeyEndpointsTests : IDisposable
             Description = "Finance team nodes"
         };
 
-        var createResponse = await client.PostAsJsonAsync("/api/v1/admin/registration-keys", request);
+        var createResponse = await client.PostAsJsonAsync("/api/v1/admin/registration-keys", request, TestContext.Current.CancellationToken);
         createResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var created = await createResponse.Content.ReadFromJsonAsync<RegistrationKeyResponse>(JsonOptions);
+        var created = await createResponse.Content.ReadFromJsonAsync<RegistrationKeyResponse>(JsonOptions, TestContext.Current.CancellationToken);
 
-        var listResponse = await client.GetAsync("/api/v1/admin/registration-keys");
-        var keys = await listResponse.Content.ReadFromJsonAsync<List<RegistrationKeyResponse>>(JsonOptions);
+        var listResponse = await client.GetAsync("/api/v1/admin/registration-keys", TestContext.Current.CancellationToken);
+        var keys = await listResponse.Content.ReadFromJsonAsync<List<RegistrationKeyResponse>>(JsonOptions, TestContext.Current.CancellationToken);
 
         var listed = keys!.FirstOrDefault(k => k.Id == created!.Id);
         listed.Should().NotBeNull();
@@ -121,7 +121,7 @@ public class RegistrationKeyEndpointsTests : IDisposable
         var client = _factory.CreateClient();
         var request = new CreateRegistrationKeyRequest { ExpiresAt = DateTimeOffset.UtcNow.AddDays(1) };
 
-        var response = await client.PostAsJsonAsync("/api/v1/admin/registration-keys", request);
+        var response = await client.PostAsJsonAsync("/api/v1/admin/registration-keys", request, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -134,14 +134,14 @@ public class RegistrationKeyEndpointsTests : IDisposable
         var client = CreateAuthenticatedClient();
 
         var createRequest = new CreateRegistrationKeyRequest { ExpiresAt = DateTimeOffset.UtcNow.AddDays(7) };
-        var createResponse = await client.PostAsJsonAsync("/api/v1/admin/registration-keys", createRequest);
-        var created = await createResponse.Content.ReadFromJsonAsync<RegistrationKeyResponse>(JsonOptions);
+        var createResponse = await client.PostAsJsonAsync("/api/v1/admin/registration-keys", createRequest, TestContext.Current.CancellationToken);
+        var created = await createResponse.Content.ReadFromJsonAsync<RegistrationKeyResponse>(JsonOptions, TestContext.Current.CancellationToken);
 
         var updateRequest = new UpdateRegistrationKeyRequest { Description = "Dev team registration key" };
-        var updateResponse = await client.PutAsJsonAsync($"/api/v1/admin/registration-keys/{created!.Id}", updateRequest);
+        var updateResponse = await client.PutAsJsonAsync($"/api/v1/admin/registration-keys/{created!.Id}", updateRequest, TestContext.Current.CancellationToken);
 
         updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var updated = await updateResponse.Content.ReadFromJsonAsync<RegistrationKeyResponse>(JsonOptions);
+        var updated = await updateResponse.Content.ReadFromJsonAsync<RegistrationKeyResponse>(JsonOptions, TestContext.Current.CancellationToken);
         updated!.Description.Should().Be("Dev team registration key");
         updated.Id.Should().Be(created.Id);
     }
@@ -156,14 +156,14 @@ public class RegistrationKeyEndpointsTests : IDisposable
             ExpiresAt = DateTimeOffset.UtcNow.AddDays(7),
             Description = "Initial description"
         };
-        var createResponse = await client.PostAsJsonAsync("/api/v1/admin/registration-keys", createRequest);
-        var created = await createResponse.Content.ReadFromJsonAsync<RegistrationKeyResponse>(JsonOptions);
+        var createResponse = await client.PostAsJsonAsync("/api/v1/admin/registration-keys", createRequest, TestContext.Current.CancellationToken);
+        var created = await createResponse.Content.ReadFromJsonAsync<RegistrationKeyResponse>(JsonOptions, TestContext.Current.CancellationToken);
 
         var updateRequest = new UpdateRegistrationKeyRequest { Description = null };
-        var updateResponse = await client.PutAsJsonAsync($"/api/v1/admin/registration-keys/{created!.Id}", updateRequest);
+        var updateResponse = await client.PutAsJsonAsync($"/api/v1/admin/registration-keys/{created!.Id}", updateRequest, TestContext.Current.CancellationToken);
 
         updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var updated = await updateResponse.Content.ReadFromJsonAsync<RegistrationKeyResponse>(JsonOptions);
+        var updated = await updateResponse.Content.ReadFromJsonAsync<RegistrationKeyResponse>(JsonOptions, TestContext.Current.CancellationToken);
         updated!.Description.Should().BeNull();
     }
 
@@ -173,7 +173,7 @@ public class RegistrationKeyEndpointsTests : IDisposable
         var client = CreateAuthenticatedClient();
         var updateRequest = new UpdateRegistrationKeyRequest { Description = "Something" };
 
-        var response = await client.PutAsJsonAsync($"/api/v1/admin/registration-keys/{Guid.NewGuid()}", updateRequest);
+        var response = await client.PutAsJsonAsync($"/api/v1/admin/registration-keys/{Guid.NewGuid()}", updateRequest, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -184,7 +184,7 @@ public class RegistrationKeyEndpointsTests : IDisposable
         var client = _factory.CreateClient();
         var updateRequest = new UpdateRegistrationKeyRequest { Description = "Something" };
 
-        var response = await client.PutAsJsonAsync($"/api/v1/admin/registration-keys/{Guid.NewGuid()}", updateRequest);
+        var response = await client.PutAsJsonAsync($"/api/v1/admin/registration-keys/{Guid.NewGuid()}", updateRequest, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -197,10 +197,10 @@ public class RegistrationKeyEndpointsTests : IDisposable
         var client = CreateAuthenticatedClient();
 
         var createRequest = new CreateRegistrationKeyRequest { ExpiresAt = DateTimeOffset.UtcNow.AddDays(7) };
-        var createResponse = await client.PostAsJsonAsync("/api/v1/admin/registration-keys", createRequest);
-        var created = await createResponse.Content.ReadFromJsonAsync<RegistrationKeyResponse>(JsonOptions);
+        var createResponse = await client.PostAsJsonAsync("/api/v1/admin/registration-keys", createRequest, TestContext.Current.CancellationToken);
+        var created = await createResponse.Content.ReadFromJsonAsync<RegistrationKeyResponse>(JsonOptions, TestContext.Current.CancellationToken);
 
-        var revokeResponse = await client.DeleteAsync($"/api/v1/admin/registration-keys/{created!.Id}");
+        var revokeResponse = await client.DeleteAsync($"/api/v1/admin/registration-keys/{created!.Id}", TestContext.Current.CancellationToken);
 
         revokeResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
@@ -210,7 +210,7 @@ public class RegistrationKeyEndpointsTests : IDisposable
     {
         var client = CreateAuthenticatedClient();
 
-        var response = await client.DeleteAsync($"/api/v1/admin/registration-keys/{Guid.NewGuid()}");
+        var response = await client.DeleteAsync($"/api/v1/admin/registration-keys/{Guid.NewGuid()}", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -220,7 +220,7 @@ public class RegistrationKeyEndpointsTests : IDisposable
     {
         var client = _factory.CreateClient();
 
-        var response = await client.DeleteAsync($"/api/v1/admin/registration-keys/{Guid.NewGuid()}");
+        var response = await client.DeleteAsync($"/api/v1/admin/registration-keys/{Guid.NewGuid()}", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }

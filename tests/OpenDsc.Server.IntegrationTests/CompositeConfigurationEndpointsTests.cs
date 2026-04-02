@@ -57,7 +57,7 @@ public class CompositeConfigurationEndpointsTests : IDisposable
             EntryPoint = "main.dsc.yaml"
         };
 
-        var response = await client.PostAsJsonAsync("/api/v1/composite-configurations", request);
+        var response = await client.PostAsJsonAsync("/api/v1/composite-configurations", request, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         response.Headers.Location.Should().NotBeNull();
@@ -76,8 +76,8 @@ public class CompositeConfigurationEndpointsTests : IDisposable
             EntryPoint = "main.dsc.yaml"
         };
 
-        await client.PostAsJsonAsync("/api/v1/composite-configurations", request);
-        var response = await client.PostAsJsonAsync("/api/v1/composite-configurations", request);
+        await client.PostAsJsonAsync("/api/v1/composite-configurations", request, TestContext.Current.CancellationToken);
+        var response = await client.PostAsJsonAsync("/api/v1/composite-configurations", request, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
@@ -88,11 +88,11 @@ public class CompositeConfigurationEndpointsTests : IDisposable
         using var client = CreateAuthenticatedClient();
 
         var createRequest = new CreateCompositeConfigurationRequest { Name = "version-test", EntryPoint = "main.dsc.yaml" };
-        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest);
+        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest, TestContext.Current.CancellationToken);
         var compositeId = createResponse.Headers.Location!.ToString().Split('/').Last();
 
         var versionRequest = new CreateCompositeConfigurationVersionRequest { Version = "1.0.0" };
-        var response = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest);
+        var response = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         response.Headers.Location.Should().NotBeNull();
@@ -106,15 +106,15 @@ public class CompositeConfigurationEndpointsTests : IDisposable
         var childConfigName = await CreateTestConfigurationAsync(client, "child-config-add");
 
         var createRequest = new CreateCompositeConfigurationRequest { Name = "child-test", EntryPoint = "main.dsc.yaml" };
-        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest);
+        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest, TestContext.Current.CancellationToken);
         var compositeId = createResponse.Headers.Location!.ToString().Split('/').Last();
 
         var versionRequest = new CreateCompositeConfigurationVersionRequest { Version = "1.0.0" };
-        var versionResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest);
+        var versionResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest, TestContext.Current.CancellationToken);
         var versionId = versionResponse.Headers.Location!.ToString().Split('/').Last();
 
         var addChildRequest = new AddChildConfigurationRequest { ChildConfigurationName = childConfigName, Order = 0 };
-        var response = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/{versionId}/children", addChildRequest);
+        var response = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/{versionId}/children", addChildRequest, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
     }
@@ -125,21 +125,21 @@ public class CompositeConfigurationEndpointsTests : IDisposable
         using var client = CreateAuthenticatedClient();
 
         var composite1Request = new CreateCompositeConfigurationRequest { Name = "comp-parent-test", EntryPoint = "main.dsc.yaml" };
-        var composite1Response = await client.PostAsJsonAsync("/api/v1/composite-configurations", composite1Request);
+        var composite1Response = await client.PostAsJsonAsync("/api/v1/composite-configurations", composite1Request, TestContext.Current.CancellationToken);
         var composite1Id = composite1Response.Headers.Location!.ToString().Split('/').Last();
 
         var composite2Request = new CreateCompositeConfigurationRequest { Name = "comp-child-test", EntryPoint = "main.dsc.yaml" };
-        await client.PostAsJsonAsync("/api/v1/composite-configurations", composite2Request);
+        await client.PostAsJsonAsync("/api/v1/composite-configurations", composite2Request, TestContext.Current.CancellationToken);
 
         var versionRequest = new CreateCompositeConfigurationVersionRequest { Version = "1.0.0" };
-        var versionResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{composite1Id}/versions", versionRequest);
+        var versionResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{composite1Id}/versions", versionRequest, TestContext.Current.CancellationToken);
         var versionId = versionResponse.Headers.Location!.ToString().Split('/').Last();
 
         var addChildRequest = new AddChildConfigurationRequest { ChildConfigurationName = "comp-child-test", Order = 0 };
-        var response = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{composite1Id}/versions/{versionId}/children", addChildRequest);
+        var response = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{composite1Id}/versions/{versionId}/children", addChildRequest, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>(TestContext.Current.CancellationToken);
         error!.Error.Should().Contain("composite");
     }
 
@@ -149,10 +149,10 @@ public class CompositeConfigurationEndpointsTests : IDisposable
         using var client = CreateAuthenticatedClient();
 
         var createRequest = new CreateCompositeConfigurationRequest { Name = "delete-test-comp", EntryPoint = "main.dsc.yaml" };
-        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest);
+        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest, TestContext.Current.CancellationToken);
         var compositeId = createResponse.Headers.Location!.ToString().Split('/').Last();
 
-        var response = await client.DeleteAsync($"/api/v1/composite-configurations/{compositeId}");
+        var response = await client.DeleteAsync($"/api/v1/composite-configurations/{compositeId}", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
@@ -168,12 +168,12 @@ public class CompositeConfigurationEndpointsTests : IDisposable
             Description = "Test",
             EntryPoint = "main.dsc.yaml"
         };
-        await client.PostAsJsonAsync("/api/v1/composite-configurations", request);
+        await client.PostAsJsonAsync("/api/v1/composite-configurations", request, TestContext.Current.CancellationToken);
 
-        var response = await client.GetAsync("/api/v1/composite-configurations");
+        var response = await client.GetAsync("/api/v1/composite-configurations", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var composites = await response.Content.ReadFromJsonAsync<List<CompositeConfigurationSummaryDto>>();
+        var composites = await response.Content.ReadFromJsonAsync<List<CompositeConfigurationSummaryDto>>(TestContext.Current.CancellationToken);
         composites.Should().NotBeNull();
         composites.Should().Contain(c => c.Name == "get-all-test");
     }
@@ -189,13 +189,13 @@ public class CompositeConfigurationEndpointsTests : IDisposable
             Description = "Test details",
             EntryPoint = "main.dsc.yaml"
         };
-        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", request);
+        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", request, TestContext.Current.CancellationToken);
         var compositeId = createResponse.Headers.Location!.ToString().Split('/').Last();
 
-        var response = await client.GetAsync($"/api/v1/composite-configurations/{compositeId}");
+        var response = await client.GetAsync($"/api/v1/composite-configurations/{compositeId}", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var details = await response.Content.ReadFromJsonAsync<CompositeConfigurationDetailsDto>();
+        var details = await response.Content.ReadFromJsonAsync<CompositeConfigurationDetailsDto>(TestContext.Current.CancellationToken);
         details.Should().NotBeNull();
         details!.Name.Should().Be("get-details-test");
         details.Description.Should().Be("Test details");
@@ -206,7 +206,7 @@ public class CompositeConfigurationEndpointsTests : IDisposable
     {
         using var client = CreateAuthenticatedClient();
 
-        var response = await client.GetAsync("/api/v1/composite-configurations/nonexistent");
+        var response = await client.GetAsync("/api/v1/composite-configurations/nonexistent", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -222,7 +222,7 @@ public class CompositeConfigurationEndpointsTests : IDisposable
             EntryPoint = "main.dsc.yaml"
         };
 
-        var response = await client.PostAsJsonAsync("/api/v1/composite-configurations", request);
+        var response = await client.PostAsJsonAsync("/api/v1/composite-configurations", request, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -232,7 +232,7 @@ public class CompositeConfigurationEndpointsTests : IDisposable
     {
         using var client = CreateAuthenticatedClient();
 
-        var response = await client.DeleteAsync("/api/v1/composite-configurations/nonexistent");
+        var response = await client.DeleteAsync("/api/v1/composite-configurations/nonexistent", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -243,7 +243,7 @@ public class CompositeConfigurationEndpointsTests : IDisposable
         using var client = CreateAuthenticatedClient();
 
         var versionRequest = new CreateCompositeConfigurationVersionRequest { Version = "1.0.0" };
-        var response = await client.PostAsJsonAsync("/api/v1/composite-configurations/nonexistent/versions", versionRequest);
+        var response = await client.PostAsJsonAsync("/api/v1/composite-configurations/nonexistent/versions", versionRequest, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -254,11 +254,11 @@ public class CompositeConfigurationEndpointsTests : IDisposable
         using var client = CreateAuthenticatedClient();
 
         var createRequest = new CreateCompositeConfigurationRequest { Name = "empty-ver-test", EntryPoint = "main.dsc.yaml" };
-        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest);
+        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest, TestContext.Current.CancellationToken);
         var compositeId = createResponse.Headers.Location!.ToString().Split('/').Last();
 
         var versionRequest = new CreateCompositeConfigurationVersionRequest { Version = "" };
-        var response = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest);
+        var response = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -269,12 +269,12 @@ public class CompositeConfigurationEndpointsTests : IDisposable
         using var client = CreateAuthenticatedClient();
 
         var createRequest = new CreateCompositeConfigurationRequest { Name = "dup-ver-test", EntryPoint = "main.dsc.yaml" };
-        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest);
+        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest, TestContext.Current.CancellationToken);
         var compositeId = createResponse.Headers.Location!.ToString().Split('/').Last();
 
         var versionRequest = new CreateCompositeConfigurationVersionRequest { Version = "1.0.0" };
-        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest);
-        var response = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest);
+        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest, TestContext.Current.CancellationToken);
+        var response = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
@@ -285,16 +285,16 @@ public class CompositeConfigurationEndpointsTests : IDisposable
         using var client = CreateAuthenticatedClient();
 
         var createRequest = new CreateCompositeConfigurationRequest { Name = "get-vers-test", EntryPoint = "main.dsc.yaml" };
-        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest);
+        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest, TestContext.Current.CancellationToken);
         var compositeId = createResponse.Headers.Location!.ToString().Split('/').Last();
 
         var versionRequest = new CreateCompositeConfigurationVersionRequest { Version = "1.0.0" };
-        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest);
+        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest, TestContext.Current.CancellationToken);
 
-        var response = await client.GetAsync($"/api/v1/composite-configurations/{compositeId}/versions");
+        var response = await client.GetAsync($"/api/v1/composite-configurations/{compositeId}/versions", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var versions = await response.Content.ReadFromJsonAsync<List<CompositeConfigurationVersionDto>>();
+        var versions = await response.Content.ReadFromJsonAsync<List<CompositeConfigurationVersionDto>>(TestContext.Current.CancellationToken);
         versions.Should().NotBeNull();
         versions.Should().Contain(v => v.Version == "1.0.0");
     }
@@ -304,7 +304,7 @@ public class CompositeConfigurationEndpointsTests : IDisposable
     {
         using var client = CreateAuthenticatedClient();
 
-        var response = await client.GetAsync("/api/v1/composite-configurations/nonexistent/versions");
+        var response = await client.GetAsync("/api/v1/composite-configurations/nonexistent/versions", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -315,16 +315,16 @@ public class CompositeConfigurationEndpointsTests : IDisposable
         using var client = CreateAuthenticatedClient();
 
         var createRequest = new CreateCompositeConfigurationRequest { Name = "get-ver-det-test", EntryPoint = "main.dsc.yaml" };
-        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest);
+        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest, TestContext.Current.CancellationToken);
         var compositeId = createResponse.Headers.Location!.ToString().Split('/').Last();
 
         var versionRequest = new CreateCompositeConfigurationVersionRequest { Version = "1.0.0" };
-        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest);
+        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest, TestContext.Current.CancellationToken);
 
-        var response = await client.GetAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0");
+        var response = await client.GetAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var version = await response.Content.ReadFromJsonAsync<CompositeConfigurationVersionDto>();
+        var version = await response.Content.ReadFromJsonAsync<CompositeConfigurationVersionDto>(TestContext.Current.CancellationToken);
         version.Should().NotBeNull();
         version!.Version.Should().Be("1.0.0");
         version.Status.Should().Be(ConfigurationVersionStatus.Draft);
@@ -335,7 +335,7 @@ public class CompositeConfigurationEndpointsTests : IDisposable
     {
         using var client = CreateAuthenticatedClient();
 
-        var response = await client.GetAsync("/api/v1/composite-configurations/nonexistent/versions/1.0.0");
+        var response = await client.GetAsync("/api/v1/composite-configurations/nonexistent/versions/1.0.0", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -348,22 +348,22 @@ public class CompositeConfigurationEndpointsTests : IDisposable
         var childConfigName = await CreateTestConfigurationAsync(client, "child-pub-draft-test");
 
         var createRequest = new CreateCompositeConfigurationRequest { Name = "pub-test", EntryPoint = "main.dsc.yaml" };
-        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest);
+        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest, TestContext.Current.CancellationToken);
         var compositeId = createResponse.Headers.Location!.ToString().Split('/').Last();
 
         var versionRequest = new CreateCompositeConfigurationVersionRequest { Version = "1.0.0" };
-        var versionResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest);
+        var versionResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest, TestContext.Current.CancellationToken);
         var versionId = versionResponse.Headers.Location!.ToString().Split('/').Last();
 
         var addChildRequest = new AddChildConfigurationRequest { ChildConfigurationName = childConfigName, Order = 0 };
-        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/{versionId}/children", addChildRequest);
+        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/{versionId}/children", addChildRequest, TestContext.Current.CancellationToken);
 
-        var response = await client.PutAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/publish", null);
+        var response = await client.PutAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/publish", null, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var getResponse = await client.GetAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0");
-        var version = await getResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDto>();
+        var getResponse = await client.GetAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0", TestContext.Current.CancellationToken);
+        var version = await getResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDto>(TestContext.Current.CancellationToken);
         version!.Status.Should().Be(ConfigurationVersionStatus.Published);
     }
 
@@ -375,18 +375,18 @@ public class CompositeConfigurationEndpointsTests : IDisposable
         var childConfigName = await CreateTestConfigurationAsync(client, "child-pub-again-test");
 
         var createRequest = new CreateCompositeConfigurationRequest { Name = "pub-again-test", EntryPoint = "main.dsc.yaml" };
-        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest);
+        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest, TestContext.Current.CancellationToken);
         var compositeId = createResponse.Headers.Location!.ToString().Split('/').Last();
 
         var versionRequest = new CreateCompositeConfigurationVersionRequest { Version = "1.0.0" };
-        var versionResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest);
+        var versionResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest, TestContext.Current.CancellationToken);
         var versionId = versionResponse.Headers.Location!.ToString().Split('/').Last();
 
         var addChildRequest = new AddChildConfigurationRequest { ChildConfigurationName = childConfigName, Order = 0 };
-        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/{versionId}/children", addChildRequest);
+        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/{versionId}/children", addChildRequest, TestContext.Current.CancellationToken);
 
-        await client.PutAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/publish", null);
-        var response = await client.PutAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/publish", null);
+        await client.PutAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/publish", null, TestContext.Current.CancellationToken);
+        var response = await client.PutAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/publish", null, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -397,16 +397,16 @@ public class CompositeConfigurationEndpointsTests : IDisposable
         using var client = CreateAuthenticatedClient();
 
         var createRequest = new CreateCompositeConfigurationRequest { Name = "pub-empty-test", EntryPoint = "main.dsc.yaml" };
-        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest);
+        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest, TestContext.Current.CancellationToken);
         var compositeId = createResponse.Headers.Location!.ToString().Split('/').Last();
 
         var versionRequest = new CreateCompositeConfigurationVersionRequest { Version = "1.0.0" };
-        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest);
+        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest, TestContext.Current.CancellationToken);
 
-        var response = await client.PutAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/publish", null);
+        var response = await client.PutAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/publish", null, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>(TestContext.Current.CancellationToken);
         error!.Error.Should().Contain("no child configurations");
     }
 
@@ -415,7 +415,7 @@ public class CompositeConfigurationEndpointsTests : IDisposable
     {
         using var client = CreateAuthenticatedClient();
 
-        var response = await client.PutAsync("/api/v1/composite-configurations/nonexistent/versions/1.0.0/publish", null);
+        var response = await client.PutAsync("/api/v1/composite-configurations/nonexistent/versions/1.0.0/publish", null, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -426,13 +426,13 @@ public class CompositeConfigurationEndpointsTests : IDisposable
         using var client = CreateAuthenticatedClient();
 
         var createRequest = new CreateCompositeConfigurationRequest { Name = "del-ver-test", EntryPoint = "main.dsc.yaml" };
-        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest);
+        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest, TestContext.Current.CancellationToken);
         var compositeId = createResponse.Headers.Location!.ToString().Split('/').Last();
 
         var versionRequest = new CreateCompositeConfigurationVersionRequest { Version = "1.0.0" };
-        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest);
+        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest, TestContext.Current.CancellationToken);
 
-        var response = await client.DeleteAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0");
+        var response = await client.DeleteAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
@@ -443,17 +443,17 @@ public class CompositeConfigurationEndpointsTests : IDisposable
         using var client = CreateAuthenticatedClient();
 
         var createRequest = new CreateCompositeConfigurationRequest { Name = "del-pub-ver-test", EntryPoint = "main.dsc.yaml" };
-        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest);
+        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest, TestContext.Current.CancellationToken);
         var compositeId = createResponse.Headers.Location!.ToString().Split('/').Last();
 
         var versionRequest = new CreateCompositeConfigurationVersionRequest { Version = "1.0.0" };
-        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest);
+        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest, TestContext.Current.CancellationToken);
         var initChildName = await CreateTestConfigurationAsync(client, "del-pub-ver-child");
         await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/children",
-            new AddChildConfigurationRequest { ChildConfigurationName = initChildName, Order = 0 });
-        await client.PutAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/publish", null);
+            new AddChildConfigurationRequest { ChildConfigurationName = initChildName, Order = 0 }, TestContext.Current.CancellationToken);
+        await client.PutAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/publish", null, TestContext.Current.CancellationToken);
 
-        var response = await client.DeleteAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0");
+        var response = await client.DeleteAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -463,7 +463,7 @@ public class CompositeConfigurationEndpointsTests : IDisposable
     {
         using var client = CreateAuthenticatedClient();
 
-        var response = await client.DeleteAsync("/api/v1/composite-configurations/nonexistent/versions/1.0.0");
+        var response = await client.DeleteAsync("/api/v1/composite-configurations/nonexistent/versions/1.0.0", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -474,14 +474,14 @@ public class CompositeConfigurationEndpointsTests : IDisposable
         using var client = CreateAuthenticatedClient();
 
         var createRequest = new CreateCompositeConfigurationRequest { Name = "add-nonexist-child-test", EntryPoint = "main.dsc.yaml" };
-        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest);
+        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest, TestContext.Current.CancellationToken);
         var compositeId = createResponse.Headers.Location!.ToString().Split('/').Last();
 
         var versionRequest = new CreateCompositeConfigurationVersionRequest { Version = "1.0.0" };
-        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest);
+        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest, TestContext.Current.CancellationToken);
 
         var addChildRequest = new AddChildConfigurationRequest { ChildConfigurationName = "nonexistent-child", Order = 0 };
-        var response = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/children", addChildRequest);
+        var response = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/children", addChildRequest, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -492,7 +492,7 @@ public class CompositeConfigurationEndpointsTests : IDisposable
         using var client = CreateAuthenticatedClient();
 
         var addChildRequest = new AddChildConfigurationRequest { ChildConfigurationName = "anything", Order = 0 };
-        var response = await client.PostAsJsonAsync("/api/v1/composite-configurations/nonexistent/versions/1.0.0/children", addChildRequest);
+        var response = await client.PostAsJsonAsync("/api/v1/composite-configurations/nonexistent/versions/1.0.0/children", addChildRequest, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -505,18 +505,18 @@ public class CompositeConfigurationEndpointsTests : IDisposable
         var childConfigName = await CreateTestConfigurationAsync(client, "child-pub-test");
 
         var createRequest = new CreateCompositeConfigurationRequest { Name = "add-to-pub-test", EntryPoint = "main.dsc.yaml" };
-        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest);
+        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest, TestContext.Current.CancellationToken);
         var compositeId = createResponse.Headers.Location!.ToString().Split('/').Last();
 
         var versionRequest = new CreateCompositeConfigurationVersionRequest { Version = "1.0.0" };
-        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest);
+        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest, TestContext.Current.CancellationToken);
         var initChildName = await CreateTestConfigurationAsync(client, "add-to-pub-init");
         await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/children",
-            new AddChildConfigurationRequest { ChildConfigurationName = initChildName, Order = 0 });
-        await client.PutAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/publish", null);
+            new AddChildConfigurationRequest { ChildConfigurationName = initChildName, Order = 0 }, TestContext.Current.CancellationToken);
+        await client.PutAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/publish", null, TestContext.Current.CancellationToken);
 
         var addChildRequest = new AddChildConfigurationRequest { ChildConfigurationName = childConfigName, Order = 0 };
-        var response = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/children", addChildRequest);
+        var response = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/children", addChildRequest, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -529,15 +529,15 @@ public class CompositeConfigurationEndpointsTests : IDisposable
         var childConfigName = await CreateTestConfigurationAsync(client, "dup-child-test");
 
         var createRequest = new CreateCompositeConfigurationRequest { Name = "dup-child-comp-test", EntryPoint = "main.dsc.yaml" };
-        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest);
+        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest, TestContext.Current.CancellationToken);
         var compositeId = createResponse.Headers.Location!.ToString().Split('/').Last();
 
         var versionRequest = new CreateCompositeConfigurationVersionRequest { Version = "1.0.0" };
-        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest);
+        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest, TestContext.Current.CancellationToken);
 
         var addChildRequest = new AddChildConfigurationRequest { ChildConfigurationName = childConfigName, Order = 0 };
-        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/children", addChildRequest);
-        var response = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/children", addChildRequest);
+        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/children", addChildRequest, TestContext.Current.CancellationToken);
+        var response = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/children", addChildRequest, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
@@ -550,21 +550,21 @@ public class CompositeConfigurationEndpointsTests : IDisposable
         var childConfigName = await CreateTestConfigurationAsync(client, "upd-child-test");
 
         var createRequest = new CreateCompositeConfigurationRequest { Name = "upd-child-comp-test", EntryPoint = "main.dsc.yaml" };
-        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest);
+        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest, TestContext.Current.CancellationToken);
         var compositeId = createResponse.Headers.Location!.ToString().Split('/').Last();
 
         var versionRequest = new CreateCompositeConfigurationVersionRequest { Version = "1.0.0" };
-        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest);
+        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest, TestContext.Current.CancellationToken);
 
         var addChildRequest = new AddChildConfigurationRequest { ChildConfigurationName = childConfigName, Order = 0 };
-        var addResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/children", addChildRequest);
-        var childItem = await addResponse.Content.ReadFromJsonAsync<CompositeConfigurationItemDto>();
+        var addResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/children", addChildRequest, TestContext.Current.CancellationToken);
+        var childItem = await addResponse.Content.ReadFromJsonAsync<CompositeConfigurationItemDto>(TestContext.Current.CancellationToken);
 
         var updateRequest = new UpdateChildConfigurationRequest { Order = 5 };
-        var response = await client.PutAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/children/{childItem!.Id}", updateRequest);
+        var response = await client.PutAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/children/{childItem!.Id}", updateRequest, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var updated = await response.Content.ReadFromJsonAsync<CompositeConfigurationItemDto>();
+        var updated = await response.Content.ReadFromJsonAsync<CompositeConfigurationItemDto>(TestContext.Current.CancellationToken);
         updated!.Order.Should().Be(5);
     }
 
@@ -574,7 +574,7 @@ public class CompositeConfigurationEndpointsTests : IDisposable
         using var client = CreateAuthenticatedClient();
 
         var updateRequest = new UpdateChildConfigurationRequest { Order = 5 };
-        var response = await client.PutAsJsonAsync($"/api/v1/composite-configurations/nonexistent/versions/1.0.0/children/{Guid.NewGuid()}", updateRequest);
+        var response = await client.PutAsJsonAsync($"/api/v1/composite-configurations/nonexistent/versions/1.0.0/children/{Guid.NewGuid()}", updateRequest, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -587,20 +587,20 @@ public class CompositeConfigurationEndpointsTests : IDisposable
         var childConfigName = await CreateTestConfigurationAsync(client, "upd-pub-child-test");
 
         var createRequest = new CreateCompositeConfigurationRequest { Name = "upd-pub-comp-test", EntryPoint = "main.dsc.yaml" };
-        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest);
+        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest, TestContext.Current.CancellationToken);
         var compositeId = createResponse.Headers.Location!.ToString().Split('/').Last();
 
         var versionRequest = new CreateCompositeConfigurationVersionRequest { Version = "1.0.0" };
-        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest);
+        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest, TestContext.Current.CancellationToken);
 
         var addChildRequest = new AddChildConfigurationRequest { ChildConfigurationName = childConfigName, Order = 0 };
-        var addResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/children", addChildRequest);
-        var childItem = await addResponse.Content.ReadFromJsonAsync<CompositeConfigurationItemDto>();
+        var addResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/children", addChildRequest, TestContext.Current.CancellationToken);
+        var childItem = await addResponse.Content.ReadFromJsonAsync<CompositeConfigurationItemDto>(TestContext.Current.CancellationToken);
 
-        await client.PutAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/publish", null);
+        await client.PutAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/publish", null, TestContext.Current.CancellationToken);
 
         var updateRequest = new UpdateChildConfigurationRequest { Order = 5 };
-        var response = await client.PutAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/children/{childItem!.Id}", updateRequest);
+        var response = await client.PutAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/children/{childItem!.Id}", updateRequest, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -613,17 +613,17 @@ public class CompositeConfigurationEndpointsTests : IDisposable
         var childConfigName = await CreateTestConfigurationAsync(client, "rem-child-test");
 
         var createRequest = new CreateCompositeConfigurationRequest { Name = "rem-child-comp-test", EntryPoint = "main.dsc.yaml" };
-        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest);
+        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest, TestContext.Current.CancellationToken);
         var compositeId = createResponse.Headers.Location!.ToString().Split('/').Last();
 
         var versionRequest = new CreateCompositeConfigurationVersionRequest { Version = "1.0.0" };
-        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest);
+        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest, TestContext.Current.CancellationToken);
 
         var addChildRequest = new AddChildConfigurationRequest { ChildConfigurationName = childConfigName, Order = 0 };
-        var addResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/children", addChildRequest);
-        var childItem = await addResponse.Content.ReadFromJsonAsync<CompositeConfigurationItemDto>();
+        var addResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/children", addChildRequest, TestContext.Current.CancellationToken);
+        var childItem = await addResponse.Content.ReadFromJsonAsync<CompositeConfigurationItemDto>(TestContext.Current.CancellationToken);
 
-        var response = await client.DeleteAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/children/{childItem!.Id}");
+        var response = await client.DeleteAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/children/{childItem!.Id}", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
@@ -633,7 +633,7 @@ public class CompositeConfigurationEndpointsTests : IDisposable
     {
         using var client = CreateAuthenticatedClient();
 
-        var response = await client.DeleteAsync($"/api/v1/composite-configurations/nonexistent/versions/1.0.0/children/{Guid.NewGuid()}");
+        var response = await client.DeleteAsync($"/api/v1/composite-configurations/nonexistent/versions/1.0.0/children/{Guid.NewGuid()}", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -646,19 +646,19 @@ public class CompositeConfigurationEndpointsTests : IDisposable
         var childConfigName = await CreateTestConfigurationAsync(client, "rem-pub-child-test");
 
         var createRequest = new CreateCompositeConfigurationRequest { Name = "rem-pub-comp-test", EntryPoint = "main.dsc.yaml" };
-        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest);
+        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest, TestContext.Current.CancellationToken);
         var compositeId = createResponse.Headers.Location!.ToString().Split('/').Last();
 
         var versionRequest = new CreateCompositeConfigurationVersionRequest { Version = "1.0.0" };
-        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest);
+        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest, TestContext.Current.CancellationToken);
 
         var addChildRequest = new AddChildConfigurationRequest { ChildConfigurationName = childConfigName, Order = 0 };
-        var addResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/children", addChildRequest);
-        var childItem = await addResponse.Content.ReadFromJsonAsync<CompositeConfigurationItemDto>();
+        var addResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/children", addChildRequest, TestContext.Current.CancellationToken);
+        var childItem = await addResponse.Content.ReadFromJsonAsync<CompositeConfigurationItemDto>(TestContext.Current.CancellationToken);
 
-        await client.PutAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/publish", null);
+        await client.PutAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/publish", null, TestContext.Current.CancellationToken);
 
-        var response = await client.DeleteAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/children/{childItem!.Id}");
+        var response = await client.DeleteAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/children/{childItem!.Id}", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -671,11 +671,11 @@ public class CompositeConfigurationEndpointsTests : IDisposable
         var childConfigName = await CreateTestConfigurationAsync(client, "invalid-version-child-test");
 
         var createRequest = new CreateCompositeConfigurationRequest { Name = "invalid-ver-comp-test", EntryPoint = "main.dsc.yaml" };
-        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest);
+        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest, TestContext.Current.CancellationToken);
         var compositeId = createResponse.Headers.Location!.ToString().Split('/').Last();
 
         var versionRequest = new CreateCompositeConfigurationVersionRequest { Version = "1.0.0" };
-        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest);
+        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest, TestContext.Current.CancellationToken);
 
         var addChildRequest = new AddChildConfigurationRequest
         {
@@ -683,10 +683,10 @@ public class CompositeConfigurationEndpointsTests : IDisposable
             Order = 0,
             ActiveVersion = "99.99.99"
         };
-        var response = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/children", addChildRequest);
+        var response = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/children", addChildRequest, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>(TestContext.Current.CancellationToken);
         error!.Error.Should().Contain("Version");
     }
 
@@ -698,21 +698,21 @@ public class CompositeConfigurationEndpointsTests : IDisposable
         var childConfigName = await CreateTestConfigurationAsync(client, "upd-invalid-ver-child-test");
 
         var createRequest = new CreateCompositeConfigurationRequest { Name = "upd-invalid-ver-comp-test", EntryPoint = "main.dsc.yaml" };
-        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest);
+        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest, TestContext.Current.CancellationToken);
         var compositeId = createResponse.Headers.Location!.ToString().Split('/').Last();
 
         var versionRequest = new CreateCompositeConfigurationVersionRequest { Version = "1.0.0" };
-        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest);
+        await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions", versionRequest, TestContext.Current.CancellationToken);
 
         var addChildRequest = new AddChildConfigurationRequest { ChildConfigurationName = childConfigName, Order = 0 };
-        var addResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/children", addChildRequest);
-        var childItem = await addResponse.Content.ReadFromJsonAsync<CompositeConfigurationItemDto>();
+        var addResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/children", addChildRequest, TestContext.Current.CancellationToken);
+        var childItem = await addResponse.Content.ReadFromJsonAsync<CompositeConfigurationItemDto>(TestContext.Current.CancellationToken);
 
         var updateRequest = new UpdateChildConfigurationRequest { Order = 5, ActiveVersion = "99.99.99" };
-        var response = await client.PutAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/children/{childItem!.Id}", updateRequest);
+        var response = await client.PutAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/children/{childItem!.Id}", updateRequest, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>(TestContext.Current.CancellationToken);
         error!.Error.Should().Contain("Version");
     }
 
@@ -722,34 +722,34 @@ public class CompositeConfigurationEndpointsTests : IDisposable
         using var client = CreateAuthenticatedClient();
 
         var createRequest = new CreateCompositeConfigurationRequest { Name = "node-assigned-composite-test", EntryPoint = "main.dsc.yaml" };
-        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest);
+        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest, TestContext.Current.CancellationToken);
         createResponse.EnsureSuccessStatusCode();
         var compositeName = createRequest.Name;
 
         var versionRequest = new CreateCompositeConfigurationVersionRequest { Version = "1.0.0" };
-        var versionResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions", versionRequest);
+        var versionResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions", versionRequest, TestContext.Current.CancellationToken);
         versionResponse.EnsureSuccessStatusCode();
 
         var childName = await CreateTestConfigurationAsync(client, "node-assigned-child");
         await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/1.0.0/children",
-            new AddChildConfigurationRequest { ChildConfigurationName = childName, Order = 0 });
+            new AddChildConfigurationRequest { ChildConfigurationName = childName, Order = 0 }, TestContext.Current.CancellationToken);
 
-        var publishResponse = await client.PutAsync($"/api/v1/composite-configurations/{compositeName}/versions/1.0.0/publish", null);
+        var publishResponse = await client.PutAsync($"/api/v1/composite-configurations/{compositeName}/versions/1.0.0/publish", null, TestContext.Current.CancellationToken);
         publishResponse.EnsureSuccessStatusCode();
 
         var registerRequest = new RegisterNodeRequest { Fqdn = "node-test.local", RegistrationKey = "test-registration-key" };
-        var registerResponse = await client.PostAsJsonAsync("/api/v1/nodes/register", registerRequest);
+        var registerResponse = await client.PostAsJsonAsync("/api/v1/nodes/register", registerRequest, TestContext.Current.CancellationToken);
         registerResponse.EnsureSuccessStatusCode();
-        var registration = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>();
+        var registration = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>(TestContext.Current.CancellationToken);
 
         var assignRequest = new AssignConfigurationRequest { ConfigurationName = compositeName, IsComposite = true };
-        var assignResponse = await client.PutAsJsonAsync($"/api/v1/nodes/{registration!.NodeId}/configuration", assignRequest);
+        var assignResponse = await client.PutAsJsonAsync($"/api/v1/nodes/{registration!.NodeId}/configuration", assignRequest, TestContext.Current.CancellationToken);
         assignResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var response = await client.DeleteAsync($"/api/v1/composite-configurations/{compositeName}");
+        var response = await client.DeleteAsync($"/api/v1/composite-configurations/{compositeName}", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>(TestContext.Current.CancellationToken);
         error!.Error.Should().Contain("assigned to nodes");
     }
 
@@ -768,20 +768,20 @@ public class CompositeConfigurationEndpointsTests : IDisposable
             Description = "Test composite for version deletion",
             EntryPoint = "main.dsc.yaml"
         };
-        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest);
+        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest, TestContext.Current.CancellationToken);
         createResponse.EnsureSuccessStatusCode();
 
         // Create version
         var versionRequest = new CreateCompositeConfigurationVersionRequest { Version = version };
-        var versionResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions", versionRequest);
+        var versionResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions", versionRequest, TestContext.Current.CancellationToken);
         versionResponse.EnsureSuccessStatusCode();
 
         // Delete version
-        var response = await client.DeleteAsync($"/api/v1/composite-configurations/{compositeName}/versions/{version}");
+        var response = await client.DeleteAsync($"/api/v1/composite-configurations/{compositeName}/versions/{version}", TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         // Verify version is gone
-        var getResponse = await client.GetAsync($"/api/v1/composite-configurations/{compositeName}/versions/{version}");
+        var getResponse = await client.GetAsync($"/api/v1/composite-configurations/{compositeName}/versions/{version}", TestContext.Current.CancellationToken);
         getResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
@@ -800,25 +800,25 @@ public class CompositeConfigurationEndpointsTests : IDisposable
             Description = "Test composite for published version deletion",
             EntryPoint = "main.dsc.yaml"
         };
-        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest);
+        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest, TestContext.Current.CancellationToken);
         createResponse.EnsureSuccessStatusCode();
 
         // Create and publish version
         var versionRequest = new CreateCompositeConfigurationVersionRequest { Version = version };
-        var versionResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions", versionRequest);
+        var versionResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions", versionRequest, TestContext.Current.CancellationToken);
         versionResponse.EnsureSuccessStatusCode();
 
         var childName = await CreateTestConfigurationAsync(client, "del-pub-ver-child-2");
         await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{version}/children",
-            new AddChildConfigurationRequest { ChildConfigurationName = childName, Order = 0 });
+            new AddChildConfigurationRequest { ChildConfigurationName = childName, Order = 0 }, TestContext.Current.CancellationToken);
 
-        var publishResponse = await client.PutAsync($"/api/v1/composite-configurations/{compositeName}/versions/{version}/publish", null);
+        var publishResponse = await client.PutAsync($"/api/v1/composite-configurations/{compositeName}/versions/{version}/publish", null, TestContext.Current.CancellationToken);
         publishResponse.EnsureSuccessStatusCode();
 
         // Try to delete published version
-        var response = await client.DeleteAsync($"/api/v1/composite-configurations/{compositeName}/versions/{version}");
+        var response = await client.DeleteAsync($"/api/v1/composite-configurations/{compositeName}/versions/{version}", TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>(TestContext.Current.CancellationToken);
         error!.Error.Should().Be("Cannot delete published version");
     }
 
@@ -827,7 +827,7 @@ public class CompositeConfigurationEndpointsTests : IDisposable
     {
         using var client = CreateAuthenticatedClient();
 
-        var response = await client.DeleteAsync("/api/v1/composite-configurations/non-existent/versions/1.0.0");
+        var response = await client.DeleteAsync("/api/v1/composite-configurations/non-existent/versions/1.0.0", TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
@@ -847,19 +847,19 @@ public class CompositeConfigurationEndpointsTests : IDisposable
             Description = "Test composite for child update",
             EntryPoint = "main.dsc.yaml"
         };
-        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest);
+        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest, TestContext.Current.CancellationToken);
         createResponse.EnsureSuccessStatusCode();
 
         // Create version
         var versionRequest = new CreateCompositeConfigurationVersionRequest { Version = version };
-        var versionResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions", versionRequest);
+        var versionResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions", versionRequest, TestContext.Current.CancellationToken);
         versionResponse.EnsureSuccessStatusCode();
 
         // Add child
         var addRequest = new AddChildConfigurationRequest { ChildConfigurationName = configName };
-        var addResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{version}/children", addRequest);
+        var addResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{version}/children", addRequest, TestContext.Current.CancellationToken);
         addResponse.EnsureSuccessStatusCode();
-        var childItem = await addResponse.Content.ReadFromJsonAsync<CompositeConfigurationItemDto>();
+        var childItem = await addResponse.Content.ReadFromJsonAsync<CompositeConfigurationItemDto>(TestContext.Current.CancellationToken);
 
         // Update child
         var updateRequest = new UpdateChildConfigurationRequest
@@ -867,9 +867,9 @@ public class CompositeConfigurationEndpointsTests : IDisposable
             ActiveVersion = "1.0.0",
             Order = 5
         };
-        var response = await client.PutAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{version}/children/{childItem!.Id}", updateRequest);
+        var response = await client.PutAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{version}/children/{childItem!.Id}", updateRequest, TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var updatedItem = await response.Content.ReadFromJsonAsync<CompositeConfigurationItemDto>();
+        var updatedItem = await response.Content.ReadFromJsonAsync<CompositeConfigurationItemDto>(TestContext.Current.CancellationToken);
         updatedItem!.ActiveVersion.Should().Be("1.0.0");
         updatedItem.Order.Should().Be(5);
     }
@@ -890,19 +890,19 @@ public class CompositeConfigurationEndpointsTests : IDisposable
             Description = "Test composite for invalid child update",
             EntryPoint = "main.dsc.yaml"
         };
-        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest);
+        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest, TestContext.Current.CancellationToken);
         createResponse.EnsureSuccessStatusCode();
 
         // Create version
         var versionRequest = new CreateCompositeConfigurationVersionRequest { Version = version };
-        var versionResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions", versionRequest);
+        var versionResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions", versionRequest, TestContext.Current.CancellationToken);
         versionResponse.EnsureSuccessStatusCode();
 
         // Add child
         var addRequest = new AddChildConfigurationRequest { ChildConfigurationName = configName };
-        var addResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{version}/children", addRequest);
+        var addResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{version}/children", addRequest, TestContext.Current.CancellationToken);
         addResponse.EnsureSuccessStatusCode();
-        var childItem = await addResponse.Content.ReadFromJsonAsync<CompositeConfigurationItemDto>();
+        var childItem = await addResponse.Content.ReadFromJsonAsync<CompositeConfigurationItemDto>(TestContext.Current.CancellationToken);
 
         // Update child with invalid version
         var updateRequest = new UpdateChildConfigurationRequest
@@ -910,9 +910,9 @@ public class CompositeConfigurationEndpointsTests : IDisposable
             ActiveVersion = "999.999.999",
             Order = 5
         };
-        var response = await client.PutAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{version}/children/{childItem!.Id}", updateRequest);
+        var response = await client.PutAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{version}/children/{childItem!.Id}", updateRequest, TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>(TestContext.Current.CancellationToken);
         error!.Error.Should().Contain("Invalid ActiveVersion");
     }
 
@@ -932,24 +932,24 @@ public class CompositeConfigurationEndpointsTests : IDisposable
             Description = "Test composite for published update",
             EntryPoint = "main.dsc.yaml"
         };
-        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest);
+        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest, TestContext.Current.CancellationToken);
         createResponse.EnsureSuccessStatusCode();
 
         // Create and publish version
         var versionRequest = new CreateCompositeConfigurationVersionRequest { Version = version };
-        var versionResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions", versionRequest);
+        var versionResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions", versionRequest, TestContext.Current.CancellationToken);
         versionResponse.EnsureSuccessStatusCode();
 
         var initConfig = await CreateTestConfigurationAsync(client, "child-config-published-init");
         await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{version}/children",
-            new AddChildConfigurationRequest { ChildConfigurationName = initConfig });
+            new AddChildConfigurationRequest { ChildConfigurationName = initConfig }, TestContext.Current.CancellationToken);
 
-        var publishResponse = await client.PutAsync($"/api/v1/composite-configurations/{compositeName}/versions/{version}/publish", null);
+        var publishResponse = await client.PutAsync($"/api/v1/composite-configurations/{compositeName}/versions/{version}/publish", null, TestContext.Current.CancellationToken);
         publishResponse.EnsureSuccessStatusCode();
 
         // Add child to published version (should fail)
         var addRequest = new AddChildConfigurationRequest { ChildConfigurationName = configName };
-        var addResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{version}/children", addRequest);
+        var addResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{version}/children", addRequest, TestContext.Current.CancellationToken);
         addResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
@@ -963,7 +963,7 @@ public class CompositeConfigurationEndpointsTests : IDisposable
             ActiveVersion = "1.0.0",
             Order = 5
         };
-        var response = await client.PutAsJsonAsync("/api/v1/composite-configurations/non-existent/versions/1.0.0/children/00000000-0000-0000-0000-000000000000", updateRequest);
+        var response = await client.PutAsJsonAsync("/api/v1/composite-configurations/non-existent/versions/1.0.0/children/00000000-0000-0000-0000-000000000000", updateRequest, TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
@@ -983,28 +983,28 @@ public class CompositeConfigurationEndpointsTests : IDisposable
             Description = "Test composite for child removal",
             EntryPoint = "main.dsc.yaml"
         };
-        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest);
+        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest, TestContext.Current.CancellationToken);
         createResponse.EnsureSuccessStatusCode();
 
         // Create version
         var versionRequest = new CreateCompositeConfigurationVersionRequest { Version = version };
-        var versionResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions", versionRequest);
+        var versionResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions", versionRequest, TestContext.Current.CancellationToken);
         versionResponse.EnsureSuccessStatusCode();
 
         // Add child
         var addRequest = new AddChildConfigurationRequest { ChildConfigurationName = configName };
-        var addResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{version}/children", addRequest);
+        var addResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{version}/children", addRequest, TestContext.Current.CancellationToken);
         addResponse.EnsureSuccessStatusCode();
-        var childItem = await addResponse.Content.ReadFromJsonAsync<CompositeConfigurationItemDto>();
+        var childItem = await addResponse.Content.ReadFromJsonAsync<CompositeConfigurationItemDto>(TestContext.Current.CancellationToken);
 
         // Remove child
-        var response = await client.DeleteAsync($"/api/v1/composite-configurations/{compositeName}/versions/{version}/children/{childItem!.Id}");
+        var response = await client.DeleteAsync($"/api/v1/composite-configurations/{compositeName}/versions/{version}/children/{childItem!.Id}", TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         // Verify child is gone
-        var getResponse = await client.GetAsync($"/api/v1/composite-configurations/{compositeName}/versions/{version}");
+        var getResponse = await client.GetAsync($"/api/v1/composite-configurations/{compositeName}/versions/{version}", TestContext.Current.CancellationToken);
         getResponse.EnsureSuccessStatusCode();
-        var versionDetails = await getResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDto>();
+        var versionDetails = await getResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDto>(TestContext.Current.CancellationToken);
         versionDetails!.Items.Should().BeEmpty();
     }
 
@@ -1025,22 +1025,22 @@ public class CompositeConfigurationEndpointsTests : IDisposable
             Description = "Test composite for published removal",
             EntryPoint = "main.dsc.yaml"
         };
-        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest);
+        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", createRequest, TestContext.Current.CancellationToken);
         createResponse.EnsureSuccessStatusCode();
 
         // Create and publish version
         var versionRequest = new CreateCompositeConfigurationVersionRequest { Version = version };
-        var versionResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions", versionRequest);
+        var versionResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions", versionRequest, TestContext.Current.CancellationToken);
         versionResponse.EnsureSuccessStatusCode();
 
         await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{version}/children",
-            new AddChildConfigurationRequest { ChildConfigurationName = childForPublish });
+            new AddChildConfigurationRequest { ChildConfigurationName = childForPublish }, TestContext.Current.CancellationToken);
 
-        var publishResponse = await client.PutAsync($"/api/v1/composite-configurations/{compositeName}/versions/{version}/publish", null);
+        var publishResponse = await client.PutAsync($"/api/v1/composite-configurations/{compositeName}/versions/{version}/publish", null, TestContext.Current.CancellationToken);
         publishResponse.EnsureSuccessStatusCode();
 
         // Try to remove from published version (should fail at add, but let's test remove anyway)
-        var response = await client.DeleteAsync($"/api/v1/composite-configurations/{compositeName}/versions/{version}/children/00000000-0000-0000-0000-000000000000");
+        var response = await client.DeleteAsync($"/api/v1/composite-configurations/{compositeName}/versions/{version}/children/00000000-0000-0000-0000-000000000000", TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.NotFound); // Child doesn't exist, but if it did, it would fail
     }
 
@@ -1049,7 +1049,7 @@ public class CompositeConfigurationEndpointsTests : IDisposable
     {
         using var client = CreateAuthenticatedClient();
 
-        var response = await client.DeleteAsync("/api/v1/composite-configurations/non-existent/versions/1.0.0/children/00000000-0000-0000-0000-000000000000");
+        var response = await client.DeleteAsync("/api/v1/composite-configurations/non-existent/versions/1.0.0/children/00000000-0000-0000-0000-000000000000", TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 }

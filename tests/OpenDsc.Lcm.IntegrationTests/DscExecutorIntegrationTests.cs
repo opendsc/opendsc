@@ -50,7 +50,7 @@ resources: []
             var executor = CreateExecutor();
             var config = CreateConfig();
 
-            var (result, exitCode) = await executor.ExecuteTestAsync(tempConfigPath, config, LogLevel.Information);
+            var (result, exitCode) = await executor.ExecuteTestAsync(tempConfigPath, config, LogLevel.Information, cancellationToken: TestContext.Current.CancellationToken);
 
             result.Should().NotBeNull();
             exitCode.Should().Be(0);
@@ -80,7 +80,7 @@ resources: []
             var config = CreateConfig();
 
             // Use test operation which always returns JSON
-            var (result, exitCode) = await executor.ExecuteTestAsync(tempConfigPath, config, LogLevel.Information);
+            var (result, exitCode) = await executor.ExecuteTestAsync(tempConfigPath, config, LogLevel.Information, cancellationToken: TestContext.Current.CancellationToken);
 
             result.Should().NotBeNull();
             exitCode.Should().Be(0);
@@ -109,7 +109,7 @@ resources: []
             var executor = CreateExecutor();
             var config = CreateConfig();
 
-            var (result, exitCode) = await executor.ExecuteTestAsync(tempConfigPath, config, LogLevel.Debug);
+            var (result, exitCode) = await executor.ExecuteTestAsync(tempConfigPath, config, LogLevel.Debug, cancellationToken: TestContext.Current.CancellationToken);
 
             result.Should().NotBeNull();
             exitCode.Should().Be(0);
@@ -137,7 +137,7 @@ resources: []
             var executor = CreateExecutor();
             var config = CreateConfig();
 
-            var (result, exitCode) = await executor.ExecuteTestAsync(tempConfigPath, config, LogLevel.Trace);
+            var (result, exitCode) = await executor.ExecuteTestAsync(tempConfigPath, config, LogLevel.Trace, cancellationToken: TestContext.Current.CancellationToken);
 
             result.Should().NotBeNull();
             exitCode.Should().Be(0);
@@ -165,7 +165,7 @@ resources: []
             var executor = CreateExecutor();
             var config = CreateConfig();
 
-            var (result, exitCode) = await executor.ExecuteTestAsync(tempConfigPath, config, LogLevel.Warning);
+            var (result, exitCode) = await executor.ExecuteTestAsync(tempConfigPath, config, LogLevel.Warning, cancellationToken: TestContext.Current.CancellationToken);
 
             result.Should().NotBeNull();
             exitCode.Should().Be(0);
@@ -193,7 +193,7 @@ resources: []
             var executor = CreateExecutor();
             var config = CreateConfig();
 
-            var (result, exitCode) = await executor.ExecuteTestAsync(tempConfigPath, config, LogLevel.Error);
+            var (result, exitCode) = await executor.ExecuteTestAsync(tempConfigPath, config, LogLevel.Error, cancellationToken: TestContext.Current.CancellationToken);
 
             result.Should().NotBeNull();
             exitCode.Should().Be(0);
@@ -221,7 +221,7 @@ resources: []
             var executor = CreateExecutor();
             var config = CreateConfig();
 
-            var (result, exitCode) = await executor.ExecuteTestAsync(tempConfigPath, config, LogLevel.Critical);
+            var (result, exitCode) = await executor.ExecuteTestAsync(tempConfigPath, config, LogLevel.Critical, cancellationToken: TestContext.Current.CancellationToken);
 
             result.Should().NotBeNull();
             exitCode.Should().Be(0);
@@ -311,7 +311,7 @@ resources: []
             var executor = CreateExecutor();
             var config = CreateConfig();
 
-            var (result, exitCode) = await executor.ExecuteTestAsync(tempConfigPath, config, LogLevel.Information);
+            var (result, exitCode) = await executor.ExecuteTestAsync(tempConfigPath, config, LogLevel.Information, cancellationToken: TestContext.Current.CancellationToken);
 
             result.Should().NotBeNull();
             exitCode.Should().Be(0);
@@ -339,7 +339,7 @@ resources: []
             var executor = CreateExecutor();
             var config = CreateConfig();
 
-            var (result, exitCode) = await executor.ExecuteTestAsync(tempConfigPath, config, LogLevel.Information);
+            var (result, exitCode) = await executor.ExecuteTestAsync(tempConfigPath, config, LogLevel.Information, cancellationToken: TestContext.Current.CancellationToken);
 
             result.Should().NotBeNull();
             exitCode.Should().Be(0);

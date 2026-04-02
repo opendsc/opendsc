@@ -95,7 +95,7 @@ public sealed class PullServerClientTests
 
         var client = new PullServerClient(_httpClient, _httpClientFactoryMock.Object, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
 
-        var result = await client.RegisterAsync();
+        var result = await client.RegisterAsync(TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result!.NodeId.Should().Be(response.NodeId);
@@ -117,7 +117,7 @@ public sealed class PullServerClientTests
 
         var client = new PullServerClient(_httpClient, _httpClientFactoryMock.Object, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
 
-        var result = await client.RegisterAsync();
+        var result = await client.RegisterAsync(TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
     }
@@ -138,7 +138,7 @@ public sealed class PullServerClientTests
 
         var client = new PullServerClient(_httpClient, _httpClientFactoryMock.Object, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
 
-        var result = await client.RegisterAsync();
+        var result = await client.RegisterAsync(TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
     }
@@ -168,7 +168,7 @@ public sealed class PullServerClientTests
             System.Security.Cryptography.HashAlgorithmName.SHA256,
             System.Security.Cryptography.RSASignaturePadding.Pkcs1);
         using var cert = request.CreateSelfSigned(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddDays(90));
-        var result = await client.RotateCertificateAsync(cert, CancellationToken.None);
+        var result = await client.RotateCertificateAsync(cert, TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
     }
@@ -193,7 +193,7 @@ public sealed class PullServerClientTests
 
         var client = new PullServerClient(_httpClient, _httpClientFactoryMock.Object, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
 
-        var result = await client.GetConfigurationAsync();
+        var result = await client.GetConfigurationAsync(TestContext.Current.CancellationToken);
 
         result.Should().Be(configContent);
     }
@@ -214,7 +214,7 @@ public sealed class PullServerClientTests
 
         var client = new PullServerClient(_httpClient, _httpClientFactoryMock.Object, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
 
-        var result = await client.GetConfigurationAsync();
+        var result = await client.GetConfigurationAsync(TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
     }
@@ -246,7 +246,7 @@ public sealed class PullServerClientTests
 
         var client = new PullServerClient(_httpClient, _httpClientFactoryMock.Object, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
 
-        var result = await client.GetConfigurationChecksumAsync();
+        var result = await client.GetConfigurationChecksumAsync(TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result!.Checksum.Should().Be(response.Checksum);
@@ -277,7 +277,7 @@ public sealed class PullServerClientTests
 
         var client = new PullServerClient(_httpClient, _httpClientFactoryMock.Object, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
 
-        var result = await client.HasConfigurationChangedAsync();
+        var result = await client.HasConfigurationChangedAsync(TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
     }
@@ -306,7 +306,7 @@ public sealed class PullServerClientTests
 
         var client = new PullServerClient(_httpClient, _httpClientFactoryMock.Object, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
 
-        var result = await client.HasConfigurationChangedAsync();
+        var result = await client.HasConfigurationChangedAsync(TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();
     }
@@ -335,7 +335,7 @@ public sealed class PullServerClientTests
             HadErrors = false
         };
 
-        await client.SubmitReportAsync(DscOperation.Test, result);
+        await client.SubmitReportAsync(DscOperation.Test, result, TestContext.Current.CancellationToken);
 
         _httpMessageHandlerMock.Protected().Verify(
             "SendAsync",
@@ -369,7 +369,7 @@ public sealed class PullServerClientTests
             HadErrors = false
         };
 
-        await client.SubmitReportAsync(DscOperation.Test, result);
+        await client.SubmitReportAsync(DscOperation.Test, result, TestContext.Current.CancellationToken);
 
         _httpMessageHandlerMock.Protected().Verify(
             "SendAsync",
@@ -448,7 +448,7 @@ public sealed class PullServerClientTests
 
         var client = new PullServerClient(_httpClient, _httpClientFactoryMock.Object, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
 
-        await client.UpdateLcmStatusAsync(LcmStatus.Testing, CancellationToken.None);
+        await client.UpdateLcmStatusAsync(LcmStatus.Testing, TestContext.Current.CancellationToken);
 
         _httpMessageHandlerMock.Protected().Verify(
             "SendAsync",
@@ -466,7 +466,7 @@ public sealed class PullServerClientTests
 
         var client = new PullServerClient(_httpClient, _httpClientFactoryMock.Object, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
 
-        await client.UpdateLcmStatusAsync(LcmStatus.Idle, CancellationToken.None);
+        await client.UpdateLcmStatusAsync(LcmStatus.Idle, TestContext.Current.CancellationToken);
 
         _httpMessageHandlerMock.Protected().Verify(
             "SendAsync",
@@ -490,7 +490,7 @@ public sealed class PullServerClientTests
 
         var client = new PullServerClient(_httpClient, _httpClientFactoryMock.Object, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
 
-        var act = async () => await client.UpdateLcmStatusAsync(LcmStatus.Error, CancellationToken.None);
+        var act = async () => await client.UpdateLcmStatusAsync(LcmStatus.Error, TestContext.Current.CancellationToken);
 
         await act.Should().NotThrowAsync();
     }

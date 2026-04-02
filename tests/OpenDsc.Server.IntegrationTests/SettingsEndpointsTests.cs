@@ -36,10 +36,10 @@ public class SettingsEndpointsTests : IDisposable
     {
         var client = CreateAuthenticatedClient();
 
-        var response = await client.GetAsync("/api/v1/settings");
+        var response = await client.GetAsync("/api/v1/settings", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var settings = await response.Content.ReadFromJsonAsync<ServerSettingsResponse>(JsonOptions);
+        var settings = await response.Content.ReadFromJsonAsync<ServerSettingsResponse>(JsonOptions, TestContext.Current.CancellationToken);
         settings.Should().NotBeNull();
     }
 
@@ -48,7 +48,7 @@ public class SettingsEndpointsTests : IDisposable
     {
         var client = _factory.CreateClient();
 
-        var response = await client.GetAsync("/api/v1/settings");
+        var response = await client.GetAsync("/api/v1/settings", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -58,10 +58,10 @@ public class SettingsEndpointsTests : IDisposable
     {
         var client = CreateAuthenticatedClient();
 
-        var response = await client.PostAsync("/api/v1/settings/registration-keys", null);
+        var response = await client.PostAsync("/api/v1/settings/registration-keys", null, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var result = await response.Content.ReadFromJsonAsync<RegistrationKeyResponse>(JsonOptions);
+        var result = await response.Content.ReadFromJsonAsync<RegistrationKeyResponse>(JsonOptions, TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
         result!.Key.Should().NotBeNullOrEmpty();
     }
@@ -71,7 +71,7 @@ public class SettingsEndpointsTests : IDisposable
     {
         var client = _factory.CreateClient();
 
-        var response = await client.PostAsync("/api/v1/settings/registration-keys", null);
+        var response = await client.PostAsync("/api/v1/settings/registration-keys", null, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -82,9 +82,9 @@ public class SettingsEndpointsTests : IDisposable
         var client = CreateAuthenticatedClient();
 
         var updateRequest = new UpdateServerSettingsRequest { StalenessMultiplier = 3.5 };
-        var updateResponse = await client.PutAsJsonAsync("/api/v1/settings", updateRequest);
+        var updateResponse = await client.PutAsJsonAsync("/api/v1/settings", updateRequest, TestContext.Current.CancellationToken);
         updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var updated = await updateResponse.Content.ReadFromJsonAsync<ServerSettingsResponse>(JsonOptions);
+        var updated = await updateResponse.Content.ReadFromJsonAsync<ServerSettingsResponse>(JsonOptions, TestContext.Current.CancellationToken);
         updated!.StalenessMultiplier.Should().Be(3.5);
     }
 
@@ -95,10 +95,10 @@ public class SettingsEndpointsTests : IDisposable
     {
         var client = CreateAuthenticatedClient();
 
-        var response = await client.GetAsync("/api/v1/settings/lcm-defaults");
+        var response = await client.GetAsync("/api/v1/settings/lcm-defaults", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var defaults = await response.Content.ReadFromJsonAsync<ServerLcmDefaultsResponse>(JsonOptions);
+        var defaults = await response.Content.ReadFromJsonAsync<ServerLcmDefaultsResponse>(JsonOptions, TestContext.Current.CancellationToken);
         defaults.Should().NotBeNull();
         defaults!.DefaultConfigurationMode.Should().BeNull();
         defaults.DefaultConfigurationModeInterval.Should().BeNull();
@@ -110,7 +110,7 @@ public class SettingsEndpointsTests : IDisposable
     {
         var client = _factory.CreateClient();
 
-        var response = await client.GetAsync("/api/v1/settings/lcm-defaults");
+        var response = await client.GetAsync("/api/v1/settings/lcm-defaults", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -127,10 +127,10 @@ public class SettingsEndpointsTests : IDisposable
             DefaultReportCompliance = true
         };
 
-        var updateResponse = await client.PutAsJsonAsync("/api/v1/settings/lcm-defaults", request);
+        var updateResponse = await client.PutAsJsonAsync("/api/v1/settings/lcm-defaults", request, TestContext.Current.CancellationToken);
         updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var updated = await updateResponse.Content.ReadFromJsonAsync<ServerLcmDefaultsResponse>(JsonOptions);
+        var updated = await updateResponse.Content.ReadFromJsonAsync<ServerLcmDefaultsResponse>(JsonOptions, TestContext.Current.CancellationToken);
         updated.Should().NotBeNull();
         updated!.DefaultConfigurationMode.Should().Be(ConfigurationMode.Remediate);
         updated.DefaultConfigurationModeInterval.Should().Be(TimeSpan.FromMinutes(30));
@@ -148,7 +148,7 @@ public class SettingsEndpointsTests : IDisposable
             DefaultConfigurationMode = ConfigurationMode.Monitor,
             DefaultConfigurationModeInterval = TimeSpan.FromMinutes(15),
             DefaultReportCompliance = false
-        });
+        }, TestContext.Current.CancellationToken);
 
         // Clear them all
         var clearResponse = await client.PutAsJsonAsync("/api/v1/settings/lcm-defaults", new UpdateServerLcmDefaultsRequest
@@ -156,10 +156,10 @@ public class SettingsEndpointsTests : IDisposable
             DefaultConfigurationMode = null,
             DefaultConfigurationModeInterval = null,
             DefaultReportCompliance = null
-        });
+        }, TestContext.Current.CancellationToken);
 
         clearResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var cleared = await clearResponse.Content.ReadFromJsonAsync<ServerLcmDefaultsResponse>(JsonOptions);
+        var cleared = await clearResponse.Content.ReadFromJsonAsync<ServerLcmDefaultsResponse>(JsonOptions, TestContext.Current.CancellationToken);
         cleared!.DefaultConfigurationMode.Should().BeNull();
         cleared.DefaultConfigurationModeInterval.Should().BeNull();
         cleared.DefaultReportCompliance.Should().BeNull();
@@ -170,7 +170,7 @@ public class SettingsEndpointsTests : IDisposable
     {
         var client = _factory.CreateClient();
 
-        var response = await client.PutAsJsonAsync("/api/v1/settings/lcm-defaults", new UpdateServerLcmDefaultsRequest());
+        var response = await client.PutAsJsonAsync("/api/v1/settings/lcm-defaults", new UpdateServerLcmDefaultsRequest(), TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -187,11 +187,11 @@ public class SettingsEndpointsTests : IDisposable
             DefaultReportCompliance = true
         };
 
-        await client.PutAsJsonAsync("/api/v1/settings/lcm-defaults", request);
+        await client.PutAsJsonAsync("/api/v1/settings/lcm-defaults", request, TestContext.Current.CancellationToken);
 
-        var getResponse = await client.GetAsync("/api/v1/settings/lcm-defaults");
+        var getResponse = await client.GetAsync("/api/v1/settings/lcm-defaults", TestContext.Current.CancellationToken);
         getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var fetched = await getResponse.Content.ReadFromJsonAsync<ServerLcmDefaultsResponse>(JsonOptions);
+        var fetched = await getResponse.Content.ReadFromJsonAsync<ServerLcmDefaultsResponse>(JsonOptions, TestContext.Current.CancellationToken);
         fetched!.DefaultConfigurationMode.Should().Be(ConfigurationMode.Monitor);
         fetched.DefaultConfigurationModeInterval.Should().Be(TimeSpan.FromMinutes(10));
         fetched.DefaultReportCompliance.Should().BeTrue();
@@ -204,7 +204,7 @@ public class SettingsEndpointsTests : IDisposable
     {
         var client = _factory.CreateClient();
 
-        var response = await client.GetAsync("/api/v1/settings/public");
+        var response = await client.GetAsync("/api/v1/settings/public", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
@@ -214,10 +214,10 @@ public class SettingsEndpointsTests : IDisposable
     {
         var client = _factory.CreateClient();
 
-        var response = await client.GetAsync("/api/v1/settings/public");
+        var response = await client.GetAsync("/api/v1/settings/public", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var settings = await response.Content.ReadFromJsonAsync<PublicSettingsResponse>(JsonOptions);
+        var settings = await response.Content.ReadFromJsonAsync<PublicSettingsResponse>(JsonOptions, TestContext.Current.CancellationToken);
         settings.Should().NotBeNull();
         settings!.CertificateRotationInterval.Should().BeGreaterThan(TimeSpan.Zero);
     }
@@ -229,14 +229,14 @@ public class SettingsEndpointsTests : IDisposable
         var newInterval = TimeSpan.FromDays(30);
 
         var updateResponse = await adminClient.PutAsJsonAsync("/api/v1/settings",
-            new UpdateServerSettingsRequest { CertificateRotationInterval = newInterval });
+            new UpdateServerSettingsRequest { CertificateRotationInterval = newInterval }, TestContext.Current.CancellationToken);
         updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var publicClient = _factory.CreateClient();
-        var response = await publicClient.GetAsync("/api/v1/settings/public");
+        var response = await publicClient.GetAsync("/api/v1/settings/public", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var settings = await response.Content.ReadFromJsonAsync<PublicSettingsResponse>(JsonOptions);
+        var settings = await response.Content.ReadFromJsonAsync<PublicSettingsResponse>(JsonOptions, TestContext.Current.CancellationToken);
         settings!.CertificateRotationInterval.Should().Be(newInterval);
     }
 

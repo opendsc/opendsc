@@ -16,8 +16,6 @@
     Skip running integration tests (xUnit tests with Category=Integration).
 .PARAMETER SkipFunctionalTests
     Skip running functional tests (cross-database provider tests with Testcontainers).
-.PARAMETER SkipE2ETests
-    Skip running E2E tests (Pester tests for DSC resources).
 .PARAMETER Pack
     Pack NuGet packages after building.
 .PARAMETER InstallDsc
@@ -64,8 +62,6 @@ param(
 
     [switch] $SkipFunctionalTests,
 
-    [switch] $SkipE2ETests,
-
     [switch] $Pack,
 
     [switch] $InstallDsc,
@@ -73,6 +69,8 @@ param(
     [switch] $Portable,
 
     [switch] $Msi,
+
+    [switch] $InstallSqlServer,
 
     [string] $GitHubToken
 )
@@ -414,6 +412,15 @@ if (-not $SkipUnitTests) {
 }
 
 if (-not $SkipIntegrationTests) {
+    if ($InstallSqlServer -or $env:GITHUB_ACTIONS) {
+        Write-Host 'Preparing SQL Server for integration tests...' -ForegroundColor Cyan
+        . (Join-Path $PSScriptRoot 'tools\Install-SqlServer.ps1')
+        $sqlServerAvailable = Initialize-SqlServerForTests
+        if (-not $sqlServerAvailable) {
+            Write-Warning 'SQL Server is not available. SQL Server integration tests may be skipped when no database instance is present.'
+        }
+    }
+
     Write-Host 'Running integration tests...' -ForegroundColor Cyan
     dotnet test --configuration $Configuration @testBuildArgs --filter 'Category=Integration' --logger 'console;verbosity=normal'
     if ($LASTEXITCODE -ne 0) {
@@ -434,7 +441,3 @@ if (-not $SkipFunctionalTests) {
     Write-Host 'Functional tests passed!' -ForegroundColor Green
 }
 
-if (-not $SkipE2ETests) {
-    Write-Host 'Running E2E tests (Pester)...' -ForegroundColor Cyan
-    Invoke-Pester -Output Detailed
-}
