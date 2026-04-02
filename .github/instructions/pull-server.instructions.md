@@ -119,14 +119,16 @@ Default → Region → Environment → Node
 
 ```json
 {
-  "ConnectionStrings": {
-    "DefaultConnection": "Data Source=opendsc.db"
-  },
-  "DatabaseProvider": "Sqlite"
+  "Database": {
+    "Provider": "SQLite",
+    "ConnectionString": "Data Source=opendsc.db"  // optional for SQLite; auto-generated if omitted
+  }
 }
 ```
 
-Supported providers: `Sqlite` (default), `PostgreSql`, `SqlServer`.
+Supported providers: `SQLite` (default), `SqlServer`, `PostgreSQL`. For SQLite, `ConnectionString` is optional — the server generates a path automatically. For other providers, `ConnectionString` is required.
+
+Configuration is read by `DatabaseExtensions.AddServerDatabase()` using keys `Database:Provider` and `Database:ConnectionString`.
 
 ## LCM Integration Points
 
@@ -136,7 +138,7 @@ The LCM (`src/OpenDsc.Lcm/PullServerClient.cs`) communicates with these server e
 |-----------|---------|
 | Register node | `POST /api/v1/nodes/register` |
 | Download configuration | `GET /api/v1/nodes/{nodeId}/configuration` |
-| Check for changes | `HEAD /api/v1/nodes/{nodeId}/configuration` (checksum) |
+| Check for changes | `GET /api/v1/nodes/{nodeId}/configuration/checksum` |
 | Submit compliance report | `POST /api/v1/reports` |
 | Rotate certificate | `POST /api/v1/nodes/{nodeId}/rotate-certificate` |
 

@@ -92,7 +92,7 @@ Windows-only resources go inside `#if WINDOWS`. Cross-platform resources are unc
 
 ### Step 5 — Write xUnit tests
 
-Create `tests/OpenDsc.Resource.{Area}.Tests/{Name}ResourceTests.cs`:
+Create `tests/OpenDsc.Resource.{Area}.Tests/{Name}/{Name}Tests.cs`:
 
 - Schema generation: `GetSchema()` returns valid JSON with expected properties
 - Serialization roundtrip: JSON → Schema → JSON preserves all fields
@@ -116,7 +116,7 @@ Create `tests/OpenDsc.Resource.{Area}.Tests/{Name}ResourceTests.cs`:
 ### Step 8 — Run new tests
 
 ```powershell
-dotnet test tests/OpenDsc.Resource.{Area}.Tests/ --filter Category=Unit
+dotnet test tests/OpenDsc.Resource.{Area}.Tests/ --filter Category=Integration
 ```
 
 ## Notes

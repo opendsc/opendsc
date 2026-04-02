@@ -26,7 +26,7 @@ Read [`src/OpenDsc.Server/Endpoints/NodeEndpoints.cs`](../../../src/OpenDsc.Serv
 Read an existing endpoint group and entity to understand current conventions:
 - [`src/OpenDsc.Server/Endpoints/NodeEndpoints.cs`](../../../src/OpenDsc.Server/Endpoints/NodeEndpoints.cs)
 - [`src/OpenDsc.Server/Entities/Node.cs`](../../../src/OpenDsc.Server/Entities/Node.cs)
-- [`src/OpenDsc.Server/Data/AppDbContext.cs`](../../../src/OpenDsc.Server/Data/AppDbContext.cs)
+- [`src/OpenDsc.Server/Data/ServerDbContext.cs`](../../../src/OpenDsc.Server/Data/ServerDbContext.cs)
 
 ### Step 2 — Create entity
 
@@ -35,13 +35,11 @@ Create `src/OpenDsc.Server/Entities/{Name}.cs`:
 - Apply any required data annotations or fluent configuration
 - MIT license header required
 
-Add `DbSet<{Name}>` to `AppDbContext` in `Data/AppDbContext.cs` and configure the entity in `OnModelCreating` if needed.
+Add `DbSet<{Name}>` to `ServerDbContext` in `Data/ServerDbContext.cs` and configure the entity in `OnModelCreating` if needed.
 
-### Step 3 — Create EF Core migration
+### Step 3 — No migration needed
 
-```powershell
-dotnet ef migrations add Add{Name} --project src/OpenDsc.Server
-```
+The server currently uses `EnsureCreatedAsync` (see `Data/DatabaseExtensions.cs`) rather than EF Core migrations. Simply adding the `DbSet` and configuring the entity in `OnModelCreating` is sufficient — the schema will be applied automatically on next startup.
 
 ### Step 4 — Create endpoint group
 
@@ -57,14 +55,28 @@ public static class {Name}Endpoints
     public static IEndpointRouteBuilder Map{Name}Endpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/v1/{route-prefix}")
-            .WithTags("{Name}")
-            .WithOpenApi();
+            .WithTags("{Name}");
 
-        group.MapGet("/", GetAll).RequireAuthorization("{name}.read");
-        group.MapGet("/{id:guid}", GetById).RequireAuthorization("{name}.read");
-        group.MapPost("/", Create).RequireAuthorization("{name}.write");
-        group.MapPut("/{id:guid}", Update).RequireAuthorization("{name}.write");
-        group.MapDelete("/{id:guid}", Delete).RequireAuthorization("{name}.write");
+        group.MapGet("/", GetAll)
+            .RequireAuthorization("{name}.read")
+            .WithSummary("List all {names}")
+            .WithDescription("Returns a list of all {names}.");
+        group.MapGet("/{id:guid}", GetById)
+            .RequireAuthorization("{name}.read")
+            .WithSummary("Get {name} details")
+            .WithDescription("Returns details for a specific {name}.");
+        group.MapPost("/", Create)
+            .RequireAuthorization("{name}.write")
+            .WithSummary("Create {name}")
+            .WithDescription("Creates a new {name}.");
+        group.MapPut("/{id:guid}", Update)
+            .RequireAuthorization("{name}.write")
+            .WithSummary("Update {name}")
+            .WithDescription("Updates an existing {name}.");
+        group.MapDelete("/{id:guid}", Delete)
+            .RequireAuthorization("{name}.write")
+            .WithSummary("Delete {name}")
+            .WithDescription("Deletes a {name}.");
 
         return app;
     }
@@ -116,7 +128,7 @@ dotnet test tests/OpenDsc.Server.Tests/
 ## Conventions Checklist
 
 - [ ] MIT license header in all new `.cs` files
-- [ ] Endpoint group uses `MapGroup` with `.WithTags()` and `.WithOpenApi()`
+- [ ] Endpoint group uses `MapGroup` with `.WithTags()`; individual routes use `.WithSummary()` and `.WithDescription()`
 - [ ] All routes use `RequireAuthorization` with the correct policy name
 - [ ] Handler methods are static local functions or static methods in the endpoint class
 - [ ] Blazor pages use MudBlazor components exclusively

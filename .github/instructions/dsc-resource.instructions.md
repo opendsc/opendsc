@@ -1,6 +1,6 @@
 ---
 description: "Use when creating or modifying DSC resources, resource schemas, or the resource executable entry point (Program.cs). Covers resource class inheritance, schema conventions, _exist/_purge design patterns, GetSchema(), SourceGenerationContext, and common Get/Set/Delete implementation patterns."
-applyTo: "src/OpenDsc.Resource*/**"
+applyTo: "src/OpenDsc.Resource*/**,src/OpenDsc.Resources/**"
 ---
 
 # DSC Resource Implementation

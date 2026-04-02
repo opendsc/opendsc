@@ -13,6 +13,8 @@ applyTo: "tests/**/*.cs"
 | Integration | `tests/OpenDsc.*.IntegrationTests/` | `Integration` | `dotnet test --filter Category=Integration` |
 | Functional | `tests/OpenDsc.*.FunctionalTests/` | `Functional` | `dotnet test --filter Category=Functional` |
 
+**Exception — DSC resource test projects** (`tests/OpenDsc.Resource.*.Tests/`) follow the `*.Tests/` folder pattern but are tagged `Category=Integration` because they exercise real system resources. Run them with `dotnet test --filter Category=Integration`.
+
 **Functional tests** use Testcontainers and run against SQLite, PostgreSQL, and SQL Server. Located in `OpenDsc.Lcm.FunctionalTests` and `OpenDsc.Server.FunctionalTests`.
 
 ## Test Projects by Area
