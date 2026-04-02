@@ -221,134 +221,59 @@ public sealed class Resource(JsonSerializerContext context)
 
     public IEnumerable<Schema> Export(Schema? filter)
     {
-        var serverInstance = filter?.ServerInstance ?? Environment.GetEnvironmentVariable("SQLSERVER_INSTANCE") ?? ".";
-        var username = filter?.ConnectUsername ?? Environment.GetEnvironmentVariable("SQLSERVER_USERNAME");
-        var password = filter?.ConnectPassword ?? Environment.GetEnvironmentVariable("SQLSERVER_PASSWORD");
-        var databaseName = filter?.DatabaseName;
-        var schemaNameFilter = filter?.SchemaName;
-        var objectTypeFilter = filter?.ObjectType;
-        var objectNameFilter = filter?.ObjectName;
-        var principal = filter?.Principal;
-        var permissionFilter = filter?.Permission;
-
-        var server = SqlConnectionHelper.CreateConnection(serverInstance, username, password);
-
-        try
-        {
-            var databases = string.IsNullOrEmpty(databaseName)
-                ? server.Databases.Cast<SmoDatabase>().Where(d => !d.IsSystemObject)
-                : server.Databases.Cast<SmoDatabase>().Where(d => string.Equals(d.Name, databaseName, StringComparison.OrdinalIgnoreCase));
-
-            foreach (var database in databases)
-            {
-                var objectTypes = new[] { ObjectType.Table, ObjectType.View, ObjectType.StoredProcedure, ObjectType.UserDefinedFunction, ObjectType.Schema, ObjectType.Sequence, ObjectType.Synonym };
-
-                if (objectTypeFilter != null)
-                {
-                    objectTypes = new[] { objectTypeFilter.Value };
-                }
-
-                foreach (var objectType in objectTypes)
-                {
-                    var objectInfos = GetObjectInfosByType(database, objectType);
-
-                    foreach (var objectInfo in objectInfos)
-                    {
-                        if (!string.IsNullOrWhiteSpace(objectNameFilter) &&
-                            !string.Equals(objectInfo.Name, objectNameFilter, StringComparison.OrdinalIgnoreCase))
-                        {
-                            continue;
-                        }
-
-                        if (!string.IsNullOrWhiteSpace(schemaNameFilter) &&
-                            !string.Equals(objectInfo.Schema, schemaNameFilter, StringComparison.OrdinalIgnoreCase))
-                        {
-                            continue;
-                        }
-
-                        var permissions = string.IsNullOrWhiteSpace(principal)
-                            ? objectInfo.Object.EnumObjectPermissions()
-                            : objectInfo.Object.EnumObjectPermissions(principal);
-
-                        foreach (ObjectPermissionInfo permissionInfo in permissions)
-                        {
-                            foreach (var permissionName in GetPermissionNames(permissionInfo.PermissionType))
-                            {
-                                if (!string.IsNullOrWhiteSpace(permissionFilter) &&
-                                    !string.Equals(permissionName, permissionFilter, StringComparison.OrdinalIgnoreCase))
-                                {
-                                    continue;
-                                }
-
-                                yield return new Schema
-                                {
-                                    ServerInstance = serverInstance,
-                                    DatabaseName = database.Name,
-                                    SchemaName = objectInfo.Schema,
-                                    ObjectType = objectType,
-                                    ObjectName = objectInfo.Name,
-                                    Principal = permissionInfo.Grantee,
-                                    Permission = permissionName,
-                                    State = permissionInfo.PermissionState,
-                                    Grantor = permissionInfo.Grantor
-                                };
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        finally
-        {
-            if (server.ConnectionContext.IsOpen)
-            {
-                server.ConnectionContext.Disconnect();
-            }
-        }
-    }
-
-    private sealed record ObjectInfo(string Name, string Schema, IObjectPermission Object);
-
-    private static IEnumerable<ObjectInfo> GetObjectInfosByType(SmoDatabase database, ObjectType objectType)
-    {
-        database.Refresh();
-
-        return objectType switch
-        {
-            ObjectType.Table => database.Tables.Cast<Table>().Select(t => new ObjectInfo(t.Name, t.Schema, t)),
-            ObjectType.View => database.Views.Cast<View>().Select(v => new ObjectInfo(v.Name, v.Schema, v)),
-            ObjectType.StoredProcedure => database.StoredProcedures.Cast<StoredProcedure>().Select(p => new ObjectInfo(p.Name, p.Schema, p)),
-            ObjectType.UserDefinedFunction => database.UserDefinedFunctions.Cast<UserDefinedFunction>().Select(f => new ObjectInfo(f.Name, f.Schema, f)),
-            ObjectType.Schema => database.Schemas.Cast<SmoSchema>().Select(s => new ObjectInfo(s.Name, s.Name, s)),
-            ObjectType.Sequence => database.Sequences.Cast<Sequence>().Select(s => new ObjectInfo(s.Name, s.Schema, s)),
-            ObjectType.Synonym => database.Synonyms.Cast<Synonym>().Select(s => new ObjectInfo(s.Name, s.Schema, s)),
-            _ => Enumerable.Empty<ObjectInfo>()
-        };
+        yield break;
     }
 
     private static IObjectPermission? GetDatabaseObject(SmoDatabase database, ObjectType objectType, string schemaName, string objectName)
     {
         database.Refresh();
 
-        return objectType switch
+        switch (objectType)
         {
-            ObjectType.Table => database.Tables.Cast<Table>().FirstOrDefault(t => string.Equals(t.Name, objectName, StringComparison.OrdinalIgnoreCase) && string.Equals(t.Schema, schemaName, StringComparison.OrdinalIgnoreCase)),
-            ObjectType.View => database.Views.Cast<View>().FirstOrDefault(v => string.Equals(v.Name, objectName, StringComparison.OrdinalIgnoreCase) && string.Equals(v.Schema, schemaName, StringComparison.OrdinalIgnoreCase)),
-            ObjectType.StoredProcedure => database.StoredProcedures.Cast<StoredProcedure>().FirstOrDefault(p => string.Equals(p.Name, objectName, StringComparison.OrdinalIgnoreCase) && string.Equals(p.Schema, schemaName, StringComparison.OrdinalIgnoreCase)),
-            ObjectType.UserDefinedFunction => database.UserDefinedFunctions.Cast<UserDefinedFunction>().FirstOrDefault(f => string.Equals(f.Name, objectName, StringComparison.OrdinalIgnoreCase) && string.Equals(f.Schema, schemaName, StringComparison.OrdinalIgnoreCase)),
-            ObjectType.Schema => database.Schemas.Cast<SmoSchema>().FirstOrDefault(s => string.Equals(s.Name, objectName, StringComparison.OrdinalIgnoreCase)),
-            ObjectType.Sequence => database.Sequences.Cast<Sequence>().FirstOrDefault(s => string.Equals(s.Name, objectName, StringComparison.OrdinalIgnoreCase) && string.Equals(s.Schema, schemaName, StringComparison.OrdinalIgnoreCase)),
-            ObjectType.Synonym => database.Synonyms.Cast<Synonym>().FirstOrDefault(s => string.Equals(s.Name, objectName, StringComparison.OrdinalIgnoreCase) && string.Equals(s.Schema, schemaName, StringComparison.OrdinalIgnoreCase)),
-            _ => null
-        };
-    }
+            case ObjectType.Table:
+                database.Tables.Refresh();
+                return database.Tables.Cast<Table>()
+                    .FirstOrDefault(t => string.Equals(t.Name, objectName, StringComparison.OrdinalIgnoreCase)
+                        && string.Equals(t.Schema, schemaName, StringComparison.OrdinalIgnoreCase));
 
-    private static IEnumerable<string> GetPermissionNames(ObjectPermissionSet permissionSet)
-    {
-        return typeof(ObjectPermissionSet)
-            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            .Where(p => p.PropertyType == typeof(bool) && (bool)(p.GetValue(permissionSet) ?? false))
-            .Select(p => p.Name);
+            case ObjectType.View:
+                database.Views.Refresh();
+                return database.Views.Cast<View>()
+                    .FirstOrDefault(v => string.Equals(v.Name, objectName, StringComparison.OrdinalIgnoreCase)
+                        && string.Equals(v.Schema, schemaName, StringComparison.OrdinalIgnoreCase));
+
+            case ObjectType.StoredProcedure:
+                database.StoredProcedures.Refresh();
+                return database.StoredProcedures.Cast<StoredProcedure>()
+                    .FirstOrDefault(p => string.Equals(p.Name, objectName, StringComparison.OrdinalIgnoreCase)
+                        && string.Equals(p.Schema, schemaName, StringComparison.OrdinalIgnoreCase));
+
+            case ObjectType.UserDefinedFunction:
+                database.UserDefinedFunctions.Refresh();
+                return database.UserDefinedFunctions.Cast<UserDefinedFunction>()
+                    .FirstOrDefault(f => string.Equals(f.Name, objectName, StringComparison.OrdinalIgnoreCase)
+                        && string.Equals(f.Schema, schemaName, StringComparison.OrdinalIgnoreCase));
+
+            case ObjectType.Schema:
+                database.Schemas.Refresh();
+                return database.Schemas.Cast<SmoSchema>()
+                    .FirstOrDefault(s => string.Equals(s.Name, objectName, StringComparison.OrdinalIgnoreCase));
+
+            case ObjectType.Sequence:
+                database.Sequences.Refresh();
+                return database.Sequences.Cast<Sequence>()
+                    .FirstOrDefault(s => string.Equals(s.Name, objectName, StringComparison.OrdinalIgnoreCase)
+                        && string.Equals(s.Schema, schemaName, StringComparison.OrdinalIgnoreCase));
+
+            case ObjectType.Synonym:
+                database.Synonyms.Refresh();
+                return database.Synonyms.Cast<Synonym>()
+                    .FirstOrDefault(s => string.Equals(s.Name, objectName, StringComparison.OrdinalIgnoreCase)
+                        && string.Equals(s.Schema, schemaName, StringComparison.OrdinalIgnoreCase));
+
+            default:
+                throw new ArgumentException($"Unsupported object type: {objectType}", nameof(objectType));
+        }
     }
 
     private static bool HasPermission(ObjectPermissionSet permissionSet, string permission)

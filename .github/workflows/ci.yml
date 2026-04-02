@@ -90,7 +90,7 @@ jobs:
 
       - name: Run Tests (Windows/macOS - skip Functional Tests)
         if: matrix.os != 'ubuntu-latest'
-        run: .\build.ps1 -SkipBuild -SkipFunctionalTests -InstallDsc -InstallSqlServer -GitHubToken ${{ secrets.GITHUB_TOKEN }}
+        run: .\build.ps1 -SkipBuild -SkipFunctionalTests -InstallDsc -GitHubToken ${{ secrets.GITHUB_TOKEN }}
 
   publish:
     needs: test
