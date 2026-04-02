@@ -1,0 +1,31 @@
+// Copyright (c) Thomas Nieto - All Rights Reserved
+// You may use, distribute and modify this code under the
+// terms of the MIT license.
+
+using System.Text.Json.Serialization;
+using JsonSchema.Net.Generation;
+
+namespace OpenDsc.Resource.{Namespace};
+
+[Title("{Title}")]
+[Description("{Description}")]
+[AdditionalProperties(false)]
+public sealed class Schema
+{
+    [Required]
+    public string Name { get; set; } = string.Empty;
+
+    // Pattern 1 / Pattern 3: instance lifecycle control
+    [JsonPropertyName("_exist")]
+    [Default(true)]
+    [Nullable(false)]
+    public bool? Exist { get; set; }
+
+    // Pattern 2 / Pattern 3: collection control (remove if not managing a list)
+    // [JsonPropertyName("_purge")]
+    // [Description("When true, removes items not in the list. When false (default), only adds items.")]
+    // [Nullable(false)]
+    // [WriteOnly]
+    // [Default(false)]
+    // public bool? Purge { get; set; }
+}
