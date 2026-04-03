@@ -1,0 +1,22 @@
+{
+  "$schema": "https://aka.ms/dsc/schemas/v3/bundled/resource/manifest.json",
+  "type": "OpenDsc.Mof/Import",
+  "version": "0.5.1",
+  "description": "Converts DSC v1 MOF configuration files.",
+  "tags": [
+    "mof",
+    "dscv1",
+    "import"
+  ],
+  "import": {
+    "fileExtensions": [
+      "mof"
+    ],
+    "executable": "OpenDsc.Mof.Extension.exe",
+    "args": [
+      {
+        "fileArg": "--file"
+      }
+    ]
+  }
+}
