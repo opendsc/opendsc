@@ -232,14 +232,14 @@ if (-not $SkipBuild) {
                 throw "Portable build failed for OpenDsc.Resources with exit code $LASTEXITCODE"
             }
 
-            Write-Host 'Creating portable ZIP archive for Linux...' -ForegroundColor Cyan
-            $zipDir = Join-Path $PSScriptRoot 'artifacts\zip'
-            New-Item -ItemType Directory -Path $zipDir -Force | Out-Null
-            $zipPath = Join-Path $zipDir "OpenDSC.Resources.Linux.Portable-$version.zip"
-            Compress-Archive -Path "$portableLinuxDir\*" -DestinationPath $zipPath -Force
+            Write-Host 'Creating portable tarball for Linux...' -ForegroundColor Cyan
+            $tarDir = Join-Path $PSScriptRoot 'artifacts\tar'
+            New-Item -ItemType Directory -Path $tarDir -Force | Out-Null
+            $tarPath = Join-Path $tarDir "OpenDSC.Resources.Linux.Portable-$version.tar.gz"
+            tar -czf $tarPath -C $portableLinuxDir .
             Write-Host 'Self-contained portable version for Linux built successfully!' -ForegroundColor Green
             Write-Host "Output location: $portableLinuxDir" -ForegroundColor Green
-            Write-Host "ZIP archive: $zipPath" -ForegroundColor Green
+            Write-Host "Tarball: $tarPath" -ForegroundColor Green
         }
     } elseif ($IsMacOS) {
         $resourcesProj = Join-Path $PSScriptRoot 'src\OpenDsc.Resources\OpenDsc.Resources.csproj'
@@ -261,17 +261,14 @@ if (-not $SkipBuild) {
         }
 
         if ($Portable) {
-            Write-Host 'Building self-contained portable version for macOS...' -ForegroundColor Cyan
+            Write-Host 'Building framework-dependent portable version for macOS...' -ForegroundColor Cyan
             $portableMacDir = Join-Path $PSScriptRoot 'artifacts\portable'
             New-Item -ItemType Directory -Path $portableMacDir -Force | Out-Null
             dotnet publish $resourcesProj `
                 --configuration $Configuration `
                 --runtime osx-arm64 `
-                --self-contained true `
+                --self-contained false `
                 -f net10.0 `
-                -p:PublishSingleFile=true `
-                -p:IncludeNativeLibrariesForSelfExtract=true `
-                -p:EnableCompressionInSingleFile=false `
                 -p:DebugType=None `
                 -p:DebugSymbols=false `
                 -p:GenerateDocumentationFile=false `
@@ -281,14 +278,14 @@ if (-not $SkipBuild) {
                 throw "Portable build failed for OpenDsc.Resources with exit code $LASTEXITCODE"
             }
 
-            Write-Host 'Creating portable ZIP archive for macOS...' -ForegroundColor Cyan
-            $zipDir = Join-Path $PSScriptRoot 'artifacts\zip'
-            New-Item -ItemType Directory -Path $zipDir -Force | Out-Null
-            $zipPath = Join-Path $zipDir "OpenDSC.Resources.macOS.Portable-$version.zip"
-            Compress-Archive -Path "$portableMacDir\*" -DestinationPath $zipPath -Force
-            Write-Host 'Self-contained portable version for macOS built successfully!' -ForegroundColor Green
+            Write-Host 'Creating portable tarball for macOS...' -ForegroundColor Cyan
+            $tarDir = Join-Path $PSScriptRoot 'artifacts\tar'
+            New-Item -ItemType Directory -Path $tarDir -Force | Out-Null
+            $tarPath = Join-Path $tarDir "OpenDSC.Resources.macOS.Portable-$version.tar.gz"
+            tar -czf $tarPath -C $portableMacDir .
+            Write-Host 'Framework-dependent portable version for macOS built successfully!' -ForegroundColor Green
             Write-Host "Output location: $portableMacDir" -ForegroundColor Green
-            Write-Host "ZIP archive: $zipPath" -ForegroundColor Green
+            Write-Host "Tarball: $tarPath" -ForegroundColor Green
         }
     }
 
