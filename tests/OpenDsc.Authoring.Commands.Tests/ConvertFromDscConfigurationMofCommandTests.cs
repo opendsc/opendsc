@@ -162,4 +162,39 @@ public class ConvertFromDscConfigurationMofCommandTests
         using var doc = JsonDocument.Parse(results[0]);
         doc.RootElement.GetProperty("resources").GetArrayLength().Should().Be(1);
     }
+
+    [Fact]
+    public void Invoke_SingleResourceMof_AsJson_WithEmptyLines_DoesNotFail()
+    {
+        using var runspace = CreateRunspace();
+        using var ps = PowerShell.Create();
+        ps.Runspace = runspace;
+        ps.AddCommand("ConvertFrom-DscConfigurationMof").AddParameter("AsJson");
+
+        var input = SingleResourceMof.Split('\n').Concat(new[] { string.Empty, string.Empty }).ToArray();
+        var results = ps.Invoke<string>(input);
+
+        results.Should().HaveCount(1);
+
+        using var doc = JsonDocument.Parse(results[0]);
+        doc.RootElement.GetProperty("resources").GetArrayLength().Should().Be(1);
+        ps.Streams.Error.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Invoke_SingleResourceMof_AsJson_ResourceTypeIsCorrect()
+    {
+        using var runspace = CreateRunspace();
+        using var ps = PowerShell.Create();
+        ps.Runspace = runspace;
+        ps.AddCommand("ConvertFrom-DscConfigurationMof").AddParameter("AsJson");
+
+        var results = ps.Invoke<string>(SingleResourceMof.Split('\n'));
+
+        results.Should().HaveCount(1);
+
+        using var doc = JsonDocument.Parse(results[0]);
+        var resources = doc.RootElement.GetProperty("resources").EnumerateArray().ToArray();
+        resources[0].GetProperty("type").GetString().Should().Be("PSDesiredStateConfiguration/File");
+    }
 }

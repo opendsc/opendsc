@@ -4,7 +4,7 @@
 
 using System.Management.Automation;
 using System.Management.Automation.Runspaces;
-using System.Text.Json.Nodes;
+using System.Text.Json;
 
 using AwesomeAssertions;
 
@@ -51,7 +51,7 @@ public class ConvertFromDscSchemaMofCommandTests
     }
 
     [Fact]
-    public void Invoke_ServiceSchemaMof_ReturnsJsonObject()
+    public void Invoke_ServiceSchemaMof_ReturnsJsonString()
     {
         using var runspace = CreateRunspace();
         using var ps = PowerShell.Create();
@@ -61,7 +61,7 @@ public class ConvertFromDscSchemaMofCommandTests
         var results = ps.Invoke(ServiceSchemaMof.Split('\n'));
 
         results.Should().HaveCount(1);
-        results[0].BaseObject.Should().BeOfType<JsonObject>();
+        results[0].BaseObject.Should().BeOfType<string>();
     }
 
     [Fact]
@@ -73,9 +73,10 @@ public class ConvertFromDscSchemaMofCommandTests
         ps.AddCommand("ConvertFrom-DscSchemaMof");
 
         var input = ServiceSchemaMof.Split('\n').Concat(new[] { string.Empty, string.Empty }).ToArray();
-        var schema = (JsonObject)ps.Invoke(input).Single().BaseObject;
+        var json = (string)ps.Invoke(input).Single().BaseObject;
 
-        schema["title"]!.GetValue<string>().Should().Be("MSFT_ServiceResource");
+        using var doc = JsonDocument.Parse(json);
+        doc.RootElement.GetProperty("title").GetString().Should().Be("MSFT_ServiceResource");
         ps.Streams.Error.Should().BeEmpty();
     }
 
@@ -87,9 +88,10 @@ public class ConvertFromDscSchemaMofCommandTests
         ps.Runspace = runspace;
         ps.AddCommand("ConvertFrom-DscSchemaMof");
 
-        var schema = (JsonObject)ps.Invoke(ServiceSchemaMof.Split('\n')).Single().BaseObject;
+        var json = (string)ps.Invoke(ServiceSchemaMof.Split('\n')).Single().BaseObject;
 
-        schema["title"]!.GetValue<string>().Should().Be("MSFT_ServiceResource");
+        using var doc = JsonDocument.Parse(json);
+        doc.RootElement.GetProperty("title").GetString().Should().Be("MSFT_ServiceResource");
     }
 
     [Fact]
@@ -100,10 +102,10 @@ public class ConvertFromDscSchemaMofCommandTests
         ps.Runspace = runspace;
         ps.AddCommand("ConvertFrom-DscSchemaMof");
 
-        var schema = (JsonObject)ps.Invoke(ServiceSchemaMof.Split('\n')).Single().BaseObject;
+        var json = (string)ps.Invoke(ServiceSchemaMof.Split('\n')).Single().BaseObject;
 
-        schema["properties"].Should().NotBeNull();
-        schema["properties"]!["Name"].Should().NotBeNull();
+        using var doc = JsonDocument.Parse(json);
+        doc.RootElement.GetProperty("properties").GetProperty("Name").Should().NotBeNull();
     }
 
     [Fact]
@@ -114,9 +116,11 @@ public class ConvertFromDscSchemaMofCommandTests
         ps.Runspace = runspace;
         ps.AddCommand("ConvertFrom-DscSchemaMof");
 
-        var schema = (JsonObject)ps.Invoke(EmbeddedInstanceSchemaMof.Split('\n')).Single().BaseObject;
+        var json = (string)ps.Invoke(EmbeddedInstanceSchemaMof.Split('\n')).Single().BaseObject;
 
-        schema["$defs"].Should().NotBeNull();
-        schema["$defs"]!["CredentialEntry"].Should().NotBeNull();
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+
+        root.GetProperty("$defs").GetProperty("CredentialEntry").Should().NotBeNull();
     }
 }
