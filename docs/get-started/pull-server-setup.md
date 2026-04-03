@@ -18,10 +18,9 @@ delivers configurations to managed nodes.
 ## Prerequisites
 
 - A Windows machine with [OpenDsc installed][01].
-- [DSC v3][02] version `3.1.0` or later.
+- [DSC v3][02] version `3.0.0` or later.
 - PowerShell 7 or later.
 - Administrator privileges.
-- OpenDSC.Resources installed and available in `PATH`.
 
 ## Step 1: Install the Pull Server
 
@@ -43,6 +42,7 @@ service named
 Open your browser and navigate to `http://localhost:5000`. The web UI prompts
 you to sign in.
 
+<!-- TODO: Replace with actual screenshot -->
 ![OpenDsc login page](media/pull-server-setup/login-page.png)
 
 Sign in with the default administrator credentials:
@@ -55,6 +55,9 @@ Sign in with the default administrator credentials:
 After signing in, you're prompted to change the default password. Choose a
 strong password and
 save it.
+
+<!-- TODO: Replace with actual screenshot -->
+![Change default password](media/pull-server-setup/change-password.png)
 
 ## Step 3: Configure for lab use (optional)
 
@@ -91,6 +94,7 @@ Server. After registration, nodes use client certificates for authentication.
 4. Click **Save**.
 5. Copy the key value that appears and save it securely.
 
+<!-- TODO: Replace with actual screenshot -->
 ![Create registration key](media/pull-server-setup/create-registration-key.png)
 
 ### Using PowerShell
@@ -170,6 +174,9 @@ Navigate to the **Nodes** page. Your machine should appear with its FQDN and
 registration
 timestamp.
 
+<!-- TODO: Replace with actual screenshot -->
+![Registered node in web UI](media/pull-server-setup/registered-node.png)
+
 ### Using PowerShell
 
 ```powershell
@@ -211,6 +218,7 @@ $configContent | Set-Content -Path "$env:TEMP\main.dsc.yaml" -Encoding UTF8
 5. Upload the `main.dsc.yaml` file.
 6. Click **Save**.
 
+<!-- TODO: Replace with actual screenshot -->
 ![Upload configuration](media/pull-server-setup/upload-configuration.png)
 
 #### Using PowerShell
@@ -233,10 +241,10 @@ to nodes:
 
 #### Using the web UI
 
-1. On the **Configurations** page, click on **View Details** on `LabConfig`.
-2. Expand the `1.0.0` version
-3. Click **Publish** next to version `1.0.0`.
+1. On the **Configurations** page, click on `LabConfig`.
+2. Click **Publish** next to version `1.0.0`.
 
+<!-- TODO: Replace with actual screenshot -->
 ![Publish configuration version](media/pull-server-setup/publish-version.png)
 
 #### Using PowerShell
@@ -251,10 +259,11 @@ Invoke-RestMethod -Uri 'http://localhost:5000/api/v1/configurations/LabConfig/ve
 #### Using the web UI
 
 1. Navigate to **Nodes**.
-2. Click **View** on your registered node.
+2. Click on your registered node.
 3. Under **Configuration**, select `LabConfig`.
-4. Click **Assign Configuration**.
+4. Click **Save**.
 
+<!-- TODO: Replace with actual screenshot -->
 ![Assign configuration to node](media/pull-server-setup/assign-configuration.png)
 
 #### Using PowerShell
@@ -282,6 +291,9 @@ After the LCM runs, check the **Nodes** page in the web UI to see the compliance
 status, or check
 the **Reports** page for detailed results.
 
+<!-- TODO: Replace with actual screenshot -->
+![Compliance report in web UI](media/pull-server-setup/compliance-report.png)
+
 ## Summary
 
 In this tutorial, you:
@@ -295,10 +307,15 @@ In this tutorial, you:
 
 ## Next steps
 
+- Learn about [composite configurations][05] for combining multiple
+  configuration documents.
+- Set up [hierarchical parameter merging][06] for environment-specific settings.
 - Configure [HTTPS with certificates][04] for production deployments.
 
 <!-- Link references -->
 [01]: ../installing.md
-[02]: https://learn.microsoft.com/en-us/powershell/dsc/overview?view=dsc-3.0#installation
+[02]: https://learn.microsoft.com/powershell/dsc/install
 [03]: https://github.com/opendsc/opendsc/releases
 [04]: ../guides/configure-https.md
+[05]: ../guides/composite-configurations.md
+[06]: ../guides/parameter-merging.md

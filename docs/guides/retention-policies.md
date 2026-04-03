@@ -27,21 +27,25 @@ Use retention policies when you need to:
 
 ### Using the web UI
 
-1. Navigate to **Settings → Retention Policies**.
+1. Navigate to **Settings → Retention**.
 2. Set the **Maximum versions to keep** value.
-3. Choose whether to retain published versions or all versions.
+3. Choose whether to retain published versions, all versions, or only the
+   latest.
 4. Click **Save**.
 
+<!-- TODO: Replace with actual screenshot -->
 ![Retention settings](media/retention-policies/retention-settings.png)
 
 ### Using PowerShell
 
 ```powershell
-Invoke-RestMethod -Uri 'http://localhost:5000/api/v1/retention' `
+Invoke-RestMethod -Uri 'http://localhost:5000/api/v1/settings/retention' `
     -Method Put -ContentType 'application/json' `
     -Body (@{
-        maxVersions           = 5
-        retainPublishedOnly   = $true
+        enabled              = $true
+        keepVersions         = 5
+        keepDays             = 90
+        keepReleaseVersions  = $true
     } | ConvertTo-Json) `
     -WebSession $session
 ```
@@ -56,14 +60,15 @@ You can override the global retention policy for individual configurations:
 2. Under **Settings**, configure the retention policy.
 3. Click **Save**.
 
-![Configuration retention](media/retention-policies/per-config-retention.png)
+<!-- TODO: Replace with actual screenshot -->
+![Per-configuration retention](media/retention-policies/per-config-retention.png)
 
 ### Using PowerShell
 
 ```powershell
-Invoke-RestMethod -Uri 'http://localhost:5000/api/v1/retention/configurations/LabConfig' `
+Invoke-RestMethod -Uri 'http://localhost:5000/api/v1/configurations/LabConfig/settings/retention' `
     -Method Put -ContentType 'application/json' `
-    -Body (@{ maxVersions = 10 } | ConvertTo-Json) `
+    -Body (@{ keepVersions = 10 } | ConvertTo-Json) `
     -WebSession $session
 ```
 

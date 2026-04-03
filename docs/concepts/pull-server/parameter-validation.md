@@ -48,6 +48,9 @@ In the web UI, the **Parameter Migration Dialog** surfaces these issues and
 helps you resolve them
 before publishing.
 
+<!-- TODO: Replace with actual screenshot -->
+![Parameter migration dialog](media/parameter-validation/migration-dialog.png)
+
 ## See also
 
 - [Parameter merging][01]

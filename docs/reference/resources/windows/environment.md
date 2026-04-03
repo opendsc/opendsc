@@ -99,10 +99,13 @@ resources:
 
 ## Exit codes
 
-| Code | Description |
-| :--- | :---------- |
-| 0    | Success     |
-| 1    | Error       |
+| Code | Description      |
+| :--- | :--------------- |
+| 0    | Success          |
+| 1    | Error            |
+| 2    | Invalid JSON     |
+| 3    | Access denied    |
+| 4    | Invalid argument |
 
 ## See also
 

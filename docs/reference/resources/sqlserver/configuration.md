@@ -56,8 +56,8 @@ OpenDsc.SqlServer/Configuration
 ### Network settings
 
 | Property             | Type | Required | Access     | Description                                        |
-| :------------------- | :--- | :------- | :--------- | :------------------------------------------------- |
-| `networkPacketSize`  | int  | No       | Read/Write | Network packet size in bytes (512â€“32767).          |
+|:---------------------|:-----|:---------|:-----------|:---------------------------------------------------|
+| `networkPacketSize`  | int  | No       | Read/Write | Network packet size in bytes (512–32767).          |
 | `remoteLoginTimeout` | int  | No       | Read/Write | Remote login timeout in seconds. `0` = infinite.   |
 | `remoteQueryTimeout` | int  | No       | Read/Write | Remote query timeout in seconds. `0` = no timeout. |
 

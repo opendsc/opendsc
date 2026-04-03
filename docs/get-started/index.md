@@ -18,7 +18,7 @@ individually, and composing them into a configuration document.
 ## Prerequisites
 
 - [Install OpenDsc][01] on a Windows machine.
-- [Install DSC v3][02] version `3.1.0` or later.
+- [Install DSC v3][02] version `3.0.0` or later.
 - A terminal emulator, like [Windows Terminal][03].
 
 ## Discover resources
@@ -184,7 +184,7 @@ dsc resource delete -r OpenDsc.Windows/Environment --input '{"name":"DSC_TEAM","
 
 <!-- Link references -->
 [01]: ../installing.md
-[02]: https://learn.microsoft.com/en-us/powershell/dsc/overview?view=dsc-3.0#installation
+[02]: https://learn.microsoft.com/powershell/dsc/install
 [03]: https://aka.ms/terminal
 [04]: pull-server-setup.md
 [05]: lcm-setup.md
