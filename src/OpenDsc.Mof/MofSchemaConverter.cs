@@ -164,11 +164,13 @@ public static class MofSchemaConverter
         IReadOnlyDictionary<string, Class> classLookup,
         HashSet<string> referencedClasses)
     {
-        if (classLookup.ContainsKey(typeName))
+        if (!classLookup.ContainsKey(typeName))
         {
-            referencedClasses.Add(typeName);
+            throw new InvalidOperationException(
+                $"Referenced MOF class '{typeName}' was not found in the schema definitions.");
         }
 
+        referencedClasses.Add(typeName);
         return new JsonObject { ["$ref"] = $"#/$defs/{typeName}" };
     }
 

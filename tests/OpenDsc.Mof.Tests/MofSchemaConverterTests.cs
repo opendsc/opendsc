@@ -8,6 +8,7 @@ using Xunit;
 
 namespace OpenDsc.Mof.Tests;
 
+[Trait("Category", "Unit")]
 public class MofSchemaConverterTests
 {
     #region MOF test data
