@@ -12,9 +12,9 @@ and deletion. You can configure availability group options such as automated
 backup preference, failure condition level, health check timeout, and
 cluster type.
 
-This resource manages the availability group object itself. Availability
-replicas and availability databases are managed through their respective
-resources.
+This resource manages the availability group object itself. Management of
+availability replicas and availability databases within the group is not
+yet supported and is planned for a future release.
 
 ## Requirements
 
@@ -57,19 +57,25 @@ The resource has the following capabilities:
   `OnServerUnresponsive`, `OnCriticalServerErrors`,
   `OnModerateServerErrors`, `OnAnyQualifiedFailureCondition`.
 - **healthCheckTimeout** (integer) - The health check timeout value in
-  milliseconds.
-- **basicAvailabilityGroup** (boolean) - Whether this is a basic availability
-  group (limited to two replicas and one database).
+  milliseconds. Minimum: `0`.
 - **databaseHealthTrigger** (boolean) - Whether database-level health
   detection is enabled.
 - **dtcSupportEnabled** (boolean) - Whether DTC support is enabled.
-- **clusterType** (enum) - The cluster type. Valid values: `Wsfc`, `None`,
-  `External`.
 - **requiredSynchronizedSecondariesToCommit** (integer) - The number of
-  required synchronized secondaries to commit.
-- **isContained** (boolean) - Whether the availability group is contained.
+  required synchronized secondaries to commit. Minimum: `0`.
 - **_exist** (boolean) - Indicates whether the availability group should
   exist. Default: `true`.
+
+### Optional Properties (Create-Only)
+
+These properties can only be set when creating a new availability group.
+Changes to these properties on an existing availability group are ignored.
+
+- **basicAvailabilityGroup** (boolean) - Whether this is a basic availability
+  group (limited to two replicas and one database).
+- **clusterType** (enum) - The cluster type. Valid values: `Wsfc`, `None`,
+  `External`.
+- **isContained** (boolean) - Whether the availability group is contained.
 
 ### Read-Only Properties
 

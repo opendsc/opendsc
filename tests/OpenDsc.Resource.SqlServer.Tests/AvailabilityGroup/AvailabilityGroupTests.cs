@@ -14,6 +14,7 @@ namespace OpenDsc.Resource.SqlServer.Tests.AvailabilityGroup;
 [Trait("Category", "Integration")]
 public sealed class AvailabilityGroupTests : SqlServerTestBase
 {
+    private const string Prefix = "OpenDscTest_AG_";
     private readonly AvailabilityGroupResource _resource = new(SourceGenerationContext.Default);
 
     public AvailabilityGroupTests(SqlServerFixture fixture) : base(fixture)
@@ -57,8 +58,14 @@ public sealed class AvailabilityGroupTests : SqlServerTestBase
             Name = string.Empty
         };
 
-        var action = () => _resource.Export(filter);
-        action.Should().NotThrow();
+        var results = _resource.Export(filter).ToList();
+        results.Should().NotBeNull();
+
+        foreach (var ag in results)
+        {
+            ag.Name.Should().NotBeNullOrEmpty();
+            ag.ServerInstance.Should().NotBeNullOrEmpty();
+        }
     }
 
     [Fact]
@@ -71,7 +78,7 @@ public sealed class AvailabilityGroupTests : SqlServerTestBase
     [Fact]
     public void Set_CreateAvailabilityGroup_RequiresHadr()
     {
-        var name = "OpenDscTest_AG_Create1";
+        var name = $"{Prefix}Create_{Guid.NewGuid():N}";
         var schema = NewSchema(name);
         schema.ClusterType = Microsoft.SqlServer.Management.Smo.AvailabilityGroupClusterType.None;
 

@@ -45,9 +45,10 @@ public sealed class Schema
 
     [Description("The health check timeout value in milliseconds.")]
     [Nullable(false)]
+    [Minimum(0)]
     public int? HealthCheckTimeout { get; set; }
 
-    [Description("Whether this is a basic availability group (limited to two replicas and one database).")]
+    [Description("Whether this is a basic availability group (limited to two replicas and one database). Create-only; cannot be changed after creation.")]
     [Nullable(false)]
     public bool? BasicAvailabilityGroup { get; set; }
 
@@ -63,15 +64,16 @@ public sealed class Schema
     [Nullable(false)]
     public bool? IsDistributedAvailabilityGroup { get; set; }
 
-    [Description("The cluster type of the availability group.")]
+    [Description("The cluster type of the availability group. Create-only; cannot be changed after creation.")]
     [Nullable(false)]
     public AvailabilityGroupClusterType? ClusterType { get; set; }
 
     [Description("The number of required synchronized secondaries to commit.")]
     [Nullable(false)]
+    [Minimum(0)]
     public int? RequiredSynchronizedSecondariesToCommit { get; set; }
 
-    [Description("Whether the availability group is contained.")]
+    [Description("Whether the availability group is contained. Create-only; cannot be changed after creation.")]
     [Nullable(false)]
     public bool? IsContained { get; set; }
 

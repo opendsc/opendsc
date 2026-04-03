@@ -137,10 +137,14 @@ public sealed class Resource(JsonSerializerContext context)
 
         try
         {
+            var results = new List<Schema>();
+
             foreach (SmoAvailabilityGroup ag in server.AvailabilityGroups)
             {
-                yield return MapToSchema(serverInstance, ag);
+                results.Add(MapToSchema(serverInstance, ag));
             }
+
+            return results;
         }
         finally
         {
