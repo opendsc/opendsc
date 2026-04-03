@@ -73,6 +73,8 @@
         "ppsz",
         "rdev",
         "rendermode",
+        "Runspace",
+        "Runspaces",
         "rwxr",
         "rwxrwxrwx",
         "schtasks",
