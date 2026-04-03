@@ -42,7 +42,7 @@ public class PersonalAccessTokenEndpointsTests : IClassFixture<ServerWebApplicat
         var createRequest = new CreateTokenRequest
         {
             Name = "TestToken",
-            Scopes = ["read", "write"],
+            Scopes = ["nodes.read", "nodes.write"],
             ExpiresAt = DateTimeOffset.UtcNow.AddDays(30)
         };
 
@@ -64,7 +64,7 @@ public class PersonalAccessTokenEndpointsTests : IClassFixture<ServerWebApplicat
         var createRequest = new CreateTokenRequest
         {
             Name = "GetToken",
-            Scopes = ["read"],
+            Scopes = ["nodes.read"],
             ExpiresAt = DateTimeOffset.UtcNow.AddDays(30)
         };
         var createResponse = await _client.PostAsJsonAsync("/api/v1/auth/tokens", createRequest, TestContext.Current.CancellationToken);
@@ -87,7 +87,7 @@ public class PersonalAccessTokenEndpointsTests : IClassFixture<ServerWebApplicat
         var createRequest = new CreateTokenRequest
         {
             Name = "DeleteToken",
-            Scopes = ["read"],
+            Scopes = ["nodes.read"],
             ExpiresAt = DateTimeOffset.UtcNow.AddDays(30)
         };
         var createResponse = await _client.PostAsJsonAsync("/api/v1/auth/tokens", createRequest, TestContext.Current.CancellationToken);
@@ -114,7 +114,7 @@ public class PersonalAccessTokenEndpointsTests : IClassFixture<ServerWebApplicat
         var createRequest = new CreateTokenRequest
         {
             Name = "RevokeToken",
-            Scopes = ["read"],
+            Scopes = ["nodes.read"],
             ExpiresAt = DateTimeOffset.UtcNow.AddDays(30)
         };
         var createResponse = await _client.PostAsJsonAsync("/api/v1/auth/tokens", createRequest, TestContext.Current.CancellationToken);

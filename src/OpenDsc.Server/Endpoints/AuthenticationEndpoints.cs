@@ -228,7 +228,12 @@ public static class AuthenticationEndpoints
             return TypedResults.Unauthorized();
         }
 
-        var invalidScopes = request.Scopes
+        var scopes = (request.Scopes ?? [])
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        var invalidScopes = scopes
             .Where(s => !Permissions.AllScopes.Contains(s))
             .ToArray();
 
@@ -243,7 +248,7 @@ public static class AuthenticationEndpoints
         var (token, metadata) = await patService.CreateTokenAsync(
             userId.Value,
             request.Name,
-            request.Scopes,
+            scopes,
             request.ExpiresAt);
 
         return TypedResults.Created($"/api/v1/auth/tokens/{metadata.Id}", new CreateTokenResponse
@@ -252,7 +257,7 @@ public static class AuthenticationEndpoints
             TokenId = metadata.Id,
             Name = metadata.Name,
             TokenPrefix = metadata.TokenPrefix,
-            Scopes = request.Scopes,
+            Scopes = scopes,
             ExpiresAt = metadata.ExpiresAt,
             CreatedAt = metadata.CreatedAt
         });
