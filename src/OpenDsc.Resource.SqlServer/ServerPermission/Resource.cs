@@ -172,6 +172,12 @@ public sealed class Resource(JsonSerializerContext context)
         }
     }
 
+    private static readonly PropertyInfo[] ServerPermissionBoolProperties =
+        typeof(ServerPermissionSet)
+            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(p => p.PropertyType == typeof(bool))
+            .ToArray();
+
     public IEnumerable<Schema> Export(Schema? filter)
     {
         var serverInstance = filter?.ServerInstance ?? ".";
@@ -182,7 +188,6 @@ public sealed class Resource(JsonSerializerContext context)
 
         try
         {
-            var results = new List<Schema>();
             var permissions = server.EnumServerPermissions();
 
             foreach (ServerPermissionInfo perm in permissions)
@@ -193,17 +198,15 @@ public sealed class Resource(JsonSerializerContext context)
                     continue;
                 }
 
-                results.Add(new Schema
+                yield return new Schema
                 {
                     ServerInstance = serverInstance,
                     Principal = perm.Grantee,
                     Permission = permissionName,
                     State = perm.PermissionState,
                     Grantor = perm.Grantor
-                });
+                };
             }
-
-            return results;
         }
         finally
         {
@@ -216,11 +219,15 @@ public sealed class Resource(JsonSerializerContext context)
 
     private static string? GetPermissionName(ServerPermissionSet permissionSet)
     {
-        return typeof(ServerPermissionSet)
-            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            .Where(p => p.PropertyType == typeof(bool) && (bool)(p.GetValue(permissionSet) ?? false))
-            .Select(p => p.Name)
-            .FirstOrDefault();
+        foreach (var prop in ServerPermissionBoolProperties)
+        {
+            if ((bool)(prop.GetValue(permissionSet) ?? false))
+            {
+                return prop.Name;
+            }
+        }
+
+        return null;
     }
 
     private static bool HasPermission(ServerPermissionSet permissionSet, string permission)

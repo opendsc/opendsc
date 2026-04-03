@@ -199,6 +199,12 @@ public sealed class Resource(JsonSerializerContext context)
         }
     }
 
+    private static readonly PropertyInfo[] DatabasePermissionBoolProperties =
+        typeof(DatabasePermissionSet)
+            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(p => p.PropertyType == typeof(bool))
+            .ToArray();
+
     public IEnumerable<Schema> Export(Schema? filter)
     {
         var serverInstance = filter?.ServerInstance ?? ".";
@@ -210,7 +216,6 @@ public sealed class Resource(JsonSerializerContext context)
 
         try
         {
-            var results = new List<Schema>();
             var databases = string.IsNullOrEmpty(databaseName)
                 ? server.Databases.Cast<SmoDatabase>().Where(d => !d.IsSystemObject)
                 : server.Databases.Cast<SmoDatabase>().Where(d => string.Equals(d.Name, databaseName, StringComparison.OrdinalIgnoreCase));
@@ -232,7 +237,7 @@ public sealed class Resource(JsonSerializerContext context)
                         continue;
                     }
 
-                    results.Add(new Schema
+                    yield return new Schema
                     {
                         ServerInstance = serverInstance,
                         DatabaseName = database.Name,
@@ -240,11 +245,9 @@ public sealed class Resource(JsonSerializerContext context)
                         Permission = permissionName,
                         State = perm.PermissionState,
                         Grantor = perm.Grantor
-                    });
+                    };
                 }
             }
-
-            return results;
         }
         finally
         {
@@ -257,11 +260,15 @@ public sealed class Resource(JsonSerializerContext context)
 
     private static string? GetPermissionName(DatabasePermissionSet permissionSet)
     {
-        return typeof(DatabasePermissionSet)
-            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            .Where(p => p.PropertyType == typeof(bool) && (bool)(p.GetValue(permissionSet) ?? false))
-            .Select(p => p.Name)
-            .FirstOrDefault();
+        foreach (var prop in DatabasePermissionBoolProperties)
+        {
+            if ((bool)(prop.GetValue(permissionSet) ?? false))
+            {
+                return prop.Name;
+            }
+        }
+
+        return null;
     }
 
     private static bool HasPermission(DatabasePermissionSet permissionSet, string permission)
