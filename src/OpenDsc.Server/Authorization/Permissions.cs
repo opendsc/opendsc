@@ -35,4 +35,24 @@ public static class Permissions
     public const string CompositeConfigurations_AdminOverride = "composite-configurations.admin-override";
     public const string Parameters_AdminOverride = "parameters.admin-override";
     public const string Scopes_AdminOverride = "scopes.admin-override";
+    public static readonly HashSet<string> AllScopes = new(StringComparer.Ordinal)
+    {
+        ServerSettings_Read,
+        ServerSettings_Write,
+        Users_Manage,
+        Groups_Manage,
+        Roles_Manage,
+        RegistrationKeys_Manage,
+        Nodes_Read,
+        Nodes_Write,
+        Nodes_Delete,
+        Nodes_AssignConfiguration,
+        Reports_Read,
+        Reports_ReadAll,
+        Retention_Manage,
+        Configurations_AdminOverride,
+        CompositeConfigurations_AdminOverride,
+        Parameters_AdminOverride,
+        Scopes_AdminOverride,
+    };
 }

@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
+using OpenDsc.Server.Authorization;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
 using OpenDsc.Server.Services;
@@ -216,7 +217,7 @@ public static class AuthenticationEndpoints
         return TypedResults.NoContent();
     }
 
-    private static async Task<Results<Created<CreateTokenResponse>, UnauthorizedHttpResult>> CreateToken(
+    private static async Task<Results<Created<CreateTokenResponse>, ValidationProblem, UnauthorizedHttpResult>> CreateToken(
         [FromBody] CreateTokenRequest request,
         IPersonalAccessTokenService patService,
         IUserContextService userContext)
@@ -225,6 +226,18 @@ public static class AuthenticationEndpoints
         if (userId == null)
         {
             return TypedResults.Unauthorized();
+        }
+
+        var invalidScopes = request.Scopes
+            .Where(s => !Permissions.AllScopes.Contains(s))
+            .ToArray();
+
+        if (invalidScopes.Length > 0)
+        {
+            return TypedResults.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["scopes"] = [$"Invalid scopes: {string.Join(", ", invalidScopes)}"]
+            });
         }
 
         var (token, metadata) = await patService.CreateTokenAsync(
