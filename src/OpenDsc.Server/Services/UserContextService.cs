@@ -28,6 +28,13 @@ public interface IUserContextService
     /// </summary>
     /// <returns>IP address or null.</returns>
     string? GetIpAddress();
+
+    /// <summary>
+    /// Checks whether the current user has a specific permission claim.
+    /// </summary>
+    /// <param name="permission">The permission to check.</param>
+    /// <returns>True if the user has the permission, false otherwise.</returns>
+    bool HasPermission(string permission);
 }
 
 /// <summary>
@@ -52,5 +59,11 @@ public class UserContextService(IHttpContextAccessor httpContextAccessor) : IUse
     public string? GetIpAddress()
     {
         return httpContextAccessor.HttpContext?.Connection.RemoteIpAddress?.ToString();
+    }
+
+    public bool HasPermission(string permission)
+    {
+        return httpContextAccessor.HttpContext?.User
+            .HasClaim("permission", permission) ?? false;
     }
 }

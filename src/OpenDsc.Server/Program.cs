@@ -4,6 +4,7 @@
 
 using System.Runtime.InteropServices;
 
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
 
 using MudBlazor.Services;
@@ -142,7 +143,12 @@ app.UseAntiforgery();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
-app.MapMcp();
+app.MapMcp("/mcp")
+    .RequireAuthorization(policy => policy
+        .RequireAuthenticatedUser()
+        .AddAuthenticationSchemes(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            PersonalAccessTokenHandler.SchemeName));
 app.MapAuthenticationEndpoints();
 app.MapUserEndpoints();
 app.MapGroupEndpoints();

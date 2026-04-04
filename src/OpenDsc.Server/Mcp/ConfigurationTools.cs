@@ -9,18 +9,32 @@ using Microsoft.EntityFrameworkCore;
 
 using ModelContextProtocol.Server;
 
+using OpenDsc.Server.Authorization;
 using OpenDsc.Server.Data;
+using OpenDsc.Server.Services;
 
 namespace OpenDsc.Server.Mcp;
 
 [McpServerToolType]
-public sealed class ConfigurationTools(ServerDbContext db)
+public sealed class ConfigurationTools(
+    ServerDbContext db,
+    IUserContextService userContext,
+    IResourceAuthorizationService authService)
 {
     [McpServerTool(Name = "list_configurations"), Description("List all available DSC configurations with their assigned node counts and version counts.")]
     public async Task<string> ListConfigurations(CancellationToken cancellationToken)
     {
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null)
+        {
+            return "No configurations found.";
+        }
+
+        var readableIds = await authService.GetReadableConfigurationIdsAsync(userId.Value);
+
         var configs = await db.Configurations
             .AsNoTracking()
+            .Where(c => readableIds.Contains(c.Id))
             .Select(c => new
             {
                 c.Id,
@@ -62,9 +76,7 @@ public sealed class ConfigurationTools(ServerDbContext db)
         CancellationToken cancellationToken)
     {
         IQueryable<Entities.Configuration> query = db.Configurations
-            .AsNoTracking()
-            .Include(c => c.Versions)
-            .Include(c => c.NodeConfigurations);
+            .AsNoTracking();
 
         if (Guid.TryParse(configIdentifier, out var configId))
         {
@@ -82,16 +94,24 @@ public sealed class ConfigurationTools(ServerDbContext db)
             return $"Configuration `{configIdentifier}` not found.";
         }
 
+        var userId = userContext.GetCurrentUserId();
+        if (userId == null || !await authService.CanReadConfigurationAsync(userId.Value, config.Id))
+        {
+            return $"Configuration `{configIdentifier}` not found.";
+        }
+
         var assignedNodes = await db.NodeConfigurations
             .AsNoTracking()
             .Where(nc => nc.ConfigurationId == config.Id)
             .Join(db.Nodes.AsNoTracking(), nc => nc.NodeId, n => n.Id, (nc, n) => new { n.Fqdn, n.Status, nc.ActiveVersion })
             .ToListAsync(cancellationToken);
 
-        var versions = config.Versions
+        var versions = await db.ConfigurationVersions
+            .AsNoTracking()
+            .Where(v => v.ConfigurationId == config.Id)
             .OrderByDescending(v => v.CreatedAt)
             .Take(5)
-            .ToList();
+            .ToListAsync(cancellationToken);
 
         var sb = new StringBuilder();
         sb.AppendLine($"## Configuration: {config.Name}");
@@ -147,6 +167,11 @@ public sealed class ConfigurationTools(ServerDbContext db)
     [McpServerTool(Name = "get_unassigned_nodes"), Description("Get nodes that do not have a configuration assigned. These nodes are not being managed.")]
     public async Task<string> GetUnassignedNodes(CancellationToken cancellationToken)
     {
+        if (!userContext.HasPermission(Permissions.Nodes_Read))
+        {
+            return "Access denied. You need the `nodes.read` permission.";
+        }
+
         var nodes = await db.Nodes
             .AsNoTracking()
             .Where(n => n.ConfigurationName == null)

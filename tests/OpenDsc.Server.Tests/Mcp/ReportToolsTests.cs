@@ -6,11 +6,14 @@ using AwesomeAssertions;
 
 using Microsoft.EntityFrameworkCore;
 
+using Moq;
+
 using OpenDsc.Lcm.Contracts;
 using OpenDsc.Schema;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
 using OpenDsc.Server.Mcp;
+using OpenDsc.Server.Services;
 
 using Xunit;
 
@@ -29,7 +32,11 @@ public class ReportToolsTests : IDisposable
             .Options;
 
         _db = new ServerDbContext(options);
-        _tools = new ReportTools(_db);
+
+        var userContext = new Mock<IUserContextService>();
+        userContext.Setup(u => u.HasPermission(It.IsAny<string>())).Returns(true);
+
+        _tools = new ReportTools(_db, userContext.Object);
     }
 
     public void Dispose() => _db.Dispose();

@@ -9,17 +9,24 @@ using Microsoft.EntityFrameworkCore;
 
 using ModelContextProtocol.Server;
 
+using OpenDsc.Server.Authorization;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
+using OpenDsc.Server.Services;
 
 namespace OpenDsc.Server.Mcp;
 
 [McpServerToolType]
-public sealed class NodeTools(ServerDbContext db)
+public sealed class NodeTools(ServerDbContext db, IUserContextService userContext)
 {
     [McpServerTool(Name = "get_non_compliant_nodes"), Description("Get a list of nodes that are not in compliance. Returns nodes with NonCompliant or Error status.")]
     public async Task<string> GetNonCompliantNodes(CancellationToken cancellationToken)
     {
+        if (!userContext.HasPermission(Permissions.Nodes_Read))
+        {
+            return "Access denied. You need the `nodes.read` permission.";
+        }
+
         var nodes = await db.Nodes
             .AsNoTracking()
             .Where(n => n.Status == NodeStatus.NonCompliant || n.Status == NodeStatus.Error)
@@ -54,6 +61,11 @@ public sealed class NodeTools(ServerDbContext db)
         [Description("The compliance status to filter by (Unknown, Compliant, NonCompliant, Error).")] string status,
         CancellationToken cancellationToken)
     {
+        if (!userContext.HasPermission(Permissions.Nodes_Read))
+        {
+            return "Access denied. You need the `nodes.read` permission.";
+        }
+
         if (!Enum.TryParse<NodeStatus>(status, ignoreCase: true, out var nodeStatus))
         {
             return $"Invalid status `{status}`. Valid values are: `Unknown`, `Compliant`, `NonCompliant`, `Error`.";
@@ -93,6 +105,11 @@ public sealed class NodeTools(ServerDbContext db)
         [Description("The node's fully qualified domain name or GUID identifier.")] string nodeIdentifier,
         CancellationToken cancellationToken)
     {
+        if (!userContext.HasPermission(Permissions.Nodes_Read))
+        {
+            return "Access denied. You need the `nodes.read` permission.";
+        }
+
         var settings = await db.ServerSettings.AsNoTracking().FirstOrDefaultAsync(cancellationToken);
         var staleness = settings?.StalenessMultiplier ?? 2.0;
         var now = DateTimeOffset.UtcNow;
@@ -142,16 +159,23 @@ public sealed class NodeTools(ServerDbContext db)
     [McpServerTool(Name = "get_stale_nodes"), Description("Get nodes that have not checked in within the expected interval (stale nodes). A node is stale when its last check-in exceeds ConfigurationModeInterval multiplied by the staleness multiplier.")]
     public async Task<string> GetStaleNodes(CancellationToken cancellationToken)
     {
+        if (!userContext.HasPermission(Permissions.Nodes_Read))
+        {
+            return "Access denied. You need the `nodes.read` permission.";
+        }
+
         var settings = await db.ServerSettings.AsNoTracking().FirstOrDefaultAsync(cancellationToken);
         var staleness = settings?.StalenessMultiplier ?? 2.0;
         var now = DateTimeOffset.UtcNow;
 
-        var nodes = await db.Nodes.AsNoTracking().ToListAsync(cancellationToken);
+        var candidates = await db.Nodes
+            .AsNoTracking()
+            .Where(n => n.LastCheckIn != null && n.ConfigurationModeInterval != null)
+            .Select(n => new { n.Fqdn, n.Status, n.LastCheckIn, n.ConfigurationModeInterval })
+            .ToListAsync(cancellationToken);
 
-        var staleNodes = nodes
-            .Where(n => n.LastCheckIn.HasValue
-                && n.ConfigurationModeInterval.HasValue
-                && (now - n.LastCheckIn.Value) > n.ConfigurationModeInterval.Value * staleness)
+        var staleNodes = candidates
+            .Where(n => (now - n.LastCheckIn!.Value) > n.ConfigurationModeInterval!.Value * staleness)
             .OrderBy(n => n.LastCheckIn)
             .ToList();
 
@@ -168,7 +192,7 @@ public sealed class NodeTools(ServerDbContext db)
 
         foreach (var n in staleNodes)
         {
-            sb.AppendLine($"| {n.Fqdn} | **{n.Status}** | {n.LastCheckIn?.ToString("u") ?? "never"} |");
+            sb.AppendLine($"| {n.Fqdn} | **{n.Status}** | {n.LastCheckIn!.Value.ToString("u")} |");
         }
 
         sb.AppendLine();
@@ -180,23 +204,34 @@ public sealed class NodeTools(ServerDbContext db)
     [McpServerTool(Name = "get_compliance_summary"), Description("Get an overall compliance summary showing the count of nodes in each status category. Use this as a starting point to understand the fleet's health.")]
     public async Task<string> GetComplianceSummary(CancellationToken cancellationToken)
     {
+        if (!userContext.HasPermission(Permissions.Nodes_Read))
+        {
+            return "Access denied. You need the `nodes.read` permission.";
+        }
+
         var settings = await db.ServerSettings.AsNoTracking().FirstOrDefaultAsync(cancellationToken);
         var staleness = settings?.StalenessMultiplier ?? 2.0;
         var now = DateTimeOffset.UtcNow;
 
-        var nodes = await db.Nodes.AsNoTracking().ToListAsync(cancellationToken);
-
-        var statusGroups = nodes
+        var statusGroups = await db.Nodes
+            .AsNoTracking()
             .GroupBy(n => n.Status)
-            .ToDictionary(g => g.Key, g => g.Count());
+            .Select(g => new { Status = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(g => g.Status, g => g.Count, cancellationToken);
 
-        var staleCount = nodes.Count(n =>
-            n.LastCheckIn.HasValue
-            && n.ConfigurationModeInterval.HasValue
-            && (now - n.LastCheckIn.Value) > n.ConfigurationModeInterval.Value * staleness);
+        var totalNodes = statusGroups.Values.Sum();
+
+        var staleCandidates = await db.Nodes
+            .AsNoTracking()
+            .Where(n => n.LastCheckIn != null && n.ConfigurationModeInterval != null)
+            .Select(n => new { n.LastCheckIn, n.ConfigurationModeInterval })
+            .ToListAsync(cancellationToken);
+
+        var staleCount = staleCandidates.Count(n =>
+            (now - n.LastCheckIn!.Value) > n.ConfigurationModeInterval!.Value * staleness);
 
         var sb = new StringBuilder();
-        sb.AppendLine($"## Compliance Summary ({nodes.Count} total nodes)");
+        sb.AppendLine($"## Compliance Summary ({totalNodes} total nodes)");
         sb.AppendLine();
         sb.AppendLine("| Status | Count |");
         sb.AppendLine("|--------|-------|");

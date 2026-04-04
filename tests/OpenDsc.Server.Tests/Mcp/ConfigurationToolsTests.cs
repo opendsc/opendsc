@@ -6,10 +6,13 @@ using AwesomeAssertions;
 
 using Microsoft.EntityFrameworkCore;
 
+using Moq;
+
 using OpenDsc.Lcm.Contracts;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
 using OpenDsc.Server.Mcp;
+using OpenDsc.Server.Services;
 
 using Xunit;
 
@@ -18,7 +21,9 @@ namespace OpenDsc.Server.Tests.Mcp;
 [Trait("Category", "Unit")]
 public class ConfigurationToolsTests : IDisposable
 {
+    private static readonly Guid UserId = Guid.NewGuid();
     private readonly ServerDbContext _db;
+    private readonly Mock<IResourceAuthorizationService> _authService;
     private readonly ConfigurationTools _tools;
 
     public ConfigurationToolsTests()
@@ -28,7 +33,17 @@ public class ConfigurationToolsTests : IDisposable
             .Options;
 
         _db = new ServerDbContext(options);
-        _tools = new ConfigurationTools(_db);
+
+        var userContext = new Mock<IUserContextService>();
+        userContext.Setup(u => u.GetCurrentUserId()).Returns(UserId);
+        userContext.Setup(u => u.HasPermission(It.IsAny<string>())).Returns(true);
+
+        _authService = new Mock<IResourceAuthorizationService>();
+        _authService.Setup(a => a.CanReadConfigurationAsync(UserId, It.IsAny<Guid>())).ReturnsAsync(true);
+        _authService.Setup(a => a.GetReadableConfigurationIdsAsync(UserId))
+            .Returns(() => _db.Configurations.Select(c => c.Id).ToListAsync());
+
+        _tools = new ConfigurationTools(_db, userContext.Object, _authService.Object);
     }
 
     public void Dispose() => _db.Dispose();

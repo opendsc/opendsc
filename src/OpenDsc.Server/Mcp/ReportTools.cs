@@ -9,23 +9,29 @@ using Microsoft.EntityFrameworkCore;
 
 using ModelContextProtocol.Server;
 
+using OpenDsc.Server.Authorization;
 using OpenDsc.Server.Data;
+using OpenDsc.Server.Services;
 
 namespace OpenDsc.Server.Mcp;
 
 [McpServerToolType]
-public sealed class ReportTools(ServerDbContext db)
+public sealed class ReportTools(ServerDbContext db, IUserContextService userContext)
 {
     [McpServerTool(Name = "get_recent_reports"), Description("Get the most recent compliance reports across all nodes. Use this to see recent activity.")]
     public async Task<string> GetRecentReports(
         [Description("Maximum number of reports to return (default: 10, max: 50).")] int? count,
         CancellationToken cancellationToken)
     {
+        if (!userContext.HasPermission(Permissions.Reports_ReadAll))
+        {
+            return "Access denied. You need the `reports.read-all` permission.";
+        }
+
         var take = Math.Clamp(count ?? 10, 1, 50);
 
         var reports = await db.Reports
             .AsNoTracking()
-            .Include(r => r.Node)
             .OrderByDescending(r => r.Timestamp)
             .Take(take)
             .Select(r => new { r.Id, r.NodeId, NodeFqdn = r.Node!.Fqdn, r.Timestamp, Operation = r.Operation.ToString(), r.InDesiredState, r.HadErrors })
@@ -59,6 +65,11 @@ public sealed class ReportTools(ServerDbContext db)
         [Description("Maximum number of reports to return (default: 10, max: 50).")] int? count,
         CancellationToken cancellationToken)
     {
+        if (!userContext.HasPermission(Permissions.Reports_Read))
+        {
+            return "Access denied. You need the `reports.read` permission.";
+        }
+
         var take = Math.Clamp(count ?? 10, 1, 50);
 
         IQueryable<Entities.Node> query = db.Nodes.AsNoTracking();
@@ -113,11 +124,15 @@ public sealed class ReportTools(ServerDbContext db)
         [Description("Maximum number of reports to return (default: 10, max: 50).")] int? count,
         CancellationToken cancellationToken)
     {
+        if (!userContext.HasPermission(Permissions.Reports_ReadAll))
+        {
+            return "Access denied. You need the `reports.read-all` permission.";
+        }
+
         var take = Math.Clamp(count ?? 10, 1, 50);
 
         var reports = await db.Reports
             .AsNoTracking()
-            .Include(r => r.Node)
             .Where(r => !r.InDesiredState || r.HadErrors)
             .OrderByDescending(r => r.Timestamp)
             .Take(take)
