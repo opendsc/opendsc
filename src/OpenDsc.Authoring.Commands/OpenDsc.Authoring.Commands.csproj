@@ -19,6 +19,9 @@
     <Content Include="OpenDsc.Authoring.format.ps1xml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="en-US\**" Condition="Exists('en-US')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>
@@ -28,5 +31,9 @@
   <ItemGroup>
     <ProjectReference Include="..\OpenDsc.Mof\OpenDsc.Mof.csproj" />
   </ItemGroup>
+
+  <Target Name="BuildMamlHelp" BeforeTargets="Publish" Condition="'$(SkipHelpBuild)' != 'true'">
+    <Exec Command="pwsh -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\Build-Help.ps1&quot;" />
+  </Target>
 
 </Project>
