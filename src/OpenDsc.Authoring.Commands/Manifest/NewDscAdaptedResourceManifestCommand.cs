@@ -85,7 +85,7 @@ public sealed class NewDscAdaptedResourceManifestCommand : PSCmdlet
 
             if (dscTypes.Count == 0)
             {
-                WriteWarning($"No class-based DSC resources found in '{Path}'.");
+                WriteWarning($"No class-based DSC resources found in '{resolvedPath}'.");
                 continue;
             }
 

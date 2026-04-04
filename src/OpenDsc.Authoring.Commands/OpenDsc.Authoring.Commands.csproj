@@ -33,7 +33,7 @@
   </ItemGroup>
 
   <Target Name="BuildMamlHelp" BeforeTargets="Publish" Condition="'$(SkipHelpBuild)' != 'true'">
-    <Exec Command="pwsh -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\Build-Help.ps1&quot;" />
+    <Exec Command="pwsh -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)/Build-Help.ps1&quot;" />
   </Target>
 
 </Project>

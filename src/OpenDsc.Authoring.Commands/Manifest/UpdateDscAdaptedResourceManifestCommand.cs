@@ -41,10 +41,7 @@ public sealed class UpdateDscAdaptedResourceManifestCommand : PSCmdlet
         if (!string.IsNullOrEmpty(Description))
         {
             InputObject.Description = Description;
-            if (schema.Contains("description"))
-            {
-                schema["description"] = Description;
-            }
+            schema["description"] = Description;
         }
 
         if (PropertyOverride is not null)
@@ -57,10 +54,22 @@ public sealed class UpdateDscAdaptedResourceManifestCommand : PSCmdlet
             }
 
             var requiredList = new List<string>();
-            if (schema.Contains("required") && schema["required"] is string[] currentRequired)
+            if (schema.Contains("required") && schema["required"] is object[] currentRequired)
             {
-                requiredList.AddRange(currentRequired);
+                foreach (var item in currentRequired)
+                {
+                    if (item is string s)
+                    {
+                        requiredList.Add(s);
+                    }
+                }
             }
+            else if (schema.Contains("required") && schema["required"] is string[] currentRequiredStrings)
+            {
+                requiredList.AddRange(currentRequiredStrings);
+            }
+
+            var requiredChanged = false;
 
             foreach (var pOverride in PropertyOverride)
             {
@@ -110,15 +119,19 @@ public sealed class UpdateDscAdaptedResourceManifestCommand : PSCmdlet
                     if (pOverride.Required.Value && !requiredList.Contains(pOverride.Name))
                     {
                         requiredList.Add(pOverride.Name);
+                        requiredChanged = true;
                     }
-                    else if (!pOverride.Required.Value)
+                    else if (!pOverride.Required.Value && requiredList.Remove(pOverride.Name))
                     {
-                        requiredList.Remove(pOverride.Name);
+                        requiredChanged = true;
                     }
                 }
             }
 
-            schema["required"] = requiredList.ToArray();
+            if (requiredChanged)
+            {
+                schema["required"] = requiredList.ToArray();
+            }
         }
 
         WriteObject(InputObject);
