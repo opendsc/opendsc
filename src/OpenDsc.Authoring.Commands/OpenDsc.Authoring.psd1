@@ -9,7 +9,7 @@
     RootModule           = 'OpenDsc.Authoring.Commands.dll'
     FormatsToProcess     = @('OpenDsc.Authoring.format.ps1xml')
     FunctionsToExport    = @()
-    CmdletsToExport      = @('ConvertFrom-DscConfigurationMof', 'ConvertFrom-DscSchemaMof')
+    CmdletsToExport      = @('ConvertFrom-DscConfigurationMof', 'ConvertFrom-DscSchemaMof', 'ConvertFrom-DscSchemaPSClass')
     VariablesToExport    = @()
     AliasesToExport      = @()
     PrivateData          = @{
