@@ -6,12 +6,14 @@ using System.IO.Compression;
 using System.Text.Json.Serialization;
 
 using Json.Schema.Generation;
+using Json.Schema.Generation.Serialization;
 
 namespace OpenDsc.Resource.Archive.Zip.Compress;
 
 [Title("Zip Compress Schema")]
 [Description("Schema for creating ZIP archives via OpenDsc.")]
 [AdditionalProperties(false)]
+[GenerateJsonSchema]
 public sealed class Schema
 {
     [Required]

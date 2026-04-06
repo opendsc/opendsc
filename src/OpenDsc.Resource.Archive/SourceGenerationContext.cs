@@ -4,6 +4,8 @@
 
 using System.Text.Json.Serialization;
 
+using Json.Schema;
+
 namespace OpenDsc.Resource.Archive;
 
 [JsonSourceGenerationOptions(
@@ -13,6 +15,7 @@ namespace OpenDsc.Resource.Archive;
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 [JsonSerializable(typeof(Zip.Compress.Schema), TypeInfoPropertyName = "ZipCompressSchema")]
 [JsonSerializable(typeof(Zip.Expand.Schema), TypeInfoPropertyName = "ZipExpandSchema")]
+[JsonSerializable(typeof(JsonSchema), TypeInfoPropertyName = "JsonSchema")]
 public partial class SourceGenerationContext : JsonSerializerContext
 {
 }

@@ -4,14 +4,22 @@
 
 using System.Text.Json.Serialization;
 
+using Json.Schema.Generation;
+using Json.Schema.Generation.Serialization;
+
 namespace TestResource.Aot;
 
+[GenerateJsonSchema(PropertyNaming = NamingConvention.CamelCase)]
+[Title("Test Resource Schema")]
+[Description("Schema for testing AOT code generation in OpenDsc.")]
+[AdditionalProperties(false)]
 public sealed class Schema
 {
-    [JsonRequired]
+    [Required]
     public string Path { get; set; } = string.Empty;
 
     [JsonPropertyName("_exist")]
+    [Nullable(false)]
     public bool? Exist { get; set; }
 
     [JsonPropertyName("_inDesiredState")]

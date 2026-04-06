@@ -5,6 +5,7 @@
 using System.Text.Json.Serialization;
 
 using Json.Schema.Generation;
+using Json.Schema.Generation.Serialization;
 
 using SmoUserType = Microsoft.SqlServer.Management.Smo.UserType;
 
@@ -13,6 +14,7 @@ namespace OpenDsc.Resource.SqlServer.DatabaseUser;
 [Title("SQL Server Database User Schema")]
 [Description("Schema for managing SQL Server database users via OpenDsc.")]
 [AdditionalProperties(false)]
+[GenerateJsonSchema]
 public sealed class Schema
 {
     [Description("The name of the SQL Server instance to connect to. Use '.' or '(local)' for the default local instance, or 'servername\\instancename' for named instances.")]

@@ -3,12 +3,14 @@
 // terms of the MIT license.
 
 using Json.Schema.Generation;
+using Json.Schema.Generation.Serialization;
 
 namespace OpenDsc.Resource.Windows.PasswordPolicy;
 
 [Title("Password Policy Schema")]
 [Description("Schema for managing Windows password policy settings via OpenDsc. This is a system-wide singleton resource.")]
 [AdditionalProperties(false)]
+[GenerateJsonSchema]
 public sealed class Schema
 {
     // https://learn.microsoft.com/en-us/windows/client-management/mdm/policy-csp-devicelock#minimumpasswordlength

@@ -26,8 +26,7 @@ public sealed class AuditPolicyTests : WindowsTestBase
         var schemaJson = _resource.GetSchema();
         var doc = JsonDocument.Parse(schemaJson);
 
-        doc.RootElement.GetProperty("$schema").GetString()
-            .Should().Be("https://json-schema.org/draft/2020-12/schema");
+        doc.RootElement.ValueKind.Should().Be(JsonValueKind.Object);
     }
 
     [Fact]

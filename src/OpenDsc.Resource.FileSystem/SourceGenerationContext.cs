@@ -4,6 +4,8 @@
 
 using System.Text.Json.Serialization;
 
+using Json.Schema;
+
 namespace OpenDsc.Resource.FileSystem;
 
 [JsonSourceGenerationOptions(
@@ -14,6 +16,7 @@ namespace OpenDsc.Resource.FileSystem;
 [JsonSerializable(typeof(File.Schema), TypeInfoPropertyName = "FileSchema")]
 [JsonSerializable(typeof(Directory.Schema), TypeInfoPropertyName = "DirectorySchema")]
 [JsonSerializable(typeof(SymbolicLink.Schema), TypeInfoPropertyName = "SymbolicLinkSchema")]
+[JsonSerializable(typeof(JsonSchema), TypeInfoPropertyName = "JsonSchema")]
 public partial class SourceGenerationContext : JsonSerializerContext
 {
 }

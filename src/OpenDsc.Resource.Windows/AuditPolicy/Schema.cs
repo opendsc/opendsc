@@ -3,12 +3,14 @@
 // terms of the MIT license.
 
 using Json.Schema.Generation;
+using Json.Schema.Generation.Serialization;
 
 namespace OpenDsc.Resource.Windows.AuditPolicy;
 
 [Title("OpenDsc.Windows/AuditPolicy")]
 [Description("Manage Windows audit policy for system security event auditing.")]
 [AdditionalProperties(false)]
+[GenerateJsonSchema]
 public sealed class Schema
 {
     [Required]

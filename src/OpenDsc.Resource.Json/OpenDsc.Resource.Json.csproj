@@ -11,4 +11,8 @@
     <PackageReference Include="JsonPath.Net" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="schema.json" />
+  </ItemGroup>
+
 </Project>

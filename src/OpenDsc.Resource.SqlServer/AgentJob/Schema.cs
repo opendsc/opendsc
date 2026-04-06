@@ -5,6 +5,7 @@
 using System.Text.Json.Serialization;
 
 using Json.Schema.Generation;
+using Json.Schema.Generation.Serialization;
 
 using Microsoft.SqlServer.Management.Smo.Agent;
 
@@ -13,6 +14,7 @@ namespace OpenDsc.Resource.SqlServer.AgentJob;
 [Title("SQL Server Agent Job Schema")]
 [Description("Schema for managing SQL Server Agent jobs via OpenDsc.")]
 [AdditionalProperties(false)]
+[GenerateJsonSchema]
 public sealed class Schema
 {
     [Required]

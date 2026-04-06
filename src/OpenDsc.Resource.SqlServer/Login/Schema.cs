@@ -5,6 +5,7 @@
 using System.Text.Json.Serialization;
 
 using Json.Schema.Generation;
+using Json.Schema.Generation.Serialization;
 
 using LoginType = Microsoft.SqlServer.Management.Smo.LoginType;
 
@@ -13,6 +14,7 @@ namespace OpenDsc.Resource.SqlServer.Login;
 [Title("SQL Server Login Schema")]
 [Description("Schema for managing SQL Server logins via OpenDsc.")]
 [AdditionalProperties(false)]
+[GenerateJsonSchema]
 public sealed class Schema
 {
     [Required]

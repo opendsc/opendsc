@@ -5,6 +5,7 @@
 using System.Text.Json.Serialization;
 
 using Json.Schema.Generation;
+using Json.Schema.Generation.Serialization;
 
 using PermissionState = Microsoft.SqlServer.Management.Smo.PermissionState;
 
@@ -13,6 +14,7 @@ namespace OpenDsc.Resource.SqlServer.ObjectPermission;
 [Title("SQL Server Object Permission Schema")]
 [Description("Schema for managing SQL Server object permissions (tables, views, stored procedures, etc.) via OpenDsc.")]
 [AdditionalProperties(false)]
+[GenerateJsonSchema]
 public sealed class Schema
 {
     internal const string DefaultState = "Grant";
