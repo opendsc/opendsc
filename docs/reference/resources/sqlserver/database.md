@@ -1,10 +1,3 @@
----
-description: Reference for the OpenDsc.SqlServer/Database resource, which manages SQL Server databases.
-title: "OpenDsc.SqlServer/Database"
-date: 2026-03-27
-topic: reference
----
-
 # OpenDsc.SqlServer/Database
 
 ## Synopsis

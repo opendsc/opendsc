@@ -1,17 +1,9 @@
----
-description: Reference for the OpenDsc.SqlServer/DatabaseRole resource, which manages SQL Server database roles and membership.
-title: "OpenDsc.SqlServer/DatabaseRole"
-date: 2026-03-27
-topic: reference
----
-
 # OpenDsc.SqlServer/DatabaseRole
 
 ## Synopsis
 
 Manages SQL Server database roles, including role creation, ownership, and
-member management
-with additive or exact (`_purge`) modes.
+member management with additive or exact (`_purge`) modes.
 
 ## Type name
 
@@ -30,20 +22,138 @@ OpenDsc.SqlServer/DatabaseRole
 
 ## Properties
 
-| Property           | Type     | Required | Access     | Description                                                                              |
-| :----------------- | :------- | :------- | :--------- | :--------------------------------------------------------------------------------------- |
-| `serverInstance`   | string   | Yes      | Read/Write | SQL Server instance name.                                                                |
-| `connectUsername`  | string   | No       | Write-Only | Username for SQL authentication.                                                         |
-| `connectPassword`  | string   | No       | Write-Only | Password for SQL authentication.                                                         |
-| `databaseName`     | string   | Yes      | Read/Write | Name of the database containing the role.                                                |
-| `name`             | string   | Yes      | Read/Write | Name of the database role.                                                               |
-| `owner`            | string   | No       | Read/Write | Owner of the role (user or role).                                                        |
-| `members`          | string[] | No       | Read/Write | Members of the role. Values must be unique.                                              |
-| `_purge`           | bool     | No       | Write-Only | When `true`, removes members not in the list. When `false` (default), only adds members. |
-| `createDate`       | datetime | No       | Read-Only  | Creation date.                                                                           |
-| `dateLastModified` | datetime | No       | Read-Only  | Date last modified.                                                                      |
-| `isFixedRole`      | bool     | No       | Read-Only  | Whether this is a fixed database role.                                                   |
-| `_exist`           | bool     | No       | Read/Write | Whether the role should exist. Defaults to `true`.                                       |
+### serverInstance
+
+SQL Server instance name.
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### connectUsername
+
+Username for SQL authentication.
+
+```yaml
+Type: string
+Required: No
+Access: Write-Only
+Default value: None
+```
+
+### connectPassword
+
+Password for SQL authentication.
+
+```yaml
+Type: string
+Required: No
+Access: Write-Only
+Default value: None
+```
+
+### databaseName
+
+Name of the database containing the role.
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### name
+
+Name of the database role.
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### owner
+
+Owner of the role (user or role).
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### members
+
+Members of the role. Values must be unique.
+
+```yaml
+Type: string[]
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### _purge
+
+When `true`, removes members not in the list. When `false` (default), only adds
+members.
+
+```yaml
+Type: bool
+Required: No
+Access: Write-Only
+Default value: false
+```
+
+### createDate
+
+Creation date.
+
+```yaml
+Type: datetime
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+### dateLastModified
+
+Date last modified.
+
+```yaml
+Type: datetime
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+### isFixedRole
+
+Whether this is a fixed database role.
+
+```yaml
+Type: bool
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+### _exist
+
+Whether the role should exist.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: true
+```
 
 ## Examples
 

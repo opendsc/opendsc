@@ -1,17 +1,9 @@
----
-description: Reference for the OpenDsc.SqlServer/DatabaseUser resource, which manages SQL Server database users.
-title: "OpenDsc.SqlServer/DatabaseUser"
-date: 2026-03-27
-topic: reference
----
-
 # OpenDsc.SqlServer/DatabaseUser
 
 ## Synopsis
 
 Manages SQL Server database users, including SQL users mapped to logins, Windows
-users,
-contained database users, and certificate or asymmetric key mapped users.
+users, contained database users, and certificate or asymmetric key mapped users.
 
 ## Type name
 
@@ -30,27 +22,214 @@ OpenDsc.SqlServer/DatabaseUser
 
 ## Properties
 
-| Property             | Type     | Required | Access     | Description                                          |
-| :------------------- | :------- | :------- | :--------- | :--------------------------------------------------- |
-| `serverInstance`     | string   | No       | Read/Write | SQL Server instance name.                            |
-| `connectUsername`    | string   | No       | Write-Only | Username for SQL authentication.                     |
-| `connectPassword`    | string   | No       | Write-Only | Password for SQL authentication.                     |
-| `databaseName`       | string   | No       | Read/Write | Name of the database containing the user.            |
-| `name`               | string   | No       | Read/Write | Name of the database user.                           |
-| `userType`           | string   | No       | Read/Write | User type (see table below).                         |
-| `login`              | string   | No       | Read/Write | Login mapped to this user. Required for `SqlUser`.   |
-| `defaultSchema`      | string   | No       | Read/Write | Default schema. Defaults to `dbo`.                   |
-| `password`           | string   | No       | Write-Only | Password for contained database users.               |
-| `asymmetricKey`      | string   | No       | Read/Write | Asymmetric key name (for `AsymmetricKeyMappedUser`). |
-| `certificate`        | string   | No       | Read/Write | Certificate name (for `CertificateMappedUser`).      |
-| `defaultLanguage`    | string   | No       | Read-Only  | Default language.                                    |
-| `createDate`         | datetime | No       | Read-Only  | Creation date.                                       |
-| `dateLastModified`   | datetime | No       | Read-Only  | Date last modified.                                  |
-| `hasDBAccess`        | bool     | No       | Read-Only  | Whether the user has database access.                |
-| `isSystemObject`     | bool     | No       | Read-Only  | Whether this is a system user.                       |
-| `sid`                | string   | No       | Read-Only  | Security identifier (SID).                           |
-| `authenticationType` | string   | No       | Read-Only  | Authentication type.                                 |
-| `_exist`             | bool     | No       | Read/Write | Whether the user should exist. Defaults to `true`.   |
+### serverInstance
+
+SQL Server instance name.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### connectUsername
+
+Username for SQL authentication.
+
+```yaml
+Type: string
+Required: No
+Access: Write-Only
+Default value: None
+```
+
+### connectPassword
+
+Password for SQL authentication.
+
+```yaml
+Type: string
+Required: No
+Access: Write-Only
+Default value: None
+```
+
+### databaseName
+
+Name of the database containing the user.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### name
+
+Name of the database user.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### userType
+
+User type. See [User types](#user-types) below.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### login
+
+Login mapped to this user. Required for `SqlUser`.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### defaultSchema
+
+Default schema for the user.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: dbo
+```
+
+### password
+
+Password for contained database users.
+
+```yaml
+Type: string
+Required: No
+Access: Write-Only
+Default value: None
+```
+
+### asymmetricKey
+
+Asymmetric key name. Used for `AsymmetricKeyMappedUser`.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### certificate
+
+Certificate name. Used for `CertificateMappedUser`.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### defaultLanguage
+
+Default language.
+
+```yaml
+Type: string
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+### createDate
+
+Creation date.
+
+```yaml
+Type: datetime
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+### dateLastModified
+
+Date last modified.
+
+```yaml
+Type: datetime
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+### hasDBAccess
+
+Whether the user has database access.
+
+```yaml
+Type: bool
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+### isSystemObject
+
+Whether this is a system user.
+
+```yaml
+Type: bool
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+### sid
+
+Security identifier (SID).
+
+```yaml
+Type: string
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+### authenticationType
+
+Authentication type.
+
+```yaml
+Type: string
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+### _exist
+
+Whether the user should exist.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: true
+```
 
 ### User types
 

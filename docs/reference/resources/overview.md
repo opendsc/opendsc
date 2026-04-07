@@ -1,12 +1,3 @@
----
-description: >-
-  Reference documentation for all OpenDsc Resources, organized by platform area. Each resource
-  includes its type name, capabilities, and key properties.
-title: OpenDsc resource reference
-date: 2026-03-27
-topic: reference
----
-
 # OpenDsc resource reference
 
 This document lists all built-in OpenDsc Resources organized by platform area.

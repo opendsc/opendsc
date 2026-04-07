@@ -1,19 +1,11 @@
----
-description: Reference for the OpenDsc.Json/Value resource, which manages JSON values at JSONPath locations.
-title: "OpenDsc.Json/Value"
-date: 2026-03-27
-topic: reference
----
-
 # OpenDsc.Json/Value
 
 ## Synopsis
 
 Manages JSON values at specific JSONPath locations within JSON files. Supports
-setting, reading,
-and removing values of any JSON type (string, number, boolean, null, object, or
-array). Parent
-paths are created recursively when they don't exist.
+setting, reading, and removing values of any JSON type (string, number, boolean,
+null, object, or array). Parent paths are created recursively when they don't
+exist.
 
 ## Type name
 
@@ -32,12 +24,49 @@ OpenDsc.Json/Value
 
 ## Properties
 
-| Property   | Type   | Required | Access     | Description                                                                  |
-| :--------- | :----- | :------- | :--------- | :--------------------------------------------------------------------------- |
-| `path`     | string | Yes      | Read/Write | Absolute file path to the JSON document.                                     |
-| `jsonPath` | string | Yes      | Read/Write | JSONPath expression to locate the value. Must start with `$`.                |
-| `value`    | any    | No       | Read/Write | JSON value to set. Can be a string, number, boolean, null, object, or array. |
-| `_exist`   | bool   | No       | Read/Write | Whether the value should exist. Defaults to `true`.                          |
+### path
+
+Absolute file path to the JSON document.
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### jsonPath
+
+JSONPath expression to locate the value. Must start with `$`.
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### value
+
+JSON value to set. Can be a string, number, boolean, null, object, or array.
+
+```yaml
+Type: any
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### _exist
+
+Whether the value should exist.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: true
+```
 
 ## Examples
 

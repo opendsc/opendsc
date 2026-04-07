@@ -1,12 +1,3 @@
----
-description: >-
-  Understand the OpenDsc Pull Server architecture, including node registration, configuration
-  delivery, parameter merging, compliance reporting, and the web UI.
-title: Pull Server overview
-date: 2026-03-27
-topic: concept
----
-
 # Pull Server overview
 
 The OpenDsc Pull Server is an ASP.NET Core application that provides centralized

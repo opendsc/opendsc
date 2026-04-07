@@ -1,17 +1,9 @@
----
-description: Reference for the OpenDsc.FileSystem/File resource, which manages files across platforms.
-title: "OpenDsc.FileSystem/File"
-date: 2026-03-27
-topic: reference
----
-
 # OpenDsc.FileSystem/File
 
 ## Synopsis
 
 Manages files on the local filesystem. Supports creating files with specified
-content and
-removing files. Works on Windows, Linux, and macOS.
+content and removing files. Works on Windows, Linux, and macOS.
 
 ## Type name
 
@@ -30,11 +22,38 @@ OpenDsc.FileSystem/File
 
 ## Properties
 
-| Property  | Type   | Required | Access     | Description                                        |
-| :-------- | :----- | :------- | :--------- | :------------------------------------------------- |
-| `path`    | string | Yes      | Read/Write | Path to the file.                                  |
-| `content` | string | No       | Read/Write | Content of the file.                               |
-| `_exist`  | bool   | No       | Read/Write | Whether the file should exist. Defaults to `true`. |
+### path
+
+Path to the file.
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### content
+
+Content of the file.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### _exist
+
+Whether the file should exist.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: true
+```
 
 ## Examples
 

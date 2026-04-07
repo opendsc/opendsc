@@ -1,17 +1,9 @@
----
-description: Reference for the OpenDsc.SqlServer/ObjectPermission resource, which manages SQL Server object-level permissions.
-title: "OpenDsc.SqlServer/ObjectPermission"
-date: 2026-03-27
-topic: reference
----
-
 # OpenDsc.SqlServer/ObjectPermission
 
 ## Synopsis
 
 Manages SQL Server object-level permissions on tables, views, stored procedures,
-and other
-database objects. Supports Grant, Grant With Grant, and Deny states.
+and other database objects. Supports Grant, Grant With Grant, and Deny states.
 
 ## Type name
 
@@ -30,20 +22,137 @@ OpenDsc.SqlServer/ObjectPermission
 
 ## Properties
 
-| Property          | Type   | Required | Access     | Description                                                    |
-| :---------------- | :----- | :------- | :--------- | :------------------------------------------------------------- |
-| `serverInstance`  | string | Yes      | Read/Write | SQL Server instance name.                                      |
-| `connectUsername` | string | No       | Write-Only | Username for SQL authentication.                               |
-| `connectPassword` | string | No       | Write-Only | Password for SQL authentication.                               |
-| `databaseName`    | string | Yes      | Read/Write | Name of the database.                                          |
-| `schemaName`      | string | No       | Read/Write | Schema of the object. Defaults to `dbo`.                       |
-| `objectType`      | string | Yes      | Read/Write | Type of database object (see table below).                     |
-| `objectName`      | string | Yes      | Read/Write | Name of the database object.                                   |
-| `principal`       | string | Yes      | Read/Write | Name of the principal (user or role).                          |
-| `permission`      | string | Yes      | Read/Write | Object permission (see table below).                           |
-| `state`           | string | No       | Read/Write | Permission state: `Grant` (default), `GrantWithGrant`, `Deny`. |
-| `grantor`         | string | No       | Read-Only  | Grantor of the permission.                                     |
-| `_exist`          | bool   | No       | Read/Write | Whether the permission should exist. Defaults to `true`.       |
+### serverInstance
+
+SQL Server instance name.
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### connectUsername
+
+Username for SQL authentication.
+
+```yaml
+Type: string
+Required: No
+Access: Write-Only
+Default value: None
+```
+
+### connectPassword
+
+Password for SQL authentication.
+
+```yaml
+Type: string
+Required: No
+Access: Write-Only
+Default value: None
+```
+
+### databaseName
+
+Name of the database.
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### schemaName
+
+Schema of the object.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: dbo
+```
+
+### objectType
+
+Type of database object. See [Object types](#object-types) below.
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### objectName
+
+Name of the database object.
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### principal
+
+Name of the principal (user or role).
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### permission
+
+Object permission. See [Permissions](#permissions) below.
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### state
+
+Permission state. Accepts `Grant`, `GrantWithGrant`, or `Deny`.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: Grant
+```
+
+### grantor
+
+Grantor of the permission.
+
+```yaml
+Type: string
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+### _exist
+
+Whether the permission should exist.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: true
+```
 
 ### Object types
 

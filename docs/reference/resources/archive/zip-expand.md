@@ -1,17 +1,9 @@
----
-description: Reference for the OpenDsc.Archive.Zip/Expand resource, which extracts ZIP archives.
-title: "OpenDsc.Archive.Zip/Expand"
-date: 2026-03-27
-topic: reference
----
-
 # OpenDsc.Archive.Zip/Expand
 
 ## Synopsis
 
 Extracts ZIP archives to a destination directory. Verifies whether the
-destination contains all
-files from the archive with matching checksums.
+destination contains all files from the archive with matching checksums.
 
 ## Type name
 
@@ -31,11 +23,38 @@ OpenDsc.Archive.Zip/Expand
 
 ## Properties
 
-| Property          | Type   | Required | Access     | Description                                           |
-| :---------------- | :----- | :------- | :--------- | :---------------------------------------------------- |
-| `archivePath`     | string | Yes      | Read/Write | Path to the ZIP archive file.                         |
-| `destinationPath` | string | Yes      | Read/Write | Destination directory to extract into.                |
-| `_inDesiredState` | bool   | No       | Read-Only  | Whether the destination matches the archive contents. |
+### archivePath
+
+Path to the ZIP archive file.
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### destinationPath
+
+Destination directory to extract into.
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### _inDesiredState
+
+Whether the destination matches the archive contents.
+
+```yaml
+Type: bool
+Required: No
+Access: Read-Only
+Default value: None
+```
 
 ## Examples
 

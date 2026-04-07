@@ -1,12 +1,3 @@
----
-description: >-
-  Set up the OpenDsc Pull Server for centralized configuration management. This tutorial covers
-  installation, first sign-in, registration keys, and deploying your first configuration.
-title: "Tutorial: Set up the Pull Server"
-date: 2026-03-27
-topic: tutorial
----
-
 # Tutorial: Set up the Pull Server
 
 This tutorial walks you through installing and configuring the OpenDsc Pull

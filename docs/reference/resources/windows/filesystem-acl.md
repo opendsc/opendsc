@@ -1,10 +1,3 @@
----
-description: Reference for the OpenDsc.Windows.FileSystem/AccessControlList resource, which manages Windows file and directory permissions.
-title: "OpenDsc.Windows.FileSystem/AccessControlList"
-date: 2026-03-27
-topic: reference
----
-
 # OpenDsc.Windows.FileSystem/AccessControlList
 
 ## Synopsis

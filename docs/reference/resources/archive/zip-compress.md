@@ -1,17 +1,9 @@
----
-description: Reference for the OpenDsc.Archive.Zip/Compress resource, which creates ZIP archives.
-title: "OpenDsc.Archive.Zip/Compress"
-date: 2026-03-27
-topic: reference
----
-
 # OpenDsc.Archive.Zip/Compress
 
 ## Synopsis
 
 Creates ZIP archives from a source directory or file. Supports configurable
-compression levels
-and verifies whether the archive contents match the source.
+compression levels and verifies whether the archive contents match the source.
 
 ## Type name
 
@@ -31,12 +23,50 @@ OpenDsc.Archive.Zip/Compress
 
 ## Properties
 
-| Property           | Type   | Required | Access     | Description                                                         |
-| :----------------- | :----- | :------- | :--------- | :------------------------------------------------------------------ |
-| `archivePath`      | string | Yes      | Read/Write | Path to the ZIP archive file to create.                             |
-| `sourcePath`       | string | Yes      | Read/Write | Path to the source directory or file.                               |
-| `compressionLevel` | string | No       | Read/Write | Compression level: `Optimal` (default), `Fastest`, `NoCompression`. |
-| `_inDesiredState`  | bool   | No       | Read-Only  | Whether the archive contents match the source.                      |
+### archivePath
+
+Path to the ZIP archive file to create.
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### sourcePath
+
+Path to the source directory or file.
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### compressionLevel
+
+Compression level to use when creating the archive. Accepted values are
+`Optimal` , `Fastest`, and `NoCompression`.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: Optimal
+```
+
+### _inDesiredState
+
+Whether the archive contents match the source.
+
+```yaml
+Type: bool
+Required: No
+Access: Read-Only
+Default value: None
+```
 
 ## Examples
 

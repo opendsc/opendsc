@@ -1,12 +1,3 @@
----
-description: >-
-  Configure version retention policies in the OpenDsc Pull Server to automatically clean up old
-  configuration and parameter versions.
-title: "How to: Configure retention policies"
-date: 2026-03-27
-topic: how-to
----
-
 # Configure retention policies
 
 The Pull Server stores every version of configurations and parameters. Over

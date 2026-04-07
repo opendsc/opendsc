@@ -1,17 +1,9 @@
----
-description: Reference for the OpenDsc.SqlServer/Configuration resource, which manages SQL Server instance configuration options.
-title: "OpenDsc.SqlServer/Configuration"
-date: 2026-03-27
-topic: reference
----
-
 # OpenDsc.SqlServer/Configuration
 
 ## Synopsis
 
-Manages SQL Server instance configuration options (equivalent to
-`sp_configure`). Covers
-memory, parallelism, security, and advanced server options.
+Manages SQL Server instance configuration options (equivalent to `sp_configure`).
+Covers memory, parallelism, security, and advanced server options.
 
 ## Type name
 
@@ -32,83 +24,459 @@ OpenDsc.SqlServer/Configuration
 
 ### Connection properties
 
-| Property          | Type   | Required | Access     | Description                      |
-| :---------------- | :----- | :------- | :--------- | :------------------------------- |
-| `serverInstance`  | string | No       | Read/Write | SQL Server instance name.        |
-| `connectUsername` | string | No       | Write-Only | Username for SQL authentication. |
-| `connectPassword` | string | No       | Write-Only | Password for SQL authentication. |
+#### serverInstance
+
+SQL Server instance name.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### connectUsername
+
+Username for SQL authentication.
+
+```yaml
+Type: string
+Required: No
+Access: Write-Only
+Default value: None
+```
+
+#### connectPassword
+
+Password for SQL authentication.
+
+```yaml
+Type: string
+Required: No
+Access: Write-Only
+Default value: None
+```
 
 ### Memory settings
 
-| Property            | Type | Required | Access     | Description                                              |
-| :------------------ | :--- | :------- | :--------- | :------------------------------------------------------- |
-| `maxServerMemory`   | int  | No       | Read/Write | Maximum server memory in MB. `2147483647` for unlimited. |
-| `minServerMemory`   | int  | No       | Read/Write | Minimum server memory in MB.                             |
-| `minMemoryPerQuery` | int  | No       | Read/Write | Minimum memory per query in KB.                          |
+#### maxServerMemory
+
+Maximum server memory in MB. Use `2147483647` for unlimited.
+
+```yaml
+Type: int
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### minServerMemory
+
+Minimum server memory in MB.
+
+```yaml
+Type: int
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### minMemoryPerQuery
+
+Minimum memory per query in KB.
+
+```yaml
+Type: int
+Required: No
+Access: Read/Write
+Default value: None
+```
 
 ### Parallelism settings
 
-| Property                      | Type | Required | Access     | Description                                      |
-| :---------------------------- | :--- | :------- | :--------- | :----------------------------------------------- |
-| `maxDegreeOfParallelism`      | int  | No       | Read/Write | Max degree of parallelism. `0` = all processors. |
-| `costThresholdForParallelism` | int  | No       | Read/Write | Cost threshold for parallel plans.               |
+#### maxDegreeOfParallelism
+
+Max degree of parallelism. Use `0` for all processors.
+
+```yaml
+Type: int
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### costThresholdForParallelism
+
+Cost threshold for parallel plans.
+
+```yaml
+Type: int
+Required: No
+Access: Read/Write
+Default value: None
+```
 
 ### Network settings
 
-| Property             | Type | Required | Access     | Description                                        |
-|:---------------------|:-----|:---------|:-----------|:---------------------------------------------------|
-| `networkPacketSize`  | int  | No       | Read/Write | Network packet size in bytes (512–32767).          |
-| `remoteLoginTimeout` | int  | No       | Read/Write | Remote login timeout in seconds. `0` = infinite.   |
-| `remoteQueryTimeout` | int  | No       | Read/Write | Remote query timeout in seconds. `0` = no timeout. |
+#### networkPacketSize
+
+Network packet size in bytes (512–32767).
+
+```yaml
+Type: int
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### remoteLoginTimeout
+
+Remote login timeout in seconds. Use `0` for infinite.
+
+```yaml
+Type: int
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### remoteQueryTimeout
+
+Remote query timeout in seconds. Use `0` for no timeout.
+
+```yaml
+Type: int
+Required: No
+Access: Read/Write
+Default value: None
+```
 
 ### Security and feature settings
 
-| Property                          | Type | Required | Access     | Description                               |
-| :-------------------------------- | :--- | :------- | :--------- | :---------------------------------------- |
-| `xpCmdShellEnabled`               | bool | No       | Read/Write | Enable `xp_cmdshell`.                     |
-| `databaseMailEnabled`             | bool | No       | Read/Write | Enable Database Mail XPs.                 |
-| `agentXpsEnabled`                 | bool | No       | Read/Write | Enable SQL Server Agent XPs.              |
-| `oleAutomationProceduresEnabled`  | bool | No       | Read/Write | Enable OLE Automation procedures.         |
-| `adHocDistributedQueriesEnabled`  | bool | No       | Read/Write | Enable ad hoc distributed queries.        |
-| `clrEnabled`                      | bool | No       | Read/Write | Enable CLR integration.                   |
-| `remoteDacConnectionsEnabled`     | bool | No       | Read/Write | Enable remote DAC connections.            |
-| `containmentEnabled`              | bool | No       | Read/Write | Enable contained database authentication. |
-| `defaultBackupCompression`        | bool | No       | Read/Write | Default backup compression.               |
-| `defaultBackupChecksum`           | bool | No       | Read/Write | Default backup checksum.                  |
-| `c2AuditMode`                     | bool | No       | Read/Write | Enable C2 audit mode.                     |
-| `commonCriteriaComplianceEnabled` | bool | No       | Read/Write | Enable Common Criteria compliance.        |
-| `crossDbOwnershipChaining`        | bool | No       | Read/Write | Cross-database ownership chaining.        |
-| `defaultTraceEnabled`             | bool | No       | Read/Write | Enable default trace.                     |
+#### xpCmdShellEnabled
+
+Enable `xp_cmdshell`.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### databaseMailEnabled
+
+Enable Database Mail XPs.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### agentXpsEnabled
+
+Enable SQL Server Agent XPs.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### oleAutomationProceduresEnabled
+
+Enable OLE Automation procedures.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### adHocDistributedQueriesEnabled
+
+Enable ad hoc distributed queries.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### clrEnabled
+
+Enable CLR integration.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### remoteDacConnectionsEnabled
+
+Enable remote DAC connections.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### containmentEnabled
+
+Enable contained database authentication.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### defaultBackupCompression
+
+Default backup compression.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### defaultBackupChecksum
+
+Default backup checksum.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### c2AuditMode
+
+Enable C2 audit mode.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### commonCriteriaComplianceEnabled
+
+Enable Common Criteria compliance.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### crossDbOwnershipChaining
+
+Cross-database ownership chaining.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### defaultTraceEnabled
+
+Enable default trace.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
 
 ### Performance settings
 
-| Property                        | Type | Required | Access     | Description                                           |
-| :------------------------------ | :--- | :------- | :--------- | :---------------------------------------------------- |
-| `queryGovernorCostLimit`        | int  | No       | Read/Write | Max estimated query cost. `0` = no limit.             |
-| `queryWait`                     | int  | No       | Read/Write | Query wait in seconds. `-1` = auto.                   |
-| `optimizeAdhocWorkloads`        | bool | No       | Read/Write | Optimize plan cache for ad hoc workloads.             |
-| `nestedTriggers`                | bool | No       | Read/Write | Allow nested triggers (up to 32 levels).              |
-| `serverTriggerRecursionEnabled` | bool | No       | Read/Write | Server-level trigger recursion.                       |
-| `disallowResultsFromTriggers`   | bool | No       | Read/Write | Prevent triggers from returning result sets.          |
-| `blockedProcessThreshold`       | int  | No       | Read/Write | Blocked process threshold in seconds. `0` = disabled. |
-| `recoveryInterval`              | int  | No       | Read/Write | Recovery interval in minutes. `0` = automatic.        |
-| `fillFactor`                    | int  | No       | Read/Write | Default fill factor. `0` or `100` = full pages.       |
-| `userConnections`               | int  | No       | Read/Write | Max user connections. `0` = unlimited.                |
-| `cursorThreshold`               | int  | No       | Read/Write | Rows for async cursor. `-1` = all sync.               |
-| `filestreamAccessLevel`         | int  | No       | Read/Write | FILESTREAM access level: `0`, `1`, or `2`.            |
-| `maxWorkerThreads`              | int  | No       | Read/Write | Max worker threads. `0` = auto.                       |
+#### queryGovernorCostLimit
+
+Max estimated query cost. Use `0` for no limit.
+
+```yaml
+Type: int
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### queryWait
+
+Query wait in seconds. Use `-1` for auto.
+
+```yaml
+Type: int
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### optimizeAdhocWorkloads
+
+Optimize plan cache for ad hoc workloads.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### nestedTriggers
+
+Allow nested triggers (up to 32 levels).
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### serverTriggerRecursionEnabled
+
+Server-level trigger recursion.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### disallowResultsFromTriggers
+
+Prevent triggers from returning result sets.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### blockedProcessThreshold
+
+Blocked process threshold in seconds. Use `0` to disable.
+
+```yaml
+Type: int
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### recoveryInterval
+
+Recovery interval in minutes. Use `0` for automatic.
+
+```yaml
+Type: int
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### fillFactor
+
+Default fill factor. Use `0` or `100` for full pages.
+
+```yaml
+Type: int
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### userConnections
+
+Max user connections. Use `0` for unlimited.
+
+```yaml
+Type: int
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### cursorThreshold
+
+Rows for async cursor. Use `-1` for all synchronous.
+
+```yaml
+Type: int
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### filestreamAccessLevel
+
+FILESTREAM access level. Accepts `0`, `1`, or `2`.
+
+```yaml
+Type: int
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### maxWorkerThreads
+
+Max worker threads. Use `0` for auto.
+
+```yaml
+Type: int
+Required: No
+Access: Read/Write
+Default value: None
+```
 
 ### Advanced settings
 
-| Property              | Type | Required | Access     | Description                              |
-| :-------------------- | :--- | :------- | :--------- | :--------------------------------------- |
-| `showAdvancedOptions` | bool | No       | Read/Write | Show advanced options in `sp_configure`. |
+#### showAdvancedOptions
+
+Show advanced options in `sp_configure`.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
 
 ### Read-only properties
 
-| Property                      | Type | Access    | Description                                     |
-| :---------------------------- | :--- | :-------- | :---------------------------------------------- |
-| `showAdvancedOptionsRunValue` | bool | Read-Only | Current running value of show advanced options. |
+#### showAdvancedOptionsRunValue
+
+Current running value of show advanced options.
+
+```yaml
+Type: bool
+Required: No
+Access: Read-Only
+Default value: None
+```
 
 ## Examples
 

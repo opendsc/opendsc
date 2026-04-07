@@ -1,11 +1,3 @@
----
-description: >-
-  Reference for the OpenDsc.Windows/User resource, which manages local Windows user accounts.
-title: "OpenDsc.Windows/User"
-date: 2026-03-27
-topic: reference
----
-
 # OpenDsc.Windows/User
 
 ## Synopsis
@@ -30,16 +22,93 @@ OpenDsc.Windows/User
 
 ## Properties
 
-| Property                   | Type   | Required | Access     | Description                                        |
-| :------------------------- | :----- | :------- | :--------- | :------------------------------------------------- |
-| `userName`                 | string | Yes      | Read/Write | The name of the user account.                      |
-| `fullName`                 | string | No       | Read/Write | The full display name of the user.                 |
-| `description`              | string | No       | Read/Write | A description of the user account.                 |
-| `password`                 | string | No       | Write-only | The password for the account.                      |
-| `disabled`                 | bool   | No       | Read/Write | Whether the account is disabled.                   |
-| `passwordNeverExpires`     | bool   | No       | Read/Write | Whether the password is set to never expire.       |
-| `userMayNotChangePassword` | bool   | No       | Read/Write | Whether the user can change their password.        |
-| `_exist`                   | bool   | No       | Read/Write | Whether the user should exist. Defaults to `true`. |
+### userName
+
+The name of the user account.
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### fullName
+
+The full display name of the user.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### description
+
+A description of the user account.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### password
+
+The password for the account.
+
+```yaml
+Type: string
+Required: No
+Access: Write-Only
+Default value: None
+```
+
+### disabled
+
+Whether the account is disabled.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### passwordNeverExpires
+
+Whether the password is set to never expire.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### userMayNotChangePassword
+
+Whether the user can change their password.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### _exist
+
+Whether the user should exist.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: true
+```
 
 > [!NOTE]
 > This resource requires administrator privileges for all write operations.

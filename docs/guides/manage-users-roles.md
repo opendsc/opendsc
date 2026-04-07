@@ -1,12 +1,3 @@
----
-description: >-
-  Manage users, groups, and role-based access control in the OpenDsc Pull Server web UI
-  and REST API.
-title: "How to: Manage users and roles"
-date: 2026-03-27
-topic: how-to
----
-
 # Manage users and roles
 
 The Pull Server includes role-based access control (RBAC) with users, groups,

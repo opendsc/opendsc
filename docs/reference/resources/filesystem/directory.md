@@ -1,18 +1,10 @@
----
-description: Reference for the OpenDsc.FileSystem/Directory resource, which manages directories across platforms.
-title: "OpenDsc.FileSystem/Directory"
-date: 2026-03-27
-topic: reference
----
-
 # OpenDsc.FileSystem/Directory
 
 ## Synopsis
 
 Manages directories on the local filesystem. Supports creating directories,
-copying directory
-contents from a source, and removing directories. Works on Windows, Linux, and
-macOS.
+copying directory contents from a source, and removing directories. Works on
+Windows, Linux, and macOS.
 
 ## Type name
 
@@ -32,12 +24,49 @@ OpenDsc.FileSystem/Directory
 
 ## Properties
 
-| Property          | Type   | Required | Access     | Description                                             |
-| :---------------- | :----- | :------- | :--------- | :------------------------------------------------------ |
-| `path`            | string | Yes      | Read/Write | Path to the directory.                                  |
-| `sourcePath`      | string | No       | Read/Write | Source directory to copy contents from.                 |
-| `_exist`          | bool   | No       | Read/Write | Whether the directory should exist. Defaults to `true`. |
-| `_inDesiredState` | bool   | No       | Read-Only  | Whether the directory is in the desired state.          |
+### path
+
+Path to the directory.
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### sourcePath
+
+Source directory to copy contents from.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### _exist
+
+Whether the directory should exist.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: true
+```
+
+### _inDesiredState
+
+Whether the directory is in the desired state.
+
+```yaml
+Type: bool
+Required: No
+Access: Read-Only
+Default value: None
+```
 
 ## Examples
 

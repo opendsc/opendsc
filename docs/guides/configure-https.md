@@ -1,12 +1,3 @@
----
-description: >-
-  Configure HTTPS with self-signed certificates for the OpenDsc Pull Server to enable secure
-  communication with managed nodes using mutual TLS (mTLS).
-title: "How to: Configure HTTPS with self-signed certificates"
-date: 2026-03-27
-topic: how-to
----
-
 # Configure HTTPS with self-signed certificates
 
 This guide walks you through configuring the OpenDsc Pull Server to use HTTPS

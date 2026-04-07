@@ -1,20 +1,13 @@
----
-description: Reference for the OpenDsc.Posix.FileSystem/Permission resource, which manages POSIX file permissions, ownership, and group.
-title: "OpenDsc.Posix.FileSystem/Permission"
-date: 2026-03-27
-topic: reference
----
-
 # OpenDsc.Posix.FileSystem/Permission
 
 ## Synopsis
 
 Manages POSIX file and directory permissions (mode, owner, group) on Linux and
-macOS.
-Equivalent to the `chmod` and `chown` commands.
+macOS. Equivalent to the `chmod` and `chown` commands.
 
 > [!IMPORTANT]
-> This resource is only available on Linux and macOS. It is not supported on Windows.
+> This resource is only available on Linux and macOS. It is not supported on
+> Windows.
 
 ## Type name
 
@@ -33,12 +26,50 @@ OpenDsc.Posix.FileSystem/Permission
 
 ## Properties
 
-| Property | Type   | Required | Access     | Description                                                                                    |
-| :------- | :----- | :------- | :--------- | :--------------------------------------------------------------------------------------------- |
-| `path`   | string | Yes      | Read/Write | Full path to the file or directory. Must start with `/`.                                       |
-| `mode`   | string | No       | Read/Write | File mode in octal notation (e.g., `0644`, `0755`, `644`). Accepts 3 or 4 digit octal strings. |
-| `owner`  | string | No       | Read/Write | Owner. Accepts username (e.g., `root`) or numeric UID (e.g., `0`).                             |
-| `group`  | string | No       | Read/Write | Group. Accepts group name (e.g., `wheel`) or numeric GID (e.g., `0`).                          |
+### path
+
+Full path to the file or directory. Must start with `/`.
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### mode
+
+File mode in octal notation (e.g., `0644`, `0755`, `644`). Accepts 3 or 4 digit
+octal strings.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### owner
+
+Owner. Accepts username (e.g., `root`) or numeric UID (e.g., `0`).
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### group
+
+Group. Accepts group name (e.g., `wheel`) or numeric GID (e.g., `0`).
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
 
 ### Common mode values
 

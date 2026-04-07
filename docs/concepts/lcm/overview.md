@@ -1,12 +1,3 @@
----
-description: >-
-  Understand the OpenDsc Local Configuration Manager (LCM), its operational modes, configuration
-  sources, and how it monitors and remediates configuration drift.
-title: Local Configuration Manager (LCM)
-date: 2026-03-27
-topic: concept
----
-
 # Local Configuration Manager (LCM)
 
 The Local Configuration Manager (LCM) is a background service that continuously

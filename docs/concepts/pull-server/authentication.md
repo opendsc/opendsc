@@ -1,12 +1,3 @@
----
-description: >-
-  Understand the authentication mechanisms used by the OpenDsc Pull Server, including mTLS
-  for nodes, Personal Access Tokens for automation, and cookie-based sessions for the web UI.
-title: Pull Server authentication
-date: 2026-03-27
-topic: concept
----
-
 # Pull Server authentication
 
 The OpenDsc Pull Server uses a multi-tier authentication model to secure

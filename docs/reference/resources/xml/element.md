@@ -1,10 +1,3 @@
----
-description: Reference for the OpenDsc.Xml/Element resource, which manages XML element content and attributes.
-title: "OpenDsc.Xml/Element"
-date: 2026-03-27
-topic: reference
----
-
 # OpenDsc.Xml/Element
 
 ## Synopsis

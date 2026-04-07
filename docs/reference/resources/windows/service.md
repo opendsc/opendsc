@@ -1,16 +1,8 @@
----
-description: Reference for the OpenDsc.Windows/Service resource, which manages Windows services.
-title: "OpenDsc.Windows/Service"
-date: 2026-03-27
-topic: reference
----
-
 # OpenDsc.Windows/Service
 
 ## Synopsis
 
-Manages Windows services, including start type, status, and service
-configuration.
+Manages Windows services, including start type, status, and service configuration.
 
 ## Type name
 
@@ -29,16 +21,93 @@ OpenDsc.Windows/Service
 
 ## Properties
 
-| Property       | Type     | Required | Access     | Description                                           |
-| :------------- | :------- | :------- | :--------- | :---------------------------------------------------- |
-| `name`         | string   | Yes      | Read/Write | The service name (not display name).                  |
-| `displayName`  | string   | No       | Read-only  | The display name of the service.                      |
-| `description`  | string   | No       | Read-only  | The service description.                              |
-| `path`         | string   | No       | Read/Write | The path to the service executable.                   |
-| `dependencies` | string[] | No       | Read/Write | Service dependencies.                                 |
-| `status`       | enum     | No       | Read/Write | Desired status: `Running`, `Stopped`, `Paused`.       |
-| `startType`    | enum     | No       | Read/Write | Start type: `Automatic`, `Manual`, `Disabled`.        |
-| `_exist`       | bool     | No       | Read/Write | Whether the service should exist. Defaults to `true`. |
+### name
+
+The service name (not display name).
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### displayName
+
+The display name of the service.
+
+```yaml
+Type: string
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+### description
+
+The service description.
+
+```yaml
+Type: string
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+### path
+
+The path to the service executable.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### dependencies
+
+Service dependencies.
+
+```yaml
+Type: string[]
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### status
+
+Desired status. Accepts `Running`, `Stopped`, or `Paused`.
+
+```yaml
+Type: enum
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### startType
+
+Start type. Accepts `Automatic`, `Manual`, or `Disabled`.
+
+```yaml
+Type: enum
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### _exist
+
+Whether the service should exist.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: true
+```
 
 > [!NOTE]
 > This resource requires administrator privileges.

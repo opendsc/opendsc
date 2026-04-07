@@ -1,10 +1,3 @@
----
-description: Reference for the OpenDsc.Windows/OptionalFeature resource, which manages Windows optional features via DISM.
-title: "OpenDsc.Windows/OptionalFeature"
-date: 2026-03-27
-topic: reference
----
-
 # OpenDsc.Windows/OptionalFeature
 
 ## Synopsis
@@ -31,8 +24,9 @@ OpenDsc.Windows/OptionalFeature
 | Export     | Yes       |
 
 > [!NOTE]
-> This resource uses `SetReturn = SetReturn.State` and returns actual state from the `Set()`
-> operation, including `_metadata` with restart requirements when applicable.
+> This resource uses `SetReturn = SetReturn.State` and returns actual state from
+> the `Set()` operation, including `_metadata` with restart requirements when
+> applicable.
 
 ## Properties
 

@@ -1,16 +1,8 @@
----
-description: Reference for the OpenDsc.FileSystem/SymbolicLink resource, which manages symbolic links across platforms.
-title: "OpenDsc.FileSystem/SymbolicLink"
-date: 2026-03-27
-topic: reference
----
-
 # OpenDsc.FileSystem/SymbolicLink
 
 ## Synopsis
 
-Manages symbolic links on the local filesystem. Works on Windows, Linux, and
-macOS.
+Manages symbolic links on the local filesystem. Works on Windows, Linux, and macOS.
 
 ## Type name
 
@@ -29,12 +21,49 @@ OpenDsc.FileSystem/SymbolicLink
 
 ## Properties
 
-| Property | Type   | Required | Access     | Description                                                              |
-| :------- | :----- | :------- | :--------- | :----------------------------------------------------------------------- |
-| `path`   | string | Yes      | Read/Write | Path where the symbolic link should be created.                          |
-| `target` | string | Yes      | Read/Write | Target path that the symbolic link points to.                            |
-| `type`   | string | No       | Read/Write | Link target type: `File` or `Directory`. Auto-detected if not specified. |
-| `_exist` | bool   | No       | Read/Write | Whether the link should exist. Defaults to `true`.                       |
+### path
+
+Path where the symbolic link should be created.
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### target
+
+Target path that the symbolic link points to.
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### type
+
+Link target type. Accepts `File` or `Directory`. Auto-detected if not specified.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### _exist
+
+Whether the link should exist.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: true
+```
 
 ## Examples
 

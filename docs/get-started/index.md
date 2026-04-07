@@ -1,12 +1,3 @@
----
-description: >-
-  Get started with OpenDsc by learning how to discover resources, manage state with individual
-  resources, and build configuration documents.
-title: Get started with OpenDsc
-date: 2026-03-27
-topic: tutorial
----
-
 # Get started with OpenDsc
 
 OpenDsc provides built-in DSC Resources for managing Windows systems, SQL

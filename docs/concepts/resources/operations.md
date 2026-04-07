@@ -1,12 +1,3 @@
----
-description: >-
-  Learn about the operations that OpenDsc Resources support, including Get, Set, Test, Delete,
-  and Export, and how DSC routes operations based on canonical properties.
-title: Resource operations
-date: 2026-03-27
-topic: concept
----
-
 # Resource operations
 
 OpenDsc Resources support the standard DSC v3 operations. Each operation serves

@@ -1,12 +1,3 @@
----
-description: >-
-  Set up the OpenDsc Local Configuration Manager (LCM) to monitor or remediate configuration
-  drift on a managed node.
-title: "Tutorial: Set up the LCM"
-date: 2026-03-27
-topic: tutorial
----
-
 # Tutorial: Set up the LCM
 
 The Local Configuration Manager (LCM) is a background service that continuously

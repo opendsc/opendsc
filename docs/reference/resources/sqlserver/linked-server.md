@@ -1,10 +1,3 @@
----
-description: Reference for the OpenDsc.SqlServer/LinkedServer resource, which manages SQL Server linked servers.
-title: "OpenDsc.SqlServer/LinkedServer"
-date: 2026-03-27
-topic: reference
----
-
 # OpenDsc.SqlServer/LinkedServer
 
 ## Synopsis

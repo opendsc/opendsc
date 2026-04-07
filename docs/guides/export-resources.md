@@ -1,12 +1,3 @@
----
-description: >-
-  Export all current instances of an OpenDsc resource to discover existing system state and
-  generate baseline configuration documents.
-title: "How to: Export resource instances"
-date: 2026-03-27
-topic: how-to
----
-
 # Export resource instances
 
 Some OpenDsc resources support the **Export** operation, which enumerates all

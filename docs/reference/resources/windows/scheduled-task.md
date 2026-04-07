@@ -1,10 +1,3 @@
----
-description: Reference for the OpenDsc.Windows/ScheduledTask resource, which manages Windows scheduled tasks.
-title: "OpenDsc.Windows/ScheduledTask"
-date: 2026-03-27
-topic: reference
----
-
 # OpenDsc.Windows/ScheduledTask
 
 ## Synopsis
@@ -28,15 +21,82 @@ OpenDsc.Windows/ScheduledTask
 
 ## Properties
 
-| Property   | Type     | Required | Access     | Description                                        |
-| :--------- | :------- | :------- | :--------- | :------------------------------------------------- |
-| `taskName` | string   | Yes      | Read/Write | The name of the scheduled task.                    |
-| `taskPath` | string   | No       | Read/Write | The folder path containing the task.               |
-| `triggers` | object[] | No       | Read/Write | The triggers that start the task.                  |
-| `actions`  | object[] | No       | Read/Write | The actions the task performs.                     |
-| `user`     | string   | No       | Read/Write | The user context the task runs under.              |
-| `enabled`  | bool     | No       | Read/Write | Whether the task is enabled.                       |
-| `_exist`   | bool     | No       | Read/Write | Whether the task should exist. Defaults to `true`. |
+### taskName
+
+The name of the scheduled task.
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### taskPath
+
+The folder path containing the task.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### triggers
+
+The triggers that start the task.
+
+```yaml
+Type: object[]
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### actions
+
+The actions the task performs.
+
+```yaml
+Type: object[]
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### user
+
+The user context the task runs under.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### enabled
+
+Whether the task is enabled.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### _exist
+
+Whether the task should exist.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: true
+```
 
 > [!NOTE]
 > This resource uses an embedded JSON schema due to the complexity of its nested trigger and

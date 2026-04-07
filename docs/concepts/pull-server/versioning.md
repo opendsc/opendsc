@@ -1,12 +1,3 @@
----
-description: >-
-  Understand how semantic versioning works in the OpenDsc Pull Server for configurations and
-  parameters.
-title: Versioning
-date: 2026-03-27
-topic: concept
----
-
 # Versioning
 
 The Pull Server uses semantic versioning for configurations and parameters.

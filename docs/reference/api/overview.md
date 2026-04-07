@@ -1,13 +1,3 @@
----
-description: >-
-  Reference documentation for the OpenDsc Pull Server REST API. Lists all endpoints organized by
-  functional area, including authentication, node management, configurations, parameters, and
-  compliance reporting.
-title: Pull Server API reference
-date: 2026-03-27
-topic: reference
----
-
 # Pull Server API reference
 
 The OpenDsc Pull Server exposes a REST API at version `v1` for managing nodes,

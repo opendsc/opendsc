@@ -1,12 +1,3 @@
----
-description: >-
-  Learn about the scope system in the OpenDsc Pull Server, including scope types, scope values,
-  node tags, and how they drive parameter merging.
-title: Scope system
-date: 2026-03-27
-topic: concept
----
-
 # Scope system
 
 The scope system is the foundation of the Pull Server's hierarchical parameter

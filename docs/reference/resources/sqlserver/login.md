@@ -1,10 +1,3 @@
----
-description: Reference for the OpenDsc.SqlServer/Login resource, which manages SQL Server logins.
-title: "OpenDsc.SqlServer/Login"
-date: 2026-03-27
-topic: reference
----
-
 # OpenDsc.SqlServer/Login
 
 ## Synopsis

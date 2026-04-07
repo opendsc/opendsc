@@ -1,12 +1,3 @@
----
-description: >-
-  Learn how the OpenDsc Pull Server manages configuration lifecycle including versioning,
-  draft/publish workflow, and configuration assignment to nodes.
-title: Configuration management
-date: 2026-03-27
-topic: concept
----
-
 # Configuration management
 
 The Pull Server manages DSC configuration documents through a versioned

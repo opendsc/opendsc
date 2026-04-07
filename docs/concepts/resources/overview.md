@@ -1,12 +1,3 @@
----
-description: >-
-  OpenDsc Resources provide a standardized interface for managing system state. Learn about
-  resource types, naming conventions, and how resources work with DSC v3.
-title: OpenDsc Resources
-date: 2026-03-27
-topic: concept
----
-
 # OpenDsc Resources
 
 OpenDsc provides built-in DSC Resources for managing Windows systems, SQL

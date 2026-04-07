@@ -1,10 +1,3 @@
----
-description: Reference for the OpenDsc.Windows/Shortcut resource, which manages Windows shortcut (.lnk) files.
-title: "OpenDsc.Windows/Shortcut"
-date: 2026-03-27
-topic: reference
----
-
 # OpenDsc.Windows/Shortcut
 
 ## Synopsis
@@ -28,17 +21,104 @@ OpenDsc.Windows/Shortcut
 
 ## Properties
 
-| Property           | Type   | Required | Access     | Description                                            |
-| :----------------- | :----- | :------- | :--------- | :----------------------------------------------------- |
-| `path`             | string | Yes      | Read/Write | The full path to the .lnk file.                        |
-| `targetPath`       | string | No       | Read/Write | The target path the shortcut points to.                |
-| `arguments`        | string | No       | Read/Write | Command-line arguments for the target.                 |
-| `workingDirectory` | string | No       | Read/Write | The working directory for the target.                  |
-| `description`      | string | No       | Read/Write | A description for the shortcut.                        |
-| `iconLocation`     | string | No       | Read/Write | The icon file path and index.                          |
-| `hotkey`           | string | No       | Read/Write | The hotkey combination for the shortcut.               |
-| `windowStyle`      | enum   | No       | Read/Write | Window style: `Normal`, `Minimized`, `Maximized`.      |
-| `_exist`           | bool   | No       | Read/Write | Whether the shortcut should exist. Defaults to `true`. |
+### path
+
+The full path to the .lnk file.
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### targetPath
+
+The target path the shortcut points to.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### arguments
+
+Command-line arguments for the target.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### workingDirectory
+
+The working directory for the target.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### description
+
+A description for the shortcut.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### iconLocation
+
+The icon file path and index.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### hotkey
+
+The hotkey combination for the shortcut.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### windowStyle
+
+Window style. Accepts `Normal`, `Minimized`, or `Maximized`.
+
+```yaml
+Type: enum
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### _exist
+
+Whether the shortcut should exist.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: true
+```
 
 ## Examples
 

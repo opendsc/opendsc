@@ -1,12 +1,3 @@
----
-description: >-
-  Understand how the OpenDsc Pull Server merges parameters across scope types to produce a
-  resolved parameter set for each managed node.
-title: Parameter merging
-date: 2026-03-27
-topic: concept
----
-
 # Parameter merging
 
 The Pull Server's parameter merging system enables hierarchical configuration

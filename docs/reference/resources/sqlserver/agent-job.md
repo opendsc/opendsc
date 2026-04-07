@@ -1,17 +1,9 @@
----
-description: Reference for the OpenDsc.SqlServer/AgentJob resource, which manages SQL Server Agent jobs.
-title: "OpenDsc.SqlServer/AgentJob"
-date: 2026-03-27
-topic: reference
----
-
 # OpenDsc.SqlServer/AgentJob
 
 ## Synopsis
 
 Manages SQL Server Agent jobs, including job creation, notification settings,
-and monitoring
-of job execution status.
+and monitoring of job execution status.
 
 ## Type name
 
@@ -32,58 +24,345 @@ OpenDsc.SqlServer/AgentJob
 
 ### Connection properties
 
-| Property          | Type   | Required | Access     | Description                      |
-| :---------------- | :----- | :------- | :--------- | :------------------------------- |
-| `serverInstance`  | string | Yes      | Read/Write | SQL Server instance name.        |
-| `connectUsername` | string | No       | Write-Only | Username for SQL authentication. |
-| `connectPassword` | string | No       | Write-Only | Password for SQL authentication. |
+#### serverInstance
+
+SQL Server instance name.
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+#### connectUsername
+
+Username for SQL authentication.
+
+```yaml
+Type: string
+Required: No
+Access: Write-Only
+Default value: None
+```
+
+#### connectPassword
+
+Password for SQL authentication.
+
+```yaml
+Type: string
+Required: No
+Access: Write-Only
+Default value: None
+```
 
 ### Job properties
 
-| Property         | Type   | Required | Access     | Description                                 |
-| :--------------- | :----- | :------- | :--------- | :------------------------------------------ |
-| `name`           | string | No       | Read/Write | Name of the Agent job.                      |
-| `description`    | string | No       | Read/Write | Description of the job.                     |
-| `isEnabled`      | bool   | No       | Read/Write | Whether the job is enabled.                 |
-| `category`       | string | No       | Read/Write | Category of the job.                        |
-| `ownerLoginName` | string | No       | Read/Write | Login name of the job owner.                |
-| `startStepId`    | int    | No       | Read/Write | Step ID at which execution starts (min: 1). |
+#### name
+
+Name of the Agent job.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### description
+
+Description of the job.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### isEnabled
+
+Whether the job is enabled.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### category
+
+Category of the job.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### ownerLoginName
+
+Login name of the job owner.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### startStepId
+
+Step ID at which execution starts. Minimum value is 1.
+
+```yaml
+Type: int
+Required: No
+Access: Read/Write
+Default value: None
+```
 
 ### Notification properties
 
-| Property            | Type   | Required | Access     | Description                                                              |
-| :------------------ | :----- | :------- | :--------- | :----------------------------------------------------------------------- |
-| `emailLevel`        | string | No       | Read/Write | When to email: `Never`, `OnSuccess`, `OnFailure`, `Always`.              |
-| `operatorToEmail`   | string | No       | Read/Write | Operator to email.                                                       |
-| `pageLevel`         | string | No       | Read/Write | When to page: `Never`, `OnSuccess`, `OnFailure`, `Always`.               |
-| `operatorToPage`    | string | No       | Read/Write | Operator to page.                                                        |
-| `netSendLevel`      | string | No       | Read/Write | When to net send: `Never`, `OnSuccess`, `OnFailure`, `Always`.           |
-| `operatorToNetSend` | string | No       | Read/Write | Operator for net send.                                                   |
-| `eventLogLevel`     | string | No       | Read/Write | When to write to event log: `Never`, `OnSuccess`, `OnFailure`, `Always`. |
-| `deleteLevel`       | string | No       | Read/Write | When to delete job: `Never`, `OnSuccess`, `OnFailure`, `Always`.         |
+#### emailLevel
+
+When to send email. Accepts `Never`, `OnSuccess`, `OnFailure`, or `Always`.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### operatorToEmail
+
+Operator to email.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### pageLevel
+
+When to page. Accepts `Never`, `OnSuccess`, `OnFailure`, or `Always`.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### operatorToPage
+
+Operator to page.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### netSendLevel
+
+When to net send. Accepts `Never`, `OnSuccess`, `OnFailure`, or `Always`.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### operatorToNetSend
+
+Operator for net send.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### eventLogLevel
+
+When to write to the event log. Accepts `Never`, `OnSuccess`, `OnFailure`, or
+`Always`.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### deleteLevel
+
+When to delete the job. Accepts `Never`, `OnSuccess`, `OnFailure`, or `Always`.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
 
 ### Read-only properties
 
-| Property                 | Type     | Access    | Description                                                                      |
-| :----------------------- | :------- | :-------- | :------------------------------------------------------------------------------- |
-| `jobId`                  | guid     | Read-Only | Unique identifier of the job.                                                    |
-| `dateCreated`            | datetime | Read-Only | Date the job was created.                                                        |
-| `dateLastModified`       | datetime | Read-Only | Date the job was last modified.                                                  |
-| `lastRunDate`            | datetime | Read-Only | Date of the last run.                                                            |
-| `lastRunOutcome`         | string   | Read-Only | Outcome: `Failed`, `Succeeded`, `Retry`, `Cancelled`.                            |
-| `nextRunDate`            | datetime | Read-Only | Date of the next scheduled run.                                                  |
-| `currentRunStatus`       | string   | Read-Only | Current status: `Idle`, `Executing`, `WaitingForWorkerThread`, `BetweenRetries`. |
-| `currentRunStep`         | string   | Read-Only | Current step being executed.                                                     |
-| `currentRunRetryAttempt` | int      | Read-Only | Current retry attempt number.                                                    |
-| `hasStep`                | bool     | Read-Only | Whether the job has steps defined.                                               |
-| `hasSchedule`            | bool     | Read-Only | Whether the job has schedules.                                                   |
-| `versionNumber`          | int      | Read-Only | Job version number.                                                              |
+#### jobId
+
+Unique identifier of the job.
+
+```yaml
+Type: guid
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+#### dateCreated
+
+Date the job was created.
+
+```yaml
+Type: datetime
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+#### dateLastModified
+
+Date the job was last modified.
+
+```yaml
+Type: datetime
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+#### lastRunDate
+
+Date of the last run.
+
+```yaml
+Type: datetime
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+#### lastRunOutcome
+
+Outcome of the last run. Returns `Failed`, `Succeeded`, `Retry`, or `Cancelled`.
+
+```yaml
+Type: string
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+#### nextRunDate
+
+Date of the next scheduled run.
+
+```yaml
+Type: datetime
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+#### currentRunStatus
+
+Current status. Returns `Idle`, `Executing`, `WaitingForWorkerThread`, or
+`BetweenRetries`.
+
+```yaml
+Type: string
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+#### currentRunStep
+
+Current step being executed.
+
+```yaml
+Type: string
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+#### currentRunRetryAttempt
+
+Current retry attempt number.
+
+```yaml
+Type: int
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+#### hasStep
+
+Whether the job has steps defined.
+
+```yaml
+Type: bool
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+#### hasSchedule
+
+Whether the job has schedules.
+
+```yaml
+Type: bool
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+#### versionNumber
+
+Job version number.
+
+```yaml
+Type: int
+Required: No
+Access: Read-Only
+Default value: None
+```
 
 ### DSC properties
 
-| Property | Type | Required | Access     | Description                                       |
-| :------- | :--- | :------- | :--------- | :------------------------------------------------ |
-| `_exist` | bool | No       | Read/Write | Whether the job should exist. Defaults to `true`. |
+#### _exist
+
+Whether the job should exist.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: true
+```
 
 ## Examples
 

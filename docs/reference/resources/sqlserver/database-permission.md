@@ -1,17 +1,9 @@
----
-description: Reference for the OpenDsc.SqlServer/DatabasePermission resource, which manages SQL Server database-level permissions.
-title: "OpenDsc.SqlServer/DatabasePermission"
-date: 2026-03-27
-topic: reference
----
-
 # OpenDsc.SqlServer/DatabasePermission
 
 ## Synopsis
 
 Manages SQL Server database-level permissions for users and database roles.
-Supports Grant,
-Grant With Grant, and Deny states.
+Supports Grant, Grant With Grant, and Deny states.
 
 ## Type name
 
@@ -30,17 +22,104 @@ OpenDsc.SqlServer/DatabasePermission
 
 ## Properties
 
-| Property          | Type   | Required | Access     | Description                                                          |
-| :---------------- | :----- | :------- | :--------- | :------------------------------------------------------------------- |
-| `serverInstance`  | string | Yes      | Read/Write | SQL Server instance name.                                            |
-| `connectUsername` | string | No       | Write-Only | Username for SQL authentication.                                     |
-| `connectPassword` | string | No       | Write-Only | Password for SQL authentication.                                     |
-| `databaseName`    | string | Yes      | Read/Write | Name of the database.                                                |
-| `principal`       | string | Yes      | Read/Write | Name of the principal (user or database role).                       |
-| `permission`      | string | Yes      | Read/Write | Database permission (e.g., `Connect`, `Select`, `Execute`, `Alter`). |
-| `state`           | string | No       | Read/Write | Permission state: `Grant` (default), `GrantWithGrant`, `Deny`.       |
-| `grantor`         | string | No       | Read-Only  | Grantor of the permission.                                           |
-| `_exist`          | bool   | No       | Read/Write | Whether the permission should exist. Defaults to `true`.             |
+### serverInstance
+
+SQL Server instance name.
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### connectUsername
+
+Username for SQL authentication.
+
+```yaml
+Type: string
+Required: No
+Access: Write-Only
+Default value: None
+```
+
+### connectPassword
+
+Password for SQL authentication.
+
+```yaml
+Type: string
+Required: No
+Access: Write-Only
+Default value: None
+```
+
+### databaseName
+
+Name of the database.
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### principal
+
+Name of the principal (user or database role).
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### permission
+
+Database permission (e.g., `Connect`, `Select`, `Execute`, `Alter`).
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### state
+
+Permission state. Accepts `Grant`, `GrantWithGrant`, or `Deny`.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: Grant
+```
+
+### grantor
+
+Grantor of the permission.
+
+```yaml
+Type: string
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+### _exist
+
+Whether the permission should exist.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: true
+```
 
 ## Examples
 

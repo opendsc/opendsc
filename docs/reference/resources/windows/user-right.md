@@ -1,10 +1,3 @@
----
-description: Reference for the OpenDsc.Windows/UserRight resource, which manages Windows user rights assignments.
-title: "OpenDsc.Windows/UserRight"
-date: 2026-03-27
-topic: reference
----
-
 # OpenDsc.Windows/UserRight
 
 ## Synopsis

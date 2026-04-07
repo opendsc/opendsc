@@ -1,19 +1,10 @@
----
-description: >-
-  Reference for the OpenDsc.Windows/Group resource, which manages local Windows groups and their
-  members with support for additive and exact member management.
-title: "OpenDsc.Windows/Group"
-date: 2026-03-27
-topic: reference
----
-
 # OpenDsc.Windows/Group
 
 ## Synopsis
 
 Manages local Windows groups, including creation, member management, and
-removal. Supports both
-additive and exact member lists through the `_purge` property.
+removal. Supports both additive and exact member lists through the `_purge`
+property.
 
 ## Type name
 
@@ -32,13 +23,61 @@ OpenDsc.Windows/Group
 
 ## Properties
 
-| Property      | Type     | Required | Access     | Description                                                                              |
-| :------------ | :------- | :------- | :--------- | :--------------------------------------------------------------------------------------- |
-| `groupName`   | string   | Yes      | Read/Write | The name of the local group.                                                             |
-| `description` | string   | No       | Read/Write | A description of the group.                                                              |
-| `members`     | string[] | No       | Read/Write | The group members.                                                                       |
-| `_purge`      | bool     | No       | Write-only | When `true`, removes members not in the list. When `false` (default), only adds members. |
-| `_exist`      | bool     | No       | Read/Write | Whether the group should exist. Defaults to `true`.                                      |
+### groupName
+
+The name of the local group.
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### description
+
+A description of the group.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### members
+
+The group members.
+
+```yaml
+Type: string[]
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### _purge
+
+When `true`, removes members not in the list. When `false` (default), only adds
+members.
+
+```yaml
+Type: bool
+Required: No
+Access: Write-Only
+Default value: false
+```
+
+### _exist
+
+Whether the group should exist.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: true
+```
 
 ## Member management patterns
 

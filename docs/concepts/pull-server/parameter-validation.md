@@ -1,12 +1,3 @@
----
-description: >-
-  Understand how the OpenDsc Pull Server validates parameters against configuration schemas and
-  checks for breaking changes between versions.
-title: Parameter validation
-date: 2026-03-27
-topic: concept
----
-
 # Parameter validation
 
 The Pull Server validates parameter files against JSON schemas defined by

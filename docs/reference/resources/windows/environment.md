@@ -1,12 +1,3 @@
----
-description: >-
-  Reference for the OpenDsc.Windows/Environment resource, which manages Windows environment
-  variables at the User or Machine scope.
-title: "OpenDsc.Windows/Environment"
-date: 2026-03-27
-topic: reference
----
-
 # OpenDsc.Windows/Environment
 
 ## Synopsis
@@ -30,12 +21,49 @@ OpenDsc.Windows/Environment
 
 ## Properties
 
-| Property | Type   | Required | Access     | Description                                            |
-| :------- | :----- | :------- | :--------- | :----------------------------------------------------- |
-| `name`   | string | Yes      | Read/Write | The name of the environment variable.                  |
-| `value`  | string | No       | Read/Write | The value of the environment variable.                 |
-| `scope`  | enum   | No       | Read/Write | The scope: `User` or `Machine`. Defaults to `User`.    |
-| `_exist` | bool   | No       | Read/Write | Whether the variable should exist. Defaults to `true`. |
+### name
+
+The name of the environment variable.
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### value
+
+The value of the environment variable.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### scope
+
+The scope. Accepts `User` or `Machine`.
+
+```yaml
+Type: enum
+Required: No
+Access: Read/Write
+Default value: User
+```
+
+### _exist
+
+Whether the variable should exist.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: true
+```
 
 > [!NOTE]
 > Setting `scope` to `Machine` requires administrator privileges.
