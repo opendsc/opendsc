@@ -3,8 +3,7 @@
 ## Synopsis
 
 Manages SQL Server linked servers for distributed queries across SQL Server
-instances and
-other OLE DB data sources.
+instances and other OLE DB data sources.
 
 ## Type name
 
@@ -25,55 +24,310 @@ OpenDsc.SqlServer/LinkedServer
 
 ### Connection properties
 
-| Property          | Type   | Required | Access     | Description                      |
-| :---------------- | :----- | :------- | :--------- | :------------------------------- |
-| `serverInstance`  | string | Yes      | Read/Write | SQL Server instance name.        |
-| `connectUsername` | string | No       | Write-Only | Username for SQL authentication. |
-| `connectPassword` | string | No       | Write-Only | Password for SQL authentication. |
+#### serverInstance
+
+SQL Server instance name.
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+#### connectUsername
+
+Username for SQL authentication.
+
+```yaml
+Type: string
+Required: No
+Access: Write-Only
+Default value: None
+```
+
+#### connectPassword
+
+Password for SQL authentication.
+
+```yaml
+Type: string
+Required: No
+Access: Write-Only
+Default value: None
+```
 
 ### Linked server properties
 
-| Property         | Type   | Required | Access     | Description                               |
-| :--------------- | :----- | :------- | :--------- | :---------------------------------------- |
-| `name`           | string | No       | Read/Write | Name of the linked server.                |
-| `productName`    | string | No       | Read/Write | Product name of OLE DB data source.       |
-| `providerName`   | string | No       | Read/Write | OLE DB provider name.                     |
-| `dataSource`     | string | No       | Read/Write | OLE DB data source (server name or path). |
-| `location`       | string | No       | Read/Write | Location of database for OLE DB provider. |
-| `catalog`        | string | No       | Read/Write | Default catalog (database).               |
-| `providerString` | string | No       | Read/Write | OLE DB provider connection string.        |
+#### name
+
+Name of the linked server.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### productName
+
+Product name of OLE DB data source.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### providerName
+
+OLE DB provider name.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### dataSource
+
+OLE DB data source (server name or path).
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### location
+
+Location of database for OLE DB provider.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### catalog
+
+Default catalog (database).
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### providerString
+
+OLE DB provider connection string.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
 
 ### Linked server options
 
-| Property                                            | Type   | Required | Access     | Description                                |
-| :-------------------------------------------------- | :----- | :------- | :--------- | :----------------------------------------- |
-| `dataAccess`                                        | bool   | No       | Read/Write | Whether data access is enabled.            |
-| `rpc`                                               | bool   | No       | Read/Write | Whether RPC from linked server is allowed. |
-| `rpcOut`                                            | bool   | No       | Read/Write | Whether RPC out is enabled.                |
-| `useRemoteCollation`                                | bool   | No       | Read/Write | Use remote server's collation.             |
-| `collationName`                                     | string | No       | Read/Write | Collation name for character comparisons.  |
-| `collationCompatible`                               | bool   | No       | Read/Write | Whether collation is compatible.           |
-| `lazySchemaValidation`                              | bool   | No       | Read/Write | Use lazy schema validation.                |
-| `connectTimeout`                                    | int    | No       | Read/Write | Connection timeout in seconds (min: 0).    |
-| `queryTimeout`                                      | int    | No       | Read/Write | Query timeout in seconds (min: 0).         |
-| `isPromotionofDistributedTransactionsForRPCEnabled` | bool   | No       | Read/Write | Promote distributed transactions for RPC.  |
+#### dataAccess
+
+Whether data access is enabled.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### rpc
+
+Whether RPC from the linked server is allowed.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### rpcOut
+
+Whether RPC out is enabled.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### useRemoteCollation
+
+Use remote server's collation.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### collationName
+
+Collation name for character comparisons.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### collationCompatible
+
+Whether collation is compatible.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### lazySchemaValidation
+
+Use lazy schema validation.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### connectTimeout
+
+Connection timeout in seconds (min: 0).
+
+```yaml
+Type: int
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### queryTimeout
+
+Query timeout in seconds (min: 0).
+
+```yaml
+Type: int
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### isPromotionofDistributedTransactionsForRPCEnabled
+
+Promote distributed transactions for RPC.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
 
 ### Read-only properties
 
-| Property           | Type     | Access    | Description                             |
-| :----------------- | :------- | :-------- | :-------------------------------------- |
-| `id`               | int      | Read-Only | Unique identifier.                      |
-| `dateLastModified` | datetime | Read-Only | Date last modified.                     |
-| `distributor`      | bool     | Read-Only | Whether it is a distributor.            |
-| `distPublisher`    | bool     | Read-Only | Whether it is a distribution publisher. |
-| `publisher`        | bool     | Read-Only | Whether it is a publisher.              |
-| `subscriber`       | bool     | Read-Only | Whether it is a subscriber.             |
+#### id
+
+Unique identifier.
+
+```yaml
+Type: int
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+#### dateLastModified
+
+Date last modified.
+
+```yaml
+Type: datetime
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+#### distributor
+
+Whether it is a distributor.
+
+```yaml
+Type: bool
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+#### distPublisher
+
+Whether it is a distribution publisher.
+
+```yaml
+Type: bool
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+#### publisher
+
+Whether it is a publisher.
+
+```yaml
+Type: bool
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+#### subscriber
+
+Whether it is a subscriber.
+
+```yaml
+Type: bool
+Required: No
+Access: Read-Only
+Default value: None
+```
 
 ### DSC properties
 
-| Property | Type | Required | Access     | Description                                                 |
-| :------- | :--- | :------- | :--------- | :---------------------------------------------------------- |
-| `_exist` | bool | No       | Read/Write | Whether the linked server should exist. Defaults to `true`. |
+#### _exist
+
+Whether the linked server should exist. Defaults to `true`.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: true
+```
 
 ## Examples
 

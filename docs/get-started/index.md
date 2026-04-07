@@ -1,6 +1,6 @@
-# Get started with OpenDsc
+# Get started with OpenDSC
 
-OpenDsc provides built-in DSC Resources for managing Windows systems, SQL
+OpenDSC provides built-in DSC Resources for managing Windows systems, SQL
 Server, and
 cross-platform components. This tutorial walks you through discovering
 resources, using them
@@ -8,15 +8,15 @@ individually, and composing them into a configuration document.
 
 ## Prerequisites
 
-- [Install OpenDsc][01] on a Windows machine.
+- [Install OpenDSC][01] on a Windows machine.
 - [Install DSC v3][02] version `3.0.0` or later.
 - A terminal emulator, like [Windows Terminal][03].
 
 ## Discover resources
 
-OpenDsc resources are discovered automatically by the DSC CLI. Run the following
+OpenDSC resources are discovered automatically by the DSC CLI. Run the following
 command to list
-all available OpenDsc resources:
+all available OpenDSC resources:
 
 ```powershell
 dsc resource list OpenDsc*

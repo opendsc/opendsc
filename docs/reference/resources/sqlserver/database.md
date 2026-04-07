@@ -3,8 +3,7 @@
 ## Synopsis
 
 Manages SQL Server databases, including creation, configuration options, ANSI
-settings,
-performance options, and availability features.
+settings, performance options, and availability features.
 
 ## Type name
 
@@ -25,105 +24,754 @@ OpenDsc.SqlServer/Database
 
 ### Connection properties
 
-| Property          | Type   | Required | Access     | Description                      |
-| :---------------- | :----- | :------- | :--------- | :------------------------------- |
-| `serverInstance`  | string | Yes      | Read/Write | SQL Server instance name.        |
-| `connectUsername` | string | No       | Write-Only | Username for SQL authentication. |
-| `connectPassword` | string | No       | Write-Only | Password for SQL authentication. |
+#### serverInstance
+
+SQL Server instance name.
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+#### connectUsername
+
+Username for SQL authentication.
+
+```yaml
+Type: string
+Required: No
+Access: Write-Only
+Default value: None
+```
+
+#### connectPassword
+
+Password for SQL authentication.
+
+```yaml
+Type: string
+Required: No
+Access: Write-Only
+Default value: None
+```
 
 ### Database properties
 
-| Property             | Type   | Required | Access     | Description                                                 |
-| :------------------- | :----- | :------- | :--------- | :---------------------------------------------------------- |
-| `name`               | string | Yes      | Read/Write | Name of the database.                                       |
-| `collation`          | string | No       | Read/Write | Database collation. Defaults to server collation.           |
-| `compatibilityLevel` | string | No       | Read/Write | Compatibility level (`Version90` through `Version160`).     |
-| `recoveryModel`      | string | No       | Read/Write | Recovery model: `Simple`, `Full`, `BulkLogged`.             |
-| `owner`              | string | No       | Read/Write | Login name of database owner.                               |
-| `readOnly`           | bool   | No       | Read/Write | Whether the database is read-only.                          |
-| `userAccess`         | string | No       | Read/Write | User access: `Multi`, `Single`, `Restricted`.               |
-| `pageVerify`         | string | No       | Read/Write | Page verification: `None`, `TornPageDetection`, `Checksum`. |
-| `containmentType`    | string | No       | Read/Write | Containment: `None`, `Partial`.                             |
+#### name
+
+Name of the database.
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+#### collation
+
+Database collation. Defaults to server collation.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### compatibilityLevel
+
+Compatibility level (`Version90` through `Version160`).
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### recoveryModel
+
+Recovery model: `Simple`, `Full`, or `BulkLogged`.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### owner
+
+Login name of database owner.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### readOnly
+
+Whether the database is read-only.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### userAccess
+
+User access: `Multi`, `Single`, or `Restricted`.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### pageVerify
+
+Page verification: `None`, `TornPageDetection`, or `Checksum`.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### containmentType
+
+Containment: `None` or `Partial`.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
 
 ### File properties (write-only, used during creation)
 
-| Property            | Type   | Required | Access     | Description                       |
-| :------------------ | :----- | :------- | :--------- | :-------------------------------- |
-| `primaryFilePath`   | string | No       | Write-Only | Path to primary data file (.mdf). |
-| `logFilePath`       | string | No       | Write-Only | Path to log file (.ldf).          |
-| `primaryFileSize`   | int    | No       | Write-Only | Initial primary file size in MB.  |
-| `logFileSize`       | int    | No       | Write-Only | Initial log file size in MB.      |
-| `primaryFileGrowth` | int    | No       | Write-Only | Primary file growth amount in MB. |
-| `logFileGrowth`     | int    | No       | Write-Only | Log file growth amount in MB.     |
+#### primaryFilePath
+
+Path to primary data file (.mdf).
+
+```yaml
+Type: string
+Required: No
+Access: Write-Only
+Default value: None
+```
+
+#### logFilePath
+
+Path to log file (.ldf).
+
+```yaml
+Type: string
+Required: No
+Access: Write-Only
+Default value: None
+```
+
+#### primaryFileSize
+
+Initial primary file size in MB.
+
+```yaml
+Type: int
+Required: No
+Access: Write-Only
+Default value: None
+```
+
+#### logFileSize
+
+Initial log file size in MB.
+
+```yaml
+Type: int
+Required: No
+Access: Write-Only
+Default value: None
+```
+
+#### primaryFileGrowth
+
+Primary file growth amount in MB.
+
+```yaml
+Type: int
+Required: No
+Access: Write-Only
+Default value: None
+```
+
+#### logFileGrowth
+
+Log file growth amount in MB.
+
+```yaml
+Type: int
+Required: No
+Access: Write-Only
+Default value: None
+```
 
 ### ANSI settings
 
-| Property                    | Type | Required | Access     | Description                             |
-| :-------------------------- | :--- | :------- | :--------- | :-------------------------------------- |
-| `ansiNullDefault`           | bool | No       | Read/Write | Whether ANSI NULL default is enabled.   |
-| `ansiNullsEnabled`          | bool | No       | Read/Write | Whether ANSI NULLs are enabled.         |
-| `ansiPaddingEnabled`        | bool | No       | Read/Write | Whether ANSI padding is enabled.        |
-| `ansiWarningsEnabled`       | bool | No       | Read/Write | Whether ANSI warnings are enabled.      |
-| `arithmeticAbortEnabled`    | bool | No       | Read/Write | Whether arithmetic abort is enabled.    |
-| `concatenateNullYieldsNull` | bool | No       | Read/Write | Whether concatenating null yields null. |
-| `numericRoundAbortEnabled`  | bool | No       | Read/Write | Whether numeric round-abort is enabled. |
-| `quotedIdentifiersEnabled`  | bool | No       | Read/Write | Whether quoted identifiers are enabled. |
+#### ansiNullDefault
+
+Whether ANSI NULL default is enabled.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### ansiNullsEnabled
+
+Whether ANSI NULLs are enabled.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### ansiPaddingEnabled
+
+Whether ANSI padding is enabled.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### ansiWarningsEnabled
+
+Whether ANSI warnings are enabled.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### arithmeticAbortEnabled
+
+Whether arithmetic abort is enabled.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### concatenateNullYieldsNull
+
+Whether concatenating null yields null.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### numericRoundAbortEnabled
+
+Whether numeric round-abort is enabled.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### quotedIdentifiersEnabled
+
+Whether quoted identifiers are enabled.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
 
 ### Performance and behavior settings
 
-| Property                      | Type | Required | Access     | Description                          |
-| :---------------------------- | :--- | :------- | :--------- | :----------------------------------- |
-| `autoClose`                   | bool | No       | Read/Write | Auto-close when last user exits.     |
-| `autoShrink`                  | bool | No       | Read/Write | Automatically shrink database.       |
-| `autoCreateStatisticsEnabled` | bool | No       | Read/Write | Automatic statistics creation.       |
-| `autoUpdateStatisticsEnabled` | bool | No       | Read/Write | Automatic statistics update.         |
-| `autoUpdateStatisticsAsync`   | bool | No       | Read/Write | Async statistics update.             |
-| `closeCursorsOnCommitEnabled` | bool | No       | Read/Write | Close cursors on transaction commit. |
-| `localCursorsDefault`         | bool | No       | Read/Write | Default to local cursor scope.       |
-| `nestedTriggersEnabled`       | bool | No       | Read/Write | Allow nested triggers.               |
-| `recursiveTriggersEnabled`    | bool | No       | Read/Write | Allow recursive triggers.            |
-| `trustworthy`                 | bool | No       | Read/Write | Database is trustworthy.             |
-| `databaseOwnershipChaining`   | bool | No       | Read/Write | Cross-database ownership chaining.   |
-| `dateCorrelationOptimization` | bool | No       | Read/Write | Date correlation optimization.       |
-| `brokerEnabled`               | bool | No       | Read/Write | Service Broker enabled.              |
-| `encryptionEnabled`           | bool | No       | Read/Write | Transparent data encryption.         |
-| `isParameterizationForced`    | bool | No       | Read/Write | Forced parameterization.             |
-| `isReadCommittedSnapshotOn`   | bool | No       | Read/Write | READ_COMMITTED_SNAPSHOT isolation.   |
-| `isFullTextEnabled`           | bool | No       | Read/Write | Full-text indexing.                  |
-| `targetRecoveryTime`          | int  | No       | Read/Write | Target recovery time in seconds.     |
-| `delayedDurabilityEnabled`    | bool | No       | Read/Write | Delayed durability.                  |
-| `acceleratedRecoveryEnabled`  | bool | No       | Read/Write | Accelerated database recovery.       |
+#### autoClose
+
+Auto-close when last user exits.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### autoShrink
+
+Automatically shrink database.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### autoCreateStatisticsEnabled
+
+Automatic statistics creation.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### autoUpdateStatisticsEnabled
+
+Automatic statistics update.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### autoUpdateStatisticsAsync
+
+Async statistics update.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### closeCursorsOnCommitEnabled
+
+Close cursors on transaction commit.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### localCursorsDefault
+
+Default to local cursor scope.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### nestedTriggersEnabled
+
+Allow nested triggers.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### recursiveTriggersEnabled
+
+Allow recursive triggers.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### trustworthy
+
+Database is trustworthy.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### databaseOwnershipChaining
+
+Cross-database ownership chaining.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### dateCorrelationOptimization
+
+Date correlation optimization.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### brokerEnabled
+
+Service Broker enabled.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### encryptionEnabled
+
+Transparent data encryption.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### isParameterizationForced
+
+Forced parameterization.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### isReadCommittedSnapshotOn
+
+READ_COMMITTED_SNAPSHOT isolation.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### isFullTextEnabled
+
+Full-text indexing.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### targetRecoveryTime
+
+Target recovery time in seconds.
+
+```yaml
+Type: int
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### delayedDurabilityEnabled
+
+Delayed durability.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### acceleratedRecoveryEnabled
+
+Accelerated database recovery.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
 
 ### Read-only properties
 
-| Property                     | Type     | Access    | Description                             |
-| :--------------------------- | :------- | :-------- | :-------------------------------------- |
-| `id`                         | int      | Read-Only | Database ID.                            |
-| `createDate`                 | datetime | Read-Only | Creation date.                          |
-| `size`                       | double   | Read-Only | Current size in MB.                     |
-| `spaceAvailable`             | double   | Read-Only | Space available in KB.                  |
-| `dataSpaceUsage`             | double   | Read-Only | Data space usage in KB.                 |
-| `indexSpaceUsage`            | double   | Read-Only | Index space usage in KB.                |
-| `activeConnections`          | int      | Read-Only | Number of active connections.           |
-| `lastBackupDate`             | datetime | Read-Only | Date of last full backup.               |
-| `lastDifferentialBackupDate` | datetime | Read-Only | Date of last differential backup.       |
-| `lastLogBackupDate`          | datetime | Read-Only | Date of last log backup.                |
-| `status`                     | string   | Read-Only | Database status.                        |
-| `isSystemObject`             | bool     | Read-Only | Whether it is a system database.        |
-| `isAccessible`               | bool     | Read-Only | Whether the database is accessible.     |
-| `isUpdateable`               | bool     | Read-Only | Whether the database is updateable.     |
-| `isDatabaseSnapshot`         | bool     | Read-Only | Whether it is a database snapshot.      |
-| `isMirroringEnabled`         | bool     | Read-Only | Whether mirroring is enabled.           |
-| `availabilityGroupName`      | string   | Read-Only | Availability group name.                |
-| `caseSensitive`              | bool     | Read-Only | Whether the database is case-sensitive. |
-| `primaryFilePathActual`      | string   | Read-Only | Actual path to primary file.            |
-| `defaultFileGroup`           | string   | Read-Only | Default file group name.                |
+#### id
+
+Database ID.
+
+```yaml
+Type: int
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+#### createDate
+
+Creation date.
+
+```yaml
+Type: datetime
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+#### size
+
+Current size in MB.
+
+```yaml
+Type: double
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+#### spaceAvailable
+
+Space available in KB.
+
+```yaml
+Type: double
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+#### dataSpaceUsage
+
+Data space usage in KB.
+
+```yaml
+Type: double
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+#### indexSpaceUsage
+
+Index space usage in KB.
+
+```yaml
+Type: double
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+#### activeConnections
+
+Number of active connections.
+
+```yaml
+Type: int
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+#### lastBackupDate
+
+Date of last full backup.
+
+```yaml
+Type: datetime
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+#### lastDifferentialBackupDate
+
+Date of last differential backup.
+
+```yaml
+Type: datetime
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+#### lastLogBackupDate
+
+Date of last log backup.
+
+```yaml
+Type: datetime
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+#### status
+
+Database status.
+
+```yaml
+Type: string
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+#### isSystemObject
+
+Whether it is a system database.
+
+```yaml
+Type: bool
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+#### isAccessible
+
+Whether the database is accessible.
+
+```yaml
+Type: bool
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+#### isUpdateable
+
+Whether the database is updateable.
+
+```yaml
+Type: bool
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+#### isDatabaseSnapshot
+
+Whether it is a database snapshot.
+
+```yaml
+Type: bool
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+#### isMirroringEnabled
+
+Whether mirroring is enabled.
+
+```yaml
+Type: bool
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+#### availabilityGroupName
+
+Availability group name.
+
+```yaml
+Type: string
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+#### caseSensitive
+
+Whether the database is case-sensitive.
+
+```yaml
+Type: bool
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+#### primaryFilePathActual
+
+Actual path to primary file.
+
+```yaml
+Type: string
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+#### defaultFileGroup
+
+Default file group name.
+
+```yaml
+Type: string
+Required: No
+Access: Read-Only
+Default value: None
+```
 
 ### DSC properties
 
-| Property | Type | Required | Access     | Description                                            |
-| :------- | :--- | :------- | :--------- | :----------------------------------------------------- |
-| `_exist` | bool | No       | Read/Write | Whether the database should exist. Defaults to `true`. |
+#### _exist
+
+Whether the database should exist. Defaults to `true`.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: true
+```
 
 ## Examples
 

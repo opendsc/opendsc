@@ -3,8 +3,7 @@
 ## Synopsis
 
 Manages SQL Server logins, including SQL authentication, Windows authentication,
-password policies,
-and server role membership.
+password policies, and server role membership.
 
 ## Type name
 
@@ -25,45 +24,255 @@ OpenDsc.SqlServer/Login
 
 ### Connection properties
 
-| Property          | Type   | Required | Access     | Description                                                                                           |
-| :---------------- | :----- | :------- | :--------- | :---------------------------------------------------------------------------------------------------- |
-| `serverInstance`  | string | Yes      | Read/Write | SQL Server instance name. Use `.` or `(local)` for default, or `server\instance` for named instances. |
-| `connectUsername` | string | No       | Write-Only | Username for SQL authentication. Omit for Windows authentication.                                     |
-| `connectPassword` | string | No       | Write-Only | Password for SQL authentication.                                                                      |
+#### serverInstance
+
+SQL Server instance name. Use `.` or `(local)` for the default instance, or
+`server\instance` for named instances.
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+#### connectUsername
+
+Username for SQL authentication. Omit for Windows authentication.
+
+```yaml
+Type: string
+Required: No
+Access: Write-Only
+Default value: None
+```
+
+#### connectPassword
+
+Password for SQL authentication.
+
+```yaml
+Type: string
+Required: No
+Access: Write-Only
+Default value: None
+```
 
 ### Login properties
 
-| Property                    | Type     | Required | Access     | Description                                                                                                             |
-| :-------------------------- | :------- | :------- | :--------- | :---------------------------------------------------------------------------------------------------------------------- |
-| `name`                      | string   | Yes      | Read/Write | Name of the login.                                                                                                      |
-| `loginType`                 | string   | No       | Read/Write | Login type: `SqlLogin`, `WindowsUser`, `WindowsGroup`, `Certificate`, `AsymmetricKey`, `ExternalUser`, `ExternalGroup`. |
-| `password`                  | string   | No       | Write-Only | Password. Required when creating SQL logins.                                                                            |
-| `defaultDatabase`           | string   | No       | Read/Write | Default database for the login.                                                                                         |
-| `language`                  | string   | No       | Read/Write | Default language.                                                                                                       |
-| `disabled`                  | bool     | No       | Read/Write | Whether the login is disabled.                                                                                          |
-| `passwordExpirationEnabled` | bool     | No       | Read/Write | Whether password expiration policy is enforced.                                                                         |
-| `passwordPolicyEnforced`    | bool     | No       | Read/Write | Whether password policy is enforced.                                                                                    |
-| `mustChangePassword`        | bool     | No       | Read/Write | Whether the user must change the password at next login.                                                                |
-| `denyWindowsLogin`          | bool     | No       | Read/Write | Whether to deny Windows login access. Only for Windows logins.                                                          |
-| `serverRoles`               | string[] | No       | Read/Write | Server roles to assign. Values must be unique.                                                                          |
-| `_purge`                    | bool     | No       | Write-Only | When `true`, removes roles not in `serverRoles`. When `false` (default), only adds roles.                               |
+#### name
+
+Name of the login.
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+#### loginType
+
+Login type: `SqlLogin`, `WindowsUser`, `WindowsGroup`, `Certificate`,
+`AsymmetricKey`, `ExternalUser`, or `ExternalGroup`.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### password
+
+Password. Required when creating SQL logins.
+
+```yaml
+Type: string
+Required: No
+Access: Write-Only
+Default value: None
+```
+
+#### defaultDatabase
+
+Default database for the login.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### language
+
+Default language.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### disabled
+
+Whether the login is disabled.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### passwordExpirationEnabled
+
+Whether password expiration policy is enforced.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### passwordPolicyEnforced
+
+Whether password policy is enforced.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### mustChangePassword
+
+Whether the user must change the password at next login.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### denyWindowsLogin
+
+Whether to deny Windows login access. Only applies to Windows logins.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### serverRoles
+
+Server roles to assign. Values must be unique.
+
+```yaml
+Type: string[]
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+#### _purge
+
+When `true`, removes roles not in `serverRoles`. When `false`, only adds roles.
+
+```yaml
+Type: bool
+Required: No
+Access: Write-Only
+Default value: false
+```
 
 ### Read-only properties
 
-| Property            | Type     | Access    | Description                          |
-| :------------------ | :------- | :-------- | :----------------------------------- |
-| `createDate`        | datetime | Read-Only | Creation date of the login.          |
-| `dateLastModified`  | datetime | Read-Only | Date the login was last modified.    |
-| `hasAccess`         | bool     | Read-Only | Whether the login has server access. |
-| `isLocked`          | bool     | Read-Only | Whether the login is locked out.     |
-| `isPasswordExpired` | bool     | Read-Only | Whether the password has expired.    |
-| `isSystemObject`    | bool     | Read-Only | Whether this is a system login.      |
+#### createDate
+
+Creation date of the login.
+
+```yaml
+Type: datetime
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+#### dateLastModified
+
+Date the login was last modified.
+
+```yaml
+Type: datetime
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+#### hasAccess
+
+Whether the login has server access.
+
+```yaml
+Type: bool
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+#### isLocked
+
+Whether the login is locked out.
+
+```yaml
+Type: bool
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+#### isPasswordExpired
+
+Whether the password has expired.
+
+```yaml
+Type: bool
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+#### isSystemObject
+
+Whether this is a system login.
+
+```yaml
+Type: bool
+Required: No
+Access: Read-Only
+Default value: None
+```
 
 ### DSC properties
 
-| Property | Type | Required | Access     | Description                                         |
-| :------- | :--- | :------- | :--------- | :-------------------------------------------------- |
-| `_exist` | bool | No       | Read/Write | Whether the login should exist. Defaults to `true`. |
+#### _exist
+
+Whether the login should exist. Defaults to `true`.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: true
+```
 
 ## Examples
 

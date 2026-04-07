@@ -1,15 +1,15 @@
 ---
 description: >-
-  Learn about OpenDsc, a configuration management platform that provides DSC Resources,
+  Learn about OpenDSC, a configuration management platform that provides DSC Resources,
   a Local Configuration Manager (LCM), and a Pull Server for centralized management.
-title: OpenDsc overview
+title: OpenDSC overview
 date: 2026-03-27
 topic: overview
 ---
 
-# OpenDsc overview
+# OpenDSC overview
 
-OpenDsc is an open-source configuration management platform built on Microsoft's
+OpenDSC is an open-source configuration management platform built on Microsoft's
 Desired State
 Configuration (DSC) v3. It extends the DSC ecosystem with built-in resources for
 managing Windows,
@@ -18,7 +18,7 @@ service for continuous
 monitoring and remediation, and a Pull Server for centralized configuration
 delivery.
 
-With OpenDsc, you can:
+With OpenDSC, you can:
 
 - **Manage Windows systems** using built-in resources for environment variables,
   services,
@@ -44,18 +44,18 @@ With OpenDsc, you can:
 
 ## Components
 
-OpenDsc has three main components:
+OpenDSC has three main components:
 
 ### DSC Resources
 
-OpenDsc ships a set of built-in DSC Resources packaged into a single executable.
+OpenDSC ships a set of built-in DSC Resources packaged into a single executable.
 The resources
 work with the standard DSC v3 CLI and follow the same patterns as any other DSC
 command resource.
 You can use them individually with `dsc resource get`, `dsc resource set`, and
 `dsc resource delete`, or compose them into configuration documents.
 
-For a full list of available resources, see [OpenDsc resource reference][01].
+For a full list of available resources, see [OpenDSC resource reference][01].
 
 ### Local Configuration Manager (LCM)
 
@@ -95,17 +95,17 @@ provides:
 
 For more information, see [Pull Server concepts][03].
 
-## How OpenDsc relates to Microsoft DSC
+## How OpenDSC relates to Microsoft DSC
 
-OpenDsc is built on top of Microsoft's DSC v3 platform. It uses the `dsc` CLI as
+OpenDSC is built on top of Microsoft's DSC v3 platform. It uses the `dsc` CLI as
 its engine and
 follows the same configuration document format, resource manifest conventions,
 and operational
-model. OpenDsc doesn't replace or fork DSC — it extends the ecosystem with
+model. OpenDSC doesn't replace or fork DSC — it extends the ecosystem with
 additional resources
 and management infrastructure.
 
-If you're familiar with DSC v3, you already know how to use OpenDsc resources.
+If you're familiar with DSC v3, you already know how to use OpenDSC resources.
 They appear
 alongside built-in DSC resources in `dsc resource list` and work identically
 with `dsc config`
@@ -113,7 +113,7 @@ commands.
 
 ## Next steps
 
-- [Install OpenDsc][04] on your system.
+- [Install OpenDSC][04] on your system.
 - [Get started][05] with a hands-on tutorial.
 - Browse the [resource reference][01] for available resources.
 

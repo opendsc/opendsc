@@ -1,15 +1,15 @@
 ---
 description: >-
-  A glossary of terms for OpenDsc, including DSC Resources, the Local Configuration Manager,
+  A glossary of terms for OpenDSC, including DSC Resources, the Local Configuration Manager,
   and the Pull Server.
-title: "Glossary: OpenDsc"
+title: "Glossary: OpenDSC"
 date: 2026-03-27
 topic: glossary
 ---
 
-# Glossary: OpenDsc
+# Glossary: OpenDSC
 
-OpenDsc uses several terms that might have different definitions elsewhere. This
+OpenDSC uses several terms that might have different definitions elsewhere. This
 document lists the
 terms, their meanings, and shows how they're formatted in the documentation.
 
@@ -17,7 +17,7 @@ terms, their meanings, and shows how they're formatted in the documentation.
 
 ## Platform terms
 
-### OpenDsc
+### OpenDSC
 
 The open-source configuration management platform that provides DSC Resources, a
 Local
@@ -30,11 +30,11 @@ Configuration Manager, and a Pull Server built on Microsoft DSC v3.
 
 #### Examples
 
-> OpenDsc extends the DSC ecosystem with built-in resources and management infrastructure.
+> OpenDSC extends the DSC ecosystem with built-in resources and management infrastructure.
 
 ### DSC v3
 
-Microsoft's Desired State Configuration platform, version 3. OpenDsc builds on
+Microsoft's Desired State Configuration platform, version 3. OpenDSC builds on
 DSC v3 and uses the
 `dsc` CLI as its engine.
 
@@ -47,21 +47,21 @@ DSC v3 and uses the
 
 ### OpenDsc Resource
 
-A DSC Resource provided by OpenDsc. Resources are organized by platform area:
+A DSC Resource provided by OpenDSC. Resources are organized by platform area:
 Windows, SQL Server,
 FileSystem, JSON, XML, Archive, and POSIX.
 
 #### Guidelines
 
 - Format specific resource names as code: `OpenDsc.Windows/Environment`.
-- Group references use the area prefix: OpenDsc Windows resources, OpenDsc SQL
+- Group references use the area prefix: OpenDSC Windows resources, OpenDSC SQL
   Server resources.
 
 #### Examples
 
 > The `OpenDsc.Windows/Environment` resource manages Windows environment variables.
 
-> OpenDsc Windows resources require a Windows operating system.
+> OpenDSC Windows resources require a Windows operating system.
 
 ### Resource type name
 
@@ -127,7 +127,7 @@ and Blazor web UI.
 
 #### Guidelines
 
-- **First mention:** OpenDsc Pull Server
+- **First mention:** OpenDSC Pull Server
 - **Subsequent mentions:** Pull Server (capitalized)
 
 ### Node
@@ -194,7 +194,7 @@ client present certificates during the TLS handshake.
 
 A YAML or JSON file that declares the desired state of a system using DSC
 resource instances.
-OpenDsc uses the same configuration document format as DSC v3.
+OpenDSC uses the same configuration document format as DSC v3.
 
 #### Guidelines
 

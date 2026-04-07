@@ -1,6 +1,6 @@
 # Pull Server API reference
 
-The OpenDsc Pull Server exposes a REST API at version `v1` for managing nodes,
+The OpenDSC Pull Server exposes a REST API at version `v1` for managing nodes,
 configurations,
 parameters, and compliance reports. All API endpoints are prefixed with
 `/api/v1/` unless otherwise

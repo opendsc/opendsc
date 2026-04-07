@@ -1,23 +1,23 @@
 ---
 description: >-
-  Install OpenDsc on Windows, Linux, or macOS. OpenDsc provides DSC Resources, a Local
+  Install OpenDSC on Windows, Linux, or macOS. OpenDSC provides DSC Resources, a Local
   Configuration Manager, and a Pull Server for centralized configuration management.
-title: Install OpenDsc
+title: Install OpenDSC
 date: 2026-03-27
 topic: install
 ---
 
-# Install OpenDsc
+# Install OpenDSC
 
-OpenDsc provides three installable components. You can install them
+OpenDSC provides three installable components. You can install them
 independently based on your
 needs:
 
 | Component             | Purpose                                        | Platforms             |
 | :-------------------- | :--------------------------------------------- | :-------------------- |
-| **OpenDsc Resources** | Built-in DSC Resources for system management   | Windows, Linux, macOS |
-| **OpenDsc LCM**       | Local Configuration Manager background service | Windows, Linux, macOS |
-| **OpenDsc Server**    | Pull Server with REST API and web UI           | Windows, Linux, macOS |
+| **OpenDSC Resources** | Built-in DSC Resources for system management   | Windows, Linux, macOS |
+| **OpenDSC LCM**       | Local Configuration Manager background service | Windows, Linux, macOS |
+| **OpenDSC Server**    | Pull Server with REST API and web UI           | Windows, Linux, macOS |
 
 ## Prerequisites
 
@@ -29,7 +29,7 @@ needs:
 
 ### Using MSI installers
 
-Download the MSI installers from the [OpenDsc releases][02] page. The following
+Download the MSI installers from the [OpenDSC releases][02] page. The following
 example uses
 version `0.5.1`:
 
@@ -109,7 +109,7 @@ excluded on non-Windows platforms.
 
 ## Verify the installation
 
-After installation, verify that the DSC CLI can discover OpenDsc resources:
+After installation, verify that the DSC CLI can discover OpenDSC resources:
 
 ```powershell
 dsc resource list OpenDsc*
@@ -129,7 +129,7 @@ OpenDsc.Windows/Group                        Resource  0.1.0    gs-d----      Ma
 ## Next steps
 
 - [Get started][03] with a hands-on tutorial.
-- Learn about [OpenDsc Resources][04].
+- Learn about [OpenDSC Resources][04].
 - Set up the [Pull Server][05].
 
 <!-- Link references -->

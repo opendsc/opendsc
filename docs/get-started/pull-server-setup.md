@@ -1,6 +1,6 @@
 # Tutorial: Set up the Pull Server
 
-This tutorial walks you through installing and configuring the OpenDsc Pull
+This tutorial walks you through installing and configuring the OpenDSC Pull
 Server, registering a
 node, and deploying your first configuration. By the end, you'll have a working
 Pull Server that
@@ -8,7 +8,7 @@ delivers configurations to managed nodes.
 
 ## Prerequisites
 
-- A Windows machine with [OpenDsc installed][01].
+- A Windows machine with [OpenDSC installed][01].
 - [DSC v3][02] version `3.0.0` or later.
 - PowerShell 7 or later.
 - Administrator privileges.
@@ -33,7 +33,6 @@ service named
 Open your browser and navigate to `http://localhost:5000`. The web UI prompts
 you to sign in.
 
-<!-- TODO: Replace with actual screenshot -->
 ![OpenDsc login page](media/pull-server-setup/login-page.png)
 
 Sign in with the default administrator credentials:
@@ -47,7 +46,6 @@ After signing in, you're prompted to change the default password. Choose a
 strong password and
 save it.
 
-<!-- TODO: Replace with actual screenshot -->
 ![Change default password](media/pull-server-setup/change-password.png)
 
 ## Step 3: Configure for lab use (optional)
@@ -254,7 +252,6 @@ Invoke-RestMethod -Uri 'http://localhost:5000/api/v1/configurations/LabConfig/ve
 3. Under **Configuration**, select `LabConfig`.
 4. Click **Save**.
 
-<!-- TODO: Replace with actual screenshot -->
 ![Assign configuration to node](media/pull-server-setup/assign-configuration.png)
 
 #### Using PowerShell
@@ -282,7 +279,6 @@ After the LCM runs, check the **Nodes** page in the web UI to see the compliance
 status, or check
 the **Reports** page for detailed results.
 
-<!-- TODO: Replace with actual screenshot -->
 ![Compliance report in web UI](media/pull-server-setup/compliance-report.png)
 
 ## Summary

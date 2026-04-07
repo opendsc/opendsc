@@ -8,7 +8,7 @@ installing the LCM, configuring it in local mode, and observing drift detection.
 
 ## Prerequisites
 
-- A Windows machine with [OpenDsc installed][01].
+- A Windows machine with [OpenDSC installed][01].
 - [DSC v3][02] version `3.0.0` or later.
 - PowerShell 7 or later.
 - Administrator privileges.
