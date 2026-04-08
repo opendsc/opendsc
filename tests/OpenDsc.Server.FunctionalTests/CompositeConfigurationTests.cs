@@ -29,15 +29,15 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
         Client = fixture.CreateClient();
     }
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         AuthClient = await AuthenticationHelper.CreateAuthenticatedClientAsync(Fixture);
     }
 
-    public Task DisposeAsync()
+    public ValueTask DisposeAsync()
     {
         AuthClient?.Dispose();
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
     [Fact]
@@ -51,13 +51,13 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
             Description = "Test composite configuration"
         };
 
-        var createResponse = await AuthClient.PostAsJsonAsync("/api/v1/composite-configurations", createRequest);
+        var createResponse = await AuthClient.PostAsJsonAsync("/api/v1/composite-configurations", createRequest, TestContext.Current.CancellationToken);
         createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var getResponse = await AuthClient.GetAsync($"/api/v1/composite-configurations/{compositeName}");
+        var getResponse = await AuthClient.GetAsync($"/api/v1/composite-configurations/{compositeName}", TestContext.Current.CancellationToken);
         getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var composite = await getResponse.Content.ReadFromJsonAsync<CompositeConfigurationDetailsDto>();
+        var composite = await getResponse.Content.ReadFromJsonAsync<CompositeConfigurationDetailsDto>(TestContext.Current.CancellationToken);
         composite.Should().NotBeNull();
         composite!.Name.Should().Be(compositeName);
         composite.Description.Should().Be("Test composite configuration");
@@ -75,35 +75,35 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
         var childFile = new ByteArrayContent("resources: []"u8.ToArray());
         childFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         childContent.Add(childFile, "files", "main.dsc.yaml");
-        await AuthClient.PostAsync("/api/v1/configurations", childContent);
+        await AuthClient.PostAsync("/api/v1/configurations", childContent, TestContext.Current.CancellationToken);
 
         var createRequest = new CreateCompositeConfigurationRequest
         {
             Name = compositeName
         };
-        await AuthClient.PostAsJsonAsync("/api/v1/composite-configurations", createRequest);
+        await AuthClient.PostAsJsonAsync("/api/v1/composite-configurations", createRequest, TestContext.Current.CancellationToken);
 
         var versionRequest = new CreateCompositeConfigurationVersionRequest
         {
             Version = "1.0.0"
         };
-        var versionResponse = await AuthClient.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions", versionRequest);
+        var versionResponse = await AuthClient.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions", versionRequest, TestContext.Current.CancellationToken);
         versionResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var versionDto = await versionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDto>();
+        var versionDto = await versionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDto>(TestContext.Current.CancellationToken);
         versionDto!.Status.Should().Be(ConfigurationVersionStatus.Draft);
 
         var addChildRequest = new AddChildConfigurationRequest
         {
             ChildConfigurationName = childName
         };
-        await AuthClient.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto!.Version}/children", addChildRequest);
+        await AuthClient.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto!.Version}/children", addChildRequest, TestContext.Current.CancellationToken);
 
-        var publishResponse = await AuthClient.PutAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto.Version}/publish", null);
+        var publishResponse = await AuthClient.PutAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto.Version}/publish", null, TestContext.Current.CancellationToken);
         publishResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var getVersionResponse = await AuthClient.GetAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto.Version}");
-        var publishedVersion = await getVersionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDto>();
+        var getVersionResponse = await AuthClient.GetAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto.Version}", TestContext.Current.CancellationToken);
+        var publishedVersion = await getVersionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDto>(TestContext.Current.CancellationToken);
         publishedVersion!.Status.Should().Be(ConfigurationVersionStatus.Published);
     }
 
@@ -119,29 +119,29 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
         var childFile = new ByteArrayContent("$schema: https://raw.githubusercontent.com/PowerShell/DSC/main/schemas/2024/04/config/document.json\nresources:\n  - type: OpenDsc.Windows/Environment\n    properties:\n      name: TEST_VAR\n      value: test_value\n"u8.ToArray());
         childFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         childContent.Add(childFile, "files", "main.dsc.yaml");
-        await AuthClient.PostAsync("/api/v1/configurations", childContent);
+        await AuthClient.PostAsync("/api/v1/configurations", childContent, TestContext.Current.CancellationToken);
 
         var createCompositeRequest = new CreateCompositeConfigurationRequest
         {
             Name = compositeName
         };
-        await AuthClient.PostAsJsonAsync("/api/v1/composite-configurations", createCompositeRequest);
+        await AuthClient.PostAsJsonAsync("/api/v1/composite-configurations", createCompositeRequest, TestContext.Current.CancellationToken);
 
         var versionRequest = new CreateCompositeConfigurationVersionRequest
         {
             Version = "1.0.0"
         };
-        var versionResponse = await AuthClient.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions", versionRequest);
-        var versionDto = await versionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDto>();
+        var versionResponse = await AuthClient.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions", versionRequest, TestContext.Current.CancellationToken);
+        var versionDto = await versionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDto>(TestContext.Current.CancellationToken);
 
         var addChildRequest = new AddChildConfigurationRequest
         {
             ChildConfigurationName = childName
         };
-        var addChildResponse = await AuthClient.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto!.Version}/children", addChildRequest);
+        var addChildResponse = await AuthClient.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto!.Version}/children", addChildRequest, TestContext.Current.CancellationToken);
         addChildResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var childDto = await addChildResponse.Content.ReadFromJsonAsync<CompositeConfigurationItemDto>();
+        var childDto = await addChildResponse.Content.ReadFromJsonAsync<CompositeConfigurationItemDto>(TestContext.Current.CancellationToken);
         childDto.Should().NotBeNull();
         childDto!.ChildConfigurationName.Should().Be(childName);
     }
@@ -159,8 +159,8 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
         var child1File = new ByteArrayContent("$schema: https://raw.githubusercontent.com/PowerShell/DSC/main/schemas/2024/04/config/document.json\nresources:\n  - type: OpenDsc.Windows/Environment\n    properties:\n      name: CHILD1_VAR\n      value: child1_value\n"u8.ToArray());
         child1File.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         child1Content.Add(child1File, "files", "main.dsc.yaml");
-        await AuthClient.PostAsync("/api/v1/configurations", child1Content);
-        await AuthClient.PutAsync($"/api/v1/configurations/{childName1}/versions/1.0.0/publish", null);
+        await AuthClient.PostAsync("/api/v1/configurations", child1Content, TestContext.Current.CancellationToken);
+        await AuthClient.PutAsync($"/api/v1/configurations/{childName1}/versions/1.0.0/publish", null, TestContext.Current.CancellationToken);
 
         using var child2Content = new MultipartFormDataContent();
         child2Content.Add(new StringContent(childName2), "name");
@@ -168,37 +168,37 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
         var child2File = new ByteArrayContent("$schema: https://raw.githubusercontent.com/PowerShell/DSC/main/schemas/2024/04/config/document.json\nresources:\n  - type: OpenDsc.Windows/Environment\n    properties:\n      name: CHILD2_VAR\n      value: child2_value\n"u8.ToArray());
         child2File.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         child2Content.Add(child2File, "files", "main.dsc.yaml");
-        await AuthClient.PostAsync("/api/v1/configurations", child2Content);
-        await AuthClient.PutAsync($"/api/v1/configurations/{childName2}/versions/1.0.0/publish", null);
+        await AuthClient.PostAsync("/api/v1/configurations", child2Content, TestContext.Current.CancellationToken);
+        await AuthClient.PutAsync($"/api/v1/configurations/{childName2}/versions/1.0.0/publish", null, TestContext.Current.CancellationToken);
 
         var createCompositeRequest = new CreateCompositeConfigurationRequest
         {
             Name = compositeName
         };
-        await AuthClient.PostAsJsonAsync("/api/v1/composite-configurations", createCompositeRequest);
+        await AuthClient.PostAsJsonAsync("/api/v1/composite-configurations", createCompositeRequest, TestContext.Current.CancellationToken);
 
         var versionRequest = new CreateCompositeConfigurationVersionRequest
         {
             Version = "1.0.0"
         };
-        var versionResponse = await AuthClient.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions", versionRequest);
-        var versionDto = await versionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDto>();
+        var versionResponse = await AuthClient.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions", versionRequest, TestContext.Current.CancellationToken);
+        var versionDto = await versionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDto>(TestContext.Current.CancellationToken);
 
         var addChild1Request = new AddChildConfigurationRequest
         {
             ChildConfigurationName = childName1,
             Order = 0
         };
-        await AuthClient.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto!.Version}/children", addChild1Request);
+        await AuthClient.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto!.Version}/children", addChild1Request, TestContext.Current.CancellationToken);
 
         var addChild2Request = new AddChildConfigurationRequest
         {
             ChildConfigurationName = childName2,
             Order = 1
         };
-        await AuthClient.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto.Version}/children", addChild2Request);
+        await AuthClient.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto.Version}/children", addChild2Request, TestContext.Current.CancellationToken);
 
-        await AuthClient.PutAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto.Version}/publish", null);
+        await AuthClient.PutAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto.Version}/publish", null, TestContext.Current.CancellationToken);
 
         var fqdn = $"bundle-test-{Guid.NewGuid()}.example.com";
         var registerRequest = new RegisterNodeRequest
@@ -206,21 +206,21 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
             Fqdn = fqdn,
             RegistrationKey = "test-registration-key"
         };
-        var registerResponse = await AuthClient.PostAsJsonAsync("/api/v1/nodes/register", registerRequest);
-        var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>();
+        var registerResponse = await AuthClient.PostAsJsonAsync("/api/v1/nodes/register", registerRequest, TestContext.Current.CancellationToken);
+        var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>(TestContext.Current.CancellationToken);
 
         var assignRequest = new AssignConfigurationRequest
         {
             ConfigurationName = compositeName,
             IsComposite = true
         };
-        await AuthClient.PutAsJsonAsync($"/api/v1/nodes/{registerResult!.NodeId}/configuration", assignRequest);
+        await AuthClient.PutAsJsonAsync($"/api/v1/nodes/{registerResult!.NodeId}/configuration", assignRequest, TestContext.Current.CancellationToken);
 
         using var nodeClient = Fixture.CreateClient();
-        var bundleResponse = await nodeClient.GetAsync($"/api/v1/nodes/{registerResult.NodeId}/configuration/bundle");
+        var bundleResponse = await nodeClient.GetAsync($"/api/v1/nodes/{registerResult.NodeId}/configuration/bundle", TestContext.Current.CancellationToken);
         bundleResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        using var bundleStream = await bundleResponse.Content.ReadAsStreamAsync();
+        using var bundleStream = await bundleResponse.Content.ReadAsStreamAsync(TestContext.Current.CancellationToken);
         using var archive = new ZipArchive(bundleStream, ZipArchiveMode.Read);
 
         var entries = archive.Entries.Select(e => e.FullName).ToList();
@@ -234,7 +234,7 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
 
         using var mainStream = mainEntry!.Open();
         using var mainReader = new StreamReader(mainStream);
-        var mainContent = await mainReader.ReadToEndAsync();
+        var mainContent = await mainReader.ReadToEndAsync(TestContext.Current.CancellationToken);
 
         mainContent.Should().Contain("type: Microsoft.DSC/Include");
         mainContent.Should().Contain($"configurationFile: {childName1}/main.dsc.yaml");
@@ -253,28 +253,28 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
         var childFile = new ByteArrayContent("$schema: https://raw.githubusercontent.com/PowerShell/DSC/main/schemas/2024/04/config/document.json\nresources: []\n"u8.ToArray());
         childFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         childContent.Add(childFile, "files", "main.dsc.yaml");
-        await AuthClient.PostAsync("/api/v1/configurations", childContent);
+        await AuthClient.PostAsync("/api/v1/configurations", childContent, TestContext.Current.CancellationToken);
 
         var createCompositeRequest = new CreateCompositeConfigurationRequest
         {
             Name = compositeName
         };
-        await AuthClient.PostAsJsonAsync("/api/v1/composite-configurations", createCompositeRequest);
+        await AuthClient.PostAsJsonAsync("/api/v1/composite-configurations", createCompositeRequest, TestContext.Current.CancellationToken);
 
         var versionRequest = new CreateCompositeConfigurationVersionRequest
         {
             Version = "1.0.0"
         };
-        var versionResponse = await AuthClient.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions", versionRequest);
-        var versionDto = await versionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDto>();
+        var versionResponse = await AuthClient.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions", versionRequest, TestContext.Current.CancellationToken);
+        var versionDto = await versionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDto>(TestContext.Current.CancellationToken);
 
         var addChildRequest = new AddChildConfigurationRequest
         {
             ChildConfigurationName = childName
         };
-        await AuthClient.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto!.Version}/children", addChildRequest);
+        await AuthClient.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto!.Version}/children", addChildRequest, TestContext.Current.CancellationToken);
 
-        await AuthClient.PutAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto.Version}/publish", null);
+        await AuthClient.PutAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto.Version}/publish", null, TestContext.Current.CancellationToken);
 
         var fqdn = $"checksum-test-{Guid.NewGuid()}.example.com";
         var registerRequest = new RegisterNodeRequest
@@ -282,21 +282,21 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
             Fqdn = fqdn,
             RegistrationKey = "test-registration-key"
         };
-        var registerResponse = await AuthClient.PostAsJsonAsync("/api/v1/nodes/register", registerRequest);
-        var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>();
+        var registerResponse = await AuthClient.PostAsJsonAsync("/api/v1/nodes/register", registerRequest, TestContext.Current.CancellationToken);
+        var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>(TestContext.Current.CancellationToken);
 
         var assignRequest = new AssignConfigurationRequest
         {
             ConfigurationName = compositeName,
             IsComposite = true
         };
-        await AuthClient.PutAsJsonAsync($"/api/v1/nodes/{registerResult!.NodeId}/configuration", assignRequest);
+        await AuthClient.PutAsJsonAsync($"/api/v1/nodes/{registerResult!.NodeId}/configuration", assignRequest, TestContext.Current.CancellationToken);
 
         using var nodeClient = Fixture.CreateClient();
-        var checksumResponse = await nodeClient.GetAsync($"/api/v1/nodes/{registerResult.NodeId}/configuration/checksum");
+        var checksumResponse = await nodeClient.GetAsync($"/api/v1/nodes/{registerResult.NodeId}/configuration/checksum", TestContext.Current.CancellationToken);
         checksumResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var checksumResult = await checksumResponse.Content.ReadFromJsonAsync<ConfigurationChecksumResponse>();
+        var checksumResult = await checksumResponse.Content.ReadFromJsonAsync<ConfigurationChecksumResponse>(TestContext.Current.CancellationToken);
         checksumResult.Should().NotBeNull();
         checksumResult!.Checksum.Should().NotBeNullOrEmpty();
         checksumResult.Checksum.Length.Should().Be(64);
@@ -314,34 +314,34 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
         var childFile = new ByteArrayContent("test content"u8.ToArray());
         childFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         childContent.Add(childFile, "files", "main.dsc.yaml");
-        await AuthClient.PostAsync("/api/v1/configurations", childContent);
+        await AuthClient.PostAsync("/api/v1/configurations", childContent, TestContext.Current.CancellationToken);
 
         var createCompositeRequest = new CreateCompositeConfigurationRequest
         {
             Name = compositeName
         };
-        await AuthClient.PostAsJsonAsync("/api/v1/composite-configurations", createCompositeRequest);
+        await AuthClient.PostAsJsonAsync("/api/v1/composite-configurations", createCompositeRequest, TestContext.Current.CancellationToken);
 
         var versionRequest = new CreateCompositeConfigurationVersionRequest
         {
             Version = "1.0.0"
         };
-        var versionResponse = await AuthClient.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions", versionRequest);
-        var versionDto = await versionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDto>();
+        var versionResponse = await AuthClient.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions", versionRequest, TestContext.Current.CancellationToken);
+        var versionDto = await versionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDto>(TestContext.Current.CancellationToken);
 
         var addChildRequest = new AddChildConfigurationRequest
         {
             ChildConfigurationName = childName
         };
-        await AuthClient.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto!.Version}/children", addChildRequest);
+        await AuthClient.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto!.Version}/children", addChildRequest, TestContext.Current.CancellationToken);
 
-        var deleteResponse = await AuthClient.DeleteAsync($"/api/v1/composite-configurations/{compositeName}");
+        var deleteResponse = await AuthClient.DeleteAsync($"/api/v1/composite-configurations/{compositeName}", TestContext.Current.CancellationToken);
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var getResponse = await AuthClient.GetAsync($"/api/v1/composite-configurations/{compositeName}");
+        var getResponse = await AuthClient.GetAsync($"/api/v1/composite-configurations/{compositeName}", TestContext.Current.CancellationToken);
         getResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
 
-        var getChildResponse = await AuthClient.GetAsync($"/api/v1/configurations/{childName}");
+        var getChildResponse = await AuthClient.GetAsync($"/api/v1/configurations/{childName}", TestContext.Current.CancellationToken);
         getChildResponse.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 }

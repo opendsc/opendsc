@@ -2,6 +2,7 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 
 using NuGet.Versioning;
@@ -16,6 +17,9 @@ namespace OpenDsc.Schema;
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
     UseStringEnumConverter = true,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
+[JsonSerializable(typeof(DscConfigDocument))]
+[JsonSerializable(typeof(DscConfigResource))]
+[JsonSerializable(typeof(Dictionary<string, JsonNode?>))]
 [JsonSerializable(typeof(DscResult))]
 [JsonSerializable(typeof(DscResourceResult))]
 [JsonSerializable(typeof(List<DscResourceResult>))]

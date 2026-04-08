@@ -27,10 +27,10 @@ public class PersonalAccessTokenEndpointsTests : IClassFixture<ServerWebApplicat
     [Fact]
     public async Task GetPersonalAccessTokens_ReturnsTokenList()
     {
-        var response = await _client.GetAsync("/api/v1/auth/tokens");
+        var response = await _client.GetAsync("/api/v1/auth/tokens", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var tokens = await response.Content.ReadFromJsonAsync<List<TokenMetadata>>();
+        var tokens = await response.Content.ReadFromJsonAsync<List<TokenMetadata>>(TestContext.Current.CancellationToken);
         tokens.Should().NotBeNull();
         // Should contain at least the token used for authentication
         tokens!.Should().NotBeEmpty();
@@ -46,10 +46,10 @@ public class PersonalAccessTokenEndpointsTests : IClassFixture<ServerWebApplicat
             ExpiresAt = DateTimeOffset.UtcNow.AddDays(30)
         };
 
-        var response = await _client.PostAsJsonAsync("/api/v1/auth/tokens", createRequest);
+        var response = await _client.PostAsJsonAsync("/api/v1/auth/tokens", createRequest, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
-        var token = await response.Content.ReadFromJsonAsync<CreateTokenResponse>();
+        var token = await response.Content.ReadFromJsonAsync<CreateTokenResponse>(TestContext.Current.CancellationToken);
         token.Should().NotBeNull();
         token!.Name.Should().Be("TestToken");
         token.Token.Should().NotBeNullOrEmpty(); // The actual token value
@@ -67,13 +67,13 @@ public class PersonalAccessTokenEndpointsTests : IClassFixture<ServerWebApplicat
             Scopes = ["read"],
             ExpiresAt = DateTimeOffset.UtcNow.AddDays(30)
         };
-        var createResponse = await _client.PostAsJsonAsync("/api/v1/auth/tokens", createRequest);
-        var createdToken = await createResponse.Content.ReadFromJsonAsync<CreateTokenResponse>();
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/auth/tokens", createRequest, TestContext.Current.CancellationToken);
+        var createdToken = await createResponse.Content.ReadFromJsonAsync<CreateTokenResponse>(TestContext.Current.CancellationToken);
 
-        var response = await _client.GetAsync("/api/v1/auth/tokens");
+        var response = await _client.GetAsync("/api/v1/auth/tokens", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var tokens = await response.Content.ReadFromJsonAsync<List<TokenMetadata>>();
+        var tokens = await response.Content.ReadFromJsonAsync<List<TokenMetadata>>(TestContext.Current.CancellationToken);
         var token = tokens!.First(t => t.Name == "GetToken");
         token.Should().NotBeNull();
         token!.Name.Should().Be("GetToken");
@@ -90,18 +90,18 @@ public class PersonalAccessTokenEndpointsTests : IClassFixture<ServerWebApplicat
             Scopes = ["read"],
             ExpiresAt = DateTimeOffset.UtcNow.AddDays(30)
         };
-        var createResponse = await _client.PostAsJsonAsync("/api/v1/auth/tokens", createRequest);
-        var createdToken = await createResponse.Content.ReadFromJsonAsync<CreateTokenResponse>();
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/auth/tokens", createRequest, TestContext.Current.CancellationToken);
+        var createdToken = await createResponse.Content.ReadFromJsonAsync<CreateTokenResponse>(TestContext.Current.CancellationToken);
 
         // Delete the token
-        var deleteResponse = await _client.DeleteAsync($"/api/v1/auth/tokens/{createdToken!.TokenId}");
+        var deleteResponse = await _client.DeleteAsync($"/api/v1/auth/tokens/{createdToken!.TokenId}", TestContext.Current.CancellationToken);
 
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         // Verify token is revoked (should still exist but be marked as revoked)
-        var getResponse = await _client.GetAsync("/api/v1/auth/tokens");
+        var getResponse = await _client.GetAsync("/api/v1/auth/tokens", TestContext.Current.CancellationToken);
         getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var tokens = await getResponse.Content.ReadFromJsonAsync<List<TokenMetadata>>();
+        var tokens = await getResponse.Content.ReadFromJsonAsync<List<TokenMetadata>>(TestContext.Current.CancellationToken);
         var deletedToken = tokens!.FirstOrDefault(t => t.Id == createdToken.TokenId);
         deletedToken.Should().NotBeNull();
         deletedToken!.IsRevoked.Should().BeTrue();
@@ -117,18 +117,18 @@ public class PersonalAccessTokenEndpointsTests : IClassFixture<ServerWebApplicat
             Scopes = ["read"],
             ExpiresAt = DateTimeOffset.UtcNow.AddDays(30)
         };
-        var createResponse = await _client.PostAsJsonAsync("/api/v1/auth/tokens", createRequest);
-        var createdToken = await createResponse.Content.ReadFromJsonAsync<CreateTokenResponse>();
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/auth/tokens", createRequest, TestContext.Current.CancellationToken);
+        var createdToken = await createResponse.Content.ReadFromJsonAsync<CreateTokenResponse>(TestContext.Current.CancellationToken);
 
         // Revoke the token
-        var revokeResponse = await _client.DeleteAsync($"/api/v1/auth/tokens/{createdToken!.TokenId}");
+        var revokeResponse = await _client.DeleteAsync($"/api/v1/auth/tokens/{createdToken!.TokenId}", TestContext.Current.CancellationToken);
 
         revokeResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         // Verify token is revoked (should still exist but be marked as revoked)
-        var getResponse = await _client.GetAsync("/api/v1/auth/tokens");
+        var getResponse = await _client.GetAsync("/api/v1/auth/tokens", TestContext.Current.CancellationToken);
         getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var tokens = await getResponse.Content.ReadFromJsonAsync<List<TokenMetadata>>();
+        var tokens = await getResponse.Content.ReadFromJsonAsync<List<TokenMetadata>>(TestContext.Current.CancellationToken);
         var revokedToken = tokens!.First(t => t.Id == createdToken.TokenId);
         revokedToken.IsRevoked.Should().BeTrue();
     }

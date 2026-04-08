@@ -27,7 +27,7 @@ public sealed class PullServerIntegrationTests(ServerFixture serverFixture) : IA
     private string? _configId;
     private HttpClient? _httpClient;
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         if (!_server.IsDockerAvailable)
         {
@@ -50,10 +50,10 @@ public sealed class PullServerIntegrationTests(ServerFixture serverFixture) : IA
         _configId = configDetails!.Id.ToString();
     }
 
-    public Task DisposeAsync()
+    public ValueTask DisposeAsync()
     {
         _httpClient?.Dispose();
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
     [Fact(Skip = "Requires Docker and current server API")]
@@ -62,15 +62,15 @@ public sealed class PullServerIntegrationTests(ServerFixture serverFixture) : IA
         var config = CreateLcmConfig(ConfigurationMode.Monitor, _configId!);
 
         using var host = CreateTestHost(config);
-        await host.StartAsync();
+        await host.StartAsync(TestContext.Current.CancellationToken);
 
         var pullServerClient = host.Services.GetRequiredService<PullServerClient>();
-        var result = await pullServerClient.RegisterAsync();
+        var result = await pullServerClient.RegisterAsync(TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result!.NodeId.Should().NotBeEmpty();
 
-        await host.StopAsync();
+        await host.StopAsync(TestContext.Current.CancellationToken);
     }
 
     [Fact(Skip = "Requires Docker and current server API")]
@@ -80,14 +80,14 @@ public sealed class PullServerIntegrationTests(ServerFixture serverFixture) : IA
         config.PullServer!.RegistrationKey = "invalid-key";
 
         using var host = CreateTestHost(config);
-        await host.StartAsync();
+        await host.StartAsync(TestContext.Current.CancellationToken);
 
         var pullServerClient = host.Services.GetRequiredService<PullServerClient>();
-        var result = await pullServerClient.RegisterAsync();
+        var result = await pullServerClient.RegisterAsync(TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
 
-        await host.StopAsync();
+        await host.StopAsync(TestContext.Current.CancellationToken);
     }
 
     [Fact(Skip = "Requires Docker and current server API")]
@@ -96,19 +96,19 @@ public sealed class PullServerIntegrationTests(ServerFixture serverFixture) : IA
         var config = CreateLcmConfig(ConfigurationMode.Monitor, _configId!);
 
         using var host = CreateTestHost(config);
-        await host.StartAsync();
+        await host.StartAsync(TestContext.Current.CancellationToken);
 
         var pullServerClient = host.Services.GetRequiredService<PullServerClient>();
-        var registrationResult = await pullServerClient.RegisterAsync();
+        var registrationResult = await pullServerClient.RegisterAsync(TestContext.Current.CancellationToken);
         registrationResult.Should().NotBeNull();
 
         config.PullServer!.NodeId = registrationResult!.NodeId;
 
-        var configContent = await pullServerClient.GetConfigurationAsync();
+        var configContent = await pullServerClient.GetConfigurationAsync(TestContext.Current.CancellationToken);
         configContent.Should().NotBeNullOrEmpty();
         configContent.Should().Contain("Microsoft.DSC");
 
-        await host.StopAsync();
+        await host.StopAsync(TestContext.Current.CancellationToken);
     }
 
     [Fact(Skip = "Requires Docker and current server API")]
@@ -117,13 +117,13 @@ public sealed class PullServerIntegrationTests(ServerFixture serverFixture) : IA
         var config = CreateLcmConfig(ConfigurationMode.Monitor, _configId!);
 
         using var host = CreateTestHost(config);
-        await host.StartAsync();
+        await host.StartAsync(TestContext.Current.CancellationToken);
 
         var pullServerClient = host.Services.GetRequiredService<PullServerClient>();
-        var registrationResult = await pullServerClient.RegisterAsync();
+        var registrationResult = await pullServerClient.RegisterAsync(TestContext.Current.CancellationToken);
         config.PullServer!.NodeId = registrationResult!.NodeId;
 
-        var checksum1 = await pullServerClient.GetConfigurationChecksumAsync();
+        var checksum1 = await pullServerClient.GetConfigurationChecksumAsync(TestContext.Current.CancellationToken);
         checksum1.Should().NotBeNull();
         checksum1!.Checksum.Should().NotBeNullOrEmpty();
 
@@ -132,15 +132,15 @@ public sealed class PullServerIntegrationTests(ServerFixture serverFixture) : IA
         _httpClient.DefaultRequestHeaders.Add("X-API-Key", _server.AdminApiKey);
         var updateRequest = new UpdateConfigurationRequest
         {
-            Content = "# Updated configuration\n" + await File.ReadAllTextAsync(Path.Combine("TestConfigurations", "simple.dsc.yaml"))
+            Content = "# Updated configuration\n" + await File.ReadAllTextAsync(Path.Combine("TestConfigurations", "simple.dsc.yaml"), TestContext.Current.CancellationToken)
         };
-        await _httpClient.PutAsJsonAsync($"/configurations/{_configId}", updateRequest);
+        await _httpClient.PutAsJsonAsync($"/configurations/{_configId}", updateRequest, TestContext.Current.CancellationToken);
 
-        var checksum2 = await pullServerClient.GetConfigurationChecksumAsync();
+        var checksum2 = await pullServerClient.GetConfigurationChecksumAsync(TestContext.Current.CancellationToken);
         checksum2.Should().NotBeNull();
         checksum2!.Checksum.Should().NotBe(checksum1.Checksum);
 
-        await host.StopAsync();
+        await host.StopAsync(TestContext.Current.CancellationToken);
     }
 
     [Fact(Skip = "Requires Docker and current server API")]
@@ -149,22 +149,22 @@ public sealed class PullServerIntegrationTests(ServerFixture serverFixture) : IA
         var config = CreateLcmConfig(ConfigurationMode.Monitor, _configId!);
 
         using var host = CreateTestHost(config);
-        await host.StartAsync();
+        await host.StartAsync(TestContext.Current.CancellationToken);
 
         var pullServerClient = host.Services.GetRequiredService<PullServerClient>();
         var certificateManager = host.Services.GetRequiredService<CertificateManager>();
 
-        var registrationResult = await pullServerClient.RegisterAsync();
+        var registrationResult = await pullServerClient.RegisterAsync(TestContext.Current.CancellationToken);
         config.PullServer!.NodeId = registrationResult!.NodeId;
 
         // Force certificate rotation by creating a new certificate
         var newCert = certificateManager.RotateCertificate(config.PullServer);
         newCert.Should().NotBeNull();
 
-        var rotateResult = await pullServerClient.RotateCertificateAsync(newCert!, CancellationToken.None);
+        var rotateResult = await pullServerClient.RotateCertificateAsync(newCert!, TestContext.Current.CancellationToken);
         rotateResult.Should().BeTrue();
 
-        await host.StopAsync();
+        await host.StopAsync(TestContext.Current.CancellationToken);
     }
 
     [Fact(Skip = "Requires Docker and current server API")]
@@ -175,19 +175,19 @@ public sealed class PullServerIntegrationTests(ServerFixture serverFixture) : IA
 
         using var host = CreateTestHost(config);
 
-        await host.StartAsync();
+        await host.StartAsync(TestContext.Current.CancellationToken);
 
         // Let it run for a few cycles
-        await Task.Delay(TimeSpan.FromSeconds(5));
+        await Task.Delay(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
 
-        await host.StopAsync();
+        await host.StopAsync(TestContext.Current.CancellationToken);
 
         // Verify reports were submitted
         _httpClient!.DefaultRequestHeaders.Clear();
         _httpClient.DefaultRequestHeaders.Add("X-API-Key", _server.AdminApiKey);
-        var reportsResponse = await _httpClient.GetAsync("/reports");
+        var reportsResponse = await _httpClient.GetAsync("/reports", TestContext.Current.CancellationToken);
         reportsResponse.EnsureSuccessStatusCode();
-        var reports = await reportsResponse.Content.ReadFromJsonAsync<List<ReportSummary>>();
+        var reports = await reportsResponse.Content.ReadFromJsonAsync<List<ReportSummary>>(TestContext.Current.CancellationToken);
 
         reports.Should().NotBeNull();
         reports!.Count.Should().BeGreaterThan(0);
@@ -212,24 +212,24 @@ resources:
         _httpClient!.DefaultRequestHeaders.Clear();
         _httpClient.DefaultRequestHeaders.Add("X-API-Key", _server.AdminApiKey);
         var updateRequest = new UpdateConfigurationRequest { Content = driftConfig };
-        await _httpClient.PutAsJsonAsync($"/configurations/{_configId}", updateRequest);
+        await _httpClient.PutAsJsonAsync($"/configurations/{_configId}", updateRequest, TestContext.Current.CancellationToken);
 
         var config = CreateLcmConfig(ConfigurationMode.Remediate, _configId!);
         config.ConfigurationModeInterval = TimeSpan.FromSeconds(2);
 
         using var host = CreateTestHost(config);
-        await host.StartAsync();
+        await host.StartAsync(TestContext.Current.CancellationToken);
 
         // Let it run and remediate
-        await Task.Delay(TimeSpan.FromSeconds(5));
+        await Task.Delay(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
 
-        await host.StopAsync();
+        await host.StopAsync(TestContext.Current.CancellationToken);
 
         // Verify reports contain both Test and Set operations
         _httpClient.DefaultRequestHeaders.Clear();
         _httpClient.DefaultRequestHeaders.Add("X-API-Key", _server.AdminApiKey);
-        var reportsResponse = await _httpClient.GetAsync("/reports");
-        var reports = await reportsResponse.Content.ReadFromJsonAsync<List<ReportSummary>>();
+        var reportsResponse = await _httpClient.GetAsync("/reports", TestContext.Current.CancellationToken);
+        var reports = await reportsResponse.Content.ReadFromJsonAsync<List<ReportSummary>>(TestContext.Current.CancellationToken);
 
         reports.Should().Contain(r => r.Operation == OpenDsc.Schema.DscOperation.Test);
         reports.Should().Contain(r => r.Operation == OpenDsc.Schema.DscOperation.Set);

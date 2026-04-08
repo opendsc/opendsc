@@ -11,26 +11,20 @@ using Xunit;
 namespace OpenDsc.Server.IntegrationTests;
 
 [Trait("Category", "Integration")]
-public class AuthenticationEndpointsTests : IAsyncLifetime, IDisposable
+public class AuthenticationEndpointsTests : IAsyncLifetime
 {
     private readonly ServerWebApplicationFactory _factory = new();
     private HttpClient _client = null!;
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         _client = await _factory.CreateAuthenticatedClientAsync();
     }
 
-    public Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         _client?.Dispose();
-        return Task.CompletedTask;
-    }
-
-    public void Dispose()
-    {
-        _factory?.Dispose();
-        GC.SuppressFinalize(this);
+        await _factory.DisposeAsync();
     }
 
     [Fact]
@@ -42,10 +36,10 @@ public class AuthenticationEndpointsTests : IAsyncLifetime, IDisposable
         });
 
         var loginRequest = new { username = "admin", password = "admin" };
-        var response = await client.PostAsJsonAsync("/api/v1/auth/login", loginRequest);
+        var response = await client.PostAsJsonAsync("/api/v1/auth/login", loginRequest, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var result = await response.Content.ReadFromJsonAsync<LoginResponse>();
+        var result = await response.Content.ReadFromJsonAsync<LoginResponse>(TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
         result!.Username.Should().Be("admin");
         result.RequirePasswordChange.Should().BeTrue();
@@ -57,7 +51,7 @@ public class AuthenticationEndpointsTests : IAsyncLifetime, IDisposable
         using var client = _factory.CreateClient();
 
         var loginRequest = new { username = "admin", password = "wrongpassword" };
-        var response = await client.PostAsJsonAsync("/api/v1/auth/login", loginRequest);
+        var response = await client.PostAsJsonAsync("/api/v1/auth/login", loginRequest, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -66,10 +60,10 @@ public class AuthenticationEndpointsTests : IAsyncLifetime, IDisposable
     public async Task CreateToken_WithValidSession_ReturnsToken()
     {
         var tokenRequest = new { name = "Test Token", expiresAt = (DateTimeOffset?)null };
-        var response = await _client.PostAsJsonAsync("/api/v1/auth/tokens", tokenRequest);
+        var response = await _client.PostAsJsonAsync("/api/v1/auth/tokens", tokenRequest, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
-        var result = await response.Content.ReadFromJsonAsync<TokenResponse>();
+        var result = await response.Content.ReadFromJsonAsync<TokenResponse>(TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
         result!.Token.Should().StartWith("pat_");
         result.Token.Length.Should().Be(44);
@@ -80,12 +74,12 @@ public class AuthenticationEndpointsTests : IAsyncLifetime, IDisposable
     public async Task ListTokens_ReturnsUserTokens()
     {
         // Create a test token
-        await _client.PostAsJsonAsync("/api/v1/auth/tokens", new { name = "List Test Token", expiresAt = (DateTimeOffset?)null });
+        await _client.PostAsJsonAsync("/api/v1/auth/tokens", new { name = "List Test Token", expiresAt = (DateTimeOffset?)null }, TestContext.Current.CancellationToken);
 
-        var response = await _client.GetAsync("/api/v1/auth/tokens");
+        var response = await _client.GetAsync("/api/v1/auth/tokens", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var tokens = await response.Content.ReadFromJsonAsync<List<TokenSummary>>();
+        var tokens = await response.Content.ReadFromJsonAsync<List<TokenSummary>>(TestContext.Current.CancellationToken);
         tokens.Should().NotBeNull();
         tokens!.Should().Contain(t => t.Name == "List Test Token");
     }
@@ -95,21 +89,21 @@ public class AuthenticationEndpointsTests : IAsyncLifetime, IDisposable
     {
         // Create a token
         var createResponse = await _client.PostAsJsonAsync("/api/v1/auth/tokens",
-            new { name = "Revoke Test Token", expiresAt = (DateTimeOffset?)null });
+            new { name = "Revoke Test Token", expiresAt = (DateTimeOffset?)null }, TestContext.Current.CancellationToken);
 
         // Get tokens to find the ID
-        var listResponse = await _client.GetAsync("/api/v1/auth/tokens");
-        var tokens = await listResponse.Content.ReadFromJsonAsync<List<TokenSummary>>();
+        var listResponse = await _client.GetAsync("/api/v1/auth/tokens", TestContext.Current.CancellationToken);
+        var tokens = await listResponse.Content.ReadFromJsonAsync<List<TokenSummary>>(TestContext.Current.CancellationToken);
         var tokenToRevoke = tokens!.First(t => t.Name == "Revoke Test Token");
 
         // Revoke the token
-        var revokeResponse = await _client.DeleteAsync($"/api/v1/auth/tokens/{tokenToRevoke.Id}");
+        var revokeResponse = await _client.DeleteAsync($"/api/v1/auth/tokens/{tokenToRevoke.Id}", TestContext.Current.CancellationToken);
 
         revokeResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         // Verify token is revoked (should still exist but be marked as revoked)
-        var verifyResponse = await _client.GetAsync("/api/v1/auth/tokens");
-        var remainingTokens = await verifyResponse.Content.ReadFromJsonAsync<List<TokenSummary>>();
+        var verifyResponse = await _client.GetAsync("/api/v1/auth/tokens", TestContext.Current.CancellationToken);
+        var remainingTokens = await verifyResponse.Content.ReadFromJsonAsync<List<TokenSummary>>(TestContext.Current.CancellationToken);
         var revokedToken = remainingTokens!.FirstOrDefault(t => t.Id == tokenToRevoke.Id);
         revokedToken.Should().NotBeNull();
         revokedToken!.IsRevoked.Should().BeTrue();
@@ -124,18 +118,18 @@ public class AuthenticationEndpointsTests : IAsyncLifetime, IDisposable
         });
 
         // Login
-        await cookieClient.PostAsJsonAsync("/api/v1/auth/login", new { username = "admin", password = "admin" });
+        await cookieClient.PostAsJsonAsync("/api/v1/auth/login", new { username = "admin", password = "admin" }, TestContext.Current.CancellationToken);
 
         // Change password
         var changeRequest = new { currentPassword = "admin", newPassword = "NewPassword123!" };
-        var response = await cookieClient.PostAsJsonAsync("/api/v1/auth/change-password", changeRequest);
+        var response = await cookieClient.PostAsJsonAsync("/api/v1/auth/change-password", changeRequest, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         // Verify new password works
         using var newClient = _factory.CreateClient();
         var loginResponse = await newClient.PostAsJsonAsync("/api/v1/auth/login",
-            new { username = "admin", password = "NewPassword123!" });
+            new { username = "admin", password = "NewPassword123!" }, TestContext.Current.CancellationToken);
         loginResponse.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
@@ -148,14 +142,14 @@ public class AuthenticationEndpointsTests : IAsyncLifetime, IDisposable
         });
 
         // Login
-        await cookieClient.PostAsJsonAsync("/api/v1/auth/login", new { username = "admin", password = "admin" });
+        await cookieClient.PostAsJsonAsync("/api/v1/auth/login", new { username = "admin", password = "admin" }, TestContext.Current.CancellationToken);
 
         // Logout
-        var logoutResponse = await cookieClient.PostAsync("/api/v1/auth/logout", null);
+        var logoutResponse = await cookieClient.PostAsync("/api/v1/auth/logout", null, TestContext.Current.CancellationToken);
         logoutResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         // Verify session is cleared
-        var testResponse = await cookieClient.GetAsync("/api/v1/auth/tokens");
+        var testResponse = await cookieClient.GetAsync("/api/v1/auth/tokens", TestContext.Current.CancellationToken);
         testResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 

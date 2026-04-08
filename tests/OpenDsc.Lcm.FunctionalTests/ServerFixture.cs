@@ -23,7 +23,7 @@ public sealed class ServerFixture : IAsyncLifetime
     public string RegistrationKey { get; private set; } = "test-registration-key-12345";
     public bool IsDockerAvailable { get; private set; } = true;
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         try
         {
@@ -123,7 +123,7 @@ public sealed class ServerFixture : IAsyncLifetime
         BaseUrl = $"http://localhost:{randomPort}";
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         try
         {

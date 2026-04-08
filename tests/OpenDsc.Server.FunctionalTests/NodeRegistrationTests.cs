@@ -35,10 +35,10 @@ public abstract class NodeRegistrationTests
             RegistrationKey = "test-registration-key"
         };
 
-        var response = await Client.PostAsJsonAsync("/api/v1/nodes/register", request);
+        var response = await Client.PostAsJsonAsync("/api/v1/nodes/register", request, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var result = await response.Content.ReadFromJsonAsync<RegisterNodeResponse>();
+        var result = await response.Content.ReadFromJsonAsync<RegisterNodeResponse>(TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
         result!.NodeId.Should().NotBeEmpty();
     }
@@ -52,7 +52,7 @@ public abstract class NodeRegistrationTests
             RegistrationKey = "invalid-key"
         };
 
-        var response = await Client.PostAsJsonAsync("/api/v1/nodes/register", request);
+        var response = await Client.PostAsJsonAsync("/api/v1/nodes/register", request, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -67,11 +67,11 @@ public abstract class NodeRegistrationTests
             RegistrationKey = "test-registration-key"
         };
 
-        var firstResponse = await Client.PostAsJsonAsync("/api/v1/nodes/register", request);
-        var firstResult = await firstResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>();
+        var firstResponse = await Client.PostAsJsonAsync("/api/v1/nodes/register", request, TestContext.Current.CancellationToken);
+        var firstResult = await firstResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>(TestContext.Current.CancellationToken);
 
-        var secondResponse = await Client.PostAsJsonAsync("/api/v1/nodes/register", request);
-        var secondResult = await secondResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>();
+        var secondResponse = await Client.PostAsJsonAsync("/api/v1/nodes/register", request, TestContext.Current.CancellationToken);
+        var secondResult = await secondResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>(TestContext.Current.CancellationToken);
 
         secondResult.Should().NotBeNull();
         secondResult!.NodeId.Should().Be(firstResult!.NodeId);
@@ -85,14 +85,14 @@ public abstract class NodeRegistrationTests
             Fqdn = $"list-test-{Guid.NewGuid()}.example.com",
             RegistrationKey = "test-registration-key"
         };
-        await Client.PostAsJsonAsync("/api/v1/nodes/register", registerRequest);
+        await Client.PostAsJsonAsync("/api/v1/nodes/register", registerRequest, TestContext.Current.CancellationToken);
 
         using var adminClient = await AuthenticationHelper.CreateAuthenticatedClientAsync(Fixture);
 
-        var response = await adminClient.GetAsync("/api/v1/nodes/");
+        var response = await adminClient.GetAsync("/api/v1/nodes/", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var nodes = await response.Content.ReadFromJsonAsync<List<NodeSummary>>();
+        var nodes = await response.Content.ReadFromJsonAsync<List<NodeSummary>>(TestContext.Current.CancellationToken);
         nodes.Should().NotBeNull();
         nodes!.Should().NotBeEmpty();
         nodes.Should().Contain(n => n.Fqdn == registerRequest.Fqdn);

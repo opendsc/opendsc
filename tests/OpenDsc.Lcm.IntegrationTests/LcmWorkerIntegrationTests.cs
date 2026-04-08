@@ -62,14 +62,14 @@ resources: []
 
             using var host = CreateTestHost(ConfigurationMode.Monitor, TimeSpan.FromSeconds(1), tempConfigPath);
 
-            var startTask = host.StartAsync();
-            await startTask.WaitAsync(TimeSpan.FromSeconds(5));
+            var startTask = host.StartAsync(TestContext.Current.CancellationToken);
+            await startTask.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
             startTask.IsCompletedSuccessfully.Should().BeTrue();
 
-            await Task.Delay(100);
+            await Task.Delay(100, TestContext.Current.CancellationToken);
 
-            var stopTask = host.StopAsync();
-            await stopTask.WaitAsync(TimeSpan.FromSeconds(5));
+            var stopTask = host.StopAsync(TestContext.Current.CancellationToken);
+            await stopTask.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
             stopTask.IsCompletedSuccessfully.Should().BeTrue();
         }
         finally
@@ -94,14 +94,14 @@ resources: []
 
             using var host = CreateTestHost(ConfigurationMode.Remediate, TimeSpan.FromSeconds(1), tempConfigPath);
 
-            var startTask = host.StartAsync();
-            await startTask.WaitAsync(TimeSpan.FromSeconds(5));
+            var startTask = host.StartAsync(TestContext.Current.CancellationToken);
+            await startTask.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
             startTask.IsCompletedSuccessfully.Should().BeTrue();
 
-            await Task.Delay(100);
+            await Task.Delay(100, TestContext.Current.CancellationToken);
 
-            var stopTask = host.StopAsync();
-            await stopTask.WaitAsync(TimeSpan.FromSeconds(5));
+            var stopTask = host.StopAsync(TestContext.Current.CancellationToken);
+            await stopTask.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
             stopTask.IsCompletedSuccessfully.Should().BeTrue();
         }
         finally
@@ -148,15 +148,15 @@ resources: []
                 })
                 .Build();
 
-            await host.StartAsync();
+            await host.StartAsync(TestContext.Current.CancellationToken);
 
             var monitor = host.Services.GetRequiredService<IOptionsMonitor<LcmConfig>>();
             monitor.CurrentValue.ConfigurationMode.Should().Be(ConfigurationMode.Monitor);
 
-            await Task.Delay(100);
+            await Task.Delay(100, TestContext.Current.CancellationToken);
 
-            await host.StopAsync();
-            await host.WaitForShutdownAsync();
+            await host.StopAsync(TestContext.Current.CancellationToken);
+            await host.WaitForShutdownAsync(TestContext.Current.CancellationToken);
         }
         finally
         {
@@ -174,14 +174,14 @@ resources: []
 
         using var host = CreateTestHost(ConfigurationMode.Monitor, TimeSpan.FromSeconds(1), nonExistentPath);
 
-        var startTask = host.StartAsync();
-        await startTask.WaitAsync(TimeSpan.FromSeconds(5));
+        var startTask = host.StartAsync(TestContext.Current.CancellationToken);
+        await startTask.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         startTask.IsCompletedSuccessfully.Should().BeTrue();
 
-        await Task.Delay(100);
+        await Task.Delay(100, TestContext.Current.CancellationToken);
 
-        var stopTask = host.StopAsync();
-        await stopTask.WaitAsync(TimeSpan.FromSeconds(5));
+        var stopTask = host.StopAsync(TestContext.Current.CancellationToken);
+        await stopTask.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         stopTask.IsCompletedSuccessfully.Should().BeTrue();
     }
 
@@ -198,11 +198,11 @@ resources: []
 
             using var host = CreateTestHost(ConfigurationMode.Monitor, TimeSpan.FromMilliseconds(100), tempConfigPath);
 
-            await host.StartAsync();
+            await host.StartAsync(TestContext.Current.CancellationToken);
 
-            await Task.Delay(500);
+            await Task.Delay(500, TestContext.Current.CancellationToken);
 
-            await host.StopAsync();
+            await host.StopAsync(TestContext.Current.CancellationToken);
         }
         finally
         {
@@ -299,9 +299,9 @@ resources:
 
             using var host = CreateTestHost(ConfigurationMode.Remediate, TimeSpan.FromMilliseconds(500), tempConfigPath);
 
-            await host.StartAsync();
-            await Task.Delay(1500);
-            await host.StopAsync();
+            await host.StartAsync(TestContext.Current.CancellationToken);
+            await Task.Delay(1500, TestContext.Current.CancellationToken);
+            await host.StopAsync(TestContext.Current.CancellationToken);
         }
         finally
         {
@@ -328,14 +328,14 @@ resources:
 
             using var host = CreateTestHost(ConfigurationMode.Monitor, TimeSpan.FromSeconds(1), tempConfigPath);
 
-            var startTask = host.StartAsync();
-            await startTask.WaitAsync(TimeSpan.FromSeconds(5));
+            var startTask = host.StartAsync(TestContext.Current.CancellationToken);
+            await startTask.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
             startTask.IsCompletedSuccessfully.Should().BeTrue();
 
-            await Task.Delay(100);
+            await Task.Delay(100, TestContext.Current.CancellationToken);
 
-            var stopTask = host.StopAsync();
-            await stopTask.WaitAsync(TimeSpan.FromSeconds(5));
+            var stopTask = host.StopAsync(TestContext.Current.CancellationToken);
+            await stopTask.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
             stopTask.IsCompletedSuccessfully.Should().BeTrue();
         }
         finally
@@ -382,14 +382,14 @@ resources:
             })
             .Build();
 
-        var startTask = host.StartAsync();
-        await startTask.WaitAsync(TimeSpan.FromSeconds(5));
+        var startTask = host.StartAsync(TestContext.Current.CancellationToken);
+        await startTask.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         startTask.IsCompletedSuccessfully.Should().BeTrue();
 
-        await Task.Delay(100);
+        await Task.Delay(100, TestContext.Current.CancellationToken);
 
-        var stopTask = host.StopAsync();
-        await stopTask.WaitAsync(TimeSpan.FromSeconds(5));
+        var stopTask = host.StopAsync(TestContext.Current.CancellationToken);
+        await stopTask.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         stopTask.IsCompletedSuccessfully.Should().BeTrue();
     }
 
@@ -437,9 +437,9 @@ resources: []
                 })
                 .Build();
 
-            await host.StartAsync();
-            await Task.Delay(500);
-            await host.StopAsync();
+            await host.StartAsync(TestContext.Current.CancellationToken);
+            await Task.Delay(500, TestContext.Current.CancellationToken);
+            await host.StopAsync(TestContext.Current.CancellationToken);
         }
         finally
         {

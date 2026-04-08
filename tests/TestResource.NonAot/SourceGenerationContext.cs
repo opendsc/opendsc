@@ -11,7 +11,7 @@ namespace TestResource.NonAot;
                              UseStringEnumConverter = true,
                              DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 [JsonSerializable(typeof(Schema))]
-internal partial class SourceGenerationContext : JsonSerializerContext
+public partial class SourceGenerationContext : JsonSerializerContext
 {
 
 }

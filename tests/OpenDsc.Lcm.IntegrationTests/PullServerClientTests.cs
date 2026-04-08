@@ -55,7 +55,7 @@ public class PullServerClientTests : IClassFixture<LcmTestServerFactory>
             certManager,
             NullLogger<PullServerClient>.Instance);
 
-        var result = await client.RegisterAsync();
+        var result = await client.RegisterAsync(TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result!.NodeId.Should().NotBeEmpty();
@@ -83,7 +83,7 @@ public class PullServerClientTests : IClassFixture<LcmTestServerFactory>
             certificateManager,
             NullLogger<PullServerClient>.Instance);
 
-        var result = await client.RegisterAsync();
+        var result = await client.RegisterAsync(TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
     }
@@ -111,7 +111,7 @@ public class PullServerClientTests : IClassFixture<LcmTestServerFactory>
             certificateManager,
             NullLogger<PullServerClient>.Instance);
 
-        var result = await client.RegisterAsync();
+        var result = await client.RegisterAsync(TestContext.Current.CancellationToken);
 
         pullServerSettings.NodeId.Should().Be(result!.NodeId);
     }
@@ -141,7 +141,7 @@ public class PullServerClientTests : IClassFixture<LcmTestServerFactory>
             certificateManager,
             NullLogger<PullServerClient>.Instance);
 
-        var result = await client.GetConfigurationAsync();
+        var result = await client.GetConfigurationAsync(TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
     }
@@ -168,16 +168,16 @@ public class PullServerClientTests : IClassFixture<LcmTestServerFactory>
             certificateManager,
             NullLogger<PullServerClient>.Instance);
 
-        var registerResult = await client.RegisterAsync();
+        var registerResult = await client.RegisterAsync(TestContext.Current.CancellationToken);
         registerResult.Should().NotBeNull();
 
         var db = _factory.Services.GetRequiredService<OpenDsc.Server.Data.ServerDbContext>();
-        var node = await db.Nodes.FirstOrDefaultAsync(n => n.Id == registerResult!.NodeId);
+        var node = await db.Nodes.FirstOrDefaultAsync(n => n.Id == registerResult!.NodeId, TestContext.Current.CancellationToken);
         node.Should().NotBeNull();
         node!.ConfigurationName = "test-config";
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await client.GetConfigurationAsync();
+        var result = await client.GetConfigurationAsync(TestContext.Current.CancellationToken);
 
         result.Should().NotBeNullOrEmpty();
         result.Should().Contain("resources: []");
@@ -206,16 +206,16 @@ public class PullServerClientTests : IClassFixture<LcmTestServerFactory>
             certificateManager,
             NullLogger<PullServerClient>.Instance);
 
-        var registerResult = await client.RegisterAsync();
+        var registerResult = await client.RegisterAsync(TestContext.Current.CancellationToken);
         registerResult.Should().NotBeNull();
 
         var db = _factory.Services.GetRequiredService<OpenDsc.Server.Data.ServerDbContext>();
-        var node = await db.Nodes.FirstOrDefaultAsync(n => n.Id == registerResult!.NodeId);
+        var node = await db.Nodes.FirstOrDefaultAsync(n => n.Id == registerResult!.NodeId, TestContext.Current.CancellationToken);
         node.Should().NotBeNull();
         node!.ConfigurationName = "test-config";
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await client.HasConfigurationChangedAsync();
+        var result = await client.HasConfigurationChangedAsync(TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();
     }
@@ -242,12 +242,12 @@ public class PullServerClientTests : IClassFixture<LcmTestServerFactory>
             certificateManager,
             NullLogger<PullServerClient>.Instance);
 
-        var registerResult = await client.RegisterAsync();
+        var registerResult = await client.RegisterAsync(TestContext.Current.CancellationToken);
         registerResult.Should().NotBeNull();
 
         using var newCert = GenerateTestCertificate();
 
-        var result = await client.RotateCertificateAsync(newCert);
+        var result = await client.RotateCertificateAsync(newCert, TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
     }

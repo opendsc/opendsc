@@ -3,11 +3,14 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
+    <PackageVersion Include="Kingsland.MofParser" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.PowerShell.SDK" Version="7.6.0" />
+    <PackageVersion Include="PowerShellStandard.Library" Version="5.1.1" />
     <PackageVersion Include="NuGet.Versioning" Version="6.14.0" />
-    <PackageVersion Include="System.Text.Json" Version="10.0.0" />
+    <PackageVersion Include="System.Text.Json" Version="10.0.5" />
     <PackageVersion Include="System.CommandLine" Version="2.0.0" />
-    <PackageVersion Include="JsonSchema.Net.Generation" Version="5.1.1" />
-    <PackageVersion Include="JsonSchema.Net" Version="8.0.5" />
+    <PackageVersion Include="JsonSchema.Net.Generation" Version="7.2.0" />
+    <PackageVersion Include="JsonSchema.Net" Version="9.1.4" />
     <PackageVersion Include="JsonPath.Net" Version="2.2.0" />
     <PackageVersion Include="System.DirectoryServices.AccountManagement" Version="9.0.0" />
     <PackageVersion Include="System.ServiceProcess.ServiceController" Version="9.0.0" />
@@ -35,7 +38,7 @@
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
     <PackageVersion Include="Scalar.AspNetCore" Version="2.0.18" />
     <PackageVersion Include="YamlDotNet" Version="16.2.1" />
-    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.v3" Version="3.2.2" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.0.1" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.0" />

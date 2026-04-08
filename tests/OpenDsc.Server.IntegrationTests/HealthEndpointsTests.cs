@@ -21,10 +21,10 @@ public class HealthEndpointsTests : IDisposable
     {
         var client = _factory.CreateClient();
 
-        var response = await client.GetAsync("/health");
+        var response = await client.GetAsync("/health", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var health = await response.Content.ReadFromJsonAsync<HealthResponse>();
+        var health = await response.Content.ReadFromJsonAsync<HealthResponse>(TestContext.Current.CancellationToken);
         health.Should().NotBeNull();
         health!.Status.Should().Be("Healthy");
         health.Timestamp.Should().BeCloseTo(DateTimeOffset.UtcNow, TimeSpan.FromSeconds(5));
@@ -35,10 +35,10 @@ public class HealthEndpointsTests : IDisposable
     {
         var client = _factory.CreateClient();
 
-        var response = await client.GetAsync("/health/ready");
+        var response = await client.GetAsync("/health/ready", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var readiness = await response.Content.ReadFromJsonAsync<ReadinessResponse>();
+        var readiness = await response.Content.ReadFromJsonAsync<ReadinessResponse>(TestContext.Current.CancellationToken);
         readiness.Should().NotBeNull();
         readiness!.Status.Should().Be("Ready");
         readiness.Database.Should().Be("Connected");
