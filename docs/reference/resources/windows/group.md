@@ -8,7 +8,7 @@ property.
 
 ## Type name
 
-```plaintext
+```text
 OpenDsc.Windows/Group
 ```
 

@@ -6,7 +6,7 @@ Manages Windows shortcut (.lnk) files using COM interop with the Windows Shell.
 
 ## Type name
 
-```plaintext
+```text
 OpenDsc.Windows/Shortcut
 ```
 

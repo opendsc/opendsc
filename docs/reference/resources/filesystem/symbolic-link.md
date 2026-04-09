@@ -6,7 +6,7 @@ Manages symbolic links on the local filesystem. Works on Windows, Linux, and mac
 
 ## Type name
 
-```plaintext
+```text
 OpenDsc.FileSystem/SymbolicLink
 ```
 

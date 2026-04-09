@@ -7,7 +7,7 @@ destination contains all files from the archive with matching checksums.
 
 ## Type name
 
-```plaintext
+```text
 OpenDsc.Archive.Zip/Expand
 ```
 

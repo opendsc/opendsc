@@ -6,7 +6,7 @@ Manages Windows services, including start type, status, and service configuratio
 
 ## Type name
 
-```plaintext
+```text
 OpenDsc.Windows/Service
 ```
 

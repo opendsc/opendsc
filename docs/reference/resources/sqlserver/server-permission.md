@@ -7,7 +7,7 @@ Supports Grant, Grant With Grant, and Deny states.
 
 ## Type name
 
-```plaintext
+```text
 OpenDsc.SqlServer/ServerPermission
 ```
 

@@ -7,7 +7,7 @@ and other database objects. Supports Grant, Grant With Grant, and Deny states.
 
 ## Type name
 
-```plaintext
+```text
 OpenDsc.SqlServer/ObjectPermission
 ```
 

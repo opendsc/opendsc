@@ -10,7 +10,7 @@ requires a system restart.
 
 ## Type name
 
-```plaintext
+```text
 OpenDsc.Windows/OptionalFeature
 ```
 

@@ -7,7 +7,7 @@ Covers memory, parallelism, security, and advanced server options.
 
 ## Type name
 
-```plaintext
+```text
 OpenDsc.SqlServer/Configuration
 ```
 

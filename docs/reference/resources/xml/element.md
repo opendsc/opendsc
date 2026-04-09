@@ -11,7 +11,7 @@ attributes).
 
 ## Type name
 
-```plaintext
+```text
 OpenDsc.Xml/Element
 ```
 

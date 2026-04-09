@@ -7,7 +7,7 @@ users, contained database users, and certificate or asymmetric key mapped users.
 
 ## Type name
 
-```plaintext
+```text
 OpenDsc.SqlServer/DatabaseUser
 ```
 

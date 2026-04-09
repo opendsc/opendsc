@@ -6,7 +6,7 @@ Manages Windows environment variables at the User or Machine scope.
 
 ## Type name
 
-```plaintext
+```text
 OpenDsc.Windows/Environment
 ```
 

@@ -7,7 +7,7 @@ and monitoring of job execution status.
 
 ## Type name
 
-```plaintext
+```text
 OpenDsc.SqlServer/AgentJob
 ```
 

@@ -74,7 +74,7 @@ Personal Access Tokens (PATs) provide Bearer token authentication for API
 access. PATs are
 associated with a user account and inherit that user's roles and permissions.
 
-```plaintext
+```text
 Authorization: Bearer <token>
 ```
 

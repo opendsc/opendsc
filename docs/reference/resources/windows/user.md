@@ -7,7 +7,7 @@ removal.
 
 ## Type name
 
-```plaintext
+```text
 OpenDsc.Windows/User
 ```
 

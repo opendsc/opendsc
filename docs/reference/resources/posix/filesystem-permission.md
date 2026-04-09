@@ -11,7 +11,7 @@ macOS. Equivalent to the `chmod` and `chown` commands.
 
 ## Type name
 
-```plaintext
+```text
 OpenDsc.Posix.FileSystem/Permission
 ```
 

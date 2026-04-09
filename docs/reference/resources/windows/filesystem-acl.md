@@ -10,7 +10,7 @@ rules instead of `_exist`.
 
 ## Type name
 
-```plaintext
+```text
 OpenDsc.Windows.FileSystem/AccessControlList
 ```
 

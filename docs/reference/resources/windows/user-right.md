@@ -8,7 +8,7 @@ list-management resource that uses the `_purge` pattern instead of `_exist`.
 
 ## Type name
 
-```plaintext
+```text
 OpenDsc.Windows/UserRight
 ```
 

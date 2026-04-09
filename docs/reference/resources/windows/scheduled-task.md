@@ -6,7 +6,7 @@ Manages Windows scheduled tasks, including triggers, actions, and task settings.
 
 ## Type name
 
-```plaintext
+```text
 OpenDsc.Windows/ScheduledTask
 ```
 

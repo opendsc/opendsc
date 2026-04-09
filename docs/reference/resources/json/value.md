@@ -9,7 +9,7 @@ exist.
 
 ## Type name
 
-```plaintext
+```text
 OpenDsc.Json/Value
 ```
 

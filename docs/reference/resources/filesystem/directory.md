@@ -8,7 +8,7 @@ Windows, Linux, and macOS.
 
 ## Type name
 
-```plaintext
+```text
 OpenDsc.FileSystem/Directory
 ```
 

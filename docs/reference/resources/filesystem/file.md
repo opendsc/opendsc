@@ -7,7 +7,7 @@ content and removing files. Works on Windows, Linux, and macOS.
 
 ## Type name
 
-```plaintext
+```text
 OpenDsc.FileSystem/File
 ```
 

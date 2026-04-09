@@ -7,7 +7,7 @@ password policies, and server role membership.
 
 ## Type name
 
-```plaintext
+```text
 OpenDsc.SqlServer/Login
 ```
 

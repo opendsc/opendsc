@@ -7,7 +7,7 @@ instances and other OLE DB data sources.
 
 ## Type name
 
-```plaintext
+```text
 OpenDsc.SqlServer/LinkedServer
 ```
 

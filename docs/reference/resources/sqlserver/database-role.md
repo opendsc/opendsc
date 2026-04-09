@@ -7,7 +7,7 @@ member management with additive or exact (`_purge`) modes.
 
 ## Type name
 
-```plaintext
+```text
 OpenDsc.SqlServer/DatabaseRole
 ```
 

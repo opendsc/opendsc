@@ -7,7 +7,7 @@ compression levels and verifies whether the archive contents match the source.
 
 ## Type name
 
-```plaintext
+```text
 OpenDsc.Archive.Zip/Compress
 ```
 

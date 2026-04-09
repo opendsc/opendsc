@@ -1,12 +1,3 @@
----
-description: >-
-  Install OpenDSC on Windows, Linux, or macOS. OpenDSC provides DSC Resources, a Local
-  Configuration Manager, and a Pull Server for centralized configuration management.
-title: Install OpenDSC
-date: 2026-03-27
-topic: install
----
-
 # Install OpenDSC
 
 OpenDSC provides three installable components. You can install them
@@ -117,7 +108,7 @@ dsc resource list OpenDsc*
 
 You should see output listing the available OpenDsc resources:
 
-```plaintext
+```text
 Type                                         Kind      Version  Capabilities  Description
 ------------------------------------------------------------------------------------------------------------
 OpenDsc.Windows/Environment                  Resource  0.1.0    gs-d----      Manage Windows environment...

@@ -1,12 +1,3 @@
----
-description: >-
-  Learn about OpenDSC, a configuration management platform that provides DSC Resources,
-  a Local Configuration Manager (LCM), and a Pull Server for centralized management.
-title: OpenDSC overview
-date: 2026-03-27
-topic: overview
----
-
 # OpenDSC overview
 
 OpenDSC is an open-source configuration management platform built on Microsoft's

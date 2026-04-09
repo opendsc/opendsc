@@ -7,7 +7,7 @@ settings, performance options, and availability features.
 
 ## Type name
 
-```plaintext
+```text
 OpenDsc.SqlServer/Database
 ```
 
