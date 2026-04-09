@@ -1,11 +1,11 @@
-# OpenDsc.SqlServer/ServerPermission
+# Server Permission Resource
 
 ## Synopsis
 
 Manages SQL Server server-level permissions for logins and server roles.
 Supports Grant, Grant With Grant, and Deny states.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.SqlServer/ServerPermission

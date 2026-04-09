@@ -1,11 +1,11 @@
-# OpenDsc.SqlServer/DatabaseRole
+# Database Role Resource
 
 ## Synopsis
 
 Manages SQL Server database roles, including role creation, ownership, and
 member management with additive or exact (`_purge`) modes.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.SqlServer/DatabaseRole

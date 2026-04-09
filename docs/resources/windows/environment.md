@@ -1,10 +1,10 @@
-# OpenDsc.Windows/Environment
+# Environment Resource
 
 ## Synopsis
 
 Manages Windows environment variables at the User or Machine scope.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.Windows/Environment

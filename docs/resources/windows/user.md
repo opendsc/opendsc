@@ -1,11 +1,11 @@
-# OpenDsc.Windows/User
+# User Resource
 
 ## Synopsis
 
 Manages local Windows user accounts, including creation, modification, and
 removal.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.Windows/User

@@ -1,10 +1,10 @@
-# OpenDsc.Windows/Shortcut
+# Shortcut Resource
 
 ## Synopsis
 
 Manages Windows shortcut (.lnk) files using COM interop with the Windows Shell.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.Windows/Shortcut

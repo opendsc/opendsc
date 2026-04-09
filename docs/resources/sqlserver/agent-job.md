@@ -1,11 +1,11 @@
-# OpenDsc.SqlServer/AgentJob
+# Agent Job Resource
 
 ## Synopsis
 
 Manages SQL Server Agent jobs, including job creation, notification settings,
 and monitoring of job execution status.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.SqlServer/AgentJob

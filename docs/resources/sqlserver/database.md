@@ -1,11 +1,11 @@
-# OpenDsc.SqlServer/Database
+# Database Resource
 
 ## Synopsis
 
 Manages SQL Server databases, including creation, configuration options, ANSI
 settings, performance options, and availability features.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.SqlServer/Database

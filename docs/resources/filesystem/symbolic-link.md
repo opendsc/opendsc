@@ -1,10 +1,10 @@
-# OpenDsc.FileSystem/SymbolicLink
+# Symbolic Link Resource
 
 ## Synopsis
 
 Manages symbolic links on the local filesystem. Works on Windows, Linux, and macOS.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.FileSystem/SymbolicLink

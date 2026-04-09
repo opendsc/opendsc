@@ -1,11 +1,11 @@
-# OpenDsc.FileSystem/File
+# File Resource
 
 ## Synopsis
 
 Manages files on the local filesystem. Supports creating files with specified
 content and removing files. Works on Windows, Linux, and macOS.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.FileSystem/File

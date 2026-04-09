@@ -1,4 +1,4 @@
-# OpenDsc.Windows/UserRight
+# User Right Resource
 
 ## Synopsis
 
@@ -6,7 +6,7 @@ Manages Windows user rights assignments (privileges) for principals. This is a
 pure
 list-management resource that uses the `_purge` pattern instead of `_exist`.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.Windows/UserRight

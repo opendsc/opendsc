@@ -1,4 +1,4 @@
-# OpenDsc.Posix.FileSystem/Permission
+# Permission Resource
 
 ## Synopsis
 
@@ -9,7 +9,7 @@ macOS. Equivalent to the `chmod` and `chown` commands.
 > This resource is only available on Linux and macOS. It is not supported on
 > Windows.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.Posix.FileSystem/Permission

@@ -1,11 +1,11 @@
-# OpenDsc.SqlServer/DatabaseUser
+# Database User Resource
 
 ## Synopsis
 
 Manages SQL Server database users, including SQL users mapped to logins, Windows
 users, contained database users, and certificate or asymmetric key mapped users.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.SqlServer/DatabaseUser

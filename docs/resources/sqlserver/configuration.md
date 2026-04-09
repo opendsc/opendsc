@@ -1,11 +1,11 @@
-# OpenDsc.SqlServer/Configuration
+# Configuration Resource
 
 ## Synopsis
 
 Manages SQL Server instance configuration options (equivalent to `sp_configure`).
 Covers memory, parallelism, security, and advanced server options.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.SqlServer/Configuration

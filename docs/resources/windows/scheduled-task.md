@@ -1,10 +1,10 @@
-# OpenDsc.Windows/ScheduledTask
+# Scheduled Task Resource
 
 ## Synopsis
 
 Manages Windows scheduled tasks, including triggers, actions, and task settings.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.Windows/ScheduledTask

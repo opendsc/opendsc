@@ -1,11 +1,11 @@
-# OpenDsc.SqlServer/ObjectPermission
+# Object Permission Resource
 
 ## Synopsis
 
 Manages SQL Server object-level permissions on tables, views, stored procedures,
 and other database objects. Supports Grant, Grant With Grant, and Deny states.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.SqlServer/ObjectPermission

@@ -1,4 +1,4 @@
-# OpenDsc.Windows/Group
+# Group Resource
 
 ## Synopsis
 
@@ -6,7 +6,7 @@ Manages local Windows groups, including creation, member management, and
 removal. Supports both additive and exact member lists through the `_purge`
 property.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.Windows/Group

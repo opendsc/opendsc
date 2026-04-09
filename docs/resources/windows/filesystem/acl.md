@@ -1,4 +1,4 @@
-# OpenDsc.Windows.FileSystem/AccessControlList
+# Access Control List Resource
 
 ## Synopsis
 
@@ -8,7 +8,7 @@ access rules. This is a pure list-management resource that uses the `_purge`
 pattern for access
 rules instead of `_exist`.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.Windows.FileSystem/AccessControlList

@@ -1,10 +1,10 @@
-# OpenDsc.Windows/Service
+# Service Resource
 
 ## Synopsis
 
 Manages Windows services, including start type, status, and service configuration.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.Windows/Service

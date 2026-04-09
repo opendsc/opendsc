@@ -1,11 +1,11 @@
-# OpenDsc.SqlServer/ServerRole
+# Server Role Resource
 
 ## Synopsis
 
 Manages SQL Server server roles, including custom role creation, ownership, and
 member management with additive or exact (`_purge`) modes.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.SqlServer/ServerRole

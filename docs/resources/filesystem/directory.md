@@ -1,4 +1,4 @@
-# OpenDsc.FileSystem/Directory
+# Directory Resource
 
 ## Synopsis
 
@@ -6,7 +6,7 @@ Manages directories on the local filesystem. Supports creating directories,
 copying directory contents from a source, and removing directories. Works on
 Windows, Linux, and macOS.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.FileSystem/Directory

@@ -1,11 +1,11 @@
-# OpenDsc.SqlServer/Login
+# Login Resource
 
 ## Synopsis
 
 Manages SQL Server logins, including SQL authentication, Windows authentication,
 password policies, and server role membership.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.SqlServer/Login

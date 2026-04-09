@@ -1,4 +1,4 @@
-# OpenDsc.Windows/OptionalFeature
+# Optional Feature Resource
 
 ## Synopsis
 
@@ -8,7 +8,7 @@ This resource supports signaling restart requirements when a feature enable or
 disable operation
 requires a system restart.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.Windows/OptionalFeature

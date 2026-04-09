@@ -1,4 +1,4 @@
-# OpenDsc.Xml/Element
+# Element Resource
 
 ## Synopsis
 
@@ -9,7 +9,7 @@ they don't exist.
 Uses the hybrid pattern with both `_exist` (for the element) and `_purge` (for
 attributes).
 
-## Type name
+## Type
 
 ```text
 OpenDsc.Xml/Element

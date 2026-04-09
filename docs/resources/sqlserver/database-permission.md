@@ -1,11 +1,11 @@
-# OpenDsc.SqlServer/DatabasePermission
+# Database Permission Resource
 
 ## Synopsis
 
 Manages SQL Server database-level permissions for users and database roles.
 Supports Grant, Grant With Grant, and Deny states.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.SqlServer/DatabasePermission

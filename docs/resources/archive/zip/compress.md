@@ -1,11 +1,11 @@
-# OpenDsc.Archive.Zip/Compress
+# Compress Resource
 
 ## Synopsis
 
 Creates ZIP archives from a source directory or file. Supports configurable
 compression levels and verifies whether the archive contents match the source.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.Archive.Zip/Compress

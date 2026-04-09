@@ -1,11 +1,11 @@
-# OpenDsc.Archive.Zip/Expand
+# Expand Resource
 
 ## Synopsis
 
 Extracts ZIP archives to a destination directory. Verifies whether the
 destination contains all files from the archive with matching checksums.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.Archive.Zip/Expand

@@ -1,11 +1,11 @@
-# OpenDsc.SqlServer/LinkedServer
+# Linked Server Resource
 
 ## Synopsis
 
 Manages SQL Server linked servers for distributed queries across SQL Server
 instances and other OLE DB data sources.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.SqlServer/LinkedServer

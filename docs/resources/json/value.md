@@ -1,4 +1,4 @@
-# OpenDsc.Json/Value
+# Value Resource
 
 ## Synopsis
 
@@ -7,7 +7,7 @@ setting, reading, and removing values of any JSON type (string, number, boolean,
 null, object, or array). Parent paths are created recursively when they don't
 exist.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.Json/Value
