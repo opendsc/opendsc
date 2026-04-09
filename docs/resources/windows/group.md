@@ -234,7 +234,6 @@ After Set, the group contains only `alice` and `bob`.
 
 <!-- markdownlint-enable MD046 -->
 
-
 ### Example 5 — Configuration document
 
 ```yaml

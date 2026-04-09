@@ -397,7 +397,6 @@ Default value: true
 
 <!-- markdownlint-enable MD046 -->
 
-
 ### Example 3 — Configuration document
 
 ```yaml
