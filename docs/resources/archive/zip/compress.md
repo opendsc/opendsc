@@ -47,8 +47,13 @@ Default value: None
 
 ### compressionLevel
 
-Compression level to use when creating the archive. Accepted values are
-`Optimal` , `Fastest`, and `NoCompression`.
+Compression level to use when creating the archive.
+
+Accepted values are:
+
+- Optimal
+- Fastest
+- NoCompression
 
 ```yaml
 Type: string
