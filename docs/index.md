@@ -1,4 +1,4 @@
-# OpenDSC overview
+# OpenDSC
 
 OpenDSC is an open-source configuration management platform built on Microsoft's
 Desired State
@@ -102,15 +102,8 @@ alongside built-in DSC resources in `dsc resource list` and work identically
 with `dsc config`
 commands.
 
-## Next steps
-
-- [Install OpenDSC][04] on your system.
-- [Get started][05] with a hands-on tutorial.
 - Browse the [resource reference][01] for available resources.
 
-<!-- Link references -->
-[01]: reference/resources/overview.md
+[01]: resources/index.md
 [02]: concepts/lcm/overview.md
 [03]: concepts/pull-server/overview.md
-[04]: installing.md
-[05]: get-started/index.md
