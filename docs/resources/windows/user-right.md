@@ -23,11 +23,38 @@ OpenDsc.Windows/UserRight
 
 ## Properties
 
-| Property    | Type     | Required | Access     | Description                                                                                                                              |
-| :---------- | :------- | :------- | :--------- | :--------------------------------------------------------------------------------------------------------------------------------------- |
-| `principal` | string   | Yes      | Read/Write | The principal (user or group). Accepts username, `DOMAIN\user`, SID (`S-1-5-...`), or UPN (`user@domain.com`).                           |
-| `rights`    | string[] | Yes      | Read/Write | User rights to assign. Values must be unique.                                                                                            |
-| `_purge`    | bool     | No       | Write-Only | When `true`, removes the principal from rights not in the list. When `false` (default), only adds the principal to the specified rights. |
+### principal
+
+The principal (user or group). Accepts username, `DOMAIN\\user`, SID (`S-1-5-...`), or UPN (`user@domain.com`).
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### rights
+
+User rights to assign. Values must be unique.
+
+```yaml
+Type: string[]
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### _purge
+
+When `true`, removes the principal from rights not in the list. When `false` (default), only adds the principal to the specified rights.
+
+```yaml
+Type: bool
+Required: No
+Access: Write-Only
+Default value: false
+```
 
 ### Supported rights
 

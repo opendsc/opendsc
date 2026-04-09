@@ -26,15 +26,82 @@ OpenDsc.Xml/Element
 
 ## Properties
 
-| Property     | Type                     | Required | Access     | Description                                                                                 |
-| :----------- | :----------------------- | :------- | :--------- | :------------------------------------------------------------------------------------------ |
-| `path`       | string                   | Yes      | Read/Write | Absolute file path to the XML document.                                                     |
-| `xPath`      | string                   | Yes      | Read/Write | XPath expression to locate the element.                                                     |
-| `value`      | string                   | No       | Read/Write | Text content (inner text) of the element.                                                   |
-| `attributes` | object (string → string) | No       | Read/Write | Attributes to set on the element as key-value pairs.                                        |
-| `namespaces` | object (string → string) | No       | Read/Write | Namespace prefix mappings for XPath evaluation.                                             |
-| `_purge`     | bool                     | No       | Write-Only | When `true`, removes attributes not in the list. When `false` (default), only adds/updates. |
-| `_exist`     | bool                     | No       | Read/Write | Whether the element should exist. Defaults to `true`.                                       |
+### path
+
+Absolute file path to the XML document.
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### xPath
+
+XPath expression to locate the element.
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### value
+
+Text content (inner text) of the element.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### attributes
+
+Attributes to set on the element as key-value pairs.
+
+```yaml
+Type: object (string → string)
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### namespaces
+
+Namespace prefix mappings for XPath evaluation.
+
+```yaml
+Type: object (string → string)
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### _purge
+
+When `true`, removes attributes not in the list. When `false` (default), only adds/updates.
+
+```yaml
+Type: bool
+Required: No
+Access: Write-Only
+Default value: false
+```
+
+### _exist
+
+Whether the element should exist. Defaults to `true`.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: true
+```
 
 ## Examples
 

@@ -25,26 +25,120 @@ OpenDsc.Windows.FileSystem/AccessControlList
 
 ## Properties
 
-| Property      | Type         | Required | Access     | Description                                                                                 |
-| :------------ | :----------- | :------- | :--------- | :------------------------------------------------------------------------------------------ |
-| `path`        | string       | Yes      | Read/Write | Full path to the file or directory.                                                         |
-| `owner`       | string       | No       | Read/Write | Owner. Accepts username, `domain\user`, or SID.                                             |
-| `group`       | string       | No       | Read/Write | Primary group. Accepts group name, `domain\group`, or SID.                                  |
-| `accessRules` | AccessRule[] | No       | Read/Write | Access control entries to apply.                                                            |
-| `_purge`      | bool         | No       | Write-Only | When `true`, removes access rules not in the list. When `false` (default), only adds rules. |
+### path
+
+Full path to the file or directory.
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### owner
+
+Owner. Accepts username, `domain\\user`, or SID.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### group
+
+Primary group. Accepts group name, `domain\\group`, or SID.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### accessRules
+
+Access control entries to apply.
+
+```yaml
+Type: AccessRule[]
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### _purge
+
+When `true`, removes access rules not in the list. When `false` (default), only adds rules.
+
+```yaml
+Type: bool
+Required: No
+Access: Write-Only
+Default value: false
+```
 
 ### AccessRule object
 
 Each element in the `accessRules` array is an object with the following
 properties:
 
-| Property            | Type     | Required | Description                                                     |
-| :------------------ | :------- | :------- | :-------------------------------------------------------------- |
-| `identity`          | string   | Yes      | Identity (username, `domain\user`, or SID).                     |
-| `rights`            | string[] | Yes      | File system rights to grant or deny. Values must be unique.     |
-| `inheritanceFlags`  | string[] | No       | Inheritance flags: `ContainerInherit`, `ObjectInherit`, `None`. |
-| `propagationFlags`  | string[] | No       | Propagation flags: `InheritOnly`, `NoPropagateInherit`, `None`. |
-| `accessControlType` | string   | Yes      | `Allow` or `Deny`.                                              |
+### identity
+
+Identity (username, `domain\\user`, or SID).
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### rights
+
+File system rights to grant or deny. Values must be unique.
+
+```yaml
+Type: string[]
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### inheritanceFlags
+
+Inheritance flags: `ContainerInherit`, `ObjectInherit`, `None`.
+
+```yaml
+Type: string[]
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### propagationFlags
+
+Propagation flags: `InheritOnly`, `NoPropagateInherit`, `None`.
+
+```yaml
+Type: string[]
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### accessControlType
+
+`Allow` or `Deny`.
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
 
 ### File system rights
 
