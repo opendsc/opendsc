@@ -107,41 +107,132 @@ Default value: true
 
 ### Example 1 — Get an XML element
 
-```powershell
-dsc resource get -r OpenDsc.Xml/Element --input '{"path":"/opt/myapp/web.config","xPath":"//configuration/appSettings/add[@key=\"AppName\"]"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    path: /opt/myapp/web.config
+    xPath: '//configuration/appSettings/add[@key="AppName"]'
+    '@
+
+    dsc resource get -r OpenDsc.Xml/Element --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    path: /opt/myapp/web.config
+    xPath: '//configuration/appSettings/add[@key="AppName"]'
+    EOF
+    )
+
+    dsc resource get -r OpenDsc.Xml/Element --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 2 — Set element attributes
 
-```powershell
-dsc resource set -r OpenDsc.Xml/Element --input '{
-  "path": "/opt/myapp/web.config",
-  "xPath": "//configuration/appSettings/add[@key=\"AppName\"]",
-  "attributes": {
-    "key": "AppName",
-    "value": "MyApplication"
-  }
-}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    path: /opt/myapp/web.config
+    xPath: '//configuration/appSettings/add[@key="AppName"]'
+    attributes:
+      key: AppName
+      value: MyApplication
+    '@
+
+    dsc resource set -r OpenDsc.Xml/Element --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    path: /opt/myapp/web.config
+    xPath: '//configuration/appSettings/add[@key="AppName"]'
+    attributes:
+      key: AppName
+      value: MyApplication
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.Xml/Element --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 3 — Set element value with namespace
 
-```powershell
-dsc resource set -r OpenDsc.Xml/Element --input '{
-  "path": "/opt/myapp/config.xml",
-  "xPath": "//ns:configuration/ns:setting",
-  "namespaces": {
-    "ns": "http://example.com/config"
-  },
-  "value": "Enabled"
-}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    path: /opt/myapp/config.xml
+    xPath: '//ns:configuration/ns:setting'
+    namespaces:
+      ns: http://example.com/config
+    value: Enabled
+    '@
+
+    dsc resource set -r OpenDsc.Xml/Element --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    path: /opt/myapp/config.xml
+    xPath: '//ns:configuration/ns:setting'
+    namespaces:
+      ns: http://example.com/config
+    value: Enabled
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.Xml/Element --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 4 — Delete an element
 
-```powershell
-dsc resource delete -r OpenDsc.Xml/Element --input '{"path":"/opt/myapp/web.config","xPath":"//configuration/appSettings/add[@key=\"Deprecated\"]"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    path: /opt/myapp/web.config
+    xPath: '//configuration/appSettings/add[@key="Deprecated"]'
+    '@
+
+    dsc resource delete -r OpenDsc.Xml/Element --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    path: /opt/myapp/web.config
+    xPath: '//configuration/appSettings/add[@key="Deprecated"]'
+    EOF
+    )
+
+    dsc resource delete -r OpenDsc.Xml/Element --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
+
 
 ### Example 5 — Configuration document
 

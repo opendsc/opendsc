@@ -118,21 +118,102 @@ The `rights` property accepts the following Windows privilege constants:
 
 ### Example 1 — Get rights for a principal
 
-```powershell
-dsc resource get -r OpenDsc.Windows/UserRight --input '{"principal":"Administrators","rights":["SeShutdownPrivilege"]}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    principal: Administrators
+    rights:
+      - SeShutdownPrivilege
+    '@
+
+    dsc resource get -r OpenDsc.Windows/UserRight --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    principal: Administrators
+    rights:
+      - SeShutdownPrivilege
+    EOF
+    )
+
+    dsc resource get -r OpenDsc.Windows/UserRight --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 2 — Grant rights (additive)
 
-```powershell
-dsc resource set -r OpenDsc.Windows/UserRight --input '{"principal":"DOMAIN\\svc-backup","rights":["SeBackupPrivilege","SeRestorePrivilege"]}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    principal: DOMAIN\svc-backup
+    rights:
+      - SeBackupPrivilege
+      - SeRestorePrivilege
+    '@
+
+    dsc resource set -r OpenDsc.Windows/UserRight --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    principal: DOMAIN\svc-backup
+    rights:
+      - SeBackupPrivilege
+      - SeRestorePrivilege
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.Windows/UserRight --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 3 — Set exact rights (purge mode)
 
-```powershell
-dsc resource set -r OpenDsc.Windows/UserRight --input '{"principal":"DOMAIN\\svc-backup","rights":["SeBackupPrivilege","SeRestorePrivilege"],"_purge":true}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    principal: DOMAIN\svc-backup
+    rights:
+      - SeBackupPrivilege
+      - SeRestorePrivilege
+    _purge: true
+    '@
+
+    dsc resource set -r OpenDsc.Windows/UserRight --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    principal: DOMAIN\svc-backup
+    rights:
+      - SeBackupPrivilege
+      - SeRestorePrivilege
+    _purge: true
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.Windows/UserRight --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 4 — Export all assignments
 

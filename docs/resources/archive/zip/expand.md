@@ -60,15 +60,61 @@ Default value: None
 
 ### Example 1 — Extract a ZIP archive
 
-```powershell
-dsc resource set -r OpenDsc.Archive.Zip/Expand --input '{"archivePath":"/tmp/release.zip","destinationPath":"/opt/myapp"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    archivePath: /tmp/release.zip
+    destinationPath: /opt/myapp
+    '@
+
+    dsc resource set -r OpenDsc.Archive.Zip/Expand --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    archivePath: /tmp/release.zip
+    destinationPath: /opt/myapp
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.Archive.Zip/Expand --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 2 — Check extraction state
 
-```powershell
-dsc resource get -r OpenDsc.Archive.Zip/Expand --input '{"archivePath":"C:\\Packages\\app.zip","destinationPath":"C:\\Program Files\\MyApp"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    archivePath: C:\Packages\app.zip
+    destinationPath: C:\Program Files\MyApp
+    '@
+
+    dsc resource get -r OpenDsc.Archive.Zip/Expand --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    archivePath: C:\Packages\app.zip
+    destinationPath: C:\Program Files\MyApp
+    EOF
+    )
+
+    dsc resource get -r OpenDsc.Archive.Zip/Expand --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 3 — Configuration document
 

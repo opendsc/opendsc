@@ -72,19 +72,63 @@ Default value: None
 
 ### Example 1 — Create a ZIP archive
 
-```powershell
-dsc resource set -r OpenDsc.Archive.Zip/Compress --input '{"archivePath":"/tmp/backup.zip","sourcePath":"/var/data"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    archivePath: /tmp/backup.zip
+    sourcePath: /var/data
+    '@
+
+    dsc resource set -r OpenDsc.Archive.Zip/Compress --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    archivePath: /tmp/backup.zip
+    sourcePath: /var/data
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.Archive.Zip/Compress --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 2 — Create with fastest compression
 
-```powershell
-dsc resource set -r OpenDsc.Archive.Zip/Compress --input '{
-  "archivePath": "C:\\Backups\\logs.zip",
-  "sourcePath": "C:\\Logs",
-  "compressionLevel": "Fastest"
-}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    archivePath: C:\Backups\logs.zip
+    sourcePath: C:\Logs
+    compressionLevel: Fastest
+    '@
+
+    dsc resource set -r OpenDsc.Archive.Zip/Compress --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    archivePath: C:\Backups\logs.zip
+    sourcePath: C:\Logs
+    compressionLevel: Fastest
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.Archive.Zip/Compress --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 3 — Configuration document
 

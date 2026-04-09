@@ -116,13 +116,35 @@ Default value: true
 
 ### Example 1 — Ensure a service is running
 
-```powershell
-dsc resource set -r OpenDsc.Windows/Service --input '{
-  "name": "Spooler",
-  "status": "Running",
-  "startType": "Automatic"
-}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    name: Spooler
+    status: Running
+    startType: Automatic
+    '@
+
+    dsc resource set -r OpenDsc.Windows/Service --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    name: Spooler
+    status: Running
+    startType: Automatic
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.Windows/Service --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
+
 
 ### Example 2 — Configuration document
 

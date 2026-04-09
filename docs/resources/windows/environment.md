@@ -72,9 +72,32 @@ Default value: true
 
 ### Example 1 — Get an environment variable
 
-```powershell
-dsc resource get -r OpenDsc.Windows/Environment --input '{"name":"PATH","scope":"Machine"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    name: PATH
+    scope: Machine
+    '@
+
+    dsc resource get -r OpenDsc.Windows/Environment --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    name: PATH
+    scope: Machine
+    EOF
+    )
+
+    dsc resource get -r OpenDsc.Windows/Environment --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ```yaml
 actualState:
@@ -85,19 +108,63 @@ actualState:
 
 ### Example 2 — Set an environment variable
 
-```powershell
-dsc resource set -r OpenDsc.Windows/Environment --input '{
-  "name": "APP_HOME",
-  "value": "C:\\MyApp",
-  "scope": "User"
-}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    name: APP_HOME
+    value: C:\MyApp
+    scope: User
+    '@
+
+    dsc resource set -r OpenDsc.Windows/Environment --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    name: APP_HOME
+    value: C:\MyApp
+    scope: User
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.Windows/Environment --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 3 — Delete an environment variable
 
-```powershell
-dsc resource delete -r OpenDsc.Windows/Environment --input '{"name":"APP_HOME","scope":"User"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    name: APP_HOME
+    scope: User
+    '@
+
+    dsc resource delete -r OpenDsc.Windows/Environment --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    name: APP_HOME
+    scope: User
+    EOF
+    )
+
+    dsc resource delete -r OpenDsc.Windows/Environment --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 4 — Export all environment variables
 

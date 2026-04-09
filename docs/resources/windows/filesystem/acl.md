@@ -168,52 +168,151 @@ Default value: None
 
 ### Example 1 — Get the ACL for a file
 
-```powershell
-dsc resource get -r OpenDsc.Windows.FileSystem/AccessControlList --input '{"path":"C:\\Data\\config.xml"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    path: C:\Data\config.xml
+    '@
+
+    dsc resource get -r OpenDsc.Windows.FileSystem/AccessControlList --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    path: C:\Data\config.xml
+    EOF
+    )
+
+    dsc resource get -r OpenDsc.Windows.FileSystem/AccessControlList --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 2 — Add an access rule (additive)
 
-```powershell
-dsc resource set -r OpenDsc.Windows.FileSystem/AccessControlList --input '{
-  "path": "C:\\Data",
-  "accessRules": [
-    {
-      "identity": "BUILTIN\\Users",
-      "rights": ["Read", "ReadAndExecute"],
-      "inheritanceFlags": ["ContainerInherit", "ObjectInherit"],
-      "propagationFlags": ["None"],
-      "accessControlType": "Allow"
-    }
-  ]
-}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    path: C:\Data
+    accessRules:
+      - identity: BUILTIN\Users
+        rights:
+          - Read
+          - ReadAndExecute
+        inheritanceFlags:
+          - ContainerInherit
+          - ObjectInherit
+        propagationFlags:
+          - None
+        accessControlType: Allow
+    '@
+
+    dsc resource set -r OpenDsc.Windows.FileSystem/AccessControlList --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    path: C:\Data
+    accessRules:
+      - identity: BUILTIN\Users
+        rights:
+          - Read
+          - ReadAndExecute
+        inheritanceFlags:
+          - ContainerInherit
+          - ObjectInherit
+        propagationFlags:
+          - None
+        accessControlType: Allow
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.Windows.FileSystem/AccessControlList --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 3 — Set exact ACL (purge mode)
 
-```powershell
-dsc resource set -r OpenDsc.Windows.FileSystem/AccessControlList --input '{
-  "path": "C:\\Data",
-  "owner": "BUILTIN\\Administrators",
-  "accessRules": [
-    {
-      "identity": "BUILTIN\\Administrators",
-      "rights": ["FullControl"],
-      "inheritanceFlags": ["ContainerInherit", "ObjectInherit"],
-      "propagationFlags": ["None"],
-      "accessControlType": "Allow"
-    },
-    {
-      "identity": "BUILTIN\\Users",
-      "rights": ["Read", "ReadAndExecute"],
-      "inheritanceFlags": ["ContainerInherit", "ObjectInherit"],
-      "propagationFlags": ["None"],
-      "accessControlType": "Allow"
-    }
-  ],
-  "_purge": true
-}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    path: C:\Data
+    owner: BUILTIN\Administrators
+    accessRules:
+      - identity: BUILTIN\Administrators
+        rights:
+          - FullControl
+        inheritanceFlags:
+          - ContainerInherit
+          - ObjectInherit
+        propagationFlags:
+          - None
+        accessControlType: Allow
+      - identity: BUILTIN\Users
+        rights:
+          - Read
+          - ReadAndExecute
+        inheritanceFlags:
+          - ContainerInherit
+          - ObjectInherit
+        propagationFlags:
+          - None
+        accessControlType: Allow
+    _purge: true
+    '@
+
+    dsc resource set -r OpenDsc.Windows.FileSystem/AccessControlList --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    path: C:\Data
+    owner: BUILTIN\Administrators
+    accessRules:
+      - identity: BUILTIN\Administrators
+        rights:
+          - FullControl
+        inheritanceFlags:
+          - ContainerInherit
+          - ObjectInherit
+        propagationFlags:
+          - None
+        accessControlType: Allow
+      - identity: BUILTIN\Users
+        rights:
+          - Read
+          - ReadAndExecute
+        inheritanceFlags:
+          - ContainerInherit
+          - ObjectInherit
+        propagationFlags:
+          - None
+        accessControlType: Allow
+    _purge: true
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.Windows.FileSystem/AccessControlList --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
+
 
 ### Example 4 — Configuration document
 

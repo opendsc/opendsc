@@ -159,20 +159,71 @@ Default value: true
 
 ### Example 1 — Get a role
 
-```powershell
-dsc resource get -r OpenDsc.SqlServer/DatabaseRole --input '{"serverInstance":".","databaseName":"AppDb","name":"db_datareader"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    serverInstance: .
+    databaseName: AppDb
+    name: db_datareader
+    '@
+
+    dsc resource get -r OpenDsc.SqlServer/DatabaseRole --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    serverInstance: .
+    databaseName: AppDb
+    name: db_datareader
+    EOF
+    )
+
+    dsc resource get -r OpenDsc.SqlServer/DatabaseRole --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 2 — Create a role with members
 
-```powershell
-dsc resource set -r OpenDsc.SqlServer/DatabaseRole --input '{
-  "serverInstance": ".",
-  "databaseName": "AppDb",
-  "name": "AppReaders",
-  "members": ["AppUser", "ReportUser"]
-}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    serverInstance: .
+    databaseName: AppDb
+    name: AppReaders
+    members:
+      - AppUser
+      - ReportUser
+    '@
+
+    dsc resource set -r OpenDsc.SqlServer/DatabaseRole --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    serverInstance: .
+    databaseName: AppDb
+    name: AppReaders
+    members:
+      - AppUser
+      - ReportUser
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.SqlServer/DatabaseRole --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 3 — Configuration document
 

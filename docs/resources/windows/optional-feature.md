@@ -120,8 +120,8 @@ Default value: None
 
 ### State values
 
-| Value               | Description                                        |
-| :------------------ | :------------------------------------------------- |
+| Value               | Description                                         |
+| :------------------ | :-------------------------------------------------- |
 | `NotPresent`        | The feature is not present on the system.           |
 | `UninstallPending`  | The feature is pending uninstall.                   |
 | `Staged`            | The feature is staged but not installed.            |
@@ -135,15 +135,57 @@ Default value: None
 
 ### Example 1 — Get a feature state
 
-```powershell
-dsc resource get -r OpenDsc.Windows/OptionalFeature --input '{"name":"Microsoft-Hyper-V-All"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    name: Microsoft-Hyper-V-All
+    '@
+
+    dsc resource get -r OpenDsc.Windows/OptionalFeature --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    name: Microsoft-Hyper-V-All
+    EOF
+    )
+
+    dsc resource get -r OpenDsc.Windows/OptionalFeature --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 2 — Enable a feature
 
-```powershell
-dsc resource set -r OpenDsc.Windows/OptionalFeature --input '{"name":"Microsoft-Hyper-V-All"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    name: Microsoft-Hyper-V-All
+    '@
+
+    dsc resource set -r OpenDsc.Windows/OptionalFeature --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    name: Microsoft-Hyper-V-All
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.Windows/OptionalFeature --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 If a restart is required, the result includes `_metadata`:
 
@@ -161,9 +203,31 @@ If a restart is required, the result includes `_metadata`:
 
 ### Example 3 — Disable a feature
 
-```powershell
-dsc resource delete -r OpenDsc.Windows/OptionalFeature --input '{"name":"Microsoft-Hyper-V-All"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    name: Microsoft-Hyper-V-All
+    '@
+
+    dsc resource delete -r OpenDsc.Windows/OptionalFeature --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    name: Microsoft-Hyper-V-All
+    EOF
+    )
+
+    dsc resource delete -r OpenDsc.Windows/OptionalFeature --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
+
 
 ### Example 4 — Export all features
 

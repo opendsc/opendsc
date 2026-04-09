@@ -69,21 +69,93 @@ Default value: true
 
 ### Example 1 — Get a symbolic link
 
-```powershell
-dsc resource get -r OpenDsc.FileSystem/SymbolicLink --input '{"path":"/usr/local/bin/myapp","target":"/opt/myapp/bin/myapp"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    path: /usr/local/bin/myapp
+    target: /opt/myapp/bin/myapp
+    '@
+
+    dsc resource get -r OpenDsc.FileSystem/SymbolicLink --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    path: /usr/local/bin/myapp
+    target: /opt/myapp/bin/myapp
+    EOF
+    )
+
+    dsc resource get -r OpenDsc.FileSystem/SymbolicLink --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 2 — Create a symbolic link
 
-```powershell
-dsc resource set -r OpenDsc.FileSystem/SymbolicLink --input '{"path":"/usr/local/bin/myapp","target":"/opt/myapp/bin/myapp"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    path: /usr/local/bin/myapp
+    target: /opt/myapp/bin/myapp
+    '@
+
+    dsc resource set -r OpenDsc.FileSystem/SymbolicLink --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    path: /usr/local/bin/myapp
+    target: /opt/myapp/bin/myapp
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.FileSystem/SymbolicLink --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 3 — Create a directory symbolic link (Windows)
 
-```powershell
-dsc resource set -r OpenDsc.FileSystem/SymbolicLink --input '{"path":"C:\\Links\\Logs","target":"D:\\AppLogs","type":"Directory"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    path: C:\Links\Logs
+    target: D:\AppLogs
+    type: Directory
+    '@
+
+    dsc resource set -r OpenDsc.FileSystem/SymbolicLink --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    path: C:\Links\Logs
+    target: D:\AppLogs
+    type: Directory
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.FileSystem/SymbolicLink --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
+
 
 ### Example 4 — Configuration document
 

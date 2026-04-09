@@ -86,31 +86,97 @@ Default value: None
 
 ### Example 1 — Get permissions
 
-```powershell
-dsc resource get -r OpenDsc.Posix.FileSystem/Permission --input '{"path":"/etc/passwd"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    path: /etc/passwd
+    '@
+
+    dsc resource get -r OpenDsc.Posix.FileSystem/Permission --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    path: /etc/passwd
+    EOF
+    )
+
+    dsc resource get -r OpenDsc.Posix.FileSystem/Permission --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 2 — Set file permissions
 
-```powershell
-dsc resource set -r OpenDsc.Posix.FileSystem/Permission --input '{
-  "path": "/opt/myapp/config.json",
-  "mode": "0644",
-  "owner": "appuser",
-  "group": "appgroup"
-}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    path: /opt/myapp/config.json
+    mode: 0644
+    owner: appuser
+    group: appgroup
+    '@
+
+    dsc resource set -r OpenDsc.Posix.FileSystem/Permission --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    path: /opt/myapp/config.json
+    mode: 0644
+    owner: appuser
+    group: appgroup
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.Posix.FileSystem/Permission --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 3 — Secure a private key
 
-```powershell
-dsc resource set -r OpenDsc.Posix.FileSystem/Permission --input '{
-  "path": "/etc/ssl/private/server.key",
-  "mode": "0600",
-  "owner": "root",
-  "group": "root"
-}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    path: /etc/ssl/private/server.key
+    mode: 0600
+    owner: root
+    group: root
+    '@
+
+    dsc resource set -r OpenDsc.Posix.FileSystem/Permission --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    path: /etc/ssl/private/server.key
+    mode: 0600
+    owner: root
+    group: root
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.Posix.FileSystem/Permission --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
+
 
 ### Example 4 — Configuration document
 

@@ -777,19 +777,66 @@ Default value: true
 
 ### Example 1 — Get a database
 
-```powershell
-dsc resource get -r OpenDsc.SqlServer/Database --input '{"serverInstance":".","name":"master"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    serverInstance: .
+    name: master
+    '@
+
+    dsc resource get -r OpenDsc.SqlServer/Database --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    serverInstance: .
+    name: master
+    EOF
+    )
+
+    dsc resource get -r OpenDsc.SqlServer/Database --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 2 — Create a database
 
-```powershell
-dsc resource set -r OpenDsc.SqlServer/Database --input '{
-  "serverInstance": ".",
-  "name": "AppDb",
-  "recoveryModel": "Simple",
-  "collation": "SQL_Latin1_General_CP1_CI_AS"
-}'
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    serverInstance: .
+    name: AppDb
+    recoveryModel: Simple
+    collation: SQL_Latin1_General_CP1_CI_AS
+    '@
+
+    dsc resource set -r OpenDsc.SqlServer/Database --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    serverInstance: .
+    name: AppDb
+    recoveryModel: Simple
+    collation: SQL_Latin1_General_CP1_CI_AS
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.SqlServer/Database --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
+
 ```
 
 ### Example 3 — Configuration document

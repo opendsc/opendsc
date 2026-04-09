@@ -114,35 +114,126 @@ After Set, the group contains only `alice` and `bob`.
 
 ### Example 1 — Get a group
 
-```powershell
-dsc resource get -r OpenDsc.Windows/Group --input '{"groupName":"Administrators"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    groupName: Administrators
+    '@
+
+    dsc resource get -r OpenDsc.Windows/Group --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    groupName: Administrators
+    EOF
+    )
+
+    dsc resource get -r OpenDsc.Windows/Group --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 2 — Create a group with members
 
-```powershell
-dsc resource set -r OpenDsc.Windows/Group --input '{
-  "groupName": "AppOperators",
-  "description": "Application operators group",
-  "members": ["svc-app", "jane.doe"]
-}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    groupName: AppOperators
+    description: Application operators group
+    members:
+      - svc-app
+      - jane.doe
+    '@
+
+    dsc resource set -r OpenDsc.Windows/Group --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    groupName: AppOperators
+    description: Application operators group
+    members:
+      - svc-app
+      - jane.doe
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.Windows/Group --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 3 — Set exact membership
 
-```powershell
-dsc resource set -r OpenDsc.Windows/Group --input '{
-  "groupName": "AppOperators",
-  "members": ["svc-app"],
-  "_purge": true
-}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    groupName: AppOperators
+    members:
+      - svc-app
+    _purge: true
+    '@
+
+    dsc resource set -r OpenDsc.Windows/Group --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    groupName: AppOperators
+    members:
+      - svc-app
+    _purge: true
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.Windows/Group --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 4 — Delete a group
 
-```powershell
-dsc resource delete -r OpenDsc.Windows/Group --input '{"groupName":"AppOperators"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    groupName: AppOperators
+    '@
+
+    dsc resource delete -r OpenDsc.Windows/Group --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    groupName: AppOperators
+    EOF
+    )
+
+    dsc resource delete -r OpenDsc.Windows/Group --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
+
 
 ### Example 5 — Configuration document
 

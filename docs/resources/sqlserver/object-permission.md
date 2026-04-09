@@ -185,32 +185,83 @@ Default value: true
 
 ### Example 1 — Grant SELECT on a table
 
-```powershell
-dsc resource set -r OpenDsc.SqlServer/ObjectPermission --input '{
-  "serverInstance": ".",
-  "databaseName": "AppDb",
-  "objectType": "Table",
-  "objectName": "Customers",
-  "principal": "AppUser",
-  "permission": "Select",
-  "state": "Grant"
-}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    serverInstance: .
+    databaseName: AppDb
+    objectType: Table
+    objectName: Customers
+    principal: AppUser
+    permission: Select
+    state: Grant
+    '@
+
+    dsc resource set -r OpenDsc.SqlServer/ObjectPermission --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    serverInstance: .
+    databaseName: AppDb
+    objectType: Table
+    objectName: Customers
+    principal: AppUser
+    permission: Select
+    state: Grant
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.SqlServer/ObjectPermission --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 2 — Grant EXECUTE on a stored procedure
 
-```powershell
-dsc resource set -r OpenDsc.SqlServer/ObjectPermission --input '{
-  "serverInstance": ".",
-  "databaseName": "AppDb",
-  "schemaName": "dbo",
-  "objectType": "StoredProcedure",
-  "objectName": "usp_GetCustomers",
-  "principal": "AppUser",
-  "permission": "Execute",
-  "state": "Grant"
-}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    serverInstance: .
+    databaseName: AppDb
+    schemaName: dbo
+    objectType: StoredProcedure
+    objectName: usp_GetCustomers
+    principal: AppUser
+    permission: Execute
+    state: Grant
+    '@
+
+    dsc resource set -r OpenDsc.SqlServer/ObjectPermission --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    serverInstance: .
+    databaseName: AppDb
+    schemaName: dbo
+    objectType: StoredProcedure
+    objectName: usp_GetCustomers
+    principal: AppUser
+    permission: Execute
+    state: Grant
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.SqlServer/ObjectPermission --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 3 — Configuration document
 

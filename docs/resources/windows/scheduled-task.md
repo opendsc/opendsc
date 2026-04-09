@@ -107,9 +107,30 @@ Default value: true
 
 ### Example 1 — Get a scheduled task
 
-```powershell
-dsc resource get -r OpenDsc.Windows/ScheduledTask --input '{"taskName":"\\Microsoft\\Windows\\Defrag\\ScheduledDefrag"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    taskName: '\Microsoft\Windows\Defrag\ScheduledDefrag'
+    '@
+
+    dsc resource get -r OpenDsc.Windows/ScheduledTask --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    taskName: '\Microsoft\Windows\Defrag\ScheduledDefrag'
+    EOF
+    )
+
+    dsc resource get -r OpenDsc.Windows/ScheduledTask --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 2 — Configuration document
 

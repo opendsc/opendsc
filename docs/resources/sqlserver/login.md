@@ -278,29 +278,102 @@ Default value: true
 
 ### Example 1 — Get a login
 
-```powershell
-dsc resource get -r OpenDsc.SqlServer/Login --input '{"serverInstance":".","name":"sa"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    serverInstance: .
+    name: sa
+    '@
+
+    dsc resource get -r OpenDsc.SqlServer/Login --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    serverInstance: .
+    name: sa
+    EOF
+    )
+
+    dsc resource get -r OpenDsc.SqlServer/Login --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 2 — Create a SQL login
 
-```powershell
-dsc resource set -r OpenDsc.SqlServer/Login --input '{
-  "serverInstance": ".",
-  "name": "AppUser",
-  "loginType": "SqlLogin",
-  "password": "P@ssw0rd!",
-  "defaultDatabase": "AppDb",
-  "passwordPolicyEnforced": true,
-  "serverRoles": ["public"]
-}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    serverInstance: .
+    name: AppUser
+    loginType: SqlLogin
+    password: 'P@ssw0rd!'
+    defaultDatabase: AppDb
+    passwordPolicyEnforced: true
+    serverRoles:
+      - public
+    '@
+
+    dsc resource set -r OpenDsc.SqlServer/Login --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    serverInstance: .
+    name: AppUser
+    loginType: SqlLogin
+    password: 'P@ssw0rd!'
+    defaultDatabase: AppDb
+    passwordPolicyEnforced: true
+    serverRoles:
+      - public
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.SqlServer/Login --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 3 — Delete a login
 
-```powershell
-dsc resource delete -r OpenDsc.SqlServer/Login --input '{"serverInstance":".","name":"AppUser"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    serverInstance: .
+    name: AppUser
+    '@
+
+    dsc resource delete -r OpenDsc.SqlServer/Login --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    serverInstance: .
+    name: AppUser
+    EOF
+    )
+
+    dsc resource delete -r OpenDsc.SqlServer/Login --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 4 — Configuration document
 
