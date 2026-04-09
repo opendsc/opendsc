@@ -25,7 +25,7 @@ dsc resource list OpenDsc*
 The output shows each resource with its type name, version, capabilities, and
 description:
 
-```plaintext
+```text
 Type                                         Kind      Version  Capabilities  Description
 ------------------------------------------------------------------------------------------------------------
 OpenDsc.Windows/Environment                  Resource  0.1.0    gsx-td--      Manage Windows environment...
