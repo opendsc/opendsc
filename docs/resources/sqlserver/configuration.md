@@ -2,8 +2,9 @@
 
 ## Synopsis
 
-Manages SQL Server instance configuration options (equivalent to `sp_configure`).
-Covers memory, parallelism, security, and advanced server options.
+Manages SQL Server instance configuration options (equivalent to
+`sp_configure`). Covers memory, parallelism, security, and advanced server
+options.
 
 ## Type
 

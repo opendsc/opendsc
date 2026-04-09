@@ -83,7 +83,8 @@ Default value: None
 
 ### _purge
 
-When `true`, removes attributes not in the list. When `false` (default), only adds/updates.
+When `true`, removes attributes not in the list. When `false` (default), only
+adds/updates.
 
 ```yaml
 Type: bool

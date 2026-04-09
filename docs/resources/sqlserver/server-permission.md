@@ -68,7 +68,8 @@ Default value: None
 
 ### permission
 
-Server-level permission (e.g., `ConnectSql`, `ViewServerState`, `ControlServer`).
+Server-level permission (e.g., `ConnectSql`, `ViewServerState`,
+`ControlServer`).
 
 ```yaml
 Type: string

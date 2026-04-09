@@ -25,7 +25,8 @@ OpenDsc.Windows/UserRight
 
 ### principal
 
-The principal (user or group). Accepts username, `DOMAIN\\user`, SID (`S-1-5-...`), or UPN (`user@domain.com`).
+The principal (user or group). Accepts username, `DOMAIN\\user`,
+SID (`S-1-5-...`),or UPN (`user@domain.com`).
 
 ```yaml
 Type: string
@@ -47,7 +48,8 @@ Default value: None
 
 ### _purge
 
-When `true`, removes the principal from rights not in the list. When `false` (default), only adds the principal to the specified rights.
+When `true`, removes the principal from rights not in the list. When `false`
+(default), only adds the principal to the specified rights.
 
 ```yaml
 Type: bool

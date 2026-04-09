@@ -24,9 +24,9 @@ OpenDsc.Windows/OptionalFeature
 | Export     | Yes       |
 
 !!! note
-    This resource uses `SetReturn = SetReturn.State` and returns actual state from
-    the `Set()` operation, including `_metadata` with restart requirements when
-    applicable.
+    This resource uses `SetReturn = SetReturn.State` and returns actual state
+    from the `Set()` operation, including `_metadata` with restart requirements
+    when applicable.
 
 ## Properties
 
@@ -54,7 +54,8 @@ Default value: None
 
 ### source
 
-Source file locations for the feature. If omitted, Windows uses its default sources.
+Source file locations for the feature. If omitted, Windows uses its default
+sources.
 
 ```yaml
 Type: string[]

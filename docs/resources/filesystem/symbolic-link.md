@@ -2,7 +2,8 @@
 
 ## Synopsis
 
-Manages symbolic links on the local filesystem. Works on Windows, Linux, and macOS.
+Manages symbolic links on the local filesystem. Works on Windows, Linux, and
+macOS.
 
 ## Type
 

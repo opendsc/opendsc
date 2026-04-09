@@ -71,7 +71,8 @@ Default value: None
 
 ### _purge
 
-When `true`, removes access rules not in the list. When `false` (default), only adds rules.
+When `true`, removes access rules not in the list. When `false` (default), only
+adds rules.
 
 ```yaml
 Type: bool

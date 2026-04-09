@@ -2,7 +2,8 @@
 
 ## Synopsis
 
-Manages Windows services, including start type, status, and service configuration.
+Manages Windows services, including start type, status, and service
+configuration.
 
 ## Type
 
@@ -167,15 +168,15 @@ resources:
 
 ## Exit codes
 
-| Code | Description                              |
-| :--- | :--------------------------------------- |
-| 0    | Success                                  |
-| 1    | Error                                    |
-| 2    | Invalid JSON                             |
-| 3    | Windows API error                        |
+| Code | Description                                    |
+| :--- | :--------------------------------------------- |
+| 0    | Success                                        |
+| 1    | Error                                          |
+| 2    | Invalid JSON                                   |
+| 3    | Windows API error                              |
 | 4    | Invalid argument or missing required parameter |
-| 5    | Invalid operation or service state       |
-| 6    | Service operation timed out              |
+| 5    | Invalid operation or service state             |
+| 6    | Service operation timed out                    |
 
 ## See also
 
