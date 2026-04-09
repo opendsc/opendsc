@@ -271,8 +271,3 @@ resources:
 | 5    | Invalid XPath expression |
 | 6    | Invalid argument         |
 | 7    | IO error                 |
-
-## See also
-
-- [OpenDsc resource reference](../overview.md)
-- [OpenDsc.Json/Value](../json/value.md)

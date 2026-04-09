@@ -175,7 +175,3 @@ resources:
 | 2    | Invalid JSON               |
 | 3    | Failed to generate schema  |
 | 4    | Directory not found        |
-
-## See also
-
-- [OpenDsc resource reference](../overview.md)

@@ -256,7 +256,3 @@ resources:
 | 3    | Invalid JSON                                      |
 | 4    | Access denied - administrator privileges required |
 | 5    | DISM operation failed                             |
-
-## See also
-
-- [OpenDsc resource reference](../overview.md)

@@ -212,9 +212,3 @@ resources:
 | 6    | File or directory not found |
 | 7    | Directory not found         |
 | 8    | Platform not supported      |
-
-## See also
-
-- [OpenDsc resource reference](../overview.md)
-- [OpenDsc.FileSystem/File](../filesystem/file.md)
-- [OpenDsc.FileSystem/Directory](../filesystem/directory.md)

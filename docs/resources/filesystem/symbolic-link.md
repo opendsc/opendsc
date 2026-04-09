@@ -187,9 +187,3 @@ resources:
 | 4    | Invalid argument        |
 | 5    | IO error                |
 | 6    | Insufficient privileges |
-
-## See also
-
-- [OpenDsc resource reference](../overview.md)
-- [OpenDsc.FileSystem/File](file.md)
-- [OpenDsc.FileSystem/Directory](directory.md)

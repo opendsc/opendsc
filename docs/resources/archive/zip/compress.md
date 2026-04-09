@@ -154,8 +154,3 @@ resources:
 | 4    | Invalid argument           |
 | 5    | IO error                   |
 | 6    | Invalid or corrupt archive |
-
-## See also
-
-- [OpenDsc resource reference](../overview.md)
-- [OpenDsc.Archive.Zip/Expand](zip-expand.md)

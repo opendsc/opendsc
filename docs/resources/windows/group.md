@@ -260,9 +260,3 @@ resources:
 | 4    | Invalid argument     |
 | 5    | Unauthorized access  |
 | 6    | Group already exists |
-
-## See also
-
-- [`OpenDsc.Windows/User`](user.md)
-- [`OpenDsc.Windows/UserRight`](user-right.md)
-- [OpenDsc resource reference](../overview.md)

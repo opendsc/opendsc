@@ -234,8 +234,3 @@ resources:
 | 4    | Invalid argument    |
 | 5    | Unauthorized access |
 | 6    | User already exists |
-
-## See also
-
-- [`OpenDsc.Windows/Group`](group.md)
-- [OpenDsc resource reference](../overview.md)

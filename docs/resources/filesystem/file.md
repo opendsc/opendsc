@@ -166,9 +166,3 @@ resources:
 | 3    | Access denied    |
 | 4    | Invalid argument |
 | 5    | IO error         |
-
-## See also
-
-- [OpenDsc resource reference](../overview.md)
-- [OpenDsc.FileSystem/Directory](directory.md)
-- [OpenDsc.FileSystem/SymbolicLink](symbolic-link.md)

@@ -177,7 +177,3 @@ resources:
 | 4    | Invalid argument or missing required parameter |
 | 5    | Invalid operation or service state             |
 | 6    | Service operation timed out                    |
-
-## See also
-
-- [OpenDsc resource reference](../overview.md)

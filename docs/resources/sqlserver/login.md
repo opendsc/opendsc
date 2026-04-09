@@ -404,9 +404,3 @@ resources:
 | 3    | Invalid argument    |
 | 4    | Unauthorized access |
 | 5    | Invalid operation   |
-
-## See also
-
-- [OpenDsc resource reference](../overview.md)
-- [OpenDsc.SqlServer/ServerRole](server-role.md)
-- [OpenDsc.SqlServer/ServerPermission](server-permission.md)

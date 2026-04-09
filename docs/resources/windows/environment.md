@@ -201,7 +201,3 @@ resources:
 | 2    | Invalid JSON     |
 | 3    | Access denied    |
 | 4    | Invalid argument |
-
-## See also
-
-- [OpenDsc resource reference](../overview.md)

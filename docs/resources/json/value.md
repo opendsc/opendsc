@@ -226,8 +226,3 @@ resources:
 | 3    | JSON file not found |
 | 4    | Invalid argument    |
 | 5    | IO error            |
-
-## See also
-
-- [OpenDsc resource reference](../overview.md)
-- [OpenDsc.Xml/Element](../xml/element.md)

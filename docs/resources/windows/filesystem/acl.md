@@ -360,7 +360,3 @@ resources:
 | 6    | File or directory not found |
 | 7    | Directory not found         |
 | 8    | Identity not found          |
-
-## See also
-
-- [OpenDsc resource reference](../overview.md)
