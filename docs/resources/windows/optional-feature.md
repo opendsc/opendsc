@@ -23,10 +23,10 @@ OpenDsc.Windows/OptionalFeature
 | Delete     | Yes       |
 | Export     | Yes       |
 
-> [!NOTE]
-> This resource uses `SetReturn = SetReturn.State` and returns actual state from
-> the `Set()` operation, including `_metadata` with restart requirements when
-> applicable.
+!!! note
+    This resource uses `SetReturn = SetReturn.State` and returns actual state from
+    the `Set()` operation, including `_metadata` with restart requirements when
+    applicable.
 
 ## Properties
 

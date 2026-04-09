@@ -110,8 +110,8 @@ Access: Read/Write
 Default value: true
 ```
 
-> [!NOTE]
-> This resource requires administrator privileges for all write operations.
+!!! note
+    This resource requires administrator privileges for all write operations.
 
 ## Examples
 

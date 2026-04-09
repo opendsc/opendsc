@@ -98,10 +98,11 @@ Access: Read/Write
 Default value: true
 ```
 
-> [!NOTE]
-> This resource uses an embedded JSON schema due to the complexity of its nested trigger and
-> action objects. Use `dsc resource schema -r OpenDsc.Windows/ScheduledTask` to view the full
-> schema.
+!!! note
+    This resource uses an embedded JSON schema due to the complexity of its
+    nested trigger and action objects.
+    Use `dsc resource schema -r OpenDsc.Windows/ScheduledTask` to view the full
+    schema.
 
 ## Examples
 

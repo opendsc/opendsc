@@ -65,8 +65,8 @@ Access: Read/Write
 Default value: true
 ```
 
-> [!NOTE]
-> Setting `scope` to `Machine` requires administrator privileges.
+!!! note
+    Setting `scope` to `Machine` requires administrator privileges.
 
 ## Examples
 

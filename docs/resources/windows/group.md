@@ -107,8 +107,8 @@ not in the list are removed.
 
 After Set, the group contains only `alice` and `bob`.
 
-> [!NOTE]
-> This resource requires administrator privileges for all write operations.
+!!! note
+    This resource requires administrator privileges for all write operations.
 
 ## Examples
 

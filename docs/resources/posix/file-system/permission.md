@@ -5,9 +5,9 @@
 Manages POSIX file and directory permissions (mode, owner, group) on Linux and
 macOS. Equivalent to the `chmod` and `chown` commands.
 
-> [!IMPORTANT]
-> This resource is only available on Linux and macOS. It is not supported on
-> Windows.
+!!! note
+    This resource is only available on Linux and macOS. It is not supported on
+    Windows.
 
 ## Type
 
