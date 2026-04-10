@@ -29,7 +29,7 @@ On Linux and macOS, it includes only cross-platform and POSIX resources.
 
 Every OpenDSC resource has a fully qualified type name following this syntax:
 
-```
+```text
 OpenDsc.<Area>/<Name>
 ```
 
@@ -88,12 +88,5 @@ For a complete list of OpenDSC resources with their properties and examples, see
 the
 [resource reference][01].
 
-## See also
-
-- [Get started with OpenDSC][02]
-- [DSC Resources overview][03] (Microsoft DSC documentation)
-
 <!-- Link references -->
-[01]: ../../reference/resources/overview.md
-[02]: ../../get-started/index.md
-[03]: ../../../../concepts/resources/overview.md
+[01]: ../../reference/resources/index.md

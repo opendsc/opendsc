@@ -91,7 +91,7 @@ logLevel: Error
 ```yaml
 logLevel: Error          # Overridden by Environment
 maxConnections: 100      # Inherited from Default
-analytics: true         # Inherited from Default
+analytics: true          # Inherited from Default
 ```
 
 ## Provenance tracking

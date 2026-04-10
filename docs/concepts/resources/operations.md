@@ -100,12 +100,3 @@ Resources that manage both a container and its contents (a group with members)
 use both
 properties. `_exist` controls the container and `_purge` controls the list items
 within it.
-
-## See also
-
-- [OpenDsc Resources overview][01]
-- [Resource reference][02]
-
-<!-- Link references -->
-[01]: overview.md
-[02]: ../../reference/resources/overview.md

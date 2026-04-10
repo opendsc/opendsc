@@ -588,13 +588,6 @@ own dedicated guide:
 - Avoid per-node parameter files for anything that can be expressed at a
   scope-value level; per-node files are expensive to maintain.
 
-### Retention
-
-Configure retention policies to prevent unbounded version accumulation.
-Prerelease versions are strong candidates for aggressive pruning once stable
-versions are published. See the
-[Retention Policies guide](retention-policies.md) for configuration details.
-
 ### Audit Trail
 
 Every configuration and parameter version on the Pull Server stores `createdBy`

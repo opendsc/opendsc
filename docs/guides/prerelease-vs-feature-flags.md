@@ -80,4 +80,4 @@ behavior should be active (a parameter/flag concern). Prerelease versions are
 left for cases where the structure itself needs canary validation before any
 nodes should run the new YAML at all.
 
-[Feature Flags guide]: ../pull-server/feature-flags.md
+[Feature Flags guide]: feature-flags.md

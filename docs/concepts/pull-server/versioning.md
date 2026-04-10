@@ -42,6 +42,5 @@ Retention can be configured to:
 
 For configuration, see [Configure retention policies][02].
 
-<!-- Link references -->
 [01]: https://semver.org/
 [02]: ../../guides/retention-policies.md
