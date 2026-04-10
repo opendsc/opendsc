@@ -70,8 +70,8 @@ These resources work on Windows, Linux, and macOS.
 
 | Resource                                                  | Description          |
 | :-------------------------------------------------------- | :------------------- |
-| [`OpenDsc.Archive.Zip/Compress`](archive/zip-compress.md) | Create ZIP archives  |
-| [`OpenDsc.Archive.Zip/Expand`](archive/zip-expand.md)     | Extract ZIP archives |
+| [`OpenDsc.Archive.Zip/Compress`](archive/zip/compress.md) | Create ZIP archives  |
+| [`OpenDsc.Archive.Zip/Expand`](archive/zip/expand.md)     | Extract ZIP archives |
 
 ## POSIX resources
 
@@ -79,4 +79,4 @@ POSIX resources work on Linux and macOS only.
 
 | Resource                                                                | Description                   |
 | :---------------------------------------------------------------------- | :---------------------------- |
-| [`OpenDsc.Posix.FileSystem/Permission`](posix/filesystem-permission.md) | Manage POSIX file permissions |
+| [`OpenDsc.Posix.FileSystem/Permission`](posix/filesystem/permission.md) | Manage POSIX file permissions |
