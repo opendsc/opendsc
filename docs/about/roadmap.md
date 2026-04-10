@@ -1,17 +1,16 @@
 # Roadmap
 
-OpenDSC is a production-ready configuration management platform for
-[Microsoft DSC]. It provides a local configuration manager (LCM) for policy
-enforcement and remediation, a centralized pull server platform for
-configuration management and reporting, and an extensible framework for building
-custom resources. This roadmap outlines current capabilities and near-term
-initiatives organized by product area.
+OpenDSC is a configuration management platform for [Microsoft DSC]. It provides
+a local configuration manager (LCM) for policy enforcement and remediation, a
+centralized pull server platform for configuration management and reporting, and
+an extensible framework for building custom resources. This roadmap outlines
+current capabilities and near-term initiatives organized by product area.
 
 ## Current State
 
 ### DSC Resources
 
-OpenDSC ships with a comprehensive, production-ready resource library covering
+OpenDSC ships with a comprehensive, resource library covering
 Windows system administration, SQL Server management, and cross-platform
 infrastructure tasks. Feature parity with PSDesiredStateConfiguration while
 extending to modern Linux and macOS environments.
