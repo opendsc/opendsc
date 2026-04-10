@@ -43,7 +43,7 @@ command resource.
 You can use them individually with `dsc resource get`, `dsc resource set`, and
 `dsc resource delete`, or compose them into configuration documents.
 
-For a full list of available resources, see [resource reference][01].
+For a full list of available resources, see [resource][01].
 
 ### Local Configuration Manager (LCM)
 
@@ -60,7 +60,7 @@ operates in two modes:
 
 The LCM can pull its configuration from a local file or from the Pull Server.
 For more
-information, see [LCM concepts][02].
+information, see [LCM][02].
 
 ### Pull Server
 
@@ -81,7 +81,7 @@ provides:
   authorization
   policies.
 
-For more information, see [Pull Server concepts][03].
+For more information, see [Pull Server][03].
 
 ## How OpenDSC relates to Microsoft DSC
 
@@ -102,5 +102,5 @@ commands.
 - Browse the [resource reference][01] for available resources.
 
 [01]: reference/resources/index.md
-[02]: concepts/lcm/overview.md
-[03]: concepts/pull-server/overview.md
+[02]: concepts/lcm/index.md
+[03]: concepts/pull-server/index.md
