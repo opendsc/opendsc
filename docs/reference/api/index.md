@@ -26,12 +26,18 @@ the server.
     export ASPNETCORE_ENVIRONMENT=Development
     ```
 
-<!-- markdownlint-enable MD046 -->
-
 !!! note
-    If OpenDSC is running as a Windows service, you must set
-    `ASPNETCORE_ENVIRONMENT` as a machine-level environment variable and then
-    restart the service.
+    If OpenDSC is running as a Windows service, set `ASPNETCORE_ENVIRONMENT`
+    at the service level or machine level and then restart the service.
+
+    The service registry key is:
+    `HKLM:\SYSTEM\CurrentControlSet\Services\OpenDscServer`
+
+    Add or update the `Environment` value under that key as a
+    `REG_MULTI_SZ` (multiple string) with:
+    `ASPNETCORE_ENVIRONMENT=Development`
+
+<!-- markdownlint-enable MD046 -->
 
 Once in development mode, navigate to `/scalar/v1` for an interactive API
 reference. The OpenAPI schema is available at `/openapi/v1.json`.
