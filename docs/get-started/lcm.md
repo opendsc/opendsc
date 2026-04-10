@@ -2,8 +2,6 @@
 
 The Local Configuration Manager (LCM) is a background service that continuously
 evaluates a DSC configuration document against the current state of the system.
-This tutorial walks you through installing the LCM, configuring it in local
-mode, and observing drift detection.
 
 ## Install
 

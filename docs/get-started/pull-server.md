@@ -1,39 +1,69 @@
-# Tutorial: Set up the Pull Server
+# Pull Server
 
-This tutorial walks you through installing and configuring the OpenDSC Pull
-Server, registering a
-node, and deploying your first configuration. By the end, you'll have a working
-Pull Server that
-delivers configurations to managed nodes.
+The OpenDSC Pull Server manages configuration delivery to registered nodes.
+It provides a central service for distributing DSC configuration documents,
+node registration, and compliance reporting.
 
-## Prerequisites
+## Install
 
-- A Windows machine with [OpenDSC installed][01].
-- [DSC v3][02] version `3.0.0` or later.
-- PowerShell 7 or later.
-- Administrator privileges.
+<!-- markdownlint-disable MD046 -->
 
-## Step 1: Install the Pull Server
+=== ":fontawesome-brands-windows: Windows"
 
-Download and install the Pull Server MSI from the [releases page][03]:
+    ```powershell
+    winget install OpenDsc.Server
+    ```
 
-```powershell
-$version = '0.5.1'
-Invoke-WebRequest "https://github.com/opendsc/opendsc/releases/download/v$version/OpenDSC.Server-$version.msi" `
-    -OutFile "$env:TEMP\OpenDSC.Server-$version.msi"
-Start-Process msiexec.exe -Wait -ArgumentList "/i $env:TEMP\OpenDSC.Server-$version.msi"
-```
+=== ":fontawesome-brands-linux: Linux"
 
-The installer places files in `C:\Program Files\OpenDSC` and registers a Windows
-service named
-**OpenDSC.Server**. The service starts automatically.
+    !!! note
+        Debian and RPM package support is coming soon. In the meantime, use the
+        archive install below.
 
-## Step 2: Sign in for the first time
+    ```sh
+    version='0.5.1'
+    archive="OpenDSC.Server.Linux.$version.tar.gz"
+    install_dir="$HOME/OpenDSC.Server"
+    mkdir -p "$install_dir"
+    curl -L -o "$archive" \
+      "https://github.com/opendsc/opendsc/releases/download/v$version/$archive"
+    tar -xzf "$archive" -C "$install_dir"
+    export PATH="$install_dir:$PATH"
+    echo 'export PATH="$HOME/OpenDSC.Server:$PATH"' >> ~/.bashrc
+    ```
 
-Open your browser and navigate to `http://localhost:5000`. The web UI prompts
-you to sign in.
+=== ":fontawesome-brands-apple: macOS"
 
-![OpenDSC login page](media/pull-server-setup/login-page.png)
+    !!! note
+        Homebrew package support is coming soon. In the meantime, use the
+        archive install below.
+
+    ```sh
+    version='0.5.1'
+    archive="OpenDSC.Server.macOS.$version.tar.gz"
+    install_dir="$HOME/OpenDSC.Server"
+    mkdir -p "$install_dir"
+    curl -L -o "$archive" \
+      "https://github.com/opendsc/opendsc/releases/download/v$version/$archive"
+    tar -xzf "$archive" -C "$install_dir"
+    export PATH="$install_dir:$PATH"
+    echo 'export PATH="$HOME/OpenDSC.Server:$PATH"' >> ~/.zshrc
+    ```
+
+=== ":fontawesome-brands-docker: Docker"
+
+    !!! note
+        Docker support is coming soon. In the meantime, use the Windows, Linux,
+        or macOS install instructions.
+
+<!-- markdownlint-enable MD046 -->
+
+## Login
+
+Open your browser and navigate to [http://localhost:5000][pull-server-url].
+The web UI prompts you to sign in.
+
+![OpenDSC login page][login-page]
 
 Sign in with the default administrator credentials:
 
@@ -42,40 +72,11 @@ Sign in with the default administrator credentials:
 | Username | `admin` |
 | Password | `admin` |
 
-After signing in, you're prompted to change the default password. Choose a
-strong password and
-save it.
-
-![Change default password](media/pull-server-setup/change-password.png)
-
-## Step 3: Configure for lab use (optional)
-
-> [!WARNING]
-> The following step disables mTLS certificate validation. Never use the `Testing` environment
-> in production deployments. For production HTTPS configuration, see
-> [Configure HTTPS with self-signed certificates][04].
-
-For local development and lab environments where both the server and node run on
-the same
-machine over HTTP, disable mTLS validation by setting the environment to
-`Testing`:
-
-```powershell
-$serverRegPath = 'HKLM:\SYSTEM\CurrentControlSet\Services\OpenDscServer'
-Set-ItemProperty -Path $serverRegPath `
-    -Name Environment `
-    -Value @('ASPNETCORE_ENVIRONMENT=Testing') `
-    -Type MultiString
-Restart-Service OpenDscServer
-```
-
-## Step 4: Create a registration key
+## Create Registration Key
 
 Nodes need a registration key to authenticate during their initial registration
 with the Pull
 Server. After registration, nodes use client certificates for authentication.
-
-### Using the web UI
 
 1. Navigate to **Settings → Registration Keys**.
 2. Click **Create**.
@@ -83,122 +84,91 @@ Server. After registration, nodes use client certificates for authentication.
 4. Click **Save**.
 5. Copy the key value that appears and save it securely.
 
-<!-- TODO: Replace with actual screenshot -->
-![Create registration key](media/pull-server-setup/create-registration-key.png)
+![Create registration key][create-registration-key]
 
-### Using PowerShell
+## Configure LCM
 
-```powershell
-# Create a web session by signing in
-$session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
-Invoke-RestMethod -Uri 'http://localhost:5000/api/v1/auth/login' `
-    -Method Post -ContentType 'application/json' `
-    -Body '{"username":"admin","password":"<your-password>"}' `
-    -WebSession $session
+Update the LCM configuration file on the managed node so it pulls its desired
+state from the Pull Server. The LCM reads `appsettings.json` from its default
+location on each platform.
 
-# Create a registration key
-$key = Invoke-RestMethod -Uri 'http://localhost:5000/api/v1/admin/registration-keys' `
-    -Method Post -ContentType 'application/json' `
-    -Body '{"description":"Lab registration"}' `
-    -WebSession $session
+<!-- markdownlint-disable MD046 -->
 
-# Save the key for later use
-$key.key
-```
+=== ":fontawesome-brands-windows: Windows"
 
-## Step 5: Install and configure the LCM
+    ```text
+    $env:ProgramData\OpenDSC\LCM\appsettings.json
+    ```
 
-Install the LCM on the managed node (in this tutorial, the same machine as the
-Pull Server):
+=== ":fontawesome-brands-linux: Linux"
 
-```powershell
-$version = '0.5.1'
-Invoke-WebRequest "https://github.com/opendsc/opendsc/releases/download/v$version/OpenDSC.Lcm-$version.msi" `
-    -OutFile "$env:TEMP\OpenDSC.Lcm-$version.msi"
-Start-Process msiexec.exe -Wait -ArgumentList "/i $env:TEMP\OpenDSC.Lcm-$version.msi"
-```
+    ```text
+    /etc/opendsc/lcm/appsettings.json
+    ```
 
-The installer registers a Windows service named **OpenDscLcm**. Configure it to
-pull from the
-server by creating the appsettings file:
+=== ":fontawesome-brands-apple: macOS"
 
-```powershell
-$configurationFilePath = "$env:ProgramData\OpenDSC\LCM\appsettings.json"
+    ```text
+    /Library/Preferences/OpenDSC/LCM/appsettings.json
+    ```
 
-$configuration = @{
-    LCM = @{
-        ConfigurationMode         = 'Monitor'
-        ConfigurationSource       = 'Pull'
-        ConfigurationModeInterval = '00:15:00'
-        PullServer = @{
-            ServerUrl         = 'http://localhost:5000'
-            RegistrationKey   = $key.key  # Use the key from Step 4
-            CertificateSource = 'Managed'
-            ReportCompliance  = $true
-        }
+<!-- markdownlint-enable MD046 -->
+
+Below is a platform-agnostic example of the LCM configuration for Pull Server
+mode. Copy it into the file above and replace `<registration-key>` with the key
+generated in the previous step.
+
+```json
+{
+  "LCM": {
+    "PullServer": {
+      "ServerUrl": "http://localhost:5000",
+      "RegistrationKey": "<registration-key>",
+      "CertificateSource": "Managed",
+      "ReportCompliance": true
     }
+  }
 }
-
-$configuration | ConvertTo-Json -Depth 5 |
-    Set-Content -Path $configurationFilePath -Encoding UTF8
 ```
 
-Restart the LCM service:
+### Server Url
 
-```powershell
-Restart-Service OpenDscLcm
-```
+This is the address of the Pull Server, for example `http://localhost:5000`.
+It must be provided when `ConfigurationSource` is set to `Pull`.
 
-On startup, the LCM resolves the machine's FQDN, generates a managed client
-certificate, and
-registers with the Pull Server. The server returns a unique `NodeId` that the
-LCM persists in
-the configuration file.
+### Registration Key
 
-## Step 6: Verify node registration
+The `RegistrationKey` is the secret used by the node during initial
+registration.
 
-### Using the web UI
+### CertificateSource
+
+`CertificateSource` controls how the node obtains its client certificate for
+mTLS authentication.
+
+- `Managed` — the LCM provisions and manages the client certificate
+automatically.
+- `Platform` — the node uses a platform-managed certificate store or
+external certificate management. Use this if you already manage certificates
+using an enterprise CA.
+
+Default: `Managed`.
+
+### Report Compliance
+
+When `ReportCompliance` is set to `true`, the LCM sends compliance data back to
+the Pull Server. If omitted, compliance reporting is not enabled.
+
+Default: `false`.
+
+## Verify Registered Node
 
 Navigate to the **Nodes** page. Your machine should appear with its FQDN and
-registration
-timestamp.
+registration timestamp.
 
-<!-- TODO: Replace with actual screenshot -->
-![Registered node in web UI](media/pull-server-setup/registered-node.png)
+## Configuration Management
 
-### Using PowerShell
-
-```powershell
-$nodes = Invoke-RestMethod -Uri 'http://localhost:5000/api/v1/nodes' `
-    -WebSession $session
-
-$nodes | Format-Table nodeId, fqdn, registeredAt
-```
-
-## Step 7: Upload and deploy a configuration
-
-### Create a configuration document
-
-Create a DSC configuration document that sets an environment variable:
-
-```powershell
-$configContent = @'
-$schema: https://aka.ms/dsc/schemas/v3/bundled/config/document.json
-resources:
-  - name: Set greeting variable
-    type: OpenDsc.Windows/Environment
-    properties:
-      name: DSC_GREETING
-      value: Hello from OpenDSC
-      scope: User
-'@
-
-$configContent | Set-Content -Path "$env:TEMP\main.dsc.yaml" -Encoding UTF8
-```
-
-### Upload the configuration
-
-#### Using the web UI
+### Upload configuration
 
 1. Navigate to **Configurations**.
 2. Click **Create**.
@@ -207,102 +177,31 @@ $configContent | Set-Content -Path "$env:TEMP\main.dsc.yaml" -Encoding UTF8
 5. Upload the `main.dsc.yaml` file.
 6. Click **Save**.
 
-<!-- TODO: Replace with actual screenshot -->
-![Upload configuration](media/pull-server-setup/upload-configuration.png)
-
-#### Using PowerShell
-
-```powershell
-$form = @{
-    name       = 'LabConfig'
-    entryPoint = 'main.dsc.yaml'
-    files      = Get-Item "$env:TEMP\main.dsc.yaml"
-}
-
-Invoke-RestMethod -Uri 'http://localhost:5000/api/v1/configurations' `
-    -Method Post -Form $form -WebSession $session
-```
+![Upload configuration][upload-configuration]
 
 ### Publish the configuration
 
 The configuration is created in `Draft` status. Publish it to make it available
 to nodes:
 
-#### Using the web UI
-
 1. On the **Configurations** page, click on `LabConfig`.
 2. Click **Publish** next to version `1.0.0`.
 
-<!-- TODO: Replace with actual screenshot -->
-![Publish configuration version](media/pull-server-setup/publish-version.png)
-
-#### Using PowerShell
-
-```powershell
-Invoke-RestMethod -Uri 'http://localhost:5000/api/v1/configurations/LabConfig/versions/1.0.0/publish' `
-    -Method Put -WebSession $session
-```
+![Publish configuration version][publish-configuration-version]
 
 ### Assign the configuration to the node
-
-#### Using the web UI
 
 1. Navigate to **Nodes**.
 2. Click on your registered node.
 3. Under **Configuration**, select `LabConfig`.
 4. Click **Save**.
 
-![Assign configuration to node](media/pull-server-setup/assign-configuration.png)
+![Assign configuration to node][assign-configuration]
 
-#### Using PowerShell
+[pull-server-url]: http://localhost:5000
 
-```powershell
-$lcmConfig = Get-Content "$env:ProgramData\OpenDSC\LCM\appsettings.json" | ConvertFrom-Json
-$nodeId = $lcmConfig.LCM.PullServer.NodeId
-
-Invoke-RestMethod -Uri "http://localhost:5000/api/v1/nodes/$nodeId/configuration" `
-    -Method Put -ContentType 'application/json' `
-    -Body (@{ configurationName = 'LabConfig' } | ConvertTo-Json) `
-    -WebSession $session
-```
-
-## Step 8: Verify the configuration
-
-The LCM checks for configuration changes every 15 minutes. To trigger an
-immediate check:
-
-```powershell
-Restart-Service OpenDscLcm
-```
-
-After the LCM runs, check the **Nodes** page in the web UI to see the compliance
-status, or check
-the **Reports** page for detailed results.
-
-![Compliance report in web UI](media/pull-server-setup/compliance-report.png)
-
-## Summary
-
-In this tutorial, you:
-
-1. Installed and configured the Pull Server.
-2. Created a registration key.
-3. Installed and configured the LCM in Pull mode.
-4. Registered a node with the Pull Server.
-5. Uploaded, published, and assigned a configuration.
-6. Verified configuration delivery and compliance.
-
-## Next steps
-
-- Learn about [composite configurations][05] for combining multiple
-  configuration documents.
-- Set up [hierarchical parameter merging][06] for environment-specific settings.
-- Configure [HTTPS with certificates][04] for production deployments.
-
-<!-- Link references -->
-[01]: ../installing.md
-[02]: https://learn.microsoft.com/powershell/dsc/install
-[03]: https://github.com/opendsc/opendsc/releases
-[04]: ../guides/configure-https.md
-[05]: ../guides/composite-configurations.md
-[06]: ../guides/parameter-merging.md
+[login-page]: media/pull-server-setup/login-page.png
+[create-registration-key]: media/pull-server-setup/create-registration-key.png
+[upload-configuration]: media/pull-server-setup/upload-configuration.png
+[publish-configuration-version]: media/pull-server-setup/publish-version.png
+[assign-configuration]: media/pull-server-setup/assign-configuration.png

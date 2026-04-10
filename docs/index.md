@@ -1,13 +1,10 @@
 # OpenDSC
 
 OpenDSC is an open-source configuration management platform built on Microsoft's
-Desired State
-Configuration (DSC) v3. It extends the DSC ecosystem with built-in resources for
-managing Windows,
-SQL Server, and cross-platform systems, a Local Configuration Manager (LCM)
-service for continuous
-monitoring and remediation, and a Pull Server for centralized configuration
-delivery.
+Desired State Configuration (DSC) v3. It extends the DSC ecosystem with
+built-in resources for managing Windows, SQL Server, and cross-platform systems,
+a Local Configuration Manager (LCM) service for continuous monitoring and
+remediation, and a Pull Server for centralized configuration delivery.
 
 With OpenDSC, you can:
 

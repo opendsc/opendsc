@@ -113,7 +113,6 @@ nav:
       - Manage Users & Roles: guides/manage-users-roles.md
       - Retention Policies: guides/retention-policies.md
       - Export Resources: guides/export-resources.md
-      - GitOps: pull-server/gitops.md
       - Feature Flags: guides/feature-flags.md
       - Prerelease vs Feature Flags: guides/prerelease-vs-feature-flags.md
 
