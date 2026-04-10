@@ -125,12 +125,3 @@ $token = Invoke-RestMethod -Uri 'http://localhost:5000/api/v1/auth/tokens' `
 $headers = @{ Authorization = "Bearer $($token.token)" }
 Invoke-RestMethod -Uri 'http://localhost:5000/api/v1/nodes' -Headers $headers
 ```
-
-## See also
-
-- [Authentication concepts][01]
-- [Pull Server REST API reference][02]
-
-<!-- Link references -->
-[01]: ../concepts/pull-server/authentication.md
-[02]: ../reference/api/overview.md

@@ -1,11 +1,11 @@
-# OpenDsc.SqlServer/DatabaseUser
+# Database User Resource
 
 ## Synopsis
 
 Manages SQL Server database users, including SQL users mapped to logins, Windows
 users, contained database users, and certificate or asymmetric key mapped users.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.SqlServer/DatabaseUser
@@ -13,12 +13,10 @@ OpenDsc.SqlServer/DatabaseUser
 
 ## Capabilities
 
-| Capability | Supported |
-| :--------- | :-------- |
-| Get        | Yes       |
-| Set        | Yes       |
-| Delete     | Yes       |
-| Export     | Yes       |
+- Get
+- Set
+- Delete
+- Export
 
 ## Properties
 
@@ -248,22 +246,71 @@ Default value: true
 
 ### Example 1 — Get a database user
 
-```powershell
-dsc resource get -r OpenDsc.SqlServer/DatabaseUser --input '{"serverInstance":".","databaseName":"AppDb","name":"dbo"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    serverInstance: .
+    databaseName: AppDb
+    name: dbo
+    '@
+
+    dsc resource get -r OpenDsc.SqlServer/DatabaseUser --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    serverInstance: .
+    databaseName: AppDb
+    name: dbo
+    EOF
+    )
+
+    dsc resource get -r OpenDsc.SqlServer/DatabaseUser --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 2 — Create a user mapped to a login
 
-```powershell
-dsc resource set -r OpenDsc.SqlServer/DatabaseUser --input '{
-  "serverInstance": ".",
-  "databaseName": "AppDb",
-  "name": "AppUser",
-  "userType": "SqlUser",
-  "login": "AppUser",
-  "defaultSchema": "dbo"
-}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    serverInstance: .
+    databaseName: AppDb
+    name: AppUser
+    userType: SqlUser
+    login: AppUser
+    defaultSchema: dbo
+    '@
+
+    dsc resource set -r OpenDsc.SqlServer/DatabaseUser --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    serverInstance: .
+    databaseName: AppDb
+    name: AppUser
+    userType: SqlUser
+    login: AppUser
+    defaultSchema: dbo
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.SqlServer/DatabaseUser --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 3 — Configuration document
 
@@ -291,9 +338,3 @@ resources:
 | 3    | Invalid argument    |
 | 4    | Unauthorized access |
 | 5    | Invalid operation   |
-
-## See also
-
-- [OpenDsc resource reference](../overview.md)
-- [OpenDsc.SqlServer/Login](login.md)
-- [OpenDsc.SqlServer/DatabaseRole](database-role.md)

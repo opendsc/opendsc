@@ -1,11 +1,11 @@
-# OpenDsc.SqlServer/Database
+# Database Resource
 
 ## Synopsis
 
 Manages SQL Server databases, including creation, configuration options, ANSI
 settings, performance options, and availability features.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.SqlServer/Database
@@ -13,12 +13,10 @@ OpenDsc.SqlServer/Database
 
 ## Capabilities
 
-| Capability | Supported |
-| :--------- | :-------- |
-| Get        | Yes       |
-| Set        | Yes       |
-| Delete     | Yes       |
-| Export     | Yes       |
+- Get
+- Set
+- Delete
+- Export
 
 ## Properties
 
@@ -777,20 +775,65 @@ Default value: true
 
 ### Example 1 — Get a database
 
-```powershell
-dsc resource get -r OpenDsc.SqlServer/Database --input '{"serverInstance":".","name":"master"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    serverInstance: .
+    name: master
+    '@
+
+    dsc resource get -r OpenDsc.SqlServer/Database --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    serverInstance: .
+    name: master
+    EOF
+    )
+
+    dsc resource get -r OpenDsc.SqlServer/Database --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 2 — Create a database
 
-```powershell
-dsc resource set -r OpenDsc.SqlServer/Database --input '{
-  "serverInstance": ".",
-  "name": "AppDb",
-  "recoveryModel": "Simple",
-  "collation": "SQL_Latin1_General_CP1_CI_AS"
-}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    serverInstance: .
+    name: AppDb
+    recoveryModel: Simple
+    collation: SQL_Latin1_General_CP1_CI_AS
+    '@
+
+    dsc resource set -r OpenDsc.SqlServer/Database --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    serverInstance: .
+    name: AppDb
+    recoveryModel: Simple
+    collation: SQL_Latin1_General_CP1_CI_AS
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.SqlServer/Database --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 3 — Configuration document
 
@@ -818,9 +861,3 @@ resources:
 | 3    | Invalid argument    |
 | 4    | Unauthorized access |
 | 5    | Invalid operation   |
-
-## See also
-
-- [OpenDsc resource reference](../overview.md)
-- [OpenDsc.SqlServer/DatabaseUser](database-user.md)
-- [OpenDsc.SqlServer/DatabaseRole](database-role.md)

@@ -1,6 +1,6 @@
 # Resource operations
 
-OpenDsc Resources support the standard DSC v3 operations. Each operation serves
+OpenDSC Resources support the standard DSC v3 operations. Each operation serves
 a specific purpose
 in the configuration management lifecycle.
 
@@ -77,7 +77,7 @@ dsc resource export -r OpenDsc.Windows/Environment
 
 ## Operation routing with `_exist` and `_purge`
 
-OpenDsc resources follow specific patterns based on their canonical properties:
+OpenDSC resources follow specific patterns based on their canonical properties:
 
 ### Instance management (`_exist`)
 
@@ -100,12 +100,3 @@ Resources that manage both a container and its contents (a group with members)
 use both
 properties. `_exist` controls the container and `_purge` controls the list items
 within it.
-
-## See also
-
-- [OpenDsc Resources overview][01]
-- [Resource reference][02]
-
-<!-- Link references -->
-[01]: overview.md
-[02]: ../../reference/resources/overview.md

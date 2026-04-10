@@ -1,11 +1,11 @@
-# OpenDsc.SqlServer/AgentJob
+# Agent Job Resource
 
 ## Synopsis
 
 Manages SQL Server Agent jobs, including job creation, notification settings,
 and monitoring of job execution status.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.SqlServer/AgentJob
@@ -13,12 +13,10 @@ OpenDsc.SqlServer/AgentJob
 
 ## Capabilities
 
-| Capability | Supported |
-| :--------- | :-------- |
-| Get        | Yes       |
-| Set        | Yes       |
-| Delete     | Yes       |
-| Export     | Yes       |
+- Get
+- Set
+- Delete
+- Export
 
 ## Properties
 
@@ -368,23 +366,71 @@ Default value: true
 
 ### Example 1 — Get a job
 
-```powershell
-dsc resource get -r OpenDsc.SqlServer/AgentJob --input '{"serverInstance":".","name":"syspolicy_purge_history"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    serverInstance: .
+    name: syspolicy_purge_history
+    '@
+
+    dsc resource get -r OpenDsc.SqlServer/AgentJob --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    serverInstance: .
+    name: syspolicy_purge_history
+    EOF
+    )
+
+    dsc resource get -r OpenDsc.SqlServer/AgentJob --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 2 — Create a job
 
-```powershell
-dsc resource set -r OpenDsc.SqlServer/AgentJob --input '{
-  "serverInstance": ".",
-  "name": "NightlyMaintenance",
-  "description": "Nightly index rebuild and statistics update",
-  "isEnabled": true,
-  "category": "Database Maintenance",
-  "emailLevel": "OnFailure",
-  "operatorToEmail": "DBA Team"
-}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    serverInstance: .
+    name: NightlyMaintenance
+    description: Nightly index rebuild and statistics update
+    isEnabled: true
+    category: Database Maintenance
+    emailLevel: OnFailure
+    operatorToEmail: DBA Team
+    '@
+
+    dsc resource set -r OpenDsc.SqlServer/AgentJob --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    serverInstance: .
+    name: NightlyMaintenance
+    description: Nightly index rebuild and statistics update
+    isEnabled: true
+    category: Database Maintenance
+    emailLevel: OnFailure
+    operatorToEmail: DBA Team
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.SqlServer/AgentJob --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 3 — Configuration document
 
@@ -413,7 +459,3 @@ resources:
 | 3    | Invalid argument    |
 | 4    | Unauthorized access |
 | 5    | Invalid operation   |
-
-## See also
-
-- [OpenDsc resource reference](../overview.md)

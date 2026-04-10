@@ -1,13 +1,10 @@
-# OpenDSC overview
+# OpenDSC
 
 OpenDSC is an open-source configuration management platform built on Microsoft's
-Desired State
-Configuration (DSC) v3. It extends the DSC ecosystem with built-in resources for
-managing Windows,
-SQL Server, and cross-platform systems, a Local Configuration Manager (LCM)
-service for continuous
-monitoring and remediation, and a Pull Server for centralized configuration
-delivery.
+Desired State Configuration (DSC) v3. It extends the DSC ecosystem with
+built-in resources for managing Windows, SQL Server, and cross-platform systems,
+a Local Configuration Manager (LCM) service for continuous monitoring and
+remediation, and a Pull Server for centralized configuration delivery.
 
 With OpenDSC, you can:
 
@@ -46,7 +43,7 @@ command resource.
 You can use them individually with `dsc resource get`, `dsc resource set`, and
 `dsc resource delete`, or compose them into configuration documents.
 
-For a full list of available resources, see [OpenDSC resource reference][01].
+For a full list of available resources, see [resource][01].
 
 ### Local Configuration Manager (LCM)
 
@@ -63,7 +60,7 @@ operates in two modes:
 
 The LCM can pull its configuration from a local file or from the Pull Server.
 For more
-information, see [LCM concepts][02].
+information, see [LCM][02].
 
 ### Pull Server
 
@@ -84,7 +81,7 @@ provides:
   authorization
   policies.
 
-For more information, see [Pull Server concepts][03].
+For more information, see [Pull Server][03].
 
 ## How OpenDSC relates to Microsoft DSC
 
@@ -102,15 +99,8 @@ alongside built-in DSC resources in `dsc resource list` and work identically
 with `dsc config`
 commands.
 
-## Next steps
-
-- [Install OpenDSC][04] on your system.
-- [Get started][05] with a hands-on tutorial.
 - Browse the [resource reference][01] for available resources.
 
-<!-- Link references -->
-[01]: reference/resources/overview.md
-[02]: concepts/lcm/overview.md
-[03]: concepts/pull-server/overview.md
-[04]: installing.md
-[05]: get-started/index.md
+[01]: reference/resources/index.md
+[02]: concepts/lcm/index.md
+[03]: concepts/pull-server/index.md

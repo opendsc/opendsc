@@ -1,11 +1,11 @@
-# OpenDsc.SqlServer/LinkedServer
+# Linked Server Resource
 
 ## Synopsis
 
 Manages SQL Server linked servers for distributed queries across SQL Server
 instances and other OLE DB data sources.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.SqlServer/LinkedServer
@@ -13,12 +13,10 @@ OpenDsc.SqlServer/LinkedServer
 
 ## Capabilities
 
-| Capability | Supported |
-| :--------- | :-------- |
-| Get        | Yes       |
-| Set        | Yes       |
-| Delete     | Yes       |
-| Export     | Yes       |
+- Get
+- Set
+- Delete
+- Export
 
 ## Properties
 
@@ -333,22 +331,69 @@ Default value: true
 
 ### Example 1 — Get a linked server
 
-```powershell
-dsc resource get -r OpenDsc.SqlServer/LinkedServer --input '{"serverInstance":".","name":"RemoteServer"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    serverInstance: .
+    name: RemoteServer
+    '@
+
+    dsc resource get -r OpenDsc.SqlServer/LinkedServer --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    serverInstance: .
+    name: RemoteServer
+    EOF
+    )
+
+    dsc resource get -r OpenDsc.SqlServer/LinkedServer --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 2 — Create a linked server
 
-```powershell
-dsc resource set -r OpenDsc.SqlServer/LinkedServer --input '{
-  "serverInstance": ".",
-  "name": "RemoteServer",
-  "providerName": "SQLNCLI",
-  "dataSource": "remote-sql.example.com",
-  "rpcOut": true,
-  "dataAccess": true
-}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    serverInstance: .
+    name: RemoteServer
+    providerName: SQLNCLI
+    dataSource: remote-sql.example.com
+    rpcOut: true
+    dataAccess: true
+    '@
+
+    dsc resource set -r OpenDsc.SqlServer/LinkedServer --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    serverInstance: .
+    name: RemoteServer
+    providerName: SQLNCLI
+    dataSource: remote-sql.example.com
+    rpcOut: true
+    dataAccess: true
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.SqlServer/LinkedServer --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 3 — Configuration document
 
@@ -376,7 +421,3 @@ resources:
 | 3    | Invalid argument    |
 | 4    | Unauthorized access |
 | 5    | Invalid operation   |
-
-## See also
-
-- [OpenDsc resource reference](../overview.md)

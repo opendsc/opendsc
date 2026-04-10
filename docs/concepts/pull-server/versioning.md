@@ -40,14 +40,7 @@ Retention can be configured to:
 - Keep a fixed number of the most recent versions.
 - Retain only published versions (discard unpublished drafts).
 
-For configuration, see [How to: Configure retention policies][02].
+For configuration, see [Configure retention policies][02].
 
-## See also
-
-- [Configuration management][03]
-- [How to: Configure retention policies][02]
-
-<!-- Link references -->
 [01]: https://semver.org/
 [02]: ../../guides/retention-policies.md
-[03]: configuration-management.md

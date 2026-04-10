@@ -1,11 +1,11 @@
-# OpenDsc.Windows/User
+# User Resource
 
 ## Synopsis
 
 Manages local Windows user accounts, including creation, modification, and
 removal.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.Windows/User
@@ -13,12 +13,10 @@ OpenDsc.Windows/User
 
 ## Capabilities
 
-| Capability | Supported |
-| :--------- | :-------- |
-| Get        | Yes       |
-| Set        | Yes       |
-| Delete     | Yes       |
-| Export     | Yes       |
+- Get
+- Set
+- Delete
+- Export
 
 ## Properties
 
@@ -110,34 +108,99 @@ Access: Read/Write
 Default value: true
 ```
 
-> [!NOTE]
-> This resource requires administrator privileges for all write operations.
+!!! note
+    This resource requires administrator privileges for all write operations.
 
 ## Examples
 
 ### Example 1 — Get a user account
 
-```powershell
-dsc resource get -r OpenDsc.Windows/User --input '{"userName":"Administrator"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    userName: Administrator
+    '@
+
+    dsc resource get -r OpenDsc.Windows/User --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    userName: Administrator
+    EOF
+    )
+
+    dsc resource get -r OpenDsc.Windows/User --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 2 — Create a user
 
-```powershell
-dsc resource set -r OpenDsc.Windows/User --input '{
-  "userName": "svc-app",
-  "fullName": "Application Service Account",
-  "description": "Service account for the application",
-  "password": "SecureP@ssw0rd!",
-  "passwordNeverExpires": true
-}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    userName: svc-app
+    fullName: Application Service Account
+    description: Service account for the application
+    password: 'SecureP@ssw0rd!'
+    passwordNeverExpires: true
+    '@
+
+    dsc resource set -r OpenDsc.Windows/User --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    userName: svc-app
+    fullName: Application Service Account
+    description: Service account for the application
+    password: 'SecureP@ssw0rd!'
+    passwordNeverExpires: true
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.Windows/User --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 3 — Delete a user
 
-```powershell
-dsc resource delete -r OpenDsc.Windows/User --input '{"userName":"svc-app"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    userName: svc-app
+    '@
+
+    dsc resource delete -r OpenDsc.Windows/User --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    userName: svc-app
+    EOF
+    )
+
+    dsc resource delete -r OpenDsc.Windows/User --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 4 — Configuration document
 
@@ -169,8 +232,3 @@ resources:
 | 4    | Invalid argument    |
 | 5    | Unauthorized access |
 | 6    | User already exists |
-
-## See also
-
-- [`OpenDsc.Windows/Group`](group.md)
-- [OpenDsc resource reference](../overview.md)

@@ -1,11 +1,11 @@
-# OpenDsc.SqlServer/DatabasePermission
+# Database Permission Resource
 
 ## Synopsis
 
 Manages SQL Server database-level permissions for users and database roles.
 Supports Grant, Grant With Grant, and Deny states.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.SqlServer/DatabasePermission
@@ -13,12 +13,10 @@ OpenDsc.SqlServer/DatabasePermission
 
 ## Capabilities
 
-| Capability | Supported |
-| :--------- | :-------- |
-| Get        | Yes       |
-| Set        | Yes       |
-| Delete     | Yes       |
-| Export     | Yes       |
+- Get
+- Set
+- Delete
+- Export
 
 ## Properties
 
@@ -125,15 +123,38 @@ Default value: true
 
 ### Example 1 — Grant SELECT to a user
 
-```powershell
-dsc resource set -r OpenDsc.SqlServer/DatabasePermission --input '{
-  "serverInstance": ".",
-  "databaseName": "AppDb",
-  "principal": "AppUser",
-  "permission": "Select",
-  "state": "Grant"
-}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    serverInstance: .
+    databaseName: AppDb
+    principal: AppUser
+    permission: Select
+    state: Grant
+    '@
+
+    dsc resource set -r OpenDsc.SqlServer/DatabasePermission --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    serverInstance: .
+    databaseName: AppDb
+    principal: AppUser
+    permission: Select
+    state: Grant
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.SqlServer/DatabasePermission --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 2 — Configuration document
 
@@ -169,9 +190,3 @@ resources:
 | 3    | Invalid argument    |
 | 4    | Unauthorized access |
 | 5    | Invalid operation   |
-
-## See also
-
-- [OpenDsc resource reference](../overview.md)
-- [OpenDsc.SqlServer/DatabaseUser](database-user.md)
-- [OpenDsc.SqlServer/DatabaseRole](database-role.md)

@@ -706,10 +706,3 @@ Publish configuration version:
 | CDN Provider | CloudFlare | CloudFlare | CloudFlare | Regional |
 | Database Pool Size | 200 | 150 | 120 | Regional |
 | Rate Limit (RPM) | 200 | 150 | 120 | Regional |
-
-## Related Documentation
-
-- [Scope System Overview](../scope-system.md)
-- [Parameter Merging](../parameter-merging.md)
-- [Configuration Management](../configuration-management.md)
-- [Web Server Baseline Example](01-web-server-baseline.md)

@@ -1,11 +1,11 @@
-# OpenDsc.SqlServer/Login
+# Login Resource
 
 ## Synopsis
 
 Manages SQL Server logins, including SQL authentication, Windows authentication,
 password policies, and server role membership.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.SqlServer/Login
@@ -13,12 +13,10 @@ OpenDsc.SqlServer/Login
 
 ## Capabilities
 
-| Capability | Supported |
-| :--------- | :-------- |
-| Get        | Yes       |
-| Set        | Yes       |
-| Delete     | Yes       |
-| Export     | Yes       |
+- Get
+- Set
+- Delete
+- Export
 
 ## Properties
 
@@ -278,29 +276,102 @@ Default value: true
 
 ### Example 1 — Get a login
 
-```powershell
-dsc resource get -r OpenDsc.SqlServer/Login --input '{"serverInstance":".","name":"sa"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    serverInstance: .
+    name: sa
+    '@
+
+    dsc resource get -r OpenDsc.SqlServer/Login --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    serverInstance: .
+    name: sa
+    EOF
+    )
+
+    dsc resource get -r OpenDsc.SqlServer/Login --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 2 — Create a SQL login
 
-```powershell
-dsc resource set -r OpenDsc.SqlServer/Login --input '{
-  "serverInstance": ".",
-  "name": "AppUser",
-  "loginType": "SqlLogin",
-  "password": "P@ssw0rd!",
-  "defaultDatabase": "AppDb",
-  "passwordPolicyEnforced": true,
-  "serverRoles": ["public"]
-}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    serverInstance: .
+    name: AppUser
+    loginType: SqlLogin
+    password: 'P@ssw0rd!'
+    defaultDatabase: AppDb
+    passwordPolicyEnforced: true
+    serverRoles:
+      - public
+    '@
+
+    dsc resource set -r OpenDsc.SqlServer/Login --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    serverInstance: .
+    name: AppUser
+    loginType: SqlLogin
+    password: 'P@ssw0rd!'
+    defaultDatabase: AppDb
+    passwordPolicyEnforced: true
+    serverRoles:
+      - public
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.SqlServer/Login --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 3 — Delete a login
 
-```powershell
-dsc resource delete -r OpenDsc.SqlServer/Login --input '{"serverInstance":".","name":"AppUser"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    serverInstance: .
+    name: AppUser
+    '@
+
+    dsc resource delete -r OpenDsc.SqlServer/Login --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    serverInstance: .
+    name: AppUser
+    EOF
+    )
+
+    dsc resource delete -r OpenDsc.SqlServer/Login --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 4 — Configuration document
 
@@ -331,9 +402,3 @@ resources:
 | 3    | Invalid argument    |
 | 4    | Unauthorized access |
 | 5    | Invalid operation   |
-
-## See also
-
-- [OpenDsc resource reference](../overview.md)
-- [OpenDsc.SqlServer/ServerRole](server-role.md)
-- [OpenDsc.SqlServer/ServerPermission](server-permission.md)

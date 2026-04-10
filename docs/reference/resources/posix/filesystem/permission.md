@@ -1,15 +1,15 @@
-# OpenDsc.Posix.FileSystem/Permission
+# Permission Resource
 
 ## Synopsis
 
 Manages POSIX file and directory permissions (mode, owner, group) on Linux and
 macOS. Equivalent to the `chmod` and `chown` commands.
 
-> [!IMPORTANT]
-> This resource is only available on Linux and macOS. It is not supported on
-> Windows.
+!!! note
+    This resource is only available on Linux and macOS. It is not supported on
+    Windows.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.Posix.FileSystem/Permission
@@ -17,12 +17,8 @@ OpenDsc.Posix.FileSystem/Permission
 
 ## Capabilities
 
-| Capability | Supported |
-| :--------- | :-------- |
-| Get        | Yes       |
-| Set        | Yes       |
-| Delete     | No        |
-| Export     | No        |
+- Get
+- Set
 
 ## Properties
 
@@ -86,31 +82,96 @@ Default value: None
 
 ### Example 1 — Get permissions
 
-```powershell
-dsc resource get -r OpenDsc.Posix.FileSystem/Permission --input '{"path":"/etc/passwd"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    path: /etc/passwd
+    '@
+
+    dsc resource get -r OpenDsc.Posix.FileSystem/Permission --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    path: /etc/passwd
+    EOF
+    )
+
+    dsc resource get -r OpenDsc.Posix.FileSystem/Permission --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 2 — Set file permissions
 
-```powershell
-dsc resource set -r OpenDsc.Posix.FileSystem/Permission --input '{
-  "path": "/opt/myapp/config.json",
-  "mode": "0644",
-  "owner": "appuser",
-  "group": "appgroup"
-}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    path: /opt/myapp/config.json
+    mode: 0644
+    owner: appuser
+    group: appgroup
+    '@
+
+    dsc resource set -r OpenDsc.Posix.FileSystem/Permission --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    path: /opt/myapp/config.json
+    mode: 0644
+    owner: appuser
+    group: appgroup
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.Posix.FileSystem/Permission --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 3 — Secure a private key
 
-```powershell
-dsc resource set -r OpenDsc.Posix.FileSystem/Permission --input '{
-  "path": "/etc/ssl/private/server.key",
-  "mode": "0600",
-  "owner": "root",
-  "group": "root"
-}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    path: /etc/ssl/private/server.key
+    mode: 0600
+    owner: root
+    group: root
+    '@
+
+    dsc resource set -r OpenDsc.Posix.FileSystem/Permission --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    path: /etc/ssl/private/server.key
+    mode: 0600
+    owner: root
+    group: root
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.Posix.FileSystem/Permission --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 4 — Configuration document
 
@@ -147,9 +208,3 @@ resources:
 | 6    | File or directory not found |
 | 7    | Directory not found         |
 | 8    | Platform not supported      |
-
-## See also
-
-- [OpenDsc resource reference](../overview.md)
-- [OpenDsc.FileSystem/File](../filesystem/file.md)
-- [OpenDsc.FileSystem/Directory](../filesystem/directory.md)

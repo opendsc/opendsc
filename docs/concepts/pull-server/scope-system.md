@@ -48,7 +48,7 @@ Scope values are the identifiers that parameter files are organized under. The
 Pull Server stores
 parameter files in a directory structure:
 
-```
+```text
 parameters/{ConfigurationName}/{ScopeType}/{ScopeValue}/parameters.yaml
 ```
 
@@ -81,12 +81,3 @@ When designing your scope hierarchy, consider:
   precedence.
 - **Team ownership** — align scope types with the teams that manage each layer
   of configuration.
-
-## See also
-
-- [Parameter merging][01]
-- [How to: Set up parameter merging][02]
-
-<!-- Link references -->
-[01]: parameter-merging.md
-[02]: ../../guides/parameter-merging.md

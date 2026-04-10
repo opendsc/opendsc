@@ -1,10 +1,10 @@
-# OpenDsc.Windows/ScheduledTask
+# Scheduled Task Resource
 
 ## Synopsis
 
 Manages Windows scheduled tasks, including triggers, actions, and task settings.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.Windows/ScheduledTask
@@ -12,12 +12,10 @@ OpenDsc.Windows/ScheduledTask
 
 ## Capabilities
 
-| Capability | Supported |
-| :--------- | :-------- |
-| Get        | Yes       |
-| Set        | Yes       |
-| Delete     | Yes       |
-| Export     | Yes       |
+- Get
+- Set
+- Delete
+- Export
 
 ## Properties
 
@@ -98,18 +96,40 @@ Access: Read/Write
 Default value: true
 ```
 
-> [!NOTE]
-> This resource uses an embedded JSON schema due to the complexity of its nested trigger and
-> action objects. Use `dsc resource schema -r OpenDsc.Windows/ScheduledTask` to view the full
-> schema.
+!!! note
+    This resource uses an embedded JSON schema due to the complexity of its
+    nested trigger and action objects.
+    Use `dsc resource schema -r OpenDsc.Windows/ScheduledTask` to view the full
+    schema.
 
 ## Examples
 
 ### Example 1 — Get a scheduled task
 
-```powershell
-dsc resource get -r OpenDsc.Windows/ScheduledTask --input '{"taskName":"\\Microsoft\\Windows\\Defrag\\ScheduledDefrag"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    taskName: '\Microsoft\Windows\Defrag\ScheduledDefrag'
+    '@
+
+    dsc resource get -r OpenDsc.Windows/ScheduledTask --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    taskName: '\Microsoft\Windows\Defrag\ScheduledDefrag'
+    EOF
+    )
+
+    dsc resource get -r OpenDsc.Windows/ScheduledTask --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 2 — Configuration document
 
@@ -139,7 +159,3 @@ resources:
 | 2    | Invalid JSON     |
 | 3    | Access denied    |
 | 4    | Invalid argument |
-
-## See also
-
-- [OpenDsc resource reference](../overview.md)

@@ -1,11 +1,11 @@
-# OpenDsc.Archive.Zip/Expand
+# Expand Resource
 
 ## Synopsis
 
 Extracts ZIP archives to a destination directory. Verifies whether the
 destination contains all files from the archive with matching checksums.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.Archive.Zip/Expand
@@ -13,13 +13,9 @@ OpenDsc.Archive.Zip/Expand
 
 ## Capabilities
 
-| Capability | Supported |
-| :--------- | :-------- |
-| Get        | Yes       |
-| Set        | Yes       |
-| Test       | Yes       |
-| Delete     | No        |
-| Export     | No        |
+- Get
+- Set
+- Test
 
 ## Properties
 
@@ -60,15 +56,61 @@ Default value: None
 
 ### Example 1 — Extract a ZIP archive
 
-```powershell
-dsc resource set -r OpenDsc.Archive.Zip/Expand --input '{"archivePath":"/tmp/release.zip","destinationPath":"/opt/myapp"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    archivePath: /tmp/release.zip
+    destinationPath: /opt/myapp
+    '@
+
+    dsc resource set -r OpenDsc.Archive.Zip/Expand --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    archivePath: /tmp/release.zip
+    destinationPath: /opt/myapp
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.Archive.Zip/Expand --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 2 — Check extraction state
 
-```powershell
-dsc resource get -r OpenDsc.Archive.Zip/Expand --input '{"archivePath":"C:\\Packages\\app.zip","destinationPath":"C:\\Program Files\\MyApp"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    archivePath: C:\Packages\app.zip
+    destinationPath: C:\Program Files\MyApp
+    '@
+
+    dsc resource get -r OpenDsc.Archive.Zip/Expand --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    archivePath: C:\Packages\app.zip
+    destinationPath: C:\Program Files\MyApp
+    EOF
+    )
+
+    dsc resource get -r OpenDsc.Archive.Zip/Expand --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 3 — Configuration document
 
@@ -93,8 +135,3 @@ resources:
 | 4    | Invalid argument           |
 | 5    | IO error                   |
 | 6    | Invalid or corrupt archive |
-
-## See also
-
-- [OpenDsc resource reference](../overview.md)
-- [OpenDsc.Archive.Zip/Compress](zip-compress.md)

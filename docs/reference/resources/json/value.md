@@ -1,4 +1,4 @@
-# OpenDsc.Json/Value
+# Value Resource
 
 ## Synopsis
 
@@ -7,7 +7,7 @@ setting, reading, and removing values of any JSON type (string, number, boolean,
 null, object, or array). Parent paths are created recursively when they don't
 exist.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.Json/Value
@@ -15,12 +15,9 @@ OpenDsc.Json/Value
 
 ## Capabilities
 
-| Capability | Supported |
-| :--------- | :-------- |
-| Get        | Yes       |
-| Set        | Yes       |
-| Delete     | Yes       |
-| Export     | No        |
+- Get
+- Set
+- Delete
 
 ## Properties
 
@@ -72,35 +69,129 @@ Default value: true
 
 ### Example 1 — Get a value
 
-```powershell
-dsc resource get -r OpenDsc.Json/Value --input '{"path":"/opt/myapp/config.json","jsonPath":"$.logging.level"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    path: /opt/myapp/config.json
+    jsonPath: '$.logging.level'
+    '@
+
+    dsc resource get -r OpenDsc.Json/Value --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    path: /opt/myapp/config.json
+    jsonPath: '$.logging.level'
+    EOF
+    )
+
+    dsc resource get -r OpenDsc.Json/Value --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 2 — Set a string value
 
-```powershell
-dsc resource set -r OpenDsc.Json/Value --input '{"path":"/opt/myapp/config.json","jsonPath":"$.logging.level","value":"Warning"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    path: /opt/myapp/config.json
+    jsonPath: '$.logging.level'
+    value: Warning
+    '@
+
+    dsc resource set -r OpenDsc.Json/Value --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    path: /opt/myapp/config.json
+    jsonPath: '$.logging.level'
+    value: Warning
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.Json/Value --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 3 — Set an object value
 
-```powershell
-dsc resource set -r OpenDsc.Json/Value --input '{
-  "path": "/opt/myapp/config.json",
-  "jsonPath": "$.database",
-  "value": {
-    "host": "localhost",
-    "port": 5432,
-    "name": "appdb"
-  }
-}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    path: /opt/myapp/config.json
+    jsonPath: '$.database'
+    value:
+      host: localhost
+      port: 5432
+      name: appdb
+    '@
+
+    dsc resource set -r OpenDsc.Json/Value --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    path: /opt/myapp/config.json
+    jsonPath: '$.database'
+    value:
+      host: localhost
+      port: 5432
+      name: appdb
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.Json/Value --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 4 — Delete a value
 
-```powershell
-dsc resource delete -r OpenDsc.Json/Value --input '{"path":"/opt/myapp/config.json","jsonPath":"$.deprecated.setting"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    path: /opt/myapp/config.json
+    jsonPath: '$.deprecated.setting'
+    '@
+
+    dsc resource delete -r OpenDsc.Json/Value --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    path: /opt/myapp/config.json
+    jsonPath: '$.deprecated.setting'
+    EOF
+    )
+
+    dsc resource delete -r OpenDsc.Json/Value --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 5 — Configuration document
 
@@ -132,8 +223,3 @@ resources:
 | 3    | JSON file not found |
 | 4    | Invalid argument    |
 | 5    | IO error            |
-
-## See also
-
-- [OpenDsc resource reference](../overview.md)
-- [OpenDsc.Xml/Element](../xml/element.md)

@@ -1,11 +1,11 @@
-# OpenDsc.SqlServer/ServerRole
+# Server Role Resource
 
 ## Synopsis
 
 Manages SQL Server server roles, including custom role creation, ownership, and
 member management with additive or exact (`_purge`) modes.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.SqlServer/ServerRole
@@ -13,12 +13,10 @@ OpenDsc.SqlServer/ServerRole
 
 ## Capabilities
 
-| Capability | Supported |
-| :--------- | :-------- |
-| Get        | Yes       |
-| Set        | Yes       |
-| Delete     | Yes       |
-| Export     | Yes       |
+- Get
+- Set
+- Delete
+- Export
 
 ## Properties
 
@@ -148,19 +146,67 @@ Default value: true
 
 ### Example 1 — Get a server role
 
-```powershell
-dsc resource get -r OpenDsc.SqlServer/ServerRole --input '{"serverInstance":".","name":"sysadmin"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    serverInstance: .
+    name: sysadmin
+    '@
+
+    dsc resource get -r OpenDsc.SqlServer/ServerRole --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    serverInstance: .
+    name: sysadmin
+    EOF
+    )
+
+    dsc resource get -r OpenDsc.SqlServer/ServerRole --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 2 — Create a custom server role
 
-```powershell
-dsc resource set -r OpenDsc.SqlServer/ServerRole --input '{
-  "serverInstance": ".",
-  "name": "AppAdmins",
-  "members": ["AppLoginAdmin", "AppLoginDBA"]
-}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    serverInstance: .
+    name: AppAdmins
+    members:
+      - AppLoginAdmin
+      - AppLoginDBA
+    '@
+
+    dsc resource set -r OpenDsc.SqlServer/ServerRole --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    serverInstance: .
+    name: AppAdmins
+    members:
+      - AppLoginAdmin
+      - AppLoginDBA
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.SqlServer/ServerRole --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 3 — Configuration document
 
@@ -188,9 +234,3 @@ resources:
 | 3    | Invalid argument    |
 | 4    | Unauthorized access |
 | 5    | Invalid operation   |
-
-## See also
-
-- [OpenDsc resource reference](../overview.md)
-- [OpenDsc.SqlServer/Login](login.md)
-- [OpenDsc.SqlServer/ServerPermission](server-permission.md)

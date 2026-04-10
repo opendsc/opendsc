@@ -1,4 +1,4 @@
-# OpenDsc.Windows/UserRight
+# User Right Resource
 
 ## Synopsis
 
@@ -6,7 +6,7 @@ Manages Windows user rights assignments (privileges) for principals. This is a
 pure
 list-management resource that uses the `_purge` pattern instead of `_exist`.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.Windows/UserRight
@@ -14,20 +14,46 @@ OpenDsc.Windows/UserRight
 
 ## Capabilities
 
-| Capability | Supported |
-| :--------- | :-------- |
-| Get        | Yes       |
-| Set        | Yes       |
-| Delete     | No        |
-| Export     | Yes       |
+- Get
+- Set
+- Export
 
 ## Properties
 
-| Property    | Type     | Required | Access     | Description                                                                                                                              |
-| :---------- | :------- | :------- | :--------- | :--------------------------------------------------------------------------------------------------------------------------------------- |
-| `principal` | string   | Yes      | Read/Write | The principal (user or group). Accepts username, `DOMAIN\user`, SID (`S-1-5-...`), or UPN (`user@domain.com`).                           |
-| `rights`    | string[] | Yes      | Read/Write | User rights to assign. Values must be unique.                                                                                            |
-| `_purge`    | bool     | No       | Write-Only | When `true`, removes the principal from rights not in the list. When `false` (default), only adds the principal to the specified rights. |
+### principal
+
+The principal (user or group). Accepts username, `DOMAIN\\user`,
+SID (`S-1-5-...`), or UPN (`user@domain.com`).
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### rights
+
+User rights to assign. Values must be unique.
+
+```yaml
+Type: string[]
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### _purge
+
+When `true`, removes the principal from rights not in the list. When `false`
+(default), only adds the principal to the specified rights.
+
+```yaml
+Type: bool
+Required: No
+Access: Write-Only
+Default value: false
+```
 
 ### Supported rights
 
@@ -91,21 +117,102 @@ The `rights` property accepts the following Windows privilege constants:
 
 ### Example 1 — Get rights for a principal
 
-```powershell
-dsc resource get -r OpenDsc.Windows/UserRight --input '{"principal":"Administrators","rights":["SeShutdownPrivilege"]}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    principal: Administrators
+    rights:
+      - SeShutdownPrivilege
+    '@
+
+    dsc resource get -r OpenDsc.Windows/UserRight --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    principal: Administrators
+    rights:
+      - SeShutdownPrivilege
+    EOF
+    )
+
+    dsc resource get -r OpenDsc.Windows/UserRight --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 2 — Grant rights (additive)
 
-```powershell
-dsc resource set -r OpenDsc.Windows/UserRight --input '{"principal":"DOMAIN\\svc-backup","rights":["SeBackupPrivilege","SeRestorePrivilege"]}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    principal: DOMAIN\svc-backup
+    rights:
+      - SeBackupPrivilege
+      - SeRestorePrivilege
+    '@
+
+    dsc resource set -r OpenDsc.Windows/UserRight --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    principal: DOMAIN\svc-backup
+    rights:
+      - SeBackupPrivilege
+      - SeRestorePrivilege
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.Windows/UserRight --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 3 — Set exact rights (purge mode)
 
-```powershell
-dsc resource set -r OpenDsc.Windows/UserRight --input '{"principal":"DOMAIN\\svc-backup","rights":["SeBackupPrivilege","SeRestorePrivilege"],"_purge":true}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    principal: DOMAIN\svc-backup
+    rights:
+      - SeBackupPrivilege
+      - SeRestorePrivilege
+    _purge: true
+    '@
+
+    dsc resource set -r OpenDsc.Windows/UserRight --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    principal: DOMAIN\svc-backup
+    rights:
+      - SeBackupPrivilege
+      - SeRestorePrivilege
+    _purge: true
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.Windows/UserRight --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 4 — Export all assignments
 
@@ -137,7 +244,3 @@ resources:
 | 2    | Invalid JSON     |
 | 3    | Access denied    |
 | 4    | Invalid argument |
-
-## See also
-
-- [OpenDsc resource reference](../overview.md)

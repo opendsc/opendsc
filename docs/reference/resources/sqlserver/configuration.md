@@ -1,11 +1,12 @@
-# OpenDsc.SqlServer/Configuration
+# Configuration Resource
 
 ## Synopsis
 
-Manages SQL Server instance configuration options (equivalent to `sp_configure`).
-Covers memory, parallelism, security, and advanced server options.
+Manages SQL Server instance configuration options (equivalent to
+`sp_configure`). Covers memory, parallelism, security, and advanced server
+options.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.SqlServer/Configuration
@@ -13,12 +14,9 @@ OpenDsc.SqlServer/Configuration
 
 ## Capabilities
 
-| Capability | Supported |
-| :--------- | :-------- |
-| Get        | Yes       |
-| Set        | Yes       |
-| Delete     | No        |
-| Export     | Yes       |
+- Get
+- Set
+- Export
 
 ## Properties
 
@@ -482,20 +480,63 @@ Default value: None
 
 ### Example 1 — Get current configuration
 
-```powershell
-dsc resource get -r OpenDsc.SqlServer/Configuration --input '{"serverInstance":"."}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    serverInstance: .
+    '@
+
+    dsc resource get -r OpenDsc.SqlServer/Configuration --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    serverInstance: .
+    EOF
+    )
+
+    dsc resource get -r OpenDsc.SqlServer/Configuration --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 2 — Set memory and parallelism
 
-```powershell
-dsc resource set -r OpenDsc.SqlServer/Configuration --input '{
-  "serverInstance": ".",
-  "maxServerMemory": 8192,
-  "maxDegreeOfParallelism": 4,
-  "costThresholdForParallelism": 50
-}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    serverInstance: .
+    maxServerMemory: 8192
+    maxDegreeOfParallelism: 4
+    costThresholdForParallelism: 50
+    '@
+
+    dsc resource set -r OpenDsc.SqlServer/Configuration --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    serverInstance: .
+    maxServerMemory: 8192
+    maxDegreeOfParallelism: 4
+    costThresholdForParallelism: 50
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.SqlServer/Configuration --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 3 — Configuration document
 
@@ -525,7 +566,3 @@ resources:
 | 3    | Invalid argument    |
 | 4    | Unauthorized access |
 | 5    | Invalid operation   |
-
-## See also
-
-- [OpenDsc resource reference](../overview.md)

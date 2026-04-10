@@ -1,10 +1,11 @@
-# OpenDsc.Windows/Service
+# Service Resource
 
 ## Synopsis
 
-Manages Windows services, including start type, status, and service configuration.
+Manages Windows services, including start type, status, and service
+configuration.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.Windows/Service
@@ -12,12 +13,10 @@ OpenDsc.Windows/Service
 
 ## Capabilities
 
-| Capability | Supported |
-| :--------- | :-------- |
-| Get        | Yes       |
-| Set        | Yes       |
-| Delete     | Yes       |
-| Export     | Yes       |
+- Get
+- Set
+- Delete
+- Export
 
 ## Properties
 
@@ -109,20 +108,41 @@ Access: Read/Write
 Default value: true
 ```
 
-> [!NOTE]
-> This resource requires administrator privileges.
+!!! note
+    This resource requires administrator privileges.
 
 ## Examples
 
 ### Example 1 — Ensure a service is running
 
-```powershell
-dsc resource set -r OpenDsc.Windows/Service --input '{
-  "name": "Spooler",
-  "status": "Running",
-  "startType": "Automatic"
-}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    name: Spooler
+    status: Running
+    startType: Automatic
+    '@
+
+    dsc resource set -r OpenDsc.Windows/Service --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    name: Spooler
+    status: Running
+    startType: Automatic
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.Windows/Service --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 2 — Configuration document
 
@@ -146,16 +166,12 @@ resources:
 
 ## Exit codes
 
-| Code | Description                              |
-| :--- | :--------------------------------------- |
-| 0    | Success                                  |
-| 1    | Error                                    |
-| 2    | Invalid JSON                             |
-| 3    | Windows API error                        |
+| Code | Description                                    |
+| :--- | :--------------------------------------------- |
+| 0    | Success                                        |
+| 1    | Error                                          |
+| 2    | Invalid JSON                                   |
+| 3    | Windows API error                              |
 | 4    | Invalid argument or missing required parameter |
-| 5    | Invalid operation or service state       |
-| 6    | Service operation timed out              |
-
-## See also
-
-- [OpenDsc resource reference](../overview.md)
+| 5    | Invalid operation or service state             |
+| 6    | Service operation timed out                    |

@@ -1,4 +1,4 @@
-# OpenDsc.Xml/Element
+# Element Resource
 
 ## Synopsis
 
@@ -9,7 +9,7 @@ they don't exist.
 Uses the hybrid pattern with both `_exist` (for the element) and `_purge` (for
 attributes).
 
-## Type name
+## Type
 
 ```text
 OpenDsc.Xml/Element
@@ -17,64 +17,219 @@ OpenDsc.Xml/Element
 
 ## Capabilities
 
-| Capability | Supported |
-| :--------- | :-------- |
-| Get        | Yes       |
-| Set        | Yes       |
-| Delete     | Yes       |
-| Export     | No        |
+- Get
+- Set
+- Delete
 
 ## Properties
 
-| Property     | Type                     | Required | Access     | Description                                                                                 |
-| :----------- | :----------------------- | :------- | :--------- | :------------------------------------------------------------------------------------------ |
-| `path`       | string                   | Yes      | Read/Write | Absolute file path to the XML document.                                                     |
-| `xPath`      | string                   | Yes      | Read/Write | XPath expression to locate the element.                                                     |
-| `value`      | string                   | No       | Read/Write | Text content (inner text) of the element.                                                   |
-| `attributes` | object (string → string) | No       | Read/Write | Attributes to set on the element as key-value pairs.                                        |
-| `namespaces` | object (string → string) | No       | Read/Write | Namespace prefix mappings for XPath evaluation.                                             |
-| `_purge`     | bool                     | No       | Write-Only | When `true`, removes attributes not in the list. When `false` (default), only adds/updates. |
-| `_exist`     | bool                     | No       | Read/Write | Whether the element should exist. Defaults to `true`.                                       |
+### path
+
+Absolute file path to the XML document.
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### xPath
+
+XPath expression to locate the element.
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### value
+
+Text content (inner text) of the element.
+
+```yaml
+Type: string
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### attributes
+
+Attributes to set on the element as key-value pairs.
+
+```yaml
+Type: object (string → string)
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### namespaces
+
+Namespace prefix mappings for XPath evaluation.
+
+```yaml
+Type: object (string → string)
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### _purge
+
+When `true`, removes attributes not in the list. When `false` (default), only
+adds/updates.
+
+```yaml
+Type: bool
+Required: No
+Access: Write-Only
+Default value: false
+```
+
+### _exist
+
+Whether the element should exist. Defaults to `true`.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: true
+```
 
 ## Examples
 
 ### Example 1 — Get an XML element
 
-```powershell
-dsc resource get -r OpenDsc.Xml/Element --input '{"path":"/opt/myapp/web.config","xPath":"//configuration/appSettings/add[@key=\"AppName\"]"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    path: /opt/myapp/web.config
+    xPath: '//configuration/appSettings/add[@key="AppName"]'
+    '@
+
+    dsc resource get -r OpenDsc.Xml/Element --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    path: /opt/myapp/web.config
+    xPath: '//configuration/appSettings/add[@key="AppName"]'
+    EOF
+    )
+
+    dsc resource get -r OpenDsc.Xml/Element --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 2 — Set element attributes
 
-```powershell
-dsc resource set -r OpenDsc.Xml/Element --input '{
-  "path": "/opt/myapp/web.config",
-  "xPath": "//configuration/appSettings/add[@key=\"AppName\"]",
-  "attributes": {
-    "key": "AppName",
-    "value": "MyApplication"
-  }
-}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    path: /opt/myapp/web.config
+    xPath: '//configuration/appSettings/add[@key="AppName"]'
+    attributes:
+      key: AppName
+      value: MyApplication
+    '@
+
+    dsc resource set -r OpenDsc.Xml/Element --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    path: /opt/myapp/web.config
+    xPath: '//configuration/appSettings/add[@key="AppName"]'
+    attributes:
+      key: AppName
+      value: MyApplication
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.Xml/Element --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 3 — Set element value with namespace
 
-```powershell
-dsc resource set -r OpenDsc.Xml/Element --input '{
-  "path": "/opt/myapp/config.xml",
-  "xPath": "//ns:configuration/ns:setting",
-  "namespaces": {
-    "ns": "http://example.com/config"
-  },
-  "value": "Enabled"
-}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    path: /opt/myapp/config.xml
+    xPath: '//ns:configuration/ns:setting'
+    namespaces:
+      ns: http://example.com/config
+    value: Enabled
+    '@
+
+    dsc resource set -r OpenDsc.Xml/Element --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    path: /opt/myapp/config.xml
+    xPath: '//ns:configuration/ns:setting'
+    namespaces:
+      ns: http://example.com/config
+    value: Enabled
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.Xml/Element --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 4 — Delete an element
 
-```powershell
-dsc resource delete -r OpenDsc.Xml/Element --input '{"path":"/opt/myapp/web.config","xPath":"//configuration/appSettings/add[@key=\"Deprecated\"]"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    path: /opt/myapp/web.config
+    xPath: '//configuration/appSettings/add[@key="Deprecated"]'
+    '@
+
+    dsc resource delete -r OpenDsc.Xml/Element --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    path: /opt/myapp/web.config
+    xPath: '//configuration/appSettings/add[@key="Deprecated"]'
+    EOF
+    )
+
+    dsc resource delete -r OpenDsc.Xml/Element --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 5 — Configuration document
 
@@ -113,8 +268,3 @@ resources:
 | 5    | Invalid XPath expression |
 | 6    | Invalid argument         |
 | 7    | IO error                 |
-
-## See also
-
-- [OpenDsc resource reference](../overview.md)
-- [OpenDsc.Json/Value](../json/value.md)

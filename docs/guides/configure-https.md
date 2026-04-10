@@ -1,6 +1,6 @@
 # Configure HTTPS with self-signed certificates
 
-This guide walks you through configuring the OpenDsc Pull Server to use HTTPS
+This guide walks you through configuring the OpenDSC Pull Server to use HTTPS
 with a self-signed
 certificate. This enables mutual TLS (mTLS) authentication between the server
 and managed nodes.
@@ -25,7 +25,7 @@ Create a self-signed certificate for the Pull Server:
 $cert = New-SelfSignedCertificate `
     -DnsName 'localhost', $env:COMPUTERNAME, "$env:COMPUTERNAME.$env:USERDNSDOMAIN" `
     -CertStoreLocation 'Cert:\LocalMachine\My' `
-    -FriendlyName 'OpenDsc Pull Server' `
+    -FriendlyName 'OpenDSC Pull Server' `
     -NotAfter (Get-Date).AddYears(2) `
     -KeyUsage DigitalSignature, KeyEncipherment `
     -TextExtension @('2.5.29.37={text}1.3.6.1.5.5.7.3.1')
@@ -122,12 +122,3 @@ $serverRegPath = 'HKLM:\SYSTEM\CurrentControlSet\Services\OpenDscServer'
 Remove-ItemProperty -Path $serverRegPath -Name Environment -ErrorAction SilentlyContinue
 Restart-Service OpenDscServer
 ```
-
-## See also
-
-- [mTLS authentication concepts][01]
-- [Pull Server architecture][02]
-
-<!-- Link references -->
-[01]: ../concepts/pull-server/authentication.md
-[02]: ../concepts/pull-server/overview.md

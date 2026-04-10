@@ -1,4 +1,4 @@
-# OpenDsc.Windows/OptionalFeature
+# Optional Feature Resource
 
 ## Synopsis
 
@@ -8,7 +8,7 @@ This resource supports signaling restart requirements when a feature enable or
 disable operation
 requires a system restart.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.Windows/OptionalFeature
@@ -16,35 +16,111 @@ OpenDsc.Windows/OptionalFeature
 
 ## Capabilities
 
-| Capability | Supported |
-| :--------- | :-------- |
-| Get        | Yes       |
-| Set        | Yes       |
-| Delete     | Yes       |
-| Export     | Yes       |
+- Get
+- Set
+- Delete
+- Export
 
-> [!NOTE]
-> This resource uses `SetReturn = SetReturn.State` and returns actual state from
-> the `Set()` operation, including `_metadata` with restart requirements when
-> applicable.
+!!! note
+    This resource uses `SetReturn = SetReturn.State` and returns actual state
+    from the `Set()` operation, including `_metadata` with restart requirements
+    when applicable.
 
 ## Properties
 
-| Property                | Type     | Required | Access     | Description                                                                          |
-| :---------------------- | :------- | :------- | :--------- | :----------------------------------------------------------------------------------- |
-| `name`                  | string   | Yes      | Read/Write | The name of the Windows optional feature.                                            |
-| `includeAllSubFeatures` | bool     | No       | Read/Write | Include all sub-features when enabling or disabling the feature.                     |
-| `source`                | string[] | No       | Read/Write | Source file locations for the feature. If omitted, Windows uses its default sources. |
-| `state`                 | string   | No       | Read-Only  | The DISM feature state reported by the system.                                       |
-| `displayName`           | string   | No       | Read-Only  | The display name of the feature.                                                     |
-| `description`           | string   | No       | Read-Only  | The description of the feature.                                                      |
-| `_exist`                | bool     | No       | Read/Write | `true` (default) to enable the feature, `false` to disable it.                       |
-| `_metadata`             | object   | No       | Read-Only  | Metadata returned by the resource, may include `_restartRequired`.                   |
+### name
+
+The name of the Windows optional feature.
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### includeAllSubFeatures
+
+Include all sub-features when enabling or disabling the feature.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### source
+
+Source file locations for the feature. If omitted, Windows uses its default
+sources.
+
+```yaml
+Type: string[]
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### state
+
+The DISM feature state reported by the system.
+
+```yaml
+Type: string
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+### displayName
+
+The display name of the feature.
+
+```yaml
+Type: string
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+### description
+
+The description of the feature.
+
+```yaml
+Type: string
+Required: No
+Access: Read-Only
+Default value: None
+```
+
+### _exist
+
+`true` (default) to enable the feature, `false` to disable it.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: true
+```
+
+### _metadata
+
+Metadata returned by the resource, may include `_restartRequired`.
+
+```yaml
+Type: object
+Required: No
+Access: Read-Only
+Default value: None
+```
 
 ### State values
 
-| Value               | Description                                        |
-| :------------------ | :------------------------------------------------- |
+| Value               | Description                                         |
+| :------------------ | :-------------------------------------------------- |
 | `NotPresent`        | The feature is not present on the system.           |
 | `UninstallPending`  | The feature is pending uninstall.                   |
 | `Staged`            | The feature is staged but not installed.            |
@@ -58,15 +134,57 @@ OpenDsc.Windows/OptionalFeature
 
 ### Example 1 — Get a feature state
 
-```powershell
-dsc resource get -r OpenDsc.Windows/OptionalFeature --input '{"name":"Microsoft-Hyper-V-All"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    name: Microsoft-Hyper-V-All
+    '@
+
+    dsc resource get -r OpenDsc.Windows/OptionalFeature --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    name: Microsoft-Hyper-V-All
+    EOF
+    )
+
+    dsc resource get -r OpenDsc.Windows/OptionalFeature --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 2 — Enable a feature
 
-```powershell
-dsc resource set -r OpenDsc.Windows/OptionalFeature --input '{"name":"Microsoft-Hyper-V-All"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    name: Microsoft-Hyper-V-All
+    '@
+
+    dsc resource set -r OpenDsc.Windows/OptionalFeature --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    name: Microsoft-Hyper-V-All
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.Windows/OptionalFeature --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 If a restart is required, the result includes `_metadata`:
 
@@ -84,9 +202,30 @@ If a restart is required, the result includes `_metadata`:
 
 ### Example 3 — Disable a feature
 
-```powershell
-dsc resource delete -r OpenDsc.Windows/OptionalFeature --input '{"name":"Microsoft-Hyper-V-All"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    name: Microsoft-Hyper-V-All
+    '@
+
+    dsc resource delete -r OpenDsc.Windows/OptionalFeature --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    name: Microsoft-Hyper-V-All
+    EOF
+    )
+
+    dsc resource delete -r OpenDsc.Windows/OptionalFeature --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 4 — Export all features
 
@@ -115,7 +254,3 @@ resources:
 | 3    | Invalid JSON                                      |
 | 4    | Access denied - administrator privileges required |
 | 5    | DISM operation failed                             |
-
-## See also
-
-- [OpenDsc resource reference](../overview.md)

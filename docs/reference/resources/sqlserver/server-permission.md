@@ -1,11 +1,11 @@
-# OpenDsc.SqlServer/ServerPermission
+# Server Permission Resource
 
 ## Synopsis
 
 Manages SQL Server server-level permissions for logins and server roles.
 Supports Grant, Grant With Grant, and Deny states.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.SqlServer/ServerPermission
@@ -13,12 +13,10 @@ OpenDsc.SqlServer/ServerPermission
 
 ## Capabilities
 
-| Capability | Supported |
-| :--------- | :-------- |
-| Get        | Yes       |
-| Set        | Yes       |
-| Delete     | Yes       |
-| Export     | Yes       |
+- Get
+- Set
+- Delete
+- Export
 
 ## Properties
 
@@ -68,7 +66,8 @@ Default value: None
 
 ### permission
 
-Server-level permission (e.g., `ConnectSql`, `ViewServerState`, `ControlServer`).
+Server-level permission (e.g., `ConnectSql`, `ViewServerState`,
+`ControlServer`).
 
 ```yaml
 Type: string
@@ -114,25 +113,69 @@ Default value: true
 
 ### Example 1 — Grant a permission
 
-```powershell
-dsc resource set -r OpenDsc.SqlServer/ServerPermission --input '{
-  "serverInstance": ".",
-  "principal": "AppUser",
-  "permission": "ViewServerState",
-  "state": "Grant"
-}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    serverInstance: .
+    principal: AppUser
+    permission: ViewServerState
+    state: Grant
+    '@
+
+    dsc resource set -r OpenDsc.SqlServer/ServerPermission --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    serverInstance: .
+    principal: AppUser
+    permission: ViewServerState
+    state: Grant
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.SqlServer/ServerPermission --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 2 — Deny a permission
 
-```powershell
-dsc resource set -r OpenDsc.SqlServer/ServerPermission --input '{
-  "serverInstance": ".",
-  "principal": "RestrictedUser",
-  "permission": "ConnectSql",
-  "state": "Deny"
-}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    serverInstance: .
+    principal: RestrictedUser
+    permission: ConnectSql
+    state: Deny
+    '@
+
+    dsc resource set -r OpenDsc.SqlServer/ServerPermission --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    serverInstance: .
+    principal: RestrictedUser
+    permission: ConnectSql
+    state: Deny
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.SqlServer/ServerPermission --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 3 — Configuration document
 
@@ -158,9 +201,3 @@ resources:
 | 3    | Invalid argument    |
 | 4    | Unauthorized access |
 | 5    | Invalid operation   |
-
-## See also
-
-- [OpenDsc resource reference](../overview.md)
-- [OpenDsc.SqlServer/Login](login.md)
-- [OpenDsc.SqlServer/ServerRole](server-role.md)

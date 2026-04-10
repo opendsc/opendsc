@@ -1,4 +1,4 @@
-# OpenDsc.FileSystem/Directory
+# Directory Resource
 
 ## Synopsis
 
@@ -6,7 +6,7 @@ Manages directories on the local filesystem. Supports creating directories,
 copying directory contents from a source, and removing directories. Works on
 Windows, Linux, and macOS.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.FileSystem/Directory
@@ -14,13 +14,10 @@ OpenDsc.FileSystem/Directory
 
 ## Capabilities
 
-| Capability | Supported |
-| :--------- | :-------- |
-| Get        | Yes       |
-| Set        | Yes       |
-| Test       | Yes       |
-| Delete     | Yes       |
-| Export     | No        |
+- Get
+- Set
+- Test
+- Delete
 
 ## Properties
 
@@ -72,27 +69,113 @@ Default value: None
 
 ### Example 1 — Get a directory
 
-```powershell
-dsc resource get -r OpenDsc.FileSystem/Directory --input '{"path":"/var/log/myapp"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    path: /var/log/myapp
+    '@
+
+    dsc resource get -r OpenDsc.FileSystem/Directory --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    path: /var/log/myapp
+    EOF
+    )
+
+    dsc resource get -r OpenDsc.FileSystem/Directory --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 2 — Create a directory
 
-```powershell
-dsc resource set -r OpenDsc.FileSystem/Directory --input '{"path":"/var/log/myapp"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    path: /var/log/myapp
+    '@
+
+    dsc resource set -r OpenDsc.FileSystem/Directory --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    path: /var/log/myapp
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.FileSystem/Directory --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 3 — Copy directory contents from source
 
-```powershell
-dsc resource set -r OpenDsc.FileSystem/Directory --input '{"path":"/opt/myapp/config","sourcePath":"/opt/myapp/config-template"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    path: /opt/myapp/config
+    sourcePath: /opt/myapp/config-template
+    '@
+
+    dsc resource set -r OpenDsc.FileSystem/Directory --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    path: /opt/myapp/config
+    sourcePath: /opt/myapp/config-template
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.FileSystem/Directory --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 4 — Delete a directory
 
-```powershell
-dsc resource delete -r OpenDsc.FileSystem/Directory --input '{"path":"/tmp/staging"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    path: /tmp/staging
+    '@
+
+    dsc resource delete -r OpenDsc.FileSystem/Directory --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    path: /tmp/staging
+    EOF
+    )
+
+    dsc resource delete -r OpenDsc.FileSystem/Directory --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 5 — Configuration document
 
@@ -122,9 +205,3 @@ resources:
 | 4    | Invalid argument |
 | 5    | IO error         |
 | 6    | Access denied    |
-
-## See also
-
-- [OpenDsc resource reference](../overview.md)
-- [OpenDsc.FileSystem/File](file.md)
-- [OpenDsc.FileSystem/SymbolicLink](symbolic-link.md)

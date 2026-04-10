@@ -864,12 +864,3 @@ and identify which scope is overriding it.
 
 For interactive API testing and detailed request/response schemas, visit
 the **Scalar API Reference** at `/scalar/v1` when running the server.
-
-## Next Steps
-
-- [Scope System Guide](scope-system.md) - Understand scope types and
-  precedence
-- [Configuration Management](configuration-management.md) - Learn about
-  configuration versioning
-- [Quick Start Tutorial](quickstart.md) - Follow a step-by-step example
-- [Real-World Examples](examples/) - See parameter merging in action

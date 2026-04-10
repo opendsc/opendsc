@@ -1,11 +1,11 @@
-# OpenDsc.SqlServer/DatabaseRole
+# Database Role Resource
 
 ## Synopsis
 
 Manages SQL Server database roles, including role creation, ownership, and
 member management with additive or exact (`_purge`) modes.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.SqlServer/DatabaseRole
@@ -13,12 +13,10 @@ OpenDsc.SqlServer/DatabaseRole
 
 ## Capabilities
 
-| Capability | Supported |
-| :--------- | :-------- |
-| Get        | Yes       |
-| Set        | Yes       |
-| Delete     | Yes       |
-| Export     | Yes       |
+- Get
+- Set
+- Delete
+- Export
 
 ## Properties
 
@@ -159,20 +157,71 @@ Default value: true
 
 ### Example 1 — Get a role
 
-```powershell
-dsc resource get -r OpenDsc.SqlServer/DatabaseRole --input '{"serverInstance":".","databaseName":"AppDb","name":"db_datareader"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    serverInstance: .
+    databaseName: AppDb
+    name: db_datareader
+    '@
+
+    dsc resource get -r OpenDsc.SqlServer/DatabaseRole --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    serverInstance: .
+    databaseName: AppDb
+    name: db_datareader
+    EOF
+    )
+
+    dsc resource get -r OpenDsc.SqlServer/DatabaseRole --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 2 — Create a role with members
 
-```powershell
-dsc resource set -r OpenDsc.SqlServer/DatabaseRole --input '{
-  "serverInstance": ".",
-  "databaseName": "AppDb",
-  "name": "AppReaders",
-  "members": ["AppUser", "ReportUser"]
-}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    serverInstance: .
+    databaseName: AppDb
+    name: AppReaders
+    members:
+      - AppUser
+      - ReportUser
+    '@
+
+    dsc resource set -r OpenDsc.SqlServer/DatabaseRole --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    serverInstance: .
+    databaseName: AppDb
+    name: AppReaders
+    members:
+      - AppUser
+      - ReportUser
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.SqlServer/DatabaseRole --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 3 — Configuration document
 
@@ -201,9 +250,3 @@ resources:
 | 3    | Invalid argument    |
 | 4    | Unauthorized access |
 | 5    | Invalid operation   |
-
-## See also
-
-- [OpenDsc resource reference](../overview.md)
-- [OpenDsc.SqlServer/DatabaseUser](database-user.md)
-- [OpenDsc.SqlServer/DatabasePermission](database-permission.md)

@@ -1,10 +1,10 @@
-# OpenDsc.Windows/Shortcut
+# Shortcut Resource
 
 ## Synopsis
 
 Manages Windows shortcut (.lnk) files using COM interop with the Windows Shell.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.Windows/Shortcut
@@ -12,12 +12,9 @@ OpenDsc.Windows/Shortcut
 
 ## Capabilities
 
-| Capability | Supported |
-| :--------- | :-------- |
-| Get        | Yes       |
-| Set        | Yes       |
-| Delete     | Yes       |
-| Export     | No        |
+- Get
+- Set
+- Delete
 
 ## Properties
 
@@ -124,13 +121,34 @@ Default value: true
 
 ### Example 1 — Create a desktop shortcut
 
-```powershell
-dsc resource set -r OpenDsc.Windows/Shortcut --input '{
-  "path": "C:\\Users\\Public\\Desktop\\Notepad.lnk",
-  "targetPath": "C:\\Windows\\notepad.exe",
-  "description": "Open Notepad"
-}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    path: C:\Users\Public\Desktop\Notepad.lnk
+    targetPath: C:\Windows\notepad.exe
+    description: Open Notepad
+    '@
+
+    dsc resource set -r OpenDsc.Windows/Shortcut --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    path: C:\Users\Public\Desktop\Notepad.lnk
+    targetPath: C:\Windows\notepad.exe
+    description: Open Notepad
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.Windows/Shortcut --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 2 — Configuration document
 
@@ -154,7 +172,3 @@ resources:
 | 2    | Invalid JSON               |
 | 3    | Failed to generate schema  |
 | 4    | Directory not found        |
-
-## See also
-
-- [OpenDsc resource reference](../overview.md)

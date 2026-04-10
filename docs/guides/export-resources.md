@@ -1,6 +1,6 @@
 # Export resource instances
 
-Some OpenDsc resources support the **Export** operation, which enumerates all
+Some OpenDSC resources support the **Export** operation, which enumerates all
 current instances of
 that resource on the system. This is useful for discovering existing state and
 generating baseline
@@ -83,12 +83,3 @@ resources:
 ```powershell
 dsc config export --file export-template.dsc.yaml > baseline.dsc.yaml
 ```
-
-## See also
-
-- [Resource operations concepts][01]
-- [Resource reference][02]
-
-<!-- Link references -->
-[01]: ../concepts/resources/operations.md
-[02]: ../reference/resources/overview.md

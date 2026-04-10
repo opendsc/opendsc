@@ -1,11 +1,11 @@
-# OpenDsc.FileSystem/File
+# File Resource
 
 ## Synopsis
 
 Manages files on the local filesystem. Supports creating files with specified
 content and removing files. Works on Windows, Linux, and macOS.
 
-## Type name
+## Type
 
 ```text
 OpenDsc.FileSystem/File
@@ -13,12 +13,9 @@ OpenDsc.FileSystem/File
 
 ## Capabilities
 
-| Capability | Supported |
-| :--------- | :-------- |
-| Get        | Yes       |
-| Set        | Yes       |
-| Delete     | Yes       |
-| Export     | No        |
+- Get
+- Set
+- Delete
 
 ## Properties
 
@@ -59,21 +56,86 @@ Default value: true
 
 ### Example 1 — Get a file
 
-```powershell
-dsc resource get -r OpenDsc.FileSystem/File --input '{"path":"/etc/hostname"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    path: /etc/hostname
+    '@
+
+    dsc resource get -r OpenDsc.FileSystem/File --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    path: /etc/hostname
+    EOF
+    )
+
+    dsc resource get -r OpenDsc.FileSystem/File --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 2 — Create a file with content
 
-```powershell
-dsc resource set -r OpenDsc.FileSystem/File --input '{"path":"/tmp/hello.txt","content":"Hello, World!"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    path: /tmp/hello.txt
+    content: Hello, World!
+    '@
+
+    dsc resource set -r OpenDsc.FileSystem/File --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    path: /tmp/hello.txt
+    content: Hello, World!
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.FileSystem/File --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 3 — Delete a file
 
-```powershell
-dsc resource delete -r OpenDsc.FileSystem/File --input '{"path":"/tmp/hello.txt"}'
-```
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    path: /tmp/hello.txt
+    '@
+
+    dsc resource delete -r OpenDsc.FileSystem/File --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    path: /tmp/hello.txt
+    EOF
+    )
+
+    dsc resource delete -r OpenDsc.FileSystem/File --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
 
 ### Example 4 — Configuration document
 
@@ -101,9 +163,3 @@ resources:
 | 3    | Access denied    |
 | 4    | Invalid argument |
 | 5    | IO error         |
-
-## See also
-
-- [OpenDsc resource reference](../overview.md)
-- [OpenDsc.FileSystem/Directory](directory.md)
-- [OpenDsc.FileSystem/SymbolicLink](symbolic-link.md)

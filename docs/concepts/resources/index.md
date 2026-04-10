@@ -1,6 +1,6 @@
-# OpenDsc Resources
+# OpenDSC Resources
 
-OpenDsc provides built-in DSC Resources for managing Windows systems, SQL
+OpenDSC provides built-in DSC Resources for managing Windows systems, SQL
 Server, and
 cross-platform components. Resources are packaged into a single executable per
 platform and work
@@ -10,11 +10,11 @@ with the standard DSC v3 CLI.
 
 Unlike traditional DSC Resources that each ship as a separate executable with
 their own resource
-manifest, OpenDsc bundles all resources into a single platform-specific
+manifest, OpenDSC bundles all resources into a single platform-specific
 executable. This
 executable implements the DSC multi-resource manifest format, allowing DSC to
 discover and invoke
-all OpenDsc resources through one binary.
+all OpenDSC resources through one binary.
 
 The executable is:
 
@@ -27,9 +27,9 @@ On Linux and macOS, it includes only cross-platform and POSIX resources.
 
 ## Resource type names
 
-Every OpenDsc resource has a fully qualified type name following this syntax:
+Every OpenDSC resource has a fully qualified type name following this syntax:
 
-```
+```text
 OpenDsc.<Area>/<Name>
 ```
 
@@ -69,7 +69,7 @@ each resource supports.
 
 ## Canonical properties
 
-OpenDsc resources use DSC canonical properties to participate in shared
+OpenDSC resources use DSC canonical properties to participate in shared
 semantics:
 
 - **`_exist`** — indicates whether a resource instance should exist. When
@@ -84,16 +84,9 @@ semantics:
 
 ## Available resources
 
-For a complete list of OpenDsc resources with their properties and examples, see
+For a complete list of OpenDSC resources with their properties and examples, see
 the
 [resource reference][01].
 
-## See also
-
-- [Get started with OpenDsc][02]
-- [DSC Resources overview][03] (Microsoft DSC documentation)
-
 <!-- Link references -->
-[01]: ../../reference/resources/overview.md
-[02]: ../../get-started/index.md
-[03]: ../../../../concepts/resources/overview.md
+[01]: ../../reference/resources/index.md
