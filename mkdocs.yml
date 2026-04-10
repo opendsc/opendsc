@@ -68,6 +68,9 @@ markdown_extensions:
       anchor_linenums: true
       line_spans: __span
       pygments_lang_class: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
 
 plugins:
   - git-revision-date-localized:
@@ -86,10 +89,9 @@ nav:
   - Home: index.md
 
   - Get Started:
-      - Overview: get-started/index.md
-      - Installing: installing.md
-      - LCM Setup: get-started/lcm-setup.md
-      - Pull Server Setup: get-started/pull-server-setup.md
+      - Resources: get-started/resources.md
+      - LCM: get-started/lcm.md
+      - Pull Server: get-started/pull-server.md
 
   - Concepts:
       - LCM:
