@@ -1,14 +1,13 @@
 # Resources
 
 This document lists all built-in OpenDSC Resources organized by platform area.
-Each resource
-includes its type name, supported capabilities, and key properties.
+Each resource includes its type name, supported capabilities, and key
+properties.
 
 ## Windows resources
 
 Windows resources require a Windows operating system. They are included in the
-Windows build of the
-resource executable.
+Windows build of the resource executable.
 
 | Resource                                                                    | Description                            |
 | :-------------------------------------------------------------------------- | :------------------------------------- |
