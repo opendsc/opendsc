@@ -77,10 +77,9 @@ plugins:
       enable_creation_date: true
   - search
 
-  # TODO: Reenable during merge
-  # - git-committers:
-  #     repository: opendsc/opendsc
-  #     branch: main
+  - git-committers:
+      repository: opendsc/opendsc
+      branch: main
 
 exclude_docs: |
   - pull-server/
@@ -170,9 +169,3 @@ nav:
 
   - About:
       - Roadmap: about/roadmap.md
-
-  # - Examples:
-  #     - Multi-team Web Server: pull-server/examples/01-multi-team-web-server.md
-  #     - Multi-region Deployment: pull-server/examples/02-multi-region-deployment.md
-  #     - Environment Promotion: pull-server/examples/03-environment-promotion.md
-  #     - Composite Multi-tier App: pull-server/examples/04-composite-multi-tier-app.md
