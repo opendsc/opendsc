@@ -6,8 +6,34 @@ parameters, and compliance reports. All API endpoints are prefixed with
 `/api/v1/` unless otherwise
 noted.
 
-**API documentation:** In development mode, navigate to `/scalar/v1` for an
-interactive API
+## Scalar API Documentation
+
+Scalar is an interactive API documentation and API tester. To enable it, set
+the `ASPNETCORE_ENVIRONMENT` environment variable to `Development` and restart
+the server.
+
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $env:ASPNETCORE_ENVIRONMENT = 'Development'
+    ```
+
+=== "Shell"
+
+    ```sh
+    export ASPNETCORE_ENVIRONMENT=Development
+    ```
+
+<!-- markdownlint-enable MD046 -->
+
+!!! note
+    If OpenDSC is running as a Windows service, you must set
+    `ASPNETCORE_ENVIRONMENT` as a machine-level environment variable and then
+    restart the service.
+
+Once in development mode, navigate to `/scalar/v1` for an interactive API
 reference. The OpenAPI schema is available at `/openapi/v1.json`.
 
 ## Authentication
@@ -335,33 +361,3 @@ Node-scoped report submission is listed under [Node reports](#node-reports).
 | `POST` | `/api/v1/retention/reports/cleanup`                  | Clean up old compliance reports               |
 | `POST` | `/api/v1/retention/status-events/cleanup`            | Clean up old LCM status events                |
 | `GET`  | `/api/v1/retention/runs`                             | Get retention run history                     |
-
-## PowerShell examples
-
-Use `Invoke-RestMethod` to interact with the API:
-
-```powershell
-# Authenticate and store the session
-$body = @{ username = 'admin'; password = 'P@ssw0rd' } | ConvertTo-Json
-Invoke-RestMethod -Uri 'https://pull-server:5001/api/v1/auth/login' `
-    -Method Post -Body $body -ContentType 'application/json' `
-    -SessionVariable session
-
-# List all registered nodes
-Invoke-RestMethod -Uri 'https://pull-server:5001/api/v1/nodes/' `
-    -WebSession $session
-
-# Get a specific configuration
-Invoke-RestMethod -Uri 'https://pull-server:5001/api/v1/configurations/web-servers' `
-    -WebSession $session
-
-# Create a Personal Access Token for automation
-$tokenBody = @{ description = 'CI pipeline'; expiresInDays = 90 } | ConvertTo-Json
-$token = Invoke-RestMethod -Uri 'https://pull-server:5001/api/v1/auth/tokens' `
-    -Method Post -Body $tokenBody -ContentType 'application/json' `
-    -WebSession $session
-
-# Use the PAT in subsequent requests
-$headers = @{ Authorization = "Bearer $($token.token)" }
-Invoke-RestMethod -Uri 'https://pull-server:5001/api/v1/nodes/' -Headers $headers
-```
