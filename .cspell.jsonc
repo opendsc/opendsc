@@ -103,6 +103,7 @@
     "SYSLIB",
     "syspolicy",
     "Systemtime",
+    "tasklist",
     "Tcpip",
     "tempuser",
     "Testcontainers",
