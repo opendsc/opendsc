@@ -86,14 +86,3 @@ The web UI uses password-based authentication with session cookies. After
 initial setup, the
 default `admin` account must have its password changed before the server can be
 used.
-
-## See also
-
-- [How to: Configure HTTPS with self-signed certificates][01]
-- [How to: Manage users and roles][02]
-- [Pull Server overview][03]
-
-<!-- Link references -->
-[01]: ../../guides/configure-https.md
-[02]: ../../guides/manage-users-roles.md
-[03]: overview.md

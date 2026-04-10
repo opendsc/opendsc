@@ -122,12 +122,3 @@ $serverRegPath = 'HKLM:\SYSTEM\CurrentControlSet\Services\OpenDscServer'
 Remove-ItemProperty -Path $serverRegPath -Name Environment -ErrorAction SilentlyContinue
 Restart-Service OpenDscServer
 ```
-
-## See also
-
-- [mTLS authentication concepts][01]
-- [Pull Server architecture][02]
-
-<!-- Link references -->
-[01]: ../concepts/pull-server/authentication.md
-[02]: ../concepts/pull-server/overview.md

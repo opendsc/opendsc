@@ -74,14 +74,3 @@ checksum locally and uses it to detect changes:
 
 This minimizes network traffic — configuration documents are only transferred
 when they change.
-
-## See also
-
-- [How to: Use composite configurations][01]
-- [Versioning concepts][02]
-- [Pull Server overview][03]
-
-<!-- Link references -->
-[01]: ../../guides/composite-configurations.md
-[02]: versioning.md
-[03]: overview.md

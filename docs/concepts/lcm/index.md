@@ -147,12 +147,4 @@ Each evaluation cycle follows this sequence:
 
 ![LCM evaluation cycle](../media/lcm-overview/evaluation-cycle.png)
 
-## See also
-
-- [Tutorial: Set up the LCM][02]
-- [Pull Server concepts][03]
-
-<!-- Link references -->
-[01]: ../../get-started/pull-server-setup.md
-[02]: ../../get-started/lcm-setup.md
-[03]: ../pull-server/overview.md
+[01]: ../../get-started/pull-server.md

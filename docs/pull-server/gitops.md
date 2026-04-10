@@ -215,14 +215,17 @@ Use SemVer prerelease channels to roll out changes progressively: canary nodes
 receive a prerelease tag first; only after passing compliance checks does the
 stable version land in production.
 
-> [!NOTE] Prerelease configuration versions are **not** the same as stable
-> versions. A prerelease version (e.g., `2.1.0-rc.1`) is distributed only to
-> nodes that explicitly opt in by setting their `PrereleaseChannel` to a
-> matching label. Nodes without a matching channel continue receiving the
-> current stable version and are completely unaffected. Only when the version is
-> promoted to stable (e.g., `2.1.0`) does it become the new release for all
-> nodes. See [Prerelease vs Feature Flags](../guides/prerelease-vs-feature-flags.md) to understand when prerelease
-> versions are the right tool versus feature flags.
+!!! note
+    Prerelease configuration versions are **not** the same as stable
+    versions. A prerelease version (e.g., `2.1.0-rc.1`) is distributed only to
+    nodes that explicitly opt in by setting their `PrereleaseChannel` to a
+    matching label. Nodes without a matching channel continue receiving the
+    current stable version and are completely unaffected. Only when the version
+    is promoted to stable (e.g., `2.1.0`) does it become the new release for all
+    nodes. See
+    [Prerelease vs Feature Flags](../guides/prerelease-vs-feature-flags.md) to
+    understand when prerelease
+    versions are the right tool versus feature flags.
 
 **Versioning strategy:**
 
@@ -554,8 +557,8 @@ useful for debugging failures.
 ## Prerelease vs Feature Flags
 
 The comparison between prerelease versions and feature flags has moved to its
-own dedicated guide: [Prerelease vs Feature Flags](../guides/prerelease-vs-feature-flags.md)
-
+own dedicated guide:
+[Prerelease vs Feature Flags](../guides/prerelease-vs-feature-flags.md)
 
 ## Best Practices
 

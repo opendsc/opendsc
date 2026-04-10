@@ -61,7 +61,7 @@ Parameters are key-value data files that configuration documents can reference.
 The Pull Server
 merges parameters across a configurable scope hierarchy:
 
-```
+```text
 Default → Custom scopes (by precedence) → Node
 ```
 
@@ -108,15 +108,6 @@ When running in development mode, the Pull Server serves interactive API
 documentation at
 `/scalar/v1`. The OpenAPI schema is available at `/openapi/v1.json`.
 
-## See also
-
-- [Tutorial: Set up the Pull Server][04]
-- [Authentication][01]
-- [Configuration management][02]
-- [Parameter merging][03]
-
-<!-- Link references -->
 [01]: authentication.md
 [02]: configuration-management.md
 [03]: parameter-merging.md
-[04]: ../../get-started/pull-server-setup.md

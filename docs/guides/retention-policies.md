@@ -24,8 +24,7 @@ Use retention policies when you need to:
    latest.
 4. Click **Save**.
 
-<!-- TODO: Replace with actual screenshot -->
-![Retention settings](media/retention-policies/retention-settings.png)
+![Retention settings]
 
 ### Using PowerShell
 
@@ -51,8 +50,7 @@ You can override the global retention policy for individual configurations:
 2. Under **Settings**, configure the retention policy.
 3. Click **Save**.
 
-<!-- TODO: Replace with actual screenshot -->
-![Per-configuration retention](media/retention-policies/per-config-retention.png)
+![Per-configuration retention]
 
 ### Using PowerShell
 
@@ -63,11 +61,5 @@ Invoke-RestMethod -Uri 'http://localhost:5000/api/v1/configurations/LabConfig/se
     -WebSession $session
 ```
 
-## See also
-
-- [Versioning concepts][01]
-- [Configuration management][02]
-
-<!-- Link references -->
-[01]: ../concepts/pull-server/versioning.md
-[02]: ../concepts/pull-server/configuration-management.md
+[Per-configuration retention]: media/retention-policies/per-config-retention.png
+[Retention settings]: media/retention-policies/retention-settings.png

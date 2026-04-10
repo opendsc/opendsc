@@ -11,7 +11,7 @@ resolved set for each node based on precedence rules.
 Parameters flow from the broadest scope to the narrowest. Narrower scopes
 override broader ones:
 
-```
+```text
 Default → Custom scope types (ordered by precedence) → Node
 ```
 
@@ -55,7 +55,7 @@ For example, a node tagged with `Region: US-West` and `Environment: Production`
 receives
 parameters merged in this order:
 
-```
+```text
 Default → Region/US-West → Environment/Production → Node/<fqdn>
 ```
 
@@ -75,32 +75,23 @@ Parameter merging performs a deep merge of YAML/JSON objects:
 **Default parameters:**
 
 ```yaml
-appSettings:
-  logLevel: Warning
-  maxConnections: 100
-  features:
-    darkMode: false
-    analytics: true
+logLevel: Warning
+maxConnections: 100
+analytics: true
 ```
 
 **Environment/Production parameters:**
 
 ```yaml
-appSettings:
-  logLevel: Error
-  features:
-    analytics: false
+logLevel: Error
 ```
 
 **Merged result:**
 
 ```yaml
-appSettings:
-  logLevel: Error          # Overridden by Environment
-  maxConnections: 100      # Inherited from Default
-  features:
-    darkMode: false        # Inherited from Default
-    analytics: false       # Overridden by Environment
+logLevel: Error          # Overridden by Environment
+maxConnections: 100      # Inherited from Default
+analytics: true         # Inherited from Default
 ```
 
 ## Provenance tracking
@@ -130,14 +121,3 @@ parameter files against
 that schema. The `ParameterCompatibilityService` checks for breaking changes
 between schema
 versions before activation.
-
-## See also
-
-- [How to: Set up parameter merging][01]
-- [Scope system][02]
-- [Parameter validation][03]
-
-<!-- Link references -->
-[01]: ../../guides/parameter-merging.md
-[02]: scope-system.md
-[03]: parameter-validation.md

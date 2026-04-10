@@ -83,12 +83,3 @@ resources:
 ```powershell
 dsc config export --file export-template.dsc.yaml > baseline.dsc.yaml
 ```
-
-## See also
-
-- [Resource operations concepts][01]
-- [Resource reference][02]
-
-<!-- Link references -->
-[01]: ../concepts/resources/operations.md
-[02]: ../reference/resources/overview.md
