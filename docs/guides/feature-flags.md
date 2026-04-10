@@ -1,9 +1,13 @@
-# Feature Flags with Parameters
+# Feature Flags
 
 Boolean parameters can act as feature flags in a DSC configuration, letting you
 author opt-in capabilities once and activate them progressively through the
 scope system. This document explains the pattern and walks through two common
 canary strategies.
+
+!!! NOTE
+    For a direct comparison with prerelease rollout, see
+    [Prerelease vs Feature Flags].
 
 ## Overview
 
@@ -28,12 +32,7 @@ Define every feature flag in the configuration's `parameters` block with
 `type: boolean` and `defaultValue: false`.
 
 ```yaml
-# main.dsc.yaml
 $schema: https://raw.githubusercontent.com/PowerShell/DSC/main/schemas/2024/04/config/document.json
-metadata:
-  name: web-server
-  version: 2.0.0
-
 parameters:
   # --- Feature flags (opt-in, off by default) ---
   enableHttps:
@@ -94,11 +93,11 @@ resources:
       state: Running
 ```
 
-> [!TIP]
-> All feature flag parameters share a consistent naming convention
-> (`enable<Feature>`) and are grouped together at the top of the `parameters`
-> block. This makes it easy to scan which capabilities the configuration
-> supports.
+!!! tip
+    All feature flag parameters share a consistent naming convention
+    (`enable<Feature>`) and are grouped together at the top of the `parameters`
+    block. This makes it easy to scan which capabilities the configuration
+    supports.
 
 ## Scope Hierarchy for Progressive Rollout
 
@@ -107,8 +106,10 @@ scopes winning. This merge order makes it natural to leave feature flags
 disabled at the **Default** scope and enable them at a narrower scope for canary
 evaluation.
 
-```text
-Default (flags: false) → Canary/Environment → Node
+```mermaid
+flowchart LR
+    Default["Default<br/>(flags: false)"] --> Canary["Canary/Environment"]
+    Canary --> Node["Node"]
 ```
 
 ### Strategy 1 — Environment Scope Type
@@ -330,13 +331,4 @@ Environment/Production/parameters.yaml  →  enableWaf: true
 **All** production nodes now receive WAF. The `Canary/soak` entry can be left
 as-is or removed (it would resolve to `true` from both scopes).
 
-## Related Topics
-
-- [Scope System Guide](scope-system.md) — how to create scope types and scope
-  values
-- [Parameter Merging Deep Dive](parameter-merging.md) — merge precedence and
-  provenance tracking -
-  [Example: Environment Promotion Workflow](examples/03-environment-promotion.md)
-  — promoting a full configuration version across environments
-- [Parameter Validation](parameter-validation.md) — schema-based validation of
-  parameter files
+[Prerelease vs Feature Flags]: ../guides/prerelease-vs-feature-flags.md
