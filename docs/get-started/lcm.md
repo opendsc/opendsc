@@ -1,183 +1,206 @@
-# Tutorial: Set up the LCM
+# Local Configuration Manager
 
 The Local Configuration Manager (LCM) is a background service that continuously
-evaluates a DSC
-configuration document against the current state of the system. This tutorial
-walks you through
-installing the LCM, configuring it in local mode, and observing drift detection.
+evaluates a DSC configuration document against the current state of the system.
+This tutorial walks you through installing the LCM, configuring it in local
+mode, and observing drift detection.
 
-## Prerequisites
+## Install
 
-- A Windows machine with [OpenDSC installed][01].
-- [DSC v3][02] version `3.0.0` or later.
-- PowerShell 7 or later.
-- Administrator privileges.
+<!-- markdownlint-disable MD046 -->
 
-## Step 1: Install the LCM
+=== ":fontawesome-brands-windows: Windows"
 
-Download and install the LCM MSI:
+    ```powershell
+    $version = '0.5.1'
+    Invoke-WebRequest "https://github.com/opendsc/opendsc/releases/download/v$version/OpenDSC.Lcm-$version.msi" `
+        -OutFile "$env:TEMP\OpenDSC.Lcm-$version.msi"
+    Start-Process msiexec.exe -Wait -ArgumentList "/i $env:TEMP\OpenDSC.Lcm-$version.msi"
+    ```
 
-```powershell
-$version = '0.5.1'
-Invoke-WebRequest "https://github.com/opendsc/opendsc/releases/download/v$version/OpenDSC.Lcm-$version.msi" `
-    -OutFile "$env:TEMP\OpenDSC.Lcm-$version.msi"
-Start-Process msiexec.exe -Wait -ArgumentList "/i $env:TEMP\OpenDSC.Lcm-$version.msi"
+=== ":fontawesome-brands-linux: Linux"
+
+    !!! note
+        Debian and RPM package support is coming soon. In the meantime, use the archive install below.
+
+    ```sh
+    version='0.5.1'
+    archive="OpenDSC.Lcm.Linux-$version.zip"
+    install_dir="$HOME/OpenDSC.Lcm"
+    mkdir -p "$install_dir"
+    curl -L -o "$archive" \
+      "https://github.com/opendsc/opendsc/releases/download/v$version/$archive"
+    unzip -o "$archive" -d "$install_dir"
+    export PATH="$install_dir:$PATH"
+    echo 'export PATH="$HOME/OpenDSC.Lcm:$PATH"' >> ~/.bashrc
+    ```
+
+=== ":fontawesome-brands-apple: macOS"
+
+    !!! note
+        Homebrew package support is coming soon. In the meantime, use the archive install below.
+
+    ```sh
+    version='0.5.1'
+    archive="OpenDSC.Lcm.macOS-$version.zip"
+    install_dir="$HOME/OpenDSC.Lcm"
+    mkdir -p "$install_dir"
+    curl -L -o "$archive" \
+      "https://github.com/opendsc/opendsc/releases/download/v$version/$archive"
+    unzip -o "$archive" -d "$install_dir"
+    export PATH="$install_dir:$PATH"
+    echo 'export PATH="$HOME/OpenDSC.Lcm:$PATH"' >> ~/.zshrc
+    ```
+
+<!-- markdownlint-enable MD046 -->
+
+## Configure
+
+Create or update the LCM configuration file in the platform-specific default
+location.
+
+!!! note
+    The LCM automatically hot-reloads configuration changes from
+    `appsettings.json`, so updates take effect without restarting the service.
+
+Each tab below includes the `appsettings.json` path.
+
+<!-- markdownlint-disable MD046 -->
+
+=== ":fontawesome-brands-windows: Windows"
+
+    ```text
+    $env:ProgramData\OpenDSC\LCM\appsettings.json
+    ```
+
+=== ":fontawesome-brands-linux: Linux"
+
+    ```text
+    /etc/opendsc/lcm/appsettings.json
+    ```
+
+=== ":fontawesome-brands-apple: macOS"
+
+    ```text
+    /Library/Preferences/OpenDSC/LCM/appsettings.json
+    ```
+
+<!-- markdownlint-enable MD046 -->
+
+Below is a platform-agnostic example of an `appsettings.json` file for the LCM.
+Use this as a starting point and update `ConfigurationPath` if you choose a
+custom local configuration location.
+
+!!! warning
+    Use a `ConfigurationPath` that only administrators can write to. This
+    prevents unauthorized modifications to the configuration document.
+
+```json
+{
+  "LCM": {
+    "ConfigurationMode": "Monitor",
+    "ConfigurationSource": "Local",
+    "ConfigurationPath": "<path-to-your-local-main.dsc.yaml>",
+    "ConfigurationModeInterval": "00:05:00"
+  }
+}
 ```
 
-The installer places files under `C:\Program Files\OpenDSC\LCM` and registers a
-Windows service
-named **OpenDscLcm**.
+### Configuration Mode
 
-## Step 2: Create a configuration document
+`ConfigurationMode` controls how the LCM responds when the system state differs
+from the configuration document.
 
-Create a DSC configuration document that the LCM will monitor. Save the
-following as
-`C:\DSC\main.dsc.yaml`:
+It has two values:
 
-```powershell
-New-Item -ItemType Directory -Path 'C:\DSC' -Force
+- `Monitor` — the LCM checks the configuration and reports drift, but does not
+  change anything.
+- `Remediate` — the LCM checks the configuration and automatically applies the
+  configuration when drift is detected.
 
-@'
-$schema: https://aka.ms/dsc/schemas/v3/bundled/config/document.json
-resources:
-  - name: Ensure greeting variable
-    type: OpenDsc.Windows/Environment
-    properties:
-      name: DSC_GREETING
-      value: Hello from OpenDSC
-      scope: User
-'@ | Set-Content -Path 'C:\DSC\main.dsc.yaml' -Encoding UTF8
-```
+Start with `Monitor` first to verify that your configuration is correct.
+Once you are comfortable with the behavior, switch to `Remediate` so the LCM can
+keep the system in the desired state automatically.
 
-## Step 3: Configure the LCM in local mode
+The LCM detects the change and switches modes without requiring a service
+restart. On the next evaluation cycle, it will automatically remediate any drift
+it finds.
 
-Create the LCM configuration file. The LCM reads settings from
-`%ProgramData%\OpenDSC\LCM\appsettings.json`:
+The default is `Monitor`.
 
-```powershell
-$configPath = "$env:ProgramData\OpenDSC\LCM\appsettings.json"
-New-Item -ItemType Directory -Path (Split-Path $configPath) -Force
+### Configuration Source
 
-@{
-    LCM = @{
-        ConfigurationMode         = 'Monitor'
-        ConfigurationSource       = 'Local'
-        ConfigurationPath         = 'C:\DSC\main.dsc.yaml'
-        ConfigurationModeInterval = '00:05:00'
-    }
-} | ConvertTo-Json -Depth 5 | Set-Content -Path $configPath -Encoding UTF8
-```
+`ConfigurationSource` determines where the LCM gets its configuration.
 
-This configures the LCM to:
+- `Local` — the LCM reads a file from disk.
+- `Pull` — the LCM gets the configuration from a pull server.
 
-- Operate in **Monitor** mode (detect drift, don't fix it).
-- Read the configuration from a local file.
-- Check every 5 minutes.
+The default is `Local` when using a file-based configuration document.
 
-## Step 4: Start the LCM service
+For `Pull` source configuration, see [Pull Server].
 
-```powershell
-Restart-Service OpenDscLcm
-```
+### Configuration Path
 
-The LCM begins monitoring immediately. Check the Windows Event Log or the
-service logs to see the
-test results.
+`ConfigurationPath` is the full path to the configuration document the LCM
+should evaluate. When using the default local setup, this typically points to
+`main.dsc.yaml` under the platform-specific local configuration folder.
 
-## Step 5: Observe drift detection
+<!-- markdownlint-disable MD046 -->
 
-The configuration expects the `DSC_GREETING` environment variable to be set.
-Since it doesn't
-exist yet, the LCM reports drift.
+=== ":fontawesome-brands-windows: Windows"
 
-Apply the configuration manually first, then modify the variable to observe the
-LCM detecting
-the change:
+    The default is `$env:ProgramData\OpenDSC\LCM\config\local\main.dsc.yaml`.
 
-```powershell
-# Apply the configuration so the variable exists
-dsc config set --file 'C:\DSC\main.dsc.yaml'
+=== ":fontawesome-brands-linux: Linux"
 
-# Verify it's set
-[System.Environment]::GetEnvironmentVariable('DSC_GREETING', 'User')
-```
+    The default is `/etc/opendsc/lcm/config/local/main.dsc.yaml`.
 
-Now change the variable to a different value:
+=== ":fontawesome-brands-apple: macOS"
 
-```powershell
-[System.Environment]::SetEnvironmentVariable('DSC_GREETING', 'Modified value', 'User')
-```
+    The default is `/Library/Preferences/OpenDSC/LCM/config/local/main.dsc.yaml`.
 
-Wait for the next LCM check interval (or restart the service to trigger
-immediately). The LCM
-reports that the system has drifted from the desired state.
+<!-- markdownlint-enable MD046 -->
 
-## Step 6: Switch to Remediate mode
+### Configuration Mode Interval
 
-To have the LCM automatically correct drift, change the configuration mode:
+`ConfigurationModeInterval` sets how often the LCM evaluates the configuration.
+It is expressed as a TimeSpan string such as `00:15:00` for 15 minutes.
 
-```powershell
-$configPath = "$env:ProgramData\OpenDSC\LCM\appsettings.json"
-$config = Get-Content $configPath | ConvertFrom-Json
+### DSC Executable Path
 
-$config.LCM.ConfigurationMode = 'Remediate'
+`DscExecutablePath` specifies the path to the `dsc` CLI executable. If not set,
+it defaults to `dsc` on the system `PATH`.
 
-$config | ConvertTo-Json -Depth 5 | Set-Content -Path $configPath -Encoding UTF8
-```
+## Service
 
-The LCM detects configuration changes and switches modes without a service
-restart. On the next
-evaluation cycle, the LCM runs `dsc config set` and restores the environment
-variable to its
-desired value.
+<!-- markdownlint-disable MD046 -->
 
-Verify:
+=== ":fontawesome-brands-windows: Windows"
 
-```powershell
-# Wait for the next interval or restart the service
-Restart-Service OpenDscLcm
-Start-Sleep -Seconds 30
+    ```powershell
+    Get-Service OpenDscLcm
+    ```
 
-[System.Environment]::GetEnvironmentVariable('DSC_GREETING', 'User')
-```
+=== ":fontawesome-brands-linux: Linux"
 
-The output should show `Hello from OpenDSC`.
+    !!! note
+        Linux service support is coming soon. In the meantime, start and manage
+        the OpenDSC LCM process manually.
 
-## Step 7: Clean up
+    ```sh
+    # Start or monitor the OpenDsc.Lcm process manually until service support is available.
+    ```
 
-```powershell
-# Remove the test variable
-dsc resource delete -r OpenDsc.Windows/Environment --input '{"name":"DSC_GREETING","scope":"User"}'
+=== ":fontawesome-brands-apple: macOS"
 
-# Stop the LCM service
-Stop-Service OpenDscLcm
+    !!! note
+        macOS service support is coming soon. In the meantime, start and manage
+        the OpenDSC LCM process manually.
 
-# Remove the configuration
-Remove-Item -Path 'C:\DSC' -Recurse -Force
-```
+    ```sh
+    # Start or monitor the OpenDsc.Lcm process manually until service support is available.
+    ```
 
-## LCM configuration reference
+<!-- markdownlint-enable MD046 -->
 
-| Setting                     | Description                                   | Default         |
-| :-------------------------- | :-------------------------------------------- | :-------------- |
-| `ConfigurationMode`         | `Monitor` or `Remediate`                      | `Monitor`       |
-| `ConfigurationSource`       | `Local` or `Pull`                             | `Local`         |
-| `ConfigurationPath`         | Path to the configuration document            | —               |
-| `ConfigurationModeInterval` | How often the LCM evaluates the configuration | `00:15:00`      |
-| `DscExecutablePath`         | Path to the `dsc` CLI executable              | `dsc` (in PATH) |
-
-For Pull mode configuration, see the [Pull Server setup tutorial][03].
-
-## Next steps
-
-- Configure the LCM for [Pull mode][03] with the Pull Server.
-- Learn about [LCM concepts][04] including certificate management and compliance
-  reporting.
-- Browse the [resource reference][05] for available resources.
-
-<!-- Link references -->
-[01]: ../installing.md
-[02]: https://learn.microsoft.com/powershell/dsc/install
-[03]: pull-server-setup.md
-[04]: ../concepts/lcm/overview.md
-[05]: ../reference/resources/overview.md
+[Pull Server]: pull-server.md
