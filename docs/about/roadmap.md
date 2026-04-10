@@ -1,220 +1,108 @@
-# OpenDSC
+# Roadmap
 
-OpenDSC is DSC's missing solution layer.
-This project is to recreate the Local Configuration Manager (LCM), pull server,
-and reporting capabilities for [Microsoft DSC](https://github.com/PowerShell/DSC).
+OpenDSC is a production-ready configuration management platform for
+[Microsoft DSC]. It provides a local configuration manager (LCM) for policy
+enforcement and remediation, a centralized pull server platform for
+configuration management and reporting, and an extensible framework for building
+custom resources. This roadmap outlines current capabilities and near-term
+initiatives organized by product area.
 
-Microsoft's intention with Microsoft DSC is not to compete with other solutions
-like Chef, Ansible and cloud based solutions like Azure Machine Configuration
-but, rather be the platform layer.
-This allows the other solutions to call DSC resources without
-competing directly.
+## Current State
 
-While task-scheduler with PowerShell script can accomplish the needs
-for a basic and rudimentary LCM replacement,
-a full-featured LCM replacement can reduce the administrators
-technical debt maintaining and deploying configuration
-with reporting capabilities.
+### DSC Resources
 
-## Development Phases
+OpenDSC ships with a comprehensive, production-ready resource library covering
+Windows system administration, SQL Server management, and cross-platform
+infrastructure tasks. Feature parity with PSDesiredStateConfiguration while
+extending to modern Linux and macOS environments.
 
-### Phase 1
+- [x] **Windows System Management** — Core resource support for system
+configuration and hardening
+- [x] **SQL Server Administration** — Database and SQL Server management without
+external dependencies
+- [x] **Cross-Platform Infrastructure** — Consistent file, JSON, XML, and
+archive management across Windows, Linux, and macOS
 
-Create proof of concept LCM with configuration file already on the node.
+### Resource Authoring Framework (RDK)
 
-Milestones:
+The Resource Development Kit enables teams to build custom DSC resources with
+minimal boilerplate. Focus on resource logic while the framework handles all
+CLI integration and schema management automatically.
 
-- Consume unencrypted configuration file and call DSC and capture status
-- Log status
+- [x] **DSC Resource CLI Generation** — Seamlessly integrate resources with DSC
+without coding command interfaces
+- [x] **Multi-Resource Executables** — Bundle multiple resources into single
+deployable executables with automatic manifest management
+- [x] **Standalone Execution** — Run resources without requiring .NET runtime
+installation for maximum portability
 
-### Phase 2
+### Local Configuration Manager (LCM)
 
-LCM as a service.
+The LCM is a cross-platform configuration agent that applies and maintains DSC
+configurations on individual nodes. It supports both local file-based
+configurations for disconnected scenarios and server-driven pull models for
+centralized management, with automatic drift detection and remediation.
 
-Milestones:
+- [x] **Automatic Policy Enforcement** — Continuously monitor configuration
+drift and automatically remediate divergence
+- [x] **Local File Configuration** — Deploy and manage configurations locally
+without requiring a pull server
+- [x] **Server-Driven Configuration** — Automatically pull configurations and
+parameters from the pull server
+- [x] **Compliance Reporting** — Audit configuration compliance and access
+centralized reports on pull server
+- [x] **Windows Service Integration** — Runs as a native Windows Service with
+secure mTLS certificate management and automatic rotation
 
-- LCM running as a service
-- Configuration file
-- Configuration mode: ApplyOnly, ApplyAndMonitor, ApplyAndAutoCorrect
-- Configuration mode time interval
-- Local API for a tool to call
+### Pull Server
 
-### Phase 3
+The pull server provides enterprise configuration management, centralized node
+management, and compliance reporting through a REST API and Blazor web
+dashboard. It consolidates configuration deployment, node registration, and
+reporting into a unified platform with flexible parameter customization and
+role-based access control.
 
-Create a proof of concept pull server.
+- [x] **Configuration Management** — Upload, version, and promote configurations
+safely through deployment workflows
+- [x] **Composite Configuration** — Combine multiple configurations into
+single deployments with controlled ordering
+- [x] **Flexible Parameter Customization** — Override parameters by scope
+(Default, Region, Environment, Node) for adaptable deployments
+- [x] **Node Organization & Tagging** — Register and tag nodes for efficient
+organization and conditional configuration targeting
+- [x] **Web Administration Dashboard** — Full-featured Blazor UI for node
+management, configuration assignment, compliance reports, and RBAC
+administration
+- [x] **Multi-Database Support** — SQLite for development, SQL Server and
+PostgreSQL for production deployments
+- [x] **REST API** — Complete API with interactive documentation for integration
+and automation
 
-Milestones:
+## In Progress / Next Up
 
-- REST API
-- Token authentication
-- LCM pull configuration
+Work planned for the next 6–12 months to expand cross-platform support, improve
+deployment options, and enhance authentication:
 
-## LCM - Local Configuration Manager
+- [ ] **LCM services for Linux and macOS** — Native service integration for
+Linux (systemd) and macOS (launchd) to match Windows Service capabilities
+- [ ] **Linux and macOS distribution packages** — First-class installation via
+native package managers (apt, yum, brew) for Resources, LCM, and Server
+- [ ] **Native AOT for all resources** — Standalone execution support for all
+built-in resources without runtime dependencies
+- [ ] **Server Docker deployment** — Official Docker images and Compose
+templates for rapid Server deployment and container orchestration
+- [ ] **OpenID/OAuth integration** — Enterprise authentication for Server via
+OAuth 2.0 and OpenID Connect providers
+- [ ] **Expanded resource library** — Additional resources for Windows, macOS,
+and Linux to provide comprehensive baseline coverage
 
-The LCM is the agent on the device to start dsc configuration
-and report back on the success or failure.
+## Future Directions
 
-The LCM can be configured in a push or pull scenario.
-A push would be landing the configuration on the device.
-A pull would have the LCM call the pull server to retrieve new configuration.
+Longer-term capabilities under exploration:
 
-Partial configurations are not in scope.
-The intent is to have a single configuration that is compiled elsewhere
-and letting the `dsc` executable perform the key validation.
+- [ ] **Agentless configuration management** — Centralized push-initiated
+deployments for scenarios that don't require resident agents on nodes
+- [ ] **Configuration authoring UI** — Visual editor for composing and managing
+DSC configurations without manual YAML or JSON authoring
 
-Open considerations:
-
-- Deployment model: MSI, Linux package, zip, etc
-- Platform specific configuration scheme: Windows registry, Linux conf file
-- Service and local command to interact with service or require restart
-  to pick up new service config?
-- If separate command communication what protocol? REST, named pipes, sockets?
-
-### Push Model
-
-In this diagram the author creates the configuration on their device.
-Pushes the configuration to the remote device using whatever method they like
-SSH/RDP/PSRemoting.
-Then lands the configuration in the directory the LCM is looking for
-the configuration.
-
-```mermaid
-sequenceDiagram
-    Author->>LCM: Deploy configuration
-    LCM->>DSC: Apply configuration
-    DSC->>LCM: Retrieves status
-    LCM-->>Reporting: Send status
-```
-
-## Pull Server
-
-In DSCv1 pull server was used for the LCM to retrieve configuration
-and resources.
-
-With Microsoft DSC having supporting multiple languages and different delivery
-mechanisms to deploy resources, is not in scope to carry over that feature
-at this time.
-
-Implementation should be a REST API and not have a user interface.
-LCM will have a token to authenticate to the pull server.
-
-Open considerations:
-
-- Allow SMB pull servers?
-- How to handle token rotation?
-- Allow different configuration storage mediums: local, share, uri?
-
-### Pull Model
-
-In this diagram the author creates the configuration.
-Publishes it to the pull server.
-Then the LCM is configured to in pull mode.
-On a reoccurring basis the LCM requests if there is a new configuration.
-If there is a new configuration is pulled to the device to consume.
-
-```mermaid
-sequenceDiagram
-    Author->>Pull: Publish configuration
-    LCM->>Pull: Request configuration
-    Pull->>LCM: Deploy configuration
-    LCM->>DSC: Apply configuration
-    DSC->>LCM: Retrieves status
-    LCM-->>Reporting: Send status
-```
-
-## Reporting Server
-
-The reporting server is used for the LCM to send status updates.
-
-Implementation should be a REST API and not have a user interface.
-The storage medium should allow for different database providers
-using the entity framework.
-LCM will have a token to authenticate to the reporting server.
-
-Open considerations:
-
-- How to handle token rotation?
-
-```mermaid
-sequenceDiagram
-    LCM->>DSC: Apply configuration
-    DSC->>LCM: Retrieves status
-    LCM->>Reporting: Sends status
-    Reporting->>DB: Stores status
-    User->>Reporting: Requests status
-    Reporting->>DB: Requests stored status
-    DB->>Reporting: Retrieves stored status
-    Reporting->>User: Sends status
-```
-
-## Configuration Server
-
-This does not have an equivalent in DSCv1, this would be an API and front-end
-website/application with the capability to create, update, and deploy
-configuration to the pull server or pushing to the device.
-
-The configuration server should have the ability to create configuration
-based on role, location, environment, etc.
-Then the configuration would be merged at deployment time
-to the pull server or pushed to the device.
-
-## Agent-less Deployment Server
-
-There is an interesting capability that could be entertained.
-Ansible uses an agent-less deployment strategy.
-OpenDSC could have a model where a deployment server handles
-the LCM responsibilities remotely.
-A con of this approach is scaling the deployment servers.
-
-Implementation should be a REST API and not have a user interface.
-
-## Securing configuration
-
-### Push mode
-
-The following diagram is how the LCM would securely store the configuration file
-at rest.
-There is also the possibility of replacing GPG with CA certificates.
-
-Open considerations:
-
-- Allow unencrypted configuration?
-
-```mermaid
-flowchart TD
-    A[LCM Starts] --> B{GPG key exists?}
-    B -->|Yes| C{Configuration encrypted?}
-    B -->|No| D[Create GPG encryption key]
-    D --> C
-    C -->|Yes| E[Decrypt configuration]
-    C -->|No| F[Encrypt configuration file]
-    F --> E
-    E --> G[Call DSC to apply configuration]
-```
-
-### Pull mode
-
-In a pull server situation the following diagram illustrates bootstrapping
-and delivery process.
-
-Open considerations:
-
-- How to handle key rotation?
-
-```mermaid
-sequenceDiagram
-    Author->>LCM: Configures LCM in pull mode
-    LCM->>LCM: Generates GPG key
-    Pull->>Pull: Generates GPG key
-    LCM->>Pull: Sends LCM public key
-    Pull->>LCM: Sends pull public key
-    Author->>Pull: Generates configuration
-    Pull->>Pull: Encrypts configuration with LCM public key
-    Pull->>Pull: Signs encrypted configuration with pull private key
-    LCM->>Pull: Requests configuration
-    Pull->>LCM: Sends configuration
-    LCM->>LCM: Verify configuration signature is from pull public key
-    LCM->>DSC: Apply configuration
-    DSC->>LCM: Retrieves status
-    LCM-->>Reporting: Send status
-```
+[Microsoft DSC]: https://github.com/PowerShell/DSC

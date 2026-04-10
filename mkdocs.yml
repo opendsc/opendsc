@@ -53,6 +53,8 @@ markdown_extensions:
   - admonition
   - def_list
   - pymdownx.inlinehilite
+  - pymdownx.tasklist:
+      custom_checkbox: true
   - pymdownx.snippets:
       auto_append:
         - includes/abbreviations.md
@@ -79,7 +81,6 @@ plugins:
 
 exclude_docs: |
   - pull-server/
-  - roadmap.md
 
 nav:
   - Home: index.md
@@ -164,6 +165,9 @@ nav:
               - Element: reference/resources/xml/element.md
 
       - Glossary: reference/glossary.md
+
+  - About:
+      - Roadmap: about/roadmap.md
 
   # - Examples:
   #     - Multi-team Web Server: pull-server/examples/01-multi-team-web-server.md
