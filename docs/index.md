@@ -46,7 +46,7 @@ command resource.
 You can use them individually with `dsc resource get`, `dsc resource set`, and
 `dsc resource delete`, or compose them into configuration documents.
 
-For a full list of available resources, see [OpenDSC resource reference][01].
+For a full list of available resources, see [resource reference][01].
 
 ### Local Configuration Manager (LCM)
 
@@ -104,6 +104,6 @@ commands.
 
 - Browse the [resource reference][01] for available resources.
 
-[01]: resources/index.md
+[01]: reference/resources/index.md
 [02]: concepts/lcm/overview.md
 [03]: concepts/pull-server/overview.md
