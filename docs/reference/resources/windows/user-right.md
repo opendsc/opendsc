@@ -23,7 +23,7 @@ OpenDsc.Windows/UserRight
 ### principal
 
 The principal (user or group). Accepts username, `DOMAIN\\user`,
-SID (`S-1-5-...`),or UPN (`user@domain.com`).
+SID (`S-1-5-...`), or UPN (`user@domain.com`).
 
 ```yaml
 Type: string

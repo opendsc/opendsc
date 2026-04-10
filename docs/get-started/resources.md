@@ -1,6 +1,6 @@
 # Resources
 
-OpenDSC ships a Resources package to manage Windows, Linux, and MacOS.
+OpenDSC ships a Resources package to manage Windows, Linux, and macOS.
 
 ## Install
 

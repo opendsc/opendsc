@@ -4,7 +4,7 @@
     **This guide is intended for testing and development only.**
     For production deployments, use a CA-issued certificate (enterprise PKI
     or a public CA such as Let's Encrypt) and avoid self-signed certs unless
-    you have a    strong operational reason. OpenDSC Server uses
+    you have a strong operational reason. OpenDSC Server uses
     ASP.NET Core/Kestrel for HTTPS and supports mutual TLS (mTLS) for node
     authentication. For most production scenarios, you should host OpenDSC
     Server with a **trusted CA certificate** (either from an enterprise CA or a
