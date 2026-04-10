@@ -106,7 +106,7 @@ After installation, verify that the DSC CLI can discover OpenDSC resources:
 dsc resource list OpenDsc*
 ```
 
-You should see output listing the available OpenDsc resources:
+You should see output listing the available OpenDSC resources:
 
 ```text
 Type                                         Kind      Version  Capabilities  Description

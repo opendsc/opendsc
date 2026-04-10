@@ -1,6 +1,6 @@
 # Resources
 
-This document lists all built-in OpenDsc Resources organized by platform area.
+This document lists all built-in OpenDSC Resources organized by platform area.
 Each resource
 includes its type name, supported capabilities, and key properties.
 

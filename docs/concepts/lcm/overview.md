@@ -71,7 +71,7 @@ artifacts, etc.).
 
 ### Pull source
 
-The LCM downloads its configuration from an OpenDsc Pull Server. The Pull Server
+The LCM downloads its configuration from an OpenDSC Pull Server. The Pull Server
 manages
 versioned configurations, parameter merging, and compliance reporting.
 

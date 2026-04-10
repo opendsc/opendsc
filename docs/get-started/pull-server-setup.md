@@ -33,7 +33,7 @@ service named
 Open your browser and navigate to `http://localhost:5000`. The web UI prompts
 you to sign in.
 
-![OpenDsc login page](media/pull-server-setup/login-page.png)
+![OpenDSC login page](media/pull-server-setup/login-page.png)
 
 Sign in with the default administrator credentials:
 
@@ -189,7 +189,7 @@ resources:
     type: OpenDsc.Windows/Environment
     properties:
       name: DSC_GREETING
-      value: Hello from OpenDsc
+      value: Hello from OpenDSC
       scope: User
 '@
 

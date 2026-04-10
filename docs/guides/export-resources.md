@@ -1,6 +1,6 @@
 # Export resource instances
 
-Some OpenDsc resources support the **Export** operation, which enumerates all
+Some OpenDSC resources support the **Export** operation, which enumerates all
 current instances of
 that resource on the system. This is useful for discovering existing state and
 generating baseline

@@ -129,7 +129,7 @@ resources:
     type: OpenDsc.Windows/Environment
     properties:
       name: DSC_GREETING
-      value: Hello from OpenDsc
+      value: Hello from OpenDSC
       scope: User
 
   - name: Set team variable

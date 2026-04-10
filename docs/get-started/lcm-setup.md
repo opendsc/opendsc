@@ -44,7 +44,7 @@ resources:
     type: OpenDsc.Windows/Environment
     properties:
       name: DSC_GREETING
-      value: Hello from OpenDsc
+      value: Hello from OpenDSC
       scope: User
 '@ | Set-Content -Path 'C:\DSC\main.dsc.yaml' -Encoding UTF8
 ```
@@ -141,7 +141,7 @@ Start-Sleep -Seconds 30
 [System.Environment]::GetEnvironmentVariable('DSC_GREETING', 'User')
 ```
 
-The output should show `Hello from OpenDsc`.
+The output should show `Hello from OpenDSC`.
 
 ## Step 7: Clean up
 

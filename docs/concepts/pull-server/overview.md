@@ -1,6 +1,6 @@
 # Pull Server overview
 
-The OpenDsc Pull Server is an ASP.NET Core application that provides centralized
+The OpenDSC Pull Server is an ASP.NET Core application that provides centralized
 configuration
 management for DSC v3 nodes. It combines a REST API for automation with a Blazor
 web UI for

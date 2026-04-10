@@ -1,6 +1,6 @@
 # OpenDSC
 
-OpenDsc is DSC's missing solution layer.
+OpenDSC is DSC's missing solution layer.
 This project is to recreate the Local Configuration Manager (LCM), pull server,
 and reporting capabilities for [Microsoft DSC](https://github.com/PowerShell/DSC).
 
