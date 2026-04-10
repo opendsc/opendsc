@@ -12,12 +12,9 @@ OpenDsc.Windows/Shortcut
 
 ## Capabilities
 
-| Capability | Supported |
-| :--------- | :-------- |
-| Get        | Yes       |
-| Set        | Yes       |
-| Delete     | Yes       |
-| Export     | No        |
+- Get
+- Set
+- Delete
 
 ## Properties
 

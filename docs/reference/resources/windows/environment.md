@@ -12,12 +12,10 @@ OpenDsc.Windows/Environment
 
 ## Capabilities
 
-| Capability | Supported |
-| :--------- | :-------- |
-| Get        | Yes       |
-| Set        | Yes       |
-| Delete     | Yes       |
-| Export     | Yes       |
+- Get
+- Set
+- Delete
+- Export
 
 ## Properties
 

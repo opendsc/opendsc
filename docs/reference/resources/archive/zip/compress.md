@@ -13,13 +13,9 @@ OpenDsc.Archive.Zip/Compress
 
 ## Capabilities
 
-| Capability | Supported |
-| :--------- | :-------- |
-| Get        | Yes       |
-| Set        | Yes       |
-| Test       | Yes       |
-| Delete     | No        |
-| Export     | No        |
+- Get
+- Set
+- Test
 
 ## Properties
 

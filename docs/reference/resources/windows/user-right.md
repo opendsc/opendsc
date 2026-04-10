@@ -14,12 +14,9 @@ OpenDsc.Windows/UserRight
 
 ## Capabilities
 
-| Capability | Supported |
-| :--------- | :-------- |
-| Get        | Yes       |
-| Set        | Yes       |
-| Delete     | No        |
-| Export     | Yes       |
+- Get
+- Set
+- Export
 
 ## Properties
 

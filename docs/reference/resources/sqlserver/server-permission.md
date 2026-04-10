@@ -13,12 +13,10 @@ OpenDsc.SqlServer/ServerPermission
 
 ## Capabilities
 
-| Capability | Supported |
-| :--------- | :-------- |
-| Get        | Yes       |
-| Set        | Yes       |
-| Delete     | Yes       |
-| Export     | Yes       |
+- Get
+- Set
+- Delete
+- Export
 
 ## Properties
 

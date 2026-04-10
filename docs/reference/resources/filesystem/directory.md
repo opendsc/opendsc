@@ -14,13 +14,10 @@ OpenDsc.FileSystem/Directory
 
 ## Capabilities
 
-| Capability | Supported |
-| :--------- | :-------- |
-| Get        | Yes       |
-| Set        | Yes       |
-| Test       | Yes       |
-| Delete     | Yes       |
-| Export     | No        |
+- Get
+- Set
+- Test
+- Delete
 
 ## Properties
 

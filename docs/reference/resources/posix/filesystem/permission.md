@@ -17,12 +17,8 @@ OpenDsc.Posix.FileSystem/Permission
 
 ## Capabilities
 
-| Capability | Supported |
-| :--------- | :-------- |
-| Get        | Yes       |
-| Set        | Yes       |
-| Delete     | No        |
-| Export     | No        |
+- Get
+- Set
 
 ## Properties
 

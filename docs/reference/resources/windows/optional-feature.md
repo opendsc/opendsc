@@ -16,12 +16,10 @@ OpenDsc.Windows/OptionalFeature
 
 ## Capabilities
 
-| Capability | Supported |
-| :--------- | :-------- |
-| Get        | Yes       |
-| Set        | Yes       |
-| Delete     | Yes       |
-| Export     | Yes       |
+- Get
+- Set
+- Delete
+- Export
 
 !!! note
     This resource uses `SetReturn = SetReturn.State` and returns actual state
