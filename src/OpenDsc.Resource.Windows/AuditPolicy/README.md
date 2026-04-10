@@ -41,7 +41,7 @@ Failure events, both, or none.
 | Property      | Type     | Required | Description                                                                                                    |
 |---------------|----------|----------|----------------------------------------------------------------------------------------------------------------|
 | `subcategory` | string   | Yes      | Name of the audit subcategory (e.g., 'File System', 'Logon', 'Security State Change'). Case-insensitive.       |
-| `setting`     | string[] | No       | Audit setting values (default: `[]`). Array of: `Success`, `Failure`, or both. Empty array disables auditing. |
+| `setting`     | string[] | No       | Audit setting values (default: `[]`). Array of: `Success`, `Failure`, or both. Empty array disables auditing.  |
 
 ## Examples
 
@@ -278,7 +278,8 @@ auditpol /get /subcategory:{0cce921d-69ae-11d9-bed3-505054503030}
 - Consider disk space and performance impact when enabling verbose auditing
 - The resource automatically enables `SeSecurityPrivilege` when setting audit
   policies
-- Setting accepts an array of values: `[Success]`, `[Failure]`, `[Success, Failure]`, or `[]` (disabled)
+- Setting accepts an array of values: `[Success]`, `[Failure]`,
+`[Success, Failure]`, or `[]` (disabled)
 
 ## See Also
 
