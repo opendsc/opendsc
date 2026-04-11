@@ -22,6 +22,7 @@ namespace OpenDsc.Resource.SqlServer;
 [JsonSerializable(typeof(LinkedServer.Schema), TypeInfoPropertyName = "LinkedServerSchema")]
 [JsonSerializable(typeof(Configuration.Schema), TypeInfoPropertyName = "ConfigurationSchema")]
 [JsonSerializable(typeof(AgentJob.Schema), TypeInfoPropertyName = "AgentJobSchema")]
+[JsonSerializable(typeof(AvailabilityGroup.Schema), TypeInfoPropertyName = "AvailabilityGroupSchema")]
 public partial class SourceGenerationContext : JsonSerializerContext
 {
 }
