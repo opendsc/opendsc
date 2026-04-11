@@ -2,6 +2,8 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
+using System.Collections.Frozen;
+
 namespace OpenDsc.Server.Authorization;
 
 /// <summary>
@@ -35,4 +37,25 @@ public static class Permissions
     public const string CompositeConfigurations_AdminOverride = "composite-configurations.admin-override";
     public const string Parameters_AdminOverride = "parameters.admin-override";
     public const string Scopes_AdminOverride = "scopes.admin-override";
+
+    public static readonly FrozenSet<string> AllScopes = new[]
+    {
+        ServerSettings_Read,
+        ServerSettings_Write,
+        Users_Manage,
+        Groups_Manage,
+        Roles_Manage,
+        RegistrationKeys_Manage,
+        Nodes_Read,
+        Nodes_Write,
+        Nodes_Delete,
+        Nodes_AssignConfiguration,
+        Reports_Read,
+        Reports_ReadAll,
+        Retention_Manage,
+        Configurations_AdminOverride,
+        CompositeConfigurations_AdminOverride,
+        Parameters_AdminOverride,
+        Scopes_AdminOverride,
+    }.ToFrozenSet(StringComparer.Ordinal);
 }
