@@ -1,0 +1,163 @@
+# {Full Resource Name}
+
+## Synopsis
+
+{One sentence describing what the resource does. Works on Windows, Linux, and macOS if cross-platform. End with a period.}
+
+## Type
+
+```text
+OpenDsc.{Area}/{Name}
+```
+
+## Capabilities
+
+- Get
+- Set
+- Delete
+- Export
+
+## Properties
+
+### {primaryPropertyName}
+
+{Description of the primary identifying property.}
+
+```yaml
+Type: string
+Required: Yes
+Access: Read/Write
+Default value: None
+```
+
+### {optionalPropertyName}
+
+{Description of an optional property.}
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: None
+```
+
+### _exist
+
+Whether the {resource noun} should exist.
+
+```yaml
+Type: bool
+Required: No
+Access: Read/Write
+Default value: true
+```
+
+!!! note
+    {Optional: Privileges required, platform limitations, etc. Use admonition syntax.}
+
+## Examples
+
+### Example 1 — Get {resource noun}
+
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    {primaryPropertyName}: {example value}
+    '@
+
+    dsc resource get -r OpenDsc.{Area}/{Name} --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    {primaryPropertyName}: {example value}
+    EOF
+    )
+
+    dsc resource get -r OpenDsc.{Area}/{Name} --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
+
+### Example 2 — Create {resource noun}
+
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    {primaryPropertyName}: {example value}
+    {optionalPropertyName}: {example value}
+    '@
+
+    dsc resource set -r OpenDsc.{Area}/{Name} --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    {primaryPropertyName}: {example value}
+    {optionalPropertyName}: {example value}
+    EOF
+    )
+
+    dsc resource set -r OpenDsc.{Area}/{Name} --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
+
+### Example 3 — Delete {resource noun}
+
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    {primaryPropertyName}: {example value}
+    '@
+
+    dsc resource delete -r OpenDsc.{Area}/{Name} --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    {primaryPropertyName}: {example value}
+    EOF
+    )
+
+    dsc resource delete -r OpenDsc.{Area}/{Name} --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
+
+### Example 4 — Configuration document
+
+```yaml
+$schema: https://aka.ms/dsc/schemas/v3/bundled/config/document.json
+resources:
+  - name: {Resource description}
+    type: OpenDsc.{Area}/{Name}
+    properties:
+      {primaryPropertyName}: {example value}
+      {optionalPropertyName}: {example value}
+```
+
+## Exit codes
+
+| Code | Description                |
+| :--- | :------------------------- |
+| 0    | Success                    |
+| 1    | Error                      |
+| 2    | Invalid JSON               |
+| 3    | {Specific error condition} |
+| 4    | {Another error condition}  |
