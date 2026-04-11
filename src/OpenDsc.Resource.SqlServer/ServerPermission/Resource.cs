@@ -172,9 +172,62 @@ public sealed class Resource(JsonSerializerContext context)
         }
     }
 
+    private static readonly PropertyInfo[] ServerPermissionBoolProperties =
+        typeof(ServerPermissionSet)
+            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(p => p.PropertyType == typeof(bool))
+            .ToArray();
+
     public IEnumerable<Schema> Export(Schema? filter)
     {
-        yield break;
+        var serverInstance = filter?.ServerInstance ?? ".";
+        var username = filter?.ConnectUsername;
+        var password = filter?.ConnectPassword;
+
+        var server = SqlConnectionHelper.CreateConnection(serverInstance, username, password);
+
+        try
+        {
+            var permissions = server.EnumServerPermissions();
+
+            foreach (ServerPermissionInfo perm in permissions)
+            {
+                var permissionName = GetPermissionName(perm.PermissionType);
+                if (permissionName == null)
+                {
+                    continue;
+                }
+
+                yield return new Schema
+                {
+                    ServerInstance = serverInstance,
+                    Principal = perm.Grantee,
+                    Permission = permissionName,
+                    State = perm.PermissionState,
+                    Grantor = perm.Grantor
+                };
+            }
+        }
+        finally
+        {
+            if (server.ConnectionContext.IsOpen)
+            {
+                server.ConnectionContext.Disconnect();
+            }
+        }
+    }
+
+    private static string? GetPermissionName(ServerPermissionSet permissionSet)
+    {
+        foreach (var prop in ServerPermissionBoolProperties)
+        {
+            if ((bool)(prop.GetValue(permissionSet) ?? false))
+            {
+                return prop.Name;
+            }
+        }
+
+        return null;
     }
 
     private static bool HasPermission(ServerPermissionSet permissionSet, string permission)
