@@ -435,7 +435,7 @@ Choose your operating system:
 === ":fontawesome-brands-apple: macOS"
 
     ```bash
-    latest_tag=$(curl -s https://api.github.io/repos/opendsc/opendsc/releases/latest | grep -oP '"tag_name":\s*"\K(.*?)(?=")')
+    latest_tag=$(curl -s https://api.github.com/repos/opendsc/opendsc/releases/latest | grep -oP '"tag_name":\s*"\K(.*?)(?=")')
     archive=OpenDSC.Resources.macOS.Portable-${latest_tag#v}.zip
     mkdir -p "$HOME/OpenDSC.Resources"
     curl -L -o "$archive" "https://github.com/opendsc/opendsc/releases/download/${latest_tag}/${archive}"

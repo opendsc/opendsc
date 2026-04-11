@@ -14,8 +14,9 @@ OpenDsc.{Area}/{Name}
 
 - Get
 - Set
-- Delete
-- Export
+- [Test if applicable]
+- [Delete if applicable]
+- [Export if applicable]
 
 ## Properties
 

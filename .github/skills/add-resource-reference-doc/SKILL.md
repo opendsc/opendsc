@@ -197,7 +197,7 @@ resources:
 **Property sections checklist:**
 - [ ] All required and optional properties documented
 - [ ] Each property includes: description, YAML type, Required (Yes/No), Access level, Default value
-- [ ] Properties related to resource state (_exist, _purge, _inDesiredState) marked as Read-Only
+- [ ] Properties related to resource state: `_exist` (Read/Write), `_purge` (Write-Only), `_inDesiredState` (Read-Only)
 - [ ] Write-Only properties (passwords, _purge) documented with appropriate warnings
 
 **Examples checklist:**
@@ -352,7 +352,7 @@ Before completing the skill:
 4. **Unsorted entries** — Keep both mkdocs.yml and index.md entries alphabetically sorted within sections
 5. **Mismatched paths** — mkdocs.yml path must match actual file path: `reference/resources/windows/service.md` is correct, `docs/reference/resources/windows/service.md` is wrong (no `docs/` prefix)
 6. **Missing YAML fence markers in examples** — Always include `@'...'@` or `cat <<'EOF'...EOF'` in YAML input sections
-7. **Property access levels** — Read-Only properties should not appear in example inputs; Write-Only properties should
+7. **Property access levels** — Read-Only properties should not appear in example inputs; Write-Only properties should appear only in Set operations and not in Get output examples
 
 ## See Also
 
