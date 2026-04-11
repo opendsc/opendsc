@@ -448,12 +448,3 @@ replace it.
 
 For interactive API testing and detailed request/response schemas, visit
 the **Scalar API Reference** at `/scalar/v1` when running the server.
-
-## Next Steps
-
-- [Parameter Merging Deep Dive](parameter-merging.md) - Learn how
-  parameters are merged and versioned
-- [Configuration Management](configuration-management.md) - Understand
-  configuration versioning and bundles
-- [Quick Start Tutorial](quickstart.md) - Follow a step-by-step example
-- [Real-World Examples](examples/) - See scope systems in action

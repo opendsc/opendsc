@@ -138,7 +138,6 @@ All settings must be under the `"LCM"` section in JSON configuration:
 | `ConfigurationMode` | string | `Monitor` | Operating mode: `Monitor` or `Remediate` |
 | `ConfigurationSource` | string | `Local` | Configuration source: `Local` or `Pull` |
 | `ConfigurationPath` | string | `{ConfigDir}/config/local/main.dsc.yaml` | Full path to the main DSC configuration file |
-
 | `ConfigurationModeInterval` | timespan | `00:15:00` | Interval between checks (format: `hh:mm:ss`) |
 | `DscExecutablePath` | string | `null` | Path to DSC executable (defaults to PATH) |
 
