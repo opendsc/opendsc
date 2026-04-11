@@ -9,6 +9,8 @@ description: "WORKFLOW SKILL — Create a new DSC resource end-to-end. USE FOR: 
 
 This skill creates a complete, working DSC resource: `Schema.cs`, `Resource.cs`, any supporting types, `SourceGenerationContext.cs` update, `Program.cs` registration, and xUnit test stubs.
 
+**After completing this skill, use [`/add-resource-reference-doc`](../add-resource-reference-doc/) to create reference documentation for your new resource.**
+
 Use the template files in this skill directory as starting points:
 - [`Resource.cs.template`](./Resource.cs.template) — resource class boilerplate
 - [`Schema.cs.template`](./Schema.cs.template) — schema class boilerplate
@@ -118,6 +120,13 @@ Create `tests/OpenDsc.Resource.{Area}.Tests/{Name}/{Name}Tests.cs`:
 ```powershell
 dotnet test tests/OpenDsc.Resource.{Area}.Tests/ --filter Category=Integration
 ```
+
+### Step 9 — Create resource documentation
+
+Use [`/add-resource-reference-doc`](../add-resource-reference-doc/) to create a reference documentation page for your new resource. This skill guides you through:
+- Creating the documentation file in the correct category folder
+- Adding all required sections (synopsis, type name, capabilities, properties, examples with PowerShell/Shell tabs, exit codes)
+- Updating `mkdocs.yml` and the resources index
 
 ## Notes
 
