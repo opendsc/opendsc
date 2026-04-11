@@ -199,9 +199,76 @@ public sealed class Resource(JsonSerializerContext context)
         }
     }
 
+    private static readonly PropertyInfo[] DatabasePermissionBoolProperties =
+        typeof(DatabasePermissionSet)
+            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(p => p.PropertyType == typeof(bool))
+            .ToArray();
+
     public IEnumerable<Schema> Export(Schema? filter)
     {
-        yield break;
+        var serverInstance = filter?.ServerInstance ?? ".";
+        var username = filter?.ConnectUsername;
+        var password = filter?.ConnectPassword;
+        var databaseName = filter?.DatabaseName;
+
+        var server = SqlConnectionHelper.CreateConnection(serverInstance, username, password);
+
+        try
+        {
+            var databases = string.IsNullOrEmpty(databaseName)
+                ? server.Databases.Cast<SmoDatabase>().Where(d => !d.IsSystemObject)
+                : server.Databases.Cast<SmoDatabase>().Where(d => string.Equals(d.Name, databaseName, StringComparison.OrdinalIgnoreCase));
+
+            foreach (var database in databases)
+            {
+                var permissions = database.EnumDatabasePermissions();
+
+                foreach (var perm in permissions)
+                {
+                    if (perm.ObjectClass != ObjectClass.Database)
+                    {
+                        continue;
+                    }
+
+                    var permissionName = GetPermissionName(perm.PermissionType);
+                    if (permissionName == null)
+                    {
+                        continue;
+                    }
+
+                    yield return new Schema
+                    {
+                        ServerInstance = serverInstance,
+                        DatabaseName = database.Name,
+                        Principal = perm.Grantee,
+                        Permission = permissionName,
+                        State = perm.PermissionState,
+                        Grantor = perm.Grantor
+                    };
+                }
+            }
+        }
+        finally
+        {
+            if (server.ConnectionContext.IsOpen)
+            {
+                server.ConnectionContext.Disconnect();
+            }
+        }
+    }
+
+    private static string? GetPermissionName(DatabasePermissionSet permissionSet)
+    {
+        foreach (var prop in DatabasePermissionBoolProperties)
+        {
+            if ((bool)(prop.GetValue(permissionSet) ?? false))
+            {
+                return prop.Name;
+            }
+        }
+
+        return null;
     }
 
     private static bool HasPermission(DatabasePermissionSet permissionSet, string permission)
