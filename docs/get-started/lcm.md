@@ -10,10 +10,7 @@ evaluates a DSC configuration document against the current state of the system.
 === ":fontawesome-brands-windows: Windows"
 
     ```powershell
-    $version = '0.5.1'
-    Invoke-WebRequest "https://github.com/opendsc/opendsc/releases/download/v$version/OpenDSC.Lcm-$version.msi" `
-        -OutFile "$env:TEMP\OpenDSC.Lcm-$version.msi"
-    Start-Process msiexec.exe -Wait -ArgumentList "/i $env:TEMP\OpenDSC.Lcm-$version.msi"
+    winget install OpenDsc.Lcm
     ```
 
 === ":fontawesome-brands-linux: Linux"

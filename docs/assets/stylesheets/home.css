@@ -1,0 +1,200 @@
+/* ── Hero section ─────────────────────────────────────────────── */
+
+.odsc-hero {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+  background:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1123 258'><path d='M1124,2c0,0 0,256 0,256l-1125,0l0,-48c0,0 16,5 55,5c116,0 197,-92 325,-92c121,0 114,46 254,46c140,0 214,-167 572,-166Z' style='fill: hsla(0, 0%25, 100%25, 1)' /></svg>")
+      no-repeat bottom,
+    linear-gradient(
+      to bottom,
+      var(--md-primary-fg-color),
+      hsl(207, 90%, 35%) 99%,
+      var(--md-default-bg-color) 99%
+    );
+}
+
+[data-md-color-scheme="slate"] .odsc-hero {
+  background:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1123 258'><path d='M1124,2c0,0 0,256 0,256l-1125,0l0,-48c0,0 16,5 55,5c116,0 197,-92 325,-92c121,0 114,46 254,46c140,0 214,-167 572,-166Z' style='fill: hsla(230, 15%25, 14%25, 1)' /></svg>")
+      no-repeat bottom,
+    linear-gradient(
+      to bottom,
+      var(--md-primary-fg-color),
+      hsl(230, 15%, 25%) 99%,
+      var(--md-default-bg-color) 99%
+    );
+}
+
+.odsc-hero__illustration {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 6rem;
+  width: 55%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--md-primary-bg-color);
+  pointer-events: none;
+  user-select: none;
+}
+
+.odsc-hero__illustration svg {
+  width: 100%;
+  height: auto;
+  max-height: 90%;
+}
+
+@media screen and (max-width: 60em) {
+  .odsc-hero__illustration {
+    display: none;
+  }
+}
+
+/* Hero content */
+.odsc-hero > .md-grid {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+}
+
+.odsc-hero__inner {
+  max-width: 36rem;
+  padding: 2rem 0 6rem;
+  color: var(--md-primary-bg-color);
+}
+
+.odsc-hero__inner h1 {
+  margin-bottom: 1.25rem;
+  font-weight: 700;
+  color: currentcolor;
+}
+
+.odsc-hero__inner p {
+  margin-bottom: 1.5rem;
+  opacity: 0.9;
+}
+
+.odsc-hero .md-button {
+  margin-right: 0.5rem;
+  margin-bottom: 0.5rem;
+  color: var(--md-primary-bg-color);
+  border-color: var(--md-primary-bg-color);
+}
+
+.odsc-hero .md-button--primary {
+  background-color: var(--md-primary-bg-color);
+  color: var(--md-primary-fg-color);
+  border-color: var(--md-primary-bg-color);
+}
+
+.odsc-hero .md-button:hover,
+.odsc-hero .md-button:focus {
+  background-color: var(--md-primary-bg-color);
+  color: var(--md-primary-fg-color);
+  border-color: var(--md-primary-bg-color);
+  opacity: 0.9;
+}
+
+.odsc-hero__scroll {
+  position: absolute;
+  bottom: 5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--md-primary-bg-color);
+  text-decoration: none;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+  animation: odsc-bounce 2s infinite;
+}
+
+.odsc-hero__scroll:hover {
+  opacity: 1;
+}
+
+.odsc-hero__scroll svg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.odsc-hero__scroll span {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+@keyframes odsc-bounce {
+  0%,
+  20%,
+  50%,
+  80%,
+  100% {
+    transform: translateX(-50%) translateY(0);
+  }
+  40% {
+    transform: translateX(-50%) translateY(-8px);
+  }
+  60% {
+    transform: translateX(-50%) translateY(-4px);
+  }
+}
+
+.odsc-features {
+  padding: 3rem 0 5rem;
+}
+
+.odsc-features__heading {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.odsc-features__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2rem 3rem;
+}
+
+@media screen and (max-width: 60em) {
+  .odsc-features__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.odsc-features__item {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.odsc-features__icon {
+  flex-shrink: 0;
+  padding-top: 0.15rem;
+}
+
+.odsc-features__icon .twemoji svg {
+  width: 2rem;
+  height: 2rem;
+  fill: var(--md-primary-fg-color);
+}
+
+.odsc-features__body h3 {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+}
+
+.odsc-features__body p {
+  margin: 0;
+  font-size: 0.85rem;
+  opacity: 0.8;
+}

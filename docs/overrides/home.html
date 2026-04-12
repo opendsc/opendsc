@@ -1,0 +1,171 @@
+{% extends "main.html" %} {% block tabs %} {{ super() }}
+
+<style>
+  .md-main__inner {
+    margin: 0;
+  }
+
+  .md-content {
+    display: none;
+  }
+
+  @media screen and (min-width: 60em) {
+    .md-sidebar--secondary {
+      display: none;
+    }
+  }
+
+  @media screen and (min-width: 76.25em) {
+    .md-sidebar--primary {
+      display: none;
+    }
+  }
+</style>
+
+<link rel="stylesheet" href="{{ 'assets/stylesheets/home.css' | url }}" />
+
+<section class="odsc-hero">
+  <div class="md-grid md-typeset">
+    <div class="odsc-hero__inner">
+      <h1>Built on Microsoft Desired State Configuration</h1>
+      <p>
+        OpenDSC builds on Microsoft Desired State Configuration with
+        command-based DSC resources, centralized configuration delivery, and
+        custom extensions.
+      </p>
+      <a
+        href="{{ 'get-started/resources/' | url }}"
+        title="Get started with OpenDSC"
+        class="md-button md-button--primary"
+      >
+        Get started
+      </a>
+      <a
+        href="{{ 'reference/resources/' | url }}"
+        title="Browse available resources"
+        class="md-button"
+      >
+        Browse resources
+      </a>
+    </div>
+  </div>
+  <!-- Scroll-down indicator -->
+  <a href="#features" class="odsc-hero__scroll" aria-label="Scroll down">
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M11.9997 15.713L18.0098 9.70291L19.424 11.1171L11.9997 18.5414L4.57544 11.1171L5.98965 9.70291L11.9997 15.713Z"
+        fill="currentColor"
+      />
+    </svg>
+    <span>Learn more</span>
+  </a>
+</section>
+
+<section class="odsc-features" id="features">
+  <div class="md-grid md-typeset">
+    <h2 class="odsc-features__heading">
+      OpenDSC &mdash; one platform to rule them all
+    </h2>
+    <div class="odsc-features__grid">
+      <div class="odsc-features__item">
+        <div class="odsc-features__icon">
+          <span class="twemoji">
+            {% include ".icons/material/cog-outline.svg" %}
+          </span>
+        </div>
+        <div class="odsc-features__body">
+          <h3>Command-based DSC resources</h3>
+          <p>
+            Ready-to-use resources for Windows services, users, groups,
+            scheduled tasks, SQL Server, file systems, XML, JSON, ZIP archives,
+            and POSIX permissions &mdash; all invokable from the standard DSC
+            CLI.
+          </p>
+        </div>
+      </div>
+
+      <div class="odsc-features__item">
+        <div class="odsc-features__icon">
+          <span class="twemoji">
+            {% include ".icons/material/sync.svg" %}
+          </span>
+        </div>
+        <div class="odsc-features__body">
+          <h3>Local Configuration Manager</h3>
+          <p>
+            A background service that continuously monitors system state,
+            detects configuration drift, and automatically remediates it &mdash;
+            keeping systems compliant around the clock.
+          </p>
+        </div>
+      </div>
+
+      <div class="odsc-features__item">
+        <div class="odsc-features__icon">
+          <span class="twemoji">
+            {% include ".icons/material/server-network.svg" %}
+          </span>
+        </div>
+        <div class="odsc-features__body">
+          <h3>Modern pull server</h3>
+          <p>
+            The first pull and push server for Microsoft Desired State
+            Configuration with centralized configuration delivery, versioning,
+            and compliance reporting.
+          </p>
+        </div>
+      </div>
+
+      <div class="odsc-features__item">
+        <div class="odsc-features__icon">
+          <span class="twemoji">
+            {% include ".icons/material/monitor-dashboard.svg" %}
+          </span>
+        </div>
+        <div class="odsc-features__body">
+          <h3>Modern web UI</h3>
+          <p>
+            An admin interface for managing nodes, configurations, compliance
+            status, and role-based access. Don't want to use the UI? OpenDSC
+            also exposes a REST API for programmatic access to all server
+            features.
+          </p>
+        </div>
+      </div>
+
+      <div class="odsc-features__item">
+        <div class="odsc-features__icon">
+          <span class="twemoji">
+            {% include ".icons/material/file-document-edit-outline.svg" %}
+          </span>
+        </div>
+        <div class="odsc-features__body">
+          <h3>Custom conversion extensions</h3>
+          <p>
+            Ships with extensions that can convert existing PowerShell DSC
+            configuration documents into Microsoft DSC configuration documents
+            formats to facilitate migration from existing DSC workflows.
+          </p>
+        </div>
+      </div>
+
+      <div class="odsc-features__item">
+        <div class="odsc-features__icon">
+          <span class="twemoji">
+            {% include ".icons/material/puzzle-outline.svg" %}
+          </span>
+        </div>
+        <div class="odsc-features__body">
+          <h3>Open source &amp; AI-ready</h3>
+          <p>
+            Fully open source and built with clear conventions, making it easy
+            to leverage AI to generate new DSC resources in minutes rather than
+            hours.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %} {% block content %}{% endblock %} {% block footer %} {{ super()
+}} {% endblock %}
