@@ -27,40 +27,28 @@
 <section class="odsc-hero">
   <div class="md-grid md-typeset">
     <div class="odsc-hero__inner">
-      <h1>Built on Microsoft Desired State Configuration</h1>
+      <h1>The Complete Solution for Microsoft DSC</h1>
       <p>
-        OpenDSC builds on Microsoft Desired State Configuration with
-        command-based DSC resources, centralized configuration delivery, and
-        custom extensions.
+        Microsoft provides the Desired State Configuration platform; OpenDSC
+        delivers the complete solution. Deploy and manage configurations across
+        Windows, Linux, and macOS, automatically detecting and correcting
+        configuration drift with a modern LCM and pull server.
       </p>
-      <a
-        href="{{ 'get-started/resources/' | url }}"
-        title="Get started with OpenDSC"
-        class="md-button md-button--primary"
-      >
+      <a href="{{ 'get-started/resources/' | url }}" title="Get started with OpenDSC"
+        class="md-button md-button--primary">
         Get started
       </a>
-      <a
-        href="{{ 'reference/resources/' | url }}"
-        title="Browse available resources"
-        class="md-button"
-      >
+      <a href="{{ 'reference/resources/' | url }}" title="Browse available resources" class="md-button">
         Browse resources
       </a>
     </div>
   </div>
   <!-- Scroll-down indicator -->
   <a href="#features" class="odsc-hero__scroll" aria-label="Scroll down">
-    <svg
-      viewBox="0 0 24 24"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-      focusable="false"
-    >
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
       <path
         d="M11.9997 15.713L18.0098 9.70291L19.424 11.1171L11.9997 18.5414L4.57544 11.1171L5.98965 9.70291L11.9997 15.713Z"
-        fill="currentColor"
-      />
+        fill="currentColor" />
     </svg>
     <span>Learn more</span>
   </a>
@@ -69,7 +57,7 @@
 <section class="odsc-features" id="features">
   <div class="md-grid md-typeset">
     <h2 class="odsc-features__heading">
-      OpenDSC &mdash; one platform to rule them all
+      Core Features
     </h2>
     <div class="odsc-features__grid">
       <div class="odsc-features__item">
@@ -79,12 +67,10 @@
           </span>
         </div>
         <div class="odsc-features__body">
-          <h3>Command-based DSC resources</h3>
+          <h3>Resource Development</h3>
           <p>
-            Ready-to-use resources for Windows services, users, groups,
-            scheduled tasks, SQL Server, file systems, XML, JSON, ZIP archives,
-            and POSIX permissions &mdash; all invokable from the standard DSC
-            CLI.
+            .NET libraries for quick, painless resource creation. Extend OpenDSC
+            with custom resources tailored to your infrastructure.
           </p>
         </div>
       </div>
@@ -96,11 +82,11 @@
           </span>
         </div>
         <div class="odsc-features__body">
-          <h3>Local Configuration Manager</h3>
+          <h3>Continuous Drift Correction</h3>
           <p>
-            A background service that continuously monitors system state,
-            detects configuration drift, and automatically remediates it &mdash;
-            keeping systems compliant around the clock.
+            The LCM service continuously monitors system state, automatically
+            detects configuration drift, and corrects it &mdash; keeping your
+            infrastructure in the desired state.
           </p>
         </div>
       </div>
@@ -112,11 +98,40 @@
           </span>
         </div>
         <div class="odsc-features__body">
-          <h3>Modern pull server</h3>
+          <h3>Pull Server</h3>
           <p>
-            The first pull and push server for Microsoft Desired State
-            Configuration with centralized configuration delivery, versioning,
-            and compliance reporting.
+            Centralized configuration delivery with versioning, node targeting,
+            and compliance tracking across your entire infrastructure.
+          </p>
+        </div>
+      </div>
+
+      <div class="odsc-features__item">
+        <div class="odsc-features__icon">
+          <span class="twemoji">
+            {% include ".icons/material/sitemap.svg" %}
+          </span>
+        </div>
+        <div class="odsc-features__body">
+          <h3>Cross-Platform Management</h3>
+          <p>
+            Unified management experience across Windows, Linux, and macOS.
+            One framework, one DSC resource model, consistent everywhere.
+          </p>
+        </div>
+      </div>
+
+      <div class="odsc-features__item">
+        <div class="odsc-features__icon">
+          <span class="twemoji">
+            {% include ".icons/material/lock-outline.svg" %}
+          </span>
+        </div>
+        <div class="odsc-features__body">
+          <h3>mTLS Security</h3>
+          <p>
+            Secure-by-default node communication with certificate-based
+            authentication. Zero-trust architecture from day one.
           </p>
         </div>
       </div>
@@ -128,12 +143,10 @@
           </span>
         </div>
         <div class="odsc-features__body">
-          <h3>Modern web UI</h3>
+          <h3>Management Dashboard</h3>
           <p>
-            An admin interface for managing nodes, configurations, compliance
-            status, and role-based access. Don't want to use the UI? OpenDSC
-            also exposes a REST API for programmatic access to all server
-            features.
+            Centralized view of node compliance, configuration status, and
+            drift remediation history. See your entire infrastructure at a glance.
           </p>
         </div>
       </div>
@@ -145,11 +158,10 @@
           </span>
         </div>
         <div class="odsc-features__body">
-          <h3>Custom conversion extensions</h3>
+          <h3>Legacy Migration Tools</h3>
           <p>
-            Ships with extensions that can convert existing PowerShell DSC
-            configuration documents into Microsoft DSC configuration documents
-            formats to facilitate migration from existing DSC workflows.
+            Convert existing PowerShell DSC configurations to the modern OpenDSC
+            format, enabling seamless migration from legacy workflows.
           </p>
         </div>
       </div>
@@ -157,17 +169,118 @@
       <div class="odsc-features__item">
         <div class="odsc-features__icon">
           <span class="twemoji">
-            {% include ".icons/material/puzzle-outline.svg" %}
+            {% include ".icons/material/code-json.svg" %}
           </span>
         </div>
         <div class="odsc-features__body">
-          <h3>Open source &amp; AI-ready</h3>
+          <h3>REST API Access</h3>
           <p>
-            Fully open source and built with clear conventions, making it easy
-            to leverage AI to generate new DSC resources in minutes rather than
-            hours.
+            Programmatic control for integration with existing automation tools
+            and CI/CD pipelines. Automate everything.
           </p>
         </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="odsc-divider" aria-hidden="true"></div>
+
+<section class="odsc-showcase">
+  <div class="md-grid md-typeset">
+    <div class="odsc-showcase__row">
+      <div class="odsc-showcase__content">
+        <h2>Configurations</h2>
+        <p>
+          Declarative specifications of desired infrastructure state. Write once, deploy everywhere.
+          Version-controlled, auditable, and composable to manage complex systems.
+        </p>
+      </div>
+      <div class="odsc-showcase__image">
+        <img class="odsc-showcase__image-light" src="{{ 'assets/images/showcase-configuration-light.png' | url }}"
+          alt="Configuration examples in OpenDSC">
+        <img class="odsc-showcase__image-dark" src="{{ 'assets/images/showcase-configuration-dark.png' | url }}"
+          alt="Configuration examples in OpenDSC">
+      </div>
+    </div>
+
+    <div class="odsc-showcase__row odsc-showcase__row--invert">
+      <div class="odsc-showcase__content">
+        <h2>Composite Configurations</h2>
+        <p>
+          Assign multiple configurations to a single node based on its role. Build flexible,
+          reusable patterns for complex infrastructure without duplication.
+        </p>
+      </div>
+      <div class="odsc-showcase__image">
+        <img class="odsc-showcase__image-light" src="{{ 'assets/images/showcase-composite-light.png' | url }}"
+          alt="Composite configuration role-based assignment">
+        <img class="odsc-showcase__image-dark" src="{{ 'assets/images/showcase-composite-dark.png' | url }}"
+          alt="Composite configuration role-based assignment">
+      </div>
+    </div>
+
+    <div class="odsc-showcase__row">
+      <div class="odsc-showcase__content">
+        <h2>Parameters</h2>
+        <p>
+          Reuse configurations across environments by defining variables at deployment time.
+          Deploy identical configs to dev, staging, and production with environment-specific values.
+        </p>
+      </div>
+      <div class="odsc-showcase__image">
+        <img class="odsc-showcase__image-light" src="{{ 'assets/images/showcase-parameters-light.png' | url }}"
+          alt="Parameterized configurations for environment reuse">
+        <img class="odsc-showcase__image-dark" src="{{ 'assets/images/showcase-parameters-dark.png' | url }}"
+          alt="Parameterized configurations for environment reuse">
+      </div>
+    </div>
+
+    <div class="odsc-showcase__row odsc-showcase__row--invert">
+      <div class="odsc-showcase__content">
+        <h2>Scopes</h2>
+        <p>
+          Create custom scopes—Region, Environment, or any dimension you need—to override
+          parameters hierarchically. OpenDSC automatically merges them based on precedence.
+        </p>
+      </div>
+      <div class="odsc-showcase__image">
+        <img class="odsc-showcase__image-light" src="{{ 'assets/images/showcase-scopes-light.png' | url }}"
+          alt="Scope-based parameter overriding at multiple levels">
+        <img class="odsc-showcase__image-dark" src="{{ 'assets/images/showcase-scopes-dark.png' | url }}"
+          alt="Scope-based parameter overriding at multiple levels">
+      </div>
+    </div>
+
+    <div class="odsc-showcase__row">
+      <div class="odsc-showcase__content">
+        <h2>Reporting &amp; Compliance</h2>
+        <p>
+          Real-time visibility into node compliance, configuration status, and remediation history.
+          Instantly identify non-compliant systems and track deployment across your infrastructure.
+        </p>
+      </div>
+      <div class="odsc-showcase__image">
+        <img class="odsc-showcase__image-light" src="{{ 'assets/images/showcase-reporting-light.png' | url }}"
+          alt="Compliance reporting and infrastructure dashboard">
+        <img class="odsc-showcase__image-dark" src="{{ 'assets/images/showcase-reporting-dark.png' | url }}"
+          alt="Compliance reporting and infrastructure dashboard">
+      </div>
+    </div>
+
+    <div class="odsc-showcase__row odsc-showcase__row--invert">
+      <div class="odsc-showcase__content">
+        <h2>Resource Development Kit</h2>
+        <p>
+          Build custom resources in C# using our well-documented .NET framework. Type-safe,
+          testable, and production-ready in minutes.
+        </p>
+      </div>
+      <div class="odsc-showcase__image">
+        <img class="odsc-showcase__image-light" src="{{ 'assets/images/showcase-rdk-light.png' | url }}"
+          alt="Resource Development Kit with .NET libraries">
+        <img class="odsc-showcase__image-dark" src="{{ 'assets/images/showcase-rdk-dark.png' | url }}"
+          alt="Resource Development Kit with .NET libraries">
       </div>
     </div>
   </div>
