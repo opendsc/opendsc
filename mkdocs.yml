@@ -84,7 +84,7 @@ plugins:
       branch: main
 
 exclude_docs: |
-  - pull-server/
+  pull-server/*
 
 nav:
   - Home: index.md
