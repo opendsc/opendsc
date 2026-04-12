@@ -9,10 +9,10 @@ using Json.Schema.Generation.Serialization;
 
 namespace TestResource.Aot;
 
-[GenerateJsonSchema(PropertyNaming = NamingConvention.CamelCase)]
 [Title("Test Resource Schema")]
 [Description("Schema for testing AOT code generation in OpenDsc.")]
 [AdditionalProperties(false)]
+[GenerateJsonSchema]
 public sealed class Schema
 {
     [Required]
