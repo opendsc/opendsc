@@ -6,30 +6,24 @@
   justify-content: center;
   overflow: hidden;
   background:
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1123 258'><path d='M1124,2c0,0 0,256 0,256l-1125,0l0,-48c0,0 16,5 55,5c116,0 197,-92 325,-92c121,0 114,46 254,46c140,0 214,-167 572,-166Z' style='fill: hsla(0, 0%25, 100%25, 1)' /></svg>")
-      no-repeat bottom,
-    linear-gradient(
-      to bottom,
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1123 258'><path d='M1124,2c0,0 0,256 0,256l-1125,0l0,-48c0,0 16,5 55,5c116,0 197,-92 325,-92c121,0 114,46 254,46c140,0 214,-167 572,-166Z' style='fill: hsla(0, 0%25, 100%25, 1)' /></svg>") no-repeat bottom,
+    linear-gradient(to bottom,
       var(--md-primary-fg-color),
       hsl(207, 90%, 35%) 99%,
-      var(--md-default-bg-color) 99%
-    );
+      var(--md-default-bg-color) 99%);
 }
 
 [data-md-color-scheme="slate"] .odsc-hero {
   background:
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1123 258'><path d='M1124,2c0,0 0,256 0,256l-1125,0l0,-48c0,0 16,5 55,5c116,0 197,-92 325,-92c121,0 114,46 254,46c140,0 214,-167 572,-166Z' style='fill: hsla(230, 15%25, 14%25, 1)' /></svg>")
-      no-repeat bottom,
-    linear-gradient(
-      to bottom,
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1123 258'><path d='M1124,2c0,0 0,256 0,256l-1125,0l0,-48c0,0 16,5 55,5c116,0 197,-92 325,-92c121,0 114,46 254,46c140,0 214,-167 572,-166Z' style='fill: hsla(230, 15%25, 14%25, 1)' /></svg>") no-repeat bottom,
+    linear-gradient(to bottom,
       var(--md-primary-fg-color),
       hsl(230, 15%, 25%) 99%,
-      var(--md-default-bg-color) 99%
-    );
+      var(--md-default-bg-color) 99%);
 }
 
 /* Hero content */
-.odsc-hero > .md-grid {
+.odsc-hero>.md-grid {
   position: relative;
   z-index: 1;
   width: 100%;
@@ -107,6 +101,7 @@
 }
 
 @keyframes odsc-bounce {
+
   0%,
   20%,
   50%,
@@ -114,9 +109,11 @@
   100% {
     transform: translateX(-50%) translateY(0);
   }
+
   40% {
     transform: translateX(-50%) translateY(-8px);
   }
+
   60% {
     transform: translateX(-50%) translateY(-4px);
   }
@@ -175,4 +172,123 @@
   margin: 0;
   font-size: 0.85rem;
   opacity: 0.8;
+}
+
+/* Divider section between features and showcase */
+.odsc-divider {
+  padding: 1.5rem 0 2rem;
+  display: flex;
+  justify-content: center;
+  background: var(--md-default-bg-color);
+}
+
+.odsc-divider::after {
+  content: '';
+  width: min(80%, 560px);
+  height: 3px;
+  background: var(--md-primary-fg-color);
+  border-radius: 2px;
+}
+
+/* Showcase section - alternating image/text layout */
+.odsc-showcase {
+  padding: 4rem 0;
+  background: var(--md-default-bg-color);
+}
+
+.odsc-showcase__row {
+  display: flex;
+  align-items: center;
+  gap: 2.5rem;
+  margin-bottom: 5rem;
+  flex-direction: column;
+}
+
+@media screen and (min-width: 60em) {
+  .odsc-showcase__row {
+    flex-direction: row;
+  }
+
+  .odsc-showcase__row--invert {
+    flex-direction: row-reverse;
+  }
+
+  .odsc-showcase__content,
+  .odsc-showcase__image {
+    flex: 1;
+  }
+}
+
+.odsc-showcase__content h2 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: 1.75rem;
+  font-weight: 600;
+}
+
+.odsc-showcase__content p {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  opacity: 0.9;
+}
+
+.odsc-showcase__image {
+  width: 100%;
+}
+
+.odsc-showcase__image picture,
+.odsc-showcase__image img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  box-shadow: var(--md-shadow-z2);
+}
+
+/* Theme-aware image display */
+.odsc-showcase__image-light {
+  display: block;
+}
+
+.odsc-showcase__image-dark {
+  display: none;
+}
+
+/* Explicit light mode (data-md-color-scheme="default") */
+[data-md-color-scheme="default"] .odsc-showcase__image-light {
+  display: block;
+}
+
+[data-md-color-scheme="default"] .odsc-showcase__image-dark {
+  display: none;
+}
+
+/* Explicit dark mode (data-md-color-scheme="slate") */
+[data-md-color-scheme="slate"] .odsc-showcase__image-light {
+  display: none;
+}
+
+[data-md-color-scheme="slate"] .odsc-showcase__image-dark {
+  display: block;
+}
+
+/* Auto/System mode: respect OS color scheme preference */
+@media (prefers-color-scheme: dark) {
+  .odsc-showcase__image-light {
+    display: none;
+  }
+
+  .odsc-showcase__image-dark {
+    display: block;
+  }
+
+  /* But explicit light mode still overrides */
+  [data-md-color-scheme="default"] .odsc-showcase__image-light {
+    display: block;
+  }
+
+  [data-md-color-scheme="default"] .odsc-showcase__image-dark {
+    display: none;
+  }
 }
