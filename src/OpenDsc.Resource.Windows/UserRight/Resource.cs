@@ -5,9 +5,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-using Json.Schema;
-using Json.Schema.Generation;
-
 namespace OpenDsc.Resource.Windows.UserRight;
 
 [DscResource("OpenDsc.Windows/UserRight", "0.1.0",
@@ -26,16 +23,7 @@ public sealed class Resource(JsonSerializerContext context)
 {
     public override string GetSchema()
     {
-        var config = new SchemaGeneratorConfiguration()
-        {
-            PropertyNameResolver = PropertyNameResolvers.CamelCase
-        };
-
-        var builder = new JsonSchemaBuilder().FromType<Schema>(config);
-        builder.Schema("https://json-schema.org/draft/2020-12/schema");
-        var schema = builder.Build();
-
-        return JsonSerializer.Serialize(schema);
+        return JsonSerializer.Serialize(GeneratedJsonSchemas.UserRight_Schema, SourceGenerationContext.Default.JsonSchema);
     }
 
     public Schema Get(Schema? instance)

@@ -3,6 +3,7 @@
 // terms of the MIT license.
 
 using Json.Schema.Generation;
+using Json.Schema.Generation.Serialization;
 
 namespace OpenDsc.Resource.SqlServer.Configuration;
 
@@ -13,6 +14,7 @@ namespace OpenDsc.Resource.SqlServer.Configuration;
 [Title("SQL Server Configuration")]
 [Description("Manages SQL Server instance-level configuration options.")]
 [AdditionalProperties(false)]
+[GenerateJsonSchema]
 public sealed class Schema
 {
     /// <summary>

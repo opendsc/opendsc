@@ -6,9 +6,6 @@ using System.Collections.Specialized;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-using Json.Schema;
-using Json.Schema.Generation;
-
 using Microsoft.SqlServer.Management.Smo;
 
 using LoginType = Microsoft.SqlServer.Management.Smo.LoginType;
@@ -31,16 +28,7 @@ public sealed class Resource(JsonSerializerContext context)
 {
     public override string GetSchema()
     {
-        var config = new SchemaGeneratorConfiguration()
-        {
-            PropertyNameResolver = PropertyNameResolvers.CamelCase
-        };
-
-        var builder = new JsonSchemaBuilder().FromType<Schema>(config);
-        builder.Schema("https://json-schema.org/draft/2020-12/schema");
-        var schema = builder.Build();
-
-        return JsonSerializer.Serialize(schema);
+        return JsonSerializer.Serialize(GeneratedJsonSchemas.Login_Schema, SourceGenerationContext.Default.JsonSchema);
     }
 
     public Schema Get(Schema? instance)

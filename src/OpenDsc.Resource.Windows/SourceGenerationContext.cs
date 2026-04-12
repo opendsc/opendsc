@@ -5,6 +5,8 @@
 using System.Diagnostics;
 using System.Text.Json.Serialization;
 
+using Json.Schema;
+
 using Microsoft.Win32.TaskScheduler;
 
 namespace OpenDsc.Resource.Windows;
@@ -42,6 +44,7 @@ namespace OpenDsc.Resource.Windows;
 [JsonSerializable(typeof(AuditPolicy.AuditSetting), TypeInfoPropertyName = "AuditSetting")]
 [JsonSerializable(typeof(PasswordPolicy.Schema), TypeInfoPropertyName = "PasswordPolicySchema")]
 [JsonSerializable(typeof(AccountLockoutPolicy.Schema), TypeInfoPropertyName = "AccountLockoutPolicySchema")]
+[JsonSerializable(typeof(JsonSchema), TypeInfoPropertyName = "JsonSchema")]
 public partial class SourceGenerationContext : JsonSerializerContext
 {
 }

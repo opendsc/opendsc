@@ -5,12 +5,14 @@
 using System.Text.Json.Serialization;
 
 using Json.Schema.Generation;
+using Json.Schema.Generation.Serialization;
 
 namespace OpenDsc.Resource.Windows.Shortcut;
 
 [Title("Windows Shortcut Resource Schema")]
 [Description("Schema for managing Windows shortcuts via OpenDsc.")]
 [AdditionalProperties(false)]
+[GenerateJsonSchema]
 public sealed class Schema
 {
     internal const string DefaultIconLocation = ",0";

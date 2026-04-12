@@ -9,9 +9,6 @@ using System.Xml;
 using System.Xml.Linq;
 using System.Xml.XPath;
 
-using Json.Schema;
-using Json.Schema.Generation;
-
 namespace OpenDsc.Resource.Xml.Element;
 
 [DscResource("OpenDsc.Xml/Element", "0.1.0", Description = "Manage XML element content and attributes", Tags = ["xml", "element", "attribute", "xpath"])]
@@ -27,16 +24,7 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
 {
     public override string GetSchema()
     {
-        var config = new SchemaGeneratorConfiguration()
-        {
-            PropertyNameResolver = PropertyNameResolvers.CamelCase
-        };
-
-        var builder = new JsonSchemaBuilder().FromType<Schema>(config);
-        builder.Schema("https://json-schema.org/draft/2020-12/schema");
-        var schema = builder.Build();
-
-        return JsonSerializer.Serialize(schema);
+        return JsonSerializer.Serialize(GeneratedJsonSchemas.Schema, SourceGenerationContext.Default.JsonSchema);
     }
 
     public Schema Get(Schema? instance)

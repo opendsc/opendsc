@@ -5,12 +5,14 @@
 using System.Text.Json.Serialization;
 
 using Json.Schema.Generation;
+using Json.Schema.Generation.Serialization;
 
 namespace OpenDsc.Resource.FileSystem.File;
 
 [Title("File Schema")]
 [Description("Schema for managing files via OpenDsc.")]
 [AdditionalProperties(false)]
+[GenerateJsonSchema]
 public sealed class Schema
 {
     [Required]

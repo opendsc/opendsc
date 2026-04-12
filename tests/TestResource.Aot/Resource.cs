@@ -18,6 +18,11 @@ namespace TestResource.Aot;
 [ExitCode(5, Exception = typeof(UnauthorizedAccessException), Description = "Access denied")]
 public sealed class Resource(JsonSerializerContext context) : DscResource<Schema>(context), IGettable<Schema>, ISettable<Schema>, IDeletable<Schema>, ITestable<Schema>, IExportable<Schema>
 {
+    public override string GetSchema()
+    {
+        return JsonSerializer.Serialize(GeneratedJsonSchemas.Schema, SourceGenerationContext.Default.JsonSchema);
+    }
+
     public Schema Get(Schema? instance)
     {
         ArgumentNullException.ThrowIfNull(instance);

@@ -5,12 +5,14 @@
 using System.Text.Json.Serialization;
 
 using Json.Schema.Generation;
+using Json.Schema.Generation.Serialization;
 
 namespace OpenDsc.Resource.Archive.Zip.Expand;
 
 [Title("Zip Expand Schema")]
 [Description("Schema for extracting ZIP archives via OpenDsc.")]
 [AdditionalProperties(false)]
+[GenerateJsonSchema]
 public sealed class Schema
 {
     [Required]

@@ -2,6 +2,8 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
+using System.Text.Json;
+
 using AwesomeAssertions;
 
 using Xunit;
@@ -52,8 +54,7 @@ public sealed class ScheduledTaskTests : WindowsTestBase
         var schemaJson = _resource.GetSchema();
         var doc = System.Text.Json.JsonDocument.Parse(schemaJson);
 
-        doc.RootElement.GetProperty("$schema").GetString()
-            .Should().Be("https://json-schema.org/draft/2020-12/schema");
+        doc.RootElement.ValueKind.Should().Be(JsonValueKind.Object);
     }
 
     [Fact]

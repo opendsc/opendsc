@@ -3,12 +3,14 @@
 // terms of the MIT license.
 
 using Json.Schema.Generation;
+using Json.Schema.Generation.Serialization;
 
 namespace OpenDsc.Resource.Posix.FileSystem.Permission;
 
 [Title("POSIX File System Permission Schema")]
 [Description("Schema for managing POSIX file and directory permissions (mode, owner, group) on Linux and macOS via OpenDsc.")]
 [AdditionalProperties(false)]
+[GenerateJsonSchema]
 public sealed class Schema
 {
     [Required]

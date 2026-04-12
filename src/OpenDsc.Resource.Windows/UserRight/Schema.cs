@@ -5,12 +5,14 @@
 using System.Text.Json.Serialization;
 
 using Json.Schema.Generation;
+using Json.Schema.Generation.Serialization;
 
 namespace OpenDsc.Resource.Windows.UserRight;
 
 [Title("Windows User Rights Assignment Schema")]
 [Description("Schema for managing Windows user rights assignments.")]
 [AdditionalProperties(false)]
+[GenerateJsonSchema]
 public sealed class Schema
 {
     [Required]

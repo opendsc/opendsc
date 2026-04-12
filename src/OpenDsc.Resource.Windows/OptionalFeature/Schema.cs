@@ -5,12 +5,14 @@
 using System.Text.Json.Serialization;
 
 using Json.Schema.Generation;
+using Json.Schema.Generation.Serialization;
 
 namespace OpenDsc.Resource.Windows.OptionalFeature;
 
 [Title("Windows Optional Feature Schema")]
 [Description("Schema for managing Windows optional features via OpenDsc.")]
 [AdditionalProperties(false)]
+[GenerateJsonSchema]
 public sealed class Schema
 {
     [Pattern(@"^[a-zA-Z0-9\-\._]+$")]

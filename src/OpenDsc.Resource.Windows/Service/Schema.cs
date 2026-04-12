@@ -6,12 +6,14 @@ using System.ServiceProcess;
 using System.Text.Json.Serialization;
 
 using Json.Schema.Generation;
+using Json.Schema.Generation.Serialization;
 
 namespace OpenDsc.Resource.Windows.Service;
 
 [Title("Windows Service Schema")]
 [Description("Schema for managing Windows services via OpenDsc.")]
 [AdditionalProperties(false)]
+[GenerateJsonSchema]
 public sealed class Schema
 {
     [Required]

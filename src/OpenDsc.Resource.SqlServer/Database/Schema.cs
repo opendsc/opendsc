@@ -5,6 +5,7 @@
 using System.Text.Json.Serialization;
 
 using Json.Schema.Generation;
+using Json.Schema.Generation.Serialization;
 
 using Microsoft.SqlServer.Management.Smo;
 
@@ -13,6 +14,7 @@ namespace OpenDsc.Resource.SqlServer.Database;
 [Title("SQL Server Database Schema")]
 [Description("Schema for managing SQL Server databases via OpenDsc.")]
 [AdditionalProperties(false)]
+[GenerateJsonSchema]
 public sealed class Schema
 {
     [Required]

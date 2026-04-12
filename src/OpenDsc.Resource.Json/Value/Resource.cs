@@ -8,8 +8,6 @@ using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 
 using Json.Path;
-using Json.Schema;
-using Json.Schema.Generation;
 
 namespace OpenDsc.Resource.Json.Value;
 
@@ -24,27 +22,13 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
 {
     public override string GetSchema()
     {
-        var config = new SchemaGeneratorConfiguration()
-        {
-            PropertyNameResolver = PropertyNameResolvers.CamelCase
-        };
+        var assembly = typeof(Resource).Assembly;
+        var resourceName = "OpenDsc.Resource.Json.schema.json";
 
-        var builder = new JsonSchemaBuilder().FromType<Schema>(config);
-        builder.Schema("https://json-schema.org/draft/2020-12/schema");
-        var schema = builder.Build();
-
-        // Override the 'value' property schema to be permissive (accept any JSON type)
-        // JsonSchema.Net.Generation treats JsonElement as an object with properties,
-        // but we want it to accept any valid JSON value (string, number, boolean, null, object, array)
-        var schemaObj = JsonNode.Parse(JsonSerializer.Serialize(schema))?.AsObject();
-        if (schemaObj?["properties"]?["value"] is JsonObject valueSchema)
-        {
-            // Remove type constraint to allow any JSON value
-            valueSchema.Remove("type");
-            valueSchema.Remove("properties");
-        }
-
-        return schemaObj?.ToJsonString() ?? JsonSerializer.Serialize(schema);
+        using var stream = assembly.GetManifestResourceStream(resourceName)
+            ?? throw new InvalidOperationException($"Embedded resource '{resourceName}' not found.");
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
     }
 
     public Schema Get(Schema? instance)
