@@ -7,9 +7,6 @@ using System.Security;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-using Json.Schema;
-using Json.Schema.Generation;
-
 namespace OpenDsc.Resource.Windows.User;
 
 [DscResource("OpenDsc.Windows/User", "0.1.0", Description = "Manage local Windows user accounts", Tags = ["windows", "user", "account"])]
@@ -24,7 +21,7 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
 {
     public override string GetSchema()
     {
-        return JsonSerializer.Serialize(GeneratedJsonSchemas.Schema, SourceGenerationContext.Default.JsonSchema);
+        return JsonSerializer.Serialize(GeneratedJsonSchemas.User_Schema, SourceGenerationContext.Default.JsonSchema);
     }
 
     public Schema Get(Schema? instance)

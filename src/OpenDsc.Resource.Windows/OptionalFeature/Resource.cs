@@ -6,9 +6,6 @@ using System.Security;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-using Json.Schema;
-using Json.Schema.Generation;
-
 namespace OpenDsc.Resource.Windows.OptionalFeature;
 
 [DscResource("OpenDsc.Windows/OptionalFeature", "0.1.0", Description = "Manage Windows optional features", Tags = ["windows", "feature", "dism"], SetReturn = SetReturn.State)]
@@ -27,7 +24,7 @@ public sealed class Resource(JsonSerializerContext context)
 {
     public override string GetSchema()
     {
-        return JsonSerializer.Serialize(GeneratedJsonSchemas.Schema, SourceGenerationContext.Default.JsonSchema);
+        return JsonSerializer.Serialize(GeneratedJsonSchemas.OptionalFeature_Schema, SourceGenerationContext.Default.JsonSchema);
     }
 
     public Schema Get(Schema? instance)

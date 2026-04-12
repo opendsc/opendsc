@@ -6,9 +6,6 @@ using System.Security;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-using Json.Schema;
-using Json.Schema.Generation;
-
 using OpenDsc.Schema;
 
 namespace OpenDsc.Resource.Windows.Environment;
@@ -25,7 +22,7 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
 {
     public override string GetSchema()
     {
-        return JsonSerializer.Serialize(GeneratedJsonSchemas.Schema, SourceGenerationContext.Default.JsonSchema);
+        return JsonSerializer.Serialize(GeneratedJsonSchemas.Environment_Schema, SourceGenerationContext.Default.JsonSchema);
     }
 
     public Schema Get(Schema? instance)

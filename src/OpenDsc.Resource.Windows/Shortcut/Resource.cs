@@ -5,9 +5,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-using Json.Schema;
-using Json.Schema.Generation;
-
 namespace OpenDsc.Resource.Windows.Shortcut;
 
 [DscResource("OpenDsc.Windows/Shortcut", "0.1.0", Description = "Manage Windows shortcuts", Tags = ["shortcut", "windows"])]
@@ -20,7 +17,7 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
 {
     public override string GetSchema()
     {
-        return JsonSerializer.Serialize(GeneratedJsonSchemas.Schema, SourceGenerationContext.Default.JsonSchema);
+        return JsonSerializer.Serialize(GeneratedJsonSchemas.Shortcut_Schema, SourceGenerationContext.Default.JsonSchema);
     }
 
     public Schema Get(Schema? instance)

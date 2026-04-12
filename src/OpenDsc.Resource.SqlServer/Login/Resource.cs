@@ -6,9 +6,6 @@ using System.Collections.Specialized;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-using Json.Schema;
-using Json.Schema.Generation;
-
 using Microsoft.SqlServer.Management.Smo;
 
 using LoginType = Microsoft.SqlServer.Management.Smo.LoginType;
@@ -31,7 +28,7 @@ public sealed class Resource(JsonSerializerContext context)
 {
     public override string GetSchema()
     {
-        return JsonSerializer.Serialize(GeneratedJsonSchemas.Schema, SourceGenerationContext.Default.JsonSchema);
+        return JsonSerializer.Serialize(GeneratedJsonSchemas.Login_Schema, SourceGenerationContext.Default.JsonSchema);
     }
 
     public Schema Get(Schema? instance)

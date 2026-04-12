@@ -5,9 +5,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-using Json.Schema;
-using Json.Schema.Generation;
-
 using SmoServerRole = Microsoft.SqlServer.Management.Smo.ServerRole;
 
 namespace OpenDsc.Resource.SqlServer.ServerRole;
@@ -28,7 +25,7 @@ public sealed class Resource(JsonSerializerContext context)
 {
     public override string GetSchema()
     {
-        return JsonSerializer.Serialize(GeneratedJsonSchemas.Schema, SourceGenerationContext.Default.JsonSchema);
+        return JsonSerializer.Serialize(GeneratedJsonSchemas.ServerRole_Schema, SourceGenerationContext.Default.JsonSchema);
     }
 
     public Schema Get(Schema? instance)

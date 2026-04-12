@@ -6,9 +6,6 @@ using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-using Json.Schema;
-using Json.Schema.Generation;
-
 using Microsoft.SqlServer.Management.Smo;
 
 using PermissionState = Microsoft.SqlServer.Management.Smo.PermissionState;
@@ -33,7 +30,7 @@ public sealed class Resource(JsonSerializerContext context)
 {
     public override string GetSchema()
     {
-        return JsonSerializer.Serialize(GeneratedJsonSchemas.Schema, SourceGenerationContext.Default.JsonSchema);
+        return JsonSerializer.Serialize(GeneratedJsonSchemas.DatabasePermission_Schema, SourceGenerationContext.Default.JsonSchema);
     }
 
     public Schema Get(Schema? instance)

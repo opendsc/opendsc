@@ -5,9 +5,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-using Json.Schema;
-using Json.Schema.Generation;
-
 using Microsoft.SqlServer.Management.Smo.Agent;
 
 namespace OpenDsc.Resource.SqlServer.AgentJob;
@@ -28,7 +25,7 @@ public sealed class Resource(JsonSerializerContext context)
 {
     public override string GetSchema()
     {
-        return JsonSerializer.Serialize(GeneratedJsonSchemas.Schema, SourceGenerationContext.Default.JsonSchema);
+        return JsonSerializer.Serialize(GeneratedJsonSchemas.AgentJob_Schema, SourceGenerationContext.Default.JsonSchema);
     }
 
     public Schema Get(Schema? instance)

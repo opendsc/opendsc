@@ -7,9 +7,6 @@ using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-using Json.Schema;
-using Json.Schema.Generation;
-
 using static OpenDsc.Resource.Windows.AccountLockoutPolicy.AccountLockoutPolicyHelper;
 
 namespace OpenDsc.Resource.Windows.AccountLockoutPolicy;
@@ -24,7 +21,7 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
 {
     public override string GetSchema()
     {
-        return JsonSerializer.Serialize(GeneratedJsonSchemas.Schema, SourceGenerationContext.Default.JsonSchema);
+        return JsonSerializer.Serialize(GeneratedJsonSchemas.AccountLockoutPolicy_Schema, SourceGenerationContext.Default.JsonSchema);
     }
 
     public Schema Get(Schema? instance)

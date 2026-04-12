@@ -9,9 +9,6 @@ using System.Xml;
 using System.Xml.Linq;
 using System.Xml.XPath;
 
-using Json.Schema;
-using Json.Schema.Generation;
-
 namespace OpenDsc.Resource.Xml.Element;
 
 [DscResource("OpenDsc.Xml/Element", "0.1.0", Description = "Manage XML element content and attributes", Tags = ["xml", "element", "attribute", "xpath"])]
