@@ -6,14 +6,19 @@ using System.IO.Compression;
 using System.Text.Json.Serialization;
 
 using Json.Schema.Generation;
+using Json.Schema.Generation.Serialization;
 
 namespace OpenDsc.Resource.Archive.Zip.Compress;
 
 [Title("Zip Compress Schema")]
 [Description("Schema for creating ZIP archives via OpenDsc.")]
 [AdditionalProperties(false)]
+[Id("https://opendsc.dev/schemas/v1/archive/zip/compress.schema.json")]
+[GenerateJsonSchema]
 public sealed class Schema
 {
+    public static readonly Uri BundleUri = new("https://opendsc.dev/schemas/v1/bundled/archive/zip/compress.schema.json");
+
     [Required]
     [Description("The path to the ZIP archive file.")]
     public string ArchivePath { get; set; } = string.Empty;

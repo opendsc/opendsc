@@ -3,14 +3,19 @@
 // terms of the MIT license.
 
 using Json.Schema.Generation;
+using Json.Schema.Generation.Serialization;
 
 namespace OpenDsc.Resource.Windows.AuditPolicy;
 
 [Title("OpenDsc.Windows/AuditPolicy")]
 [Description("Manage Windows audit policy for system security event auditing.")]
 [AdditionalProperties(false)]
+[Id("https://opendsc.dev/schemas/v1/windows/audit-policy.schema.json")]
+[GenerateJsonSchema]
 public sealed class Schema
 {
+    public static readonly Uri BundleUri = new("https://opendsc.dev/schemas/v1/bundled/windows/audit-policy.schema.json");
+
     [Required]
     [Description("The name of the audit policy subcategory to configure (e.g., 'File System', 'Logon', 'Security State Change').")]
     public string Subcategory { get; set; } = string.Empty;

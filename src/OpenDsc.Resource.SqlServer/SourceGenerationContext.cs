@@ -4,6 +4,8 @@
 
 using System.Text.Json.Serialization;
 
+using Json.Schema;
+
 namespace OpenDsc.Resource.SqlServer;
 
 [JsonSourceGenerationOptions(
@@ -22,6 +24,7 @@ namespace OpenDsc.Resource.SqlServer;
 [JsonSerializable(typeof(LinkedServer.Schema), TypeInfoPropertyName = "LinkedServerSchema")]
 [JsonSerializable(typeof(Configuration.Schema), TypeInfoPropertyName = "ConfigurationSchema")]
 [JsonSerializable(typeof(AgentJob.Schema), TypeInfoPropertyName = "AgentJobSchema")]
+[JsonSerializable(typeof(JsonSchema), TypeInfoPropertyName = "JsonSchema")]
 public partial class SourceGenerationContext : JsonSerializerContext
 {
 }

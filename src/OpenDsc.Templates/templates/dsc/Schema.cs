@@ -1,7 +1,10 @@
 using System.Text.Json.Serialization;
 
+using Json.Schema.Generation.Serialization;
+
 namespace Temp;
 
+[GenerateJsonSchema]
 public sealed class Schema
 {
     [JsonRequired]

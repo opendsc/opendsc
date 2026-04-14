@@ -5,6 +5,7 @@
 using System.Text.Json.Serialization;
 
 using Json.Schema.Generation;
+using Json.Schema.Generation.Serialization;
 
 using OpenDsc.Schema;
 
@@ -13,8 +14,12 @@ namespace OpenDsc.Resource.Windows.Environment;
 [Title("Windows Environment Variable Schema")]
 [Description("Schema for managing Windows environment variables via OpenDsc.")]
 [AdditionalProperties(false)]
+[Id("https://opendsc.dev/schemas/v1/windows/environment.schema.json")]
+[GenerateJsonSchema]
 public sealed class Schema
 {
+    public static readonly Uri BundleUri = new("https://opendsc.dev/schemas/v1/bundled/windows/environment.schema.json");
+
     [Required]
     [Description("The name of the environment variable.")]
     [Pattern(@"^[^\x00=][^=]{0,253}$")]

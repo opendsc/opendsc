@@ -3,14 +3,19 @@
 // terms of the MIT license.
 
 using Json.Schema.Generation;
+using Json.Schema.Generation.Serialization;
 
 namespace OpenDsc.Resource.Windows.PasswordPolicy;
 
 [Title("Password Policy Schema")]
 [Description("Schema for managing Windows password policy settings via OpenDsc. This is a system-wide singleton resource.")]
 [AdditionalProperties(false)]
+[Id("https://opendsc.dev/schemas/v1/windows/password-policy.schema.json")]
+[GenerateJsonSchema]
 public sealed class Schema
 {
+    public static readonly Uri BundleUri = new("https://opendsc.dev/schemas/v1/bundled/windows/password-policy.schema.json");
+
     // https://learn.microsoft.com/en-us/windows/client-management/mdm/policy-csp-devicelock#minimumpasswordlength
     // Legacy limit: 0-14 (can be extended to 128 with RelaxMinimumPasswordLengthLimits policy)
     [Description("Minimum number of characters required in passwords (0-14).")]

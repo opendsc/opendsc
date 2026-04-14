@@ -4,6 +4,8 @@
 
 using System.Text.Json.Serialization;
 
+using Json.Schema;
+
 namespace OpenDsc.Resource.Xml;
 
 [JsonSourceGenerationOptions(
@@ -12,6 +14,7 @@ namespace OpenDsc.Resource.Xml;
     UseStringEnumConverter = true,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 [JsonSerializable(typeof(Element.Schema), TypeInfoPropertyName = "XmlElementSchema")]
+[JsonSerializable(typeof(JsonSchema), TypeInfoPropertyName = "JsonSchema")]
 public partial class SourceGenerationContext : JsonSerializerContext
 {
 }

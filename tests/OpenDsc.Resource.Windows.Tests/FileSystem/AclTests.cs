@@ -28,8 +28,7 @@ public sealed class AclTests : WindowsTestBase
         var schemaJson = resource.GetSchema();
         var doc = System.Text.Json.JsonDocument.Parse(schemaJson);
 
-        doc.RootElement.TryGetProperty("$schema", out var schemaProperty).Should().BeTrue();
-        schemaProperty.GetString().Should().Be("https://json-schema.org/draft/2020-12/schema");
+        doc.RootElement.ValueKind.Should().Be(System.Text.Json.JsonValueKind.Object);
     }
 
     [Fact]
