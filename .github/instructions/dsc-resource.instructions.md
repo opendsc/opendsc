@@ -116,7 +116,7 @@ public sealed class Schema
 
 **Key attributes:**
 - `[Id]` — the canonical schema URI for this resource (format: `https://opendsc.dev/schemas/v1/{area}/{name}.schema.json`)
-- `[GenerateJsonSchema]` — signals the compiler to generate a static schema (produces `GeneratedJsonSchemas.{Name}_Schema`)
+- `[GenerateJsonSchema]` — signals the compiler to generate a static schema in `GeneratedJsonSchemas.*` (member name depends on the project; for example, some projects use `{Name}_Schema` while others use `Schema`)
 - `static readonly Uri BundleUri` — the bundled (with imports resolved) schema URI
 
 **Naming:** user-facing properties in camelCase; DSC canonical properties prefixed with `_` (`_exist`, `_purge`, `_inDesiredState`); enum values in PascalCase.

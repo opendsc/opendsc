@@ -24,6 +24,8 @@ public sealed class Resource(JsonSerializerContext context)
     public override string GetSchema()
     {
         var registry = new SchemaRegistry();
+        // Note: The compiler generates the schema type name based on your project.
+        // Replace {Name}_Schema with the actual generated type (e.g., Schema if single schema in project).
         var schema = registry.CreateBundle(GeneratedJsonSchemas.{Name}_Schema.BaseUri, Schema.BundleUri);
         return JsonSerializer.Serialize(schema, SourceGenerationContext.Default.JsonSchema);
     }
