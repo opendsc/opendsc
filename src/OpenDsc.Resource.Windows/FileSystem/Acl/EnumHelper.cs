@@ -2,8 +2,6 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
-// using SysFileSystemRights = System.Security.AccessControl.FileSystemRights;
-
 namespace OpenDsc.Resource.Windows.FileSystem.Acl;
 
 internal static class EnumHelper

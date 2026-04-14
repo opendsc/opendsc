@@ -146,7 +146,6 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
             var desiredRules = instance.AccessRules.Select(r => new
             {
                 Identity = ResolveIdentity(r.Identity),
-                // Rights = EnumHelper.ConvertToSystem(EnumHelper.CombineFlags(r.Rights)),
                 Rights = EnumHelper.CombineFlags(r.Rights),
                 InheritanceFlags = EnumHelper.CombineFlags(r.InheritanceFlags),
                 PropagationFlags = EnumHelper.CombineFlags(r.PropagationFlags),
