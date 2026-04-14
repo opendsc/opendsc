@@ -55,25 +55,22 @@ All interfaces are optional — implement those that make sense. Strive to imple
 
 ## GetSchema() Method
 
-Standard implementation (all resources use this):
+**Source Generation Pattern** (standard for all resources):
+
+The compiler automatically generates JSON schemas from the `Schema` class decorated with `[GenerateJsonSchema]`. `GetSchema()` retrieves and bundles this generated schema:
 
 ```csharp
 public override string GetSchema()
 {
-    var config = new SchemaGeneratorConfiguration()
-    {
-        PropertyNameResolver = PropertyNameResolvers.CamelCase
-    };
-
-    var builder = new JsonSchemaBuilder().FromType<Schema>(config);
-    builder.Schema("https://json-schema.org/draft/2020-12/schema");
-    var schema = builder.Build();
-
-    return JsonSerializer.Serialize(schema);
+    var registry = new SchemaRegistry();
+    var schema = registry.CreateBundle(GeneratedJsonSchemas.{Name}_Schema.BaseUri, Schema.BundleUri);
+    return JsonSerializer.Serialize(schema, SourceGenerationContext.Default.JsonSchema);
 }
 ```
 
-**Alternative: Embedded schema** for complex resources (e.g., ScheduledTask with nested objects):
+The compiler generates `GeneratedJsonSchemas.{Name}_Schema` automatically when the `Schema` class has `[GenerateJsonSchema]` attribute.
+
+**Alternative: Embedded schema** for complex resources (e.g., ScheduledTask with nested objects that the generator cannot handle):
 
 ```csharp
 public override string GetSchema()
@@ -93,11 +90,15 @@ Add to `.csproj`: `<EmbeddedResource Include="ScheduledTask\schema.json" />`
 ## Schema Class
 
 ```csharp
+[Id("https://opendsc.dev/schemas/v1/windows/myresource.schema.json")]
 [Title("...")]
 [Description("...")]
 [AdditionalProperties(false)]
+[GenerateJsonSchema]
 public sealed class Schema
 {
+    public static readonly Uri BundleUri = new("https://opendsc.dev/schemas/v1/bundled/windows/myresource.schema.json");
+
     [Required]
     [Pattern(@"regex")]
     public string Name { get; set; }
@@ -112,6 +113,11 @@ public sealed class Schema
     public bool? Exist { get; set; }
 }
 ```
+
+**Key attributes:**
+- `[Id]` — the canonical schema URI for this resource (format: `https://opendsc.dev/schemas/v1/{area}/{name}.schema.json`)
+- `[GenerateJsonSchema]` — signals the compiler to generate a static schema (produces `GeneratedJsonSchemas.{Name}_Schema`)
+- `static readonly Uri BundleUri` — the bundled (with imports resolved) schema URI
 
 **Naming:** user-facing properties in camelCase; DSC canonical properties prefixed with `_` (`_exist`, `_purge`, `_inDesiredState`); enum values in PascalCase.
 

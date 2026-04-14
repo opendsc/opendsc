@@ -55,11 +55,14 @@ Create `src/OpenDsc.Resource.{Area}/{Name}/`:
 - [ ] Correct namespace: `OpenDsc.Resource.{Area}.{Name}`
 - [ ] `[DscResource("OpenDsc.{Area}/{Name}", "0.1.0", Description = "...", Tags = [...])]`
 - [ ] `[ExitCode]` attributes for expected exception types
-- [ ] `GetSchema()` using standard `JsonSchemaBuilder` pattern
+- [ ] `GetSchema()` using `SchemaRegistry.CreateBundle()` source generation pattern
 - [ ] Applicable interfaces implemented (`IGettable`, `ISettable`, `IDeletable`, `IExportable`)
 - [ ] MIT license header
 
 **Schema.cs checklist:**
+- [ ] `[GenerateJsonSchema]` attribute (signals compiler to auto-generate schema)
+- [ ] `[Id]` with canonical schema URI: `https://opendsc.dev/schemas/v1/{area}/{name}.schema.json`
+- [ ] `static readonly Uri BundleUri` property
 - [ ] `[Title]`, `[Description]`, `[AdditionalProperties(false)]`
 - [ ] `[Required]` on the key property
 - [ ] `_exist` (Pattern 1/3) or `_purge` (Pattern 2/3) as appropriate

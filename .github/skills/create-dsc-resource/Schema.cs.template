@@ -3,15 +3,21 @@
 // terms of the MIT license.
 
 using System.Text.Json.Serialization;
-using JsonSchema.Net.Generation;
+
+using Json.Schema.Generation;
+using Json.Schema.Generation.Serialization;
 
 namespace OpenDsc.Resource.{Namespace};
 
+[Id("https://opendsc.dev/schemas/v1/{Area}/{Name}.schema.json")]
 [Title("{Title}")]
 [Description("{Description}")]
 [AdditionalProperties(false)]
+[GenerateJsonSchema]
 public sealed class Schema
 {
+    public static readonly Uri BundleUri = new("https://opendsc.dev/schemas/v1/bundled/{Area}/{Name}.schema.json");
+
     [Required]
     public string Name { get; set; } = string.Empty;
 
