@@ -19,6 +19,7 @@ public sealed class Schema
     public string Path { get; set; } = string.Empty;
 
     [JsonPropertyName("_exist")]
+    [Default(true)]
     [Nullable(false)]
     public bool? Exist { get; set; }
 

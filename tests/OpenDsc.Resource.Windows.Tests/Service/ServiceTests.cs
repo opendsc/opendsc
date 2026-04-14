@@ -27,6 +27,10 @@ public sealed class ServiceTests : WindowsTestBase
         var doc = JsonDocument.Parse(schemaJson);
 
         doc.RootElement.ValueKind.Should().Be(JsonValueKind.Object);
+        var hasProperties = doc.RootElement.TryGetProperty("properties", out _);
+        var hasDefs = doc.RootElement.TryGetProperty("$defs", out _);
+        var hasSchema = doc.RootElement.TryGetProperty("$schema", out _);
+        (hasProperties || hasDefs || hasSchema).Should().BeTrue();
     }
 
     [Fact]
