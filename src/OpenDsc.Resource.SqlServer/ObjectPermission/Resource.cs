@@ -211,9 +211,114 @@ public sealed class Resource(JsonSerializerContext context)
         }
     }
 
+    private static readonly PropertyInfo[] ObjectPermissionBoolProperties =
+        typeof(ObjectPermissionSet)
+            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(p => p.PropertyType == typeof(bool))
+            .ToArray();
+
     public IEnumerable<Schema> Export(Schema? filter)
     {
-        yield break;
+        var serverInstance = filter?.ServerInstance ?? ".";
+        var username = filter?.ConnectUsername;
+        var password = filter?.ConnectPassword;
+        var databaseName = filter?.DatabaseName;
+
+        var server = SqlConnectionHelper.CreateConnection(serverInstance, username, password);
+
+        try
+        {
+            var databases = string.IsNullOrEmpty(databaseName)
+                ? server.Databases.Cast<SmoDatabase>().Where(d => !d.IsSystemObject)
+                : server.Databases.Cast<SmoDatabase>().Where(d => string.Equals(d.Name, databaseName, StringComparison.OrdinalIgnoreCase));
+
+            foreach (var database in databases)
+            {
+                foreach (var schema in ExportObjectPermissions(serverInstance, database, database.Tables.Cast<Table>(), ObjectType.Table, t => t.Schema, t => t.Name, t => t.IsSystemObject))
+                    yield return schema;
+
+                foreach (var schema in ExportObjectPermissions(serverInstance, database, database.Views.Cast<View>(), ObjectType.View, v => v.Schema, v => v.Name, v => v.IsSystemObject))
+                    yield return schema;
+
+                foreach (var schema in ExportObjectPermissions(serverInstance, database, database.StoredProcedures.Cast<StoredProcedure>(), ObjectType.StoredProcedure, p => p.Schema, p => p.Name, p => p.IsSystemObject))
+                    yield return schema;
+
+                foreach (var schema in ExportObjectPermissions(serverInstance, database, database.UserDefinedFunctions.Cast<UserDefinedFunction>(), ObjectType.UserDefinedFunction, f => f.Schema, f => f.Name, f => f.IsSystemObject))
+                    yield return schema;
+
+                foreach (var schema in ExportObjectPermissions(serverInstance, database, database.Schemas.Cast<SmoSchema>(), ObjectType.Schema, _ => string.Empty, s => s.Name, s => s.IsSystemObject))
+                    yield return schema;
+
+                foreach (var schema in ExportObjectPermissions(serverInstance, database, database.Sequences.Cast<Sequence>(), ObjectType.Sequence, s => s.Schema, s => s.Name, _ => false))
+                    yield return schema;
+
+                foreach (var schema in ExportObjectPermissions(serverInstance, database, database.Synonyms.Cast<Synonym>(), ObjectType.Synonym, s => s.Schema, s => s.Name, _ => false))
+                    yield return schema;
+            }
+        }
+        finally
+        {
+            if (server.ConnectionContext.IsOpen)
+            {
+                server.ConnectionContext.Disconnect();
+            }
+        }
+    }
+
+    private static IEnumerable<Schema> ExportObjectPermissions<T>(
+        string serverInstance,
+        SmoDatabase database,
+        IEnumerable<T> objects,
+        ObjectType objectType,
+        Func<T, string> getSchema,
+        Func<T, string> getName,
+        Func<T, bool> isSystemObject)
+        where T : IObjectPermission
+    {
+        foreach (var obj in objects)
+        {
+            if (isSystemObject(obj))
+            {
+                continue;
+            }
+
+            var permissions = obj.EnumObjectPermissions();
+
+            foreach (var perm in permissions)
+            {
+                var permissionName = GetPermissionName(perm.PermissionType);
+                if (permissionName == null)
+                {
+                    continue;
+                }
+
+                yield return new Schema
+                {
+                    ServerInstance = serverInstance,
+                    DatabaseName = database.Name,
+                    SchemaName = getSchema(obj),
+                    ObjectType = objectType,
+                    ObjectName = getName(obj),
+                    Principal = perm.Grantee,
+                    Permission = permissionName,
+                    State = perm.PermissionState,
+                    Grantor = perm.Grantor
+                };
+            }
+        }
+    }
+
+    private static string? GetPermissionName(ObjectPermissionSet permissionSet)
+    {
+        foreach (var prop in ObjectPermissionBoolProperties)
+        {
+            if ((bool)(prop.GetValue(permissionSet) ?? false))
+            {
+                return prop.Name;
+            }
+        }
+
+        return null;
     }
 
     private static IObjectPermission? GetDatabaseObject(SmoDatabase database, ObjectType objectType, string schemaName, string objectName)

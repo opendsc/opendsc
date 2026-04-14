@@ -138,9 +138,9 @@ public sealed class Resource(JsonSerializerContext context)
 
     public IEnumerable<Schema> Export(Schema? filter)
     {
-        var serverInstance = Environment.GetEnvironmentVariable("SQLSERVER_INSTANCE") ?? ".";
-        var username = Environment.GetEnvironmentVariable("SQLSERVER_USERNAME");
-        var password = Environment.GetEnvironmentVariable("SQLSERVER_PASSWORD");
+        var serverInstance = filter?.ServerInstance ?? ".";
+        var username = filter?.ConnectUsername;
+        var password = filter?.ConnectPassword;
         return Export(serverInstance, username, password);
     }
 
