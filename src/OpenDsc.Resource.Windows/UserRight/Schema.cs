@@ -12,9 +12,12 @@ namespace OpenDsc.Resource.Windows.UserRight;
 [Title("Windows User Rights Assignment Schema")]
 [Description("Schema for managing Windows user rights assignments.")]
 [AdditionalProperties(false)]
+[Id("https://opendsc.dev/schemas/v1/windows/user-right.schema.json")]
 [GenerateJsonSchema]
 public sealed class Schema
 {
+    public static readonly Uri BundleUri = new("https://opendsc.dev/schemas/v1/bundled/windows/user-right.schema.json");
+
     [Required]
     [Description("The user rights to grant or revoke.")]
     [UniqueItems(true)]

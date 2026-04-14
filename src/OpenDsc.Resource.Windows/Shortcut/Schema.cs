@@ -12,9 +12,12 @@ namespace OpenDsc.Resource.Windows.Shortcut;
 [Title("Windows Shortcut Resource Schema")]
 [Description("Schema for managing Windows shortcuts via OpenDsc.")]
 [AdditionalProperties(false)]
+[Id("https://opendsc.dev/schemas/v1/windows/shortcut.schema.json")]
 [GenerateJsonSchema]
 public sealed class Schema
 {
+    public static readonly Uri BundleUri = new("https://opendsc.dev/schemas/v1/bundled/windows/shortcut.schema.json");
+
     internal const string DefaultIconLocation = ",0";
     internal const string DefaultWindowStyle = "Normal";
 

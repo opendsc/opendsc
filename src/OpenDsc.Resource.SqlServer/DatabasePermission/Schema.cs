@@ -14,9 +14,12 @@ namespace OpenDsc.Resource.SqlServer.DatabasePermission;
 [Title("SQL Server Database Permission Schema")]
 [Description("Schema for managing SQL Server database permissions via OpenDsc.")]
 [AdditionalProperties(false)]
+[Id("https://opendsc.dev/schemas/v1/sqlserver/database-permission.schema.json")]
 [GenerateJsonSchema]
 public sealed class Schema
 {
+    public static readonly Uri BundleUri = new("https://opendsc.dev/schemas/v1/bundled/sqlserver/database-permission.schema.json");
+
     internal const string DefaultState = "Grant";
 
     [Required]

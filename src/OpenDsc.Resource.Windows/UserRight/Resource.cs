@@ -5,6 +5,8 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
+using Json.Schema;
+
 namespace OpenDsc.Resource.Windows.UserRight;
 
 [DscResource("OpenDsc.Windows/UserRight", "0.1.0",
@@ -23,7 +25,9 @@ public sealed class Resource(JsonSerializerContext context)
 {
     public override string GetSchema()
     {
-        return JsonSerializer.Serialize(GeneratedJsonSchemas.UserRight_Schema, SourceGenerationContext.Default.JsonSchema);
+        var registry = new SchemaRegistry();
+        var schema = registry.CreateBundle(GeneratedJsonSchemas.UserRight_Schema.BaseUri, Schema.BundleUri);
+        return JsonSerializer.Serialize(schema, SourceGenerationContext.Default.JsonSchema);
     }
 
     public Schema Get(Schema? instance)

@@ -5,6 +5,8 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
+using Json.Schema;
+
 using SmoDatabase = Microsoft.SqlServer.Management.Smo.Database;
 using SmoUser = Microsoft.SqlServer.Management.Smo.User;
 using SmoUserType = Microsoft.SqlServer.Management.Smo.UserType;
@@ -27,7 +29,9 @@ public sealed class Resource(JsonSerializerContext context)
 {
     public override string GetSchema()
     {
-        return JsonSerializer.Serialize(GeneratedJsonSchemas.DatabaseUser_Schema, SourceGenerationContext.Default.JsonSchema);
+        var registry = new SchemaRegistry();
+        var schema = registry.CreateBundle(GeneratedJsonSchemas.DatabaseUser_Schema.BaseUri, Schema.BundleUri);
+        return JsonSerializer.Serialize(schema, SourceGenerationContext.Default.JsonSchema);
     }
 
     public Schema Get(Schema? instance)

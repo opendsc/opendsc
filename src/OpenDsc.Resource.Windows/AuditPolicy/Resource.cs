@@ -7,6 +7,8 @@ using System.Security;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
+using Json.Schema;
+
 namespace OpenDsc.Resource.Windows.AuditPolicy;
 
 [DscResource("OpenDsc.Windows/AuditPolicy", "0.1.0", Description = "Manage Windows audit policy for system security event auditing", Tags = ["windows", "audit", "security"])]
@@ -86,7 +88,9 @@ public sealed class Resource(JsonSerializerContext context)
 
     public override string GetSchema()
     {
-        return JsonSerializer.Serialize(GeneratedJsonSchemas.AuditPolicy_Schema, SourceGenerationContext.Default.JsonSchema);
+        var registry = new SchemaRegistry();
+        var schema = registry.CreateBundle(GeneratedJsonSchemas.AuditPolicy_Schema.BaseUri, Schema.BundleUri);
+        return JsonSerializer.Serialize(schema, SourceGenerationContext.Default.JsonSchema);
     }
 
     public Schema Get(Schema? instance)

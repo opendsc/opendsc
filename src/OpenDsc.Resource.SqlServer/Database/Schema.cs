@@ -14,9 +14,12 @@ namespace OpenDsc.Resource.SqlServer.Database;
 [Title("SQL Server Database Schema")]
 [Description("Schema for managing SQL Server databases via OpenDsc.")]
 [AdditionalProperties(false)]
+[Id("https://opendsc.dev/schemas/v1/sqlserver/database.schema.json")]
 [GenerateJsonSchema]
 public sealed class Schema
 {
+    public static readonly Uri BundleUri = new("https://opendsc.dev/schemas/v1/bundled/sqlserver/database.schema.json");
+
     [Required]
     [Description("The name of the SQL Server instance to connect to. Use '.' or '(local)' for the default local instance, or 'servername\\instancename' for named instances.")]
     [Pattern(@"^.+$")]

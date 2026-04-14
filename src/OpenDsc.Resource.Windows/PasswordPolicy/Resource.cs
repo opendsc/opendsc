@@ -7,6 +7,8 @@ using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
+using Json.Schema;
+
 namespace OpenDsc.Resource.Windows.PasswordPolicy;
 
 [DscResource("OpenDsc.Windows/PasswordPolicy", "0.1.0", Description = "Manage Windows password policy settings", Tags = ["windows", "security", "password", "policy"])]
@@ -23,7 +25,9 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
 
     public override string GetSchema()
     {
-        return JsonSerializer.Serialize(GeneratedJsonSchemas.PasswordPolicy_Schema, SourceGenerationContext.Default.JsonSchema);
+        var registry = new SchemaRegistry();
+        var schema = registry.CreateBundle(GeneratedJsonSchemas.PasswordPolicy_Schema.BaseUri, Schema.BundleUri);
+        return JsonSerializer.Serialize(schema, SourceGenerationContext.Default.JsonSchema);
     }
 
     public Schema Get(Schema? instance)

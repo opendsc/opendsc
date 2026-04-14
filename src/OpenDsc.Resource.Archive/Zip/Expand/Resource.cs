@@ -6,6 +6,8 @@ using System.IO.Compression;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
+using Json.Schema;
+
 namespace OpenDsc.Resource.Archive.Zip.Expand;
 
 [DscResource("OpenDsc.Archive.Zip/Expand", "0.1.0", Description = "Extract ZIP archives", Tags = ["archive", "zip", "extraction"])]
@@ -20,7 +22,9 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
 {
     public override string GetSchema()
     {
-        return JsonSerializer.Serialize(GeneratedJsonSchemas.Zip_Expand_Schema, SourceGenerationContext.Default.JsonSchema);
+        var registry = new SchemaRegistry();
+        var schema = registry.CreateBundle(GeneratedJsonSchemas.Zip_Expand_Schema.BaseUri, Schema.BundleUri);
+        return JsonSerializer.Serialize(schema, SourceGenerationContext.Default.JsonSchema);
     }
 
     public Schema Get(Schema? instance)

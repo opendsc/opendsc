@@ -10,9 +10,12 @@ namespace OpenDsc.Resource.Windows.AccountLockoutPolicy;
 [Title("Account Lockout Policy Schema")]
 [Description("Schema for managing Windows account lockout policy settings via OpenDsc. This is a system-wide singleton resource.")]
 [AdditionalProperties(false)]
+[Id("https://opendsc.dev/schemas/v1/windows/account-lockout-policy.schema.json")]
 [GenerateJsonSchema]
 public sealed class Schema
 {
+    public static readonly Uri BundleUri = new("https://opendsc.dev/schemas/v1/bundled/windows/account-lockout-policy.schema.json");
+
     // https://learn.microsoft.com/en-us/windows/client-management/mdm/policy-csp-devicelock#accountlockoutpolicy
     [Description("Number of failed logon attempts before account is locked. Use 0 to never lock out accounts.")]
     [Minimum(0)]

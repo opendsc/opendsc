@@ -12,9 +12,12 @@ namespace OpenDsc.Resource.FileSystem.SymbolicLink;
 [Title("Symbolic Link Schema")]
 [Description("Schema for managing symbolic links via OpenDsc.")]
 [AdditionalProperties(false)]
+[Id("https://opendsc.dev/schemas/v1/filesystem/symbolic-link.schema.json")]
 [GenerateJsonSchema]
 public sealed class Schema
 {
+    public static readonly Uri BundleUri = new("https://opendsc.dev/schemas/v1/bundled/filesystem/symbolic-link.schema.json");
+
     [Required]
     [Description("The path where the symbolic link should be created.")]
     public string Path { get; set; } = string.Empty;

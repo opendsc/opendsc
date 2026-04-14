@@ -12,9 +12,12 @@ namespace OpenDsc.Resource.Windows.Group;
 [Title("Windows Group Schema")]
 [Description("Schema for managing local Windows groups via OpenDsc.")]
 [AdditionalProperties(false)]
+[Id("https://opendsc.dev/schemas/v1/windows/group.schema.json")]
 [GenerateJsonSchema]
 public sealed class Schema
 {
+    public static readonly Uri BundleUri = new("https://opendsc.dev/schemas/v1/bundled/windows/group.schema.json");
+
     [Required]
     [Description("The name of the local group.")]
     [Pattern(@"^[^\x00-\x1F\\\/\[\]:;|=,+*?<>@""]{1,256}$")]

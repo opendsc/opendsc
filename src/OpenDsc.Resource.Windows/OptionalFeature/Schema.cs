@@ -12,9 +12,12 @@ namespace OpenDsc.Resource.Windows.OptionalFeature;
 [Title("Windows Optional Feature Schema")]
 [Description("Schema for managing Windows optional features via OpenDsc.")]
 [AdditionalProperties(false)]
+[Id("https://opendsc.dev/schemas/v1/windows/optional-feature.schema.json")]
 [GenerateJsonSchema]
 public sealed class Schema
 {
+    public static readonly Uri BundleUri = new("https://opendsc.dev/schemas/v1/bundled/windows/optional-feature.schema.json");
+
     [Pattern(@"^[a-zA-Z0-9\-\._]+$")]
     [Description("The name of the Windows feature to manage.")]
     public required string Name { get; set; } = string.Empty;

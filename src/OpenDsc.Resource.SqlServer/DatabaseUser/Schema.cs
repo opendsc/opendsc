@@ -14,9 +14,12 @@ namespace OpenDsc.Resource.SqlServer.DatabaseUser;
 [Title("SQL Server Database User Schema")]
 [Description("Schema for managing SQL Server database users via OpenDsc.")]
 [AdditionalProperties(false)]
+[Id("https://opendsc.dev/schemas/v1/sqlserver/database-user.schema.json")]
 [GenerateJsonSchema]
 public sealed class Schema
 {
+    public static readonly Uri BundleUri = new("https://opendsc.dev/schemas/v1/bundled/sqlserver/database-user.schema.json");
+
     [Description("The name of the SQL Server instance to connect to. Use '.' or '(local)' for the default local instance, or 'servername\\instancename' for named instances.")]
     [Pattern(@"^.+$")]
     public string ServerInstance { get; set; } = string.Empty;

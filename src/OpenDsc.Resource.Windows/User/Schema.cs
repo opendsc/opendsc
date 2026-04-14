@@ -12,9 +12,12 @@ namespace OpenDsc.Resource.Windows.User;
 [Title("Windows User Schema")]
 [Description("Schema for managing local Windows user accounts via OpenDsc.")]
 [AdditionalProperties(false)]
+[Id("https://opendsc.dev/schemas/v1/windows/user.schema.json")]
 [GenerateJsonSchema]
 public sealed class Schema
 {
+    public static readonly Uri BundleUri = new("https://opendsc.dev/schemas/v1/bundled/windows/user.schema.json");
+
     [Required]
     [Description("The username of the local user account.")]
     [Pattern(@"^[^\x00-\x1F\\\/\[\]:;|=,+*?<>@""]{1,20}$")]

@@ -10,9 +10,12 @@ namespace OpenDsc.Resource.Posix.FileSystem.Permission;
 [Title("POSIX File System Permission Schema")]
 [Description("Schema for managing POSIX file and directory permissions (mode, owner, group) on Linux and macOS via OpenDsc.")]
 [AdditionalProperties(false)]
+[Id("https://opendsc.dev/schemas/v1/posix/filesystem/permission.schema.json")]
 [GenerateJsonSchema]
 public sealed class Schema
 {
+    public static readonly Uri BundleUri = new("https://opendsc.dev/schemas/v1/bundled/posix/filesystem/permission.schema.json");
+
     [Required]
     [MinLength(1)]
     [Pattern(@"^/.+")]

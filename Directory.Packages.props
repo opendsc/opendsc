@@ -10,7 +10,7 @@
     <PackageVersion Include="System.Text.Json" Version="10.0.5" />
     <PackageVersion Include="System.CommandLine" Version="2.0.0" />
     <PackageVersion Include="JsonSchema.Net.Generation" Version="7.3.6" />
-    <PackageVersion Include="JsonSchema.Net" Version="9.1.4" />
+    <PackageVersion Include="JsonSchema.Net" Version="9.1.5" />
     <PackageVersion Include="JsonPath.Net" Version="2.2.0" />
     <PackageVersion Include="System.DirectoryServices.AccountManagement" Version="9.0.0" />
     <PackageVersion Include="System.ServiceProcess.ServiceController" Version="9.0.0" />

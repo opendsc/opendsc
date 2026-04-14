@@ -12,9 +12,12 @@ namespace OpenDsc.Resource.FileSystem.Directory;
 [Title("Directory Schema")]
 [Description("Schema for managing directories via OpenDsc.")]
 [AdditionalProperties(false)]
+[Id("https://opendsc.dev/schemas/v1/filesystem/directory.schema.json")]
 [GenerateJsonSchema]
 public sealed class Schema
 {
+    public static readonly Uri BundleUri = new("https://opendsc.dev/schemas/v1/bundled/filesystem/directory.schema.json");
+
     [Required]
     [Description("The path to the directory.")]
     public string Path { get; set; } = string.Empty;
