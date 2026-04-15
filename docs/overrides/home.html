@@ -296,6 +296,8 @@
 
     if (!scrollButton || !featuresSection) return;
 
+    let ticking = false;
+
     function updateScroll() {
       const rect = featuresSection.getBoundingClientRect();
       const viewportHeight = window.innerHeight;
@@ -322,19 +324,33 @@
 
       scrollButton.style.opacity = opacity;
 
-      // Disable pointer events when fully faded
+      // Update pointer events and accessibility attributes
       if (opacity < 0.1) {
         scrollButton.style.pointerEvents = 'none';
+        scrollButton.setAttribute('tabindex', '-1');
+        scrollButton.setAttribute('aria-hidden', 'true');
       } else {
         scrollButton.style.pointerEvents = 'auto';
+        scrollButton.removeAttribute('tabindex');
+        scrollButton.removeAttribute('aria-hidden');
       }
+
+      ticking = false;
+    }
+
+    function scheduleUpdate() {
+      if (ticking) return;
+
+      ticking = true;
+      window.requestAnimationFrame(updateScroll);
     }
 
     // Initial check
     updateScroll();
 
-    // On scroll - remove transition to prevent animation lag
-    window.addEventListener('scroll', updateScroll, false);
+    // Throttle scroll and resize events using requestAnimationFrame
+    window.addEventListener('scroll', scheduleUpdate, { passive: true });
+    window.addEventListener('resize', scheduleUpdate, { passive: true });
   });
 </script>
 {% endblock %}
