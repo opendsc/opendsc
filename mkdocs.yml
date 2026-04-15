@@ -89,7 +89,7 @@ exclude_docs: |
 nav:
   - Home: index.md
 
-  - Getting started:
+  - Get started:
       - Resources: get-started/resources.md
       - LCM: get-started/lcm.md
       - Pull Server: get-started/pull-server.md
