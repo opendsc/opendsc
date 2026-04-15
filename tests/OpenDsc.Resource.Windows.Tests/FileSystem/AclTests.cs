@@ -10,7 +10,6 @@ using Xunit;
 
 using AclAccessRule = OpenDsc.Resource.Windows.FileSystem.Acl.AccessRule;
 using AclResource = OpenDsc.Resource.Windows.FileSystem.Acl.Resource;
-using DscFileSystemRights = OpenDsc.Resource.Windows.FileSystem.Acl.FileSystemRights;
 using DscSchema = OpenDsc.Resource.Windows.FileSystem.Acl.Schema;
 
 namespace OpenDsc.Resource.Windows.Tests.FileSystem;
@@ -90,7 +89,7 @@ public sealed class AclTests : WindowsTestBase
                     new AclAccessRule
                     {
                         Identity = "BUILTIN\\Users",
-                        Rights = new[] { DscFileSystemRights.Read },
+                        Rights = new[] { FileSystemRights.Read },
                         AccessControlType = AccessControlType.Allow,
                         InheritanceFlags = new[] { InheritanceFlags.None },
                         PropagationFlags = new[] { PropagationFlags.None }
@@ -103,7 +102,7 @@ public sealed class AclTests : WindowsTestBase
 
             var actual = resource.Get(new DscSchema { Path = path });
             actual.AccessRules.Should().NotBeNullOrEmpty();
-            actual.AccessRules!.Any(r => r.Identity.EndsWith("\\Users", StringComparison.OrdinalIgnoreCase) && r.AccessControlType == AccessControlType.Allow && r.Rights.Contains(DscFileSystemRights.Read)).Should().BeTrue();
+            actual.AccessRules!.Any(r => r.Identity.EndsWith("\\Users", StringComparison.OrdinalIgnoreCase) && r.AccessControlType == AccessControlType.Allow && r.Rights.Contains(FileSystemRights.Read)).Should().BeTrue();
         }
         finally
         {
@@ -128,7 +127,7 @@ public sealed class AclTests : WindowsTestBase
                     new AclAccessRule
                     {
                         Identity = "BUILTIN\\Users",
-                        Rights = new[] { DscFileSystemRights.Read },
+                        Rights = new[] { FileSystemRights.Read },
                         AccessControlType = AccessControlType.Allow,
                         InheritanceFlags = new[] { InheritanceFlags.None },
                         PropagationFlags = new[] { PropagationFlags.None }
@@ -146,7 +145,7 @@ public sealed class AclTests : WindowsTestBase
                     new AclAccessRule
                     {
                         Identity = "BUILTIN\\Administrators",
-                        Rights = new[] { DscFileSystemRights.FullControl },
+                        Rights = new[] { FileSystemRights.FullControl },
                         AccessControlType = AccessControlType.Allow,
                         InheritanceFlags = new[] { InheritanceFlags.None },
                         PropagationFlags = new[] { PropagationFlags.None }
@@ -159,7 +158,7 @@ public sealed class AclTests : WindowsTestBase
             var actual = resource.Get(new DscSchema { Path = path });
             actual.AccessRules.Should().NotBeNullOrEmpty();
 
-            var explicitAdminRule = actual.AccessRules!.Any(r => r.Identity.EndsWith("\\Administrators", StringComparison.OrdinalIgnoreCase) && r.AccessControlType == AccessControlType.Allow && r.Rights.Contains(DscFileSystemRights.FullControl) && r.InheritanceFlags != null && r.InheritanceFlags.Length == 1 && r.InheritanceFlags[0] == InheritanceFlags.None);
+            var explicitAdminRule = actual.AccessRules!.Any(r => r.Identity.EndsWith("\\Administrators", StringComparison.OrdinalIgnoreCase) && r.AccessControlType == AccessControlType.Allow && r.Rights.Contains(FileSystemRights.FullControl) && r.InheritanceFlags != null && r.InheritanceFlags.Length == 1 && r.InheritanceFlags[0] == InheritanceFlags.None);
             explicitAdminRule.Should().BeTrue();
 
             var explicitUsersRule = actual.AccessRules.Any(r => r.Identity.EndsWith("\\Users", StringComparison.OrdinalIgnoreCase) && r.InheritanceFlags != null && r.InheritanceFlags.Length == 1 && r.InheritanceFlags[0] == InheritanceFlags.None);
