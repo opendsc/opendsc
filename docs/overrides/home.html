@@ -27,7 +27,7 @@
 <section class="odsc-hero">
   <div class="md-grid md-typeset">
     <div class="odsc-hero__inner">
-      <h1>The Complete Solution for Microsoft DSC</h1>
+      <h1>The complete solution for Microsoft DSC</h1>
       <p>
         Microsoft provides the Desired State Configuration platform; OpenDSC
         delivers the complete solution. Deploy and manage configurations across
@@ -50,7 +50,6 @@
         d="M11.9997 15.713L18.0098 9.70291L19.424 11.1171L11.9997 18.5414L4.57544 11.1171L5.98965 9.70291L11.9997 15.713Z"
         fill="currentColor" />
     </svg>
-    <span>Learn more</span>
   </a>
 </section>
 
@@ -287,3 +286,71 @@
 </section>
 {% endblock %} {% block content %}{% endblock %} {% block footer %} {{ super()
 }} {% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const scrollButton = document.querySelector('.odsc-hero__scroll');
+    const featuresSection = document.querySelector('#features');
+
+    if (!scrollButton || !featuresSection) return;
+
+    let ticking = false;
+
+    function updateScroll() {
+      const rect = featuresSection.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const midpoint = viewportHeight / 2;
+
+      // Distance from features section top to viewport midpoint
+      const distance = rect.top - midpoint;
+
+      // Fade range: 400px for gradual fade (200px above and below midpoint)
+      const fadeRange = 400;
+      const fadeStart = fadeRange / 2;
+
+      let opacity;
+      if (distance > fadeStart) {
+        // Fully visible
+        opacity = 1;
+      } else if (distance < -fadeStart) {
+        // Fully hidden
+        opacity = 0;
+      } else {
+        // Gradual fade
+        opacity = (distance + fadeStart) / fadeRange;
+      }
+
+      scrollButton.style.opacity = opacity;
+
+      // Update pointer events and accessibility attributes
+      if (opacity < 0.1) {
+        scrollButton.style.pointerEvents = 'none';
+        scrollButton.setAttribute('tabindex', '-1');
+        scrollButton.setAttribute('aria-hidden', 'true');
+      } else {
+        scrollButton.style.pointerEvents = 'auto';
+        scrollButton.removeAttribute('tabindex');
+        scrollButton.removeAttribute('aria-hidden');
+      }
+
+      ticking = false;
+    }
+
+    function scheduleUpdate() {
+      if (ticking) return;
+
+      ticking = true;
+      window.requestAnimationFrame(updateScroll);
+    }
+
+    // Initial check
+    updateScroll();
+
+    // Throttle scroll and resize events using requestAnimationFrame
+    window.addEventListener('scroll', scheduleUpdate, { passive: true });
+    window.addEventListener('resize', scheduleUpdate, { passive: true });
+  });
+</script>
+{% endblock %}

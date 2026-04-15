@@ -89,7 +89,7 @@ exclude_docs: |
 nav:
   - Home: index.md
 
-  - Getting started:
+  - Get started:
       - Resources: get-started/resources.md
       - LCM: get-started/lcm.md
       - Pull Server: get-started/pull-server.md
@@ -129,9 +129,9 @@ nav:
       - Resources:
           - reference/resources/index.md
           - Archive:
-              ZIP:
-                - Compress: reference/resources/archive/zip/compress.md
-                - Expand: reference/resources/archive/zip/expand.md
+              - ZIP:
+                  - Compress: reference/resources/archive/zip/compress.md
+                  - Expand: reference/resources/archive/zip/expand.md
           - File System:
               - Directory: reference/resources/filesystem/directory.md
               - File: reference/resources/filesystem/file.md
