@@ -1,24 +1,35 @@
 # Pull Server
 
-The OpenDSC Pull Server manages configuration delivery to registered nodes.
-It provides a central service for distributing DSC configuration documents,
-node registration, and compliance reporting.
+The OpenDSC Pull Server is a central service for distributing DSC configuration
+documents, managing node registration, and collecting compliance reports.
 
-## Install
+## Installation
+
+### with winget <small>recommended</small> { #with-winget data-toc-label="with winget" }
+
+The Pull Server is published as a WinGet package and can be installed on
+Windows. Open up a terminal and install the Pull Server with:
 
 <!-- markdownlint-disable MD046 -->
 
-=== ":fontawesome-brands-windows: Windows"
+=== "Latest"
 
     ```powershell
     winget install OpenDsc.Server
     ```
 
-=== ":fontawesome-brands-linux: Linux"
+=== "0.x"
 
-    !!! note
-        Debian and RPM package support is coming soon. In the meantime, use the
-        archive install below.
+    ```powershell
+    winget install OpenDsc.Server --version 0.5.1
+    ```
+
+### with archive { #with-archive data-toc-label="with archive" }
+
+On Linux and macOS, download the portable archive from [GitHub releases]
+and extract it to a directory on your `PATH`.
+
+=== ":fontawesome-brands-linux: Linux"
 
     ```sh
     version='0.5.1'
@@ -34,10 +45,6 @@ node registration, and compliance reporting.
 
 === ":fontawesome-brands-apple: macOS"
 
-    !!! note
-        Homebrew package support is coming soon. In the meantime, use the
-        archive install below.
-
     ```sh
     version='0.5.1'
     archive="OpenDSC.Server.macOS.$version.tar.gz"
@@ -50,18 +57,19 @@ node registration, and compliance reporting.
     echo 'export PATH="$HOME/OpenDSC.Server:$PATH"' >> ~/.zshrc
     ```
 
-=== ":fontawesome-brands-docker: Docker"
-
-    !!! note
-        Docker support is coming soon. In the meantime, use the Windows, Linux,
-        or macOS install instructions.
-
 <!-- markdownlint-enable MD046 -->
 
-## Login
+### with docker { #with-docker data-toc-label="with docker" }
+
+!!! note
+    Docker support is coming soon. In the meantime, use the Windows, Linux,
+    or macOS install instructions.
+
+  [GitHub releases]: https://github.com/opendsc/opendsc/releases
+
+## Sign in
 
 Open your browser and navigate to [http://localhost:5000][pull-server-url].
-The web UI prompts you to sign in.
 
 ![OpenDSC login page][login-page]
 
@@ -72,53 +80,29 @@ Sign in with the default administrator credentials:
 | Username | `admin` |
 | Password | `admin` |
 
-## Create Registration Key
+!!! warning
+    Change the default password immediately after your first sign-in.
 
-Nodes need a registration key to authenticate during their initial registration
-with the Pull
-Server. After registration, nodes use client certificates for authentication.
+## Create a registration key
+
+Nodes use a registration key to authenticate during their initial registration.
+After registration, nodes switch to client certificates for authentication.
 
 1. Navigate to **Settings → Registration Keys**.
 2. Click **Create**.
 3. Enter a description, such as `Lab registration`.
 4. Click **Save**.
-5. Copy the key value that appears and save it securely.
+5. Copy the key value and save it securely.
 
 ![Create registration key][create-registration-key]
 
-## Configure LCM
+## Connect the LCM
 
-Update the LCM configuration file on the managed node so it pulls its desired
-state from the Pull Server. The LCM reads `appsettings.json` from its default
-location on each platform.
+Update the LCM configuration on the managed node so it pulls its desired state
+from the Pull Server. Replace `<registration-key>` with the key from the
+previous step.
 
-<!-- markdownlint-disable MD046 -->
-
-=== ":fontawesome-brands-windows: Windows"
-
-    ```text
-    $env:ProgramData\OpenDSC\LCM\appsettings.json
-    ```
-
-=== ":fontawesome-brands-linux: Linux"
-
-    ```text
-    /etc/opendsc/lcm/appsettings.json
-    ```
-
-=== ":fontawesome-brands-apple: macOS"
-
-    ```text
-    /Library/Preferences/OpenDSC/LCM/appsettings.json
-    ```
-
-<!-- markdownlint-enable MD046 -->
-
-Below is a platform-agnostic example of the LCM configuration for Pull Server
-mode. Copy it into the file above and replace `<registration-key>` with the key
-generated in the previous step.
-
-```json
+```json title="appsettings.json"
 {
   "LCM": {
     "PullServer": {
@@ -131,44 +115,21 @@ generated in the previous step.
 }
 ```
 
-### Server Url
+| Setting | Description |
+| :------ | :---------- |
+| `ServerUrl` | Address of the Pull Server |
+| `RegistrationKey` | Secret used by the node during initial registration |
+| `CertificateSource` | `Managed` (auto-provisioned) or `Platform` (enterprise CA) |
+| `ReportCompliance` | Send compliance data back to the Pull Server |
 
-This is the address of the Pull Server, for example `http://localhost:5000`.
-It must be provided when `ConfigurationSource` is set to `Pull`.
+See [LCM configuration] for the `appsettings.json` location on each platform.
 
-### Registration Key
-
-The `RegistrationKey` is the secret used by the node during initial
-registration.
-
-### CertificateSource
-
-`CertificateSource` controls how the node obtains its client certificate for
-mTLS authentication.
-
-- `Managed` — the LCM provisions and manages the client certificate
-automatically.
-- `Platform` — the node uses a platform-managed certificate store or
-external certificate management. Use this if you already manage certificates
-using an enterprise CA.
-
-Default: `Managed`.
-
-### Report Compliance
-
-When `ReportCompliance` is set to `true`, the LCM sends compliance data back to
-the Pull Server. If omitted, compliance reporting is not enabled.
-
-Default: `false`.
-
-## Verify Registered Node
+## Verify the node
 
 Navigate to the **Nodes** page. Your machine should appear with its FQDN and
 registration timestamp.
 
-## Configuration Management
-
-### Upload configuration
+## Upload a configuration
 
 1. Navigate to **Configurations**.
 2. Click **Create**.
@@ -179,7 +140,7 @@ registration timestamp.
 
 ![Upload configuration][upload-configuration]
 
-### Publish the configuration
+## Publish the configuration
 
 The configuration is created in `Draft` status. Publish it to make it available
 to nodes:
@@ -189,7 +150,7 @@ to nodes:
 
 ![Publish configuration version][publish-configuration-version]
 
-### Assign the configuration to the node
+## Assign the configuration
 
 1. Navigate to **Nodes**.
 2. Click on your registered node.
@@ -198,6 +159,16 @@ to nodes:
 
 ![Assign configuration to node][assign-configuration]
 
+## Next steps
+
+- Learn about [configuration management] concepts such as versioning,
+  parameter merging, and scopes.
+- Set up [HTTPS] for production deployments.
+
+[LCM]: lcm.md
+[LCM configuration]: lcm.md#configure
+[configuration management]: ../concepts/pull-server/configuration-management.md
+[HTTPS]: ../guides/configure-https.md
 [pull-server-url]: http://localhost:5000
 
 [login-page]: media/pull-server-setup/login-page.png

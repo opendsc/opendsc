@@ -9,168 +9,169 @@ repo_url: https://github.com/opendsc/opendsc
 edit_uri: edit/main/docs/
 
 theme:
-  name: material
-  custom_dir: docs/overrides
-  features:
-    - content.action.edit
-    - content.action.view
-    - content.code.select
-    - content.code.annotate
-    - content.code.copy
-    - content.tabs.link
-    - content.tooltips
-    - navigation.indexes
-    - navigation.tabs
-    - navigation.sections
-    - navigation.footer
-    - navigation.top
-    - navigation.tracking
-    - search
-    - search.suggest
-    - search.highlight
+        name: material
+        custom_dir: docs/overrides
+        features:
+                - content.action.edit
+                - content.action.view
+                - content.code.select
+                - content.code.annotate
+                - content.code.copy
+                - content.tabs.link
+                - content.tooltips
+                - navigation.indexes
+                - navigation.tabs
+                - navigation.sections
+                - navigation.footer
+                - navigation.top
+                - navigation.tracking
+                - search
+                - search.suggest
+                - search.highlight
 
-  palette:
-    - media: "(prefers-color-scheme)"
-      toggle:
-        icon: material/brightness-auto
-        name: Switch to light mode
-    - media: "(prefers-color-scheme: light)"
-      scheme: default
-      toggle:
-        icon: material/brightness-7
-        name: Switch to dark mode
-    - media: "(prefers-color-scheme: dark)"
-      scheme: slate
-      toggle:
-        icon: material/brightness-4
-        name: Switch to system preference
+        palette:
+                - media: "(prefers-color-scheme)"
+                  toggle:
+                          icon: material/brightness-auto
+                          name: Switch to light mode
+                - media: "(prefers-color-scheme: light)"
+                  scheme: default
+                  toggle:
+                          icon: material/brightness-7
+                          name: Switch to dark mode
+                - media: "(prefers-color-scheme: dark)"
+                  scheme: slate
+                  toggle:
+                          icon: material/brightness-4
+                          name: Switch to system preference
 
 extra:
-  social:
-    - icon: fontawesome/brands/github
-      link: https://github.com/opendsc/opendsc
-  analytics:
-    provider: google
-    property: G-ZJ28Q7M0ZF
+        social:
+                - icon: fontawesome/brands/github
+                  link: https://github.com/opendsc/opendsc
 
 markdown_extensions:
-  - abbr
-  - admonition
-  - def_list
-  - pymdownx.inlinehilite
-  - pymdownx.tasklist:
-      custom_checkbox: true
-  - pymdownx.snippets:
-      auto_append:
-        - includes/abbreviations.md
-  - pymdownx.superfences:
-      custom_fences:
-        - name: mermaid
-          class: mermaid
-  - pymdownx.tabbed:
-      alternate_style: true
-  - pymdownx.highlight:
-      anchor_linenums: true
-      line_spans: __span
-      pygments_lang_class: true
-  - pymdownx.emoji:
-      emoji_index: !!python/name:material.extensions.emoji.twemoji
-      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+        - abbr
+        - admonition
+        - attr_list
+        - def_list
+        - pymdownx.inlinehilite
+        - pymdownx.tasklist:
+                  custom_checkbox: true
+        - pymdownx.snippets:
+                  auto_append:
+                          - includes/abbreviations.md
+        - pymdownx.superfences:
+                  custom_fences:
+                          - name: mermaid
+                            class: mermaid
+        - pymdownx.tabbed:
+                  alternate_style: true
+        - pymdownx.highlight:
+                  anchor_linenums: true
+                  line_spans: __span
+                  pygments_lang_class: true
+        - pymdownx.emoji:
+                  emoji_index: !!python/name:material.extensions.emoji.twemoji
+                  emoji_generator: !!python/name:material.extensions.emoji.to_svg
 
 plugins:
-  - git-revision-date-localized:
-      enable_creation_date: true
-  - search
+        - git-revision-date-localized:
+                  enable_creation_date: true
+        - search
 
-  - git-committers:
-      repository: opendsc/opendsc
-      branch: main
+        - git-committers:
+                  repository: opendsc/opendsc
+                  branch: main
 
 exclude_docs: |
-  pull-server/*
+        pull-server/*
 
 nav:
-  - Home: index.md
+        - Home: index.md
 
-  - Get started:
-      - Resources: get-started/resources.md
-      - LCM: get-started/lcm.md
-      - Pull Server: get-started/pull-server.md
+        - Getting started:
+                  - Installation: get-started/installation.md
+                  - Running your first resource: get-started/running-your-first-resource.md
+                  - Using configuration documents with DSC CLI: get-started/using-configuration-documents-with-dsc-cli.md
+                  - LCM:
+                            - get-started/lcm.md
+                  - Pull Server: get-started/pull-server.md
 
-  - Concepts:
-      - LCM:
-          - concepts/lcm/index.md
-      - Pull Server:
-          - concepts/pull-server/index.md
-          - Authentication: concepts/pull-server/authentication.md
-          - Configuration Management: concepts/pull-server/configuration-management.md
-          - Parameter Merging: concepts/pull-server/parameter-merging.md
-          - Parameter Validation: concepts/pull-server/parameter-validation.md
-          - Scope System: concepts/pull-server/scope-system.md
-          - Versioning: concepts/pull-server/versioning.md
-      - Resources:
-          - concepts/resources/index.md
-          - Operations: concepts/resources/operations.md
+        - Concepts:
+                  - LCM:
+                            - concepts/lcm/index.md
+                  - Pull Server:
+                            - concepts/pull-server/index.md
+                            - Authentication: concepts/pull-server/authentication.md
+                            - Configuration Management: concepts/pull-server/configuration-management.md
+                            - Parameter Merging: concepts/pull-server/parameter-merging.md
+                            - Parameter Validation: concepts/pull-server/parameter-validation.md
+                            - Scope System: concepts/pull-server/scope-system.md
+                            - Versioning: concepts/pull-server/versioning.md
+                  - Resources:
+                            - concepts/resources/index.md
+                            - Operations: concepts/resources/operations.md
 
-  - Guides:
-      - Configure HTTPS: guides/configure-https.md
-      - Manage Users & Roles: guides/manage-users-roles.md
-      - Retention Policies: guides/retention-policies.md
-      - Export Resources: guides/export-resources.md
-      - Feature Flags: guides/feature-flags.md
-      - Prerelease vs Feature Flags: guides/prerelease-vs-feature-flags.md
+        - Guides:
+                  - Configure HTTPS: guides/configure-https.md
+                  - Manage Users & Roles: guides/manage-users-roles.md
+                  - Retention Policies: guides/retention-policies.md
+                  - Export Resources: guides/export-resources.md
+                  - Feature Flags: guides/feature-flags.md
+                  - Prerelease vs Feature Flags: guides/prerelease-vs-feature-flags.md
 
-  - Reference:
-      - API:
-          - reference/api/index.md
+        - Reference:
+                  - API:
+                            - reference/api/index.md
 
-      - Extensions:
-          - reference/extensions/index.md
-          - MOF:
-              - Import: reference/extensions/mof-import.md
+                  - Extensions:
+                            - reference/extensions/index.md
+                            - MOF:
+                                      - Import: reference/extensions/mof-import.md
 
-      - Resources:
-          - reference/resources/index.md
-          - Archive:
-              - ZIP:
-                  - Compress: reference/resources/archive/zip/compress.md
-                  - Expand: reference/resources/archive/zip/expand.md
-          - File System:
-              - Directory: reference/resources/filesystem/directory.md
-              - File: reference/resources/filesystem/file.md
-              - Symbolic Link: reference/resources/filesystem/symbolic-link.md
-          - JSON:
-              - Value: reference/resources/json/value.md
-          - POSIX:
-              - File System:
-                  - Permission: reference/resources/posix/filesystem/permission.md
-          - SQL Server:
-              - Agent Job: reference/resources/sqlserver/agent-job.md
-              - Configuration: reference/resources/sqlserver/configuration.md
-              - Database: reference/resources/sqlserver/database.md
-              - Database Permission: reference/resources/sqlserver/database-permission.md
-              - Database Role: reference/resources/sqlserver/database-role.md
-              - Database User: reference/resources/sqlserver/database-user.md
-              - Linked Server: reference/resources/sqlserver/linked-server.md
-              - Login: reference/resources/sqlserver/login.md
-              - Object Permission: reference/resources/sqlserver/object-permission.md
-              - Server Permission: reference/resources/sqlserver/server-permission.md
-              - Server Role: reference/resources/sqlserver/server-role.md
-          - Windows:
-              - Environment: reference/resources/windows/environment.md
-              - File System:
-                  - Access Control List: reference/resources/windows/filesystem/acl.md
-              - Group: reference/resources/windows/group.md
-              - Optional Feature: reference/resources/windows/optional-feature.md
-              - Scheduled Task: reference/resources/windows/scheduled-task.md
-              - Service: reference/resources/windows/service.md
-              - Shortcut: reference/resources/windows/shortcut.md
-              - User: reference/resources/windows/user.md
-              - User Right: reference/resources/windows/user-right.md
-          - XML:
-              - Element: reference/resources/xml/element.md
+                  - Resources:
+                            - reference/resources/index.md
+                            - Archive:
+                                      ZIP:
+                                              - Compress: reference/resources/archive/zip/compress.md
+                                              - Expand: reference/resources/archive/zip/expand.md
+                            - File System:
+                                      - Directory: reference/resources/filesystem/directory.md
+                                      - File: reference/resources/filesystem/file.md
+                                      - Symbolic Link: reference/resources/filesystem/symbolic-link.md
+                            - JSON:
+                                      - Value: reference/resources/json/value.md
+                            - POSIX:
+                                      - File System:
+                                                - Permission: reference/resources/posix/filesystem/permission.md
+                            - SQL Server:
+                                      - Agent Job: reference/resources/sqlserver/agent-job.md
+                                      - Configuration: reference/resources/sqlserver/configuration.md
+                                      - Database: reference/resources/sqlserver/database.md
+                                      - Database Permission: reference/resources/sqlserver/database-permission.md
+                                      - Database Role: reference/resources/sqlserver/database-role.md
+                                      - Database User: reference/resources/sqlserver/database-user.md
+                                      - Linked Server: reference/resources/sqlserver/linked-server.md
+                                      - Login: reference/resources/sqlserver/login.md
+                                      - Object Permission: reference/resources/sqlserver/object-permission.md
+                                      - Server Permission: reference/resources/sqlserver/server-permission.md
+                                      - Server Role: reference/resources/sqlserver/server-role.md
+                            - Windows:
+                                      - Environment: reference/resources/windows/environment.md
+                                      - File System:
+                                                - Access Control List: reference/resources/windows/filesystem/acl.md
+                                      - Group: reference/resources/windows/group.md
+                                      - Optional Feature: reference/resources/windows/optional-feature.md
+                                      - Scheduled Task: reference/resources/windows/scheduled-task.md
+                                      - Service: reference/resources/windows/service.md
+                                      - Shortcut: reference/resources/windows/shortcut.md
+                                      - User: reference/resources/windows/user.md
+                                      - User Right: reference/resources/windows/user-right.md
+                            - XML:
+                                      - Element: reference/resources/xml/element.md
 
-      - Glossary: reference/glossary.md
+                  - Glossary: reference/glossary.md
 
-  - About:
-      - Roadmap: about/roadmap.md
+        - About:
+                  - Roadmap: about/roadmap.md
