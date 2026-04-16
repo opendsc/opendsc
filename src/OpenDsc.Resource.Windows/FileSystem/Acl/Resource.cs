@@ -74,7 +74,7 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
             accessRules.Add(new AccessRule
             {
                 Identity = identity.Value,
-                Rights = EnumHelper.ConvertFromSystem(rule.FileSystemRights),
+                Rights = EnumHelper.ExpandFlags(rule.FileSystemRights),
                 InheritanceFlags = EnumHelper.ExpandFlags(rule.InheritanceFlags),
                 PropagationFlags = EnumHelper.ExpandFlags(rule.PropagationFlags),
                 AccessControlType = rule.AccessControlType
@@ -146,7 +146,7 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
             var desiredRules = instance.AccessRules.Select(r => new
             {
                 Identity = ResolveIdentity(r.Identity),
-                Rights = EnumHelper.ConvertToSystem(EnumHelper.CombineFlags(r.Rights)),
+                Rights = EnumHelper.CombineFlags(r.Rights),
                 InheritanceFlags = EnumHelper.CombineFlags(r.InheritanceFlags),
                 PropagationFlags = EnumHelper.CombineFlags(r.PropagationFlags),
                 r.AccessControlType
