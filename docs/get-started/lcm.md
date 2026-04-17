@@ -5,7 +5,7 @@ Manager (LCM), a background service that continuously evaluates a DSC
 configuration document against the current state of the system. When drift is
 detected the LCM can report it or automatically remediate it.
 
-If you're familiar with PowerShell DSC, the [LCM concept][00] will be
+If you're familiar with PowerShell DSC, the [LCM concept][PSDSC] will be
 recognizable.
 OpenDSC reintroduces it as a standalone service built around Microsoft DSC v3,
 bringing centralized configuration monitoring and remediation to modern
@@ -124,6 +124,9 @@ For a full explanation of each setting, see [LCM concepts].
 
 ## Manage the service
 
+Once installed, the LCM runs as a background service. Use your platform's
+service management tools to check its status, start, stop, or restart it.
+
 === ":fontawesome-brands-windows: Windows"
 
     ```powershell
@@ -145,5 +148,5 @@ For a full explanation of each setting, see [LCM concepts].
 <!-- markdownlint-enable MD046 -->
 
 <!-- Link reference definitions -->
-[00]: https://learn.microsoft.com/en-us/powershell/dsc/managing-nodes/metaconfig?view=dsc-1.1
+[PSDSC]: https://learn.microsoft.com/en-us/powershell/dsc/managing-nodes/metaconfig?view=dsc-1.1
 [LCM concepts]: ../concepts/lcm/index.md

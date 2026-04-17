@@ -87,7 +87,7 @@ Use `dsc config set` to apply the entire configuration at once:
 === "Shell"
 
     ```sh
-    cat filesystem.dsc.yaml | dsc config set
+    cat filesystem.dsc.yaml | dsc config set -f -
     ```
 
 DSC evaluates every resource in the document and applies only the changes
@@ -107,7 +107,7 @@ configuration:
 === "Shell"
 
     ```sh
-    cat filesystem.dsc.yaml | dsc config test
+    cat filesystem.dsc.yaml | dsc config test -f -
     ```
 
 The output shows the `inDesiredState` result for each resource in the document.
@@ -126,7 +126,7 @@ document:
 === "Shell"
 
     ```sh
-    cat filesystem.dsc.yaml | dsc config get
+    cat filesystem.dsc.yaml | dsc config get -f -
     ```
 
 <!-- markdownlint-enable MD046 -->

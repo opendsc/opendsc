@@ -1,14 +1,28 @@
-# Pull Server
+# Setting up Pull Server
+Install and configure the Pull Server
 
-The OpenDSC Pull Server is a central service for distributing DSC configuration
-documents, managing node registration, and collecting compliance reports.
+In the [LCM guide][LCM], you set up a standalone node that monitors a local
+configuration document. That approach works well for individual machines, but
+as your environment grows you need a central place to store configurations,
+register nodes, and track compliance across the fleet.
+
+The OpenDSC Pull Server fulfills that role. It is an ASP.NET Core service that
+distributes DSC configuration documents, manages node registration, and
+collects compliance reports. That's why the Pull Server makes it a suitable
+candidate for large-scale operations where dozens or hundreds of nodes
+need to stay in their desired state.
+
+!!! tip
+    If you already want to take a deeper look at the architecture
+    and terminology, see the [Pull Server concepts][pull-server-concepts].
 
 ## Installation
 
 ### with winget <small>recommended</small> { #with-winget data-toc-label="with winget" }
 
-The Pull Server is published as a WinGet package and can be installed on
-Windows. Open up a terminal and install the Pull Server with:
+Just like the resources and LCM, a WinGet package is published and can
+be used to install the Pull Server on Windows. Open up a terminal and install
+the Pull Server with:
 
 <!-- markdownlint-disable MD046 -->
 
@@ -32,8 +46,9 @@ and extract it to a directory on your `PATH`.
 === ":fontawesome-brands-linux: Linux"
 
     ```sh
-    version='0.5.1'
-    archive="OpenDSC.Server.Linux.$version.tar.gz"
+    version=$(curl -s https://api.github.com/repos/opendsc/opendsc/releases/latest \
+        | grep '"tag_name"' | sed 's/.*"v\(.*\)".*/\1/')
+    archive="OpenDSC.Server.Linux-$version.tar.gz"
     install_dir="$HOME/OpenDSC.Server"
     mkdir -p "$install_dir"
     curl -L -o "$archive" \
@@ -46,8 +61,9 @@ and extract it to a directory on your `PATH`.
 === ":fontawesome-brands-apple: macOS"
 
     ```sh
-    version='0.5.1'
-    archive="OpenDSC.Server.macOS.$version.tar.gz"
+    version=$(curl -s https://api.github.com/repos/opendsc/opendsc/releases/latest \
+        | grep '"tag_name"' | sed 's/.*"v\(.*\)".*/\1/')
+    archive="OpenDSC.Server.macOS-$version.tar.gz"
     install_dir="$HOME/OpenDSC.Server"
     mkdir -p "$install_dir"
     curl -L -o "$archive" \
@@ -67,9 +83,11 @@ and extract it to a directory on your `PATH`.
 
   [GitHub releases]: https://github.com/opendsc/opendsc/releases
 
-## Sign in
+## Sign in to the admin console
 
-Open your browser and navigate to [http://localhost:5000][pull-server-url].
+After installation, the Pull Server exposes a REST API and a admin
+console on `http://localhost:5000` by default. Open your browser and navigate
+to [http://localhost:5000][pull-server-url].
 
 ![OpenDSC login page][login-page]
 
@@ -81,98 +99,32 @@ Sign in with the default administrator credentials:
 | Password | `admin` |
 
 !!! warning
-    Change the default password immediately after your first sign-in.
+    After signing in for the first time, you have to change the
+    default password immediately.
 
 ## Create a registration key
 
-Nodes use a registration key to authenticate during their initial registration.
-After registration, nodes switch to client certificates for authentication.
+Before connecting a node to the Pull Server, you need a registration key. The
+LCM presents this key during its initial registration so the Pull Server knows
+the node is authorized. After registration, communication switches to client
+certificates automatically. See [authentication concepts][authentication] for
+details on the certificate lifecycle.
 
 1. Navigate to **Settings → Registration Keys**.
 2. Click **Create**.
-3. Enter a description, such as `Lab registration`.
+3. Enter a description, such as `Register nodes`.
 4. Click **Save**.
 5. Copy the key value and save it securely.
 
 ![Create registration key][create-registration-key]
 
-## Connect the LCM
-
-Update the LCM configuration on the managed node so it pulls its desired state
-from the Pull Server. Replace `<registration-key>` with the key from the
-previous step.
-
-```json title="appsettings.json"
-{
-  "LCM": {
-    "PullServer": {
-      "ServerUrl": "http://localhost:5000",
-      "RegistrationKey": "<registration-key>",
-      "CertificateSource": "Managed",
-      "ReportCompliance": true
-    }
-  }
-}
-```
-
-| Setting | Description |
-| :------ | :---------- |
-| `ServerUrl` | Address of the Pull Server |
-| `RegistrationKey` | Secret used by the node during initial registration |
-| `CertificateSource` | `Managed` (auto-provisioned) or `Platform` (enterprise CA) |
-| `ReportCompliance` | Send compliance data back to the Pull Server |
-
-See [LCM configuration] for the `appsettings.json` location on each platform.
-
-## Verify the node
-
-Navigate to the **Nodes** page. Your machine should appear with its FQDN and
-registration timestamp.
-
-## Upload a configuration
-
-1. Navigate to **Configurations**.
-2. Click **Create**.
-3. Enter the name `LabConfig`.
-4. Set the entry point to `main.dsc.yaml`.
-5. Upload the `main.dsc.yaml` file.
-6. Click **Save**.
-
-![Upload configuration][upload-configuration]
-
-## Publish the configuration
-
-The configuration is created in `Draft` status. Publish it to make it available
-to nodes:
-
-1. On the **Configurations** page, click on `LabConfig`.
-2. Click **Publish** next to version `1.0.0`.
-
-![Publish configuration version][publish-configuration-version]
-
-## Assign the configuration
-
-1. Navigate to **Nodes**.
-2. Click on your registered node.
-3. Under **Configuration**, select `LabConfig`.
-4. Click **Save**.
-
-![Assign configuration to node][assign-configuration]
-
-## Next steps
-
-- Learn about [configuration management] concepts such as versioning,
-  parameter merging, and scopes.
-- Set up [HTTPS] for production deployments.
+You will need this key in the next step when [registering a node][register-node].
 
 [LCM]: lcm.md
-[LCM configuration]: lcm.md#configure
-[configuration management]: ../concepts/pull-server/configuration-management.md
-[HTTPS]: ../guides/configure-https.md
+[pull-server-concepts]: ../concepts/pull-server/index.md
+[authentication]: ../concepts/pull-server/authentication.md
+[register-node]: register-node.md
 [pull-server-url]: http://localhost:5000
 
 [login-page]: media/pull-server-setup/login-page.png
 [create-registration-key]: media/pull-server-setup/create-registration-key.png
-[upload-configuration]: media/pull-server-setup/upload-configuration.png
-[publish-configuration-version]: media/pull-server-setup/publish-version.png
-[assign-configuration]: media/pull-server-setup/assign-configuration.png
