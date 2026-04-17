@@ -6,7 +6,6 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 
 using Json.Schema;
-using Json.Schema.Generation;
 
 using Microsoft.SqlServer.Management.Smo;
 
@@ -14,7 +13,7 @@ using SmoAvailabilityGroup = Microsoft.SqlServer.Management.Smo.AvailabilityGrou
 
 namespace OpenDsc.Resource.SqlServer.AvailabilityGroup;
 
-[DscResource("OpenDsc.SqlServer/AvailabilityGroup", "0.1.0", Description = "Manage SQL Server Always On Availability Groups", Tags = ["sql", "sqlserver", "availability", "group", "hadr"])]
+[DscResource("OpenDsc.SqlServer/AvailabilityGroup", "0.1.0", Description = "Manage SQL Server Always On Availability Groups", Tags = ["sql", "sqlserver", "availability", "group", "high-availability", "disaster-recovery"])]
 [ExitCode(0, Description = "Success")]
 [ExitCode(1, Exception = typeof(Exception), Description = "Error")]
 [ExitCode(2, Exception = typeof(JsonException), Description = "Invalid JSON")]
@@ -30,16 +29,9 @@ public sealed class Resource(JsonSerializerContext context)
 {
     public override string GetSchema()
     {
-        var config = new SchemaGeneratorConfiguration()
-        {
-            PropertyNameResolver = PropertyNameResolvers.CamelCase
-        };
-
-        var builder = new JsonSchemaBuilder().FromType<Schema>(config);
-        builder.Schema("https://json-schema.org/draft/2020-12/schema");
-        var schema = builder.Build();
-
-        return JsonSerializer.Serialize(schema);
+        var registry = new SchemaRegistry();
+        var schema = registry.CreateBundle(GeneratedJsonSchemas.AvailabilityGroup_Schema.BaseUri, Schema.BundleUri);
+        return JsonSerializer.Serialize(schema, SourceGenerationContext.Default.JsonSchema);
     }
 
     public Schema Get(Schema? instance)

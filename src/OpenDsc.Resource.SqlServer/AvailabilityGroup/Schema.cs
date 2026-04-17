@@ -5,6 +5,7 @@
 using System.Text.Json.Serialization;
 
 using Json.Schema.Generation;
+using Json.Schema.Generation.Serialization;
 
 using Microsoft.SqlServer.Management.Smo;
 
@@ -13,8 +14,11 @@ namespace OpenDsc.Resource.SqlServer.AvailabilityGroup;
 [Title("SQL Server Availability Group Schema")]
 [Description("Schema for managing SQL Server Always On Availability Groups via OpenDsc.")]
 [AdditionalProperties(false)]
+[Id("https://opendsc.dev/schemas/v1/sqlserver/availability-group.schema.json")]
+[GenerateJsonSchema]
 public sealed class Schema
 {
+    public static readonly Uri BundleUri = new("https://opendsc.dev/schemas/v1/bundled/sqlserver/availability-group.schema.json");
     [Required]
     [Description("The name of the SQL Server instance to connect to. Use '.' or '(local)' for the default local instance, or 'servername\\instancename' for named instances.")]
     [Pattern(@"^.+$")]
