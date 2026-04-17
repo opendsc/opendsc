@@ -1,4 +1,5 @@
 # Setting up Pull Server
+
 Install and configure the Pull Server
 
 In the [LCM guide][LCM], you set up a standalone node that monitors a local
@@ -18,7 +19,11 @@ need to stay in their desired state.
 
 ## Installation
 
+<!-- markdownlint-disable MD013 -->
+<!-- markdownlint-disable MD033 -->
 ### with winget <small>recommended</small> { #with-winget data-toc-label="with winget" }
+<!-- markdownlint-enable MD013 -->
+<!-- markdownlint-enable MD033 -->
 
 Just like the resources and LCM, a WinGet package is published and can
 be used to install the Pull Server on Windows. Open up a terminal and install
@@ -118,7 +123,8 @@ details on the certificate lifecycle.
 
 ![Create registration key][create-registration-key]
 
-You will need this key in the next step when [registering a node][register-node].
+You will need this key in the next step when
+[registering a node][register-node].
 
 [LCM]: lcm.md
 [pull-server-concepts]: ../concepts/pull-server/index.md

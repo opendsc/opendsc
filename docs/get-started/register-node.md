@@ -10,6 +10,7 @@ Update `appsettings.json` so the LCM pulls its desired state from the Pull
 Server instead of a local file. Replace `<registration-key>` with the key
 created during [Pull Server setup][pull-server].
 
+<!-- markdownlint-disable MD040 -->
 ```json title="appsettings.json"
 {
   "LCM": {
@@ -22,17 +23,18 @@ created during [Pull Server setup][pull-server].
   }
 }
 ```
+<!-- markdownlint-enable MD040 -->
 
-See [LCM configuration] for the `appsettings.json` location on each platform
-and a full explanation of the Pull Server settings.
+See [LCM configuration] for the `appsettings.json` location on each
+platform and a full explanation of the Pull Server settings.
 
 ## Verify node registration
 
 Open the Pull Server admin console and navigate to the **Nodes** page. Your
 machine should appear with its FQDN and registration timestamp.
 
-Once the node is registered, you can [create your first configuration][first-configuration]
-and assign it.
+Once the node is registered, you can
+[create your first configuration][first-configuration] and assign it.
 
 [LCM]: lcm.md
 [LCM configuration]: lcm.md#configure

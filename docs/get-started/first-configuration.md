@@ -10,6 +10,7 @@ through the Pull Server instead.
 Create a file called `main.dsc.yaml` with the same content:
 
 <!-- markdownlint-disable MD046 -->
+<!-- markdownlint-disable MD040 -->
 
 === ":fontawesome-brands-windows: Windows"
 
@@ -35,6 +36,7 @@ Create a file called `main.dsc.yaml` with the same content:
           exist: true
     ```
 
+<!-- markdownlint-enable MD040 -->
 <!-- markdownlint-enable MD046 -->
 
 ## Upload the configuration document
