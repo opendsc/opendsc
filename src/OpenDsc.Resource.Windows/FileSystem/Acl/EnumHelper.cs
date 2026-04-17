@@ -2,8 +2,6 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
-using SysFileSystemRights = System.Security.AccessControl.FileSystemRights;
-
 namespace OpenDsc.Resource.Windows.FileSystem.Acl;
 
 internal static class EnumHelper
@@ -50,15 +48,5 @@ internal static class EnumHelper
         }
 
         return [.. result];
-    }
-
-    public static FileSystemRights[] ConvertFromSystem(SysFileSystemRights rights)
-    {
-        return ExpandFlags((FileSystemRights)(int)rights);
-    }
-
-    public static SysFileSystemRights ConvertToSystem(FileSystemRights rights)
-    {
-        return (SysFileSystemRights)(int)rights;
     }
 }

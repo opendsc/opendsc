@@ -9,7 +9,6 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 
 using Json.Schema;
-using Json.Schema.Generation;
 
 using SysFileSystemRights = System.Security.AccessControl.FileSystemRights;
 
@@ -29,16 +28,9 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
 {
     public override string GetSchema()
     {
-        var config = new SchemaGeneratorConfiguration()
-        {
-            PropertyNameResolver = PropertyNameResolvers.CamelCase
-        };
-
-        var builder = new JsonSchemaBuilder().FromType<Schema>(config);
-        builder.Schema("https://json-schema.org/draft/2020-12/schema");
-        var schema = builder.Build();
-
-        return JsonSerializer.Serialize(schema);
+        var registry = new SchemaRegistry();
+        var schema = registry.CreateBundle(GeneratedJsonSchemas.FileSystem_Acl_Schema.BaseUri, Schema.BundleUri);
+        return JsonSerializer.Serialize(schema, SourceGenerationContext.Default.JsonSchema);
     }
 
     public Schema Get(Schema? instance)
@@ -82,7 +74,7 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
             accessRules.Add(new AccessRule
             {
                 Identity = identity.Value,
-                Rights = EnumHelper.ConvertFromSystem(rule.FileSystemRights),
+                Rights = EnumHelper.ExpandFlags(rule.FileSystemRights),
                 InheritanceFlags = EnumHelper.ExpandFlags(rule.InheritanceFlags),
                 PropagationFlags = EnumHelper.ExpandFlags(rule.PropagationFlags),
                 AccessControlType = rule.AccessControlType
@@ -154,7 +146,7 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
             var desiredRules = instance.AccessRules.Select(r => new
             {
                 Identity = ResolveIdentity(r.Identity),
-                Rights = EnumHelper.ConvertToSystem(EnumHelper.CombineFlags(r.Rights)),
+                Rights = EnumHelper.CombineFlags(r.Rights),
                 InheritanceFlags = EnumHelper.CombineFlags(r.InheritanceFlags),
                 PropagationFlags = EnumHelper.CombineFlags(r.PropagationFlags),
                 r.AccessControlType

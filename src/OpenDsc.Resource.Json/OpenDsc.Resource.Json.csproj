@@ -7,8 +7,13 @@
 
   <ItemGroup>
     <ProjectReference Include="..\OpenDsc.Resource.CommandLine\OpenDsc.Resource.CommandLine.csproj" />
+    <PackageReference Include="JsonSchema.Net" />
     <PackageReference Include="JsonSchema.Net.Generation" />
     <PackageReference Include="JsonPath.Net" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="schema.json" />
   </ItemGroup>
 
 </Project>

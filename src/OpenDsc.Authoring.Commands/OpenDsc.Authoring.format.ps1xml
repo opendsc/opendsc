@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Configuration>
+  <ViewDefinitions>
+    <View>
+      <Name>Default</Name>
+      <ViewSelectedBy>
+        <TypeName>OpenDsc.Schema.DscConfigDocument</TypeName>
+        <TypeName>Deserialized.OpenDsc.Schema.DscConfigDocument</TypeName>
+      </ViewSelectedBy>
+      <TableControl>
+        <TableHeaders>
+          <TableColumnHeader>
+            <Label>Resources</Label>
+            <Width>100</Width>
+          </TableColumnHeader>
+        </TableHeaders>
+        <TableRowEntries>
+          <TableRowEntry>
+            <TableColumnItems>
+              <TableColumnItem>
+                <PropertyName>Resources</PropertyName>
+              </TableColumnItem>
+            </TableColumnItems>
+          </TableRowEntry>
+        </TableRowEntries>
+      </TableControl>
+    </View>
+    <View>
+      <Name>Default</Name>
+      <ViewSelectedBy>
+        <TypeName>OpenDsc.Schema.DscConfigDocument</TypeName>
+        <TypeName>Deserialized.OpenDsc.Schema.DscConfigDocument</TypeName>
+      </ViewSelectedBy>
+      <ListControl>
+        <ListEntries>
+          <ListEntry>
+            <ListItems>
+              <ListItem>
+                <PropertyName>Resources</PropertyName>
+              </ListItem>
+            </ListItems>
+          </ListEntry>
+        </ListEntries>
+      </ListControl>
+    </View>
+  </ViewDefinitions>
+</Configuration>

@@ -3,6 +3,7 @@
 // terms of the MIT license.
 
 using Json.Schema.Generation;
+using Json.Schema.Generation.Serialization;
 
 namespace OpenDsc.Resource.SqlServer.Configuration;
 
@@ -13,8 +14,12 @@ namespace OpenDsc.Resource.SqlServer.Configuration;
 [Title("SQL Server Configuration")]
 [Description("Manages SQL Server instance-level configuration options.")]
 [AdditionalProperties(false)]
+[Id("https://opendsc.dev/schemas/v1/sqlserver/configuration.schema.json")]
+[GenerateJsonSchema]
 public sealed class Schema
 {
+    public static readonly Uri BundleUri = new("https://opendsc.dev/schemas/v1/bundled/sqlserver/configuration.schema.json");
+
     /// <summary>
     /// SQL Server instance name.
     /// </summary>

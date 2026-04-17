@@ -59,15 +59,6 @@ For interactive API testing and detailed endpoint documentation, visit the
 interface provides complete request/response schemas, authentication examples,
 and the ability to test endpoints directly in your browser.
 
-For conceptual guides and real-world examples, see:
-
-- [Scope System Guide](../../docs/pull-server/scope-system.md) - Understanding scope types, values, and node tagging
-- [Parameter Merging](../../docs/pull-server/parameter-merging.md) - How parameters are merged and version management
-- [Configuration Management](../../docs/pull-server/configuration-management.md) - Version lifecycle and bundle generation
-- [Composite Configurations](../../docs/pull-server/composite-configurations.md) - Combining multiple configurations into deployable units
-- [Quick Start Tutorial](../../docs/pull-server/quickstart.md) - Step-by-step walkthrough
-- [Real-World Examples](../../docs/pull-server/examples/) - Multi-team collaboration scenarios
-
 ## API Endpoints
 
 ### Health

@@ -5,6 +5,7 @@
 using System.Text.Json.Serialization;
 
 using Json.Schema.Generation;
+using Json.Schema.Generation.Serialization;
 
 using LoginType = Microsoft.SqlServer.Management.Smo.LoginType;
 
@@ -13,8 +14,12 @@ namespace OpenDsc.Resource.SqlServer.Login;
 [Title("SQL Server Login Schema")]
 [Description("Schema for managing SQL Server logins via OpenDsc.")]
 [AdditionalProperties(false)]
+[Id("https://opendsc.dev/schemas/v1/sqlserver/login.schema.json")]
+[GenerateJsonSchema]
 public sealed class Schema
 {
+    public static readonly Uri BundleUri = new("https://opendsc.dev/schemas/v1/bundled/sqlserver/login.schema.json");
+
     [Required]
     [Description("The name of the SQL Server instance to connect to. Use '.' or '(local)' for the default local instance, or 'servername\\instancename' for named instances.")]
     [Pattern(@"^.+$")]

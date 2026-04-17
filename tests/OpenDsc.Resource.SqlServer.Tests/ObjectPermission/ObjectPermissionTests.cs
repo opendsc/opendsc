@@ -261,4 +261,35 @@ public sealed class ObjectPermissionTests : SqlServerTestBase
         result.Exist.Should().BeFalse();
     }
 
+    [Fact]
+    public void Export_ReturnsObjectPermissions()
+    {
+        try
+        {
+            var schema = NewSchema(TestUser1, "Select", ObjectType.Table, TestTable);
+            schema.State = PermissionState.Grant;
+            _resource.Set(schema);
+
+            var filter = new ObjectPermissionSchema
+            {
+                ServerInstance = ServerInstance,
+                ConnectUsername = ConnectUsername,
+                ConnectPassword = ConnectPassword,
+                DatabaseName = TestDb,
+                Principal = string.Empty,
+                Permission = string.Empty,
+                ObjectName = string.Empty
+            };
+
+            var results = _resource.Export(filter).ToList();
+            results.Should().NotBeEmpty();
+            results.Select(r => r.DatabaseName).Should().AllBe(TestDb);
+            results.Should().Contain(r => r.Principal == TestUser1 && r.Permission == "Select" && r.ObjectName == TestTable);
+        }
+        finally
+        {
+            ExecuteSqlSafe($"USE [{TestDb}]; REVOKE SELECT ON [{TestTable}] FROM [{TestUser1}]");
+        }
+    }
+
 }

@@ -9,6 +9,7 @@
   <ItemGroup>
     <ProjectReference Include="..\OpenDsc.Resource.CommandLine\OpenDsc.Resource.CommandLine.csproj" />
     <ProjectReference Include="..\OpenDsc.Schema\OpenDsc.Schema.csproj" />
+    <PackageReference Include="JsonSchema.Net" />
     <PackageReference Include="JsonSchema.Net.Generation" />
     <PackageReference Include="System.DirectoryServices.AccountManagement" />
     <PackageReference Include="System.ServiceProcess.ServiceController" />
