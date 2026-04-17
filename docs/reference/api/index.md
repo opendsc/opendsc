@@ -53,3 +53,22 @@ client type:
 | mTLS (Mutual TLS)     | LCM nodes            | Client certificate validated against the node registration record |
 | Personal Access Token | Automation / scripts | Bearer token passed in the `Authorization` header                 |
 | Registration Key      | New nodes            | Shared secret used only during initial node registration          |
+
+## Endpoints
+
+| Category                                                | Description                                         |
+|:--------------------------------------------------------|:----------------------------------------------------|
+| [Authentication](authentication.md)                     | Sessions, passwords, and personal access tokens     |
+| [Users](users.md)                                       | User account management                             |
+| [Groups](groups.md)                                     | Group membership and external SSO mappings          |
+| [Roles](roles.md)                                       | Role-based access control                           |
+| [Health](health.md)                                     | Liveness and readiness probes                       |
+| [Nodes](nodes.md)                                       | Node registration, configuration, tags, and reports |
+| [Configurations](configurations.md)                     | Configuration documents, versions, and permissions  |
+| [Composite Configurations](composite-configurations.md) | Multi-configuration bundles                         |
+| [Parameters](parameters.md)                             | Environment-specific parameter files                |
+| [Scope Types](scope-types.md)                           | Parameter merging hierarchy and scope values        |
+| [Reports](reports.md)                                   | Compliance report queries                           |
+| [Settings](settings.md)                                 | Server-wide settings, validation, and retention     |
+| [Registration Keys](registration-keys.md)               | Keys for initial node registration                  |
+| [Retention](retention.md)                               | Version and report cleanup                          |
