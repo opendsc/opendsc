@@ -90,7 +90,7 @@ and extract it to a directory on your `PATH`.
 
 ## Sign in to the admin console
 
-After installation, the Pull Server exposes a REST API and a admin
+After installation, the Pull Server exposes a REST API and an admin
 console on `http://localhost:5000` by default. Open your browser and navigate
 to [http://localhost:5000][pull-server-url].
 

@@ -1,8 +1,8 @@
 # Running your first resource
 
-After you've [installed] OpenDSC resources, you can start discover and manage
-your system right away. Go to a PowerShell terminal and discover which
-resources are available:
+After you've [installed] OpenDSC resources, you can start discovering
+and managing your system right away. Go to a PowerShell terminal and discover
+which resources are available:
 
 ```powershell
 (OpenDsc.Resources manifest | 

@@ -1,6 +1,6 @@
 # Getting started
 
-OpenDSC consists out of a suite of components that can be installed
+OpenDSC consists of a suite of components that can be installed
 independently depending on your needs:
 
 | Component                       | Purpose                                                                    |
