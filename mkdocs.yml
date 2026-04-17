@@ -46,12 +46,12 @@ theme:
               name: Switch to system preference
 
 extra:
-  social:
-    - icon: fontawesome/brands/github
-      link: https://github.com/opendsc/opendsc
-  analytics:
-    provider: google
-    property: !ENV GOOGLE_ANALYTICS_KEY
+    social:
+        - icon: fontawesome/brands/github
+          link: https://github.com/opendsc/opendsc
+    analytics:
+        provider: google
+        property: !ENV GOOGLE_ANALYTICS_KEY
 
 markdown_extensions:
     - abbr
@@ -76,9 +76,7 @@ markdown_extensions:
           pygments_lang_class: true
     - pymdownx.emoji:
           emoji_index: !!python/name:material.extensions.emoji.twemoji ""
-          emoji_generator:
-
-              !!python/name:material.extensions.emoji.to_svg ""
+          emoji_generator: !!python/name:material.extensions.emoji.to_svg ""
 plugins:
     - git-revision-date-localized:
           enable_creation_date: true
