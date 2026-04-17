@@ -18,6 +18,7 @@ OpenDsc.Windows.FileSystem/AccessControlList
 
 - Get
 - Set
+- Export
 
 ## Properties
 
@@ -310,7 +311,38 @@ Default value: None
 
 <!-- markdownlint-enable MD046 -->
 
-### Example 4 — Configuration document
+### Example 4 — Export the ACL for a file
+
+!!! note
+    `dsc resource export` requires a valid `path` filter for this resource. If
+    no filter is provided, the resource will return no results.
+
+<!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
+
+    ```powershell
+    $resourceInput = @'
+    path: C:\Data\config.xml
+    '@
+
+    dsc resource export -r OpenDsc.Windows.FileSystem/AccessControlList --input $resourceInput
+    ```
+
+=== "Shell"
+
+    ```sh
+    resource_input=$(cat <<'EOF'
+    path: C:\Data\config.xml
+    EOF
+    )
+
+    dsc resource export -r OpenDsc.Windows.FileSystem/AccessControlList --input "$resource_input"
+    ```
+
+<!-- markdownlint-enable MD046 -->
+
+### Example 5 — Configuration document
 
 ```yaml
 $schema: https://aka.ms/dsc/schemas/v3/bundled/config/document.json
