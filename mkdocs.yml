@@ -51,7 +51,7 @@ extra:
       link: https://github.com/opendsc/opendsc
   analytics:
     provider: google
-    property: G-ZJ28Q7M0ZF
+    property: !ENV GOOGLE_ANALYTICS_KEY
 
 markdown_extensions:
   - abbr
