@@ -46,9 +46,12 @@ theme:
               name: Switch to system preference
 
 extra:
-    social:
-        - icon: fontawesome/brands/github
-          link: https://github.com/opendsc/opendsc
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/opendsc/opendsc
+  analytics:
+    provider: google
+    property: !ENV GOOGLE_ANALYTICS_KEY
 
 markdown_extensions:
     - abbr
