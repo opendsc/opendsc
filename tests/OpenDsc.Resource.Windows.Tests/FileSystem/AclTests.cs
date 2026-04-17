@@ -169,4 +169,36 @@ public sealed class AclTests : WindowsTestBase
             File.Delete(path);
         }
     }
+
+    [Fact]
+    public void Export_NullFilter_ReturnsEmpty()
+    {
+        var resource = CreateResource();
+
+        var results = resource.Export(null).ToList();
+
+        results.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Export_WithPath_ReturnsCurrentAclState()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "DscAclTest_" + Guid.NewGuid() + ".txt");
+        File.WriteAllText(path, "test");
+
+        try
+        {
+            var resource = CreateResource();
+            var results = resource.Export(new DscSchema { Path = path }).ToList();
+
+            results.Should().ContainSingle();
+            results[0].Path.Should().Be(path);
+            results[0].Owner.Should().NotBeNullOrWhiteSpace();
+            results[0].AccessRules.Should().NotBeNullOrEmpty();
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
 }
