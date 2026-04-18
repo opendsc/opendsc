@@ -26,6 +26,8 @@
     Build self-contained portable versions with embedded .NET runtime.
 .PARAMETER Msi
     Build MSI installer packages (Windows only).
+.PARAMETER CollectCoverage
+    Collect code coverage during test runs using XPlat Code Coverage.
 .EXAMPLE
     .\build.ps1
     Builds and tests the solution in Release configuration.
@@ -71,6 +73,8 @@ param(
     [switch] $Msi,
 
     [switch] $InstallSqlServer,
+
+    [switch] $CollectCoverage,
 
     [string] $GitHubToken
 )
@@ -400,10 +404,11 @@ if (Test-Path $publishDir) {
 Write-Host 'Running tests...' -ForegroundColor Cyan
 
 $testBuildArgs = if ($SkipBuild) { @() } else { @('--no-build') }
+$coverageArgs = if ($CollectCoverage) { @('--collect', 'XPlat Code Coverage') } else { @() }
 
 if (-not $SkipUnitTests) {
     Write-Host 'Running unit tests...' -ForegroundColor Cyan
-    dotnet test --configuration $Configuration @testBuildArgs --filter 'Category=Unit' --logger 'console;verbosity=normal'
+    dotnet test --configuration $Configuration @testBuildArgs @coverageArgs --filter 'Category=Unit' --logger 'console;verbosity=normal'
     if ($LASTEXITCODE -ne 0) {
         Write-Host "Unit tests failed with exit code $LASTEXITCODE" -ForegroundColor Red
         exit $LASTEXITCODE
@@ -422,7 +427,7 @@ if (-not $SkipIntegrationTests) {
     }
 
     Write-Host 'Running integration tests...' -ForegroundColor Cyan
-    dotnet test --configuration $Configuration @testBuildArgs --filter 'Category=Integration' --logger 'console;verbosity=normal'
+    dotnet test --configuration $Configuration @testBuildArgs @coverageArgs --filter 'Category=Integration' --logger 'console;verbosity=normal'
     if ($LASTEXITCODE -ne 0) {
         Write-Host "Integration tests failed with exit code $LASTEXITCODE" -ForegroundColor Red
         exit $LASTEXITCODE
@@ -433,7 +438,7 @@ if (-not $SkipIntegrationTests) {
 if (-not $SkipFunctionalTests) {
     Write-Host 'Running functional tests (cross-database provider tests)...' -ForegroundColor Cyan
     Write-Host 'Note: This requires Docker to be running for SQL Server and PostgreSQL containers.' -ForegroundColor Yellow
-    dotnet test --configuration $Configuration @testBuildArgs --filter 'Category=Functional' --logger 'console;verbosity=normal'
+    dotnet test --configuration $Configuration @testBuildArgs @coverageArgs --filter 'Category=Functional' --logger 'console;verbosity=normal'
     if ($LASTEXITCODE -ne 0) {
         Write-Host "Functional tests failed with exit code $LASTEXITCODE" -ForegroundColor Red
         exit $LASTEXITCODE
