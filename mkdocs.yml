@@ -124,6 +124,20 @@ nav:
   - Reference:
       - API:
           - reference/api/index.md
+          - Authentication: reference/api/authentication.md
+          - Users: reference/api/users.md
+          - Groups: reference/api/groups.md
+          - Roles: reference/api/roles.md
+          - Health: reference/api/health.md
+          - Nodes: reference/api/nodes.md
+          - Configurations: reference/api/configurations.md
+          - Composite Configurations: reference/api/composite-configurations.md
+          - Parameters: reference/api/parameters.md
+          - Scope Types: reference/api/scope-types.md
+          - Reports: reference/api/reports.md
+          - Settings: reference/api/settings.md
+          - Registration Keys: reference/api/registration-keys.md
+          - Retention: reference/api/retention.md
 
       - Extensions:
           - reference/extensions/index.md
