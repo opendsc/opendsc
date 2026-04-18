@@ -74,9 +74,10 @@ markdown_extensions:
       line_spans: __span
       pygments_lang_class: true
   - pymdownx.emoji:
-      emoji_index: !!python/name:material.extensions.emoji.twemoji
-      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+      emoji_index: !!python/name:material.extensions.emoji.twemoji ""
+      emoji_generator:
 
+        !!python/name:material.extensions.emoji.to_svg ""
 plugins:
   - git-revision-date-localized:
       enable_creation_date: true
@@ -146,6 +147,7 @@ nav:
                   - Permission: reference/resources/posix/filesystem/permission.md
           - SQL Server:
               - Agent Job: reference/resources/sqlserver/agent-job.md
+              - Availability Group: reference/resources/sqlserver/availability-group.md
               - Configuration: reference/resources/sqlserver/configuration.md
               - Database: reference/resources/sqlserver/database.md
               - Database Permission: reference/resources/sqlserver/database-permission.md
