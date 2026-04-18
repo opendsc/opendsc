@@ -6,17 +6,17 @@ defaults:
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   pull_request:
-    branches: [main]
+    branches: [ main ]
   release:
-    types: [published]
+    types: [ published ]
 
 jobs:
   build:
     strategy:
       matrix:
-        os: [windows-latest, ubuntu-latest, macos-latest]
+        os: [ windows-latest, ubuntu-latest, macos-latest ]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout Repository
@@ -28,7 +28,10 @@ jobs:
           dotnet-version: "10.0.x"
 
       - name: Build, Publish, and Pack
-        run: .\build.ps1 -Configuration Release -SkipTest ${{ matrix.os == 'ubuntu-latest' && '-Pack' || '' }} -Portable ${{ matrix.os == 'windows-latest' && '-Msi' || '' }}
+        run: |
+          .\build.ps1 -Configuration Release -SkipTest ${{ matrix.os ==
+          'ubuntu-latest' && '-Pack' || '' }} -Portable ${{ matrix.os ==
+          'windows-latest' && '-Msi' || '' }}
 
       - name: Upload NuGet Packages
         if: matrix.os == 'ubuntu-latest'
@@ -62,7 +65,7 @@ jobs:
     needs: build
     strategy:
       matrix:
-        os: [windows-latest, ubuntu-latest, macos-latest]
+        os: [ windows-latest, ubuntu-latest, macos-latest ]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout Repository
@@ -76,7 +79,9 @@ jobs:
       - name: Download Artifacts
         uses: actions/download-artifact@v8
         with:
-          name: ${{ matrix.os == 'windows-latest' && 'windows-artifacts' || matrix.os == 'ubuntu-latest' && 'linux-artifacts' || 'macos-artifacts' }}
+          name: |
+            ${{ matrix.os == 'windows-latest' && 'windows-artifacts' || matrix.os ==
+            'ubuntu-latest' && 'linux-artifacts' || 'macos-artifacts' }}
           path: artifacts
 
       - name: Set Execute Permissions
@@ -84,13 +89,28 @@ jobs:
         shell: bash
         run: chmod +x artifacts/publish/OpenDsc.Resources
 
-      - name: Run Tests (Ubuntu - with Functional Tests)
+      - name: Run Tests (Ubuntu - with Functional Tests + Coverage)
         if: matrix.os == 'ubuntu-latest'
-        run: .\build.ps1 -SkipBuild -InstallDsc -InstallSqlServer -GitHubToken ${{ secrets.GITHUB_TOKEN }}
+        run: .\build.ps1 -SkipBuild -CollectCoverage -InstallDsc -InstallSqlServer
+          -GitHubToken ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Run Tests (Windows/macOS - skip Functional Tests)
+      - name: Run Tests (Windows/macOS - skip Functional Tests + Coverage)
         if: matrix.os != 'ubuntu-latest'
-        run: .\build.ps1 -SkipBuild -SkipFunctionalTests -InstallDsc -GitHubToken ${{ secrets.GITHUB_TOKEN }}
+        run: .\build.ps1 -SkipBuild -CollectCoverage -SkipFunctionalTests -InstallDsc
+          -GitHubToken ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload coverage report artifact
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-report
+          path: tests/**/TestResults/**/*.xml
+
+      - name: Upload coverage to Codecov
+        if: matrix.os == 'ubuntu-latest'
+        uses: codecov/codecov-action@v6
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   publish:
     needs: test
