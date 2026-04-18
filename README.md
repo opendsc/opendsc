@@ -22,7 +22,7 @@ Windows, Linux, and macOS with automatic drift detection and remediation.
 
 </div>
 
-<!-- markdownlint-disable MD033 -->
+<!-- markdownlint-enable MD033 -->
 
 **[Resource Development][resource-dev-link]** — .NET libraries for rapid custom
 resource creation

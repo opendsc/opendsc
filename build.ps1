@@ -26,6 +26,8 @@
     Build self-contained portable versions with embedded .NET runtime.
 .PARAMETER Msi
     Build MSI installer packages (Windows only).
+.PARAMETER CollectCoverage
+    Collect code coverage during test runs using XPlat Code Coverage.
 .EXAMPLE
     .\build.ps1
     Builds and tests the solution in Release configuration.
