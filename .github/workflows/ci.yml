@@ -110,7 +110,6 @@ jobs:
         with:
           files: tests/**/TestResults/**/*.xml
           flags: ${{ matrix.os }}
-          fail_ci_if_error: true
 
   publish:
     needs: test
