@@ -489,4 +489,276 @@ public class MofConverterTests
         act.Should().Throw<NotSupportedException>()
             .WithMessage("*PasswordEncrypted*");
     }
+
+    // ── Real and Enum property value coverage ────────────────────────────────
+
+    [Fact]
+    public void ConvertText_RealProperties_AreConvertedToNumbers()
+    {
+        const string mofWithReal = """
+            instance of MSFT_TestResource as $MSFT_TestResource1ref
+            {
+                ResourceID = "[TestResource]RealTest";
+                Real32Prop = 3.14;
+                Real64Prop = 2.71828;
+                ModuleName = "TestModule";
+                ModuleVersion = "1.0";
+                ConfigurationName = "TestConfig";
+            };
+
+            instance of OMI_ConfigurationDocument
+            {
+                Version="2.0.0";
+                MinimumCompatibleVersion = "1.0.0";
+                CompatibleVersionAdditionalProperties= {"Omi_BaseResource:ConfigurationName"};
+                Author="thomas";
+                Name="TestConfig";
+            };
+            """;
+
+        var doc = MofConverter.ConvertText(mofWithReal);
+        var props = doc.Resources[0].Properties;
+
+        props["Real32Prop"]!.GetValue<double>().Should().BeApproximately(3.14, 0.01);
+        props["Real64Prop"]!.GetValue<double>().Should().BeApproximately(2.71828, 0.00001);
+    }
+
+    [Fact]
+    public void ConvertText_EnumValue_IsConvertedToString()
+    {
+        const string mofWithEnum = """
+            instance of MSFT_TestResource as $MSFT_TestResource1ref
+            {
+                ResourceID = "[TestResource]EnumTest";
+                Status = "Running";
+                ModuleName = "TestModule";
+                ModuleVersion = "1.0";
+                ConfigurationName = "TestConfig";
+            };
+
+            instance of OMI_ConfigurationDocument
+            {
+                Version="2.0.0";
+                MinimumCompatibleVersion = "1.0.0";
+                CompatibleVersionAdditionalProperties= {"Omi_BaseResource:ConfigurationName"};
+                Author="thomas";
+                Name="TestConfig";
+            };
+            """;
+
+        var doc = MofConverter.ConvertText(mofWithEnum);
+        var props = doc.Resources[0].Properties;
+
+        props["Status"]!.GetValue<string>().Should().Be("Running");
+    }
+
+    [Fact]
+    public void ConvertText_EnumArrayValue_IsConvertedToStringArray()
+    {
+        const string mofWithEnumArray = """
+            instance of MSFT_TestResource as $MSFT_TestResource1ref
+            {
+                ResourceID = "[TestResource]EnumArrayTest";
+                Colors = {"Red", "Green", "Blue"};
+                ModuleName = "TestModule";
+                ModuleVersion = "1.0";
+                ConfigurationName = "TestConfig";
+            };
+
+            instance of OMI_ConfigurationDocument
+            {
+                Version="2.0.0";
+                MinimumCompatibleVersion = "1.0.0";
+                CompatibleVersionAdditionalProperties= {"Omi_BaseResource:ConfigurationName"};
+                Author="thomas";
+                Name="TestConfig";
+            };
+            """;
+
+        var doc = MofConverter.ConvertText(mofWithEnumArray);
+        var props = doc.Resources[0].Properties;
+
+        var colors = props["Colors"]!.AsArray();
+        colors.Should().HaveCount(3);
+        colors[0]!.GetValue<string>().Should().Be("Red");
+        colors[1]!.GetValue<string>().Should().Be("Green");
+        colors[2]!.GetValue<string>().Should().Be("Blue");
+    }
+
+    // ── Edge cases for ResourceID and DependsOn parsing ─────────────────────
+
+    [Fact]
+    public void ConvertText_EmptyBracketsInResourceId_ResourceIsSkipped()
+    {
+        const string mofWithEmptyBrackets = """
+            instance of MSFT_TestResource as $MSFT_TestResource1ref
+            {
+                ResourceID = "[]InstanceName";
+                ModuleName = "TestModule";
+                ModuleVersion = "1.0";
+                ConfigurationName = "TestConfig";
+            };
+
+            instance of MSFT_FileDirectoryConfiguration as $File1ref
+            {
+                ResourceID = "[File]ValidFile";
+                DestinationPath = "C:\\Temp\\file.txt";
+                Ensure = "Present";
+                ModuleName = "PSDesiredStateConfiguration";
+                ModuleVersion = "1.1";
+                ConfigurationName = "TestConfig";
+            };
+
+            instance of OMI_ConfigurationDocument
+            {
+                Version="2.0.0";
+                MinimumCompatibleVersion = "1.0.0";
+                CompatibleVersionAdditionalProperties= {"Omi_BaseResource:ConfigurationName"};
+                Author="thomas";
+                Name="TestConfig";
+            };
+            """;
+
+        // Empty brackets in ResourceID result in TryParseResourceId returning false,
+        // so the resource is skipped and not included in the results
+        var doc = MofConverter.ConvertText(mofWithEmptyBrackets);
+        doc.Resources.Should().HaveCount(1);
+        doc.Resources[0].Name.Should().Be("ValidFile");
+    }
+
+    [Fact]
+    public void ConvertText_DependsOnWithEmptyInstanceName_IsHandledGracefully()
+    {
+        const string mofWithEmptyDepName = """
+            instance of MSFT_FileDirectoryConfiguration as $File1ref
+            {
+                ResourceID = "[File]FileA";
+                DestinationPath = "C:\\Temp\\a.txt";
+                Ensure = "Present";
+                ModuleName = "PSDesiredStateConfiguration";
+                ModuleVersion = "1.1";
+                ConfigurationName = "TestConfig";
+            };
+
+            instance of MSFT_Environment as $Env1ref
+            {
+                ResourceID = "[Environment]EnvB";
+                Name = "ENV_B";
+                Value = "val";
+                Ensure = "Present";
+                DependsOn = "[File]";
+                ModuleName = "PSDesiredStateConfiguration";
+                ModuleVersion = "1.1";
+                ConfigurationName = "TestConfig";
+            };
+
+            instance of OMI_ConfigurationDocument
+            {
+                Version="2.0.0";
+                MinimumCompatibleVersion = "1.0.0";
+                CompatibleVersionAdditionalProperties= {"Omi_BaseResource:ConfigurationName"};
+                Author="thomas";
+                Name="TestConfig";
+            };
+            """;
+
+        var doc = MofConverter.ConvertText(mofWithEmptyDepName);
+        var envRes = doc.Resources.Should().Contain(r => r.Name == "EnvB").Which;
+
+        // DependsOn with empty instance name should result in type "[resourceId('PSDesiredStateConfiguration/File', '')]"
+        envRes.DependsOn.Should().HaveCount(1);
+        envRes.DependsOn![0].Should().Be("[resourceId('PSDesiredStateConfiguration/File', '')]");
+    }
+
+    // ── Zero resources and missing ResourceID ────────────────────────────────
+
+    [Fact]
+    public void ConvertText_OnlyOmiConfigurationDocument_ReturnsEmptyResourcesList()
+    {
+        const string mofWithOnlyMetadata = """
+            instance of OMI_ConfigurationDocument
+            {
+                Version="2.0.0";
+                MinimumCompatibleVersion = "1.0.0";
+                CompatibleVersionAdditionalProperties= {"Omi_BaseResource:ConfigurationName"};
+                Author="thomas";
+                Name="TestConfig";
+            };
+            """;
+
+        var doc = MofConverter.ConvertText(mofWithOnlyMetadata);
+
+        doc.Resources.Should().HaveCount(0);
+    }
+
+    [Fact]
+    public void ConvertText_ResourceWithoutResourceID_IsSkipped()
+    {
+        const string mofWithMissingResourceId = """
+            instance of MSFT_TestResource as $MSFT_TestResource1ref
+            {
+                SomeProp = "value";
+                ModuleName = "TestModule";
+                ModuleVersion = "1.0";
+                ConfigurationName = "TestConfig";
+            };
+
+            instance of MSFT_FileDirectoryConfiguration as $File1ref
+            {
+                ResourceID = "[File]ValidFile";
+                DestinationPath = "C:\\Temp\\file.txt";
+                Ensure = "Present";
+                ModuleName = "PSDesiredStateConfiguration";
+                ModuleVersion = "1.1";
+                ConfigurationName = "TestConfig";
+            };
+
+            instance of OMI_ConfigurationDocument
+            {
+                Version="2.0.0";
+                MinimumCompatibleVersion = "1.0.0";
+                CompatibleVersionAdditionalProperties= {"Omi_BaseResource:ConfigurationName"};
+                Author="thomas";
+                Name="TestConfig";
+            };
+            """;
+
+        var doc = MofConverter.ConvertText(mofWithMissingResourceId);
+
+        // Only the resource with a valid ResourceID should be returned
+        doc.Resources.Should().HaveCount(1);
+        doc.Resources[0].Name.Should().Be("ValidFile");
+    }
+
+    [Fact]
+    public void ConvertText_DependsOnWithNullValue_IsIgnored()
+    {
+        const string mofWithNullDepends = """
+            instance of MSFT_Environment as $Env1ref
+            {
+                ResourceID = "[Environment]EnvA";
+                Name = "ENV_A";
+                Value = "val";
+                Ensure = "Present";
+                DependsOn = null;
+                ModuleName = "PSDesiredStateConfiguration";
+                ModuleVersion = "1.1";
+                ConfigurationName = "TestConfig";
+            };
+
+            instance of OMI_ConfigurationDocument
+            {
+                Version="2.0.0";
+                MinimumCompatibleVersion = "1.0.0";
+                CompatibleVersionAdditionalProperties= {"Omi_BaseResource:ConfigurationName"};
+                Author="thomas";
+                Name="TestConfig";
+            };
+            """;
+
+        var doc = MofConverter.ConvertText(mofWithNullDepends);
+        var res = doc.Resources[0];
+
+        res.DependsOn.Should().BeNull();
+    }
 }

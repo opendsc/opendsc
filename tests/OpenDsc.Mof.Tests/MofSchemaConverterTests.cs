@@ -342,4 +342,274 @@ public class MofSchemaConverterTests
             File.Delete(tempFile);
         }
     }
+
+    // ── Additional numeric types coverage ─────────────────────────────────────
+
+    [Fact]
+    public void ConvertText_UInt8Property_IsIntegerTypeWithMinimum()
+    {
+        const string uint8Mof = """
+            [ClassVersion("1.0.0")]
+            class Uint8Resource : OMI_BaseResource
+            {
+                [Key] String Name;
+                [Write] UInt8 Value;
+            };
+            """;
+
+        var result = MofSchemaConverter.ConvertText(uint8Mof);
+        var value = result["properties"]!["Value"]!.AsObject();
+        value["type"]!.GetValue<string>().Should().Be("integer");
+        value["minimum"]!.GetValue<int>().Should().Be(0);
+    }
+
+    [Fact]
+    public void ConvertText_UInt16Property_IsIntegerTypeWithMinimum()
+    {
+        const string uint16Mof = """
+            [ClassVersion("1.0.0")]
+            class Uint16Resource : OMI_BaseResource
+            {
+                [Key] String Name;
+                [Write] UInt16 Value;
+            };
+            """;
+
+        var result = MofSchemaConverter.ConvertText(uint16Mof);
+        var value = result["properties"]!["Value"]!.AsObject();
+        value["type"]!.GetValue<string>().Should().Be("integer");
+        value["minimum"]!.GetValue<int>().Should().Be(0);
+    }
+
+    [Fact]
+    public void ConvertText_UInt64Property_IsIntegerTypeWithMinimum()
+    {
+        const string uint64Mof = """
+            [ClassVersion("1.0.0")]
+            class Uint64Resource : OMI_BaseResource
+            {
+                [Key] String Name;
+                [Write] UInt64 Value;
+            };
+            """;
+
+        var result = MofSchemaConverter.ConvertText(uint64Mof);
+        var value = result["properties"]!["Value"]!.AsObject();
+        value["type"]!.GetValue<string>().Should().Be("integer");
+        value["minimum"]!.GetValue<int>().Should().Be(0);
+    }
+
+    [Fact]
+    public void ConvertText_SInt8Property_IsIntegerType()
+    {
+        const string sint8Mof = """
+            [ClassVersion("1.0.0")]
+            class Sint8Resource : OMI_BaseResource
+            {
+                [Key] String Name;
+                [Write] SInt8 Value;
+            };
+            """;
+
+        var result = MofSchemaConverter.ConvertText(sint8Mof);
+        var value = result["properties"]!["Value"]!.AsObject();
+        value["type"]!.GetValue<string>().Should().Be("integer");
+        value.ContainsKey("minimum").Should().BeFalse();
+    }
+
+    [Fact]
+    public void ConvertText_SInt16Property_IsIntegerType()
+    {
+        const string sint16Mof = """
+            [ClassVersion("1.0.0")]
+            class Sint16Resource : OMI_BaseResource
+            {
+                [Key] String Name;
+                [Write] SInt16 Value;
+            };
+            """;
+
+        var result = MofSchemaConverter.ConvertText(sint16Mof);
+        var value = result["properties"]!["Value"]!.AsObject();
+        value["type"]!.GetValue<string>().Should().Be("integer");
+        value.ContainsKey("minimum").Should().BeFalse();
+    }
+
+    [Fact]
+    public void ConvertText_SInt64Property_IsIntegerType()
+    {
+        const string sint64Mof = """
+            [ClassVersion("1.0.0")]
+            class Sint64Resource : OMI_BaseResource
+            {
+                [Key] String Name;
+                [Write] SInt64 Value;
+            };
+            """;
+
+        var result = MofSchemaConverter.ConvertText(sint64Mof);
+        var value = result["properties"]!["Value"]!.AsObject();
+        value["type"]!.GetValue<string>().Should().Be("integer");
+        value.ContainsKey("minimum").Should().BeFalse();
+    }
+
+    [Fact]
+    public void ConvertText_Real32Property_IsNumberType()
+    {
+        const string real32Mof = """
+            [ClassVersion("1.0.0")]
+            class Real32Resource : OMI_BaseResource
+            {
+                [Key] String Name;
+                [Write] Real32 Value;
+            };
+            """;
+
+        var result = MofSchemaConverter.ConvertText(real32Mof);
+        var value = result["properties"]!["Value"]!.AsObject();
+        value["type"]!.GetValue<string>().Should().Be("number");
+    }
+
+    // ── Deep nesting (3+ levels) and error cases ──────────────────────────────
+
+    [Fact]
+    public void ConvertText_DeepNesting_ThreeLevels_AllReferencesInDefs()
+    {
+        const string deepNestingMof = """
+            [ClassVersion("1.0.0")]
+            class Level3
+            {
+                [Write] String Value;
+            };
+
+            [ClassVersion("1.0.0")]
+            class Level2
+            {
+                [Write, EmbeddedInstance("Level3")] String Data;
+            };
+
+            [ClassVersion("1.0.0")]
+            class Level1
+            {
+                [Write, EmbeddedInstance("Level2")] String Item;
+            };
+
+            [ClassVersion("1.0.0"), FriendlyName("DeepResource")]
+            class DeepResource : OMI_BaseResource
+            {
+                [Key] String Name;
+                [Write, EmbeddedInstance("Level1")] String Config;
+            };
+            """;
+
+        var result = MofSchemaConverter.ConvertText(deepNestingMof);
+        var defs = result["$defs"]!.AsObject();
+
+        defs.ContainsKey("Level1").Should().BeTrue();
+        defs.ContainsKey("Level2").Should().BeTrue();
+        defs.ContainsKey("Level3").Should().BeTrue();
+    }
+
+    [Fact]
+    public void ConvertText_ReferencedClassNotFound_CreatesRefWithoutResolution()
+    {
+        const string missingReferenceMof = """
+            [ClassVersion("1.0.0"), FriendlyName("BadRef")]
+            class BadRefResource : OMI_BaseResource
+            {
+                [Key] String Name;
+                [Write, EmbeddedInstance("NonExistentClass")] String Item;
+            };
+            """;
+
+        // The schema is created with a $ref to the non-existent class
+        // No exception is thrown - the reference is created but won't resolve
+        var result = MofSchemaConverter.ConvertText(missingReferenceMof);
+        var itemProperty = result["properties"]!["Item"]!.AsObject();
+        itemProperty["$ref"]!.GetValue<string>().Should().Be("#/$defs/NonExistentClass");
+
+        // The non-existent class won't be in $defs since it was never defined
+        result.ContainsKey("$defs").Should().BeFalse();
+    }
+
+    [Fact]
+    public void ConvertText_EmptyMofText_ThrowsInvalidOperationException()
+    {
+        const string emptyMof = "";
+
+        var act = () => MofSchemaConverter.ConvertText(emptyMof);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*OMI_BaseResource*");
+    }
+
+    [Fact]
+    public void ConvertText_OnlyHelperClasses_ThrowsInvalidOperationException()
+    {
+        const string onlyHelpersMof = """
+            [ClassVersion("1.0.0")]
+            class HelperA
+            {
+                [Write] String Value;
+            };
+
+            [ClassVersion("1.0.0")]
+            class HelperB
+            {
+                [Write] String Data;
+            };
+            """;
+
+        var act = () => MofSchemaConverter.ConvertText(onlyHelpersMof);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*OMI_BaseResource*");
+    }
+
+    [Fact]
+    public void ConvertText_MultipleReferencesToSameHelper_DeduplicatesInDefs()
+    {
+        const string multiRefMof = """
+            [ClassVersion("1.0.0")]
+            class SharedHelper
+            {
+                [Write] String Name;
+                [Write] String Value;
+            };
+
+            [ClassVersion("1.0.0"), FriendlyName("MultiRef")]
+            class MultiRefResource : OMI_BaseResource
+            {
+                [Key] String Id;
+                [Write, EmbeddedInstance("SharedHelper")] String Helper1;
+                [Write, EmbeddedInstance("SharedHelper")] String Helper2;
+                [Write, EmbeddedInstance("SharedHelper")] String Helper3[];
+            };
+            """;
+
+        var result = MofSchemaConverter.ConvertText(multiRefMof);
+        var defs = result["$defs"]!.AsObject();
+
+        // SharedHelper should appear only once in $defs despite being referenced three times
+        defs.ContainsKey("SharedHelper").Should().BeTrue();
+        defs.Count.Should().Be(1);
+    }
+
+    [Fact]
+    public void ConvertText_PrimaryClassWithNoReferencedClasses_HasNoDefs()
+    {
+        const string noDependenciesMof = """
+            [ClassVersion("1.0.0"), FriendlyName("Simple")]
+            class SimpleResource : OMI_BaseResource
+            {
+                [Key] String Name;
+                [Write] String Description;
+                [Write] UInt32 Count;
+            };
+            """;
+
+        var result = MofSchemaConverter.ConvertText(noDependenciesMof);
+
+        result["$defs"].Should().BeNull();
+    }
 }
