@@ -8,6 +8,7 @@ using Xunit;
 
 namespace OpenDsc.Schema.Tests;
 
+[Trait("Category", "Unit")]
 public class DscMessageTests
 {
     [Fact]
@@ -29,5 +30,74 @@ public class DscMessageTests
 
         message.Level.Should().Be(level);
         message.Message.Should().Be(msg);
+    }
+
+    [Theory]
+    [InlineData("Microsoft/Windows")]
+    [InlineData("Microsoft.Custom/File")]
+    [InlineData("Microsoft.Custom.Sub/Resource")]
+    public void DscMessage_WithValidType_ShouldStoreType(string type)
+    {
+        var message = new DscMessage { Type = type };
+
+        message.Type.Should().Be(type);
+    }
+
+    [Theory]
+    [InlineData("")]
+    public void DscMessage_WithEmptyType_ShouldThrowArgumentException(string type)
+    {
+        var message = new DscMessage();
+
+        var act = () => message.Type = type;
+
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("Type cannot be null or empty.");
+    }
+
+    [Fact]
+    public void DscMessage_WithNullType_ShouldThrowArgumentException()
+    {
+        var message = new DscMessage();
+
+        var act = () => message.Type = null!;
+
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("Type cannot be null or empty.");
+    }
+
+    [Theory]
+    [InlineData("InvalidType")]
+    [InlineData("Owner/")]
+    [InlineData("/Name")]
+    [InlineData("Owner/Sub/Name")]
+    [InlineData("Owner.Sub.Area.Extra/Name")]
+    [InlineData("Owner-Custom/Name")]
+    [InlineData("Owner#Special/Name")]
+    public void DscMessage_WithInvalidType_ShouldThrowArgumentException(string type)
+    {
+        var message = new DscMessage();
+
+        var act = () => message.Type = type;
+
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("Type does not match format: <owner>[.<group>][.<area>]/<name>");
+    }
+
+    [Fact]
+    public void DscMessage_WithAllProperties_ShouldStoreAllValues()
+    {
+        var message = new DscMessage
+        {
+            Name = "TestMessage",
+            Type = "Microsoft/Windows",
+            Message = "Test message content",
+            Level = DscMessageLevel.Error
+        };
+
+        message.Name.Should().Be("TestMessage");
+        message.Type.Should().Be("Microsoft/Windows");
+        message.Message.Should().Be("Test message content");
+        message.Level.Should().Be(DscMessageLevel.Error);
     }
 }
