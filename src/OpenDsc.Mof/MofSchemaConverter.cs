@@ -115,6 +115,12 @@ public static class MofSchemaConverter
         JsonObject itemSchema;
         if (embeddedInstance is not null)
         {
+            if (!classLookup.ContainsKey(embeddedInstance))
+            {
+                throw new InvalidOperationException(
+                    $"Referenced MOF class '{embeddedInstance}' was not found in the schema definitions.");
+            }
+
             referencedClasses.Add(embeddedInstance);
             itemSchema = new JsonObject { ["$ref"] = $"#/$defs/{embeddedInstance}" };
         }
