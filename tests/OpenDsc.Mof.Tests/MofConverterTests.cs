@@ -8,6 +8,7 @@ using Xunit;
 
 namespace OpenDsc.Mof.Tests;
 
+[Trait("Category", "Unit")]
 public class MofConverterTests
 {
     #region MOF test data
@@ -530,7 +531,7 @@ public class MofConverterTests
             instance of MSFT_TestResource as $MSFT_TestResource1ref
             {
                 ResourceID = "[TestResource]EnumTest";
-                Status = "Running";
+                Status = Running;
                 ModuleName = "TestModule";
                 ModuleVersion = "1.0";
                 ConfigurationName = "TestConfig";
@@ -559,7 +560,7 @@ public class MofConverterTests
             instance of MSFT_TestResource as $MSFT_TestResource1ref
             {
                 ResourceID = "[TestResource]EnumArrayTest";
-                Colors = {"Red", "Green", "Blue"};
+                Colors = {Red, Green, Blue};
                 ModuleName = "TestModule";
                 ModuleVersion = "1.0";
                 ConfigurationName = "TestConfig";

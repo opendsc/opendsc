@@ -511,7 +511,7 @@ public class MofSchemaConverterTests
     }
 
     [Fact]
-    public void ConvertText_ReferencedClassNotFound_CreatesRefWithoutResolution()
+    public void ConvertText_ReferencedClassNotFound_ThrowsInvalidOperationException()
     {
         const string missingReferenceMof = """
             [ClassVersion("1.0.0"), FriendlyName("BadRef")]
@@ -522,14 +522,9 @@ public class MofSchemaConverterTests
             };
             """;
 
-        // The schema is created with a $ref to the non-existent class
-        // No exception is thrown - the reference is created but won't resolve
-        var result = MofSchemaConverter.ConvertText(missingReferenceMof);
-        var itemProperty = result["properties"]!["Item"]!.AsObject();
-        itemProperty["$ref"]!.GetValue<string>().Should().Be("#/$defs/NonExistentClass");
-
-        // The non-existent class won't be in $defs since it was never defined
-        result.ContainsKey("$defs").Should().BeFalse();
+        // A missing embedded instance target class is an error and should throw
+        var act = () => MofSchemaConverter.ConvertText(missingReferenceMof);
+        act.Should().Throw<InvalidOperationException>();
     }
 
     [Fact]
