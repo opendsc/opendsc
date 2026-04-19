@@ -12,6 +12,7 @@ using Xunit;
 
 namespace OpenDsc.Schema.Tests;
 
+[Trait("Category", "Unit")]
 public class SemanticVersionConverterTests
 {
     private readonly JsonSerializerOptions _options = new()

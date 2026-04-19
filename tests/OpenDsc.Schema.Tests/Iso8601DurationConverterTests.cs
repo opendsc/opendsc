@@ -10,6 +10,7 @@ using Xunit;
 
 namespace OpenDsc.Schema.Tests;
 
+[Trait("Category", "Unit")]
 public class Iso8601DurationConverterTests
 {
     private readonly JsonSerializerOptions _options = new()

@@ -10,6 +10,7 @@ using Xunit;
 
 namespace OpenDsc.Schema.Tests;
 
+[Trait("Category", "Unit")]
 public class DscEnumTests
 {
     [Fact]
@@ -41,11 +42,12 @@ public class DscEnumTests
     [InlineData(DscOperation.Set, "Set")]
     [InlineData(DscOperation.Test, "Test")]
     [InlineData(DscOperation.Export, "Export")]
-    public void DscOperation_JsonSerialization_AllValues_ShouldRoundTrip(DscOperation operation, string _)
+    public void DscOperation_JsonSerialization_AllValues_ShouldRoundTrip(DscOperation operation, string expected)
     {
         var serialized = JsonSerializer.Serialize(operation);
         var deserialized = JsonSerializer.Deserialize<DscOperation>(serialized);
 
+        serialized.Should().Be($"\"{expected}\"");
         deserialized.Should().Be(operation);
     }
 
@@ -62,11 +64,12 @@ public class DscEnumTests
     [Theory]
     [InlineData(DscExecutionKind.Actual, "Actual")]
     [InlineData(DscExecutionKind.WhatIf, "WhatIf")]
-    public void DscExecutionKind_JsonSerialization_AllValues_ShouldRoundTrip(DscExecutionKind kind, string _)
+    public void DscExecutionKind_JsonSerialization_AllValues_ShouldRoundTrip(DscExecutionKind kind, string expected)
     {
         var serialized = JsonSerializer.Serialize(kind);
         var deserialized = JsonSerializer.Deserialize<DscExecutionKind>(serialized);
 
+        serialized.Should().Be($"\"{expected}\"");
         deserialized.Should().Be(kind);
     }
 
@@ -86,11 +89,12 @@ public class DscEnumTests
     [InlineData(DscSecurityContext.Current, "Current")]
     [InlineData(DscSecurityContext.Elevated, "Elevated")]
     [InlineData(DscSecurityContext.Restricted, "Restricted")]
-    public void DscSecurityContext_JsonSerialization_AllValues_ShouldRoundTrip(DscSecurityContext context, string _)
+    public void DscSecurityContext_JsonSerialization_AllValues_ShouldRoundTrip(DscSecurityContext context, string expected)
     {
         var serialized = JsonSerializer.Serialize(context);
         var deserialized = JsonSerializer.Deserialize<DscSecurityContext>(serialized);
 
+        serialized.Should().Be($"\"{expected}\"");
         deserialized.Should().Be(context);
     }
 
@@ -110,11 +114,12 @@ public class DscEnumTests
     [InlineData(DscMessageLevel.Error, "Error")]
     [InlineData(DscMessageLevel.Warning, "Warning")]
     [InlineData(DscMessageLevel.Information, "Information")]
-    public void DscMessageLevel_JsonSerialization_AllValues_ShouldRoundTrip(DscMessageLevel level, string _)
+    public void DscMessageLevel_JsonSerialization_AllValues_ShouldRoundTrip(DscMessageLevel level, string expected)
     {
         var serialized = JsonSerializer.Serialize(level);
         var deserialized = JsonSerializer.Deserialize<DscMessageLevel>(serialized);
 
+        serialized.Should().Be($"\"{expected}\"");
         deserialized.Should().Be(level);
     }
 
@@ -140,11 +145,12 @@ public class DscEnumTests
     [InlineData(DscTraceLevel.Info, "Info")]
     [InlineData(DscTraceLevel.Debug, "Debug")]
     [InlineData(DscTraceLevel.Trace, "Trace")]
-    public void DscTraceLevel_JsonSerialization_AllValues_ShouldRoundTrip(DscTraceLevel level, string _)
+    public void DscTraceLevel_JsonSerialization_AllValues_ShouldRoundTrip(DscTraceLevel level, string expected)
     {
         var serialized = JsonSerializer.Serialize(level);
         var deserialized = JsonSerializer.Deserialize<DscTraceLevel>(serialized);
 
+        serialized.Should().Be($"\"{expected}\"");
         deserialized.Should().Be(level);
     }
 

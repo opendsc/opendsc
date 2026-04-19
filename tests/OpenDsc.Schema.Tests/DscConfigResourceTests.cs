@@ -10,6 +10,7 @@ using Xunit;
 
 namespace OpenDsc.Schema.Tests;
 
+[Trait("Category", "Unit")]
 public class DscConfigResourceTests
 {
     [Fact]
@@ -108,23 +109,4 @@ public class DscConfigResourceTests
         resource.DependsOn.Should().HaveCount(1);
     }
 
-    [Fact]
-    public void DscConfigResource_Properties_ShouldBeReadOnly()
-    {
-        var resource = new DscConfigResource();
-        var properties = resource.Properties;
-
-        // Properties is IReadOnlyDictionary, so it should not support Add
-        properties.Should().BeAssignableTo<IReadOnlyDictionary<string, JsonNode?>>();
-    }
-
-    [Fact]
-    public void DscConfigResource_DependsOn_ShouldBeReadOnly()
-    {
-        var resource = new DscConfigResource { DependsOn = ["dep1", "dep2"] };
-        var dependencies = resource.DependsOn;
-
-        // DependsOn is IReadOnlyList, so it should not support Add
-        dependencies.Should().BeAssignableTo<IReadOnlyList<string>>();
-    }
 }

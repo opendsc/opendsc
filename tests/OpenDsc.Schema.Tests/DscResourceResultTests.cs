@@ -10,6 +10,7 @@ using Xunit;
 
 namespace OpenDsc.Schema.Tests;
 
+[Trait("Category", "Unit")]
 public class DscResourceResultTests
 {
     [Fact]
@@ -25,7 +26,8 @@ public class DscResourceResultTests
     [Fact]
     public void DscResourceResult_WithProperties_ShouldStoreValues()
     {
-        var jsonResult = JsonDocument.Parse("{\"test\": \"value\"}").RootElement;
+        using var doc = JsonDocument.Parse("{\"test\": \"value\"}");
+        var jsonResult = doc.RootElement.Clone();
         var result = new DscResourceResult
         {
             Name = "TestInstance",
