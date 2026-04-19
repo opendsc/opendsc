@@ -38,4 +38,66 @@ public class DscResourceResultTests
         result.Result.Should().NotBeNull();
         result.Result!.GetProperty("test").GetString().Should().Be("value");
     }
+
+    [Theory]
+    [InlineData("Microsoft/Windows")]
+    [InlineData("Microsoft.Custom/File")]
+    [InlineData("Microsoft.Custom.Sub/Resource")]
+    public void DscResourceResult_WithValidType_ShouldStoreType(string type)
+    {
+        var result = new DscResourceResult { Type = type };
+
+        result.Type.Should().Be(type);
+    }
+
+    [Theory]
+    [InlineData("")]
+    public void DscResourceResult_WithEmptyType_ShouldThrowArgumentException(string type)
+    {
+        var result = new DscResourceResult();
+
+        var act = () => result.Type = type;
+
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("Type cannot be null or empty.");
+    }
+
+    [Fact]
+    public void DscResourceResult_WithNullType_ShouldThrowArgumentException()
+    {
+        var result = new DscResourceResult();
+
+        var act = () => result.Type = null!;
+
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("Type cannot be null or empty.");
+    }
+
+    [Theory]
+    [InlineData("InvalidType")]
+    [InlineData("Owner/")]
+    [InlineData("/Name")]
+    [InlineData("Owner/Sub/Name")]
+    [InlineData("Owner.Sub.Area.Extra/Name")]
+    [InlineData("Owner-Custom/Name")]
+    [InlineData("Owner#Special/Name")]
+    public void DscResourceResult_WithInvalidType_ShouldThrowArgumentException(string type)
+    {
+        var result = new DscResourceResult();
+
+        var act = () => result.Type = type;
+
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("Type does not match format: <owner>[.<group>][.<area>]/<name>");
+    }
+
+    [Fact]
+    public void DscResourceResult_MultipleTypeAssignments_ShouldUpdateCorrectly()
+    {
+        var result = new DscResourceResult { Type = "First/Resource" };
+        result.Type.Should().Be("First/Resource");
+
+        result.Type = "Second/Resource";
+        result.Type.Should().Be("Second/Resource");
+    }
 }
