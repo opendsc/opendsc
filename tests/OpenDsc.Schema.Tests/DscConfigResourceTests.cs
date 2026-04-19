@@ -108,5 +108,4 @@ public class DscConfigResourceTests
         resource.Properties.Should().HaveCount(1);
         resource.DependsOn.Should().HaveCount(1);
     }
-
 }
