@@ -6,6 +6,7 @@ using Xunit;
 
 namespace OpenDsc.Resource.CommandLine.Tests;
 
+[Trait("Category", "Unit")]
 public class ManifestBuilderTests
 {
     [Fact]

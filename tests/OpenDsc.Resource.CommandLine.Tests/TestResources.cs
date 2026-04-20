@@ -2,9 +2,7 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
-using System.Text.Json;
 using System.Text.Json.Serialization;
-using OpenDsc.Resource;
 
 namespace OpenDsc.Resource.CommandLine.Tests;
 

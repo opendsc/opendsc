@@ -2,11 +2,11 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
-using System.CommandLine;
 using Xunit;
 
 namespace OpenDsc.Resource.CommandLine.Tests;
 
+[Trait("Category", "Unit")]
 public class CommandBuilderTests
 {
     [Fact]
