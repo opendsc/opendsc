@@ -144,6 +144,12 @@ nav:
           - MOF:
               - Import: reference/extensions/mof-import.md
 
+      - PowerShell:
+          Authoring:
+            - reference/powershell/authoring/index.md
+            - ConvertFrom-DscConfigurationMof: reference/powershell/authoring/ConvertFrom-DscConfigurationMof.md
+            - ConvertFrom-DscSchemaMof: reference/powershell/authoring/ConvertFrom-DscSchemaMof.md
+
       - Resources:
           - reference/resources/index.md
           - Archive:
