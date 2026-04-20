@@ -79,7 +79,6 @@ public class ManifestBuilderTests
 
         // Assert
         Assert.NotNull(manifest.Get);
-
     }
 
     [Fact]
