@@ -588,7 +588,7 @@ public sealed class ValueTests
         }
     }
 
-    // GetSchema path with exception
+    // Null instance handling for Get/Set/Delete
     [Fact]
     public void Get_NullInstance_ThrowsArgumentNullException()
     {
@@ -762,7 +762,7 @@ public sealed class ValueTests
 
     // Error cases for JSONPath parsing
     [Fact]
-    public void ParseJsonPath_InvalidSyntax_ThrowsPathParseException()
+    public void ParseJsonPath_InvalidSyntax_ThrowsException()
     {
         var tempFile = Path.Combine(Path.GetTempPath(), $"jsonvalue_{Guid.NewGuid():N}.json");
         File.WriteAllText(tempFile, "{ \"config\": {} }", System.Text.Encoding.UTF8);
@@ -1093,7 +1093,7 @@ public sealed class ValueTests
         }
     }
 
-    // Test Coverage for Schema ClassName and Version attributes
+    // Ensure ValueSchema exposes the expected properties
     [Fact]
     public void Schema_HasExpectedProperties()
     {
@@ -1206,7 +1206,7 @@ public sealed class ValueTests
 
     // Test: Array with only null elements
     [Fact]
-    public void Set_ArrayWithNullElements_PaddsWithNulls()
+    public void Set_ArrayWithNullElements_PadsWithNulls()
     {
         var tempFile = Path.Combine(Path.GetTempPath(), $"jsonvalue_{Guid.NewGuid():N}.json");
         File.WriteAllText(tempFile, "{ \"data\": [] }", System.Text.Encoding.UTF8);
@@ -1259,7 +1259,7 @@ public sealed class ValueTests
 
     // Test: JSONPath that doesn't match any elements (e.g., accessing property on array)
     [Fact]
-    public void Get_NonExistentPathInArray_ReturnExistFalse()
+    public void Get_NonExistentPathInArray_ReturnsExistFalse()
     {
         var tempFile = Path.Combine(Path.GetTempPath(), $"jsonvalue_{Guid.NewGuid():N}.json");
         // Create an array at root
