@@ -78,14 +78,14 @@ public class ResourceRegistryTests
     }
 
     [Fact]
-    public void CommandBuilder_BuildThenAddResource_BuildAgainSucceeds()
+    public void CommandBuilder_BuildTwice_ProducesSameResult()
     {
         // Arrange
         var builder = new CommandBuilder();
         builder.AddResource<TestResourceAll, TestSchema>(new TestResourceAll());
         var root1 = builder.Build();
 
-        // Act - note: builder state already has the resource
+        // Act - calling Build() again with the same resource registration
         var root2 = builder.Build();
 
         // Assert
@@ -240,13 +240,9 @@ public class ResourceRegistryTests
         var root = builder.Build();
         var getCommand = root.Subcommands.First(c => c.Name == "get");
 
-        // Assert - with single resource, shouldn't have --resource option as required
+        // Assert - with single resource, the --resource option should not be present
         var resourceOption = getCommand.Options.FirstOrDefault(o => o.Name == "resource");
-        if (resourceOption != null)
-        {
-            // The option exists but shouldn't be required for single resource
-            Assert.NotNull(resourceOption);
-        }
+        Assert.Null(resourceOption);
     }
 
     [Fact]

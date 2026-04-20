@@ -140,10 +140,10 @@ public class TestResourceNoOps : DscResource<TestSchema>
 /// <summary>
 /// Test resource without DscResourceAttribute (for error testing)
 /// </summary>
-public class TestResourceNoBadAttribute : DscResource<TestSchema>,
+public class TestResourceMissingDscResourceAttribute : DscResource<TestSchema>,
     IGettable<TestSchema>
 {
-    public TestResourceNoBadAttribute() : base(new TestSourceGenerationContext())
+    public TestResourceMissingDscResourceAttribute() : base(new TestSourceGenerationContext())
     {
     }
 

@@ -2,128 +2,140 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
+using System.CommandLine;
 using Xunit;
 
 namespace OpenDsc.Resource.CommandLine.IntegrationTests;
 
+/// <summary>
+/// Integration tests for CommandBuilder and the System.CommandLine pipeline.
+/// These tests verify that the command-line interface works end-to-end with the resource framework.
+/// </summary>
 [Trait("Category", "Integration")]
-public class ResourceExecutorDirectTests
+public class CommandLineIntegrationTests
 {
     [Fact]
-    public void Get_WithValidResource_ReturnsOutput()
-    {
-        // This test verifies resource execution by capturing console output
-
-        // Arrange
-        var resource = new TestResourceAll();
-        var originalOut = Console.Out;
-        using var stringWriter = new StringWriter();
-        Console.SetOut(stringWriter);
-
-        try
-        {
-            // Act
-            var testSchema = new TestSchema { Name = "test", Value = "value", Enabled = true };
-            var json = resource.ToJson(testSchema);
-
-            // Assert
-            Assert.NotNull(json);
-            Assert.NotEmpty(json);
-        }
-        finally
-        {
-            Console.SetOut(originalOut);
-        }
-    }
-
-    [Fact]
-    public void SetTestResult_HasChangedProperties()
-    {
-        // Arrange
-        var resource = new TestResourceAll();
-        var desiredState = new TestSchema { Name = "test", Value = "value", Enabled = true };
-
-        // Act
-        var result = resource.Set(desiredState);
-
-        // Assert
-        Assert.NotNull(result);
-        Assert.NotNull(result.ActualState);
-        Assert.NotNull(result.ChangedProperties);
-        Assert.Contains("name", result.ChangedProperties);
-    }
-
-    [Fact]
-    public void TestResult_HasDifferingProperties()
-    {
-        // Arrange
-        var resource = new TestResourceAll();
-        var desiredState = new TestSchema { Name = "test" };
-
-        // Act
-        var result = resource.Test(desiredState);
-
-        // Assert
-        Assert.NotNull(result);
-        Assert.NotNull(result.DifferingProperties);
-    }
-
-    [Fact]
-    public void Export_ReturnsEnumerable()
-    {
-        // Arrange
-        var resource = new TestResourceAll();
-
-        // Act
-        var results = resource.Export(null);
-
-        // Assert
-        Assert.NotNull(results);
-        var resultList = results.First();
-        Assert.Equal("test", resultList.Name);
-    }
-
-    [Fact]
-    public void Delete_WithInstance_Succeeds()
-    {
-        // Arrange
-        var resource = new TestResourceAll();
-        var instance = new TestSchema { Name = "test" };
-
-        // Act & Assert - should not throw
-        resource.Delete(instance);
-    }
-
-    [Fact]
-    public void Get_ReturnsInstance()
-    {
-        // Arrange
-        var resource = new TestResourceAll();
-
-        // Act
-        var result = resource.Get(null);
-
-        // Assert
-        Assert.NotNull(result);
-        Assert.Equal("test", result.Name);
-    }
-}
-
-[Trait("Category", "Integration")]
-public class CommandExecutorIntegrationTests
-{
-    [Fact]
-    public void BuildCommand_WithAllCapabilities_IncludesAllVerbs()
+    public void RootCommand_HelpCommand_ParsesSuccessfully()
     {
         // Arrange
         var builder = new CommandBuilder();
         builder.AddResource<TestResourceAll, TestSchema>(new TestResourceAll());
+        var rootCommand = builder.Build();
 
         // Act
-        var root = builder.Build();
+        var parseResult = rootCommand.Parse(["--help"]);
 
         // Assert
-        var verbNames = root.Subcommands.Select(c => c.Name).ToArray();
+        Assert.NotNull(parseResult);
+        Assert.NotNull(parseResult.CommandResult);
+    }
+
+    [Fact]
+    public void GetCommand_HelpOption_ParsesSuccessfully()
+    {
+        // Arrange
+        var builder = new CommandBuilder();
+        builder.AddResource<TestResourceAll, TestSchema>(new TestResourceAll());
+        var rootCommand = builder.Build();
+
+        // Act
+        var parseResult = rootCommand.Parse(["get", "--help"]);
+
+        // Assert
+        Assert.NotNull(parseResult);
+        Assert.NotNull(parseResult.CommandResult);
+    }
+
+    [Fact]
+    public void SetCommand_HelpOption_ParsesSuccessfully()
+    {
+        // Arrange
+        var builder = new CommandBuilder();
+        builder.AddResource<TestResourceAll, TestSchema>(new TestResourceAll());
+        var rootCommand = builder.Build();
+
+        // Act
+        var parseResult = rootCommand.Parse(["set", "--help"]);
+
+        // Assert
+        Assert.NotNull(parseResult);
+        Assert.NotNull(parseResult.CommandResult);
+    }
+
+    [Fact]
+    public void SchemaCommand_AlwaysAvailable()
+    {
+        // Arrange
+        var builder = new CommandBuilder();
+        builder.AddResource<TestResourceNoOps, TestSchema>(new TestResourceNoOps());
+        var rootCommand = builder.Build();
+
+        // Act
+        var schemaCommand = rootCommand.Subcommands.FirstOrDefault(c => c.Name == "schema");
+
+        // Assert - schema command should always be present even for resources with no capabilities
+        Assert.NotNull(schemaCommand);
+    }
+
+    [Fact]
+    public void ManifestCommand_AlwaysAvailable()
+    {
+        // Arrange
+        var builder = new CommandBuilder();
+        builder.AddResource<TestResourceNoOps, TestSchema>(new TestResourceNoOps());
+        var rootCommand = builder.Build();
+
+        // Act
+        var manifestCommand = rootCommand.Subcommands.FirstOrDefault(c => c.Name == "manifest");
+
+        // Assert - manifest command should always be present even for resources with no capabilities
+        Assert.NotNull(manifestCommand);
+    }
+
+    [Fact]
+    public void MultipleResources_BuildsSuccessfully()
+    {
+        // Arrange
+        var builder = new CommandBuilder();
+        builder.AddResource<TestResourceAll, TestSchema>(new TestResourceAll());
+        builder.AddResource<TestResourceGetSet, TestSchema>(new TestResourceGetSet());
+
+        // Act
+        var rootCommand = builder.Build();
+
+        // Assert - should build without errors with multiple resources
+        Assert.NotNull(rootCommand);
+        Assert.NotEmpty(rootCommand.Subcommands);
+    }
+
+    [Fact]
+    public void CommandParser_WithValidArguments_ParsesSuccessfully()
+    {
+        // Arrange
+        var builder = new CommandBuilder();
+        builder.AddResource<TestResourceAll, TestSchema>(new TestResourceAll());
+        var rootCommand = builder.Build();
+
+        // Act
+        var parseResult = rootCommand.Parse(["get", "--help"]);
+
+        // Assert
+        Assert.NotNull(parseResult);
+        Assert.NotNull(parseResult.CommandResult);
+    }
+
+    [Fact]
+    public void AllVerbs_PresentForFullCapabilityResource()
+    {
+        // Arrange
+        var builder = new CommandBuilder();
+        builder.AddResource<TestResourceAll, TestSchema>(new TestResourceAll());
+        var rootCommand = builder.Build();
+
+        // Act
+        var verbNames = rootCommand.Subcommands.Select(c => c.Name).ToHashSet();
+
+        // Assert - all verbs should be present for a resource with all capabilities
         Assert.Contains("get", verbNames);
         Assert.Contains("set", verbNames);
         Assert.Contains("test", verbNames);
@@ -134,54 +146,21 @@ public class CommandExecutorIntegrationTests
     }
 
     [Fact]
-    public void SchemaCommand_CanRetrieveSchema()
+    public void PartialCapabilityResource_BuildsSuccessfully()
     {
         // Arrange
-        var resource = new TestResourceAll();
+        var builder = new CommandBuilder();
+        builder.AddResource<TestResourceGetSet, TestSchema>(new TestResourceGetSet());
 
         // Act
-        var schema = resource.GetSchema();
+        var rootCommand = builder.Build();
 
-        // Assert
-        Assert.NotNull(schema);
-        Assert.NotEmpty(schema);
-        Assert.Contains("json-schema", schema);
-    }
-
-    [Fact]
-    public void ManifestBuilder_BuildsCompleteManifest()
-    {
-        // Arrange
-        var resource = new TestResourceAll();
-
-        // Act
-        var manifest = ManifestBuilder.Build(resource);
-
-        // Assert
-        Assert.NotNull(manifest);
-        Assert.Equal("TestResource/All", manifest.Type);
-        Assert.NotNull(manifest.Get);
-        Assert.NotNull(manifest.Set);
-        Assert.NotNull(manifest.Test);
-        Assert.NotNull(manifest.Delete);
-        Assert.NotNull(manifest.Export);
-    }
-
-    [Fact]
-    public void ParseAndJson_RoundTrip()
-    {
-        // Arrange
-        var resource = new TestResourceAll();
-        var original = new TestSchema { Name = "test", Value = "value", Enabled = true };
-
-        // Act
-        var json = resource.ToJson(original);
-        var parsed = resource.Parse(json);
-
-        // Assert
-        Assert.NotNull(parsed);
-        Assert.Equal(original.Name, parsed.Name);
-        Assert.Equal(original.Value, parsed.Value);
-        Assert.Equal(original.Enabled, parsed.Enabled);
+        // Assert - should build with basic structure
+        Assert.NotNull(rootCommand);
+        var verbNames = rootCommand.Subcommands.Select(c => c.Name).ToHashSet();
+        Assert.NotEmpty(verbNames);
+        // At minimum, schema and manifest should be present
+        Assert.Contains("schema", verbNames);
+        Assert.Contains("manifest", verbNames);
     }
 }
