@@ -3,15 +3,13 @@
 // terms of the MIT license.
 
 using System.Text.Json;
-using AwesomeAssertions;
-using NuGet.Versioning;
-using Xunit;
 
 namespace OpenDsc.Resource.Tests;
 
 /// <summary>
 /// Tests for critical coverage gaps to reach higher percentages
 /// </summary>
+[Trait("Category", "Unit")]
 public class CriticalCoverageGapTests
 {
     [Fact]
@@ -36,33 +34,33 @@ public class CriticalCoverageGapTests
     }
 
     [Fact]
-    public void DscResource_Parse_EmptyString_ThrowsException()
+    public void DscResource_Parse_EmptyString_ThrowsJsonException()
     {
         var resource = new TestResource(SourceGenerationContext.Default);
 
         var action = () => resource.Parse("");
 
-        action.Should().Throw<Exception>();
+        action.Should().Throw<JsonException>();
     }
 
     [Fact]
-    public void DscResource_Parse_Whitespace_ThrowsException()
+    public void DscResource_Parse_Whitespace_ThrowsJsonException()
     {
         var resource = new TestResource(SourceGenerationContext.Default);
 
         var action = () => resource.Parse("   ");
 
-        action.Should().Throw<Exception>();
+        action.Should().Throw<JsonException>();
     }
 
     [Fact]
-    public void DscResource_Parse_MalformedJson_ThrowsException()
+    public void DscResource_Parse_MalformedJson_ThrowsJsonException()
     {
         var resource = new TestResource(SourceGenerationContext.Default);
 
         var action = () => resource.Parse("{incomplete");
 
-        action.Should().Throw<Exception>();
+        action.Should().Throw<JsonException>();
     }
 
     [Fact]

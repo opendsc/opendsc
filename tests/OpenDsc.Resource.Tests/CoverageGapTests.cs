@@ -3,15 +3,13 @@
 // terms of the MIT license.
 
 using System.Text.Json;
-using AwesomeAssertions;
-using NuGet.Versioning;
-using Xunit;
 
 namespace OpenDsc.Resource.Tests;
 
 /// <summary>
 /// Tests for DscResourceAttribute additional variants and edge cases
 /// </summary>
+[Trait("Category", "Unit")]
 public class DscResourceAttributeExtendedTests
 {
     [Fact]

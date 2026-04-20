@@ -3,10 +3,10 @@
 // terms of the MIT license.
 
 using System.Text.Json;
-using AwesomeAssertions;
-using Xunit;
 
 namespace OpenDsc.Resource.Tests;
+
+[Trait("Category", "Unit")]
 
 /// <summary>
 /// Tests for JsonInputArg to achieve 100% coverage
@@ -84,8 +84,7 @@ public class DscResourceEdgeCasesTests
 
         var action = () => resource.Parse(invalidJson);
 
-        // Should throw JsonException for type mismatch
-        action.Should().Throw<Exception>();
+        action.Should().Throw<JsonException>();
     }
 
     [Fact]

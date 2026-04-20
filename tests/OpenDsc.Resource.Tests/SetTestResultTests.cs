@@ -2,10 +2,9 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
-using AwesomeAssertions;
-using Xunit;
-
 namespace OpenDsc.Resource.Tests;
+
+[Trait("Category", "Unit")]
 
 public class SetResultTests
 {
@@ -24,7 +23,10 @@ public class SetResultTests
         var state = new TestSchema { Name = "test", Value = 42 };
         var result = new SetResult<TestSchema>(state);
 
-        result.ActualState.Should().Be(state);
+        var property = typeof(SetResult<TestSchema>).GetProperty(nameof(SetResult<TestSchema>.ActualState));
+
+        property.Should().NotBeNull();
+        property!.SetMethod.Should().BeNull();
     }
 
     [Fact]

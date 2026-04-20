@@ -2,11 +2,9 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
-using System.Text.Json.Schema;
-using AwesomeAssertions;
-using Xunit;
-
 namespace OpenDsc.Resource.Tests;
+
+[Trait("Category", "Unit")]
 
 public class DscJsonSchemaExporterOptionsTests
 {
