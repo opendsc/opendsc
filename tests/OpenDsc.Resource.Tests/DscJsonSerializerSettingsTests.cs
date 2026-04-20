@@ -5,10 +5,13 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
+using AwesomeAssertions;
+
+using Xunit;
+
 namespace OpenDsc.Resource.Tests;
 
 [Trait("Category", "Unit")]
-
 public class DscJsonSerializerSettingsTests
 {
     [Fact]

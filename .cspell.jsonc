@@ -87,6 +87,7 @@
     "pymdownx",
     "rdev",
     "rendermode",
+    "reparsed",
     "Runspace",
     "Runspaces",
     "rwxr",

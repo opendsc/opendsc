@@ -4,10 +4,13 @@
 
 using System.Text.Json;
 
+using AwesomeAssertions;
+
+using Xunit;
+
 namespace OpenDsc.Resource.Tests;
 
 [Trait("Category", "Unit")]
-
 public class LoggerTests
 {
     [Fact]

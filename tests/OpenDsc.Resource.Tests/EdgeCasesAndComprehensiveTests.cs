@@ -4,13 +4,13 @@
 
 using System.Text.Json;
 
+using AwesomeAssertions;
+
+using Xunit;
+
 namespace OpenDsc.Resource.Tests;
 
 [Trait("Category", "Unit")]
-
-/// <summary>
-/// Tests for JsonInputArg to achieve 100% coverage
-/// </summary>
 public class JsonInputArgTests
 {
     [Fact]

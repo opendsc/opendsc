@@ -4,6 +4,12 @@
 
 using System.Text.Json;
 
+using AwesomeAssertions;
+
+using NuGet.Versioning;
+
+using Xunit;
+
 namespace OpenDsc.Resource.Tests;
 
 /// <summary>

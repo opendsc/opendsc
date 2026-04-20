@@ -4,11 +4,12 @@
 
 using System.Text.Json;
 
+using AwesomeAssertions;
+
+using Xunit;
+
 namespace OpenDsc.Resource.Tests;
 
-/// <summary>
-/// Tests for critical coverage gaps to reach higher percentages
-/// </summary>
 [Trait("Category", "Unit")]
 public class CriticalCoverageGapTests
 {
