@@ -4,10 +4,10 @@
 
 using System.Text.Json.Serialization;
 
-namespace OpenDsc.Resource.CommandLine.Tests;
+namespace OpenDsc.Resource.CommandLine.IntegrationTests;
 
 /// <summary>
-/// Test schema for unit tests
+/// Test schema for integration tests
 /// </summary>
 public class TestSchema
 {
