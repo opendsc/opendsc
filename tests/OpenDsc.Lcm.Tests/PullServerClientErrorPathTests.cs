@@ -276,7 +276,7 @@ public class PullServerClientErrorPathTests
             .ReturnsAsync(new HttpResponseMessage
             {
                 StatusCode = statusCode,
-                Content = new ByteArrayContent(new byte[] { })
+                Content = new ByteArrayContent([])
             });
 
         var client = new PullServerClient(_httpClient, _httpClientFactoryMock.Object, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);

@@ -24,7 +24,6 @@ public class DscExecutorComprehensiveCoverageTests
     /// Minimal coverage tests for DscExecutor private methods.
     /// These tests use reflection to verify private methods exist and basic reflection calls work.
     /// </summary>
-
     [Fact]
     public void ParseDscResult_MethodExists()
     {
