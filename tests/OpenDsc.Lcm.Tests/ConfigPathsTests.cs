@@ -53,4 +53,22 @@ public sealed class ConfigPathsTests
 
         configDir.ToLowerInvariant().Should().Contain("opendsc");
     }
+
+    [Fact]
+    public void GetLcmConfigPath_ShouldReturnConfigFileInLcmDirectory()
+    {
+        var configPath = ConfigPaths.GetLcmConfigPath();
+
+        Path.GetFileName(configPath).Should().Be("appsettings.json");
+        configPath.ToLowerInvariant().Should().Contain("lcm");
+    }
+
+    [Fact]
+    public void GetLcmConfigPath_ShouldContainConfigDirectoryPath()
+    {
+        var configPath = ConfigPaths.GetLcmConfigPath();
+        var configDir = ConfigPaths.GetLcmConfigDirectory();
+
+        configPath.Should().StartWith(configDir);
+    }
 }
