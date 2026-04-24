@@ -14,20 +14,16 @@ namespace OpenDsc.Lcm.Tests;
 public class ConfigPathsPlatformTests
 {
     [Fact]
-    public void GetLcmConfigDirectory_OnUnsupportedPlatform_ThrowsPlatformNotSupportedException()
+    public void GetLcmConfigDirectory_OnCurrentPlatform_ReturnsValidPath()
     {
-        // This test uses reflection to mock RuntimeInformation.IsOSPlatform()
-        // to simulate an unsupported platform (none of Windows, Linux, OSX return true)
+        // Verifies that GetLcmConfigDirectory returns a valid path on the current platform
+        // (Unable to test PlatformNotSupportedException without runtime instrumentation
+        // to mock RuntimeInformation.IsOSPlatform())
 
         var method = typeof(ConfigPaths).GetMethod("GetLcmConfigDirectory",
             BindingFlags.Public | BindingFlags.Static);
 
         method.Should().NotBeNull();
-
-        // On the current platform, one of the checks will pass, so we can only test
-        // that the method succeeds rather than testing the PlatformNotSupportedException
-        // For true unsupported platform testing, we'd need to mock RuntimeInformation
-        // which is not practical without runtime instrumentation
 
         var result = method!.Invoke(null, null);
         result.Should().BeOfType<string>();

@@ -169,15 +169,18 @@ public class DscExecutorErrorPathTests
     }
 
     [Fact]
-    public void FindExecutableInPath_WithValidDotnet_ReturnsPathOrNull()
+    public void FindExecutableInPath_WithDefaultPath_ReturnsStringOrNull()
     {
         var findMethod = typeof(DscExecutor).GetMethod("FindExecutableInPath",
             BindingFlags.NonPublic | BindingFlags.Static);
 
         var result = findMethod!.Invoke(null, []) as string;
 
-        // May or may not find dsc depending on system configuration
-        (result == null || result is string).Should().BeTrue();
+        // Result should be null if dsc is not in PATH, or a valid string path if found
+        result.Should().SatisfyAny(
+            r => r == null,
+            r => !string.IsNullOrEmpty(r) && Path.IsPathRooted(r)
+        );
     }
 
     [Fact]

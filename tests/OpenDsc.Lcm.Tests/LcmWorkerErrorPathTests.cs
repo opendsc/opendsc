@@ -71,6 +71,26 @@ public class LcmWorkerErrorPathTests
         // Simulate a validation error during config reload
         changeCallbacks.Should().HaveCountGreaterThan(0);
 
+        // Invoke the callback with an invalid config to trigger validation error
+        var invalidConfig = new LcmConfig
+        {
+            ConfigurationMode = ConfigurationMode.Monitor,
+            ConfigurationPath = string.Empty,
+            ConfigurationModeInterval = TimeSpan.Zero
+        };
+
+        changeCallbacks[0](invalidConfig, null);
+
+        // Verify error was logged
+        loggerMock.Verify(
+            x => x.Log(
+                LogLevel.Error,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, _) => v != null),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.AtLeastOnce);
+
         await worker.StopAsync(TestContext.Current.CancellationToken);
     }
 

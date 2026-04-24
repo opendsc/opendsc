@@ -65,9 +65,9 @@ public class PullServerClientErrorPathTests
     }
 
     [Fact]
-    public async Task RegisterAsync_WithNullServerUrl_ReturnsNull()
+    public async Task RegisterAsync_WithEmptyServerUrl_ReturnsNull()
     {
-        var configWithNullServerUrl = new LcmConfig
+        var configWithEmptyServerUrl = new LcmConfig
         {
             ConfigurationMode = ConfigurationMode.Monitor,
             ConfigurationSource = ConfigurationSource.Pull,
@@ -78,7 +78,7 @@ public class PullServerClientErrorPathTests
             }
         };
 
-        _configMonitorMock.Setup(x => x.CurrentValue).Returns(configWithNullServerUrl);
+        _configMonitorMock.Setup(x => x.CurrentValue).Returns(configWithEmptyServerUrl);
 
         var client = new PullServerClient(_httpClient, _httpClientFactoryMock.Object, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
 
@@ -88,9 +88,9 @@ public class PullServerClientErrorPathTests
     }
 
     [Fact]
-    public async Task RegisterAsync_WithNullRegistrationKey_ReturnsNull()
+    public async Task RegisterAsync_WithEmptyRegistrationKey_ReturnsNull()
     {
-        var configWithNullKey = new LcmConfig
+        var configWithEmptyKey = new LcmConfig
         {
             ConfigurationMode = ConfigurationMode.Monitor,
             ConfigurationSource = ConfigurationSource.Pull,
@@ -101,7 +101,7 @@ public class PullServerClientErrorPathTests
             }
         };
 
-        _configMonitorMock.Setup(x => x.CurrentValue).Returns(configWithNullKey);
+        _configMonitorMock.Setup(x => x.CurrentValue).Returns(configWithEmptyKey);
 
         var client = new PullServerClient(_httpClient, _httpClientFactoryMock.Object, _configMonitorMock.Object, _certificateManagerMock.Object, _loggerMock.Object);
 
@@ -353,7 +353,7 @@ public class PullServerClientErrorPathTests
     }
 
     [Fact]
-    public async Task GetPublicSettingsAsync_WithNullServerUrl_ReturnsNull()
+    public async Task GetPublicSettingsAsync_WithEmptyServerUrl_ReturnsNull()
     {
         var configWithoutServerUrl = new LcmConfig
         {
