@@ -72,10 +72,7 @@ public class CertificateManagerEdgeCaseTests
             var result = manager.GetClientCertificate();
 
             // Result should be either a valid certificate if created, or null if cert generation fails
-            result.Should().SatisfyAny(
-                r => r == null,
-                r => r is X509Certificate2
-            );
+            (result == null || result is X509Certificate2).Should().BeTrue();
         }
         finally
         {

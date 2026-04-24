@@ -177,10 +177,7 @@ public class DscExecutorErrorPathTests
         var result = findMethod!.Invoke(null, []) as string;
 
         // Result should be null if dsc is not in PATH, or a valid string path if found
-        result.Should().SatisfyAny(
-            r => r == null,
-            r => !string.IsNullOrEmpty(r) && Path.IsPathRooted(r)
-        );
+        (result == null || (!string.IsNullOrEmpty(result) && Path.IsPathRooted(result))).Should().BeTrue();
     }
 
     [Fact]
