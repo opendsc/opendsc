@@ -4,6 +4,7 @@
 
 using System.Runtime.InteropServices;
 
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Server.Kestrel.Https;
 
 using MudBlazor.Services;
@@ -13,6 +14,7 @@ using OpenDsc.Server.Authentication;
 using OpenDsc.Server.Components;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Endpoints;
+using OpenDsc.Server.Mcp;
 using OpenDsc.Server.Middleware;
 using OpenDsc.Server.Services;
 
@@ -85,6 +87,14 @@ builder.Services.AddScoped<IParameterService, ParameterService>();
 builder.Services.AddScoped<IJsonYamlConverter, JsonYamlConverter>();
 builder.Services.AddSingleton<NodeEndpoints>();
 
+builder.Services
+    .AddMcpServer()
+    .WithHttpTransport(options => options.Stateless = true)
+    .WithTools<NodeTools>()
+    .WithTools<ReportTools>()
+    .WithTools<ConfigurationTools>()
+    .WithPrompts<AnalysisPrompts>();
+
 if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
 {
     builder.Logging.AddSystemdConsole(options =>
@@ -133,6 +143,12 @@ app.UseAntiforgery();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
+app.MapMcp("/mcp")
+    .RequireAuthorization(policy => policy
+        .RequireAuthenticatedUser()
+        .AddAuthenticationSchemes(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            PersonalAccessTokenHandler.SchemeName));
 app.MapAuthenticationEndpoints();
 app.MapUserEndpoints();
 app.MapGroupEndpoints();
