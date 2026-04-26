@@ -403,14 +403,6 @@ public sealed class CertificateManagerTests : IDisposable
         cert.Should().BeNull();
     }
 
-    [Fact(Skip = "Requires manual ACL setup on Windows")]
-    public void GetClientCertificate_WhenAccessDeniedToPath_ReturnsNull()
-    {
-        // This test verifies the UnauthorizedAccessException handling path.
-        // Cannot be easily automated as it requires manual ACL configuration.
-        // The path is covered by actual system permissions during integration testing.
-    }
-
     [Fact]
     public void RotateCertificate_WhenCertificatePathIsEmptyString_ReturnsNull()
     {

@@ -10,5 +10,6 @@
     "**/bin": true,
     "**/obj": true,
     "**/.vs": true
-  }
+  },
+  "git.addAICoAuthor": "off"
 }
