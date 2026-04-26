@@ -71,6 +71,27 @@ public class AuthenticationEndpointsTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task CreateToken_WithInvalidScopes_ReturnsValidationProblem()
+    {
+        var tokenRequest = new { name = "Bad Scopes Token", scopes = new[] { "nodes.read", "fake.scope", "another.invalid" } };
+        var response = await _client.PostAsJsonAsync("/api/v1/auth/tokens", tokenRequest, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task CreateToken_WithValidScopes_ReturnsToken()
+    {
+        var tokenRequest = new { name = "Valid Scopes Token", scopes = new[] { "nodes.read", "nodes.write" } };
+        var response = await _client.PostAsJsonAsync("/api/v1/auth/tokens", tokenRequest, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var result = await response.Content.ReadFromJsonAsync<TokenResponse>(TestContext.Current.CancellationToken);
+        result.Should().NotBeNull();
+        result!.Name.Should().Be("Valid Scopes Token");
+    }
+
+    [Fact]
     public async Task ListTokens_ReturnsUserTokens()
     {
         // Create a test token

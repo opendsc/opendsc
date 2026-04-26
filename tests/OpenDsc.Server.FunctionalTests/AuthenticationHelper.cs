@@ -4,6 +4,7 @@
 
 using Microsoft.AspNetCore.Mvc.Testing;
 
+using OpenDsc.Server.Authorization;
 using OpenDsc.Server.Endpoints;
 
 namespace OpenDsc.Server.FunctionalTests;
@@ -41,7 +42,7 @@ public static class AuthenticationHelper
         {
             Name = $"test-token-{Guid.NewGuid()}",
             ExpiresAt = DateTimeOffset.UtcNow.AddDays(1),
-            Scopes = ["*"] // Full access
+            Scopes = [.. Permissions.AllScopes] // Full access
         };
 
         var tokenResponse = await client.PostAsJsonAsync("/api/v1/auth/tokens", tokenRequest);
