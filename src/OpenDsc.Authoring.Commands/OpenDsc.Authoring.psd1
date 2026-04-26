@@ -9,12 +9,21 @@
     RootModule           = 'OpenDsc.Authoring.Commands.dll'
     FormatsToProcess     = @('OpenDsc.Authoring.format.ps1xml')
     FunctionsToExport    = @()
-    CmdletsToExport      = @('ConvertFrom-DscConfigurationMof', 'ConvertFrom-DscSchemaMof')
+    CmdletsToExport      = @(
+        'ConvertFrom-DscConfigurationMof',
+        'ConvertFrom-DscSchemaMof',
+        'New-DscAdaptedResourceManifest',
+        'New-DscResourceManifest',
+        'New-DscPropertyOverride',
+        'Update-DscAdaptedResourceManifest',
+        'Import-DscAdaptedResourceManifest',
+        'Import-DscResourceManifest'
+    )
     VariablesToExport    = @()
     AliasesToExport      = @()
     PrivateData          = @{
         PSData = @{
-            Tags       = @('DSC', 'MOF', 'DSCv3')
+            Tags       = @('DSC', 'MOF', 'DSCv3', 'Manifest')
             ProjectUri = 'https://opendsc.dev'
             LicenseUri = 'https://github.com/opendsc/opendsc/blob/main/LICENSE'
         }

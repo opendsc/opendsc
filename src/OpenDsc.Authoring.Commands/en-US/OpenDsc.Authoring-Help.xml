@@ -1,0 +1,1068 @@
+<?xml version="1.0" encoding="utf-8"?>
+<helpItems xmlns:maml="http://schemas.microsoft.com/maml/2004/10" xmlns:command="http://schemas.microsoft.com/maml/dev/command/2004/10" xmlns:dev="http://schemas.microsoft.com/maml/dev/2004/10" schema="maml" xmlns="http://msh">
+  <command:command>
+    <command:details>
+      <command:name>ConvertFrom-DscConfigurationMof</command:name>
+      <maml:description>
+        <maml:para>Converts DSC v1 compiled MOF text to a DSC v3 configuration document.</maml:para>
+      </maml:description>
+      <command:verb>ConvertFrom</command:verb>
+      <command:noun>DscConfigurationMof</command:noun>
+    </command:details>
+    <maml:description>
+      <maml:para>Reads the text of a DSC v1 compiled MOF file and converts it to a DSC v3 `DscConfigDocument` object. Each resource instance in the MOF becomes a resource entry in the configuration document. Use the `-AsJson` switch to receive the output as a JSON string instead of an object.</maml:para>
+      <maml:para>Pipe the output of `Get-Content` on a compiled `.mof` file to this cmdlet.</maml:para>
+    </maml:description>
+    <command:syntax>
+      <command:syntaxItem>
+        <maml:name>ConvertFrom-DscConfigurationMof</maml:name>
+        <command:parameter required="false" variableLength="false" globbing="false" pipelineInput="false" position="Named" aliases="none">
+          <maml:name>AsJson</maml:name>
+          <maml:description>
+            <maml:para>If set, output JSON text instead of a `DscConfigDocument` object.</maml:para>
+          </maml:description>
+          <command:parameterValue required="false" variableLength="true">System.Management.Automation.SwitchParameter</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="true" variableLength="false" globbing="false" pipelineInput="false" position="Named" aliases="none">
+          <maml:name>InputObject</maml:name>
+          <maml:description>
+            <maml:para>The MOF text to convert. Pipe the output of `Get-Content` on a compiled `.mof`
+file.</maml:para>
+          </maml:description>
+          <command:parameterValue required="true" variableLength="true">System.String</command:parameterValue>
+        </command:parameter>
+      </command:syntaxItem>
+    </command:syntax>
+    <command:parameters>
+      <command:parameter required="false" variableLength="false" globbing="false" pipelineInput="false" position="Named" aliases="none">
+        <maml:name>AsJson</maml:name>
+        <maml:description>
+          <maml:para>If set, output JSON text instead of a `DscConfigDocument` object.</maml:para>
+        </maml:description>
+        <command:parameterValue required="false" variableLength="true">System.Management.Automation.SwitchParameter</command:parameterValue>
+      </command:parameter>
+      <command:parameter required="true" variableLength="false" globbing="false" pipelineInput="false" position="Named" aliases="none">
+        <maml:name>InputObject</maml:name>
+        <maml:description>
+          <maml:para>The MOF text to convert. Pipe the output of `Get-Content` on a compiled `.mof`
+file.</maml:para>
+        </maml:description>
+        <command:parameterValue required="true" variableLength="true">System.String</command:parameterValue>
+      </command:parameter>
+    </command:parameters>
+    <command:inputTypes>
+      <command:inputType>
+        <dev:type>
+          <dev:name>System.String</dev:name>
+        </dev:type>
+        <maml:description>
+          <maml:para>The compiled MOF text, typically piped from `Get-Content`.</maml:para>
+        </maml:description>
+      </command:inputType>
+    </command:inputTypes>
+    <command:returnValues>
+      <command:returnValue>
+        <dev:type>
+          <dev:name>OpenDsc.Schema.DscConfigDocument</dev:name>
+        </dev:type>
+        <maml:description>
+          <maml:para>When `-AsJson` is not specified, returns a `DscConfigDocument` object
+representing the DSC v3 configuration.</maml:para>
+        </maml:description>
+      </command:returnValue>
+      <command:returnValue>
+        <dev:type>
+          <dev:name>System.String</dev:name>
+        </dev:type>
+        <maml:description>
+          <maml:para>When `-AsJson` is specified, returns the configuration as a JSON string.</maml:para>
+        </maml:description>
+      </command:returnValue>
+    </command:returnValues>
+    <maml:alertSet>
+      <maml:alert>
+        <maml:para />
+      </maml:alert>
+    </maml:alertSet>
+    <command:examples>
+      <command:example>
+        <maml:title>--------- Example 1 - Convert a compiled MOF to a configuration object ---------</maml:title>
+        <maml:introduction>
+          <maml:para>```powershell
+Get-Content -Path ./localhost.mof | ConvertFrom-DscConfigurationMof
+```</maml:para>
+          <maml:para>Reads a compiled MOF file and returns a `DscConfigDocument` object.</maml:para>
+        </maml:introduction>
+        <dev:code />
+        <dev:remarks />
+      </command:example>
+      <command:example>
+        <maml:title>--------- Example 2 - Convert a compiled MOF to JSON ---------</maml:title>
+        <maml:introduction>
+          <maml:para>```powershell
+Get-Content -Path ./localhost.mof | ConvertFrom-DscConfigurationMof -AsJson
+```</maml:para>
+          <maml:para>Reads a compiled MOF file and returns the DSC v3 configuration as a JSON string.</maml:para>
+        </maml:introduction>
+        <dev:code />
+        <dev:remarks />
+      </command:example>
+      <command:example>
+        <maml:title>--------- Example 3 - Save the converted configuration to a YAML file ---------</maml:title>
+        <maml:introduction>
+          <maml:para>```powershell
+Get-Content -Path ./localhost.mof |
+    ConvertFrom-DscConfigurationMof -AsJson |
+    Set-Content -Path ./configuration.dsc.json
+```</maml:para>
+          <maml:para>Converts a compiled MOF to JSON and writes it to a file.</maml:para>
+        </maml:introduction>
+        <dev:code />
+        <dev:remarks />
+      </command:example>
+    </command:examples>
+    <command:relatedLinks>
+      <maml:navigationLink>
+        <maml:linkText>ConvertFrom-DscSchemaMof</maml:linkText>
+        <command:uri>ConvertFrom-DscSchemaMof.md</command:uri>
+      </maml:navigationLink>
+    </command:relatedLinks>
+  </command:command>
+  <command:command>
+    <command:details>
+      <command:name>ConvertFrom-DscSchemaMof</command:name>
+      <maml:description>
+        <maml:para>Converts a MOF schema class definition to a JSON Schema string.</maml:para>
+      </maml:description>
+      <command:verb>ConvertFrom</command:verb>
+      <command:noun>DscSchemaMof</command:noun>
+    </command:details>
+    <maml:description>
+      <maml:para>Reads the text of a DSC v1 `.schema.mof` file and converts each class definition to a JSON Schema document. The output is a JSON string that describes the resource properties, types, and metadata from the original MOF schema.</maml:para>
+      <maml:para>Pipe the output of `Get-Content` on a `.schema.mof` file to this cmdlet.</maml:para>
+    </maml:description>
+    <command:syntax>
+      <command:syntaxItem>
+        <maml:name>ConvertFrom-DscSchemaMof</maml:name>
+        <command:parameter required="true" variableLength="false" globbing="false" pipelineInput="false" position="Named" aliases="none">
+          <maml:name>InputObject</maml:name>
+          <maml:description>
+            <maml:para>The MOF schema text to convert. Pipe the output of `Get-Content` on a
+`.schema.mof` file.</maml:para>
+          </maml:description>
+          <command:parameterValue required="true" variableLength="true">System.String</command:parameterValue>
+        </command:parameter>
+      </command:syntaxItem>
+    </command:syntax>
+    <command:parameters>
+      <command:parameter required="true" variableLength="false" globbing="false" pipelineInput="false" position="Named" aliases="none">
+        <maml:name>InputObject</maml:name>
+        <maml:description>
+          <maml:para>The MOF schema text to convert. Pipe the output of `Get-Content` on a
+`.schema.mof` file.</maml:para>
+        </maml:description>
+        <command:parameterValue required="true" variableLength="true">System.String</command:parameterValue>
+      </command:parameter>
+    </command:parameters>
+    <command:inputTypes>
+      <command:inputType>
+        <dev:type>
+          <dev:name>System.String</dev:name>
+        </dev:type>
+        <maml:description>
+          <maml:para>The MOF schema text, typically piped from `Get-Content`.</maml:para>
+        </maml:description>
+      </command:inputType>
+    </command:inputTypes>
+    <command:returnValues>
+      <command:returnValue>
+        <dev:type>
+          <dev:name>System.String</dev:name>
+        </dev:type>
+        <maml:description>
+          <maml:para>Returns a JSON Schema string representing the converted MOF schema.</maml:para>
+        </maml:description>
+      </command:returnValue>
+    </command:returnValues>
+    <maml:alertSet>
+      <maml:alert>
+        <maml:para />
+      </maml:alert>
+    </maml:alertSet>
+    <command:examples>
+      <command:example>
+        <maml:title>--------- Example 1 - Convert a schema MOF to JSON Schema ---------</maml:title>
+        <maml:introduction>
+          <maml:para>```powershell
+Get-Content -Path ./MSFT_xWebsite.schema.mof | ConvertFrom-DscSchemaMof
+```</maml:para>
+          <maml:para>Reads a schema MOF file and returns the equivalent JSON Schema as a string.</maml:para>
+        </maml:introduction>
+        <dev:code />
+        <dev:remarks />
+      </command:example>
+      <command:example>
+        <maml:title>--------- Example 2 - Save the JSON Schema to a file ---------</maml:title>
+        <maml:introduction>
+          <maml:para>```powershell
+Get-Content -Path ./MSFT_xWebsite.schema.mof |
+    ConvertFrom-DscSchemaMof |
+    Set-Content -Path ./MSFT_xWebsite.schema.json
+```</maml:para>
+          <maml:para>Converts a schema MOF and writes the JSON Schema to a file.</maml:para>
+        </maml:introduction>
+        <dev:code />
+        <dev:remarks />
+      </command:example>
+    </command:examples>
+    <command:relatedLinks>
+      <maml:navigationLink>
+        <maml:linkText>ConvertFrom-DscConfigurationMof</maml:linkText>
+        <command:uri>ConvertFrom-DscConfigurationMof.md</command:uri>
+      </maml:navigationLink>
+    </command:relatedLinks>
+  </command:command>
+  <command:command>
+    <command:details>
+      <command:name>Import-DscAdaptedResourceManifest</command:name>
+      <maml:description>
+        <maml:para>Imports adapted resource manifest objects from `.dsc.adaptedResource.json` files.</maml:para>
+      </maml:description>
+      <command:verb>Import</command:verb>
+      <command:noun>DscAdaptedResourceManifest</command:noun>
+    </command:details>
+    <maml:description>
+      <maml:para>Reads one or more `.dsc.adaptedResource.json` files and returns `DscAdaptedResourceManifest` objects. This is the inverse of serializing a manifest with `.ToJson()` — it allows you to load existing adapted resource manifests for inspection, modification, or inclusion in a resource manifest list via `New-DscResourceManifest`.</maml:para>
+    </maml:description>
+    <command:syntax>
+      <command:syntaxItem>
+        <maml:name>Import-DscAdaptedResourceManifest</maml:name>
+        <command:parameter required="true" variableLength="false" globbing="false" pipelineInput="false" position="Named" aliases="none">
+          <maml:name>Path</maml:name>
+          <maml:description>
+            <maml:para>The path to a `.dsc.adaptedResource.json` file. Accepts pipeline input.</maml:para>
+          </maml:description>
+          <command:parameterValue required="true" variableLength="true">System.String</command:parameterValue>
+        </command:parameter>
+      </command:syntaxItem>
+    </command:syntax>
+    <command:parameters>
+      <command:parameter required="true" variableLength="false" globbing="false" pipelineInput="false" position="Named" aliases="none">
+        <maml:name>Path</maml:name>
+        <maml:description>
+          <maml:para>The path to a `.dsc.adaptedResource.json` file. Accepts pipeline input.</maml:para>
+        </maml:description>
+        <command:parameterValue required="true" variableLength="true">System.String</command:parameterValue>
+      </command:parameter>
+    </command:parameters>
+    <command:inputTypes>
+      <command:inputType>
+        <dev:type>
+          <dev:name>System.String</dev:name>
+        </dev:type>
+        <maml:description>
+          <maml:para>The path to a `.dsc.adaptedResource.json` file, typically piped from
+`Get-ChildItem`.</maml:para>
+        </maml:description>
+      </command:inputType>
+    </command:inputTypes>
+    <command:returnValues>
+      <command:returnValue>
+        <dev:type>
+          <dev:name>OpenDsc.Authoring.Commands.DscAdaptedResourceManifest</dev:name>
+        </dev:type>
+        <maml:description>
+          <maml:para>Returns a `DscAdaptedResourceManifest` object for each file. The object has
+`.ToJson()` and `.ToHashtable()` methods for serialization.</maml:para>
+        </maml:description>
+      </command:returnValue>
+    </command:returnValues>
+    <maml:alertSet>
+      <maml:alert>
+        <maml:para />
+      </maml:alert>
+    </maml:alertSet>
+    <command:examples>
+      <command:example>
+        <maml:title>--------- Example 1 - Import a single manifest ---------</maml:title>
+        <maml:introduction>
+          <maml:para>```powershell
+Import-DscAdaptedResourceManifest -Path ./MyResource.dsc.adaptedResource.json
+```</maml:para>
+          <maml:para>Imports a single adapted resource manifest and returns a
+`DscAdaptedResourceManifest` object.</maml:para>
+        </maml:introduction>
+        <dev:code />
+        <dev:remarks />
+      </command:example>
+      <command:example>
+        <maml:title>--------- Example 2 - Import all manifests in a directory ---------</maml:title>
+        <maml:introduction>
+          <maml:para>```powershell
+Get-ChildItem -Filter *.dsc.adaptedResource.json | Import-DscAdaptedResourceManifest
+```</maml:para>
+          <maml:para>Imports all adapted resource manifest files in the current directory.</maml:para>
+        </maml:introduction>
+        <dev:code />
+        <dev:remarks />
+      </command:example>
+      <command:example>
+        <maml:title>--------- Example 3 - Import and bundle into a manifest list ---------</maml:title>
+        <maml:introduction>
+          <maml:para>```powershell
+Import-DscAdaptedResourceManifest -Path ./MyResource.dsc.adaptedResource.json |
+    New-DscResourceManifest
+```</maml:para>
+          <maml:para>Imports an adapted resource manifest and bundles it into a resource manifest list.</maml:para>
+        </maml:introduction>
+        <dev:code />
+        <dev:remarks />
+      </command:example>
+    </command:examples>
+    <command:relatedLinks>
+      <maml:navigationLink>
+        <maml:linkText>New-DscAdaptedResourceManifest</maml:linkText>
+        <command:uri>New-DscAdaptedResourceManifest.md</command:uri>
+      </maml:navigationLink>
+      <maml:navigationLink>
+        <maml:linkText>New-DscResourceManifest</maml:linkText>
+        <command:uri>New-DscResourceManifest.md</command:uri>
+      </maml:navigationLink>
+    </command:relatedLinks>
+  </command:command>
+  <command:command>
+    <command:details>
+      <command:name>Import-DscResourceManifest</command:name>
+      <maml:description>
+        <maml:para>Imports a DSC resource manifest list from a `.dsc.manifests.json` file.</maml:para>
+      </maml:description>
+      <command:verb>Import</command:verb>
+      <command:noun>DscResourceManifest</command:noun>
+    </command:details>
+    <maml:description>
+      <maml:para>Reads a `.dsc.manifests.json` file and returns a `DscResourceManifestList` object containing the adapted resources, command-based resources, and extensions defined in the file. This is the inverse of serializing a manifest list with `.ToJson()`.</maml:para>
+      <maml:para>The adapted resources in the returned list are hydrated into `DscAdaptedResourceManifest` objects. Resources and extensions are stored as hashtables.</maml:para>
+    </maml:description>
+    <command:syntax>
+      <command:syntaxItem>
+        <maml:name>Import-DscResourceManifest</maml:name>
+        <command:parameter required="true" variableLength="false" globbing="false" pipelineInput="false" position="Named" aliases="none">
+          <maml:name>Path</maml:name>
+          <maml:description>
+            <maml:para>The path to a `.dsc.manifests.json` file. Accepts pipeline input.</maml:para>
+          </maml:description>
+          <command:parameterValue required="true" variableLength="true">System.String</command:parameterValue>
+        </command:parameter>
+      </command:syntaxItem>
+    </command:syntax>
+    <command:parameters>
+      <command:parameter required="true" variableLength="false" globbing="false" pipelineInput="false" position="Named" aliases="none">
+        <maml:name>Path</maml:name>
+        <maml:description>
+          <maml:para>The path to a `.dsc.manifests.json` file. Accepts pipeline input.</maml:para>
+        </maml:description>
+        <command:parameterValue required="true" variableLength="true">System.String</command:parameterValue>
+      </command:parameter>
+    </command:parameters>
+    <command:inputTypes>
+      <command:inputType>
+        <dev:type>
+          <dev:name>System.String</dev:name>
+        </dev:type>
+        <maml:description>
+          <maml:para>The path to a `.dsc.manifests.json` file, typically piped from `Get-ChildItem`.</maml:para>
+        </maml:description>
+      </command:inputType>
+    </command:inputTypes>
+    <command:returnValues>
+      <command:returnValue>
+        <dev:type>
+          <dev:name>OpenDsc.Authoring.Commands.DscResourceManifestList</dev:name>
+        </dev:type>
+        <maml:description>
+          <maml:para>Returns a `DscResourceManifestList` object with `.ToJson()` for serialization.</maml:para>
+        </maml:description>
+      </command:returnValue>
+    </command:returnValues>
+    <maml:alertSet>
+      <maml:alert>
+        <maml:para />
+      </maml:alert>
+    </maml:alertSet>
+    <command:examples>
+      <command:example>
+        <maml:title>--------- Example 1 - Import a manifest list ---------</maml:title>
+        <maml:introduction>
+          <maml:para>```powershell
+Import-DscResourceManifest -Path ./MyModule.dsc.manifests.json
+```</maml:para>
+          <maml:para>Imports a manifest list file and returns a `DscResourceManifestList` object.</maml:para>
+        </maml:introduction>
+        <dev:code />
+        <dev:remarks />
+      </command:example>
+      <command:example>
+        <maml:title>--------- Example 2 - Import all manifest lists in a directory ---------</maml:title>
+        <maml:introduction>
+          <maml:para>```powershell
+Get-ChildItem -Filter *.dsc.manifests.json | Import-DscResourceManifest
+```</maml:para>
+          <maml:para>Imports all manifest list files in the current directory.</maml:para>
+        </maml:introduction>
+        <dev:code />
+        <dev:remarks />
+      </command:example>
+      <command:example>
+        <maml:title>--------- Example 3 - Inspect the adapted resources count ---------</maml:title>
+        <maml:introduction>
+          <maml:para>```powershell
+$list = Import-DscResourceManifest -Path ./existing.dsc.manifests.json
+$list.AdaptedResources.Count
+```</maml:para>
+          <maml:para>Imports a manifest list and inspects the number of adapted resources.</maml:para>
+        </maml:introduction>
+        <dev:code />
+        <dev:remarks />
+      </command:example>
+    </command:examples>
+    <command:relatedLinks>
+      <maml:navigationLink>
+        <maml:linkText>New-DscResourceManifest</maml:linkText>
+        <command:uri>New-DscResourceManifest.md</command:uri>
+      </maml:navigationLink>
+      <maml:navigationLink>
+        <maml:linkText>Import-DscAdaptedResourceManifest</maml:linkText>
+        <command:uri>Import-DscAdaptedResourceManifest.md</command:uri>
+      </maml:navigationLink>
+    </command:relatedLinks>
+  </command:command>
+  <command:command>
+    <command:details>
+      <command:name>New-DscAdaptedResourceManifest</command:name>
+      <maml:description>
+        <maml:para>Creates adapted resource manifest objects from class-based PowerShell DSC resources.</maml:para>
+      </maml:description>
+      <command:verb>New</command:verb>
+      <command:noun>DscAdaptedResourceManifest</command:noun>
+    </command:details>
+    <maml:description>
+      <maml:para>Parses the AST of a PowerShell file (`.ps1`, `.psm1`, or `.psd1`) to find class-based DSC resources decorated with the `[DscResource()]` attribute. For each resource found, it returns a `DscAdaptedResourceManifest` object that complies with the DSCv3 adapted resource manifest JSON schema.</maml:para>
+      <maml:para>The returned objects can be serialized to JSON using the `.ToJson()` method and written to `.dsc.adaptedResource.json` files. These manifests enable DSCv3 to discover and use PowerShell DSC resources without running `Invoke-DscCacheRefresh`.</maml:para>
+      <maml:para>When a `.psd1` is provided, the RootModule is resolved and parsed automatically.</maml:para>
+    </maml:description>
+    <command:syntax>
+      <command:syntaxItem>
+        <maml:name>New-DscAdaptedResourceManifest</maml:name>
+        <command:parameter required="true" variableLength="false" globbing="false" pipelineInput="false" position="Named" aliases="none">
+          <maml:name>Path</maml:name>
+          <maml:description>
+            <maml:para>The path to a `.ps1`, `.psm1`, or `.psd1` file containing class-based DSC
+resources. When a `.psd1` is provided, the RootModule is resolved and parsed
+automatically.</maml:para>
+          </maml:description>
+          <command:parameterValue required="true" variableLength="true">System.String</command:parameterValue>
+        </command:parameter>
+      </command:syntaxItem>
+    </command:syntax>
+    <command:parameters>
+      <command:parameter required="true" variableLength="false" globbing="false" pipelineInput="false" position="Named" aliases="none">
+        <maml:name>Path</maml:name>
+        <maml:description>
+          <maml:para>The path to a `.ps1`, `.psm1`, or `.psd1` file containing class-based DSC
+resources. When a `.psd1` is provided, the RootModule is resolved and parsed
+automatically.</maml:para>
+        </maml:description>
+        <command:parameterValue required="true" variableLength="true">System.String</command:parameterValue>
+      </command:parameter>
+    </command:parameters>
+    <command:inputTypes>
+      <command:inputType>
+        <dev:type>
+          <dev:name>System.String</dev:name>
+        </dev:type>
+        <maml:description>
+          <maml:para>The path to a PowerShell file, typically piped from `Get-ChildItem`.</maml:para>
+        </maml:description>
+      </command:inputType>
+    </command:inputTypes>
+    <command:returnValues>
+      <command:returnValue>
+        <dev:type>
+          <dev:name>OpenDsc.Authoring.Commands.DscAdaptedResourceManifest</dev:name>
+        </dev:type>
+        <maml:description>
+          <maml:para>Returns a `DscAdaptedResourceManifest` object for each class-based DSC resource
+found. The object has a `.ToJson()` method for serialization to the adapted
+resource manifest JSON format.</maml:para>
+        </maml:description>
+      </command:returnValue>
+    </command:returnValues>
+    <maml:alertSet>
+      <maml:alert>
+        <maml:para />
+      </maml:alert>
+    </maml:alertSet>
+    <command:examples>
+      <command:example>
+        <maml:title>--------- Example 1 - Generate manifests from a module manifest ---------</maml:title>
+        <maml:introduction>
+          <maml:para>```powershell
+New-DscAdaptedResourceManifest -Path ./MyModule/MyModule.psd1
+```</maml:para>
+          <maml:para>Returns adapted resource manifest objects for all class-based DSC resources in
+the module.</maml:para>
+        </maml:introduction>
+        <dev:code />
+        <dev:remarks />
+      </command:example>
+      <command:example>
+        <maml:title>--------- Example 2 - Write each manifest to a JSON file ---------</maml:title>
+        <maml:introduction>
+          <maml:para>```powershell
+New-DscAdaptedResourceManifest -Path ./MyResource.ps1 | ForEach-Object {
+    $_.ToJson() | Set-Content "$($_.Type -replace '/', '.').dsc.adaptedResource.json"
+}
+```</maml:para>
+          <maml:para>Generates manifest objects and writes each to a JSON file.</maml:para>
+        </maml:introduction>
+        <dev:code />
+        <dev:remarks />
+      </command:example>
+      <command:example>
+        <maml:title>--------- Example 3 - Discover and process all modules recursively ---------</maml:title>
+        <maml:introduction>
+          <maml:para>```powershell
+Get-ChildItem -Path ./MyModules -Filter *.psd1 -Recurse | New-DscAdaptedResourceManifest
+```</maml:para>
+          <maml:para>Discovers all module manifests under `./MyModules` and pipes them into the
+cmdlet to generate adapted resource manifests for every class-based DSC resource
+found.</maml:para>
+        </maml:introduction>
+        <dev:code />
+        <dev:remarks />
+      </command:example>
+    </command:examples>
+    <command:relatedLinks>
+      <maml:navigationLink>
+        <maml:linkText>New-DscResourceManifest</maml:linkText>
+        <command:uri>New-DscResourceManifest.md</command:uri>
+      </maml:navigationLink>
+      <maml:navigationLink>
+        <maml:linkText>Update-DscAdaptedResourceManifest</maml:linkText>
+        <command:uri>Update-DscAdaptedResourceManifest.md</command:uri>
+      </maml:navigationLink>
+      <maml:navigationLink>
+        <maml:linkText>Import-DscAdaptedResourceManifest</maml:linkText>
+        <command:uri>Import-DscAdaptedResourceManifest.md</command:uri>
+      </maml:navigationLink>
+    </command:relatedLinks>
+  </command:command>
+  <command:command>
+    <command:details>
+      <command:name>New-DscPropertyOverride</command:name>
+      <maml:description>
+        <maml:para>Creates a DscPropertyOverride object for use with Update-DscAdaptedResourceManifest.</maml:para>
+      </maml:description>
+      <command:verb>New</command:verb>
+      <command:noun>DscPropertyOverride</command:noun>
+    </command:details>
+    <maml:description>
+      <maml:para>Constructs a `DscPropertyOverride` object that specifies how to modify a single property in the embedded JSON schema of an adapted resource manifest. Use this with `Update-DscAdaptedResourceManifest` to customize property descriptions, titles, JSON schema keywords, and required status.</maml:para>
+    </maml:description>
+    <command:syntax>
+      <command:syntaxItem>
+        <maml:name>New-DscPropertyOverride</maml:name>
+        <command:parameter required="false" variableLength="false" globbing="false" pipelineInput="false" position="Named" aliases="none">
+          <maml:name>Description</maml:name>
+          <maml:description>
+            <maml:para>Override the property description text.</maml:para>
+          </maml:description>
+          <command:parameterValue required="false" variableLength="true">System.String</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="false" variableLength="false" globbing="false" pipelineInput="false" position="Named" aliases="none">
+          <maml:name>JsonSchema</maml:name>
+          <maml:description>
+            <maml:para>A hashtable of JSON schema keywords to merge into the property definition (e.g.,
+`anyOf`, `oneOf`, `default`, `minimum`, `maximum`, `pattern`, `format`).</maml:para>
+          </maml:description>
+          <command:parameterValue required="false" variableLength="true">System.Collections.Specialized.OrderedDictionary</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="true" variableLength="false" globbing="false" pipelineInput="false" position="Named" aliases="none">
+          <maml:name>Name</maml:name>
+          <maml:description>
+            <maml:para>The name of the property in the embedded JSON schema to override.</maml:para>
+          </maml:description>
+          <command:parameterValue required="true" variableLength="true">System.String</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="false" variableLength="false" globbing="false" pipelineInput="false" position="Named" aliases="none">
+          <maml:name>RemoveKeys</maml:name>
+          <maml:description>
+            <maml:para>An array of JSON schema key names to remove from the property before merging
+`JsonSchema` (e.g., `'type'`, `'enum'` when replacing with `anyOf`).</maml:para>
+          </maml:description>
+          <command:parameterValue required="false" variableLength="true">System.String[]</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="false" variableLength="false" globbing="false" pipelineInput="false" position="Named" aliases="none">
+          <maml:name>Required</maml:name>
+          <maml:description>
+            <maml:para>Set to `$true` to add the property to the required list, `$false` to remove it,
+or omit to leave unchanged.</maml:para>
+          </maml:description>
+          <command:parameterValue required="false" variableLength="true">System.Nullable[System.Boolean]</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="false" variableLength="false" globbing="false" pipelineInput="false" position="Named" aliases="none">
+          <maml:name>Title</maml:name>
+          <maml:description>
+            <maml:para>Override the property title text.</maml:para>
+          </maml:description>
+          <command:parameterValue required="false" variableLength="true">System.String</command:parameterValue>
+        </command:parameter>
+      </command:syntaxItem>
+    </command:syntax>
+    <command:parameters>
+      <command:parameter required="false" variableLength="false" globbing="false" pipelineInput="false" position="Named" aliases="none">
+        <maml:name>Description</maml:name>
+        <maml:description>
+          <maml:para>Override the property description text.</maml:para>
+        </maml:description>
+        <command:parameterValue required="false" variableLength="true">System.String</command:parameterValue>
+      </command:parameter>
+      <command:parameter required="false" variableLength="false" globbing="false" pipelineInput="false" position="Named" aliases="none">
+        <maml:name>JsonSchema</maml:name>
+        <maml:description>
+          <maml:para>A hashtable of JSON schema keywords to merge into the property definition (e.g.,
+`anyOf`, `oneOf`, `default`, `minimum`, `maximum`, `pattern`, `format`).</maml:para>
+        </maml:description>
+        <command:parameterValue required="false" variableLength="true">System.Collections.Specialized.OrderedDictionary</command:parameterValue>
+      </command:parameter>
+      <command:parameter required="true" variableLength="false" globbing="false" pipelineInput="false" position="Named" aliases="none">
+        <maml:name>Name</maml:name>
+        <maml:description>
+          <maml:para>The name of the property in the embedded JSON schema to override.</maml:para>
+        </maml:description>
+        <command:parameterValue required="true" variableLength="true">System.String</command:parameterValue>
+      </command:parameter>
+      <command:parameter required="false" variableLength="false" globbing="false" pipelineInput="false" position="Named" aliases="none">
+        <maml:name>RemoveKeys</maml:name>
+        <maml:description>
+          <maml:para>An array of JSON schema key names to remove from the property before merging
+`JsonSchema` (e.g., `'type'`, `'enum'` when replacing with `anyOf`).</maml:para>
+        </maml:description>
+        <command:parameterValue required="false" variableLength="true">System.String[]</command:parameterValue>
+      </command:parameter>
+      <command:parameter required="false" variableLength="false" globbing="false" pipelineInput="false" position="Named" aliases="none">
+        <maml:name>Required</maml:name>
+        <maml:description>
+          <maml:para>Set to `$true` to add the property to the required list, `$false` to remove it,
+or omit to leave unchanged.</maml:para>
+        </maml:description>
+        <command:parameterValue required="false" variableLength="true">System.Nullable[System.Boolean]</command:parameterValue>
+      </command:parameter>
+      <command:parameter required="false" variableLength="false" globbing="false" pipelineInput="false" position="Named" aliases="none">
+        <maml:name>Title</maml:name>
+        <maml:description>
+          <maml:para>Override the property title text.</maml:para>
+        </maml:description>
+        <command:parameterValue required="false" variableLength="true">System.String</command:parameterValue>
+      </command:parameter>
+    </command:parameters>
+    <command:inputTypes>
+      <command:inputType>
+        <dev:type>
+          <dev:name>None</dev:name>
+        </dev:type>
+        <maml:description>
+          <maml:para>This cmdlet does not accept pipeline input.</maml:para>
+        </maml:description>
+      </command:inputType>
+    </command:inputTypes>
+    <command:returnValues>
+      <command:returnValue>
+        <dev:type>
+          <dev:name>OpenDsc.Authoring.Commands.DscPropertyOverride</dev:name>
+        </dev:type>
+        <maml:description>
+          <maml:para>Returns a `DscPropertyOverride` object.</maml:para>
+        </maml:description>
+      </command:returnValue>
+    </command:returnValues>
+    <maml:alertSet>
+      <maml:alert>
+        <maml:para />
+      </maml:alert>
+    </maml:alertSet>
+    <command:examples>
+      <command:example>
+        <maml:title>--------- Example 1 - Override a property description ---------</maml:title>
+        <maml:introduction>
+          <maml:para>```powershell
+New-DscPropertyOverride -Name 'Enabled' -Description 'Whether this resource is active.'
+```</maml:para>
+          <maml:para>Creates an override that sets a custom description for the `Enabled` property.</maml:para>
+        </maml:introduction>
+        <dev:code />
+        <dev:remarks />
+      </command:example>
+      <command:example>
+        <maml:title>--------- Example 2 - Replace type/enum with anyOf ---------</maml:title>
+        <maml:introduction>
+          <maml:para>```powershell
+New-DscPropertyOverride -Name 'Status' -RemoveKeys 'type','enum' -JsonSchema @{
+    anyOf = @(
+        @{ type = 'string'; enum = @('Active', 'Inactive') }
+        @{ type = 'integer'; minimum = 0 }
+    )
+}
+```</maml:para>
+          <maml:para>Creates an override that replaces the `type`/`enum` with an `anyOf` schema.</maml:para>
+        </maml:introduction>
+        <dev:code />
+        <dev:remarks />
+      </command:example>
+      <command:example>
+        <maml:title>--------- Example 3 - Create multiple overrides and apply them ---------</maml:title>
+        <maml:introduction>
+          <maml:para>```powershell
+$overrides = @(
+    New-DscPropertyOverride -Name 'Name' -Description 'The unique identifier.'
+    New-DscPropertyOverride -Name 'Count' -JsonSchema @{ minimum = 0; maximum = 100 }
+)
+$manifest | Update-DscAdaptedResourceManifest -PropertyOverride $overrides
+```</maml:para>
+          <maml:para>Creates multiple overrides and pipes them to `Update-DscAdaptedResourceManifest`.</maml:para>
+        </maml:introduction>
+        <dev:code />
+        <dev:remarks />
+      </command:example>
+    </command:examples>
+    <command:relatedLinks>
+      <maml:navigationLink>
+        <maml:linkText>Update-DscAdaptedResourceManifest</maml:linkText>
+        <command:uri>Update-DscAdaptedResourceManifest.md</command:uri>
+      </maml:navigationLink>
+    </command:relatedLinks>
+  </command:command>
+  <command:command>
+    <command:details>
+      <command:name>New-DscResourceManifest</command:name>
+      <maml:description>
+        <maml:para>Creates a DSC resource manifests list for bundling multiple resources in a single file.</maml:para>
+      </maml:description>
+      <command:verb>New</command:verb>
+      <command:noun>DscResourceManifest</command:noun>
+    </command:details>
+    <maml:description>
+      <maml:para>Builds a `DscResourceManifestList` object that can contain both adapted resources and command-based resources. The resulting object can be serialized to JSON and written to a `.dsc.manifests.json` file, which DSCv3 discovers and loads as a bundle.</maml:para>
+      <maml:para>Adapted resources can be added by piping `DscAdaptedResourceManifest` objects from `New-DscAdaptedResourceManifest`. Command-based resources can be added via the `-Resource` parameter as hashtables matching the DSCv3 resource manifest schema.</maml:para>
+    </maml:description>
+    <command:syntax>
+      <command:syntaxItem>
+        <maml:name>New-DscResourceManifest</maml:name>
+        <command:parameter required="false" variableLength="false" globbing="false" pipelineInput="false" position="Named" aliases="none">
+          <maml:name>AdaptedResource</maml:name>
+          <maml:description>
+            <maml:para>One or more `DscAdaptedResourceManifest` objects to include in the manifests
+list. These are typically produced by `New-DscAdaptedResourceManifest`.</maml:para>
+          </maml:description>
+          <command:parameterValue required="false" variableLength="true">OpenDsc.Authoring.Commands.DscAdaptedResourceManifest[]</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="false" variableLength="false" globbing="false" pipelineInput="false" position="Named" aliases="none">
+          <maml:name>Resource</maml:name>
+          <maml:description>
+            <maml:para>One or more hashtables representing command-based DSC resource manifests. Each
+hashtable should conform to the DSCv3 resource manifest schema with keys such as
+`$schema`, `type`, `version`, `get`, `set`, `test`, `schema`, etc.</maml:para>
+          </maml:description>
+          <command:parameterValue required="false" variableLength="true">System.Collections.Specialized.OrderedDictionary[]</command:parameterValue>
+        </command:parameter>
+      </command:syntaxItem>
+    </command:syntax>
+    <command:parameters>
+      <command:parameter required="false" variableLength="false" globbing="false" pipelineInput="false" position="Named" aliases="none">
+        <maml:name>AdaptedResource</maml:name>
+        <maml:description>
+          <maml:para>One or more `DscAdaptedResourceManifest` objects to include in the manifests
+list. These are typically produced by `New-DscAdaptedResourceManifest`.</maml:para>
+        </maml:description>
+        <command:parameterValue required="false" variableLength="true">OpenDsc.Authoring.Commands.DscAdaptedResourceManifest[]</command:parameterValue>
+      </command:parameter>
+      <command:parameter required="false" variableLength="false" globbing="false" pipelineInput="false" position="Named" aliases="none">
+        <maml:name>Resource</maml:name>
+        <maml:description>
+          <maml:para>One or more hashtables representing command-based DSC resource manifests. Each
+hashtable should conform to the DSCv3 resource manifest schema with keys such as
+`$schema`, `type`, `version`, `get`, `set`, `test`, `schema`, etc.</maml:para>
+        </maml:description>
+        <command:parameterValue required="false" variableLength="true">System.Collections.Specialized.OrderedDictionary[]</command:parameterValue>
+      </command:parameter>
+    </command:parameters>
+    <command:inputTypes>
+      <command:inputType>
+        <dev:type>
+          <dev:name>OpenDsc.Authoring.Commands.DscAdaptedResourceManifest</dev:name>
+        </dev:type>
+        <maml:description>
+          <maml:para>Accepts `DscAdaptedResourceManifest` objects via the pipeline.</maml:para>
+        </maml:description>
+      </command:inputType>
+    </command:inputTypes>
+    <command:returnValues>
+      <command:returnValue>
+        <dev:type>
+          <dev:name>OpenDsc.Authoring.Commands.DscResourceManifestList</dev:name>
+        </dev:type>
+        <maml:description>
+          <maml:para>Returns a `DscResourceManifestList` object with a `.ToJson()` method for
+serialization to the `.dsc.manifests.json` format.</maml:para>
+        </maml:description>
+      </command:returnValue>
+    </command:returnValues>
+    <maml:alertSet>
+      <maml:alert>
+        <maml:para />
+      </maml:alert>
+    </maml:alertSet>
+    <command:examples>
+      <command:example>
+        <maml:title>--------- Example 1 - Create a manifests list from adapted resources ---------</maml:title>
+        <maml:introduction>
+          <maml:para>```powershell
+$adapted = New-DscAdaptedResourceManifest -Path ./MyModule/MyModule.psd1
+New-DscResourceManifest -AdaptedResource $adapted
+```</maml:para>
+          <maml:para>Creates a manifests list from adapted resource manifests generated from a module.</maml:para>
+        </maml:introduction>
+        <dev:code />
+        <dev:remarks />
+      </command:example>
+      <command:example>
+        <maml:title>--------- Example 2 - Create a manifests list with a command-based resource ---------</maml:title>
+        <maml:introduction>
+          <maml:para>```powershell
+$resource = @{
+    '$schema'  = 'https://aka.ms/dsc/schemas/v3/bundled/resource/manifest.json'
+    type       = 'MyCompany/MyTool'
+    version    = '1.0.0'
+    get        = @{ executable = 'mytool'; args = @('get') }
+    set        = @{ executable = 'mytool'; args = @('set'); implementsPretest = $false; return = 'state' }
+    test       = @{ executable = 'mytool'; args = @('test'); return = 'state' }
+    exitCodes  = @{ '0' = 'Success'; '1' = 'Error' }
+    schema     = @{ command = @{ executable = 'mytool'; args = @('schema') } }
+}
+New-DscResourceManifest -Resource $resource
+```</maml:para>
+          <maml:para>Creates a manifests list containing a single command-based resource.</maml:para>
+        </maml:introduction>
+        <dev:code />
+        <dev:remarks />
+      </command:example>
+      <command:example>
+        <maml:title>--------- Example 3 - Combine adapted and command-based resources ---------</maml:title>
+        <maml:introduction>
+          <maml:para>```powershell
+$adapted = New-DscAdaptedResourceManifest -Path ./MyModule/MyModule.psd1
+$resource = @{
+    '$schema' = 'https://aka.ms/dsc/schemas/v3/bundled/resource/manifest.json'
+    type      = 'MyCompany/MyTool'
+    version   = '1.0.0'
+    get       = @{ executable = 'mytool'; args = @('get') }
+}
+New-DscResourceManifest -AdaptedResource $adapted -Resource $resource
+```</maml:para>
+          <maml:para>Creates a manifests list combining both adapted and command-based resources.</maml:para>
+        </maml:introduction>
+        <dev:code />
+        <dev:remarks />
+      </command:example>
+      <command:example>
+        <maml:title>--------- Example 4 - Pipeline adapted resources directly ---------</maml:title>
+        <maml:introduction>
+          <maml:para>```powershell
+New-DscAdaptedResourceManifest -Path ./MyModule/MyModule.psd1 |
+    New-DscResourceManifest
+```</maml:para>
+          <maml:para>Pipes adapted resource manifests directly into the cmdlet via the pipeline.</maml:para>
+        </maml:introduction>
+        <dev:code />
+        <dev:remarks />
+      </command:example>
+    </command:examples>
+    <command:relatedLinks>
+      <maml:navigationLink>
+        <maml:linkText>New-DscAdaptedResourceManifest</maml:linkText>
+        <command:uri>New-DscAdaptedResourceManifest.md</command:uri>
+      </maml:navigationLink>
+      <maml:navigationLink>
+        <maml:linkText>Import-DscResourceManifest</maml:linkText>
+        <command:uri>Import-DscResourceManifest.md</command:uri>
+      </maml:navigationLink>
+    </command:relatedLinks>
+  </command:command>
+  <command:command>
+    <command:details>
+      <command:name>Update-DscAdaptedResourceManifest</command:name>
+      <maml:description>
+        <maml:para>Applies post-processing overrides to adapted resource manifest objects.</maml:para>
+      </maml:description>
+      <command:verb>Update</command:verb>
+      <command:noun>DscAdaptedResourceManifest</command:noun>
+    </command:details>
+    <maml:description>
+      <maml:para>Modifies the embedded JSON schema of a `DscAdaptedResourceManifest` object by applying property-level overrides. This enables customization that AST extraction alone cannot provide, such as meaningful property descriptions, JSON schema keywords like `anyOf` or `oneOf` for complex type unions, default values, numeric ranges, and string patterns.</maml:para>
+      <maml:para>Property overrides are specified via `DscPropertyOverride` objects that target individual properties by name. Each override can change the description, title, required status, remove existing JSON schema keys, and merge in new JSON schema keywords.</maml:para>
+    </maml:description>
+    <command:syntax>
+      <command:syntaxItem>
+        <maml:name>Update-DscAdaptedResourceManifest</maml:name>
+        <command:parameter required="false" variableLength="false" globbing="false" pipelineInput="false" position="Named" aliases="none">
+          <maml:name>Description</maml:name>
+          <maml:description>
+            <maml:para>Override the resource-level description on both the manifest object and the
+embedded JSON schema.</maml:para>
+          </maml:description>
+          <command:parameterValue required="false" variableLength="true">System.String</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="true" variableLength="false" globbing="false" pipelineInput="false" position="Named" aliases="none">
+          <maml:name>InputObject</maml:name>
+          <maml:description>
+            <maml:para>A `DscAdaptedResourceManifest` object to update. Typically produced by
+`New-DscAdaptedResourceManifest`. Accepts pipeline input.</maml:para>
+          </maml:description>
+          <command:parameterValue required="true" variableLength="true">OpenDsc.Authoring.Commands.DscAdaptedResourceManifest</command:parameterValue>
+        </command:parameter>
+        <command:parameter required="false" variableLength="false" globbing="false" pipelineInput="false" position="Named" aliases="none">
+          <maml:name>PropertyOverride</maml:name>
+          <maml:description>
+            <maml:para>One or more `DscPropertyOverride` objects specifying modifications to individual
+properties in the embedded JSON schema. Each override targets a property by
+`Name`.</maml:para>
+          </maml:description>
+          <command:parameterValue required="false" variableLength="true">OpenDsc.Authoring.Commands.DscPropertyOverride[]</command:parameterValue>
+        </command:parameter>
+      </command:syntaxItem>
+    </command:syntax>
+    <command:parameters>
+      <command:parameter required="false" variableLength="false" globbing="false" pipelineInput="false" position="Named" aliases="none">
+        <maml:name>Description</maml:name>
+        <maml:description>
+          <maml:para>Override the resource-level description on both the manifest object and the
+embedded JSON schema.</maml:para>
+        </maml:description>
+        <command:parameterValue required="false" variableLength="true">System.String</command:parameterValue>
+      </command:parameter>
+      <command:parameter required="true" variableLength="false" globbing="false" pipelineInput="false" position="Named" aliases="none">
+        <maml:name>InputObject</maml:name>
+        <maml:description>
+          <maml:para>A `DscAdaptedResourceManifest` object to update. Typically produced by
+`New-DscAdaptedResourceManifest`. Accepts pipeline input.</maml:para>
+        </maml:description>
+        <command:parameterValue required="true" variableLength="true">OpenDsc.Authoring.Commands.DscAdaptedResourceManifest</command:parameterValue>
+      </command:parameter>
+      <command:parameter required="false" variableLength="false" globbing="false" pipelineInput="false" position="Named" aliases="none">
+        <maml:name>PropertyOverride</maml:name>
+        <maml:description>
+          <maml:para>One or more `DscPropertyOverride` objects specifying modifications to individual
+properties in the embedded JSON schema. Each override targets a property by
+`Name`.</maml:para>
+        </maml:description>
+        <command:parameterValue required="false" variableLength="true">OpenDsc.Authoring.Commands.DscPropertyOverride[]</command:parameterValue>
+      </command:parameter>
+    </command:parameters>
+    <command:inputTypes>
+      <command:inputType>
+        <dev:type>
+          <dev:name>OpenDsc.Authoring.Commands.DscAdaptedResourceManifest</dev:name>
+        </dev:type>
+        <maml:description>
+          <maml:para>Accepts `DscAdaptedResourceManifest` objects via the pipeline.</maml:para>
+        </maml:description>
+      </command:inputType>
+    </command:inputTypes>
+    <command:returnValues>
+      <command:returnValue>
+        <dev:type>
+          <dev:name>OpenDsc.Authoring.Commands.DscAdaptedResourceManifest</dev:name>
+        </dev:type>
+        <maml:description>
+          <maml:para>Returns the modified `DscAdaptedResourceManifest` object.</maml:para>
+        </maml:description>
+      </command:returnValue>
+    </command:returnValues>
+    <maml:alertSet>
+      <maml:alert>
+        <maml:para />
+      </maml:alert>
+    </maml:alertSet>
+    <command:examples>
+      <command:example>
+        <maml:title>--------- Example 1 - Override a property description ---------</maml:title>
+        <maml:introduction>
+          <maml:para>```powershell
+New-DscAdaptedResourceManifest -Path ./MyModule/MyModule.psd1 |
+    Update-DscAdaptedResourceManifest -PropertyOverride @(
+        New-DscPropertyOverride -Name 'Name' -Description 'The unique name identifying this resource instance.'
+    )
+```</maml:para>
+          <maml:para>Overrides the auto-generated description for the `Name` property.</maml:para>
+        </maml:introduction>
+        <dev:code />
+        <dev:remarks />
+      </command:example>
+      <command:example>
+        <maml:title>--------- Example 2 - Replace a property schema with anyOf ---------</maml:title>
+        <maml:introduction>
+          <maml:para>```powershell
+$overrides = @(
+    New-DscPropertyOverride -Name 'Status' -Description 'The desired status, as a label or numeric code.' -RemoveKeys 'type','enum' -JsonSchema @{
+        anyOf = @(
+            @{ type = 'string'; enum = @('Active', 'Inactive') }
+            @{ type = 'integer'; minimum = 0 }
+        )
+    }
+)
+New-DscAdaptedResourceManifest -Path ./MyModule.psd1 |
+    Update-DscAdaptedResourceManifest -PropertyOverride $overrides
+```</maml:para>
+          <maml:para>Replaces a simple enum property with an `anyOf` schema allowing either a string
+enum or an integer value.</maml:para>
+        </maml:introduction>
+        <dev:code />
+        <dev:remarks />
+      </command:example>
+      <command:example>
+        <maml:title>--------- Example 3 - Add numeric constraints and a default value ---------</maml:title>
+        <maml:introduction>
+          <maml:para>```powershell
+$override = New-DscPropertyOverride -Name 'Count' -JsonSchema @{ minimum = 0; maximum = 100; default = 1 }
+$manifest | Update-DscAdaptedResourceManifest -PropertyOverride $override
+```</maml:para>
+          <maml:para>Adds numeric constraints and a default value to an existing integer property.</maml:para>
+        </maml:introduction>
+        <dev:code />
+        <dev:remarks />
+      </command:example>
+      <command:example>
+        <maml:title>--------- Example 4 - Remove a property from the required list ---------</maml:title>
+        <maml:introduction>
+          <maml:para>```powershell
+$override = New-DscPropertyOverride -Name 'Tags' -Required $false
+$manifest | Update-DscAdaptedResourceManifest -PropertyOverride $override
+```</maml:para>
+          <maml:para>Removes a property from the required list.</maml:para>
+        </maml:introduction>
+        <dev:code />
+        <dev:remarks />
+      </command:example>
+    </command:examples>
+    <command:relatedLinks>
+      <maml:navigationLink>
+        <maml:linkText>New-DscAdaptedResourceManifest</maml:linkText>
+        <command:uri>New-DscAdaptedResourceManifest.md</command:uri>
+      </maml:navigationLink>
+      <maml:navigationLink>
+        <maml:linkText>New-DscPropertyOverride</maml:linkText>
+        <command:uri>New-DscPropertyOverride.md</command:uri>
+      </maml:navigationLink>
+    </command:relatedLinks>
+  </command:command>
+</helpItems>
