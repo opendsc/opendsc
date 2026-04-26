@@ -57,52 +57,65 @@ public partial class CertificateManager : ICertificateManager
     /// </summary>
     private X509Certificate2? GetOrCreateManagedCertificate(PullServerSettings pullServer)
     {
-        var rotationInterval = _overrideRotationInterval ?? pullServer.CertificateRotationInterval;
-        var certPath = pullServer.CertificatePath;
-
-        if (string.IsNullOrWhiteSpace(certPath))
+        try
         {
-            certPath = Path.Combine(ConfigPaths.GetLcmConfigDirectory(), "certs", "client.pfx");
-            pullServer.CertificatePath = certPath;
-        }
+            var rotationInterval = _overrideRotationInterval ?? pullServer.CertificateRotationInterval;
+            var certPath = pullServer.CertificatePath;
 
-        var certDir = Path.GetDirectoryName(certPath);
-        if (!string.IsNullOrWhiteSpace(certDir) && !Directory.Exists(certDir))
-        {
-            Directory.CreateDirectory(certDir);
-        }
-
-        if (File.Exists(certPath))
-        {
-            try
+            if (string.IsNullOrWhiteSpace(certPath))
             {
-                var existingCert = X509CertificateLoader.LoadPkcs12FromFile(
-                    certPath,
-                    pullServer.CertificatePassword,
-                    X509KeyStorageFlags.Exportable | X509KeyStorageFlags.PersistKeySet);
+                certPath = Path.Combine(ConfigPaths.GetLcmConfigDirectory(), "certs", "client.pfx");
+                pullServer.CertificatePath = certPath;
+            }
 
-                var minimumValidity = rotationInterval / 4;
-                if (existingCert.NotAfter > DateTimeOffset.UtcNow + minimumValidity)
+            var certDir = Path.GetDirectoryName(certPath);
+            if (!string.IsNullOrWhiteSpace(certDir) && !Directory.Exists(certDir))
+            {
+                Directory.CreateDirectory(certDir);
+            }
+
+            if (File.Exists(certPath))
+            {
+                try
                 {
-                    LogCertificateLoaded(existingCert.Thumbprint);
-                    return existingCert;
+                    var existingCert = X509CertificateLoader.LoadPkcs12FromFile(
+                        certPath,
+                        pullServer.CertificatePassword,
+                        X509KeyStorageFlags.Exportable | X509KeyStorageFlags.PersistKeySet);
+
+                    var minimumValidity = rotationInterval / 4;
+                    if (existingCert.NotAfter > DateTimeOffset.UtcNow + minimumValidity)
+                    {
+                        LogCertificateLoaded(existingCert.Thumbprint);
+                        return existingCert;
+                    }
+
+                    LogCertificateExpiringSoon(existingCert.Thumbprint, existingCert.NotAfter);
+                    existingCert.Dispose();
                 }
+                catch (Exception ex)
+                {
+                    LogFailedToLoadCertificate(certPath, ex);
+                }
+            }
 
-                LogCertificateExpiringSoon(existingCert.Thumbprint, existingCert.NotAfter);
-                existingCert.Dispose();
-            }
-            catch (Exception ex)
-            {
-                LogFailedToLoadCertificate(certPath, ex);
-            }
+            var newCert = GenerateSelfSignedCertificate(rotationInterval);
+            SaveCertificate(newCert, certPath, pullServer.CertificatePassword);
+            pullServer.CertificateThumbprint = newCert.Thumbprint;
+            LogCertificateGenerated(newCert.Thumbprint);
+
+            return newCert;
         }
-
-        var newCert = GenerateSelfSignedCertificate(rotationInterval);
-        SaveCertificate(newCert, certPath, pullServer.CertificatePassword);
-        pullServer.CertificateThumbprint = newCert.Thumbprint;
-        LogCertificateGenerated(newCert.Thumbprint);
-
-        return newCert;
+        catch (UnauthorizedAccessException ex)
+        {
+            LogCertificatePathAccessDenied(pullServer.CertificatePath, ex);
+            return null;
+        }
+        catch (IOException ex)
+        {
+            LogCertificatePathIoError(pullServer.CertificatePath, ex);
+            return null;
+        }
     }
 
     /// <summary>
@@ -259,4 +272,10 @@ public partial class CertificateManager : ICertificateManager
 
     [LoggerMessage(EventId = EventIds.CertificatePathNotConfigured, Level = LogLevel.Error, Message = "Certificate path not configured")]
     private partial void LogCertificatePathNotConfigured();
+
+    [LoggerMessage(EventId = EventIds.CertificatePathAccessDenied, Level = LogLevel.Error, Message = "Access denied to certificate path: {Path}")]
+    private partial void LogCertificatePathAccessDenied(string? path, Exception ex);
+
+    [LoggerMessage(EventId = EventIds.CertificatePathIoError, Level = LogLevel.Error, Message = "IO error accessing certificate path: {Path}")]
+    private partial void LogCertificatePathIoError(string? path, Exception ex);
 }

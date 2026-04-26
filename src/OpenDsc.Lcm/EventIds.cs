@@ -109,4 +109,6 @@ internal static class EventIds
     public const int CertificateRotated = 7007;
     public const int CertificateRotationNotSupported = 7008;
     public const int CertificatePathNotConfigured = 7009;
+    public const int CertificatePathAccessDenied = 7010;
+    public const int CertificatePathIoError = 7011;
 }
