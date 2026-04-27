@@ -202,4 +202,102 @@ public sealed class EnvironmentTests : WindowsTestBase
 
         results.Should().Contain(r => r.Scope == DscScope.Machine);
     }
+
+    [Fact]
+    public void Get_NullInstance_ThrowsArgumentNullException()
+    {
+        var act = () => _resource.Get(null);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Set_NullInstance_ThrowsArgumentNullException()
+    {
+        var act = () => _resource.Set(null);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Delete_NullInstance_ThrowsArgumentNullException()
+    {
+        var act = () => _resource.Delete(null);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Set_EmptyValue_SetSucceeds()
+    {
+        var schema = new EnvironmentSchema { Name = "TestVar_SetEmpty_XUnit", Value = "" };
+        try
+        {
+            _resource.Set(schema);
+
+            var result = _resource.Get(new EnvironmentSchema { Name = "TestVar_SetEmpty_XUnit" });
+
+            result.Value.Should().Be("");
+        }
+        finally
+        {
+            SysEnv.SetEnvironmentVariable("TestVar_SetEmpty_XUnit", null, EnvironmentVariableTarget.User);
+        }
+    }
+
+    [Fact]
+    public void Set_VeryLongVariableValue_SavesCorrectly()
+    {
+        var longValue = string.Concat(Enumerable.Repeat("x", 1000));
+        var schema = new EnvironmentSchema { Name = "TestVar_LongValue_XUnit", Value = longValue };
+        try
+        {
+            _resource.Set(schema);
+
+            var result = _resource.Get(new EnvironmentSchema { Name = "TestVar_LongValue_XUnit" });
+
+            result.Value.Should().Be(longValue);
+        }
+        finally
+        {
+            SysEnv.SetEnvironmentVariable("TestVar_LongValue_XUnit", null, EnvironmentVariableTarget.User);
+        }
+    }
+
+    [Fact]
+    public void Set_VariableWithUnicodeCharacters_SavesCorrectly()
+    {
+        const string value = "日本語テスト🎉Test";
+        var schema = new EnvironmentSchema { Name = "TestVar_Unicode_XUnit", Value = value };
+        try
+        {
+            _resource.Set(schema);
+
+            var result = _resource.Get(new EnvironmentSchema { Name = "TestVar_Unicode_XUnit" });
+
+            result.Value.Should().Be(value);
+        }
+        finally
+        {
+            SysEnv.SetEnvironmentVariable("TestVar_Unicode_XUnit", null, EnvironmentVariableTarget.User);
+        }
+    }
+
+    [Fact]
+    public void Set_VariableNameWithSpecialCharacters_CreatesVariable()
+    {
+        var schema = new EnvironmentSchema { Name = "TestVar_Special_123_XUnit", Value = "TestValue" };
+        try
+        {
+            _resource.Set(schema);
+
+            var result = _resource.Get(new EnvironmentSchema { Name = "TestVar_Special_123_XUnit" });
+
+            result.Value.Should().Be("TestValue");
+        }
+        finally
+        {
+            SysEnv.SetEnvironmentVariable("TestVar_Special_123_XUnit", null, EnvironmentVariableTarget.User);
+        }
+    }
 }

@@ -11,6 +11,7 @@ using Xunit;
 
 using ShortcutResource = OpenDsc.Resource.Windows.Shortcut.Resource;
 using ShortcutSchema = OpenDsc.Resource.Windows.Shortcut.Schema;
+using ShortcutWindowStyle = OpenDsc.Resource.Windows.Shortcut.WindowStyle;
 
 namespace OpenDsc.Resource.Windows.Tests.Shortcut;
 
@@ -257,5 +258,155 @@ public sealed class ShortcutTests : WindowsTestBase
                 File.Delete(shortcutPath);
             }
         }
+    }
+
+    [Fact]
+    public void Set_WindowStyleMinimized_StoresWindowStyle()
+    {
+        var shortcutPath = Path.Combine(Path.GetTempPath(), $"shortcut_winstyle_{Guid.NewGuid():N}.lnk");
+        var targetPath = Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.Windows), "System32", "notepad.exe");
+
+        try
+        {
+            _resource.Set(new ShortcutSchema
+            {
+                Path = shortcutPath,
+                TargetPath = targetPath,
+                WindowStyle = ShortcutWindowStyle.Minimized
+            });
+
+            var actual = _resource.Get(new ShortcutSchema { Path = shortcutPath });
+
+            actual.WindowStyle.Should().Be(ShortcutWindowStyle.Minimized);
+        }
+        finally
+        {
+            if (File.Exists(shortcutPath))
+            {
+                File.Delete(shortcutPath);
+            }
+        }
+    }
+
+    [Fact]
+    public void Set_WindowStyleMaximized_StoresWindowStyle()
+    {
+        var shortcutPath = Path.Combine(Path.GetTempPath(), $"shortcut_winstyle_max_{Guid.NewGuid():N}.lnk");
+        var targetPath = Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.Windows), "System32", "notepad.exe");
+
+        try
+        {
+            _resource.Set(new ShortcutSchema
+            {
+                Path = shortcutPath,
+                TargetPath = targetPath,
+                WindowStyle = ShortcutWindowStyle.Maximized
+            });
+
+            var actual = _resource.Get(new ShortcutSchema { Path = shortcutPath });
+
+            actual.WindowStyle.Should().Be(ShortcutWindowStyle.Maximized);
+        }
+        finally
+        {
+            if (File.Exists(shortcutPath))
+            {
+                File.Delete(shortcutPath);
+            }
+        }
+    }
+
+    [Fact]
+    public void Set_ShortcutWithHotkey_StoresHotkey()
+    {
+        var shortcutPath = Path.Combine(Path.GetTempPath(), $"shortcut_hotkey_{Guid.NewGuid():N}.lnk");
+        var targetPath = Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.Windows), "System32", "notepad.exe");
+
+        try
+        {
+            _resource.Set(new ShortcutSchema
+            {
+                Path = shortcutPath,
+                TargetPath = targetPath,
+                Hotkey = "Ctrl+Alt+N"
+            });
+
+            var actual = _resource.Get(new ShortcutSchema { Path = shortcutPath });
+
+            actual.Hotkey.Should().NotBeNullOrEmpty();
+        }
+        finally
+        {
+            if (File.Exists(shortcutPath))
+            {
+                File.Delete(shortcutPath);
+            }
+        }
+    }
+
+    [Fact]
+    public void Set_ShortcutWithIconLocation_StoresIconLocation()
+    {
+        var shortcutPath = Path.Combine(Path.GetTempPath(), $"shortcut_icon_{Guid.NewGuid():N}.lnk");
+        var targetPath = Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.Windows), "System32", "notepad.exe");
+        var iconLocation = Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.Windows), "System32", "shell32.dll,0");
+
+        try
+        {
+            _resource.Set(new ShortcutSchema
+            {
+                Path = shortcutPath,
+                TargetPath = targetPath,
+                IconLocation = iconLocation
+            });
+
+            var actual = _resource.Get(new ShortcutSchema { Path = shortcutPath });
+
+            actual.IconLocation.Should().NotBeNullOrEmpty();
+        }
+        finally
+        {
+            if (File.Exists(shortcutPath))
+            {
+                File.Delete(shortcutPath);
+            }
+        }
+    }
+
+    [Fact]
+    public void Set_ShortcutWithEmptyTarget_CreatesShortcut()
+    {
+        var shortcutPath = Path.Combine(Path.GetTempPath(), $"shortcut_emptytarget_{Guid.NewGuid():N}.lnk");
+
+        try
+        {
+            _resource.Set(new ShortcutSchema
+            {
+                Path = shortcutPath,
+                TargetPath = string.Empty
+            });
+
+            var result = _resource.Get(new ShortcutSchema { Path = shortcutPath });
+
+            result.Path.Should().Be(shortcutPath);
+        }
+        finally
+        {
+            if (File.Exists(shortcutPath))
+            {
+                File.Delete(shortcutPath);
+            }
+        }
+    }
+
+    [Fact]
+    public void Get_NonExistentShortcut_ReturnExistFalse()
+    {
+        var shortcutPath = Path.Combine(Path.GetTempPath(), $"nonexistent_get_{Guid.NewGuid():N}.lnk");
+
+        var result = _resource.Get(new ShortcutSchema { Path = shortcutPath });
+
+        result.Exist.Should().BeFalse();
+        result.Path.Should().Be(shortcutPath);
     }
 }

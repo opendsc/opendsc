@@ -161,4 +161,28 @@ public sealed class ScheduledTaskTests : WindowsTestBase
             _resource.Delete(new ScheduledTaskSchema { TaskName = taskName });
         }
     }
+
+    [Fact]
+    public void Get_NullInstance_ThrowsArgumentNullException()
+    {
+        var act = () => _resource.Get(null);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Set_NullInstance_ThrowsArgumentNullException()
+    {
+        var act = () => _resource.Set(null);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Delete_NullInstance_ThrowsArgumentNullException()
+    {
+        var act = () => _resource.Delete(null);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
 }

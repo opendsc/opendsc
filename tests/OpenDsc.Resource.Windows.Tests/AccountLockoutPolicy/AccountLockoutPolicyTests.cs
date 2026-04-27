@@ -136,4 +136,59 @@ public sealed class AccountLockoutPolicyTests : WindowsTestBase
 
         act.Should().Throw<ArgumentException>();
     }
+
+    [Fact]
+    public void Set_NullInstance_ThrowsArgumentNullException()
+    {
+        var act = () => _resource.Set(null);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Get_CurrentPolicy_HasValidRange()
+    {
+        var result = _resource.Get(new AccountLockoutPolicySchema());
+
+        result.LockoutThreshold.Should().BeLessThanOrEqualTo(999);
+        result.LockoutDurationMinutes.Should().BeLessThanOrEqualTo(99999);
+        result.LockoutObservationWindowMinutes.Should().BeLessThanOrEqualTo(99999);
+    }
+
+    [Fact]
+    public void GetSchema_IsValidJson()
+    {
+        var schemaJson = _resource.GetSchema();
+        var doc = JsonDocument.Parse(schemaJson);
+
+        doc.RootElement.ValueKind.Should().Be(JsonValueKind.Object);
+    }
+
+    [RequiresAdminFact]
+    public void Set_ZeroThreshold_UpdatesPolicy()
+    {
+        var original = _resource.Get(new AccountLockoutPolicySchema());
+
+        try
+        {
+            _resource.Set(new AccountLockoutPolicySchema
+            {
+                LockoutThreshold = 0,
+                LockoutDurationMinutes = original.LockoutDurationMinutes,
+                LockoutObservationWindowMinutes = original.LockoutObservationWindowMinutes
+            });
+
+            var updated = _resource.Get(new AccountLockoutPolicySchema());
+            updated.LockoutThreshold.Should().Be(0);
+        }
+        finally
+        {
+            _resource.Set(new AccountLockoutPolicySchema
+            {
+                LockoutThreshold = original.LockoutThreshold,
+                LockoutDurationMinutes = original.LockoutDurationMinutes,
+                LockoutObservationWindowMinutes = original.LockoutObservationWindowMinutes
+            });
+        }
+    }
 }
