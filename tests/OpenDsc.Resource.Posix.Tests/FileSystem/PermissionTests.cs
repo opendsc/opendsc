@@ -177,7 +177,7 @@ public sealed class PermissionTests
         {
             var initial = _resource.Get(new PermissionSchema { Path = tempFile });
             var currentUid = Environment.GetEnvironmentVariable("UID") ?? "0";
-            
+
             // Set owner to current effective UID to avoid elevation requirement
             _resource.Set(new PermissionSchema { Path = tempFile, Owner = currentUid });
 
@@ -206,7 +206,7 @@ public sealed class PermissionTests
         {
             var initial = _resource.Get(new PermissionSchema { Path = tempFile });
             var currentGid = Environment.GetEnvironmentVariable("GID") ?? "0";
-            
+
             // Set group to current effective GID to avoid elevation requirement
             _resource.Set(new PermissionSchema { Path = tempFile, Group = currentGid });
 
