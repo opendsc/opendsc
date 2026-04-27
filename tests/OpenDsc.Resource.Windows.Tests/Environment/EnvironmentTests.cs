@@ -284,7 +284,7 @@ public sealed class EnvironmentTests : WindowsTestBase
     }
 
     [Fact]
-    public void Set_VariableNameWithSpecialCharacters_CreatesVariable()
+    public void Set_VariableNameWithLettersDigitsAndUnderscoreUnderscores_CreatesVariable()
     {
         var schema = new EnvironmentSchema { Name = "TestVar_Special_123_XUnit", Value = "TestValue" };
         try

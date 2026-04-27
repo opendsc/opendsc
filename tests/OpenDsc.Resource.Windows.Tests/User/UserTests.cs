@@ -409,7 +409,13 @@ public sealed class UserTests : WindowsTestBase
     {
         var results = _resource.Export(null).ToList();
 
-        // Just verify it doesn't throw and returns a list
-        results.Should().BeOfType<List<UserSchema>>();
+        results.Should().NotBeEmpty();
+        results.Should().AllSatisfy(user =>
+        {
+            user.UserName.Should().NotBeNullOrWhiteSpace();
+        }
+        {
+            user.UserName.Should().NotBeNullOrWhiteSpace();
+        });
     }
 }

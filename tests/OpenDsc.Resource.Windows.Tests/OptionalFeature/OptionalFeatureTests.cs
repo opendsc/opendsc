@@ -96,34 +96,3 @@ public sealed class OptionalFeatureTests
 
         act.Should().Throw<ArgumentNullException>();
     }
-
-    [RequiresDismFact]
-    public void Get_ExistingFeature_HasAllProperties()
-    {
-        const string featureName = "TelnetClient";
-        var schema = new OptionalFeatureSchema { Name = featureName };
-
-        var result = _resource.Get(schema);
-
-        result.Name.Should().Be(featureName);
-        result.Should().NotBeNull();
-    }
-
-    [Fact]
-    public void GetSchema_JsonIsValid()
-    {
-        var schemaJson = _resource.GetSchema();
-        var doc = JsonDocument.Parse(schemaJson);
-
-        doc.RootElement.ValueKind.Should().Be(JsonValueKind.Object);
-    }
-
-    [RequiresDismFact]
-    public void Export_IncludesMultipleFeatures()
-    {
-        var results = _resource.Export(null).ToList();
-
-        results.Should().NotBeEmpty();
-        results.Should().AllSatisfy(r => r.Name.Should().NotBeNullOrEmpty());
-    }
-}

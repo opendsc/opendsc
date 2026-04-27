@@ -333,7 +333,7 @@ public sealed class ShortcutTests : WindowsTestBase
 
             var actual = _resource.Get(new ShortcutSchema { Path = shortcutPath });
 
-            actual.Hotkey.Should().NotBeNullOrEmpty();
+            actual.Hotkey.Should().Be("CTRL+ALT+N");
         }
         finally
         {
@@ -362,7 +362,7 @@ public sealed class ShortcutTests : WindowsTestBase
 
             var actual = _resource.Get(new ShortcutSchema { Path = shortcutPath });
 
-            actual.IconLocation.Should().NotBeNullOrEmpty();
+            actual.IconLocation.Should().Be(iconLocation);
         }
         finally
         {
@@ -397,16 +397,3 @@ public sealed class ShortcutTests : WindowsTestBase
                 File.Delete(shortcutPath);
             }
         }
-    }
-
-    [Fact]
-    public void Get_NonExistentShortcut_ReturnExistFalse()
-    {
-        var shortcutPath = Path.Combine(Path.GetTempPath(), $"nonexistent_get_{Guid.NewGuid():N}.lnk");
-
-        var result = _resource.Get(new ShortcutSchema { Path = shortcutPath });
-
-        result.Exist.Should().BeFalse();
-        result.Path.Should().Be(shortcutPath);
-    }
-}

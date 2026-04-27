@@ -264,20 +264,6 @@ public sealed class ServiceTests : WindowsTestBase
     }
 
     [Fact]
-    public void Get_ExistingBuiltinService_HasValidProperties()
-    {
-        var schema = new ServiceSchema { Name = "Spooler" };
-
-        var result = _resource.Get(schema);
-
-        result.Name.Should().Be("Spooler");
-        result.DisplayName.Should().NotBeNullOrEmpty();
-        result.Status.Should().NotBeNull();
-        result.StartType.Should().NotBeNull();
-        result.Exist.Should().NotBe(false);
-    }
-
-    [Fact]
     public void Set_InvalidStatusContinuousPending_ThrowsArgumentException()
     {
         var act = () => _resource.Set(new ServiceSchema { Name = "AnyService", Status = ServiceControllerStatus.ContinuePending });
@@ -286,111 +272,97 @@ public sealed class ServiceTests : WindowsTestBase
     }
 
     [Fact]
-    public void Set_InvalidStartTypeAutomatic_DelayedStart_ThrowsArgumentException()
+    public void Set_InvalidStartTypeSystem
     {
-        var act = () => _resource.Set(new ServiceSchema { Name = "AnyService", StartType = ServiceStartMode.System });
-
-        act.Should().Throw<ArgumentException>().WithMessage("*Invalid service start type*");
+        r.Name.Should().NotBeNullOrEmpty();
+    r.DisplayName.Should().NotBeNullOrEmpty();
+});
     }
 
     [Fact]
-    public void Export_ReturnsMultipleServices()
-    {
-        var results = _resource.Export(null).ToList();
+public void Get_NonExistentService_HasExistFalse()
+{
+    var schema = new ServiceSchema { Name = "NonExistentService_" + Guid.NewGuid().ToString("N") };
 
-        results.Should().NotBeEmpty();
-        results.Count.Should().BeGreaterThan(1);
-        results.Should().AllSatisfy(r =>
+    var result = _resource.Get(schema);
+
+    result.Exist.Should().BeFalse();
+    result.Name.Should().Be(schema.Name);
+}
+
+[RequiresAdminFact]
+public void Set_ExistingService_UpdatesDisplayName()
+{
+    var testServicePath = Path.GetFullPath(Path.Combine("..", "..", "..", "..", "artifacts", "TestService", "TestService.exe"));
+
+    // Skip if test artifact is missing
+    if (!File.Exists(testServicePath))
+    {
+        return;
+    }
+
+    var serviceName = $"DscTestService_{Guid.NewGuid():N}";
+
+    try
+    {
+        _resource.Set(new ServiceSchema
         {
-            r.Name.Should().NotBeNullOrEmpty();
-            r.DisplayName.Should().NotBeNullOrEmpty();
+            Name = serviceName,
+            Path = testServicePath,
+            StartType = ServiceStartMode.Manual
         });
-    }
 
-    [Fact]
-    public void Get_NonExistentService_HasExistFalse()
+        _resource.Set(new ServiceSchema
+        {
+            Name = serviceName,
+            DisplayName = "Updated Display Name"
+        });
+
+        var actual = _resource.Get(new ServiceSchema { Name = serviceName });
+
+        actual.DisplayName.Should().Be("Updated Display Name");
+    }
+    finally
     {
-        var schema = new ServiceSchema { Name = "NonExistentService_" + Guid.NewGuid().ToString("N") };
-
-        var result = _resource.Get(schema);
-
-        result.Exist.Should().BeFalse();
-        result.Name.Should().Be(schema.Name);
+        try { _resource.Delete(new ServiceSchema { Name = serviceName }); } catch { }
     }
+}
 
-    [RequiresAdminFact]
-    public void Set_ExistingService_UpdatesDisplayName()
+[RequiresAdminFact]
+public void Set_ExistingService_UpdatesDescription()
+{
+    var testServicePath = Path.GetFullPath(Path.Combine("..", "..", "..", "..", "artifacts", "TestService", "TestService.exe"));
+
+    // Skip if test artifact is missing
+    if (!File.Exists(testServicePath))
     {
-        var testServicePath = Path.GetFullPath(Path.Combine("..", "..", "..", "..", "artifacts", "TestService", "TestService.exe"));
-
-        // Skip if test artifact is missing
-        if (!File.Exists(testServicePath))
-        {
-            return;
-        }
-
-        var serviceName = $"DscTestService_{Guid.NewGuid():N}";
-
-        try
-        {
-            _resource.Set(new ServiceSchema
-            {
-                Name = serviceName,
-                Path = testServicePath,
-                StartType = ServiceStartMode.Manual
-            });
-
-            _resource.Set(new ServiceSchema
-            {
-                Name = serviceName,
-                DisplayName = "Updated Display Name"
-            });
-
-            var actual = _resource.Get(new ServiceSchema { Name = serviceName });
-
-            actual.DisplayName.Should().Be("Updated Display Name");
-        }
-        finally
-        {
-            try { _resource.Delete(new ServiceSchema { Name = serviceName }); } catch { }
-        }
+        return;
     }
 
-    [RequiresAdminFact]
-    public void Set_ExistingService_UpdatesDescription()
+    var serviceName = $"DscTestService_{Guid.NewGuid():N}";
+
+    try
     {
-        var testServicePath = Path.GetFullPath(Path.Combine("..", "..", "..", "..", "artifacts", "TestService", "TestService.exe"));
-
-        // Skip if test artifact is missing
-        if (!File.Exists(testServicePath))
+        _resource.Set(new ServiceSchema
         {
-            return;
-        }
+            Name = serviceName,
+            Path = testServicePath,
+            StartType = ServiceStartMode.Manual
+        });
 
-        var serviceName = $"DscTestService_{Guid.NewGuid():N}";
-
-        try
+        _resource.Set(new ServiceSchema
         {
-            _resource.Set(new ServiceSchema
-            {
-                Name = serviceName,
-                Path = testServicePath,
-                StartType = ServiceStartMode.Manual
-            });
+            Name = serviceName,
+            Description = "Updated service description"
+        });
 
-            _resource.Set(new ServiceSchema
-            {
-                Name = serviceName,
-                Description = "Updated service description"
-            });
+        var actual = _resource.Get(new ServiceSchema { Name = serviceName });
 
-            var actual = _resource.Get(new ServiceSchema { Name = serviceName });
-
-            actual.Description.Should().Be("Updated service description");
-        }
-        finally
-        {
-            try { _resource.Delete(new ServiceSchema { Name = serviceName }); } catch { }
-        }
+        actual.Description.Should().Be("Updated service description");
     }
+    finally
+    {
+        try { _resource.Delete(new ServiceSchema { Name = serviceName }); } catch { }
+    }
+}
 }

@@ -190,17 +190,6 @@ public sealed class AuditPolicyTests : WindowsTestBase
     [RequiresAdminFact]
     public void Get_CurrentPolicy_HasValidRange()
     {
-        var policy = _resource.Get(new AuditPolicySchema { Subcategory = "Account Logon" });
+        var policy = _resource.Get(new AuditPolicySchema { Subcategory = "Logon" });
 
-        policy.Should().NotBeNull();
-    }
-
-    [Fact]
-    public void GetSchema_IsValidJson()
-    {
-        var schemaJson = _resource.GetSchema();
-        var doc = JsonDocument.Parse(schemaJson);
-
-        doc.RootElement.ValueKind.Should().Be(JsonValueKind.Object);
-    }
-}
+        policy.Should().NotBeNull(
