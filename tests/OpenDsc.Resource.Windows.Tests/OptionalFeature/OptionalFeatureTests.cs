@@ -96,3 +96,4 @@ public sealed class OptionalFeatureTests
 
         act.Should().Throw<ArgumentNullException>();
     }
+}

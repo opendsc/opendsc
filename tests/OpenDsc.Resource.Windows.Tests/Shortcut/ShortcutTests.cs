@@ -397,3 +397,5 @@ public sealed class ShortcutTests : WindowsTestBase
                 File.Delete(shortcutPath);
             }
         }
+    }
+}

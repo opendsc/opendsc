@@ -192,4 +192,6 @@ public sealed class AuditPolicyTests : WindowsTestBase
     {
         var policy = _resource.Get(new AuditPolicySchema { Subcategory = "Logon" });
 
-        policy.Should().NotBeNull(
+        policy.Should().NotBeNull();
+    }
+}

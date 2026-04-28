@@ -413,9 +413,6 @@ public sealed class UserTests : WindowsTestBase
         results.Should().AllSatisfy(user =>
         {
             user.UserName.Should().NotBeNullOrWhiteSpace();
-        }
-        {
-            user.UserName.Should().NotBeNullOrWhiteSpace();
         });
     }
 }

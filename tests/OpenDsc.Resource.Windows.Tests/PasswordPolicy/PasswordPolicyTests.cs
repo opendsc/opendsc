@@ -192,3 +192,4 @@ public sealed class PasswordPolicyTests : WindowsTestBase
 
         act.Should().Throw<ArgumentNullException>();
     }
+}
