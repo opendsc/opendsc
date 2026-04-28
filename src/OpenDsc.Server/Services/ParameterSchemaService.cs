@@ -46,7 +46,8 @@ public partial class ParameterSchemaService(
                 return Task.FromResult<string?>(null);
             }
 
-            var parametersJson = JsonSerializer.Serialize(parametersObj, SourceGenerationContext.Default.Object);
+            // Serialize without the context to handle nested dictionaries from YAML properly
+            var parametersJson = JsonSerializer.Serialize(parametersObj);
             return Task.FromResult<string?>(parametersJson);
         }
         catch (Exception)
@@ -162,8 +163,47 @@ public partial class ParameterSchemaService(
             throw new ArgumentException($"Invalid semantic version: {version}", nameof(version));
         }
 
-        // Parse parameters from JSON
-        var parametersDict = JsonSerializer.Deserialize<Dictionary<string, ParameterDefinition>>(parametersJson);
+        // Parse parameters from JSON - try to deserialize as ParameterDefinition first
+        Dictionary<string, ParameterDefinition>? parametersDict = null;
+
+        try
+        {
+            parametersDict = JsonSerializer.Deserialize<Dictionary<string, ParameterDefinition>>(parametersJson);
+        }
+        catch
+        {
+            // If that fails, try deserializing as simple key-value pairs and convert to ParameterDefinition
+            try
+            {
+                var simpleParams = JsonSerializer.Deserialize<Dictionary<string, object>>(parametersJson);
+                if (simpleParams != null)
+                {
+                    parametersDict = new Dictionary<string, ParameterDefinition>();
+                    foreach (var kvp in simpleParams)
+                    {
+                        // Infer type from the value
+                        var inferredType = kvp.Value switch
+                        {
+                            bool => "bool",
+                            int or long => "int",
+                            double or float => "float",
+                            _ => "string"
+                        };
+
+                        parametersDict[kvp.Key] = new ParameterDefinition
+                        {
+                            Type = inferredType,
+                            DefaultValue = kvp.Value
+                        };
+                    }
+                }
+            }
+            catch
+            {
+                // Both deserializations failed
+            }
+        }
+
         if (parametersDict == null)
         {
             throw new ArgumentException("Invalid parameters JSON", nameof(parametersJson));

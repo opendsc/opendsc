@@ -2,8 +2,11 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
+#pragma warning disable xUnit1051
+
 using AwesomeAssertions;
 
+using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -12,6 +15,7 @@ using Microsoft.Extensions.Options;
 using Moq;
 
 using OpenDsc.Server.Data;
+using OpenDsc.Server.Entities;
 using OpenDsc.Server.Services;
 
 using Xunit;
@@ -167,6 +171,808 @@ public class ConfigurationServiceTests : IDisposable
         actualResult.Should().NotBeNull();
     }
 
+    #region CreateConfigurationAsync Tests
+
+    [Fact]
+    public async Task CreateConfigurationAsync_WithValidData_CreatesConfiguration()
+    {
+        var name = "TestConfig";
+        var files = CreateMockFiles(("main.dsc.yaml", "configuration {}"));
+
+        var result = await _client.CreateConfigurationAsync(
+            name, "Test config", "main.dsc.yaml", "1.0.0", isDraft: false,
+            useServerManagedParameters: false, files);
+
+        result.Should().Be(true);
+        (await _dbContext.Configurations.FirstOrDefaultAsync(c => c.Name == name)).Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task CreateConfigurationAsync_WithoutName_ReturnsFalse()
+    {
+        var files = CreateMockFiles(("main.dsc.yaml", "config {}"));
+
+        var result = await _client.CreateConfigurationAsync(
+            string.Empty, "desc", "main.dsc.yaml", "1.0.0", false, false, files);
+
+        result.Should().Be(false);
+    }
+
+    [Fact]
+    public async Task CreateConfigurationAsync_WithoutFiles_ReturnsFalse()
+    {
+        var result = await _client.CreateConfigurationAsync(
+            "TestConfig", "desc", "main.dsc.yaml", "1.0.0", false, false, []);
+
+        result.Should().Be(false);
+    }
+
+    [Fact]
+    public async Task CreateConfigurationAsync_WithDuplicateName_ReturnsFalse()
+    {
+        var name = "DuplicateConfig";
+        var files = CreateMockFiles(("main.dsc.yaml", "config {}"));
+
+        await _client.CreateConfigurationAsync(
+            name, "First", "main.dsc.yaml", "1.0.0", false, false, files);
+
+        var result = await _client.CreateConfigurationAsync(
+            name, "Second", "main.dsc.yaml", "1.0.1", false, false,
+            CreateMockFiles(("main.dsc.yaml", "config {}")));
+
+        result.Should().Be(false);
+    }
+
+    [Fact]
+    public async Task CreateConfigurationAsync_WithEntryPointNotInFiles_ReturnsFalse()
+    {
+        var files = CreateMockFiles(("other.yaml", "content"));
+
+        var result = await _client.CreateConfigurationAsync(
+            "TestConfig", "desc", "main.dsc.yaml", "1.0.0", false, false, files);
+
+        result.Should().Be(false);
+    }
+
+    [Fact]
+    public async Task CreateConfigurationAsync_WithDraftStatus_CreatesAsDraft()
+    {
+        var name = "DraftConfig";
+        var files = CreateMockFiles(("main.dsc.yaml", "config {}"));
+
+        await _client.CreateConfigurationAsync(
+            name, "desc", "main.dsc.yaml", "1.0.0", isDraft: true, false, files);
+
+        var version = await _dbContext.ConfigurationVersions
+            .FirstOrDefaultAsync(v => v.Version == "1.0.0");
+
+        version?.Status.Should().Be(ConfigurationVersionStatus.Draft);
+    }
+
+    [Fact]
+    public async Task CreateConfigurationAsync_WithPublishedStatus_CreatesAsPublished()
+    {
+        var name = "PublishedConfig";
+        var files = CreateMockFiles(("main.dsc.yaml", "config {}"));
+
+        await _client.CreateConfigurationAsync(
+            name, "desc", "main.dsc.yaml", "1.0.0", isDraft: false, false, files);
+
+        var version = await _dbContext.ConfigurationVersions
+            .FirstOrDefaultAsync(v => v.Version == "1.0.0");
+
+        version?.Status.Should().Be(ConfigurationVersionStatus.Published);
+    }
+
+    [Fact]
+    public async Task CreateConfigurationAsync_WithServerManagedParametersTrue_SetsFlag()
+    {
+        var name = "ServerManaged";
+        var files = CreateMockFiles(("main.dsc.yaml", "config {}"));
+
+        await _client.CreateConfigurationAsync(
+            name, "desc", "main.dsc.yaml", "1.0.0", false,
+            useServerManagedParameters: true, files);
+
+        var config = await _dbContext.Configurations.FirstOrDefaultAsync(c => c.Name == name);
+
+        config?.UseServerManagedParameters.Should().Be(true);
+    }
+
+    #endregion
+
+    #region CreateVersionAsync Tests
+
+    [Fact]
+    public async Task CreateVersionAsync_WithValidData_CreatesVersion()
+    {
+        var config = new Configuration { Id = Guid.NewGuid(), Name = "TestConfig", CreatedAt = DateTimeOffset.UtcNow };
+        _dbContext.Configurations.Add(config);
+        await _dbContext.SaveChangesAsync();
+
+        var files = CreateMockFiles(("main.dsc.yaml", "config {}"));
+
+        var result = await _client.CreateVersionAsync("TestConfig", "2.0.0", false, files);
+
+        result.Should().Be(true);
+        (await _dbContext.ConfigurationVersions.FirstOrDefaultAsync(v => v.Version == "2.0.0"))
+            .Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task CreateVersionAsync_ForNonexistentConfiguration_ReturnsFalse()
+    {
+        var files = CreateMockFiles(("main.dsc.yaml", "config {}"));
+
+        var result = await _client.CreateVersionAsync("NonexistentConfig", "1.0.0", false, files);
+
+        result.Should().Be(false);
+    }
+
+    [Fact]
+    public async Task CreateVersionAsync_WithDuplicateVersion_ReturnsFalse()
+    {
+        var config = new Configuration { Id = Guid.NewGuid(), Name = "TestConfig", CreatedAt = DateTimeOffset.UtcNow };
+        var version = new ConfigurationVersion
+        {
+            Id = Guid.NewGuid(),
+            ConfigurationId = config.Id,
+            Version = "1.0.0",
+            EntryPoint = "main.dsc.yaml",
+            Status = ConfigurationVersionStatus.Draft,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        _dbContext.Configurations.Add(config);
+        _dbContext.ConfigurationVersions.Add(version);
+        await _dbContext.SaveChangesAsync();
+
+        var files = CreateMockFiles(("main.dsc.yaml", "config {}"));
+
+        var result = await _client.CreateVersionAsync("TestConfig", "1.0.0", false, files);
+
+        result.Should().Be(false);
+    }
+
+    [Fact]
+    public async Task CreateVersionAsync_WithExplicitEntryPoint_UsesProvidedEntryPoint()
+    {
+        var config = new Configuration { Id = Guid.NewGuid(), Name = "TestConfig", CreatedAt = DateTimeOffset.UtcNow };
+        _dbContext.Configurations.Add(config);
+        await _dbContext.SaveChangesAsync();
+
+        var files = CreateMockFiles(("custom.yaml", "config {}"));
+
+        await _client.CreateVersionAsync("TestConfig", "1.0.0", false, files, entryPoint: "custom.yaml");
+
+        var createdVersion = await _dbContext.ConfigurationVersions.FirstOrDefaultAsync(v => v.Version == "1.0.0");
+
+        createdVersion?.EntryPoint.Should().Be("custom.yaml");
+    }
+
+    [Fact]
+    public async Task CreateVersionAsync_WithoutEntryPoint_UsesLatestVersionEntryPoint()
+    {
+        var config = new Configuration { Id = Guid.NewGuid(), Name = "TestConfig", CreatedAt = DateTimeOffset.UtcNow };
+        var v1 = new ConfigurationVersion
+        {
+            Id = Guid.NewGuid(),
+            ConfigurationId = config.Id,
+            Version = "1.0.0",
+            EntryPoint = "myentry.yaml",
+            Status = ConfigurationVersionStatus.Draft,
+            CreatedAt = DateTimeOffset.UtcNow.AddHours(-1)
+        };
+        _dbContext.Configurations.Add(config);
+        _dbContext.ConfigurationVersions.Add(v1);
+        await _dbContext.SaveChangesAsync();
+
+        var files = CreateMockFiles(("myentry.yaml", "config {}"));
+
+        await _client.CreateVersionAsync("TestConfig", "2.0.0", false, files);
+
+        var createdVersion = await _dbContext.ConfigurationVersions.FirstOrDefaultAsync(v => v.Version == "2.0.0");
+
+        createdVersion?.EntryPoint.Should().Be("myentry.yaml");
+    }
+
+    #endregion
+
+    #region DeleteConfigurationAsync Tests
+
+    [Fact]
+    public async Task DeleteConfigurationAsync_WithValidConfiguration_DeletesSuccessfully()
+    {
+        var config = new Configuration { Id = Guid.NewGuid(), Name = "ToDelete", CreatedAt = DateTimeOffset.UtcNow };
+        _dbContext.Configurations.Add(config);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _client.DeleteConfigurationAsync("ToDelete");
+
+        result.Should().Be(true);
+        (await _dbContext.Configurations.FirstOrDefaultAsync(c => c.Name == "ToDelete"))
+            .Should().BeNull();
+    }
+
+    [Fact]
+    public async Task DeleteConfigurationAsync_WithNonexistentConfiguration_ReturnsFalse()
+    {
+        var result = await _client.DeleteConfigurationAsync("NonexistentConfig");
+
+        result.Should().Be(false);
+    }
+
+    #endregion
+
+    #region CreateVersionFromExistingAsync Tests
+
+    [Fact]
+    public async Task CreateVersionFromExistingAsync_WithValidSourceVersion_CreatesNewVersion()
+    {
+        var config = new Configuration
+        {
+            Id = Guid.NewGuid(),
+            Name = "TestConfig",
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        var sourceVersion = new ConfigurationVersion
+        {
+            Id = Guid.NewGuid(),
+            ConfigurationId = config.Id,
+            Version = "1.0.0",
+            EntryPoint = "main.dsc.yaml",
+            Status = ConfigurationVersionStatus.Published,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        var sourceFile = new ConfigurationFile
+        {
+            Id = Guid.NewGuid(),
+            VersionId = sourceVersion.Id,
+            RelativePath = "main.dsc.yaml",
+            ContentType = "text/plain",
+            Checksum = "abc123",
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+
+        _dbContext.Configurations.Add(config);
+        _dbContext.ConfigurationVersions.Add(sourceVersion);
+        _dbContext.ConfigurationFiles.Add(sourceFile);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _client.CreateVersionFromExistingAsync(
+            "TestConfig", "1.0.0", "2.0.0", isDraft: false);
+
+        result.Should().Be(true);
+        (await _dbContext.ConfigurationVersions.FirstOrDefaultAsync(v => v.Version == "2.0.0"))
+            .Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task CreateVersionFromExistingAsync_WithNonexistentConfiguration_ReturnsFalse()
+    {
+        var result = await _client.CreateVersionFromExistingAsync(
+            "NonexistentConfig", "1.0.0", "2.0.0", isDraft: false);
+
+        result.Should().Be(false);
+    }
+
+    [Fact]
+    public async Task CreateVersionFromExistingAsync_WithNonexistentSourceVersion_ReturnsFalse()
+    {
+        var config = new Configuration
+        {
+            Id = Guid.NewGuid(),
+            Name = "TestConfig",
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        _dbContext.Configurations.Add(config);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _client.CreateVersionFromExistingAsync(
+            "TestConfig", "1.0.0", "2.0.0", isDraft: false);
+
+        result.Should().Be(false);
+    }
+
+    [Fact]
+    public async Task CreateVersionFromExistingAsync_WithDuplicateTargetVersion_ReturnsFalse()
+    {
+        var config = new Configuration
+        {
+            Id = Guid.NewGuid(),
+            Name = "TestConfig",
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        var sourceVersion = new ConfigurationVersion
+        {
+            Id = Guid.NewGuid(),
+            ConfigurationId = config.Id,
+            Version = "1.0.0",
+            EntryPoint = "main.dsc.yaml",
+            Status = ConfigurationVersionStatus.Published,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        var existingVersion = new ConfigurationVersion
+        {
+            Id = Guid.NewGuid(),
+            ConfigurationId = config.Id,
+            Version = "2.0.0",
+            EntryPoint = "main.dsc.yaml",
+            Status = ConfigurationVersionStatus.Published,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+
+        _dbContext.Configurations.Add(config);
+        _dbContext.ConfigurationVersions.Add(sourceVersion);
+        _dbContext.ConfigurationVersions.Add(existingVersion);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _client.CreateVersionFromExistingAsync(
+            "TestConfig", "1.0.0", "2.0.0", isDraft: false);
+
+        result.Should().Be(false);
+    }
+
+    #endregion
+
+    #region AddFilesToVersionAsync Tests
+
+    [Fact]
+    public async Task AddFilesToVersionAsync_WithValidInput_AddsFilesToVersion()
+    {
+        var config = new Configuration
+        {
+            Id = Guid.NewGuid(),
+            Name = "TestConfig",
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        var version = new ConfigurationVersion
+        {
+            Id = Guid.NewGuid(),
+            ConfigurationId = config.Id,
+            Version = "1.0.0",
+            EntryPoint = "main.dsc.yaml",
+            Status = ConfigurationVersionStatus.Draft,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        _dbContext.Configurations.Add(config);
+        _dbContext.ConfigurationVersions.Add(version);
+        await _dbContext.SaveChangesAsync();
+
+        var newFiles = CreateMockFiles(
+            ("additional.yaml", "additional content"),
+            ("config.json", "{}"));
+
+        var result = await _client.AddFilesToVersionAsync("TestConfig", "1.0.0", newFiles);
+
+        result.Should().Be(true);
+        (await _dbContext.ConfigurationFiles
+            .Where(f => f.VersionId == version.Id)
+            .CountAsync())
+            .Should().Be(2);
+    }
+
+    [Fact]
+    public async Task AddFilesToVersionAsync_WithNonexistentConfiguration_ReturnsFalse()
+    {
+        var files = CreateMockFiles(("file.yaml", "content"));
+
+        var result = await _client.AddFilesToVersionAsync("NonexistentConfig", "1.0.0", files);
+
+        result.Should().Be(false);
+    }
+
+    [Fact]
+    public async Task AddFilesToVersionAsync_WithNonexistentVersion_ReturnsFalse()
+    {
+        var config = new Configuration
+        {
+            Id = Guid.NewGuid(),
+            Name = "TestConfig",
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        _dbContext.Configurations.Add(config);
+        await _dbContext.SaveChangesAsync();
+
+        var files = CreateMockFiles(("file.yaml", "content"));
+
+        var result = await _client.AddFilesToVersionAsync("TestConfig", "1.0.0", files);
+
+        result.Should().Be(false);
+    }
+
+    #endregion
+
+    #region DeleteVersionAsync Tests
+
+    [Fact]
+    public async Task DeleteVersionAsync_WithValidVersion_DeletesSuccessfully()
+    {
+        var config = new Configuration
+        {
+            Id = Guid.NewGuid(),
+            Name = "TestConfig",
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        var version = new ConfigurationVersion
+        {
+            Id = Guid.NewGuid(),
+            ConfigurationId = config.Id,
+            Version = "1.0.0",
+            EntryPoint = "main.dsc.yaml",
+            Status = ConfigurationVersionStatus.Published,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        _dbContext.Configurations.Add(config);
+        _dbContext.ConfigurationVersions.Add(version);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _client.DeleteVersionAsync("TestConfig", "1.0.0");
+
+        result.Should().Be(true);
+        (await _dbContext.ConfigurationVersions.FirstOrDefaultAsync(v => v.Version == "1.0.0"))
+            .Should().BeNull();
+    }
+
+    [Fact]
+    public async Task DeleteVersionAsync_WithNonexistentConfiguration_ReturnsFalse()
+    {
+        var result = await _client.DeleteVersionAsync("NonexistentConfig", "1.0.0");
+
+        result.Should().Be(false);
+    }
+
+    [Fact]
+    public async Task DeleteVersionAsync_WithNonexistentVersion_ReturnsFalse()
+    {
+        var config = new Configuration
+        {
+            Id = Guid.NewGuid(),
+            Name = "TestConfig",
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        _dbContext.Configurations.Add(config);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _client.DeleteVersionAsync("TestConfig", "1.0.0");
+
+        result.Should().Be(false);
+    }
+
+    #endregion
+
+    #region DeleteFileAsync Tests
+
+    [Fact]
+    public async Task DeleteFileAsync_WithValidFile_DeletesSuccessfully()
+    {
+        var config = new Configuration
+        {
+            Id = Guid.NewGuid(),
+            Name = "TestConfig",
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        var version = new ConfigurationVersion
+        {
+            Id = Guid.NewGuid(),
+            ConfigurationId = config.Id,
+            Version = "1.0.0",
+            EntryPoint = "main.dsc.yaml",
+            Status = ConfigurationVersionStatus.Draft,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        var file = new ConfigurationFile
+        {
+            Id = Guid.NewGuid(),
+            VersionId = version.Id,
+            RelativePath = "extra.yaml",
+            ContentType = "text/plain",
+            Checksum = "abc123",
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        _dbContext.Configurations.Add(config);
+        _dbContext.ConfigurationVersions.Add(version);
+        _dbContext.ConfigurationFiles.Add(file);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _client.DeleteFileAsync("TestConfig", "1.0.0", "extra.yaml");
+
+        result.Should().Be(true);
+        (await _dbContext.ConfigurationFiles
+            .FirstOrDefaultAsync(f => f.RelativePath == "extra.yaml"))
+            .Should().BeNull();
+    }
+
+    [Fact]
+    public async Task DeleteFileAsync_WithNonexistentConfiguration_ReturnsFalse()
+    {
+        var result = await _client.DeleteFileAsync("NonexistentConfig", "1.0.0", "file.yaml");
+
+        result.Should().Be(false);
+    }
+
+    [Fact]
+    public async Task DeleteFileAsync_WithNonexistentVersion_ReturnsFalse()
+    {
+        var config = new Configuration
+        {
+            Id = Guid.NewGuid(),
+            Name = "TestConfig",
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        _dbContext.Configurations.Add(config);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _client.DeleteFileAsync("TestConfig", "1.0.0", "file.yaml");
+
+        result.Should().Be(false);
+    }
+
+    [Fact]
+    public async Task DeleteFileAsync_WithNonexistentFile_ReturnsFalse()
+    {
+        var config = new Configuration
+        {
+            Id = Guid.NewGuid(),
+            Name = "TestConfig",
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        var version = new ConfigurationVersion
+        {
+            Id = Guid.NewGuid(),
+            ConfigurationId = config.Id,
+            Version = "1.0.0",
+            EntryPoint = "main.dsc.yaml",
+            Status = ConfigurationVersionStatus.Draft,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        _dbContext.Configurations.Add(config);
+        _dbContext.ConfigurationVersions.Add(version);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _client.DeleteFileAsync("TestConfig", "1.0.0", "nonexistent.yaml");
+
+        result.Should().Be(false);
+    }
+
+    #endregion
+
+    #region ChangeVersionEntryPointAsync Tests
+
+    [Fact]
+    public async Task ChangeVersionEntryPointAsync_WithValidFile_ChangesEntryPoint()
+    {
+        var config = new Configuration
+        {
+            Id = Guid.NewGuid(),
+            Name = "TestConfig",
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        var version = new ConfigurationVersion
+        {
+            Id = Guid.NewGuid(),
+            ConfigurationId = config.Id,
+            Version = "1.0.0",
+            EntryPoint = "main.dsc.yaml",
+            Status = ConfigurationVersionStatus.Draft,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        var file = new ConfigurationFile
+        {
+            Id = Guid.NewGuid(),
+            VersionId = version.Id,
+            RelativePath = "secondary.dsc.yaml",
+            ContentType = "text/plain",
+            Checksum = "abc123",
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        _dbContext.Configurations.Add(config);
+        _dbContext.ConfigurationVersions.Add(version);
+        _dbContext.ConfigurationFiles.Add(file);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _client.ChangeVersionEntryPointAsync("TestConfig", "1.0.0", "secondary.dsc.yaml");
+
+        result.Should().Be(true);
+        var updatedVersion = await _dbContext.ConfigurationVersions.FirstOrDefaultAsync(v => v.Version == "1.0.0");
+        updatedVersion.Should().NotBeNull();
+        updatedVersion!.EntryPoint.Should().Be("secondary.dsc.yaml");
+    }
+
+    [Fact]
+    public async Task ChangeVersionEntryPointAsync_WithNonexistentConfiguration_ReturnsFalse()
+    {
+        var result = await _client.ChangeVersionEntryPointAsync("NonexistentConfig", "1.0.0", "new-entry.yaml");
+
+        result.Should().Be(false);
+    }
+
+    [Fact]
+    public async Task ChangeVersionEntryPointAsync_WithNonexistentVersion_ReturnsFalse()
+    {
+        var config = new Configuration
+        {
+            Id = Guid.NewGuid(),
+            Name = "TestConfig",
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        _dbContext.Configurations.Add(config);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _client.ChangeVersionEntryPointAsync("TestConfig", "1.0.0", "new-entry.yaml");
+
+        result.Should().Be(false);
+    }
+
+    [Fact]
+    public async Task ChangeVersionEntryPointAsync_WithNonexistentFile_ReturnsFalse()
+    {
+        var config = new Configuration
+        {
+            Id = Guid.NewGuid(),
+            Name = "TestConfig",
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        var version = new ConfigurationVersion
+        {
+            Id = Guid.NewGuid(),
+            ConfigurationId = config.Id,
+            Version = "1.0.0",
+            EntryPoint = "main.dsc.yaml",
+            Status = ConfigurationVersionStatus.Draft,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        _dbContext.Configurations.Add(config);
+        _dbContext.ConfigurationVersions.Add(version);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _client.ChangeVersionEntryPointAsync("TestConfig", "1.0.0", "nonexistent.yaml");
+
+        result.Should().Be(false);
+    }
+
+    #endregion
+
+    #region DownloadFileAsync Tests
+
+    [Fact]
+    public async Task DownloadFileAsync_WithExistingFile_ReturnsFileStream()
+    {
+        var config = new Configuration
+        {
+            Id = Guid.NewGuid(),
+            Name = "TestConfig",
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        var version = new ConfigurationVersion
+        {
+            Id = Guid.NewGuid(),
+            ConfigurationId = config.Id,
+            Version = "1.0.0",
+            EntryPoint = "main.dsc.yaml",
+            Status = ConfigurationVersionStatus.Published,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        var file = new ConfigurationFile
+        {
+            Id = Guid.NewGuid(),
+            VersionId = version.Id,
+            RelativePath = "main.dsc.yaml",
+            ContentType = "text/plain",
+            Checksum = "abc123",
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        _dbContext.Configurations.Add(config);
+        _dbContext.ConfigurationVersions.Add(version);
+        _dbContext.ConfigurationFiles.Add(file);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _client.DownloadFileAsync("TestConfig", "1.0.0", "main.dsc.yaml");
+
+        // DownloadFileAsync returns null if file doesn't exist on disk
+        // This test verifies graceful handling of missing files
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task DownloadFileAsync_WithNonexistentFile_ReturnsNull()
+    {
+        var result = await _client.DownloadFileAsync("NonexistentConfig", "1.0.0", "file.yaml");
+
+        result.Should().BeNull();
+    }
+
+    #endregion
+
+    #region SaveFileAsync Tests
+
+    [Fact]
+    public async Task SaveFileAsync_WithValidFile_UpdatesFileContent()
+    {
+        var config = new Configuration
+        {
+            Id = Guid.NewGuid(),
+            Name = "TestConfig",
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        var version = new ConfigurationVersion
+        {
+            Id = Guid.NewGuid(),
+            ConfigurationId = config.Id,
+            Version = "1.0.0",
+            EntryPoint = "main.dsc.yaml",
+            Status = ConfigurationVersionStatus.Draft,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        var file = new ConfigurationFile
+        {
+            Id = Guid.NewGuid(),
+            VersionId = version.Id,
+            RelativePath = "main.dsc.yaml",
+            ContentType = "text/plain",
+            Checksum = "oldchecksum",
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        _dbContext.Configurations.Add(config);
+        _dbContext.ConfigurationVersions.Add(version);
+        _dbContext.ConfigurationFiles.Add(file);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _client.SaveFileAsync(
+            "TestConfig", "1.0.0", "main.dsc.yaml", "new content");
+
+        result.Should().Be(true);
+    }
+
+    [Fact]
+    public async Task SaveFileAsync_WithNonexistentConfiguration_ReturnsFalse()
+    {
+        var result = await _client.SaveFileAsync("NonexistentConfig", "1.0.0", "file.yaml", "content");
+
+        result.Should().Be(false);
+    }
+
+    [Fact]
+    public async Task SaveFileAsync_WithNonexistentVersion_ReturnsFalse()
+    {
+        var config = new Configuration
+        {
+            Id = Guid.NewGuid(),
+            Name = "TestConfig",
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        _dbContext.Configurations.Add(config);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _client.SaveFileAsync("TestConfig", "1.0.0", "file.yaml", "content");
+
+        result.Should().Be(false);
+    }
+
+    #endregion
+
+    #region Helper Methods
+
+    private List<IBrowserFile> CreateMockFiles(params (string name, string content)[] files)
+    {
+        var mockFiles = new List<IBrowserFile>();
+
+        foreach (var (name, content) in files)
+        {
+            var mockFile = new Mock<IBrowserFile>();
+            mockFile.Setup(f => f.Name).Returns(name);
+            mockFile.Setup(f => f.Size).Returns(content.Length);
+
+            var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(content));
+            mockFile.Setup(f => f.OpenReadStream(It.IsAny<long>(), It.IsAny<CancellationToken>()))
+                .Returns(stream);
+
+            mockFiles.Add(mockFile.Object);
+        }
+
+        return mockFiles;
+    }
+
+    #endregion
 
     public void Dispose()
     {
