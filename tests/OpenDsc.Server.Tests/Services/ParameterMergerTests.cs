@@ -14,6 +14,7 @@ using Xunit;
 
 namespace OpenDsc.Server.Tests.Services;
 
+[Trait("Category", "Unit")]
 public class ParameterMergerTests
 {
     private readonly ParameterMerger _merger = new();

@@ -378,7 +378,7 @@ public class RetentionBackgroundServiceTests
         var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
         var service = new RetentionBackgroundService(_mockScopeFactory.Object, _mockLogger.Object);
 
-        var executeTask = service.StartAsync(cts.Token);
+        await service.StartAsync(cts.Token);
         await Task.Delay(150);
 
         // Should complete without throwing

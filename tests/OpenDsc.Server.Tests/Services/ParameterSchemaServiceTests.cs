@@ -23,6 +23,7 @@ using Xunit;
 
 namespace OpenDsc.Server.Tests.Services;
 
+[Trait("Category", "Unit")]
 public class ParameterSchemaServiceTests : IDisposable
 {
     private readonly ServerDbContext _dbContext;
