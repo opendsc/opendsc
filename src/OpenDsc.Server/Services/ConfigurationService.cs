@@ -905,61 +905,67 @@ public sealed partial class ConfigurationService : IConfigurationService
     {
         try
         {
+            var configVersion = await _db.ConfigurationVersions
+                .Include(v => v.Files)
+                .Include(v => v.Configuration)
+                .FirstOrDefaultAsync(v => v.Configuration.Name == name && v.Version == version);
+
+            if (configVersion == null)
+            {
+                LogVersionNotFound(version, name);
+                return false;
+            }
+
+            var configFile = configVersion.Files.FirstOrDefault(f => f.RelativePath == filePath);
+            if (configFile == null)
+            {
+                LogFileNotFoundInVersion(filePath, version);
+                return false;
+            }
+
             var dataDir = _serverConfig.Value.ConfigurationsDirectory;
             var versionDir = Path.Combine(dataDir, name, $"v{version}");
             var fullPath = Path.Combine(versionDir, filePath);
 
             await File.WriteAllTextAsync(fullPath, content);
 
-            var configVersion = await _db.ConfigurationVersions
-                .Include(v => v.Files)
-                .Include(v => v.Configuration)
-                .FirstOrDefaultAsync(v => v.Configuration.Name == name && v.Version == version);
+            configFile.Checksum = await ComputeFileChecksumAsync(fullPath);
+            await _db.SaveChangesAsync();
 
-            if (configVersion != null)
+            if (configVersion.EntryPoint == filePath)
             {
-                var configFile = configVersion.Files.FirstOrDefault(f => f.RelativePath == filePath);
-                if (configFile != null)
+                var parametersBlock = ExtractParametersFromYaml(content);
+                if (parametersBlock != null && parametersBlock.Count > 0)
                 {
-                    configFile.Checksum = await ComputeFileChecksumAsync(fullPath);
-                    await _db.SaveChangesAsync();
-                }
+                    var paramDefinitions = ConvertToParameterDefinitions(parametersBlock);
+                    var jsonSchemaObj = _schemaBuilder.BuildJsonSchema(paramDefinitions);
+                    var jsonSchema = _schemaBuilder.SerializeSchema(jsonSchemaObj);
 
-                if (configVersion.EntryPoint == filePath)
-                {
-                    var parametersBlock = ExtractParametersFromYaml(content);
-                    if (parametersBlock != null && parametersBlock.Count > 0)
+                    var existingSchema = await _db.ParameterSchemas
+                        .FirstOrDefaultAsync(ps => ps.ConfigurationId == configVersion.ConfigurationId && ps.SchemaVersion == version);
+
+                    if (existingSchema == null)
                     {
-                        var paramDefinitions = ConvertToParameterDefinitions(parametersBlock);
-                        var jsonSchemaObj = _schemaBuilder.BuildJsonSchema(paramDefinitions);
-                        var jsonSchema = _schemaBuilder.SerializeSchema(jsonSchemaObj);
-
-                        var existingSchema = await _db.ParameterSchemas
-                            .FirstOrDefaultAsync(ps => ps.ConfigurationId == configVersion.ConfigurationId && ps.SchemaVersion == version);
-
-                        if (existingSchema == null)
+                        var paramSchema = new ParameterSchema
                         {
-                            var paramSchema = new ParameterSchema
-                            {
-                                Id = Guid.NewGuid(),
-                                ConfigurationId = configVersion.ConfigurationId,
-                                SchemaVersion = version,
-                                GeneratedJsonSchema = jsonSchema,
-                                CreatedAt = DateTimeOffset.UtcNow,
-                                UpdatedAt = DateTimeOffset.UtcNow
-                            };
-                            _db.ParameterSchemas.Add(paramSchema);
-                            configVersion.ParameterSchemaId = paramSchema.Id;
-                        }
-                        else
-                        {
-                            existingSchema.GeneratedJsonSchema = jsonSchema;
-                            existingSchema.UpdatedAt = DateTimeOffset.UtcNow;
-                            configVersion.ParameterSchemaId = existingSchema.Id;
-                        }
-
-                        await _db.SaveChangesAsync();
+                            Id = Guid.NewGuid(),
+                            ConfigurationId = configVersion.ConfigurationId,
+                            SchemaVersion = version,
+                            GeneratedJsonSchema = jsonSchema,
+                            CreatedAt = DateTimeOffset.UtcNow,
+                            UpdatedAt = DateTimeOffset.UtcNow
+                        };
+                        _db.ParameterSchemas.Add(paramSchema);
+                        configVersion.ParameterSchemaId = paramSchema.Id;
                     }
+                    else
+                    {
+                        existingSchema.GeneratedJsonSchema = jsonSchema;
+                        existingSchema.UpdatedAt = DateTimeOffset.UtcNow;
+                        configVersion.ParameterSchemaId = existingSchema.Id;
+                    }
+
+                    await _db.SaveChangesAsync();
                 }
             }
 
