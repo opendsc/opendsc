@@ -162,46 +162,8 @@ public partial class ParameterSchemaService(
             throw new ArgumentException($"Invalid semantic version: {version}", nameof(version));
         }
 
-        // Parse parameters from JSON - try to deserialize as ParameterDefinition first
-        Dictionary<string, ParameterDefinition>? parametersDict = null;
-
-        try
-        {
-            parametersDict = JsonSerializer.Deserialize<Dictionary<string, ParameterDefinition>>(parametersJson);
-        }
-        catch
-        {
-            // If that fails, try deserializing as simple key-value pairs and convert to ParameterDefinition
-            try
-            {
-                var simpleParams = JsonSerializer.Deserialize<Dictionary<string, object>>(parametersJson);
-                if (simpleParams != null)
-                {
-                    parametersDict = new Dictionary<string, ParameterDefinition>();
-                    foreach (var kvp in simpleParams)
-                    {
-                        // Infer type from the value
-                        var inferredType = kvp.Value switch
-                        {
-                            bool => "bool",
-                            int or long => "int",
-                            double or float => "float",
-                            _ => "string"
-                        };
-
-                        parametersDict[kvp.Key] = new ParameterDefinition
-                        {
-                            Type = inferredType,
-                            DefaultValue = kvp.Value
-                        };
-                    }
-                }
-            }
-            catch
-            {
-                // Both deserializations failed
-            }
-        }
+        // Parse parameters from JSON
+        var parametersDict = JsonSerializer.Deserialize<Dictionary<string, ParameterDefinition>>(parametersJson);
 
         if (parametersDict == null)
         {
