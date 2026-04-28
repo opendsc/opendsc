@@ -950,10 +950,41 @@ public class ConfigurationServiceTests : IDisposable
         _dbContext.ConfigurationFiles.Add(file);
         await _dbContext.SaveChangesAsync();
 
-        var result = await _client.SaveFileAsync(
-            "TestConfig", "1.0.0", "main.dsc.yaml", "new content");
+        // Create the version directory and file for the service to modify
+        var uniqueTestDir = Path.Combine(Path.GetTempPath(), $"dsc-test-{Guid.NewGuid()}");
+        var configurationsDir = Path.Combine(uniqueTestDir, "configurations");
+        var versionDir = Path.Combine(configurationsDir, "TestConfig", "v1.0.0");
+        Directory.CreateDirectory(versionDir);
+        var filePath = Path.Combine(versionDir, "main.dsc.yaml");
+        await File.WriteAllTextAsync(filePath, "old content");
 
-        result.Should().Be(true);
+        // Create a new ServerConfig that points to our unique test directory
+        var testServerConfig = Options.Create(new ServerConfig { DataDirectory = uniqueTestDir });
+        var testClient = new ConfigurationService(
+            _dbContext,
+            testServerConfig,
+            _mockAuthService.Object,
+            _mockUserContext.Object,
+            _mockLogger.Object,
+            _mockHttpContextAccessor.Object,
+            _mockSchemaBuilder.Object,
+            _mockCompatibilityService.Object);
+
+        try
+        {
+            var result = await testClient.SaveFileAsync(
+                "TestConfig", "1.0.0", "main.dsc.yaml", "new content");
+
+            result.Should().Be(true);
+        }
+        finally
+        {
+            // Cleanup
+            if (Directory.Exists(uniqueTestDir))
+            {
+                Directory.Delete(uniqueTestDir, recursive: true);
+            }
+        }
     }
 
     [Fact]
