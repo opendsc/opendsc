@@ -46,8 +46,7 @@ public partial class ParameterSchemaService(
                 return Task.FromResult<string?>(null);
             }
 
-            // Serialize without the context to handle nested dictionaries from YAML properly
-            var parametersJson = JsonSerializer.Serialize(parametersObj);
+            var parametersJson = JsonSerializer.Serialize(parametersObj, SourceGenerationContext.Default.Object);
             return Task.FromResult<string?>(parametersJson);
         }
         catch (Exception)

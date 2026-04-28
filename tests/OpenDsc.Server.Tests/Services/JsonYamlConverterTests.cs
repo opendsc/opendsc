@@ -616,7 +616,7 @@ features:
 
         for (int i = 0; i < 100; i++)
         {
-            if (i > 0) jsonBuilder.Append(",");
+            if (i > 0) jsonBuilder.Append(',');
             jsonBuilder.Append($"{{ \"id\": {i}, \"name\": \"item{i}\" }}");
         }
 

@@ -659,7 +659,7 @@ public class GroupClaimsTransformationExtendedTests : IDisposable
         {
             Id = roleId,
             Name = "EmptyRole",
-            Permissions = JsonSerializer.Serialize(new string[] { })
+            Permissions = JsonSerializer.Serialize(Array.Empty<string>())
         };
         _db.Roles.Add(role);
 
