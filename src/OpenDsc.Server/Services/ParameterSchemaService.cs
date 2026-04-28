@@ -164,7 +164,6 @@ public partial class ParameterSchemaService(
 
         // Parse parameters from JSON
         var parametersDict = JsonSerializer.Deserialize<Dictionary<string, ParameterDefinition>>(parametersJson);
-
         if (parametersDict == null)
         {
             throw new ArgumentException("Invalid parameters JSON", nameof(parametersJson));
