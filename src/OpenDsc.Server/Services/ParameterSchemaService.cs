@@ -46,7 +46,7 @@ public partial class ParameterSchemaService(
                 return Task.FromResult<string?>(null);
             }
 
-            var parametersJson = JsonSerializer.Serialize(parametersObj, SourceGenerationContext.Default.Object);
+            var parametersJson = JsonSerializer.Serialize(parametersObj);
             return Task.FromResult<string?>(parametersJson);
         }
         catch (Exception)
@@ -163,11 +163,23 @@ public partial class ParameterSchemaService(
         }
 
         // Parse parameters from JSON
-        var parametersDict = JsonSerializer.Deserialize<Dictionary<string, ParameterDefinition>>(parametersJson);
-        if (parametersDict == null)
+        Dictionary<string, object>? rawParams;
+        try
+        {
+            rawParams = JsonSerializer.Deserialize<Dictionary<string, object>>(parametersJson);
+        }
+        catch (JsonException ex)
+        {
+            throw new ArgumentException("Invalid parameters JSON", nameof(parametersJson), ex);
+        }
+
+        if (rawParams == null)
         {
             throw new ArgumentException("Invalid parameters JSON", nameof(parametersJson));
         }
+
+        // Convert to ParameterDefinition format
+        var parametersDict = ConvertToParameterDefinitions(rawParams);
 
         // Build JSON Schema
         var jsonSchema = schemaBuilder.BuildJsonSchema(parametersDict);
@@ -257,9 +269,65 @@ public partial class ParameterSchemaService(
         );
     }
 
+    private static Dictionary<string, ParameterDefinition> ConvertToParameterDefinitions(Dictionary<string, object> rawParameters)
+    {
+        var result = new Dictionary<string, ParameterDefinition>();
+
+        foreach (var param in rawParameters)
+        {
+            // If the value is already a dictionary (ParameterDefinition-like), use it
+            if (param.Value is JsonElement jsonElement)
+            {
+                try
+                {
+                    var def = JsonSerializer.Deserialize<ParameterDefinition>(jsonElement.GetRawText());
+                    if (def != null)
+                    {
+                        result[param.Key] = def;
+                        continue;
+                    }
+                }
+                catch
+                {
+                    // Fall through to default handling
+                }
+            }
+            else if (param.Value is Dictionary<object, object> paramDict)
+            {
+                var def = new ParameterDefinition
+                {
+                    Type = paramDict.ContainsKey("type") ? paramDict["type"]?.ToString() ?? "string" : "string",
+                    Description = paramDict.ContainsKey("description") ? paramDict["description"]?.ToString() : null,
+                    DefaultValue = paramDict.ContainsKey("defaultValue") ? paramDict["defaultValue"] : null,
+                    AllowedValues = paramDict.ContainsKey("allowedValues") && paramDict["allowedValues"] is List<object> list ? list.ToArray() : null
+                };
+                result[param.Key] = def;
+                continue;
+            }
+
+            // For simple values, create a default ParameterDefinition based on the value type
+            var simpleType = param.Value switch
+            {
+                bool => "Boolean",
+                int or long => "Int32",
+                double or float or decimal => "Double",
+                _ => "String"
+            };
+
+            result[param.Key] = new ParameterDefinition
+            {
+                Type = simpleType,
+                DefaultValue = param.Value
+            };
+        }
+
+        return result;
+    }
+
     [LoggerMessage(EventId = EventIds.SchemaChangesDetected, Level = LogLevel.Debug, Message = "Schema changes detected: {RemovedCount} removed, {AddedCount} added")]
     private partial void LogSchemaChangesDetected(int removedCount, int addedCount);
 
     [LoggerMessage(EventId = EventIds.BreakingSchemaChangesDetected, Level = LogLevel.Warning, Message = "Breaking schema changes detected: {RemovedCount} parameter(s) removed ({RemovedParameters})")]
     private partial void LogBreakingSchemaChangesDetected(int removedCount, string removedParameters);
 }
+

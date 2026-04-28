@@ -438,12 +438,45 @@ public class ConfigurationServiceTests : IDisposable
         _dbContext.ConfigurationFiles.Add(sourceFile);
         await _dbContext.SaveChangesAsync();
 
-        var result = await _client.CreateVersionFromExistingAsync(
-            "TestConfig", "1.0.0", "2.0.0", isDraft: false);
+        // Create the source version directory and file for the service to copy
+        // The service looks for files in {ConfigurationsDirectory}/{name}/v{version}
+        // Use a unique directory to avoid conflicts with other tests
+        var uniqueTestDir = Path.Combine(Path.GetTempPath(), $"dsc-test-{Guid.NewGuid()}");
+        var configurationsDir = Path.Combine(uniqueTestDir, "configurations");
+        var sourceVersionDir = Path.Combine(configurationsDir, "TestConfig", "v1.0.0");
+        Directory.CreateDirectory(sourceVersionDir);
+        var sourceFilePath = Path.Combine(sourceVersionDir, "main.dsc.yaml");
+        await File.WriteAllTextAsync(sourceFilePath, "parameters:\n  env: test");
 
-        result.Should().Be(true);
-        (await _dbContext.ConfigurationVersions.FirstOrDefaultAsync(v => v.Version == "2.0.0"))
-            .Should().NotBeNull();
+        // Create a new ServerConfig that points to our unique test directory
+        var testServerConfig = Options.Create(new ServerConfig { DataDirectory = uniqueTestDir });
+        var testClient = new ConfigurationService(
+            _dbContext,
+            testServerConfig,
+            _mockAuthService.Object,
+            _mockUserContext.Object,
+            _mockLogger.Object,
+            _mockHttpContextAccessor.Object,
+            _mockSchemaBuilder.Object,
+            _mockCompatibilityService.Object);
+
+        try
+        {
+            var result = await testClient.CreateVersionFromExistingAsync(
+                "TestConfig", "1.0.0", "2.0.0", isDraft: false);
+
+            result.Should().Be(true);
+            (await _dbContext.ConfigurationVersions.FirstOrDefaultAsync(v => v.Version == "2.0.0"))
+                .Should().NotBeNull();
+        }
+        finally
+        {
+            // Cleanup
+            if (Directory.Exists(uniqueTestDir))
+            {
+                Directory.Delete(uniqueTestDir, recursive: true);
+            }
+        }
     }
 
     [Fact]
