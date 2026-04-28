@@ -184,4 +184,12 @@ public sealed class PasswordPolicyTests : WindowsTestBase
             });
         }
     }
+
+    [Fact]
+    public void Set_NullInstance_ThrowsArgumentNullException()
+    {
+        var act = () => _resource.Set(null);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
 }

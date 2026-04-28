@@ -239,6 +239,71 @@ public sealed class ServiceTests : WindowsTestBase
         act.Should().Throw<ArgumentException>().WithMessage("*StartType*");
     }
 
+    [Fact]
+    public void Get_NullInstance_ThrowsArgumentNullException()
+    {
+        var act = () => _resource.Get(null);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Set_NullInstance_ThrowsArgumentNullException()
+    {
+        var act = () => _resource.Set(null);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Delete_NullInstance_ThrowsArgumentNullException()
+    {
+        var act = () => _resource.Delete(null);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Set_InvalidStatusContinuousPending_ThrowsArgumentException()
+    {
+        var act = () => _resource.Set(new ServiceSchema { Name = "AnyService", Status = ServiceControllerStatus.ContinuePending });
+
+        act.Should().Throw<ArgumentException>().WithMessage("*Invalid service status*");
+    }
+
+    [Fact]
+    public void Set_InvalidStartTypeSystem_ThrowsArgumentException()
+    {
+        var act = () => _resource.Set(new ServiceSchema { Name = "AnyService", StartType = ServiceStartMode.System });
+
+        act.Should().Throw<ArgumentException>().WithMessage("*Invalid service start type*");
+    }
+
+    [Fact]
+    public void Export_ReturnsMultipleServices()
+    {
+        var results = _resource.Export(null).ToList();
+
+        results.Should().NotBeEmpty();
+        results.Count.Should().BeGreaterThan(1);
+        results.Should().AllSatisfy(r =>
+        {
+            r.Name.Should().NotBeNullOrEmpty();
+            r.DisplayName.Should().NotBeNullOrEmpty();
+        });
+    }
+
+    [Fact]
+    public void Get_NonExistentService_HasExistFalse()
+    {
+        var schema = new ServiceSchema { Name = "NonExistentService_" + Guid.NewGuid().ToString("N") };
+
+        var result = _resource.Get(schema);
+
+        result.Exist.Should().BeFalse();
+        result.Name.Should().Be(schema.Name);
+    }
+
     [RequiresAdminFact]
     public void Set_ExistingService_UpdatesDisplayName()
     {

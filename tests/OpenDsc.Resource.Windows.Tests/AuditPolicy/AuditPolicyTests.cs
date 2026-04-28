@@ -170,4 +170,28 @@ public sealed class AuditPolicyTests : WindowsTestBase
 
         act.Should().Throw<OpenDsc.Resource.Windows.AuditPolicy.UnknownSubcategoryException>();
     }
+
+    [Fact]
+    public void Get_NullInstance_ThrowsArgumentNullException()
+    {
+        var act = () => _resource.Get(null);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Set_NullInstance_ThrowsArgumentNullException()
+    {
+        var act = () => _resource.Set(null);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [RequiresAdminFact]
+    public void Get_CurrentPolicy_HasValidRange()
+    {
+        var policy = _resource.Get(new AuditPolicySchema { Subcategory = "Logon" });
+
+        policy.Should().NotBeNull();
+    }
 }

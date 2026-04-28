@@ -379,4 +379,40 @@ public sealed class UserTests : WindowsTestBase
             _resource.Delete(new UserSchema { UserName = userName });
         }
     }
+
+    [Fact]
+    public void Get_NullInstance_ThrowsArgumentNullException()
+    {
+        var act = () => _resource.Get(null);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Set_NullInstance_ThrowsArgumentNullException()
+    {
+        var act = () => _resource.Set(null);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Delete_NullInstance_ThrowsArgumentNullException()
+    {
+        var act = () => _resource.Delete(null);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Export_CallsExport_ReturnsUsers()
+    {
+        var results = _resource.Export(null).ToList();
+
+        results.Should().NotBeEmpty();
+        results.Should().AllSatisfy(user =>
+        {
+            user.UserName.Should().NotBeNullOrWhiteSpace();
+        });
+    }
 }
