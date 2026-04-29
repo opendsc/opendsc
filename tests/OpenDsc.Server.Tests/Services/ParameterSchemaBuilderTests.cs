@@ -414,4 +414,54 @@ public class ParameterSchemaBuilderTests
         parametersProperty.TryGetProperty("additionalProperties", out var additionalProps).Should().BeTrue();
         additionalProps.GetBoolean().Should().BeFalse();
     }
+
+    [Fact]
+    public void SerializeSchema_ShouldProduceValidJsonString()
+    {
+        // Arrange
+        var parametersBlock = new Dictionary<string, ParameterDefinition>
+        {
+            ["testParam"] = new ParameterDefinition { Type = "string" }
+        };
+
+        var schema = _builder.BuildJsonSchema(parametersBlock);
+
+        // Act
+        var serialized = _builder.SerializeSchema(schema);
+
+        // Assert
+        serialized.Should().NotBeNullOrEmpty();
+        var parsed = JsonDocument.Parse(serialized);
+        parsed.Should().NotBeNull();
+        parsed.RootElement.TryGetProperty("properties", out _).Should().BeTrue();
+    }
+
+    [Fact]
+    public void SerializeSchema_WithComplexSchema_ProducesValidJson()
+    {
+        // Arrange
+        var parametersBlock = new Dictionary<string, ParameterDefinition>
+        {
+            ["requiredParam"] = new ParameterDefinition { Type = "string" },
+            ["optionalParam"] = new ParameterDefinition { Type = "int", DefaultValue = 42 },
+            ["enumParam"] = new ParameterDefinition { Type = "string", AllowedValues = new object[] { "a", "b", "c" } }
+        };
+
+        var schema = _builder.BuildJsonSchema(parametersBlock);
+
+        // Act
+        var serialized = _builder.SerializeSchema(schema);
+
+        // Assert
+        serialized.Should().NotBeNullOrEmpty();
+        var parsed = JsonDocument.Parse(serialized);
+        var properties = parsed.RootElement
+            .GetProperty("properties")
+            .GetProperty("parameters")
+            .GetProperty("properties");
+
+        properties.TryGetProperty("requiredParam", out _).Should().BeTrue();
+        properties.TryGetProperty("optionalParam", out _).Should().BeTrue();
+        properties.TryGetProperty("enumParam", out _).Should().BeTrue();
+    }
 }
