@@ -29,6 +29,25 @@ public sealed class AvailabilityGroupTests : SqlServerTestBase
         Name = name
     };
 
+    private bool IsHadrEnabled()
+    {
+        var server = ConnectToServer();
+        try
+        {
+            server.ConnectionContext.Connect();
+            var result = server.ConnectionContext.ExecuteScalar("SELECT CAST(SERVERPROPERTY('IsHadrEnabled') AS int)");
+            return result is int i && i == 1;
+        }
+        catch
+        {
+            return false;
+        }
+        finally
+        {
+            OpenDsc.Resource.SqlServer.SqlConnectionHelper.SafeDisconnect(server);
+        }
+    }
+
     [Fact]
     public void GetSchema_ReturnsValidJsonSchema()
     {
@@ -78,6 +97,8 @@ public sealed class AvailabilityGroupTests : SqlServerTestBase
     [Fact]
     public void Set_CreateAvailabilityGroup_RequiresHadr()
     {
+        Assert.SkipUnless(IsHadrEnabled(), "Always On HADR is not enabled on this instance");
+
         var name = $"{Prefix}Create_{Guid.NewGuid():N}";
         var schema = NewSchema(name);
         schema.ClusterType = Microsoft.SqlServer.Management.Smo.AvailabilityGroupClusterType.None;
@@ -90,10 +111,6 @@ public sealed class AvailabilityGroupTests : SqlServerTestBase
             result.Name.Should().Be(name);
             result.Exist.Should().NotBe(false);
         }
-        catch (Microsoft.SqlServer.Management.Smo.FailedOperationException)
-        {
-            // HADR not enabled on this instance — expected in most test environments
-        }
         finally
         {
             ExecuteSqlSafe($"DROP AVAILABILITY GROUP IF EXISTS [{name}]");
@@ -101,11 +118,10 @@ public sealed class AvailabilityGroupTests : SqlServerTestBase
     }
 
     [Fact]
-    public void Set_CreateWithAllProperties_ExercisesAllAssignments()
+    public void Set_CreateWithAllProperties_AppliesAllSettings()
     {
-        // Even when Create() fails on a non-HADR instance, the property
-        // assignments in CreateAvailabilityGroup execute first, exercising
-        // every HasValue branch.
+        Assert.SkipUnless(IsHadrEnabled(), "Always On HADR is not enabled on this instance");
+
         var name = $"{Prefix}AllProps_{Guid.NewGuid():N}";
         var schema = NewSchema(name);
         schema.AutomatedBackupPreference = Microsoft.SqlServer.Management.Smo.AvailabilityGroupAutomatedBackupPreference.Secondary;
@@ -121,14 +137,17 @@ public sealed class AvailabilityGroupTests : SqlServerTestBase
         try
         {
             _resource.Set(schema);
-        }
-        catch (Microsoft.SqlServer.Management.Smo.FailedOperationException)
-        {
-            // HADR not enabled on this instance
-        }
-        catch (Microsoft.SqlServer.Management.Common.ExecutionFailureException)
-        {
-            // Some SMO failures wrap as ExecutionFailureException
+
+            var result = _resource.Get(NewSchema(name));
+            result.Name.Should().Be(name);
+            result.Exist.Should().NotBe(false);
+            result.AutomatedBackupPreference.Should().Be(schema.AutomatedBackupPreference);
+            result.FailureConditionLevel.Should().Be(schema.FailureConditionLevel);
+            result.HealthCheckTimeout.Should().Be(schema.HealthCheckTimeout);
+            result.DatabaseHealthTrigger.Should().Be(schema.DatabaseHealthTrigger);
+            result.DtcSupportEnabled.Should().Be(schema.DtcSupportEnabled);
+            result.ClusterType.Should().Be(schema.ClusterType);
+            result.RequiredSynchronizedSecondariesToCommit.Should().Be(schema.RequiredSynchronizedSecondariesToCommit);
         }
         finally
         {
