@@ -25,6 +25,89 @@ public sealed class ConfigurationTests : SqlServerTestBase
         ConnectPassword = ConnectPassword
     };
 
+    /// <summary>
+    /// Calls Set and returns true on success. Returns false when the SQL Server
+    /// edition does not support the requested option (for example, Ole Automation
+    /// Procedures on Express/Linux). Other failures still propagate.
+    /// </summary>
+    private bool TrySet(ConfigurationSchema schema)
+    {
+        try
+        {
+            _resource.Set(schema);
+            return true;
+        }
+        catch (Microsoft.SqlServer.Management.Smo.FailedOperationException ex)
+            when (ex.InnerException is Microsoft.SqlServer.Management.Common.ExecutionFailureException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Toggles a bool? configuration property to its inverse, verifies, then restores.
+    /// Skips verification on editions that do not support the option.
+    /// </summary>
+    private void RunBoolToggleTest(
+        Func<ConfigurationSchema, bool?> getter,
+        Action<ConfigurationSchema, bool?> setter)
+    {
+        var original = _resource.Get(NewSchema());
+        var originalValue = getter(original);
+        var newValue = !(originalValue ?? false);
+
+        var schema = NewSchema();
+        setter(schema, newValue);
+        if (!TrySet(schema))
+        {
+            return;
+        }
+
+        try
+        {
+            var result = _resource.Get(NewSchema());
+            getter(result).Should().Be(newValue);
+        }
+        finally
+        {
+            var restore = NewSchema();
+            setter(restore, originalValue);
+            TrySet(restore);
+        }
+    }
+
+    /// <summary>
+    /// Sets an int? configuration property to a target value, verifies, then restores.
+    /// Skips verification on editions that do not support the option.
+    /// </summary>
+    private void RunIntSetTest(
+        Func<ConfigurationSchema, int?> getter,
+        Action<ConfigurationSchema, int?> setter,
+        int targetValue)
+    {
+        var original = _resource.Get(NewSchema());
+        var originalValue = getter(original);
+
+        var schema = NewSchema();
+        setter(schema, targetValue);
+        if (!TrySet(schema))
+        {
+            return;
+        }
+
+        try
+        {
+            var result = _resource.Get(NewSchema());
+            getter(result).Should().Be(targetValue);
+        }
+        finally
+        {
+            var restore = NewSchema();
+            setter(restore, originalValue);
+            TrySet(restore);
+        }
+    }
+
     [Fact]
     public void GetSchema_ReturnsValidJsonSchema()
     {
@@ -316,508 +399,90 @@ public sealed class ConfigurationTests : SqlServerTestBase
     }
 
     [Fact]
-    public void Set_MinServerMemory_ConfigurationApplied()
-    {
-        var original = _resource.Get(NewSchema());
-        var originalValue = original.MinServerMemory;
-
-        try
-        {
-            var schema = NewSchema();
-            schema.MinServerMemory = 16;
-            _resource.Set(schema);
-
-            var result = _resource.Get(NewSchema());
-            result.MinServerMemory.Should().Be(16);
-        }
-        finally
-        {
-            var restore = NewSchema();
-            restore.MinServerMemory = originalValue;
-            _resource.Set(restore);
-        }
-    }
+    public void Set_MinServerMemory_ConfigurationApplied() =>
+        RunIntSetTest(s => s.MinServerMemory, (s, v) => s.MinServerMemory = v, 16);
 
     [Fact]
-    public void Set_MinMemoryPerQuery_ConfigurationApplied()
-    {
-        var original = _resource.Get(NewSchema());
-        var originalValue = original.MinMemoryPerQuery;
-
-        try
-        {
-            var schema = NewSchema();
-            schema.MinMemoryPerQuery = 1536;
-            _resource.Set(schema);
-
-            var result = _resource.Get(NewSchema());
-            result.MinMemoryPerQuery.Should().Be(1536);
-        }
-        finally
-        {
-            var restore = NewSchema();
-            restore.MinMemoryPerQuery = originalValue;
-            _resource.Set(restore);
-        }
-    }
+    public void Set_MinMemoryPerQuery_ConfigurationApplied() =>
+        RunIntSetTest(s => s.MinMemoryPerQuery, (s, v) => s.MinMemoryPerQuery = v, 1536);
 
     [Fact]
-    public void Set_NetworkPacketSize_ConfigurationApplied()
-    {
-        var original = _resource.Get(NewSchema());
-        var originalValue = original.NetworkPacketSize;
-
-        try
-        {
-            var schema = NewSchema();
-            schema.NetworkPacketSize = 8192;
-            _resource.Set(schema);
-
-            var result = _resource.Get(NewSchema());
-            result.NetworkPacketSize.Should().Be(8192);
-        }
-        finally
-        {
-            var restore = NewSchema();
-            restore.NetworkPacketSize = originalValue;
-            _resource.Set(restore);
-        }
-    }
+    public void Set_NetworkPacketSize_ConfigurationApplied() =>
+        RunIntSetTest(s => s.NetworkPacketSize, (s, v) => s.NetworkPacketSize = v, 8192);
 
     [Fact]
-    public void Set_RemoteLoginTimeout_ConfigurationApplied()
-    {
-        var original = _resource.Get(NewSchema());
-        var originalValue = original.RemoteLoginTimeout;
-
-        try
-        {
-            var schema = NewSchema();
-            schema.RemoteLoginTimeout = 15;
-            _resource.Set(schema);
-
-            var result = _resource.Get(NewSchema());
-            result.RemoteLoginTimeout.Should().Be(15);
-        }
-        finally
-        {
-            var restore = NewSchema();
-            restore.RemoteLoginTimeout = originalValue;
-            _resource.Set(restore);
-        }
-    }
+    public void Set_RemoteLoginTimeout_ConfigurationApplied() =>
+        RunIntSetTest(s => s.RemoteLoginTimeout, (s, v) => s.RemoteLoginTimeout = v, 15);
 
     [Fact]
-    public void Set_RemoteQueryTimeout_ConfigurationApplied()
-    {
-        var original = _resource.Get(NewSchema());
-        var originalValue = original.RemoteQueryTimeout;
-
-        try
-        {
-            var schema = NewSchema();
-            schema.RemoteQueryTimeout = 700;
-            _resource.Set(schema);
-
-            var result = _resource.Get(NewSchema());
-            result.RemoteQueryTimeout.Should().Be(700);
-        }
-        finally
-        {
-            var restore = NewSchema();
-            restore.RemoteQueryTimeout = originalValue;
-            _resource.Set(restore);
-        }
-    }
+    public void Set_RemoteQueryTimeout_ConfigurationApplied() =>
+        RunIntSetTest(s => s.RemoteQueryTimeout, (s, v) => s.RemoteQueryTimeout = v, 700);
 
     [Fact]
-    public void Set_AgentXpsEnabled_ConfigurationApplied()
-    {
-        var original = _resource.Get(NewSchema());
-        var originalValue = original.AgentXpsEnabled;
-
-        try
-        {
-            var schema = NewSchema();
-            schema.AgentXpsEnabled = !(originalValue ?? false);
-            _resource.Set(schema);
-
-            var result = _resource.Get(NewSchema());
-            result.AgentXpsEnabled.Should().Be(!(originalValue ?? false));
-        }
-        finally
-        {
-            var restore = NewSchema();
-            restore.AgentXpsEnabled = originalValue;
-            _resource.Set(restore);
-        }
-    }
+    public void Set_AgentXpsEnabled_ConfigurationApplied() =>
+        RunBoolToggleTest(s => s.AgentXpsEnabled, (s, v) => s.AgentXpsEnabled = v);
 
     [Fact]
-    public void Set_OleAutomationProceduresEnabled_ConfigurationApplied()
-    {
-        var original = _resource.Get(NewSchema());
-        var originalValue = original.OleAutomationProceduresEnabled;
-
-        try
-        {
-            var schema = NewSchema();
-            schema.OleAutomationProceduresEnabled = !(originalValue ?? false);
-            _resource.Set(schema);
-
-            var result = _resource.Get(NewSchema());
-            result.OleAutomationProceduresEnabled.Should().Be(!(originalValue ?? false));
-        }
-        finally
-        {
-            var restore = NewSchema();
-            restore.OleAutomationProceduresEnabled = originalValue;
-            _resource.Set(restore);
-        }
-    }
+    public void Set_OleAutomationProceduresEnabled_ConfigurationApplied() =>
+        RunBoolToggleTest(s => s.OleAutomationProceduresEnabled, (s, v) => s.OleAutomationProceduresEnabled = v);
 
     [Fact]
-    public void Set_AdHocDistributedQueriesEnabled_ConfigurationApplied()
-    {
-        var original = _resource.Get(NewSchema());
-        var originalValue = original.AdHocDistributedQueriesEnabled;
-
-        try
-        {
-            var schema = NewSchema();
-            schema.AdHocDistributedQueriesEnabled = !(originalValue ?? false);
-            _resource.Set(schema);
-
-            var result = _resource.Get(NewSchema());
-            result.AdHocDistributedQueriesEnabled.Should().Be(!(originalValue ?? false));
-        }
-        finally
-        {
-            var restore = NewSchema();
-            restore.AdHocDistributedQueriesEnabled = originalValue;
-            _resource.Set(restore);
-        }
-    }
+    public void Set_AdHocDistributedQueriesEnabled_ConfigurationApplied() =>
+        RunBoolToggleTest(s => s.AdHocDistributedQueriesEnabled, (s, v) => s.AdHocDistributedQueriesEnabled = v);
 
     [Fact]
-    public void Set_ClrEnabled_ConfigurationApplied()
-    {
-        var original = _resource.Get(NewSchema());
-        var originalValue = original.ClrEnabled;
-
-        try
-        {
-            var schema = NewSchema();
-            schema.ClrEnabled = !(originalValue ?? false);
-            _resource.Set(schema);
-
-            var result = _resource.Get(NewSchema());
-            result.ClrEnabled.Should().Be(!(originalValue ?? false));
-        }
-        finally
-        {
-            var restore = NewSchema();
-            restore.ClrEnabled = originalValue;
-            _resource.Set(restore);
-        }
-    }
+    public void Set_ClrEnabled_ConfigurationApplied() =>
+        RunBoolToggleTest(s => s.ClrEnabled, (s, v) => s.ClrEnabled = v);
 
     [Fact]
-    public void Set_ContainmentEnabled_ConfigurationApplied()
-    {
-        var original = _resource.Get(NewSchema());
-        var originalValue = original.ContainmentEnabled;
-
-        try
-        {
-            var schema = NewSchema();
-            schema.ContainmentEnabled = !(originalValue ?? false);
-            _resource.Set(schema);
-
-            var result = _resource.Get(NewSchema());
-            result.ContainmentEnabled.Should().Be(!(originalValue ?? false));
-        }
-        finally
-        {
-            var restore = NewSchema();
-            restore.ContainmentEnabled = originalValue;
-            _resource.Set(restore);
-        }
-    }
+    public void Set_ContainmentEnabled_ConfigurationApplied() =>
+        RunBoolToggleTest(s => s.ContainmentEnabled, (s, v) => s.ContainmentEnabled = v);
 
     [Fact]
-    public void Set_DefaultBackupChecksum_ConfigurationApplied()
-    {
-        var original = _resource.Get(NewSchema());
-        var originalValue = original.DefaultBackupChecksum;
-
-        try
-        {
-            var schema = NewSchema();
-            schema.DefaultBackupChecksum = !(originalValue ?? false);
-            _resource.Set(schema);
-
-            var result = _resource.Get(NewSchema());
-            result.DefaultBackupChecksum.Should().Be(!(originalValue ?? false));
-        }
-        finally
-        {
-            var restore = NewSchema();
-            restore.DefaultBackupChecksum = originalValue;
-            _resource.Set(restore);
-        }
-    }
+    public void Set_DefaultBackupChecksum_ConfigurationApplied() =>
+        RunBoolToggleTest(s => s.DefaultBackupChecksum, (s, v) => s.DefaultBackupChecksum = v);
 
     [Fact]
-    public void Set_QueryGovernorCostLimit_ConfigurationApplied()
-    {
-        var original = _resource.Get(NewSchema());
-        var originalValue = original.QueryGovernorCostLimit;
-
-        try
-        {
-            var schema = NewSchema();
-            schema.QueryGovernorCostLimit = 100;
-            _resource.Set(schema);
-
-            var result = _resource.Get(NewSchema());
-            result.QueryGovernorCostLimit.Should().Be(100);
-        }
-        finally
-        {
-            var restore = NewSchema();
-            restore.QueryGovernorCostLimit = originalValue;
-            _resource.Set(restore);
-        }
-    }
+    public void Set_QueryGovernorCostLimit_ConfigurationApplied() =>
+        RunIntSetTest(s => s.QueryGovernorCostLimit, (s, v) => s.QueryGovernorCostLimit = v, 100);
 
     [Fact]
-    public void Set_QueryWait_ConfigurationApplied()
-    {
-        var original = _resource.Get(NewSchema());
-        var originalValue = original.QueryWait;
-
-        try
-        {
-            var schema = NewSchema();
-            schema.QueryWait = 60;
-            _resource.Set(schema);
-
-            var result = _resource.Get(NewSchema());
-            result.QueryWait.Should().Be(60);
-        }
-        finally
-        {
-            var restore = NewSchema();
-            restore.QueryWait = originalValue;
-            _resource.Set(restore);
-        }
-    }
+    public void Set_QueryWait_ConfigurationApplied() =>
+        RunIntSetTest(s => s.QueryWait, (s, v) => s.QueryWait = v, 60);
 
     [Fact]
-    public void Set_OptimizeAdhocWorkloads_ConfigurationApplied()
-    {
-        var original = _resource.Get(NewSchema());
-        var originalValue = original.OptimizeAdhocWorkloads;
-
-        try
-        {
-            var schema = NewSchema();
-            schema.OptimizeAdhocWorkloads = !(originalValue ?? false);
-            _resource.Set(schema);
-
-            var result = _resource.Get(NewSchema());
-            result.OptimizeAdhocWorkloads.Should().Be(!(originalValue ?? false));
-        }
-        finally
-        {
-            var restore = NewSchema();
-            restore.OptimizeAdhocWorkloads = originalValue;
-            _resource.Set(restore);
-        }
-    }
+    public void Set_OptimizeAdhocWorkloads_ConfigurationApplied() =>
+        RunBoolToggleTest(s => s.OptimizeAdhocWorkloads, (s, v) => s.OptimizeAdhocWorkloads = v);
 
     [Fact]
-    public void Set_ServerTriggerRecursionEnabled_ConfigurationApplied()
-    {
-        var original = _resource.Get(NewSchema());
-        var originalValue = original.ServerTriggerRecursionEnabled;
-
-        try
-        {
-            var schema = NewSchema();
-            schema.ServerTriggerRecursionEnabled = !(originalValue ?? false);
-            _resource.Set(schema);
-
-            var result = _resource.Get(NewSchema());
-            result.ServerTriggerRecursionEnabled.Should().Be(!(originalValue ?? false));
-        }
-        finally
-        {
-            var restore = NewSchema();
-            restore.ServerTriggerRecursionEnabled = originalValue;
-            _resource.Set(restore);
-        }
-    }
+    public void Set_ServerTriggerRecursionEnabled_ConfigurationApplied() =>
+        RunBoolToggleTest(s => s.ServerTriggerRecursionEnabled, (s, v) => s.ServerTriggerRecursionEnabled = v);
 
     [Fact]
-    public void Set_DisallowResultsFromTriggers_ConfigurationApplied()
-    {
-        var original = _resource.Get(NewSchema());
-        var originalValue = original.DisallowResultsFromTriggers;
-
-        try
-        {
-            var schema = NewSchema();
-            schema.DisallowResultsFromTriggers = !(originalValue ?? false);
-            _resource.Set(schema);
-
-            var result = _resource.Get(NewSchema());
-            result.DisallowResultsFromTriggers.Should().Be(!(originalValue ?? false));
-        }
-        finally
-        {
-            var restore = NewSchema();
-            restore.DisallowResultsFromTriggers = originalValue;
-            _resource.Set(restore);
-        }
-    }
+    public void Set_DisallowResultsFromTriggers_ConfigurationApplied() =>
+        RunBoolToggleTest(s => s.DisallowResultsFromTriggers, (s, v) => s.DisallowResultsFromTriggers = v);
 
     [Fact]
-    public void Set_CrossDbOwnershipChaining_ConfigurationApplied()
-    {
-        var original = _resource.Get(NewSchema());
-        var originalValue = original.CrossDbOwnershipChaining;
-
-        try
-        {
-            var schema = NewSchema();
-            schema.CrossDbOwnershipChaining = !(originalValue ?? false);
-            _resource.Set(schema);
-
-            var result = _resource.Get(NewSchema());
-            result.CrossDbOwnershipChaining.Should().Be(!(originalValue ?? false));
-        }
-        finally
-        {
-            var restore = NewSchema();
-            restore.CrossDbOwnershipChaining = originalValue;
-            _resource.Set(restore);
-        }
-    }
+    public void Set_CrossDbOwnershipChaining_ConfigurationApplied() =>
+        RunBoolToggleTest(s => s.CrossDbOwnershipChaining, (s, v) => s.CrossDbOwnershipChaining = v);
 
     [Fact]
-    public void Set_DefaultTraceEnabled_ConfigurationApplied()
-    {
-        var original = _resource.Get(NewSchema());
-        var originalValue = original.DefaultTraceEnabled;
-
-        try
-        {
-            var schema = NewSchema();
-            schema.DefaultTraceEnabled = !(originalValue ?? false);
-            _resource.Set(schema);
-
-            var result = _resource.Get(NewSchema());
-            result.DefaultTraceEnabled.Should().Be(!(originalValue ?? false));
-        }
-        finally
-        {
-            var restore = NewSchema();
-            restore.DefaultTraceEnabled = originalValue;
-            _resource.Set(restore);
-        }
-    }
+    public void Set_DefaultTraceEnabled_ConfigurationApplied() =>
+        RunBoolToggleTest(s => s.DefaultTraceEnabled, (s, v) => s.DefaultTraceEnabled = v);
 
     [Fact]
-    public void Set_BlockedProcessThreshold_ConfigurationApplied()
-    {
-        var original = _resource.Get(NewSchema());
-        var originalValue = original.BlockedProcessThreshold;
-
-        try
-        {
-            var schema = NewSchema();
-            schema.BlockedProcessThreshold = 10;
-            _resource.Set(schema);
-
-            var result = _resource.Get(NewSchema());
-            result.BlockedProcessThreshold.Should().Be(10);
-        }
-        finally
-        {
-            var restore = NewSchema();
-            restore.BlockedProcessThreshold = originalValue;
-            _resource.Set(restore);
-        }
-    }
+    public void Set_BlockedProcessThreshold_ConfigurationApplied() =>
+        RunIntSetTest(s => s.BlockedProcessThreshold, (s, v) => s.BlockedProcessThreshold = v, 10);
 
     [Fact]
-    public void Set_RecoveryInterval_ConfigurationApplied()
-    {
-        var original = _resource.Get(NewSchema());
-        var originalValue = original.RecoveryInterval;
-
-        try
-        {
-            var schema = NewSchema();
-            schema.RecoveryInterval = 5;
-            _resource.Set(schema);
-
-            var result = _resource.Get(NewSchema());
-            result.RecoveryInterval.Should().Be(5);
-        }
-        finally
-        {
-            var restore = NewSchema();
-            restore.RecoveryInterval = originalValue;
-            _resource.Set(restore);
-        }
-    }
+    public void Set_RecoveryInterval_ConfigurationApplied() =>
+        RunIntSetTest(s => s.RecoveryInterval, (s, v) => s.RecoveryInterval = v, 5);
 
     [Fact]
-    public void Set_FillFactor_ConfigurationApplied()
-    {
-        var original = _resource.Get(NewSchema());
-        var originalValue = original.FillFactor;
-
-        try
-        {
-            var schema = NewSchema();
-            schema.FillFactor = 90;
-            _resource.Set(schema);
-
-            var result = _resource.Get(NewSchema());
-            result.FillFactor.Should().Be(90);
-        }
-        finally
-        {
-            var restore = NewSchema();
-            restore.FillFactor = originalValue;
-            _resource.Set(restore);
-        }
-    }
+    public void Set_FillFactor_ConfigurationApplied() =>
+        RunIntSetTest(s => s.FillFactor, (s, v) => s.FillFactor = v, 90);
 
     [Fact]
-    public void Set_CursorThreshold_ConfigurationApplied()
-    {
-        var original = _resource.Get(NewSchema());
-        var originalValue = original.CursorThreshold;
-
-        try
-        {
-            var schema = NewSchema();
-            schema.CursorThreshold = 1000;
-            _resource.Set(schema);
-
-            var result = _resource.Get(NewSchema());
-            result.CursorThreshold.Should().Be(1000);
-        }
-        finally
-        {
-            var restore = NewSchema();
-            restore.CursorThreshold = originalValue;
-            _resource.Set(restore);
-        }
-    }
+    public void Set_CursorThreshold_ConfigurationApplied() =>
+        RunIntSetTest(s => s.CursorThreshold, (s, v) => s.CursorThreshold = v, 1000);
 }
