@@ -91,6 +91,7 @@ public sealed class ParameterSchemaBuilder : IParameterSchemaBuilder
             "object" => SchemaValueType.Object,
             "secureObject" => SchemaValueType.Object,
             "array" => SchemaValueType.Array,
+            "float" or "double" => SchemaValueType.Number,
             _ => throw new ArgumentException($"Unknown parameter type: {param.Type}")
         });
 
