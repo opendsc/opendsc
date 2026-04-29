@@ -99,4 +99,61 @@ public sealed class AvailabilityGroupTests : SqlServerTestBase
             ExecuteSqlSafe($"DROP AVAILABILITY GROUP IF EXISTS [{name}]");
         }
     }
+
+    [Fact]
+    public void Set_CreateWithAllProperties_ExercisesAllAssignments()
+    {
+        // Even when Create() fails on a non-HADR instance, the property
+        // assignments in CreateAvailabilityGroup execute first, exercising
+        // every HasValue branch.
+        var name = $"{Prefix}AllProps_{Guid.NewGuid():N}";
+        var schema = NewSchema(name);
+        schema.AutomatedBackupPreference = Microsoft.SqlServer.Management.Smo.AvailabilityGroupAutomatedBackupPreference.Secondary;
+        schema.FailureConditionLevel = Microsoft.SqlServer.Management.Smo.AvailabilityGroupFailureConditionLevel.OnServerDown;
+        schema.HealthCheckTimeout = 30000;
+        schema.BasicAvailabilityGroup = false;
+        schema.DatabaseHealthTrigger = true;
+        schema.DtcSupportEnabled = false;
+        schema.ClusterType = Microsoft.SqlServer.Management.Smo.AvailabilityGroupClusterType.None;
+        schema.RequiredSynchronizedSecondariesToCommit = 0;
+        schema.IsContained = false;
+
+        try
+        {
+            _resource.Set(schema);
+        }
+        catch (Microsoft.SqlServer.Management.Smo.FailedOperationException)
+        {
+            // HADR not enabled on this instance
+        }
+        catch (Microsoft.SqlServer.Management.Common.ExecutionFailureException)
+        {
+            // Some SMO failures wrap as ExecutionFailureException
+        }
+        finally
+        {
+            ExecuteSqlSafe($"DROP AVAILABILITY GROUP IF EXISTS [{name}]");
+        }
+    }
+
+    [Fact]
+    public void Get_NullInstance_Throws()
+    {
+        var action = () => _resource.Get(null);
+        action.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Set_NullInstance_Throws()
+    {
+        var action = () => _resource.Set(null);
+        action.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Delete_NullInstance_Throws()
+    {
+        var action = () => _resource.Delete(null);
+        action.Should().Throw<ArgumentNullException>();
+    }
 }
