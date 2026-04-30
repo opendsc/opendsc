@@ -9,7 +9,7 @@
     </PropertyGroup>
 
     <PropertyGroup>
-        <DefineConstants>Version=$(Version)</DefineConstants>
+        <DefineConstants>Version=$(Version);Configuration=$(Configuration)</DefineConstants>
     </PropertyGroup>
 
     <ItemGroup>

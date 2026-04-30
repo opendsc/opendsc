@@ -85,8 +85,10 @@ builder.Services.AddScoped<IParameterService, ParameterService>();
 builder.Services.AddScoped<IJsonYamlConverter, JsonYamlConverter>();
 builder.Services.AddSingleton<NodeEndpoints>();
 
+#if !WINDOWS
 if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
 {
+    builder.Host.UseSystemd();
     builder.Logging.AddSystemdConsole(options =>
     {
         options.IncludeScopes = false;
@@ -101,6 +103,7 @@ else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
         options.TimestampFormat = "HH:mm:ss ";
     });
 }
+#endif
 
 #if WINDOWS
 builder.Services.AddWindowsService();

@@ -63,8 +63,10 @@ builder.Services.AddHttpClient(PullServerClient.AnonymousClientName, (sp, client
 
 builder.Services.AddHostedService<LcmWorker>();
 
+#if !WINDOWS
 if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
 {
+    builder.UseSystemd();
     builder.Logging.AddSystemdConsole(options =>
     {
         options.IncludeScopes = false;
@@ -79,6 +81,7 @@ else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
         options.TimestampFormat = "HH:mm:ss ";
     });
 }
+#endif
 
 #if WINDOWS
 builder.Services.AddWindowsService();

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.opendsc.lcm</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/bin/opendsc-lcm</string>
+    </array>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/var/log/opendsc/lcm.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/var/log/opendsc/lcm.log</string>
+
+    <key>WorkingDirectory</key>
+    <string>/Library/Application Support/OpenDSC/LCM</string>
+</dict>
+</plist>

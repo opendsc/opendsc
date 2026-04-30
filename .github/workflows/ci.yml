@@ -27,39 +27,78 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
+      - name: Install FPM
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get install -y ruby ruby-dev rpm
+          sudo gem install fpm
+
       - name: Build, Publish, and Pack
         run: |
-          .\build.ps1 -Configuration Release -SkipTest ${{ matrix.os ==
-          'ubuntu-latest' && '-Pack' || '' }} -Portable ${{ matrix.os ==
-          'windows-latest' && '-Msi' || '' }}
+          $buildParams = @{
+            Configuration = 'Release'
+            SkipTest = $true
+          }
+          if ('${{ matrix.os }}' -eq 'ubuntu-latest') {
+            $buildParams['Pack'] = $true
+            $buildParams['LinuxPackages'] = $true
+          }
+          if ('${{ matrix.os }}' -eq 'windows-latest') {
+            $buildParams['Msi'] = $true
+            $buildParams['Portable'] = $true
+          } else {
+            $buildParams['Portable'] = $true
+          }
+          .\build.ps1 @buildParams
 
       - name: Upload NuGet Packages
         if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v7
         with:
-          name: nuget-packages
+          name: release-nuget
           path: artifacts/packages/*.nupkg
 
-      - name: Upload Windows Artifacts
+      - name: Upload Windows ZIP Packages
         if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v7
         with:
-          name: windows-artifacts
-          path: artifacts
+          name: release-zip
+          path: artifacts/zip
 
-      - name: Upload Linux Artifacts
+      - name: Upload Windows MSI Packages
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-msi
+          path: artifacts/msi
+
+      - name: Upload Linux TAR Packages
         if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v7
         with:
-          name: linux-artifacts
-          path: artifacts
+          name: release-tar-linux
+          path: artifacts/tar
 
-      - name: Upload macOS Artifacts
+      - name: Upload Linux DEB/RPM Packages
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-packages-linux
+          path: artifacts/packages/linux
+
+      - name: Upload macOS TAR Packages
         if: matrix.os == 'macos-latest'
         uses: actions/upload-artifact@v7
         with:
-          name: macos-artifacts
-          path: artifacts
+          name: release-tar-macos
+          path: artifacts/tar
+
+      - name: Upload Test Binaries
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-binaries-windows
+          path: artifacts/TestService
 
   test:
     needs: build
@@ -76,18 +115,12 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
-      - name: Download Artifacts
+      - name: Download Test Binaries
+        if: matrix.os == 'windows-latest'
         uses: actions/download-artifact@v8
         with:
-          name: |
-            ${{ matrix.os == 'windows-latest' && 'windows-artifacts' || matrix.os ==
-            'ubuntu-latest' && 'linux-artifacts' || 'macos-artifacts' }}
-          path: artifacts
-
-      - name: Set Execute Permissions
-        if: matrix.os != 'windows-latest'
-        shell: bash
-        run: chmod +x artifacts/publish/OpenDsc.Resources
+          name: test-binaries-windows
+          path: artifacts/TestService
 
       - name: Run Tests (Ubuntu - with Functional Tests + Coverage)
         if: matrix.os == 'ubuntu-latest'
@@ -111,17 +144,263 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: ${{ matrix.os }}
 
+  test-deb:
+    name: Test .deb Packages
+    needs: build
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:24.04
+    steps:
+      - name: Download Linux Packages
+        uses: actions/download-artifact@v8
+        with:
+          name: release-packages-linux
+          path: artifacts/packages/linux
+
+      - name: Install .NET Runtime
+        shell: bash
+        run: |
+          apt-get update -qq
+          apt-get install -y curl
+          curl -fsSL https://packages.microsoft.com/config/ubuntu/24.04/packages-microsoft-prod.deb \
+            -o packages-microsoft-prod.deb
+          dpkg -i packages-microsoft-prod.deb
+          apt-get update -qq
+          apt-get install -y dotnet-runtime-10.0
+
+      - name: Install opendsc-resources
+        shell: bash
+        run: |
+          apt-get install -y ./artifacts/packages/linux/x64/opendsc-resources_*.deb
+          test -x /usr/bin/OpenDsc.Resources
+          test -f /usr/bin/OpenDsc.Resources.dsc.manifests.json
+          /usr/bin/OpenDsc.Resources --help || true
+
+      - name: Install opendsc-lcm
+        shell: bash
+        run: |
+          apt-get install -y ./artifacts/packages/linux/x64/opendsc-lcm_*.deb
+          test -x /usr/bin/opendsc-lcm
+          test -f /lib/systemd/system/opendsc-lcm.service
+          test -f /etc/opendsc/lcm/appsettings.json
+          /usr/bin/opendsc-lcm --help || true
+
+      - name: Install opendsc-server
+        shell: bash
+        run: |
+          apt-get install -y ./artifacts/packages/linux/x64/opendsc-server_*.deb
+          test -x /usr/bin/opendsc-server
+          test -f /lib/systemd/system/opendsc-server.service
+          test -f /etc/opendsc/server/appsettings.json
+          id opendsc-server
+
+  test-rpm:
+    name: Test .rpm Packages
+    needs: build
+    runs-on: ubuntu-latest
+    container:
+      image: rockylinux:9
+    steps:
+      - name: Download Linux Packages
+        uses: actions/download-artifact@v8
+        with:
+          name: release-packages-linux
+          path: artifacts/packages/linux
+
+      - name: Install .NET Runtime
+        shell: bash
+        run: |
+          dnf install -y curl
+          curl -fsSL https://packages.microsoft.com/config/rhel/9/prod.repo \
+            -o /etc/yum.repos.d/microsoft-prod.repo
+          dnf install -y dotnet-runtime-10.0
+
+      - name: Install opendsc-resources
+        shell: bash
+        run: |
+          rpm -ivh artifacts/packages/linux/x64/opendsc-resources-*.x86_64.rpm
+          test -x /usr/bin/OpenDsc.Resources
+          test -f /usr/bin/OpenDsc.Resources.dsc.manifests.json
+          /usr/bin/OpenDsc.Resources --help || true
+
+      - name: Install opendsc-lcm
+        shell: bash
+        run: |
+          rpm -ivh --nodeps artifacts/packages/linux/x64/opendsc-lcm-*.x86_64.rpm
+          test -x /usr/bin/opendsc-lcm
+          test -f /lib/systemd/system/opendsc-lcm.service
+          test -f /etc/opendsc/lcm/appsettings.json
+          /usr/bin/opendsc-lcm --help || true
+
+      - name: Install opendsc-server
+        shell: bash
+        run: |
+          rpm -ivh --nodeps artifacts/packages/linux/x64/opendsc-server-*.x86_64.rpm
+          test -x /usr/bin/opendsc-server
+          test -f /lib/systemd/system/opendsc-server.service
+          test -f /etc/opendsc/server/appsettings.json
+          id opendsc-server
+
+  test-homebrew:
+    name: Test Homebrew Formulas
+    needs: build
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Download macOS TAR Packages
+        uses: actions/download-artifact@v8
+        with:
+          name: release-tar-macos
+          path: artifacts/tar
+
+      - name: Resolve Version
+        id: version
+        run: |
+          $v = ([xml](Get-Content 'Directory.Build.props')).Project.PropertyGroup.Version
+          "value=$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Generate Formulas with file:// URLs
+        run: |
+          $version = "${{ steps.version.outputs.value }}"
+          $resourcesTar = Resolve-Path "artifacts/tar/OpenDSC.Resources.macOS.arm64.SelfContained-$version.tar.gz"
+          $lcmTar       = Resolve-Path "artifacts/tar/OpenDSC.Lcm.macOS.arm64-$version.tar.gz"
+          $resourcesSha256 = (Get-FileHash -Algorithm SHA256 $resourcesTar).Hash.ToLower()
+          $lcmSha256       = (Get-FileHash -Algorithm SHA256 $lcmTar).Hash.ToLower()
+          $formulaParams = @{
+            Version         = $version
+            ResourcesSha256 = $resourcesSha256
+            LcmSha256       = $lcmSha256
+            ResourcesUrl    = "file://$resourcesTar"
+            LcmUrl          = "file://$lcmTar"
+          }
+          .\packaging\homebrew\generate-formula.ps1 @formulaParams
+
+      - name: Install opendsc-resources formula
+        run: |
+          brew install --formula artifacts/homebrew/opendsc-resources.rb
+          $brewPrefix = brew --prefix
+          if (-not (Test-Path "$brewPrefix/bin/OpenDsc.Resources")) { exit 1 }
+          if (-not (Test-Path "$brewPrefix/bin/OpenDsc.Resources.dsc.manifests.json")) { exit 1 }
+          OpenDsc.Resources --help; $global:LASTEXITCODE = 0
+
+      - name: Install opendsc-lcm formula
+        run: |
+          brew install --formula artifacts/homebrew/opendsc-lcm.rb
+          $brewPrefix = brew --prefix
+          if (-not (Test-Path "$brewPrefix/bin/opendsc-lcm")) { exit 1 }
+          opendsc-lcm --help; $global:LASTEXITCODE = 0
+          brew services list | Select-String -Pattern 'opendsc' -CaseInsensitive
+
   publish:
-    needs: test
+    needs: [ test, test-deb, test-rpm, test-homebrew ]
     if: github.event_name == 'release' && github.event.action == 'published'
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
       - name: Download NuGet Packages
         uses: actions/download-artifact@v8
         with:
-          name: nuget-packages
-          path: artifacts/packages
+          name: release-nuget
+          path: artifacts/nuget
+
+      - name: Download Linux TAR Packages
+        uses: actions/download-artifact@v8
+        with:
+          name: release-tar-linux
+          path: artifacts/tar-linux
+
+      - name: Download Linux DEB/RPM Packages
+        uses: actions/download-artifact@v8
+        with:
+          name: release-packages-linux
+          path: artifacts/packages/linux
+
+      - name: Download macOS TAR Packages
+        uses: actions/download-artifact@v8
+        with:
+          name: release-tar-macos
+          path: artifacts/tar-macos
+
+      - name: Download Windows ZIP Packages
+        uses: actions/download-artifact@v8
+        with:
+          name: release-zip
+          path: artifacts/zip
+
+      - name: Download Windows MSI Packages
+        uses: actions/download-artifact@v8
+        with:
+          name: release-msi
+          path: artifacts/msi
+
+      - name: Resolve Version
+        id: version
+        run: |
+          $v = ([xml](Get-Content 'Directory.Build.props')).Project.PropertyGroup.Version
+          "value=$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Generate Homebrew Formulas
+        run: |
+          $version = "${{ steps.version.outputs.value }}"
+          $resourcesTar = "artifacts/tar-macos/OpenDSC.Resources.macOS.arm64.SelfContained-$version.tar.gz"
+          $lcmTar       = "artifacts/tar-macos/OpenDSC.Lcm.macOS.arm64-$version.tar.gz"
+          $resourcesSha256 = (Get-FileHash -Algorithm SHA256 $resourcesTar).Hash.ToLower()
+          $lcmSha256       = (Get-FileHash -Algorithm SHA256 $lcmTar).Hash.ToLower()
+          $formulaParams = @{
+            Version         = $version
+            ResourcesSha256 = $resourcesSha256
+            LcmSha256       = $lcmSha256
+          }
+          .\packaging\homebrew\generate-formula.ps1 @formulaParams
+
+      - name: Checkout Homebrew Tap Repository
+        if: false
+        uses: actions/checkout@v6
+        with:
+          repository: opendsc/homebrew-opendsc
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: homebrew-tap
+
+      - name: Update Formulas
+        if: false
+        run: |
+          Copy-Item artifacts/homebrew/*.rb homebrew-tap/Formula/
+
+      - name: Push Formula Updates
+        if: false
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          repository: opendsc/homebrew-opendsc
+          directory: homebrew-tap
+          branch: main
 
       - name: Publish to NuGet
         run: |
-          dotnet nuget push artifacts/packages/*.nupkg --api-key ${{ secrets.NUGET_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+          dotnet nuget push artifacts/nuget/*.nupkg --api-key ${{ secrets.NUGET_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+
+      - name: Attach Artifacts to Release
+        run: |
+          $paths = @(
+            'artifacts/tar-linux/*.tar.gz'
+            'artifacts/packages/linux/x64/*.deb'
+            'artifacts/packages/linux/x64/*.rpm'
+            'artifacts/packages/linux/arm64/*.deb'
+            'artifacts/packages/linux/arm64/*.rpm'
+            'artifacts/tar-macos/*.tar.gz'
+            'artifacts/zip/*.zip'
+            'artifacts/msi/*.msi'
+          )
+          $files = Get-ChildItem $paths
+          gh release upload "${{ github.event.release.tag_name }}" $files.FullName
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

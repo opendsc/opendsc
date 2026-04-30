@@ -45,11 +45,14 @@
         </Feature>
 
         <ComponentGroup Id="AppFiles" Directory="ServerRootFolder">
-            <Files Include="$(var.ProjectDir)..\..\..\artifacts\Server\**">
+            <Files
+                Include="$(var.ProjectDir)..\..\..\src\OpenDsc.Server\bin\$(var.Configuration)\net10.0-windows\publish\**">
                 <Exclude
-                    Files="$(var.ProjectDir)..\..\..\artifacts\Server\**\appsettings.Testing.json" />
-                <Exclude Files="$(var.ProjectDir)..\..\..\artifacts\Server\**\*.pdb" />
-                <Exclude Files="$(var.ProjectDir)..\..\..\artifacts\Server\OpenDsc.Server.exe" />
+                    Files="$(var.ProjectDir)..\..\..\src\OpenDsc.Server\bin\$(var.Configuration)\net10.0-windows\publish\**\appsettings.Testing.json" />
+                <Exclude
+                    Files="$(var.ProjectDir)..\..\..\src\OpenDsc.Server\bin\$(var.Configuration)\net10.0-windows\publish\**\*.pdb" />
+                <Exclude
+                    Files="$(var.ProjectDir)..\..\..\src\OpenDsc.Server\bin\$(var.Configuration)\net10.0-windows\publish\OpenDsc.Server.exe" />
             </Files>
         </ComponentGroup>
 
@@ -60,7 +63,7 @@
 
             <File
                 Id="ServerExecutable"
-                Source="$(var.ProjectDir)..\..\..\artifacts\Server\OpenDsc.Server.exe"
+                Source="$(var.ProjectDir)..\..\..\src\OpenDsc.Server\bin\$(var.Configuration)\net10.0-windows\publish\OpenDsc.Server.exe"
                 KeyPath="yes" />
 
             <ServiceInstall

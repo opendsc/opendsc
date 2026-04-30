@@ -1,0 +1,23 @@
+[Unit]
+Description=OpenDSC Local Configuration Manager
+Documentation=https://opendsc.io/docs
+After=network.target
+Wants=network.target
+
+[Service]
+Type=notify
+ExecStart=/usr/bin/opendsc-lcm
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+
+# Run as root — LCM manages system-level configuration
+User=root
+
+# Filesystem paths
+ConfigurationDirectory=opendsc/lcm
+StateDirectory=opendsc/lcm
+LogsDirectory=opendsc/lcm
+
+[Install]
+WantedBy=multi-user.target

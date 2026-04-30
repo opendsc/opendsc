@@ -1,0 +1,35 @@
+# typed: false
+# frozen_string_literal: true
+
+class OpendscResources < Formula
+  desc "OpenDSC resources for DSC v3 — FileSystem, XML, JSON, Archive, and more"
+  homepage "https://github.com/opendsc/opendsc"
+  url "{{RESOURCES_URL}}"
+  sha256 "{{RESOURCES_SHA256}}"
+  license "MIT"
+  version "{{VERSION}}"
+
+  depends_on arch: :arm64
+
+  def install
+    bin.install "OpenDsc.Resources"
+    bin.install "OpenDsc.Resources.dsc.manifests.json"
+  end
+
+  def caveats
+    <<~EOS
+      OpenDSC Resources has been installed to:
+        #{HOMEBREW_PREFIX}/bin/OpenDsc.Resources
+
+      The DSC manifest is co-located at:
+        #{HOMEBREW_PREFIX}/bin/OpenDsc.Resources.dsc.manifests.json
+
+      DSC will discover the resources automatically when #{HOMEBREW_PREFIX}/bin
+      is on your PATH (which Homebrew ensures by default).
+    EOS
+  end
+
+  test do
+    assert_match "OpenDsc.Resources", shell_output("#{bin}/OpenDsc.Resources --version")
+  end
+end
