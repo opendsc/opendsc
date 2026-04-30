@@ -66,7 +66,7 @@ builder.Services.AddHostedService<LcmWorker>();
 #if !WINDOWS
 if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
 {
-    builder.UseSystemd();
+    builder.Services.AddSystemd();
     builder.Logging.AddSystemdConsole(options =>
     {
         options.IncludeScopes = false;
