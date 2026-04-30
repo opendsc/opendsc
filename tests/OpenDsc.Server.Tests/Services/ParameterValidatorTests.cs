@@ -12,6 +12,7 @@ using Xunit;
 
 namespace OpenDsc.Server.Tests.Services;
 
+[Trait("Category", "Unit")]
 public class ParameterValidatorTests
 {
     private readonly ParameterValidator _validator;
@@ -560,6 +561,7 @@ parameters:
         // Assert
         result.IsValid.Should().BeFalse();
         result.Errors.Should().NotBeEmpty();
+        result.Errors!.Should().ContainSingle(e => e.Code == "empty_content");
     }
 
     [Fact]
@@ -579,6 +581,7 @@ parameters:
         // Assert
         result.IsValid.Should().BeFalse();
         result.Errors.Should().NotBeEmpty();
+        result.Errors!.Should().ContainSingle(e => e.Code == "empty_content");
     }
 
     [Fact]
@@ -653,8 +656,7 @@ parameters:
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().NotBeEmpty();
-        // Should have at least 2 errors: missing 'name' and 'count' exceeds max
+        result.Errors.Should().HaveCountGreaterThanOrEqualTo(2);
     }
 
     [Fact]
