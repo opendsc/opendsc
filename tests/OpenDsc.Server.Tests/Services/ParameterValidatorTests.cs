@@ -12,6 +12,7 @@ using Xunit;
 
 namespace OpenDsc.Server.Tests.Services;
 
+[Trait("Category", "Unit")]
 public class ParameterValidatorTests
 {
     private readonly ParameterValidator _validator;
@@ -541,5 +542,321 @@ parameters:
         result.IsValid.Should().BeFalse();
         result.Errors.Should().NotBeEmpty();
         result.Errors!.Should().ContainSingle(e => e.Code == "parse_error");
+    }
+
+    [Fact]
+    public void Validate_WithEmptyContent_ShouldReturnParseError()
+    {
+        // Arrange
+        var parametersBlock = new Dictionary<string, ParameterDefinition>
+        {
+            ["name"] = new ParameterDefinition { Type = "string" }
+        };
+        var schema = _schemaBuilder.BuildJsonSchema(parametersBlock);
+        var schemaString = _schemaBuilder.SerializeSchema(schema);
+
+        // Act
+        var result = _validator.Validate(schemaString, string.Empty);
+
+        // Assert
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().NotBeEmpty();
+        result.Errors!.Should().ContainSingle(e => e.Code == "empty_content");
+    }
+
+    [Fact]
+    public void Validate_WithWhitespaceOnlyContent_ShouldReturnParseError()
+    {
+        // Arrange
+        var parametersBlock = new Dictionary<string, ParameterDefinition>
+        {
+            ["name"] = new ParameterDefinition { Type = "string" }
+        };
+        var schema = _schemaBuilder.BuildJsonSchema(parametersBlock);
+        var schemaString = _schemaBuilder.SerializeSchema(schema);
+
+        // Act
+        var result = _validator.Validate(schemaString, "   \n\t  ");
+
+        // Assert
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().NotBeEmpty();
+        result.Errors!.Should().ContainSingle(e => e.Code == "empty_content");
+    }
+
+    [Fact]
+    public void Validate_WithValidYamlButMissingParameters_ShouldReturnError()
+    {
+        // Arrange - Valid YAML but doesn't have the required 'parameters' section
+        var parametersBlock = new Dictionary<string, ParameterDefinition>
+        {
+            ["name"] = new ParameterDefinition { Type = "string" }
+        };
+        var schema = _schemaBuilder.BuildJsonSchema(parametersBlock);
+        var schemaString = _schemaBuilder.SerializeSchema(schema);
+
+        var yaml = @"
+other_section:
+  value: 123
+";
+
+        // Act
+        var result = _validator.Validate(schemaString, yaml);
+
+        // Assert
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public void Validate_WithOptionalParameterMissing_ShouldReturnSuccess()
+    {
+        // Arrange
+        var parametersBlock = new Dictionary<string, ParameterDefinition>
+        {
+            ["required"] = new ParameterDefinition { Type = "string" },
+            ["optional"] = new ParameterDefinition { Type = "string", DefaultValue = "default" }
+        };
+        var schema = _schemaBuilder.BuildJsonSchema(parametersBlock);
+        var schemaString = _schemaBuilder.SerializeSchema(schema);
+
+        var yaml = @"
+parameters:
+  required: value
+";
+
+        // Act
+        var result = _validator.Validate(schemaString, yaml);
+
+        // Assert
+        result.IsValid.Should().BeTrue();
+        result.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Validate_WithMultipleValidationErrors_ShouldReturnAll()
+    {
+        // Arrange
+        var parametersBlock = new Dictionary<string, ParameterDefinition>
+        {
+            ["name"] = new ParameterDefinition { Type = "string" },
+            ["count"] = new ParameterDefinition { Type = "int", MinValue = 1, MaxValue = 100 }
+        };
+        var schema = _schemaBuilder.BuildJsonSchema(parametersBlock);
+        var schemaString = _schemaBuilder.SerializeSchema(schema);
+
+        var yaml = @"
+parameters:
+  count: 200
+  extra: field
+";
+
+        // Act
+        var result = _validator.Validate(schemaString, yaml);
+
+        // Assert
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().HaveCountGreaterThanOrEqualTo(2);
+    }
+
+    [Fact]
+    public void Validate_WithValidDateTimeParameter_ShouldReturnSuccess()
+    {
+        // Arrange
+        var parametersBlock = new Dictionary<string, ParameterDefinition>
+        {
+            ["timestamp"] = new ParameterDefinition { Type = "string" }
+        };
+        var schema = _schemaBuilder.BuildJsonSchema(parametersBlock);
+        var schemaString = _schemaBuilder.SerializeSchema(schema);
+
+        var yaml = @"
+parameters:
+  timestamp: '2024-01-01T00:00:00Z'
+";
+
+        // Act
+        var result = _validator.Validate(schemaString, yaml);
+
+        // Assert
+        result.IsValid.Should().BeTrue();
+        result.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Validate_WithValidIntegerValue_ShouldReturnSuccess()
+    {
+        // Arrange
+        var parametersBlock = new Dictionary<string, ParameterDefinition>
+        {
+            ["count"] = new ParameterDefinition { Type = "int" }
+        };
+        var schema = _schemaBuilder.BuildJsonSchema(parametersBlock);
+        var schemaString = _schemaBuilder.SerializeSchema(schema);
+
+        var yaml = @"
+parameters:
+  count: 42
+";
+
+        // Act
+        var result = _validator.Validate(schemaString, yaml);
+
+        // Assert
+        result.IsValid.Should().BeTrue();
+        result.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Validate_WithMultipleRequiredParameters_AllMissing_ShouldReturnError()
+    {
+        // Arrange
+        var parametersBlock = new Dictionary<string, ParameterDefinition>
+        {
+            ["param1"] = new ParameterDefinition { Type = "string" },
+            ["param2"] = new ParameterDefinition { Type = "int" },
+            ["param3"] = new ParameterDefinition { Type = "bool" }
+        };
+        var schema = _schemaBuilder.BuildJsonSchema(parametersBlock);
+        var schemaString = _schemaBuilder.SerializeSchema(schema);
+
+        var yaml = @"
+parameters: {}
+";
+
+        // Act
+        var result = _validator.Validate(schemaString, yaml);
+
+        // Assert
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public void Validate_WithConstraintsAtExactBoundaries_ShouldReturnSuccess()
+    {
+        // Arrange
+        var parametersBlock = new Dictionary<string, ParameterDefinition>
+        {
+            ["port"] = new ParameterDefinition
+            {
+                Type = "int",
+                MinValue = 1,
+                MaxValue = 65535
+            },
+            ["name"] = new ParameterDefinition
+            {
+                Type = "string",
+                MinLength = 1,
+                MaxLength = 50
+            }
+        };
+        var schema = _schemaBuilder.BuildJsonSchema(parametersBlock);
+        var schemaString = _schemaBuilder.SerializeSchema(schema);
+
+        var yaml = @"
+parameters:
+  port: 1
+  name: A
+";
+
+        // Act
+        var result = _validator.Validate(schemaString, yaml);
+
+        // Assert
+        result.IsValid.Should().BeTrue();
+        result.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Validate_WithConstraintsAtUpperBoundaries_ShouldReturnSuccess()
+    {
+        // Arrange
+        var parametersBlock = new Dictionary<string, ParameterDefinition>
+        {
+            ["port"] = new ParameterDefinition
+            {
+                Type = "int",
+                MinValue = 1,
+                MaxValue = 100
+            },
+            ["name"] = new ParameterDefinition
+            {
+                Type = "string",
+                MinLength = 1,
+                MaxLength = 5
+            }
+        };
+        var schema = _schemaBuilder.BuildJsonSchema(parametersBlock);
+        var schemaString = _schemaBuilder.SerializeSchema(schema);
+
+        var yaml = @"
+parameters:
+  port: 100
+  name: ABCDE
+";
+
+        // Act
+        var result = _validator.Validate(schemaString, yaml);
+
+        // Assert
+        result.IsValid.Should().BeTrue();
+        result.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Validate_WithValidEnumValue_ShouldReturnSuccess()
+    {
+        // Arrange
+        var parametersBlock = new Dictionary<string, ParameterDefinition>
+        {
+            ["env"] = new ParameterDefinition
+            {
+                Type = "string",
+                AllowedValues = new object[] { "dev", "staging", "prod" }
+            }
+        };
+        var schema = _schemaBuilder.BuildJsonSchema(parametersBlock);
+        var schemaString = _schemaBuilder.SerializeSchema(schema);
+
+        var yaml = @"
+parameters:
+  env: staging
+";
+
+        // Act
+        var result = _validator.Validate(schemaString, yaml);
+
+        // Assert
+        result.IsValid.Should().BeTrue();
+        result.Errors.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Validate_WithNumericEnumValue_ShouldValidateCorrectly()
+    {
+        // Arrange
+        var parametersBlock = new Dictionary<string, ParameterDefinition>
+        {
+            ["status"] = new ParameterDefinition
+            {
+                Type = "int",
+                AllowedValues = new object[] { 200, 404, 500 }
+            }
+        };
+        var schema = _schemaBuilder.BuildJsonSchema(parametersBlock);
+        var schemaString = _schemaBuilder.SerializeSchema(schema);
+
+        var yaml = @"
+parameters:
+  status: 404
+";
+
+        // Act
+        var result = _validator.Validate(schemaString, yaml);
+
+        // Assert
+        result.IsValid.Should().BeTrue();
+        result.Errors.Should().BeEmpty();
     }
 }
