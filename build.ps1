@@ -276,9 +276,28 @@ if (-not $SkipBuild) {
                 $pkgArtifactsDir = Join-Path $PSScriptRoot "artifacts\pkg-stage\$rid"
                 New-Item -ItemType Directory -Path $pkgArtifactsDir -Force | Out-Null
 
-                foreach ($b in $builds | Where-Object { $_.Runtime -eq $rid -and $_.PkgRole }) {
-                    $publishPath = Get-PublishPath -Proj $b.Proj -Configuration $Configuration -Framework $b.Framework -Runtime $b.Runtime
-                    Copy-Item -Recurse -Force $publishPath (Join-Path $pkgArtifactsDir $b.PkgRole)
+                foreach ($build in $builds | Where-Object { $_.Runtime -eq $rid -and $_.PkgRole }) {
+                    $publishPath = Get-PublishPath -Proj $build.Proj -Configuration $Configuration -Framework $build.Framework -Runtime $build.Runtime
+                    $stagingPath = Join-Path $pkgArtifactsDir $build.PkgRole
+                    Copy-Item -Recurse -Force $publishPath $stagingPath
+
+                    if ($build.PkgRole -eq 'Lcm') {
+                        $lcmHostPath = Join-Path $stagingPath 'OpenDsc.Lcm'
+                        if (Test-Path $lcmHostPath) {
+                            Copy-Item -Force $lcmHostPath (Join-Path $stagingPath 'opendsc-lcm')
+                        } else {
+                            throw "LCM host executable not found at $lcmHostPath"
+                        }
+                    }
+
+                    if ($build.PkgRole -eq 'Server') {
+                        $serverHostPath = Join-Path $stagingPath 'OpenDsc.Server'
+                        if (Test-Path $serverHostPath) {
+                            Copy-Item -Force $serverHostPath (Join-Path $stagingPath 'opendsc-server')
+                        } else {
+                            throw "Server host executable not found at $serverHostPath"
+                        }
+                    }
                 }
 
                 # Copy manifest from base Resources build to packaging staging
