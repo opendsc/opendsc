@@ -29,6 +29,25 @@ public sealed class AvailabilityGroupTests : SqlServerTestBase
         Name = name
     };
 
+    private bool IsHadrEnabled()
+    {
+        var server = ConnectToServer();
+        try
+        {
+            server.ConnectionContext.Connect();
+            var result = server.ConnectionContext.ExecuteScalar("SELECT CAST(SERVERPROPERTY('IsHadrEnabled') AS int)");
+            return result is int i && i == 1;
+        }
+        catch
+        {
+            return false;
+        }
+        finally
+        {
+            OpenDsc.Resource.SqlServer.SqlConnectionHelper.SafeDisconnect(server);
+        }
+    }
+
     [Fact]
     public void GetSchema_ReturnsValidJsonSchema()
     {
@@ -78,6 +97,8 @@ public sealed class AvailabilityGroupTests : SqlServerTestBase
     [Fact]
     public void Set_CreateAvailabilityGroup_RequiresHadr()
     {
+        Assert.SkipUnless(IsHadrEnabled(), "Always On HADR is not enabled on this instance");
+
         var name = $"{Prefix}Create_{Guid.NewGuid():N}";
         var schema = NewSchema(name);
         schema.ClusterType = Microsoft.SqlServer.Management.Smo.AvailabilityGroupClusterType.None;
@@ -90,13 +111,68 @@ public sealed class AvailabilityGroupTests : SqlServerTestBase
             result.Name.Should().Be(name);
             result.Exist.Should().NotBe(false);
         }
-        catch (Microsoft.SqlServer.Management.Smo.FailedOperationException)
+        finally
         {
-            // HADR not enabled on this instance — expected in most test environments
+            ExecuteSqlSafe($"DROP AVAILABILITY GROUP IF EXISTS [{name}]");
+        }
+    }
+
+    [Fact]
+    public void Set_CreateWithAllProperties_AppliesAllSettings()
+    {
+        Assert.SkipUnless(IsHadrEnabled(), "Always On HADR is not enabled on this instance");
+
+        var name = $"{Prefix}AllProps_{Guid.NewGuid():N}";
+        var schema = NewSchema(name);
+        schema.AutomatedBackupPreference = Microsoft.SqlServer.Management.Smo.AvailabilityGroupAutomatedBackupPreference.Secondary;
+        schema.FailureConditionLevel = Microsoft.SqlServer.Management.Smo.AvailabilityGroupFailureConditionLevel.OnServerDown;
+        schema.HealthCheckTimeout = 30000;
+        schema.BasicAvailabilityGroup = false;
+        schema.DatabaseHealthTrigger = true;
+        schema.DtcSupportEnabled = false;
+        schema.ClusterType = Microsoft.SqlServer.Management.Smo.AvailabilityGroupClusterType.None;
+        schema.RequiredSynchronizedSecondariesToCommit = 0;
+        schema.IsContained = false;
+
+        try
+        {
+            _resource.Set(schema);
+
+            var result = _resource.Get(NewSchema(name));
+            result.Name.Should().Be(name);
+            result.Exist.Should().NotBe(false);
+            result.AutomatedBackupPreference.Should().Be(schema.AutomatedBackupPreference);
+            result.FailureConditionLevel.Should().Be(schema.FailureConditionLevel);
+            result.HealthCheckTimeout.Should().Be(schema.HealthCheckTimeout);
+            result.DatabaseHealthTrigger.Should().Be(schema.DatabaseHealthTrigger);
+            result.DtcSupportEnabled.Should().Be(schema.DtcSupportEnabled);
+            result.ClusterType.Should().Be(schema.ClusterType);
+            result.RequiredSynchronizedSecondariesToCommit.Should().Be(schema.RequiredSynchronizedSecondariesToCommit);
         }
         finally
         {
             ExecuteSqlSafe($"DROP AVAILABILITY GROUP IF EXISTS [{name}]");
         }
+    }
+
+    [Fact]
+    public void Get_NullInstance_Throws()
+    {
+        var action = () => _resource.Get(null);
+        action.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Set_NullInstance_Throws()
+    {
+        var action = () => _resource.Set(null);
+        action.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Delete_NullInstance_Throws()
+    {
+        var action = () => _resource.Delete(null);
+        action.Should().Throw<ArgumentNullException>();
     }
 }
