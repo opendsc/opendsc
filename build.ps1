@@ -275,7 +275,9 @@ if (-not $SkipBuild) {
                     if (Test-Path $publishPath) {
                         $manifestFile = Join-Path $publishPath 'OpenDsc.Resources.dsc.manifests.json'
                         if (Test-Path $manifestFile) {
-                            Copy-Item -Force $manifestFile (Join-Path $pkgArtifactsDir 'publish')
+                            $destDir = Join-Path $pkgArtifactsDir 'publish'
+                            New-Item -ItemType Directory -Path $destDir -Force | Out-Null
+                            Copy-Item -Force $manifestFile $destDir
                         }
                     }
                 }
