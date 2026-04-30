@@ -243,26 +243,12 @@ if (-not $SkipBuild) {
             # Generate manifest explicitly for base Resources build on Linux packaging
             if ($b.Proj -eq $resourcesProj -and -not $b.Runtime -and $LinuxPackages) {
                 $publishPath = Get-PublishPath -Proj $b.Proj -Configuration $Configuration -Framework $b.Framework -Runtime $b.Runtime
-                Write-Host "  Manifest generation check: publishPath = $publishPath" -ForegroundColor Gray
                 $exePath = Join-Path $publishPath 'OpenDsc.Resources'
                 if (Test-Path $exePath) {
-                    Write-Host "  Running: $exePath manifest --save" -ForegroundColor Gray
-                    & $exePath manifest --save 2>&1
-                    if ($LASTEXITCODE -eq 0) {
-                        $manifestPath = Join-Path $publishPath 'OpenDsc.Resources.dsc.manifests.json'
-                        Write-Host "  Checking for manifest at: $manifestPath" -ForegroundColor Gray
-                        if (Test-Path $manifestPath) {
-                            Write-Host '  ✓ Manifest created successfully' -ForegroundColor Green
-                        } else {
-                            Write-Host '  ✗ Manifest file not found' -ForegroundColor Yellow
-                            Write-Host '  Directory listing:' -ForegroundColor Gray
-                            Get-ChildItem $publishPath | ForEach-Object { Write-Host "    - $($_.Name)" -ForegroundColor Gray }
-                        }
-                    } else {
-                        Write-Host "  ✗ Manifest generation failed with exit code $LASTEXITCODE" -ForegroundColor Yellow
-                    }
+                    & $exePath manifest --save
+                    if ($LASTEXITCODE -ne 0) { throw "Manifest generation failed for $($b.Name) with exit code $LASTEXITCODE" }
                 } else {
-                    Write-Host "  ✗ Executable not found at: $exePath" -ForegroundColor Yellow
+                    throw "Manifest generation executable not found at $exePath"
                 }
             }
         }
@@ -296,23 +282,14 @@ if (-not $SkipBuild) {
                 }
 
                 # Copy manifest from base Resources build to packaging staging
-                Write-Host "  Packaging manifest for $rid..." -ForegroundColor Cyan
                 $baseResourcesPublish = Get-PublishPath -Proj $resourcesProj -Configuration $Configuration -Framework 'net10.0' -Runtime $null
                 $manifestFile = Join-Path $baseResourcesPublish 'OpenDsc.Resources.dsc.manifests.json'
-                Write-Host "    Looking for manifest at: $manifestFile" -ForegroundColor Gray
                 if (Test-Path $manifestFile) {
                     $publishStagingDir = Join-Path $pkgArtifactsDir 'publish'
                     New-Item -ItemType Directory -Path $publishStagingDir -Force | Out-Null
                     Copy-Item -Force $manifestFile $publishStagingDir
-                    Write-Host "    ✓ Manifest copied to: $publishStagingDir" -ForegroundColor Green
                 } else {
-                    Write-Host "    ✗ Manifest file not found at: $manifestFile" -ForegroundColor Yellow
-                    Write-Host '    Checking base publish directory contents:' -ForegroundColor Gray
-                    if (Test-Path $baseResourcesPublish) {
-                        Get-ChildItem $baseResourcesPublish | ForEach-Object { Write-Host "      - $($_.Name)" -ForegroundColor Gray }
-                    } else {
-                        Write-Host '      (directory does not exist)' -ForegroundColor Gray
-                    }
+                    throw "Manifest file not found at $manifestFile"
                 }
 
                 $pkgOutputDir = Join-Path $PSScriptRoot "artifacts\packages\linux\$arch"
