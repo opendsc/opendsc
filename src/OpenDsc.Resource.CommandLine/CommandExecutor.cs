@@ -130,7 +130,8 @@ internal static class CommandExecutor
 
     private static string GetMultiResourceManifestFileName(string entryLocation)
     {
-        var fullExeName = Path.GetFileName(entryLocation);
+        var normalizedEntryLocation = entryLocation.Replace('\\', Path.DirectorySeparatorChar);
+        var fullExeName = Path.GetFileName(normalizedEntryLocation);
         if (string.IsNullOrEmpty(fullExeName))
         {
             throw new InvalidOperationException("Unable to determine executable name.");

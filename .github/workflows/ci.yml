@@ -185,6 +185,15 @@ jobs:
           apt-get update -qq
           apt-get install -y dotnet-runtime-10.0
 
+      - name: Stub systemctl for container installs
+        shell: bash
+        run: |
+          cat >/usr/local/bin/systemctl <<'EOF'
+          #!/usr/bin/env bash
+          exit 0
+          EOF
+          chmod +x /usr/local/bin/systemctl
+
       - name: Install opendsc-resources
         shell: bash
         run: |
@@ -298,9 +307,16 @@ jobs:
           }
           .\packaging\homebrew\generate-formula.ps1 @formulaParams
 
+      - name: Create temporary local tap
+        run: |
+          brew tap-new opendsc/local
+          $tapFormulaDir = Join-Path (brew --repository) 'Library/Taps/opendsc/homebrew-local/Formula'
+          New-Item -ItemType Directory -Path $tapFormulaDir -Force | Out-Null
+          Copy-Item artifacts/homebrew/*.rb $tapFormulaDir -Force
+
       - name: Install opendsc-resources formula
         run: |
-          brew install --formula ./artifacts/homebrew/opendsc-resources.rb
+          brew install opendsc/local/opendsc-resources
           $brewPrefix = brew --prefix
           if (-not (Test-Path "$brewPrefix/bin/OpenDsc.Resources")) { exit 1 }
           if (-not (Test-Path "$brewPrefix/bin/OpenDsc.Resources.dsc.manifests.json")) { exit 1 }
@@ -308,7 +324,7 @@ jobs:
 
       - name: Install opendsc-lcm formula
         run: |
-          brew install --formula ./artifacts/homebrew/opendsc-lcm.rb
+          brew install opendsc/local/opendsc-lcm
           $brewPrefix = brew --prefix
           if (-not (Test-Path "$brewPrefix/bin/opendsc-lcm")) { exit 1 }
           opendsc-lcm --help; $global:LASTEXITCODE = 0
