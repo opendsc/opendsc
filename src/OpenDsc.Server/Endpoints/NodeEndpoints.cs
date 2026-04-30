@@ -29,7 +29,8 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
                 .AddAuthenticationSchemes(
                     CookieAuthenticationDefaults.AuthenticationScheme,
                     PersonalAccessTokenHandler.SchemeName,
-                    CertificateAuthHandler.NodeScheme))
+                    CertificateAuthHandler.NodeScheme,
+                    AuthenticationExtensions.UserApiBearerScheme))
             .WithTags("Nodes");
 
         group.MapPost("/register", RegisterNode)

@@ -173,13 +173,19 @@ public static class AuthenticationEndpoints
             .Select(r => r.Name)
             .ToListAsync();
 
+        var authProvider = await db.ExternalLogins
+            .Where(el => el.UserId == userId.Value)
+            .Select(el => el.Provider)
+            .FirstOrDefaultAsync();
+
         return TypedResults.Ok(new CurrentUserResponse
         {
             UserId = user.Id,
             Username = user.Username,
             Email = user.Email,
             AccountType = user.AccountType.ToString(),
-            Roles = roles
+            Roles = roles,
+            AuthProvider = authProvider
         });
     }
 
@@ -196,9 +202,14 @@ public static class AuthenticationEndpoints
         }
 
         var user = await db.Users.FindAsync(userId.Value);
-        if (user == null || user.PasswordHash == null || user.PasswordSalt == null)
+        if (user == null)
         {
             return TypedResults.Unauthorized();
+        }
+
+        if (user.PasswordHash == null || user.PasswordSalt == null)
+        {
+            return TypedResults.BadRequest("External authentication users cannot change their password here.");
         }
 
         if (!passwordHasher.ValidatePassword(request.CurrentPassword, user.PasswordHash, user.PasswordSalt))
@@ -339,6 +350,7 @@ public sealed class CurrentUserResponse
     public string Email { get; set; } = string.Empty;
     public string AccountType { get; set; } = string.Empty;
     public List<string> Roles { get; set; } = [];
+    public string? AuthProvider { get; set; }
 }
 
 public sealed class ChangePasswordRequest

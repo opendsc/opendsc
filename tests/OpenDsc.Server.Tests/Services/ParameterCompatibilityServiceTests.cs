@@ -14,6 +14,7 @@ using Xunit;
 
 namespace OpenDsc.Server.Tests.Services;
 
+[Trait("Category", "Unit")]
 public class ParameterCompatibilityServiceTests
 {
     private readonly ParameterCompatibilityService _service;
@@ -494,5 +495,221 @@ public class ParameterCompatibilityServiceTests
         report.HasBreakingChanges.Should().BeFalse();
         report.NonBreakingChanges.Should().ContainSingle();
         report.NonBreakingChanges[0].ParameterName.Should().Be("age");
+    }
+
+    [Fact]
+    public void CompareSchemas_WithBothSchemasNull_ShouldReturnNoChanges()
+    {
+        // Act
+        var report = _service.CompareSchemas(null, null, "1.0.0", "1.0.1");
+
+        // Assert
+        report.HasBreakingChanges.Should().BeFalse();
+        report.BreakingChanges.Should().BeEmpty();
+        report.NonBreakingChanges.Should().BeEmpty();
+        report.OldVersion.Should().Be("1.0.0");
+        report.NewVersion.Should().Be("1.0.1");
+    }
+
+    [Fact]
+    public void CompareSchemas_WithBothSchemasEmpty_ShouldReturnNoChanges()
+    {
+        // Act
+        var report = _service.CompareSchemas(string.Empty, string.Empty, "1.0.0", "1.0.1");
+
+        // Assert
+        report.HasBreakingChanges.Should().BeFalse();
+        report.BreakingChanges.Should().BeEmpty();
+        report.NonBreakingChanges.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void CompareSchemas_WithOldSchemaNull_ShouldTreatAsNoParameters()
+    {
+        // Arrange
+        var newParams = new Dictionary<string, ParameterDefinition>
+        {
+            ["name"] = new ParameterDefinition { Type = "string" }
+        };
+        var newSchema = _schemaBuilder.BuildJsonSchema(newParams);
+
+        // Act
+        var report = _service.CompareSchemas(null, JsonSerializer.Serialize(newSchema), "1.0.0", "1.1.0");
+
+        // Assert
+        report.HasBreakingChanges.Should().BeTrue();
+        report.BreakingChanges.Should().ContainSingle();
+        report.BreakingChanges[0].ParameterName.Should().Be("name");
+        report.BreakingChanges[0].ChangeType.Should().Be("ParameterAdded");
+    }
+
+    [Fact]
+    public void CompareSchemas_WithNewSchemaNull_ShouldTreatAsNoParameters()
+    {
+        // Arrange
+        var oldParams = new Dictionary<string, ParameterDefinition>
+        {
+            ["name"] = new ParameterDefinition { Type = "string" }
+        };
+        var oldSchema = _schemaBuilder.BuildJsonSchema(oldParams);
+
+        // Act
+        var report = _service.CompareSchemas(JsonSerializer.Serialize(oldSchema), null, "1.0.0", "2.0.0");
+
+        // Assert
+        report.HasBreakingChanges.Should().BeTrue();
+        report.BreakingChanges.Should().ContainSingle();
+        report.BreakingChanges[0].ParameterName.Should().Be("name");
+        report.BreakingChanges[0].ChangeType.Should().Be("ParameterRemoved");
+    }
+
+    [Fact]
+    public void CompareSchemas_WithInvalidOldVersion_ShouldThrowArgumentException()
+    {
+        // Arrange
+        var oldParams = new Dictionary<string, ParameterDefinition>
+        {
+            ["name"] = new ParameterDefinition { Type = "string" }
+        };
+        var newParams = new Dictionary<string, ParameterDefinition>
+        {
+            ["name"] = new ParameterDefinition { Type = "string" }
+        };
+        var oldSchema = _schemaBuilder.BuildJsonSchema(oldParams);
+        var newSchema = _schemaBuilder.BuildJsonSchema(newParams);
+
+        // Act & Assert
+        var exception = Assert.Throws<ArgumentException>(() =>
+            _service.CompareSchemas(JsonSerializer.Serialize(oldSchema), JsonSerializer.Serialize(newSchema), "not-a-version", "1.0.0"));
+        exception.Message.Should().Contain("Invalid semantic version format");
+    }
+
+    [Fact]
+    public void CompareSchemas_WithInvalidNewVersion_ShouldThrowArgumentException()
+    {
+        // Arrange
+        var oldParams = new Dictionary<string, ParameterDefinition>
+        {
+            ["name"] = new ParameterDefinition { Type = "string" }
+        };
+        var newParams = new Dictionary<string, ParameterDefinition>
+        {
+            ["name"] = new ParameterDefinition { Type = "string" }
+        };
+        var oldSchema = _schemaBuilder.BuildJsonSchema(oldParams);
+        var newSchema = _schemaBuilder.BuildJsonSchema(newParams);
+
+        // Act & Assert
+        var exception = Assert.Throws<ArgumentException>(() =>
+            _service.CompareSchemas(JsonSerializer.Serialize(oldSchema), JsonSerializer.Serialize(newSchema), "1.0.0", "invalid"));
+        exception.Message.Should().Contain("Invalid semantic version format");
+    }
+
+    [Fact]
+    public void CompareSchemas_WithOptionalParameterAdded_ShouldBeNonBreaking()
+    {
+        // Arrange
+        var oldParams = new Dictionary<string, ParameterDefinition>
+        {
+            ["name"] = new ParameterDefinition { Type = "string" }
+        };
+        var newParams = new Dictionary<string, ParameterDefinition>
+        {
+            ["name"] = new ParameterDefinition { Type = "string" },
+            ["description"] = new ParameterDefinition { Type = "string", DefaultValue = "" }
+        };
+        var oldSchema = _schemaBuilder.BuildJsonSchema(oldParams);
+        var newSchema = _schemaBuilder.BuildJsonSchema(newParams);
+
+        // Act
+        var report = _service.CompareSchemas(JsonSerializer.Serialize(oldSchema), JsonSerializer.Serialize(newSchema), "1.0.0", "1.1.0");
+
+        // Assert
+        report.HasBreakingChanges.Should().BeFalse();
+        var change = report.NonBreakingChanges.FirstOrDefault(c => c.ParameterName == "description");
+        change.Should().NotBeNull();
+        change!.ChangeType.Should().Be("ParameterAdded");
+    }
+
+    [Fact]
+    public void CompareSchemas_WithEmptyAllowedValuesToSet_ShouldBeBreaking()
+    {
+        // Arrange
+        var oldParams = new Dictionary<string, ParameterDefinition>
+        {
+            ["env"] = new ParameterDefinition
+            {
+                Type = "string",
+                AllowedValues = null
+            }
+        };
+        var newParams = new Dictionary<string, ParameterDefinition>
+        {
+            ["env"] = new ParameterDefinition
+            {
+                Type = "string",
+                AllowedValues = new object[] { "dev", "prod" }
+            }
+        };
+        var oldSchema = _schemaBuilder.BuildJsonSchema(oldParams);
+        var newSchema = _schemaBuilder.BuildJsonSchema(newParams);
+
+        // Act
+        var report = _service.CompareSchemas(JsonSerializer.Serialize(oldSchema), JsonSerializer.Serialize(newSchema), "1.0.0", "2.0.0");
+
+        // Assert
+        report.HasBreakingChanges.Should().BeTrue();
+        var change = report.BreakingChanges.FirstOrDefault(c => c.ParameterName == "env");
+        change.Should().NotBeNull();
+    }
+
+    [Fact]
+    public void CompareSchemas_CorrectlyCalculatesNewMajorVersion()
+    {
+        // Arrange
+        var oldParams = new Dictionary<string, ParameterDefinition>
+        {
+            ["name"] = new ParameterDefinition { Type = "string" }
+        };
+        var newParams = new Dictionary<string, ParameterDefinition>
+        {
+            ["name"] = new ParameterDefinition { Type = "int" }
+        };
+        var oldSchema = _schemaBuilder.BuildJsonSchema(oldParams);
+        var newSchema = _schemaBuilder.BuildJsonSchema(newParams);
+
+        // Act
+        var report = _service.CompareSchemas(JsonSerializer.Serialize(oldSchema), JsonSerializer.Serialize(newSchema), "1.5.3", "2.0.0");
+
+        // Assert
+        report.NewMajorVersion.Should().Be(2);
+    }
+
+    [Fact]
+    public void CompareSchemas_WithMultipleParameterChanges_ReturnsAccurateReport()
+    {
+        // Arrange
+        var oldParams = new Dictionary<string, ParameterDefinition>
+        {
+            ["param1"] = new ParameterDefinition { Type = "string" },
+            ["param2"] = new ParameterDefinition { Type = "int" },
+            ["param3"] = new ParameterDefinition { Type = "bool", DefaultValue = false }
+        };
+        var newParams = new Dictionary<string, ParameterDefinition>
+        {
+            ["param1"] = new ParameterDefinition { Type = "string" },
+            ["param2"] = new ParameterDefinition { Type = "int", DefaultValue = 0 },
+            ["param4"] = new ParameterDefinition { Type = "string" }
+        };
+        var oldSchema = _schemaBuilder.BuildJsonSchema(oldParams);
+        var newSchema = _schemaBuilder.BuildJsonSchema(newParams);
+
+        // Act
+        var report = _service.CompareSchemas(JsonSerializer.Serialize(oldSchema), JsonSerializer.Serialize(newSchema), "1.0.0", "2.0.0");
+
+        // Assert
+        report.HasBreakingChanges.Should().BeTrue();
+        report.BreakingChanges.Should().HaveCount(2); // param3 removed and param4 required added
+        report.NonBreakingChanges.Should().HaveCount(1); // param2 became optional
     }
 }

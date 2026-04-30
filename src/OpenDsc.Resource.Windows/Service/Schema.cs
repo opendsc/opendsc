@@ -6,14 +6,19 @@ using System.ServiceProcess;
 using System.Text.Json.Serialization;
 
 using Json.Schema.Generation;
+using Json.Schema.Generation.Serialization;
 
 namespace OpenDsc.Resource.Windows.Service;
 
 [Title("Windows Service Schema")]
 [Description("Schema for managing Windows services via OpenDsc.")]
 [AdditionalProperties(false)]
+[Id("https://opendsc.dev/schemas/v1/windows/service.schema.json")]
+[GenerateJsonSchema]
 public sealed class Schema
 {
+    public static readonly Uri BundleUri = new("https://opendsc.dev/schemas/v1/bundled/windows/service.schema.json");
+
     [Required]
     [Description("The name of the service. Case insensitive. Cannot contain forward slash (/) or backslash (\\) characters.")]
     [MinLength(1)]

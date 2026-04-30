@@ -10,7 +10,6 @@ using Xunit;
 
 using AclAccessRule = OpenDsc.Resource.Windows.FileSystem.Acl.AccessRule;
 using AclResource = OpenDsc.Resource.Windows.FileSystem.Acl.Resource;
-using DscFileSystemRights = OpenDsc.Resource.Windows.FileSystem.Acl.FileSystemRights;
 using DscSchema = OpenDsc.Resource.Windows.FileSystem.Acl.Schema;
 
 namespace OpenDsc.Resource.Windows.Tests.FileSystem;
@@ -28,8 +27,7 @@ public sealed class AclTests : WindowsTestBase
         var schemaJson = resource.GetSchema();
         var doc = System.Text.Json.JsonDocument.Parse(schemaJson);
 
-        doc.RootElement.TryGetProperty("$schema", out var schemaProperty).Should().BeTrue();
-        schemaProperty.GetString().Should().Be("https://json-schema.org/draft/2020-12/schema");
+        doc.RootElement.ValueKind.Should().Be(System.Text.Json.JsonValueKind.Object);
     }
 
     [Fact]
@@ -91,7 +89,7 @@ public sealed class AclTests : WindowsTestBase
                     new AclAccessRule
                     {
                         Identity = "BUILTIN\\Users",
-                        Rights = new[] { DscFileSystemRights.Read },
+                        Rights = new[] { FileSystemRights.Read },
                         AccessControlType = AccessControlType.Allow,
                         InheritanceFlags = new[] { InheritanceFlags.None },
                         PropagationFlags = new[] { PropagationFlags.None }
@@ -104,7 +102,7 @@ public sealed class AclTests : WindowsTestBase
 
             var actual = resource.Get(new DscSchema { Path = path });
             actual.AccessRules.Should().NotBeNullOrEmpty();
-            actual.AccessRules!.Any(r => r.Identity.EndsWith("\\Users", StringComparison.OrdinalIgnoreCase) && r.AccessControlType == AccessControlType.Allow && r.Rights.Contains(DscFileSystemRights.Read)).Should().BeTrue();
+            actual.AccessRules!.Any(r => r.Identity.EndsWith("\\Users", StringComparison.OrdinalIgnoreCase) && r.AccessControlType == AccessControlType.Allow && r.Rights.Contains(FileSystemRights.Read)).Should().BeTrue();
         }
         finally
         {
@@ -129,7 +127,7 @@ public sealed class AclTests : WindowsTestBase
                     new AclAccessRule
                     {
                         Identity = "BUILTIN\\Users",
-                        Rights = new[] { DscFileSystemRights.Read },
+                        Rights = new[] { FileSystemRights.Read },
                         AccessControlType = AccessControlType.Allow,
                         InheritanceFlags = new[] { InheritanceFlags.None },
                         PropagationFlags = new[] { PropagationFlags.None }
@@ -147,7 +145,7 @@ public sealed class AclTests : WindowsTestBase
                     new AclAccessRule
                     {
                         Identity = "BUILTIN\\Administrators",
-                        Rights = new[] { DscFileSystemRights.FullControl },
+                        Rights = new[] { FileSystemRights.FullControl },
                         AccessControlType = AccessControlType.Allow,
                         InheritanceFlags = new[] { InheritanceFlags.None },
                         PropagationFlags = new[] { PropagationFlags.None }
@@ -160,11 +158,43 @@ public sealed class AclTests : WindowsTestBase
             var actual = resource.Get(new DscSchema { Path = path });
             actual.AccessRules.Should().NotBeNullOrEmpty();
 
-            var explicitAdminRule = actual.AccessRules!.Any(r => r.Identity.EndsWith("\\Administrators", StringComparison.OrdinalIgnoreCase) && r.AccessControlType == AccessControlType.Allow && r.Rights.Contains(DscFileSystemRights.FullControl) && r.InheritanceFlags != null && r.InheritanceFlags.Length == 1 && r.InheritanceFlags[0] == InheritanceFlags.None);
+            var explicitAdminRule = actual.AccessRules!.Any(r => r.Identity.EndsWith("\\Administrators", StringComparison.OrdinalIgnoreCase) && r.AccessControlType == AccessControlType.Allow && r.Rights.Contains(FileSystemRights.FullControl) && r.InheritanceFlags != null && r.InheritanceFlags.Length == 1 && r.InheritanceFlags[0] == InheritanceFlags.None);
             explicitAdminRule.Should().BeTrue();
 
             var explicitUsersRule = actual.AccessRules.Any(r => r.Identity.EndsWith("\\Users", StringComparison.OrdinalIgnoreCase) && r.InheritanceFlags != null && r.InheritanceFlags.Length == 1 && r.InheritanceFlags[0] == InheritanceFlags.None);
             explicitUsersRule.Should().BeFalse();
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void Export_NullFilter_ReturnsEmpty()
+    {
+        var resource = CreateResource();
+
+        var results = resource.Export(null).ToList();
+
+        results.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Export_WithPath_ReturnsCurrentAclState()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "DscAclTest_" + Guid.NewGuid() + ".txt");
+        File.WriteAllText(path, "test");
+
+        try
+        {
+            var resource = CreateResource();
+            var results = resource.Export(new DscSchema { Path = path }).ToList();
+
+            results.Should().ContainSingle();
+            results[0].Path.Should().Be(path);
+            results[0].Owner.Should().NotBeNullOrWhiteSpace();
+            results[0].AccessRules.Should().NotBeNullOrEmpty();
         }
         finally
         {

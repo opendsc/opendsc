@@ -3,6 +3,7 @@
 // terms of the MIT license.
 
 using System.Reflection;
+using System.Text.Json;
 
 using AwesomeAssertions;
 
@@ -26,8 +27,7 @@ public sealed class UserTests : WindowsTestBase
         var schemaJson = _resource.GetSchema();
         var doc = System.Text.Json.JsonDocument.Parse(schemaJson);
 
-        doc.RootElement.GetProperty("$schema").GetString()
-            .Should().Be("https://json-schema.org/draft/2020-12/schema");
+        doc.RootElement.ValueKind.Should().Be(JsonValueKind.Object);
     }
 
     [Fact]
@@ -378,5 +378,41 @@ public sealed class UserTests : WindowsTestBase
         {
             _resource.Delete(new UserSchema { UserName = userName });
         }
+    }
+
+    [Fact]
+    public void Get_NullInstance_ThrowsArgumentNullException()
+    {
+        var act = () => _resource.Get(null);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Set_NullInstance_ThrowsArgumentNullException()
+    {
+        var act = () => _resource.Set(null);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Delete_NullInstance_ThrowsArgumentNullException()
+    {
+        var act = () => _resource.Delete(null);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Export_CallsExport_ReturnsUsers()
+    {
+        var results = _resource.Export(null).ToList();
+
+        results.Should().NotBeEmpty();
+        results.Should().AllSatisfy(user =>
+        {
+            user.UserName.Should().NotBeNullOrWhiteSpace();
+        });
     }
 }

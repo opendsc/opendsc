@@ -5,14 +5,19 @@
 using System.Text.Json.Serialization;
 
 using Json.Schema.Generation;
+using Json.Schema.Generation.Serialization;
 
 namespace OpenDsc.Resource.Xml.Element;
 
 [Title("XML Element Schema")]
 [Description("Schema for managing XML element content and attributes via OpenDsc.")]
 [AdditionalProperties(false)]
+[Id("https://opendsc.dev/schemas/v1/xml/element.schema.json")]
+[GenerateJsonSchema]
 public sealed class Schema
 {
+    public static readonly Uri BundleUri = new("https://opendsc.dev/schemas/v1/bundled/xml/element.schema.json");
+
     [Required]
     [Description("The absolute file path to the XML document.")]
     public string Path { get; set; } = string.Empty;

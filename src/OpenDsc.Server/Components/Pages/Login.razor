@@ -1,8 +1,10 @@
 @page "/login"
 @rendermode InteractiveServer
 @using MudBlazor
+@using OpenDsc.Server.Authentication
 @inject IJSRuntime JSRuntime
 @inject NavigationManager Navigation
+@inject IConfiguration Configuration
 
 <MudContainer MaxWidth="MaxWidth.Small" Style="display: flex; align-items: center; justify-content: center; min-height: 100vh;">
     <MudCard Style="width: 100%; max-width: 400px;">
@@ -49,6 +51,25 @@
                     }
                 </MudButton>
             </EditForm>
+
+            @if (oidcProviders.Count > 0)
+            {
+                <MudStack Row="true" AlignItems="AlignItems.Center" Class="my-4">
+                    <MudDivider />
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Style="white-space: nowrap; padding: 0 8px;">OR</MudText>
+                    <MudDivider />
+                </MudStack>
+                <MudStack Spacing="2">
+                    @foreach (var provider in oidcProviders)
+                    {
+                        <MudButton Variant="Variant.Outlined"
+                                   FullWidth="true"
+                                   OnClick="@(() => SignInWithProvider(provider.Name))">
+                            Sign in with @provider.DisplayName
+                        </MudButton>
+                    }
+                </MudStack>
+            }
         </MudCardContent>
     </MudCard>
 </MudContainer>
@@ -57,6 +78,40 @@
     private LoginModel loginModel = new();
     private bool isLoading = false;
     private string? errorMessage;
+    private List<OidcProviderInfo> oidcProviders = [];
+
+    protected override Task OnInitializedAsync()
+    {
+        oidcProviders = Configuration
+            .GetSection("Authentication:OidcProviders")
+            .Get<List<OidcProviderOptions>>()
+            ?.Where(p => !string.IsNullOrEmpty(p.Name))
+            .Select(p => new OidcProviderInfo { Name = p.Name, DisplayName = p.DisplayName ?? p.Name })
+            .ToList() ?? [];
+
+        return Task.CompletedTask;
+    }
+
+    private void SignInWithProvider(string providerName)
+    {
+        var uri = Navigation.Uri;
+        var returnUrl = string.Empty;
+        var queryIndex = uri.IndexOf('?');
+        if (queryIndex >= 0)
+        {
+            var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri[queryIndex..]);
+            if (query.TryGetValue("returnUrl", out var rv))
+            {
+                returnUrl = rv.ToString();
+            }
+        }
+
+        var challengeUrl = string.IsNullOrEmpty(returnUrl)
+            ? $"/api/v1/auth/oidc/{Uri.EscapeDataString(providerName)}/challenge"
+            : $"/api/v1/auth/oidc/{Uri.EscapeDataString(providerName)}/challenge?returnUrl={Uri.EscapeDataString(returnUrl)}";
+
+        Navigation.NavigateTo(challengeUrl, forceLoad: true);
+    }
 
     private async Task HandleLogin()
     {
@@ -96,5 +151,11 @@
         public bool Success { get; set; }
         public string? Error { get; set; }
         public bool RequirePasswordChange { get; set; }
+    }
+
+    private sealed class OidcProviderInfo
+    {
+        public string Name { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
     }
 }

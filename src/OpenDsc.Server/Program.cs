@@ -61,7 +61,7 @@ builder.Services.AddMudServices();
 builder.Services.AddScoped<ThemeService>();
 
 builder.Services.AddServerDatabase(builder.Configuration);
-builder.Services.AddServerAuthentication(builder.Environment);
+builder.Services.AddServerAuthentication(builder.Environment, builder.Configuration);
 
 builder.Services.AddAuthorizationBuilder()
     .AddPolicy("reports.write", policy => policy.RequireAuthenticatedUser())
@@ -134,6 +134,7 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 app.MapAuthenticationEndpoints();
+app.MapOidcEndpoints(builder.Configuration);
 app.MapUserEndpoints();
 app.MapGroupEndpoints();
 app.MapRoleEndpoints();

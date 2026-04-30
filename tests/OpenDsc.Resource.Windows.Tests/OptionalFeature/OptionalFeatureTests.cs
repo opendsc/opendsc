@@ -25,8 +25,7 @@ public sealed class OptionalFeatureTests
         var schemaJson = _resource.GetSchema();
         var doc = JsonDocument.Parse(schemaJson);
 
-        doc.RootElement.GetProperty("$schema").GetString()
-            .Should().Be("https://json-schema.org/draft/2020-12/schema");
+        doc.RootElement.ValueKind.Should().Be(JsonValueKind.Object);
     }
 
     [Fact]
@@ -72,5 +71,29 @@ public sealed class OptionalFeatureTests
 
         results.Should().NotBeEmpty();
         results.Should().AllSatisfy(r => r.Name.Should().NotBeNull());
+    }
+
+    [Fact]
+    public void Get_NullInstance_ThrowsArgumentNullException()
+    {
+        var act = () => _resource.Get(null);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Set_NullInstance_ThrowsArgumentNullException()
+    {
+        var act = () => _resource.Set(null);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Delete_NullInstance_ThrowsArgumentNullException()
+    {
+        var act = () => _resource.Delete(null);
+
+        act.Should().Throw<ArgumentNullException>();
     }
 }

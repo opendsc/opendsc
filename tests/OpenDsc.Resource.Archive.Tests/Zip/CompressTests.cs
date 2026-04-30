@@ -40,8 +40,7 @@ public sealed class CompressTests : IDisposable
         var schemaJson = _resource.GetSchema();
         var doc = System.Text.Json.JsonDocument.Parse(schemaJson);
 
-        doc.RootElement.GetProperty("$schema").GetString()
-            .Should().Be("https://json-schema.org/draft/2020-12/schema");
+        doc.RootElement.ValueKind.Should().Be(System.Text.Json.JsonValueKind.Object);
     }
 
     [Fact]

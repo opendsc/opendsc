@@ -7,7 +7,6 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 
 using Json.Schema;
-using Json.Schema.Generation;
 
 using Microsoft.SqlServer.Management.Smo;
 
@@ -31,16 +30,9 @@ public sealed class Resource(JsonSerializerContext context)
 {
     public override string GetSchema()
     {
-        var config = new SchemaGeneratorConfiguration()
-        {
-            PropertyNameResolver = PropertyNameResolvers.CamelCase
-        };
-
-        var builder = new JsonSchemaBuilder().FromType<Schema>(config);
-        builder.Schema("https://json-schema.org/draft/2020-12/schema");
-        var schema = builder.Build();
-
-        return JsonSerializer.Serialize(schema);
+        var registry = new SchemaRegistry();
+        var schema = registry.CreateBundle(GeneratedJsonSchemas.Login_Schema.BaseUri, Schema.BundleUri);
+        return JsonSerializer.Serialize(schema, SourceGenerationContext.Default.JsonSchema);
     }
 
     public Schema Get(Schema? instance)
@@ -152,9 +144,9 @@ public sealed class Resource(JsonSerializerContext context)
 
     public IEnumerable<Schema> Export(Schema? filter)
     {
-        var serverInstance = Environment.GetEnvironmentVariable("SQLSERVER_INSTANCE") ?? ".";
-        var username = Environment.GetEnvironmentVariable("SQLSERVER_USERNAME");
-        var password = Environment.GetEnvironmentVariable("SQLSERVER_PASSWORD");
+        var serverInstance = filter?.ServerInstance ?? ".";
+        var username = filter?.ConnectUsername;
+        var password = filter?.ConnectPassword;
         return Export(serverInstance, username, password);
     }
 

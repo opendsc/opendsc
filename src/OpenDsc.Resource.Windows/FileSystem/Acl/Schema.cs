@@ -5,14 +5,19 @@
 using System.Text.Json.Serialization;
 
 using Json.Schema.Generation;
+using Json.Schema.Generation.Serialization;
 
 namespace OpenDsc.Resource.Windows.FileSystem.Acl;
 
 [Title("Windows File System Access Control List Schema")]
 [Description("Schema for managing Windows file and directory permissions via OpenDsc.")]
 [AdditionalProperties(false)]
+[Id("https://opendsc.dev/schemas/v1/windows/filesystem/access-control-list.schema.json")]
+[GenerateJsonSchema]
 public sealed class Schema
 {
+    public static readonly Uri BundleUri = new("https://opendsc.dev/schemas/v1/bundled/windows/filesystem/access-control-list.schema.json");
+
     [Required]
     [Description("The full path to the file or directory.")]
     [Pattern(@"^[a-zA-Z]:\\(?:[^<>:""/\\|?*\x00-\x1F]+\\)*[^<>:""/\\|?*\x00-\x1F]*$")]

@@ -197,4 +197,32 @@ public sealed class ServerPermissionTests : SqlServerTestBase
         }
     }
 
+    [Fact]
+    public void Export_ReturnsServerPermissions()
+    {
+        try
+        {
+            var schema = NewSchema(TestLogin, "ViewServerState");
+            schema.State = PermissionState.Grant;
+            _resource.Set(schema);
+
+            var filter = new ServerPermissionSchema
+            {
+                ServerInstance = ServerInstance,
+                ConnectUsername = ConnectUsername,
+                ConnectPassword = ConnectPassword,
+                Principal = string.Empty,
+                Permission = string.Empty
+            };
+
+            var results = _resource.Export(filter).ToList();
+            results.Should().NotBeEmpty();
+            results.Should().Contain(r => r.Principal == TestLogin && r.Permission == "ViewServerState");
+        }
+        finally
+        {
+            ExecuteSqlSafe($"REVOKE VIEW SERVER STATE FROM [{TestLogin}]");
+        }
+    }
+
 }

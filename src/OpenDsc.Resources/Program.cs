@@ -30,6 +30,7 @@ using SqlServerObjectPermissionNs = OpenDsc.Resource.SqlServer.ObjectPermission;
 using SqlServerLinkedServerNs = OpenDsc.Resource.SqlServer.LinkedServer;
 using SqlServerConfigurationNs = OpenDsc.Resource.SqlServer.Configuration;
 using SqlServerAgentJobNs = OpenDsc.Resource.SqlServer.AgentJob;
+using SqlServerAvailabilityGroupNs = OpenDsc.Resource.SqlServer.AvailabilityGroup;
 
 #if !WINDOWS
 using PosixPermissionNs = OpenDsc.Resource.Posix.FileSystem.Permission;
@@ -70,6 +71,7 @@ var sqlServerLinkedServerResource = new SqlServerLinkedServerNs.Resource(OpenDsc
 
 var sqlServerConfigurationResource = new SqlServerConfigurationNs.Resource(OpenDsc.Resource.SqlServer.SourceGenerationContext.Default);
 var sqlServerAgentJobResource = new SqlServerAgentJobNs.Resource(OpenDsc.Resource.SqlServer.SourceGenerationContext.Default);
+var sqlServerAvailabilityGroupResource = new SqlServerAvailabilityGroupNs.Resource(OpenDsc.Resource.SqlServer.SourceGenerationContext.Default);
 
 #if !WINDOWS
 #pragma warning disable CA1416 // 'Resource' is only supported on: 'linux', 'macOS'
@@ -118,6 +120,7 @@ command.AddResource<SqlServerObjectPermissionNs.Resource, SqlServerObjectPermiss
 command.AddResource<SqlServerLinkedServerNs.Resource, SqlServerLinkedServerNs.Schema>(sqlServerLinkedServerResource);
 command.AddResource<SqlServerConfigurationNs.Resource, SqlServerConfigurationNs.Schema>(sqlServerConfigurationResource);
 command.AddResource<SqlServerAgentJobNs.Resource, SqlServerAgentJobNs.Schema>(sqlServerAgentJobResource);
+command.AddResource<SqlServerAvailabilityGroupNs.Resource, SqlServerAvailabilityGroupNs.Schema>(sqlServerAvailabilityGroupResource);
 
 #if !WINDOWS
 #pragma warning disable CA1416 // 'Resource' is only supported on: 'linux', 'macOS'

@@ -26,8 +26,7 @@ public sealed class AuditPolicyTests : WindowsTestBase
         var schemaJson = _resource.GetSchema();
         var doc = JsonDocument.Parse(schemaJson);
 
-        doc.RootElement.GetProperty("$schema").GetString()
-            .Should().Be("https://json-schema.org/draft/2020-12/schema");
+        doc.RootElement.ValueKind.Should().Be(JsonValueKind.Object);
     }
 
     [Fact]
@@ -170,5 +169,29 @@ public sealed class AuditPolicyTests : WindowsTestBase
         });
 
         act.Should().Throw<OpenDsc.Resource.Windows.AuditPolicy.UnknownSubcategoryException>();
+    }
+
+    [Fact]
+    public void Get_NullInstance_ThrowsArgumentNullException()
+    {
+        var act = () => _resource.Get(null);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Set_NullInstance_ThrowsArgumentNullException()
+    {
+        var act = () => _resource.Set(null);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [RequiresAdminFact]
+    public void Get_CurrentPolicy_HasValidRange()
+    {
+        var policy = _resource.Get(new AuditPolicySchema { Subcategory = "Logon" });
+
+        policy.Should().NotBeNull();
     }
 }

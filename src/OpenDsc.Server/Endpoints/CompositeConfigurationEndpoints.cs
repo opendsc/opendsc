@@ -25,7 +25,8 @@ public static class CompositeConfigurationEndpoints
                 .RequireAuthenticatedUser()
                 .AddAuthenticationSchemes(
                     CookieAuthenticationDefaults.AuthenticationScheme,
-                    PersonalAccessTokenHandler.SchemeName))
+                    PersonalAccessTokenHandler.SchemeName,
+                    AuthenticationExtensions.UserApiBearerScheme))
             .WithTags("Composite Configurations");
 
         group.MapGet("/", GetCompositeConfigurations)

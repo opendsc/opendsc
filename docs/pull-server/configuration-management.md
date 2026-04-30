@@ -850,14 +850,3 @@ implemented. Currently, each version stores its own copy of files.
 
 For interactive API testing and detailed request/response schemas, visit
 the **Scalar API Reference** at `/scalar/v1` when running the server.
-
-## Next Steps
-
-- [Scope System Guide](scope-system.md) - Understand parameter
-  organization
-- [Parameter Merging](parameter-merging.md) - Learn how parameters are
-  merged into bundles
-- [Quick Start Tutorial](quickstart.md) - Follow a complete workflow
-  example
-- [Real-World Examples](examples/) - See configuration management in
-  action

@@ -26,6 +26,7 @@ public sealed class CertificateManagerTests : IDisposable
     private readonly LcmConfig _config;
     private readonly string _testCertDir;
     private readonly string _testCertPath;
+    private readonly List<string> _dirsToCleanup = [];
 
     public CertificateManagerTests()
     {
@@ -55,8 +56,28 @@ public sealed class CertificateManagerTests : IDisposable
         _lcmMonitorMock.Setup(x => x.CurrentValue).Returns(_config);
     }
 
+    private void TrackForCleanup(string dirPath)
+    {
+        _dirsToCleanup.Add(dirPath);
+    }
+
     public void Dispose()
     {
+        foreach (var dir in _dirsToCleanup)
+        {
+            if (Directory.Exists(dir))
+            {
+                try
+                {
+                    Directory.Delete(dir, true);
+                }
+                catch
+                {
+                    // Ignore cleanup errors
+                }
+            }
+        }
+
         if (Directory.Exists(_testCertDir))
         {
             try
@@ -265,34 +286,18 @@ public sealed class CertificateManagerTests : IDisposable
     {
         var nonExistentDir = Path.Combine(Path.GetTempPath(), $"opendsc-test-{Guid.NewGuid():N}");
         var certPath = Path.Combine(nonExistentDir, "cert.pfx");
+        TrackForCleanup(nonExistentDir);
 
-        try
-        {
-            _config.PullServer!.CertificatePath = certPath;
+        _config.PullServer!.CertificatePath = certPath;
 
-            var manager = new CertificateManager(_lcmMonitorMock.Object, _loggerMock.Object);
+        var manager = new CertificateManager(_lcmMonitorMock.Object, _loggerMock.Object);
 
-            var cert = manager.GetClientCertificate();
+        var cert = manager.GetClientCertificate();
 
-            cert.Should().NotBeNull();
-            Directory.Exists(nonExistentDir).Should().BeTrue();
-            File.Exists(certPath).Should().BeTrue();
-            cert!.Dispose();
-        }
-        finally
-        {
-            if (Directory.Exists(nonExistentDir))
-            {
-                try
-                {
-                    Directory.Delete(nonExistentDir, true);
-                }
-                catch
-                {
-                    // Ignore cleanup errors
-                }
-            }
-        }
+        cert.Should().NotBeNull();
+        Directory.Exists(nonExistentDir).Should().BeTrue();
+        File.Exists(certPath).Should().BeTrue();
+        cert!.Dispose();
     }
 
     [Fact]
@@ -315,32 +320,16 @@ public sealed class CertificateManagerTests : IDisposable
         // Set a valid test directory instead of trying to use ProgramData
         var testDefaultDir = Path.Combine(Path.GetTempPath(), $"opendsc-default-test-{Guid.NewGuid():N}");
         _config.PullServer!.CertificatePath = Path.Combine(testDefaultDir, "certs", "client.pfx");
+        TrackForCleanup(testDefaultDir);
 
-        try
-        {
-            var manager = new CertificateManager(_lcmMonitorMock.Object, _loggerMock.Object);
+        var manager = new CertificateManager(_lcmMonitorMock.Object, _loggerMock.Object);
 
-            var cert = manager.GetClientCertificate();
+        var cert = manager.GetClientCertificate();
 
-            cert.Should().NotBeNull();
-            _config.PullServer.CertificatePath.Should().NotBeNullOrEmpty();
-            _config.PullServer.CertificatePath.Should().EndWith("client.pfx");
-            cert!.Dispose();
-        }
-        finally
-        {
-            if (Directory.Exists(testDefaultDir))
-            {
-                try
-                {
-                    Directory.Delete(testDefaultDir, true);
-                }
-                catch
-                {
-                    // Ignore cleanup errors
-                }
-            }
-        }
+        cert.Should().NotBeNull();
+        _config.PullServer.CertificatePath.Should().NotBeNullOrEmpty();
+        _config.PullServer.CertificatePath.Should().EndWith("client.pfx");
+        cert!.Dispose();
     }
 
     [Fact]
@@ -376,6 +365,89 @@ public sealed class CertificateManagerTests : IDisposable
         loadedCert.Thumbprint.Should().Be(thumbprint1);
         loadedCert.HasPrivateKey.Should().BeTrue();
         loadedCert.Dispose();
+    }
+
+    [Fact]
+    public void SetRotationInterval_OverridesDefaultInterval()
+    {
+        using var rsa = RSA.Create(2048);
+        var subject = new X500DistinguishedName($"CN={Environment.MachineName}");
+        var request = new CertificateRequest(subject, rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+
+        // Certificate started 35 days ago, expires in 55 days
+        var notBefore = DateTime.UtcNow.AddDays(-35);
+        var notAfter = DateTime.UtcNow.AddDays(55);
+        using var cert = request.CreateSelfSigned(notBefore, notAfter);
+
+        var manager = new CertificateManager(_lcmMonitorMock.Object, _loggerMock.Object);
+        var customInterval = TimeSpan.FromDays(30);
+        manager.SetRotationInterval(customInterval);
+
+        // With custom 30-day interval, rotation time = NotBefore (35 days ago) + 30 days = 5 days ago
+        // So now (35 days after NotBefore) >= 5 days after NotBefore = true
+        var shouldRotate = manager.ShouldRotateCertificate(cert, _config.PullServer!);
+
+        shouldRotate.Should().BeTrue("certificate should rotate when past custom interval");
+    }
+
+    [Fact]
+    public void GetClientCertificate_WhenThumbprintIsEmptyString_ReturnsNull()
+    {
+        _config.PullServer!.CertificateSource = CertificateSource.Platform;
+        _config.PullServer.CertificateThumbprint = string.Empty;
+
+        var manager = new CertificateManager(_lcmMonitorMock.Object, _loggerMock.Object);
+
+        var cert = manager.GetClientCertificate();
+
+        cert.Should().BeNull();
+    }
+
+    [Fact]
+    public void RotateCertificate_WhenCertificatePathIsEmptyString_ReturnsNull()
+    {
+        _config.PullServer!.CertificatePath = string.Empty;
+
+        var manager = new CertificateManager(_lcmMonitorMock.Object, _loggerMock.Object);
+
+        var result = manager.RotateCertificate(_config.PullServer);
+
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public void GetClientCertificate_WithManagedSource_CertificateSubjectIncludesMachineName()
+    {
+        var manager = new CertificateManager(_lcmMonitorMock.Object, _loggerMock.Object);
+
+        var cert = manager.GetClientCertificate();
+
+        cert.Should().NotBeNull();
+        cert!.Subject.Should().Contain(Environment.MachineName);
+        cert.Dispose();
+    }
+
+    [Fact]
+    public void GetClientCertificate_WithValidPlatformCertificate_ReturnsIt()
+    {
+        _config.PullServer!.CertificateSource = CertificateSource.Platform;
+
+        // Get system certificates to find a valid one
+        using var store = new X509Store(StoreName.My, StoreLocation.CurrentUser);
+        store.Open(OpenFlags.ReadOnly);
+
+        if (store.Certificates.Count > 0)
+        {
+            var validCert = store.Certificates[0];
+            _config.PullServer.CertificateThumbprint = validCert.Thumbprint;
+
+            var manager = new CertificateManager(_lcmMonitorMock.Object, _loggerMock.Object);
+
+            var cert = manager.GetClientCertificate();
+
+            cert.Should().NotBeNull();
+            cert!.Thumbprint.Should().Be(validCert.Thumbprint);
+        }
     }
 
     private static X509Certificate2 CreateTestCertificate()

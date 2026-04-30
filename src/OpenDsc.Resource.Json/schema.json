@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "JSON Value Schema",
+  "description": "Schema for managing JSON values at specified JSONPath locations via OpenDsc.",
+  "type": "object",
+  "properties": {
+    "path": {
+      "description": "The absolute file path to the JSON document.",
+      "type": "string"
+    },
+    "jsonPath": {
+      "description": "JSONPath expression to locate the value (must start with '$'). Parent paths will be created recursively if they don't exist.",
+      "type": "string",
+      "pattern": "^\\$"
+    },
+    "value": {
+      "description": "The JSON value to set."
+    },
+    "_exist": {
+      "description": "Indicates whether the value exists.",
+      "type": [
+        "boolean",
+        "null"
+      ],
+      "default": true
+    }
+  },
+  "required": [
+    "path",
+    "jsonPath"
+  ],
+  "additionalProperties": false
+}

@@ -32,7 +32,8 @@ public static class ConfigurationEndpoints
                 .RequireAuthenticatedUser()
                 .AddAuthenticationSchemes(
                     CookieAuthenticationDefaults.AuthenticationScheme,
-                    PersonalAccessTokenHandler.SchemeName))
+                    PersonalAccessTokenHandler.SchemeName,
+                    AuthenticationExtensions.UserApiBearerScheme))
             .WithTags("Configurations");
 
         group.MapGet("/", GetConfigurations)

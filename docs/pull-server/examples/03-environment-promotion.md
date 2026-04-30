@@ -746,11 +746,3 @@ Keep current configuration version
 | Cache Enabled | false | true | true | Dev fresh data vs prod performance |
 | Retention Days | 7 | 30 | 90 | Cost vs compliance requirements |
 | Alert Threshold | N/A | Relaxed | Strict | Different tolerance for issues |
-
-## Related Documentation
-
-- [Scope System Overview](../scope-system.md)
-- [Parameter Merging](../parameter-merging.md)
-- [Configuration Management](../configuration-management.md)
-- [Web Server Baseline Example](01-web-server-baseline.md)
-- [Multi-Region Deployment Example](02-multi-region-deployment.md)
