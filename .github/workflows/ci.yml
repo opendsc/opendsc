@@ -27,10 +27,10 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
-      - name: Install Linux Dependencies
+      - name: Install FPM
         if: matrix.os == 'ubuntu-latest'
         run: |
-          sudo apt-get install -y ruby ruby-dev rpm gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
+          sudo apt-get install -y ruby ruby-dev rpm
           sudo gem install fpm
 
       - name: Build, Publish, and Pack
@@ -42,6 +42,7 @@ jobs:
           if ('${{ matrix.os }}' -eq 'ubuntu-latest') {
             $buildParams['Pack'] = $true
             $buildParams['LinuxPackages'] = $true
+            $buildParams['Arch'] = 'x64'
           }
           if ('${{ matrix.os }}' -eq 'windows-latest') {
             $buildParams['Msi'] = $true
@@ -76,15 +77,15 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v7
         with:
-          name: release-tar-linux
+          name: release-tar-linux-x64
           path: artifacts/tar
 
       - name: Upload Linux DEB/RPM Packages
         if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v7
         with:
-          name: release-packages-linux
-          path: artifacts/packages/linux
+          name: release-packages-linux-x64
+          path: artifacts/packages/linux/x64
 
       - name: Upload macOS TAR Packages
         if: matrix.os == 'macos-latest'
@@ -99,6 +100,38 @@ jobs:
         with:
           name: test-binaries-windows
           path: artifacts/TestService
+
+  build-linux-arm64:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Install FPM
+        run: |
+          sudo apt-get install -y ruby ruby-dev rpm
+          sudo gem install fpm
+
+      - name: Build and Publish
+        run: .\build.ps1 -Configuration Release -SkipTest -Arch arm64 -Portable
+          -LinuxPackages
+
+      - name: Upload Linux ARM64 TAR Packages
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-tar-linux-arm64
+          path: artifacts/tar
+
+      - name: Upload Linux ARM64 DEB/RPM Packages
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-packages-linux-arm64
+          path: artifacts/packages/linux/arm64
 
   test:
     needs: build
@@ -154,8 +187,8 @@ jobs:
       - name: Download Linux Packages
         uses: actions/download-artifact@v8
         with:
-          name: release-packages-linux
-          path: artifacts/packages/linux
+          name: release-packages-linux-x64
+          path: artifacts/packages/linux/x64
 
       - name: Install .NET Runtime
         shell: bash
@@ -204,8 +237,8 @@ jobs:
       - name: Download Linux Packages
         uses: actions/download-artifact@v8
         with:
-          name: release-packages-linux
-          path: artifacts/packages/linux
+          name: release-packages-linux-x64
+          path: artifacts/packages/linux/x64
 
       - name: Install .NET Runtime
         shell: bash
@@ -299,7 +332,7 @@ jobs:
           brew services list | Select-String -Pattern 'opendsc' -CaseInsensitive
 
   publish:
-    needs: [ test, test-deb, test-rpm, test-homebrew ]
+    needs: [ test, test-deb, test-rpm, test-homebrew, build-linux-arm64 ]
     if: github.event_name == 'release' && github.event.action == 'published'
     runs-on: ubuntu-latest
     steps:
@@ -312,17 +345,29 @@ jobs:
           name: release-nuget
           path: artifacts/nuget
 
-      - name: Download Linux TAR Packages
+      - name: Download Linux x64 TAR Packages
         uses: actions/download-artifact@v8
         with:
-          name: release-tar-linux
+          name: release-tar-linux-x64
           path: artifacts/tar-linux
 
-      - name: Download Linux DEB/RPM Packages
+      - name: Download Linux ARM64 TAR Packages
         uses: actions/download-artifact@v8
         with:
-          name: release-packages-linux
-          path: artifacts/packages/linux
+          name: release-tar-linux-arm64
+          path: artifacts/tar-linux
+
+      - name: Download Linux x64 DEB/RPM Packages
+        uses: actions/download-artifact@v8
+        with:
+          name: release-packages-linux-x64
+          path: artifacts/packages/linux/x64
+
+      - name: Download Linux ARM64 DEB/RPM Packages
+        uses: actions/download-artifact@v8
+        with:
+          name: release-packages-linux-arm64
+          path: artifacts/packages/linux/arm64
 
       - name: Download macOS TAR Packages
         uses: actions/download-artifact@v8
