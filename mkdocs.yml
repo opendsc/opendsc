@@ -115,6 +115,7 @@ nav:
 
   - Guides:
       - Configure HTTPS: guides/configure-https.md
+      - Configure OIDC: guides/configure-oidc.md
       - Manage Users & Roles: guides/manage-users-roles.md
       - Retention Policies: guides/retention-policies.md
       - Export Resources: guides/export-resources.md
