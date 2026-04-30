@@ -52,7 +52,7 @@
 .EXAMPLE
     .\build.ps1 -LinuxPackages
     Builds .deb and .rpm packages for Linux (requires running on Linux with fpm installed).
-.PARAMETER Arch
+.PARAMETER Architecture
     Limit Linux builds to a specific architecture (x64 or arm64). Builds all architectures if not specified.
 #>
 param(
@@ -86,7 +86,7 @@ param(
     [string] $GitHubToken,
 
     [ValidateSet('x64', 'arm64')]
-    [string] $Arch
+    [string] $Architecture
 )
 
 $ErrorActionPreference = 'Stop'
@@ -109,14 +109,14 @@ if (-not $SkipBuild) {
         $serverProj = Join-Path $PSScriptRoot 'src\OpenDsc.Server\OpenDsc.Server.csproj'
 
         $builds = @()
-        if (-not $Arch -or $Arch -eq 'x64') {
+        if (-not $Architecture -or $Architecture -eq 'x64') {
             $builds += @(
                 @{ Name = 'Resources'; Proj = $resourcesProj; Framework = 'net10.0-windows'; Runtime = $null; SC = $false; SingleFile = $false; Tags = @('always') }
                 @{ Name = 'Server'; Proj = $serverProj; Framework = 'net10.0-windows'; Runtime = $null; SC = $false; SingleFile = $false; Tags = @('always') }
             )
         }
         foreach ($arch in @('x64', 'arm64')) {
-            if ($Arch -and $arch -ne $Arch) { continue }
+            if ($Architecture -and $arch -ne $Architecture) { continue }
             $rid = "win-$arch"
             $lcmTags = if ($arch -eq 'x64') { @('always', 'portable') } else { @('portable') }
             $builds += @(
@@ -192,7 +192,7 @@ if (-not $SkipBuild) {
             }
         }
 
-        if (-not $Arch -or $Arch -eq 'x64') {
+        if (-not $Architecture -or $Architecture -eq 'x64') {
             Write-Host 'Building TestService...' -ForegroundColor Cyan
             $testServiceProj = Join-Path $PSScriptRoot 'tests\TestService\TestService.csproj'
             if (Test-Path $testServiceProj) {
@@ -210,7 +210,7 @@ if (-not $SkipBuild) {
             @{ Name = 'Resources'; Proj = $resourcesProj; Framework = 'net10.0'; Runtime = $null; SC = $false; SingleFile = $false; Tags = @('always') }
         )
         foreach ($arch in @('x64', 'arm64')) {
-            if ($Arch -and $arch -ne $Arch) { continue }
+            if ($Architecture -and $arch -ne $Architecture) { continue }
             $rid = "linux-$arch"
             $lcmTags = if ($arch -eq 'x64') { @('always', 'portable', 'package') } else { @('portable', 'package') }
             $builds += @(
@@ -258,7 +258,7 @@ if (-not $SkipBuild) {
 
         if ($LinuxPackages) {
             foreach ($arch in @('x64', 'arm64')) {
-                if ($Arch -and $arch -ne $Arch) { continue }
+                if ($Architecture -and $arch -ne $Architecture) { continue }
                 $rid = "linux-$arch"
                 $fpmArch = if ($arch -eq 'x64') { 'amd64' } else { 'arm64' }
                 $pkgArtifactsDir = Join-Path $PSScriptRoot "artifacts\pkg-stage\$rid"

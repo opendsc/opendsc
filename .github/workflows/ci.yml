@@ -48,7 +48,7 @@ jobs:
           $buildParams = @{
             Configuration = 'Release'
             SkipTest = $true
-            Arch = '${{ matrix.arch }}'
+            TargetArch = '${{ matrix.arch }}'
           }
           if ('${{ runner.os }}' -eq 'Linux') {
             $buildParams['Portable'] = $true
