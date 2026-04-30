@@ -32,6 +32,16 @@ fi
 
 mkdir -p "$OUTPUT_DIR"
 
+STAGING_DIRS=()
+
+cleanup_staging_dirs() {
+    for dir in "${STAGING_DIRS[@]}"; do
+        rm -rf "$dir"
+    done
+}
+
+trap cleanup_staging_dirs EXIT
+
 build_package() {
     local name="$1"
     local staging_dir="$2"
@@ -61,7 +71,7 @@ build_package() {
 # ── opendsc-resources ────────────────────────────────────────────────────────
 
 RESOURCES_STAGING="$(mktemp -d)"
-trap 'rm -rf "$RESOURCES_STAGING"' EXIT
+STAGING_DIRS+=("$RESOURCES_STAGING")
 
 install -Dm755 "$ARTIFACTS_DIR/publish/OpenDsc.Resources" \
     "$RESOURCES_STAGING/usr/bin/OpenDsc.Resources"
@@ -76,9 +86,21 @@ build_package "opendsc-resources" "$RESOURCES_STAGING" \
 # ── opendsc-lcm ──────────────────────────────────────────────────────────────
 
 LCM_STAGING="$(mktemp -d)"
-trap 'rm -rf "$LCM_STAGING"' EXIT
+STAGING_DIRS+=("$LCM_STAGING")
 
-install -Dm755 "$ARTIFACTS_DIR/Lcm/opendsc-lcm" \
+LCM_BINARY_SOURCE="$ARTIFACTS_DIR/Lcm/opendsc-lcm"
+if [[ ! -f "$LCM_BINARY_SOURCE" ]]; then
+    LCM_BINARY_SOURCE="$ARTIFACTS_DIR/Lcm/OpenDsc.Lcm"
+fi
+
+if [[ ! -f "$LCM_BINARY_SOURCE" ]]; then
+    echo "LCM executable not found. Expected one of:" >&2
+    echo "  $ARTIFACTS_DIR/Lcm/opendsc-lcm" >&2
+    echo "  $ARTIFACTS_DIR/Lcm/OpenDsc.Lcm" >&2
+    exit 1
+fi
+
+install -Dm755 "$LCM_BINARY_SOURCE" \
     "$LCM_STAGING/usr/bin/opendsc-lcm"
 
 install -Dm644 "$REPO_ROOT/packaging/systemd/opendsc-lcm.service" \
@@ -96,15 +118,15 @@ build_package "opendsc-lcm" "$LCM_STAGING" \
 # ── opendsc-server ───────────────────────────────────────────────────────────
 
 SERVER_STAGING="$(mktemp -d)"
-trap 'rm -rf "$SERVER_STAGING"' EXIT
+STAGING_DIRS+=("$SERVER_STAGING")
 
-install -Dm755 "$ARTIFACTS_DIR/Server/opendsc-server" \
-    "$SERVER_STAGING/usr/bin/opendsc-server"
-
-# Include all framework-dependent runtime files
+# Include all framework-dependent runtime files and keep apphost colocated with
+# its runtime artifacts so framework-dependent execution works reliably.
 mkdir -p "$SERVER_STAGING/usr/lib/opendsc/server"
 cp -r "$ARTIFACTS_DIR/Server/." "$SERVER_STAGING/usr/lib/opendsc/server/"
-rm -f "$SERVER_STAGING/usr/lib/opendsc/server/opendsc-server"
+install -d "$SERVER_STAGING/usr/bin"
+ln -s ../lib/opendsc/server/opendsc-server \
+    "$SERVER_STAGING/usr/bin/opendsc-server"
 
 install -Dm644 "$REPO_ROOT/packaging/systemd/opendsc-server.service" \
     "$SERVER_STAGING/lib/systemd/system/opendsc-server.service"

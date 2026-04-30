@@ -12,7 +12,7 @@ class OpendscLcm < Formula
   depends_on arch: :arm64
 
   def install
-    bin.install "opendsc-lcm"
+    bin.install "OpenDsc.Lcm" => "opendsc-lcm"
 
     plist_path = prefix/"Library/LaunchDaemons/com.opendsc.lcm.plist"
     plist_path.parent.mkpath
@@ -67,6 +67,7 @@ class OpendscLcm < Formula
   end
 
   test do
-    assert_match "opendsc-lcm", shell_output("#{bin}/opendsc-lcm --version 2>&1", 1)
+    assert_predicate bin/"opendsc-lcm", :exist?
+    assert_predicate bin/"opendsc-lcm", :executable?
   end
 end

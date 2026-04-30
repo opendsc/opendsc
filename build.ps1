@@ -53,7 +53,7 @@
     .\build.ps1 -LinuxPackages
     Builds .deb and .rpm packages for Linux (requires running on Linux with fpm installed).
 .PARAMETER Architecture
-    Limit Linux builds to a specific architecture (x64 or arm64). Builds all architectures if not specified.
+    Limit runtime-specific builds to a specific architecture (x64 or arm64). Builds all architectures if not specified.
 #>
 param(
     [ValidateSet('Debug', 'Release')]
@@ -98,6 +98,14 @@ function Get-PublishPath {
     return Join-Path $path 'publish'
 }
 
+function Get-HostArchitecture {
+    switch ([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture) {
+        ([System.Runtime.InteropServices.Architecture]::X64) { return 'x64' }
+        ([System.Runtime.InteropServices.Architecture]::Arm64) { return 'arm64' }
+        default { return $null }
+    }
+}
+
 if (-not $SkipBuild) {
     Write-Host 'Building OpenDsc solution...' -ForegroundColor Cyan
 
@@ -107,6 +115,7 @@ if (-not $SkipBuild) {
         $resourcesProj = Join-Path $PSScriptRoot 'src\OpenDsc.Resources\OpenDsc.Resources.csproj'
         $lcmProj = Join-Path $PSScriptRoot 'src\OpenDsc.Lcm\OpenDsc.Lcm.csproj'
         $serverProj = Join-Path $PSScriptRoot 'src\OpenDsc.Server\OpenDsc.Server.csproj'
+        $hostArchitecture = Get-HostArchitecture
 
         $builds = @()
         if (-not $Architecture -or $Architecture -eq 'x64') {
@@ -118,14 +127,19 @@ if (-not $SkipBuild) {
         foreach ($arch in @('x64', 'arm64')) {
             if ($Architecture -and $arch -ne $Architecture) { continue }
             $rid = "win-$arch"
-            $lcmTags = if ($arch -eq 'x64') { @('always', 'portable', 'msi') } else { @('portable', 'msi') }
             $builds += @(
-                @{ Name = 'Lcm'; Proj = $lcmProj; Framework = 'net10.0-windows'; Runtime = $rid; SC = $true; SingleFile = $false; Tags = $lcmTags; ZipName = "OpenDSC.Lcm.Windows.$arch-$version.zip" }
                 @{ Name = 'Resources'; Proj = $resourcesProj; Framework = 'net10.0-windows'; Runtime = $rid; SC = $false; SingleFile = $false; Tags = @('portable', 'msi'); ZipName = "OpenDSC.Resources.Windows.$arch.FrameworkDependent-$version.zip" }
                 @{ Name = 'Resources'; Proj = $resourcesProj; Framework = 'net10.0-windows'; Runtime = $rid; SC = $true; SingleFile = $true; Tags = @('portable'); ZipName = "OpenDSC.Resources.Windows.$arch.SelfContained-$version.zip" }
                 @{ Name = 'Server'; Proj = $serverProj; Framework = 'net10.0-windows'; Runtime = $rid; SC = $false; SingleFile = $false; Tags = @('portable', 'msi'); ZipName = "OpenDSC.Server.Windows.$arch.FrameworkDependent-$version.zip" }
                 @{ Name = 'Server'; Proj = $serverProj; Framework = 'net10.0-windows'; Runtime = $rid; SC = $true; SingleFile = $true; Tags = @('portable'); ZipName = "OpenDSC.Server.Windows.$arch.SelfContained-$version.zip" }
             )
+
+            if ($arch -eq $hostArchitecture) {
+                $lcmTags = if ($arch -eq 'x64') { @('always', 'portable', 'msi') } else { @('portable', 'msi') }
+                $builds += @(
+                    @{ Name = 'Lcm'; Proj = $lcmProj; Framework = 'net10.0-windows'; Runtime = $rid; SC = $true; SingleFile = $false; Tags = $lcmTags; ZipName = "OpenDSC.Lcm.Windows.$arch-$version.zip" }
+                )
+            }
         }
 
         foreach ($b in $builds) {
@@ -176,7 +190,7 @@ if (-not $SkipBuild) {
                 }
 
                 $lcmWixProj = Join-Path $PSScriptRoot 'packaging\msi\OpenDsc.Lcm\OpenDsc.Lcm.wixproj'
-                if (Test-Path $lcmWixProj) {
+                if ($arch -eq $hostArchitecture -and (Test-Path $lcmWixProj)) {
                     dotnet build $lcmWixProj -c $Configuration -p:Platform=$arch
                     if ($LASTEXITCODE -ne 0) { throw "Build failed for LCM MSI installer ($arch) with exit code $LASTEXITCODE" }
                 }
@@ -205,6 +219,7 @@ if (-not $SkipBuild) {
         $resourcesProj = Join-Path $PSScriptRoot 'src\OpenDsc.Resources\OpenDsc.Resources.csproj'
         $lcmProj = Join-Path $PSScriptRoot 'src\OpenDsc.Lcm\OpenDsc.Lcm.csproj'
         $serverProj = Join-Path $PSScriptRoot 'src\OpenDsc.Server\OpenDsc.Server.csproj'
+        $hostArchitecture = Get-HostArchitecture
 
         $builds = @(
             @{ Name = 'Resources'; Proj = $resourcesProj; Framework = 'net10.0'; Runtime = $null; SC = $false; SingleFile = $false; Tags = @('always') }
@@ -212,14 +227,19 @@ if (-not $SkipBuild) {
         foreach ($arch in @('x64', 'arm64')) {
             if ($Architecture -and $arch -ne $Architecture) { continue }
             $rid = "linux-$arch"
-            $lcmTags = if ($arch -eq 'x64') { @('always', 'portable', 'package') } else { @('portable', 'package') }
             $builds += @(
-                @{ Name = 'Lcm'; Proj = $lcmProj; Framework = 'net10.0'; Runtime = $rid; SC = $true; SingleFile = $false; Tags = $lcmTags; TarName = "OpenDSC.Lcm.Linux.$arch-$version.tar.gz"; PkgRole = 'Lcm' }
                 @{ Name = 'Resources'; Proj = $resourcesProj; Framework = 'net10.0'; Runtime = $rid; SC = $false; SingleFile = $false; Tags = @('portable', 'package'); TarName = "OpenDSC.Resources.Linux.$arch.FrameworkDependent-$version.tar.gz"; PkgRole = 'publish' }
                 @{ Name = 'Resources'; Proj = $resourcesProj; Framework = 'net10.0'; Runtime = $rid; SC = $true; SingleFile = $true; Tags = @('portable'); TarName = "OpenDSC.Resources.Linux.$arch.SelfContained-$version.tar.gz" }
                 @{ Name = 'Server'; Proj = $serverProj; Framework = 'net10.0'; Runtime = $rid; SC = $false; SingleFile = $false; Tags = @('portable', 'package'); TarName = "OpenDSC.Server.Linux.$arch.FrameworkDependent-$version.tar.gz"; PkgRole = 'Server' }
                 @{ Name = 'Server'; Proj = $serverProj; Framework = 'net10.0'; Runtime = $rid; SC = $true; SingleFile = $true; Tags = @('portable'); TarName = "OpenDSC.Server.Linux.$arch.SelfContained-$version.tar.gz" }
             )
+
+            if ($arch -eq $hostArchitecture) {
+                $lcmTags = if ($arch -eq 'x64') { @('always', 'portable', 'package') } else { @('portable', 'package') }
+                $builds += @(
+                    @{ Name = 'Lcm'; Proj = $lcmProj; Framework = 'net10.0'; Runtime = $rid; SC = $true; SingleFile = $false; Tags = $lcmTags; TarName = "OpenDSC.Lcm.Linux.$arch-$version.tar.gz"; PkgRole = 'Lcm' }
+                )
+            }
         }
 
         foreach ($b in $builds) {
@@ -269,7 +289,8 @@ if (-not $SkipBuild) {
         }
 
         if ($LinuxPackages) {
-            foreach ($arch in @('x64', 'arm64')) {
+            $packageArchitectures = if ($Architecture) { @($Architecture) } elseif ($hostArchitecture) { @($hostArchitecture) } else { @('x64') }
+            foreach ($arch in $packageArchitectures) {
                 if ($Architecture -and $arch -ne $Architecture) { continue }
                 $rid = "linux-$arch"
                 $fpmArch = if ($arch -eq 'x64') { 'amd64' } else { 'arm64' }

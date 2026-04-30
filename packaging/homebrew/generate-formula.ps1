@@ -5,9 +5,9 @@
 .PARAMETER Version
     The release version string (e.g. 0.5.1).
 .PARAMETER ResourcesSha256
-    The SHA256 hash of OpenDSC.Resources.macOS.arm64.Portable-<version>.tar.gz.
+    The SHA256 hash of OpenDSC.Resources.macOS.arm64.SelfContained-<version>.tar.gz.
 .PARAMETER LcmSha256
-    The SHA256 hash of OpenDSC.Lcm.macOS.arm64.Portable-<version>.tar.gz.
+    The SHA256 hash of OpenDSC.Lcm.macOS.arm64-<version>.tar.gz.
 .PARAMETER ResourcesUrl
     URL for the Resources tarball. Defaults to the GitHub Releases URL for the given version.
     Use a file:// URL to test with a locally built tarball.
@@ -29,9 +29,9 @@ param(
     [Parameter(Mandatory)]
     [string] $LcmSha256,
 
-    [string] $ResourcesUrl = 'https://github.com/opendsc/opendsc/releases/download/v{{VERSION}}/OpenDSC.Resources.macOS.arm64.Portable-{{VERSION}}.tar.gz',
+    [string] $ResourcesUrl = 'https://github.com/opendsc/opendsc/releases/download/v{{VERSION}}/OpenDSC.Resources.macOS.arm64.SelfContained-{{VERSION}}.tar.gz',
 
-    [string] $LcmUrl = 'https://github.com/opendsc/opendsc/releases/download/v{{VERSION}}/OpenDSC.Lcm.macOS.arm64.Portable-{{VERSION}}.tar.gz',
+    [string] $LcmUrl = 'https://github.com/opendsc/opendsc/releases/download/v{{VERSION}}/OpenDSC.Lcm.macOS.arm64-{{VERSION}}.tar.gz',
 
     [string] $OutputDir = (Join-Path $PSScriptRoot '..\..\artifacts\homebrew')
 )
