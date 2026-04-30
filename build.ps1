@@ -225,6 +225,10 @@ if (-not $SkipBuild) {
                 '-p:EnableCompressionInSingleFile=false', '-p:DebugType=None', '-p:DebugSymbols=false',
                 '-p:CopyOutputSymbolsToPublishDirectory=false'
             }
+            $hostArch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLower()
+            if ($b.Runtime -eq 'linux-arm64' -and $hostArch -eq 'x64') {
+                $publishParams += '-p:ObjCopyBinary=aarch64-linux-gnu-objcopy'
+            }
             dotnet @publishParams
             if ($LASTEXITCODE -ne 0) { throw "Build failed for $($b.Name)$ridLabel with exit code $LASTEXITCODE" }
         }
