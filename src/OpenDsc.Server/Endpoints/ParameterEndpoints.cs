@@ -33,7 +33,8 @@ public static class ParameterEndpoints
                 .RequireAuthenticatedUser()
                 .AddAuthenticationSchemes(
                     CookieAuthenticationDefaults.AuthenticationScheme,
-                    PersonalAccessTokenHandler.SchemeName));
+                    PersonalAccessTokenHandler.SchemeName,
+                    AuthenticationExtensions.UserApiBearerScheme));
 
         group.MapPut("/{scopeTypeId:guid}/{configurationId:guid}", CreateOrUpdateParameter)
             .WithName("CreateOrUpdateParameter")
@@ -77,7 +78,8 @@ public static class ParameterEndpoints
                 .RequireAuthenticatedUser()
                 .AddAuthenticationSchemes(
                     CookieAuthenticationDefaults.AuthenticationScheme,
-                    PersonalAccessTokenHandler.SchemeName));
+                    PersonalAccessTokenHandler.SchemeName,
+                    AuthenticationExtensions.UserApiBearerScheme));
 
         configGroup.MapPut("", UploadParameterSchema)
             .WithName("UploadParameterSchema")

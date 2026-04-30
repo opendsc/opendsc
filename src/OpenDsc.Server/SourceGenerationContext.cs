@@ -108,6 +108,8 @@ namespace OpenDsc.Server;
 [JsonSerializable(typeof(CreateTokenResponse))]
 [JsonSerializable(typeof(TokenMetadata))]
 [JsonSerializable(typeof(List<TokenMetadata>))]
+[JsonSerializable(typeof(OidcProviderInfo))]
+[JsonSerializable(typeof(IEnumerable<OidcProviderInfo>))]
 // User contracts
 [JsonSerializable(typeof(UserDto))]
 [JsonSerializable(typeof(List<UserDto>))]

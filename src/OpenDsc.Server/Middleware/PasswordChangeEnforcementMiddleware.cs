@@ -47,10 +47,10 @@ public sealed partial class PasswordChangeEnforcementMiddleware(RequestDelegate 
         var requiresChange = await db.Users
             .AsNoTracking()
             .Where(u => u.Id == userId)
-            .Select(u => u.RequirePasswordChange)
+            .Select(u => new { u.RequirePasswordChange, u.PasswordHash })
             .FirstOrDefaultAsync();
 
-        if (!requiresChange)
+        if (requiresChange == null || !requiresChange.RequirePasswordChange || requiresChange.PasswordHash == null)
         {
             await next(context);
             return;
