@@ -1,5 +1,6 @@
 @page "/reports/{id:guid}"
 @attribute [Authorize(Policy = "reports.read")]
+@implements IDisposable
 @inject ServerDbContext Db
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
@@ -144,11 +145,13 @@ else
                                                 }
                                                 @if (r.Service != null)
                                                 {
-                                                    <MudChip T="string" Size="Size.Small" Color="Color.Warning">Service: @r.Service</MudChip>
+                                                    <MudChip T="string" Size="Size.Small" Color="Color.Warning">Service: @r.Service
+                                                    </MudChip>
                                                 }
                                                 @if (r.Process != null)
                                                 {
-                                                    <MudChip T="string" Size="Size.Small" Color="Color.Warning">Process: @r.Process.Name</MudChip>
+                                                    <MudChip T="string" Size="Size.Small" Color="Color.Warning">Process: @r.Process.Name
+                                                    </MudChip>
                                                 }
                                             }
                                         </td>
@@ -176,8 +179,7 @@ else
                     else
                     {
                         var hasGroups = resourceRows.Any(r => r.GroupName != null);
-                        <MudTable Items="@resourceRows" Dense="true" Hover="true"
-                                  @bind-SelectedItem="selectedRow"
+                        <MudTable Items="@resourceRows" Dense="true" Hover="true" @bind-SelectedItem="selectedRow"
                                   CustomHeader="true">
                             <HeaderContent>
                                 <MudTHeadRow>
@@ -195,144 +197,141 @@ else
                             <RowTemplate>
                                 @if (context != null)
                                 {
-                                <MudTd Style="width:40px; padding: 0 8px;">
-                                    <MudIconButton Icon="@(expandedRow == context ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
-                                                   Size="Size.Small"
-                                                   OnClick="@(() => ToggleRow(context))" />
-                                </MudTd>
-                                <MudTd DataLabel="Type">@context.Type</MudTd>
-                                <MudTd DataLabel="Name">@context.Name</MudTd>
-                                @if (hasGroups)
-                                {
-                                    <MudTd DataLabel="Group">@context.GroupName</MudTd>
-                                }
-                                <MudTd DataLabel="Status">
-                                    @if (context.Status == ResourceStatus.InDesiredState)
+                                    <MudTd Style="width:40px; padding: 0 8px;">
+                                        <MudIconButton
+                                        Icon="@(expandedRow == context ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                                        Size="Size.Small" OnClick="@(() => ToggleRow(context))" />
+                                    </MudTd>
+                                    <MudTd DataLabel="Type">@context.Type</MudTd>
+                                    <MudTd DataLabel="Name">@context.Name</MudTd>
+                                    @if (hasGroups)
                                     {
-                                        <MudChip T="string" Size="Size.Small" Color="Color.Success">In Desired State</MudChip>
+                                        <MudTd DataLabel="Group">@context.GroupName</MudTd>
                                     }
-                                    else if (context.Status == ResourceStatus.Drifted)
-                                    {
-                                        <MudChip T="string" Size="Size.Small" Color="Color.Warning">Drift Detected</MudChip>
-                                    }
-                                    else if (context.Status == ResourceStatus.Changed)
-                                    {
-                                        <MudChip T="string" Size="Size.Small" Color="Color.Info">Changed</MudChip>
-                                    }
-                                    else if (context.Status == ResourceStatus.NoChange)
-                                    {
-                                        <MudChip T="string" Size="Size.Small" Color="Color.Success">No Change</MudChip>
-                                    }
-                                    else
-                                    {
-                                        <MudChip T="string" Size="Size.Small" Color="Color.Default">Retrieved</MudChip>
-                                    }
-                                </MudTd>
-                                <MudTd DataLabel="Properties">
-                                    @if (context.Status == ResourceStatus.Changed && context.PropertyCount > 0)
-                                    {
-                                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined">@context.PropertyCount changed</MudChip>
-                                    }
+                                    <MudTd DataLabel="Status">
+                                        @if (context.Status == ResourceStatus.InDesiredState)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Success">In Desired State</MudChip>
+                                        }
+                                        else if (context.Status == ResourceStatus.Drifted)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Warning">Drift Detected</MudChip>
+                                        }
+                                        else if (context.Status == ResourceStatus.Changed)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Info">Changed</MudChip>
+                                        }
+                                        else if (context.Status == ResourceStatus.NoChange)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Success">No Change</MudChip>
+                                        }
+                                        else
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Default">Retrieved</MudChip>
+                                        }
+                                    </MudTd>
+                                    <MudTd DataLabel="Properties">
+                                        @if (context.Status == ResourceStatus.Changed && context.PropertyCount > 0)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined">
+                                                @context.PropertyCount changed</MudChip>
+                                            }
                                     else if (context.Status == ResourceStatus.Drifted && context.PropertyCount > 0)
-                                    {
-                                        <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined">@context.PropertyCount differing</MudChip>
-                                    }
-                                </MudTd>
-                                }
-                            </RowTemplate>
-                            <ChildRowContent>
-                                @if (context != null && expandedRow == context)
-                                {
-                                    <MudTr>
-                                        <MudTd colspan="@(hasGroups ? 6 : 5)" Style="padding: 0;">
-                                            @if (context.RightYaml != null)
                                             {
-                                                <div style="height: 300px; width: 100%;">
-                                                    <StandaloneDiffEditor @ref="_diffEditor"
-                                                                          Id="@RowDiffEditorId"
-                                                                          ConstructionOptions="GetDiffEditorOptions" />
-                                                </div>
-                                            }
-                                            else
-                                            {
-                                                <div style="height: 250px; width: 100%;">
-                                                    <StandaloneCodeEditor @ref="_getEditor"
-                                                                          Id="@RowGetEditorId"
-                                                                          ConstructionOptions="GetRowEditorOptions" />
-                                                </div>
-                                            }
-                                        </MudTd>
-                                    </MudTr>
-                                }
-                            </ChildRowContent>
-                        </MudTable>
-                    }
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined">
+                                                    @context.PropertyCount differing</MudChip>
+                                                }
+                                            </MudTd>
+                                        }
+                                    </RowTemplate>
+                                    <ChildRowContent>
+                                        @if (context != null && expandedRow == context)
+                                        {
+                                            <MudTr>
+                                                <MudTd colspan="@(hasGroups ? 6 : 5)" Style="padding: 0;">
+                                                    @if (context.RightYaml != null)
+                                                    {
+                                                        <div style="height: 300px; width: 100%;">
+                                                            <StandaloneDiffEditor @ref="_diffEditor" Id="@RowDiffEditorId"
+                                                                                  ConstructionOptions="GetDiffEditorOptions" />
+                                                        </div>
+                                                    }
+                                                    else
+                                                    {
+                                                        <div style="height: 250px; width: 100%;">
+                                                            <StandaloneCodeEditor @ref="_getEditor" Id="@RowGetEditorId"
+                                                                                  ConstructionOptions="GetRowEditorOptions" />
+                                                        </div>
+                                                    }
+                                                </MudTd>
+                                            </MudTr>
+                                        }
+                                    </ChildRowContent>
+                                </MudTable>
+                            }
 
-                    @if (parsedResult?.Messages?.Count > 0)
-                    {
-                        <MudText Typo="Typo.h6" Class="mt-4 mb-2">Messages</MudText>
-                        <MudSimpleTable Dense="true">
-                            <thead>
-                                <tr>
-                                    <th>Level</th>
-                                    <th>Name</th>
-                                    <th>Type</th>
-                                    <th>Message</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var msg in parsedResult.Messages)
-                                {
-                                    <tr>
-                                        <td>
-                                            @switch (msg.Level)
-                                            {
-                                                case DscMessageLevel.Error:
-                                                    <MudChip T="string" Size="Size.Small" Color="Color.Error">Error</MudChip>
-                                                    break;
-                                                case DscMessageLevel.Warning:
-                                                    <MudChip T="string" Size="Size.Small" Color="Color.Warning">Warning</MudChip>
-                                                    break;
-                                                default:
-                                                    <MudChip T="string" Size="Size.Small" Color="Color.Info">Info</MudChip>
-                                                    break;
-                                            }
-                                        </td>
-                                        <td>@msg.Name</td>
-                                        <td>@msg.Type</td>
-                                        <td>@msg.Message</td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </MudSimpleTable>
-                    }
-                </MudTabPanel>
+                            @if (parsedResult?.Messages?.Count > 0)
+                            {
+                                <MudText Typo="Typo.h6" Class="mt-4 mb-2">Messages</MudText>
+                                <MudSimpleTable Dense="true">
+                                    <thead>
+                                        <tr>
+                                            <th>Level</th>
+                                            <th>Name</th>
+                                            <th>Type</th>
+                                            <th>Message</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var msg in parsedResult.Messages)
+                                        {
+                                            <tr>
+                                                <td>
+                                                    @switch (msg.Level)
+                                                    {
+                                                        case DscMessageLevel.Error:
+                                                            <MudChip T="string" Size="Size.Small" Color="Color.Error">Error</MudChip>
+                                                            break;
+                                                        case DscMessageLevel.Warning:
+                                                            <MudChip T="string" Size="Size.Small" Color="Color.Warning">Warning</MudChip>
+                                                            break;
+                                                        default:
+                                                            <MudChip T="string" Size="Size.Small" Color="Color.Info">Info</MudChip>
+                                                            break;
+                                                    }
+                                                </td>
+                                                <td>@msg.Name</td>
+                                                <td>@msg.Type</td>
+                                                <td>@msg.Message</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </MudSimpleTable>
+                            }
+                        </MudTabPanel>
 
-                <MudTabPanel Text="YAML" Icon="@Icons.Material.Filled.Code">
-                    <div style="height: 500px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
-                        <StandaloneCodeEditor @ref="_editorYaml"
-                                              Id="report-yaml-editor"
-                                              ConstructionOptions="@(e => GetEditorOptions(e, "yaml"))"
-                                              CssClass="mud-input-monospace" />
-                    </div>
-                </MudTabPanel>
+                        <MudTabPanel Text="YAML" Icon="@Icons.Material.Filled.Code">
+                            <div style="height: 500px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
+                                <StandaloneCodeEditor @ref="_editorYaml" Id="report-yaml-editor"
+                                                      ConstructionOptions="@(e => GetEditorOptions(e, "yaml"))" CssClass="mud-input-monospace" />
+                            </div>
+                        </MudTabPanel>
 
-                <MudTabPanel Text="JSON" Icon="@Icons.Material.Filled.DataObject">
-                    <div style="height: 500px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
-                        <StandaloneCodeEditor @ref="_editorJson"
-                                              Id="report-json-editor"
-                                              ConstructionOptions="@(e => GetEditorOptions(e, "json"))"
-                                              CssClass="mud-input-monospace" />
-                    </div>
-                </MudTabPanel>
-            </MudTabs>
-        </MudItem>
-    </MudGrid>
+                        <MudTabPanel Text="JSON" Icon="@Icons.Material.Filled.DataObject">
+                            <div style="height: 500px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
+                                <StandaloneCodeEditor @ref="_editorJson" Id="report-json-editor"
+                                                      ConstructionOptions="@(e => GetEditorOptions(e, "json"))" CssClass="mud-input-monospace" />
+                            </div>
+                        </MudTabPanel>
+                    </MudTabs>
+                </MudItem>
+            </MudGrid>
 
-    <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" Class="mt-4" OnClick="@(() => Navigation.NavigateTo("/reports"))">
-        Back to Reports
-    </MudButton>
-}
+            <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" Class="mt-4"
+                       OnClick="@(() => Navigation.NavigateTo("/reports"))">
+                Back to Reports
+            </MudButton>
+        }
 
 @code {
     [Parameter]
@@ -397,6 +396,8 @@ else
         {
             Snackbar.Add($"Error loading report: {ex.Message}", Severity.Error);
         }
+
+        ThemeService.OnThemeChanged += OnThemeChanged;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -616,6 +617,25 @@ else
             InsertSpaces = true,
             WordWrap = "off"
         };
+    }
+
+    private void OnThemeChanged()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            try
+            {
+                await Global.SetTheme(JSRuntime, ThemeService.IsDarkMode ? "vs-dark" : "vs");
+            }
+            catch
+            {
+            }
+        });
+    }
+
+    public void Dispose()
+    {
+        ThemeService.OnThemeChanged -= OnThemeChanged;
     }
 
     private string FormatJson(string json)
