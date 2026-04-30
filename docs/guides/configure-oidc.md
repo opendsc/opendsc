@@ -167,9 +167,7 @@ Restart the Pull Server after changing the configuration.
 You can configure more than one provider simultaneously. The login page will
 show a button for each.
 
-<!-- markdownlint-disable MD040 -->
-
-```json title="appsettings.json"
+```json
 {
   "Authentication": {
     "OidcProviders": [
@@ -191,8 +189,6 @@ show a button for each.
   }
 }
 ```
-
-<!-- markdownlint-enable MD040 -->
 
 ## Map provider groups to Pull Server roles
 
@@ -216,22 +212,39 @@ granted that role on sign-in.
 
 ## Authenticate API clients with JWT bearer tokens
 
-Once OIDC is configured, API clients can use access tokens issued by the
-provider directly.
-
 <!-- markdownlint-disable MD046 -->
+
+Users who have signed in interactively at least once can also authenticate API
+requests with an access token issued by the same provider.
+
+!!! warning "Prerequisites for bearer token auth"
+    Bearer tokens are **not** automatically accepted for new identities. Both
+    of the following must be true before a bearer token succeeds:
+
+    1. **The user must be provisioned.** A local account and `ExternalLogin`
+       record are created on first interactive sign-in. A token whose `sub`
+       has no matching record will be rejected with a 401.
+    2. **The token audience must match `ClientId`.** The Pull Server validates
+       `aud` against the `ClientId` configured for the matching provider. Tokens
+       acquired with a different resource/audience will fail validation.
+
+To acquire a token whose audience matches `ClientId`, request the application's
+own scope. For Microsoft Entra ID this is `api://<client-id>/.default` (or
+`<client-id>/.default`). For other providers, use the resource/audience scope
+documented by that provider.
 
 === "PowerShell"
 
     ```powershell
-    # Acquire a token from your provider (example uses client credentials)
+    # Acquire a token scoped to the Pull Server application
     $body = @{
         grant_type    = 'client_credentials'
         client_id     = '<client-id>'
         client_secret = '<client-secret>'
-        scope         = 'openid'
+        scope         = 'api://<client-id>/.default'
     }
-    $token = (Invoke-RestMethod -Uri 'https://login.microsoftonline.com/<tenant>/oauth2/v2.0/token' `
+    $token = (Invoke-RestMethod `
+        -Uri 'https://login.microsoftonline.com/<tenant>/oauth2/v2.0/token' `
         -Method Post -Body $body).access_token
 
     # Use the token in API calls
@@ -242,11 +255,11 @@ provider directly.
 
 === "Shell"
 
-    ```bash
-    # Acquire a token (example uses curl with client credentials)
+    ```sh
+    # Acquire a token scoped to the Pull Server application
     TOKEN=$(curl -s -X POST \
       "https://login.microsoftonline.com/<tenant>/oauth2/v2.0/token" \
-      -d "grant_type=client_credentials&client_id=<id>&client_secret=<secret>&scope=openid" \
+      -d "grant_type=client_credentials&client_id=<id>&client_secret=<secret>&scope=api%3A%2F%2F<client-id>%2F.default" \
       | jq -r '.access_token')
 
     # Use the token in API calls
