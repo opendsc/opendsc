@@ -77,30 +77,30 @@ account.
 Add one or more providers under `Authentication:OidcProviders` in
 `appsettings.json`:
 
-=== "Microsoft Entra ID"
-
 <!-- markdownlint-disable MD046 -->
 
-    ```json title="appsettings.json"
+=== "Microsoft Entra ID"
+
+    ```json
     {
-      "Authentication": {
+        "Authentication": {
         "OidcProviders": [
-          {
+            {
             "Name": "EntraId",
             "DisplayName": "Sign in with Microsoft",
             "Authority": "https://login.microsoftonline.com/<tenant-id>/v2.0",
             "ClientId": "<application-client-id>",
             "ClientSecret": "<client-secret>",
             "Scopes": ["openid", "profile", "email"]
-          }
+            }
         ]
-      }
+        }
     }
     ```
 
 === "Okta"
 
-    ```json title="appsettings.json"
+    ```json
     {
       "Authentication": {
         "OidcProviders": [
@@ -119,7 +119,7 @@ Add one or more providers under `Authentication:OidcProviders` in
 
 === "Auth0"
 
-    ```json title="appsettings.json"
+    ```json
     {
       "Authentication": {
         "OidcProviders": [
@@ -136,15 +136,11 @@ Add one or more providers under `Authentication:OidcProviders` in
     }
     ```
 
-<!-- markdownlint-enable MD046 -->
-
 !!! warning
     Store `ClientSecret` in a secrets manager or environment variable rather
     than in `appsettings.json` directly. Use
     [ASP.NET Core Secret Manager][app-secrets]
     during development, or environment variable overrides in production:
-
-<!-- markdownlint-disable MD046 -->
 
     ```text
     Authentication__OidcProviders__0__ClientSecret=<secret>
@@ -223,9 +219,9 @@ granted that role on sign-in.
 Once OIDC is configured, API clients can use access tokens issued by the
 provider directly.
 
-=== "PowerShell"
-
 <!-- markdownlint-disable MD046 -->
+
+=== "PowerShell"
 
     ```powershell
     # Acquire a token from your provider (example uses client credentials)
