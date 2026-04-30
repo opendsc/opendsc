@@ -227,7 +227,6 @@ jobs:
       - name: Install .NET Runtime
         shell: bash
         run: |
-          dnf install -y curl
           curl -fsSL https://packages.microsoft.com/config/rhel/9/prod.repo \
             -o /etc/yum.repos.d/microsoft-prod.repo
           dnf install -y dotnet-runtime-10.0
@@ -301,7 +300,7 @@ jobs:
 
       - name: Install opendsc-resources formula
         run: |
-          brew install --formula artifacts/homebrew/opendsc-resources.rb
+          brew install --formula ./artifacts/homebrew/opendsc-resources.rb
           $brewPrefix = brew --prefix
           if (-not (Test-Path "$brewPrefix/bin/OpenDsc.Resources")) { exit 1 }
           if (-not (Test-Path "$brewPrefix/bin/OpenDsc.Resources.dsc.manifests.json")) { exit 1 }
@@ -309,7 +308,7 @@ jobs:
 
       - name: Install opendsc-lcm formula
         run: |
-          brew install --formula artifacts/homebrew/opendsc-lcm.rb
+          brew install --formula ./artifacts/homebrew/opendsc-lcm.rb
           $brewPrefix = brew --prefix
           if (-not (Test-Path "$brewPrefix/bin/opendsc-lcm")) { exit 1 }
           opendsc-lcm --help; $global:LASTEXITCODE = 0
@@ -371,10 +370,16 @@ jobs:
           name: release-zip-windows-arm64
           path: artifacts/zip
 
-      - name: Download Windows MSI Packages
+      - name: Download Windows x64 MSI Packages
         uses: actions/download-artifact@v8
         with:
-          name: release-msi
+          name: release-msi-windows-x64
+          path: artifacts/msi
+
+      - name: Download Windows ARM64 MSI Packages
+        uses: actions/download-artifact@v8
+        with:
+          name: release-msi-windows-arm64
           path: artifacts/msi
 
       - name: Resolve Version
