@@ -119,4 +119,7 @@ internal static class EventIds
     // Parameter Compatibility Service Events: 8400-8499
     public const int CompatibilityBreakingChangesDetected = 8401;
     public const int SchemaComparisonComplete = 8402;
+
+    // OIDC User Provisioning Events: 9000-9099
+    public const int OidcUserProvisioned = 9001;
 }

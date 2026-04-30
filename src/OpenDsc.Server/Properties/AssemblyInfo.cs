@@ -5,4 +5,5 @@
 using System.Runtime.CompilerServices;
 
 [assembly: InternalsVisibleTo("OpenDsc.Server.IntegrationTests")]
+[assembly: InternalsVisibleTo("OpenDsc.Server.Tests")]
 [assembly: InternalsVisibleTo("OpenDsc.Lcm.IntegrationTests")]
