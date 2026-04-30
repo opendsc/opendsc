@@ -60,7 +60,7 @@ jobs:
           if ('${{ runner.os }}' -eq 'Windows') {
             $buildParams['Portable'] = $true
           }
-          if ('${{ runner.os }}' -eq 'Windows' -and '${{ matrix.arch }}' -eq 'x64') {
+          if ('${{ runner.os }}' -eq 'Windows') {
             $buildParams['Msi'] = $true
           }
           if ('${{ runner.os }}' -eq 'macOS') {
@@ -83,10 +83,10 @@ jobs:
           path: artifacts/zip
 
       - name: Upload Windows MSI Packages
-        if: runner.os == 'Windows' && matrix.arch == 'x64'
+        if: runner.os == 'Windows'
         uses: actions/upload-artifact@v7
         with:
-          name: release-msi
+          name: release-msi-windows-${{ matrix.arch }}
           path: artifacts/msi
 
       - name: Upload Linux TAR Packages

@@ -2,14 +2,14 @@
   <PropertyGroup>
     <OutputType>Package</OutputType>
     <OutputPath>..\..\..\artifacts\msi\</OutputPath>
-    <TargetName>OpenDSC.Lcm-$(Version)</TargetName>
+    <TargetName>OpenDSC.Lcm.$(Platform)-$(Version)</TargetName>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <Platform>x64</Platform>
     <SuppressPdbOutput>true</SuppressPdbOutput>
   </PropertyGroup>
 
   <PropertyGroup>
-    <DefineConstants>Version=$(Version);Configuration=$(Configuration)</DefineConstants>
+    <DefineConstants>Version=$(Version);RuntimeIdentifier=win-$(Platform)</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>

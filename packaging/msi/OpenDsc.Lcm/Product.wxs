@@ -49,11 +49,11 @@
 
     <ComponentGroup Id="AppFiles" Directory="LcmRootFolder">
       <Files
-        Include="$(var.ProjectDir)..\..\..\src\OpenDsc.Lcm\bin\$(var.Configuration)\net10.0-windows\win-x64\publish\**">
+        Include="$(var.ProjectDir)..\..\..\src\OpenDsc.Lcm\bin\$(var.Configuration)\net10.0-windows\$(var.RuntimeIdentifier)\publish\**">
         <Exclude
-          Files="$(var.ProjectDir)..\..\..\src\OpenDsc.Lcm\bin\$(var.Configuration)\net10.0-windows\win-x64\publish\**\*.pdb" />
+          Files="$(var.ProjectDir)..\..\..\src\OpenDsc.Lcm\bin\$(var.Configuration)\net10.0-windows\$(var.RuntimeIdentifier)\publish\**\*.pdb" />
         <Exclude
-          Files="$(var.ProjectDir)..\..\..\src\OpenDsc.Lcm\bin\$(var.Configuration)\net10.0-windows\win-x64\publish\OpenDsc.Lcm.exe" />
+          Files="$(var.ProjectDir)..\..\..\src\OpenDsc.Lcm\bin\$(var.Configuration)\net10.0-windows\$(var.RuntimeIdentifier)\publish\OpenDsc.Lcm.exe" />
       </Files>
     </ComponentGroup>
 
@@ -64,7 +64,7 @@
 
       <File
         Id="LcmExecutable"
-        Source="$(var.ProjectDir)..\..\..\src\OpenDsc.Lcm\bin\$(var.Configuration)\net10.0-windows\win-x64\publish\OpenDsc.Lcm.exe"
+        Source="$(var.ProjectDir)..\..\..\src\OpenDsc.Lcm\bin\$(var.Configuration)\net10.0-windows\$(var.RuntimeIdentifier)\publish\OpenDsc.Lcm.exe"
         KeyPath="yes" />
 
       <ServiceInstall

@@ -118,18 +118,18 @@ if (-not $SkipBuild) {
         foreach ($arch in @('x64', 'arm64')) {
             if ($Architecture -and $arch -ne $Architecture) { continue }
             $rid = "win-$arch"
-            $lcmTags = if ($arch -eq 'x64') { @('always', 'portable') } else { @('portable') }
+            $lcmTags = if ($arch -eq 'x64') { @('always', 'portable', 'msi') } else { @('portable', 'msi') }
             $builds += @(
                 @{ Name = 'Lcm'; Proj = $lcmProj; Framework = 'net10.0-windows'; Runtime = $rid; SC = $true; SingleFile = $false; Tags = $lcmTags; ZipName = "OpenDSC.Lcm.Windows.$arch-$version.zip" }
-                @{ Name = 'Resources'; Proj = $resourcesProj; Framework = 'net10.0-windows'; Runtime = $rid; SC = $false; SingleFile = $false; Tags = @('portable'); ZipName = "OpenDSC.Resources.Windows.$arch.FrameworkDependent-$version.zip" }
+                @{ Name = 'Resources'; Proj = $resourcesProj; Framework = 'net10.0-windows'; Runtime = $rid; SC = $false; SingleFile = $false; Tags = @('portable', 'msi'); ZipName = "OpenDSC.Resources.Windows.$arch.FrameworkDependent-$version.zip" }
                 @{ Name = 'Resources'; Proj = $resourcesProj; Framework = 'net10.0-windows'; Runtime = $rid; SC = $true; SingleFile = $true; Tags = @('portable'); ZipName = "OpenDSC.Resources.Windows.$arch.SelfContained-$version.zip" }
-                @{ Name = 'Server'; Proj = $serverProj; Framework = 'net10.0-windows'; Runtime = $rid; SC = $false; SingleFile = $false; Tags = @('portable'); ZipName = "OpenDSC.Server.Windows.$arch.FrameworkDependent-$version.zip" }
+                @{ Name = 'Server'; Proj = $serverProj; Framework = 'net10.0-windows'; Runtime = $rid; SC = $false; SingleFile = $false; Tags = @('portable', 'msi'); ZipName = "OpenDSC.Server.Windows.$arch.FrameworkDependent-$version.zip" }
                 @{ Name = 'Server'; Proj = $serverProj; Framework = 'net10.0-windows'; Runtime = $rid; SC = $true; SingleFile = $true; Tags = @('portable'); ZipName = "OpenDSC.Server.Windows.$arch.SelfContained-$version.zip" }
             )
         }
 
         foreach ($b in $builds) {
-            if (-not (($b.Tags -contains 'always') -or ($Portable -and $b.Tags -contains 'portable'))) { continue }
+            if (-not (($b.Tags -contains 'always') -or ($Portable -and $b.Tags -contains 'portable') -or ($Msi -and $b.Tags -contains 'msi'))) { continue }
 
             $scLabel = if ($b.SC) { 'self-contained' } else { 'framework-dependent' }
             $ridLabel = if ($b.Runtime) { " ($($b.Runtime), $scLabel)" } else { '' }
@@ -163,31 +163,31 @@ if (-not $SkipBuild) {
         }
 
         if ($Msi) {
-            Write-Host 'Building MSI installer...' -ForegroundColor Cyan
-            $wixProj = Join-Path $PSScriptRoot 'packaging\msi\OpenDsc.Resources\OpenDsc.Resources.wixproj'
-            if (Test-Path $wixProj) {
-                dotnet build $wixProj -c $Configuration
-                if ($LASTEXITCODE -ne 0) { throw "Build failed for MSI installer with exit code $LASTEXITCODE" }
-                $msiDir = Join-Path $PSScriptRoot 'artifacts\msi'
-                Write-Host 'MSI installer built successfully!' -ForegroundColor Green
-                Write-Host "Output location: $msiDir" -ForegroundColor Green
-            }
+            $msiDir = Join-Path $PSScriptRoot 'artifacts\msi'
+            $targetArchitectures = if ($Architecture) { @($Architecture) } else { @('x64', 'arm64') }
 
-            Write-Host 'Building LCM MSI installer...' -ForegroundColor Cyan
-            $lcmWixProj = Join-Path $PSScriptRoot 'packaging\msi\OpenDsc.Lcm\OpenDsc.Lcm.wixproj'
-            if (Test-Path $lcmWixProj) {
-                dotnet build $lcmWixProj -c $Configuration
-                if ($LASTEXITCODE -ne 0) { throw "Build failed for LCM MSI installer with exit code $LASTEXITCODE" }
-                Write-Host 'LCM MSI installer built successfully!' -ForegroundColor Green
-                Write-Host "Output location: $msiDir" -ForegroundColor Green
-            }
+            foreach ($arch in $targetArchitectures) {
+                Write-Host "Building MSI installers for Windows $arch..." -ForegroundColor Cyan
 
-            Write-Host 'Building Server MSI installer...' -ForegroundColor Cyan
-            $serverWixProj = Join-Path $PSScriptRoot 'packaging\msi\OpenDsc.Server\OpenDsc.Server.wixproj'
-            if (Test-Path $serverWixProj) {
-                dotnet build $serverWixProj -c $Configuration
-                if ($LASTEXITCODE -ne 0) { throw "Build failed for Server MSI installer with exit code $LASTEXITCODE" }
-                Write-Host 'Server MSI installer built successfully!' -ForegroundColor Green
+                $wixProj = Join-Path $PSScriptRoot 'packaging\msi\OpenDsc.Resources\OpenDsc.Resources.wixproj'
+                if (Test-Path $wixProj) {
+                    dotnet build $wixProj -c $Configuration -p:Platform=$arch
+                    if ($LASTEXITCODE -ne 0) { throw "Build failed for Resources MSI installer ($arch) with exit code $LASTEXITCODE" }
+                }
+
+                $lcmWixProj = Join-Path $PSScriptRoot 'packaging\msi\OpenDsc.Lcm\OpenDsc.Lcm.wixproj'
+                if (Test-Path $lcmWixProj) {
+                    dotnet build $lcmWixProj -c $Configuration -p:Platform=$arch
+                    if ($LASTEXITCODE -ne 0) { throw "Build failed for LCM MSI installer ($arch) with exit code $LASTEXITCODE" }
+                }
+
+                $serverWixProj = Join-Path $PSScriptRoot 'packaging\msi\OpenDsc.Server\OpenDsc.Server.wixproj'
+                if (Test-Path $serverWixProj) {
+                    dotnet build $serverWixProj -c $Configuration -p:Platform=$arch
+                    if ($LASTEXITCODE -ne 0) { throw "Build failed for Server MSI installer ($arch) with exit code $LASTEXITCODE" }
+                }
+
+                Write-Host "MSI installers built successfully for Windows $arch!" -ForegroundColor Green
                 Write-Host "Output location: $msiDir" -ForegroundColor Green
             }
         }
