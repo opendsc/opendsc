@@ -48,7 +48,12 @@ public static class OidcEndpoints
                 return Results.NotFound();
             }
 
-            var redirectUri = string.IsNullOrWhiteSpace(returnUrl) ? "/" : returnUrl;
+            var redirectUri = !string.IsNullOrWhiteSpace(returnUrl)
+                && returnUrl.StartsWith('/')
+                && !returnUrl.StartsWith("//")
+                && !returnUrl.StartsWith("/\\")
+                    ? returnUrl
+                    : "/";
             var properties = new AuthenticationProperties { RedirectUri = redirectUri };
             return Results.Challenge(properties, [AuthenticationExtensions.OidcSchemeName(provider)]);
         })

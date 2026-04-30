@@ -123,7 +123,7 @@ public sealed class AuthenticationExtensionsTests
     }
 
     [Fact]
-    public async Task HandleOidcTokenValidated_NameIdentifierClaim_ProvisionesUserAndAddsIdClaim()
+    public async Task HandleOidcTokenValidated_NameIdentifierClaim_ProvisionsUserAndAddsIdClaim()
     {
         var mockService = new Mock<IOidcUserProvisioningService>();
         var expectedUserId = Guid.NewGuid();
@@ -143,11 +143,10 @@ public sealed class AuthenticationExtensionsTests
         mockService.Verify(s => s.ProvisionOrGetUserAsync(
             "entra", "sub-001", null, null, null, It.IsAny<CancellationToken>()), Times.Once);
 
-        var claimsOnIdentity = identity.Claims
+        identity.Claims
             .Where(c => c.Type == ClaimTypes.NameIdentifier)
             .Select(c => c.Value)
-            .ToList();
-        string.Join("|", claimsOnIdentity).Should().Be($"sub-001|{expectedUserId}");
+            .Should().ContainSingle().Which.Should().Be(expectedUserId.ToString());
     }
 
     [Fact]

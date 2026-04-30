@@ -79,9 +79,9 @@ public sealed partial class OidcUserProvisioningService(
                 ? SanitizeUsername(email.Split('@')[0])
                 : "user";
 
-        if (baseUsername.Length > 90)
+        if (baseUsername.Length > 100)
         {
-            baseUsername = baseUsername[..90];
+            baseUsername = baseUsername[..100];
         }
 
         var candidate = baseUsername;
@@ -89,7 +89,11 @@ public sealed partial class OidcUserProvisioningService(
 
         while (await db.Users.AnyAsync(u => u.Username == candidate, cancellationToken))
         {
-            candidate = $"{baseUsername}{suffix}";
+            var suffixStr = suffix.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            var maxBase = 100 - suffixStr.Length;
+            candidate = baseUsername.Length <= maxBase
+                ? $"{baseUsername}{suffixStr}"
+                : $"{baseUsername[..maxBase]}{suffixStr}";
             suffix++;
         }
 

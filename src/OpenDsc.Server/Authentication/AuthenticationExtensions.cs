@@ -273,6 +273,8 @@ public static class AuthenticationExtensions
 
         var identity = context.Principal!.Identity as ClaimsIdentity
             ?? throw new InvalidOperationException("JWT principal has no ClaimsIdentity.");
+        foreach (var existing in identity.FindAll(ClaimTypes.NameIdentifier).ToList())
+            identity.RemoveClaim(existing);
         identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()));
     }
 
@@ -303,6 +305,8 @@ public static class AuthenticationExtensions
 
         var identity = context.Principal!.Identity as ClaimsIdentity
             ?? throw new InvalidOperationException("OIDC principal has no ClaimsIdentity.");
+        foreach (var existing in identity.FindAll(ClaimTypes.NameIdentifier).ToList())
+            identity.RemoveClaim(existing);
         identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()));
     }
 

@@ -201,7 +201,12 @@ public static class AuthenticationEndpoints
         }
 
         var user = await db.Users.FindAsync(userId.Value);
-        if (user == null || user.PasswordHash == null || user.PasswordSalt == null)
+        if (user == null)
+        {
+            return TypedResults.Unauthorized();
+        }
+
+        if (user.PasswordHash == null || user.PasswordSalt == null)
         {
             return TypedResults.BadRequest("External authentication users cannot change their password here.");
         }
