@@ -245,7 +245,11 @@ if (-not $SkipBuild) {
                 $publishPath = Get-PublishPath -Proj $b.Proj -Configuration $Configuration -Framework $b.Framework -Runtime $b.Runtime
                 $exePath = Join-Path $publishPath 'OpenDsc.Resources'
                 if (Test-Path $exePath) {
+                    Write-Host "Generating manifest: $exePath manifest --save" -ForegroundColor Gray
                     & $exePath manifest --save
+                    if ($LASTEXITCODE -ne 0) {
+                        Write-Host "Warning: manifest generation returned exit code $LASTEXITCODE" -ForegroundColor Yellow
+                    }
                 }
             }
         }
@@ -276,6 +280,14 @@ if (-not $SkipBuild) {
                 foreach ($b in $builds | Where-Object { $_.Runtime -eq $rid -and $_.PkgRole }) {
                     $publishPath = Get-PublishPath -Proj $b.Proj -Configuration $Configuration -Framework $b.Framework -Runtime $b.Runtime
                     Copy-Item -Recurse -Force $publishPath (Join-Path $pkgArtifactsDir $b.PkgRole)
+                }
+
+                # Copy manifest from base Resources build to packaging staging
+                $baseResourcesPublish = Get-PublishPath -Proj $resourcesProj -Configuration $Configuration -Framework 'net10.0' -Runtime $null
+                $manifestFile = Join-Path $baseResourcesPublish 'OpenDsc.Resources.dsc.manifests.json'
+                if (Test-Path $manifestFile) {
+                    $publishStagingDir = Join-Path $pkgArtifactsDir 'publish'
+                    Copy-Item -Force $manifestFile $publishStagingDir
                 }
 
                 $pkgOutputDir = Join-Path $PSScriptRoot "artifacts\packages\linux\$arch"
