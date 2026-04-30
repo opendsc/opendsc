@@ -102,6 +102,7 @@ install -Dm755 "$ARTIFACTS_DIR/Server/opendsc-server" \
     "$SERVER_STAGING/usr/bin/opendsc-server"
 
 # Include all framework-dependent runtime files
+mkdir -p "$SERVER_STAGING/usr/lib/opendsc/server"
 cp -r "$ARTIFACTS_DIR/Server/." "$SERVER_STAGING/usr/lib/opendsc/server/"
 rm -f "$SERVER_STAGING/usr/lib/opendsc/server/opendsc-server"
 
