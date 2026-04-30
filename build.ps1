@@ -269,6 +269,17 @@ if (-not $SkipBuild) {
                     Copy-Item -Recurse -Force $publishPath (Join-Path $pkgArtifactsDir $b.PkgRole)
                 }
 
+                # Copy manifest from base build (non-runtime) to ensure it's available for packaging
+                foreach ($b in $builds | Where-Object { $_.Proj -eq $resourcesProj -and $_.Runtime -eq $null -and $_.Framework -eq 'net10.0' }) {
+                    $publishPath = Get-PublishPath -Proj $b.Proj -Configuration $Configuration -Framework $b.Framework -Runtime $b.Runtime
+                    if (Test-Path $publishPath) {
+                        $manifestFile = Join-Path $publishPath 'OpenDsc.Resources.dsc.manifests.json'
+                        if (Test-Path $manifestFile) {
+                            Copy-Item -Force $manifestFile (Join-Path $pkgArtifactsDir 'publish')
+                        }
+                    }
+                }
+
                 $pkgOutputDir = Join-Path $PSScriptRoot "artifacts\packages\linux\$arch"
                 New-Item -ItemType Directory -Path $pkgOutputDir -Force | Out-Null
 
