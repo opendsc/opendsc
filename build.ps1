@@ -239,6 +239,15 @@ if (-not $SkipBuild) {
             }
             dotnet @publishParams
             if ($LASTEXITCODE -ne 0) { throw "Build failed for $($b.Name)$ridLabel with exit code $LASTEXITCODE" }
+
+            # Generate manifest explicitly for base Resources build on Linux packaging
+            if ($b.Proj -eq $resourcesProj -and -not $b.Runtime -and $LinuxPackages) {
+                $publishPath = Get-PublishPath -Proj $b.Proj -Configuration $Configuration -Framework $b.Framework -Runtime $b.Runtime
+                $exePath = Join-Path $publishPath 'OpenDsc.Resources'
+                if (Test-Path $exePath) {
+                    & $exePath manifest --save
+                }
+            }
         }
 
         if ($Portable) {
@@ -267,19 +276,6 @@ if (-not $SkipBuild) {
                 foreach ($b in $builds | Where-Object { $_.Runtime -eq $rid -and $_.PkgRole }) {
                     $publishPath = Get-PublishPath -Proj $b.Proj -Configuration $Configuration -Framework $b.Framework -Runtime $b.Runtime
                     Copy-Item -Recurse -Force $publishPath (Join-Path $pkgArtifactsDir $b.PkgRole)
-                }
-
-                # Copy manifest from base build (non-runtime) to ensure it's available for packaging
-                foreach ($b in $builds | Where-Object { $_.Proj -eq $resourcesProj -and $_.Runtime -eq $null -and $_.Framework -eq 'net10.0' }) {
-                    $publishPath = Get-PublishPath -Proj $b.Proj -Configuration $Configuration -Framework $b.Framework -Runtime $b.Runtime
-                    if (Test-Path $publishPath) {
-                        $manifestFile = Join-Path $publishPath 'OpenDsc.Resources.dsc.manifests.json'
-                        if (Test-Path $manifestFile) {
-                            $destDir = Join-Path $pkgArtifactsDir 'publish'
-                            New-Item -ItemType Directory -Path $destDir -Force | Out-Null
-                            Copy-Item -Force $manifestFile $destDir
-                        }
-                    }
                 }
 
                 $pkgOutputDir = Join-Path $PSScriptRoot "artifacts\packages\linux\$arch"
