@@ -16,7 +16,17 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ windows-latest, ubuntu-latest, macos-latest ]
+        include:
+          - os: windows-latest
+            arch: x64
+          - os: windows-latest
+            arch: arm64
+          - os: ubuntu-latest
+            arch: x64
+          - os: ubuntu-24.04-arm
+            arch: arm64
+          - os: macos-latest
+            arch: arm64
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout Repository
@@ -28,7 +38,7 @@ jobs:
           dotnet-version: "10.0.x"
 
       - name: Install FPM
-        if: matrix.os == 'ubuntu-latest'
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get install -y ruby ruby-dev rpm
           sudo gem install fpm
@@ -38,100 +48,74 @@ jobs:
           $buildParams = @{
             Configuration = 'Release'
             SkipTest = $true
+            Arch = '${{ matrix.arch }}'
           }
-          if ('${{ matrix.os }}' -eq 'ubuntu-latest') {
-            $buildParams['Pack'] = $true
-            $buildParams['LinuxPackages'] = $true
-            $buildParams['Arch'] = 'x64'
-          }
-          if ('${{ matrix.os }}' -eq 'windows-latest') {
-            $buildParams['Msi'] = $true
+          if ('${{ runner.os }}' -eq 'Linux') {
             $buildParams['Portable'] = $true
-          } else {
+            $buildParams['LinuxPackages'] = $true
+          }
+          if ('${{ runner.os }}' -eq 'Linux' -and '${{ matrix.arch }}' -eq 'x64') {
+            $buildParams['Pack'] = $true
+          }
+          if ('${{ runner.os }}' -eq 'Windows') {
+            $buildParams['Portable'] = $true
+          }
+          if ('${{ runner.os }}' -eq 'Windows' -and '${{ matrix.arch }}' -eq 'x64') {
+            $buildParams['Msi'] = $true
+          }
+          if ('${{ runner.os }}' -eq 'macOS') {
             $buildParams['Portable'] = $true
           }
           .\build.ps1 @buildParams
 
       - name: Upload NuGet Packages
-        if: matrix.os == 'ubuntu-latest'
+        if: runner.os == 'Linux' && matrix.arch == 'x64'
         uses: actions/upload-artifact@v7
         with:
           name: release-nuget
           path: artifacts/packages/*.nupkg
 
       - name: Upload Windows ZIP Packages
-        if: matrix.os == 'windows-latest'
+        if: runner.os == 'Windows'
         uses: actions/upload-artifact@v7
         with:
-          name: release-zip
+          name: release-zip-windows-${{ matrix.arch }}
           path: artifacts/zip
 
       - name: Upload Windows MSI Packages
-        if: matrix.os == 'windows-latest'
+        if: runner.os == 'Windows' && matrix.arch == 'x64'
         uses: actions/upload-artifact@v7
         with:
           name: release-msi
           path: artifacts/msi
 
       - name: Upload Linux TAR Packages
-        if: matrix.os == 'ubuntu-latest'
+        if: runner.os == 'Linux'
         uses: actions/upload-artifact@v7
         with:
-          name: release-tar-linux-x64
+          name: release-tar-linux-${{ matrix.arch }}
           path: artifacts/tar
 
       - name: Upload Linux DEB/RPM Packages
-        if: matrix.os == 'ubuntu-latest'
+        if: runner.os == 'Linux'
         uses: actions/upload-artifact@v7
         with:
-          name: release-packages-linux-x64
-          path: artifacts/packages/linux/x64
+          name: release-packages-linux-${{ matrix.arch }}
+          path: artifacts/packages/linux/${{ matrix.arch }}
 
       - name: Upload macOS TAR Packages
-        if: matrix.os == 'macos-latest'
+        if: runner.os == 'macOS'
         uses: actions/upload-artifact@v7
         with:
           name: release-tar-macos
           path: artifacts/tar
 
       - name: Upload Test Binaries
-        if: matrix.os == 'windows-latest'
+        if: runner.os == 'Windows' && matrix.arch == 'x64'
         uses: actions/upload-artifact@v7
         with:
           name: test-binaries-windows
           path: artifacts/TestService
-
-  build-linux-arm64:
-    runs-on: ubuntu-24.04-arm
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v6
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: "10.0.x"
-
-      - name: Install FPM
-        run: |
-          sudo apt-get install -y ruby ruby-dev rpm
-          sudo gem install fpm
-
-      - name: Build and Publish
-        run: .\build.ps1 -Configuration Release -SkipTest -Arch arm64 -Portable
-          -LinuxPackages
-
-      - name: Upload Linux ARM64 TAR Packages
-        uses: actions/upload-artifact@v7
-        with:
-          name: release-tar-linux-arm64
-          path: artifacts/tar
-
-      - name: Upload Linux ARM64 DEB/RPM Packages
-        uses: actions/upload-artifact@v7
-        with:
-          name: release-packages-linux-arm64
-          path: artifacts/packages/linux/arm64
 
   test:
     needs: build
@@ -332,7 +316,7 @@ jobs:
           brew services list | Select-String -Pattern 'opendsc' -CaseInsensitive
 
   publish:
-    needs: [ test, test-deb, test-rpm, test-homebrew, build-linux-arm64 ]
+    needs: [ test, test-deb, test-rpm, test-homebrew ]
     if: github.event_name == 'release' && github.event.action == 'published'
     runs-on: ubuntu-latest
     steps:
@@ -375,10 +359,16 @@ jobs:
           name: release-tar-macos
           path: artifacts/tar-macos
 
-      - name: Download Windows ZIP Packages
+      - name: Download Windows x64 ZIP Packages
         uses: actions/download-artifact@v8
         with:
-          name: release-zip
+          name: release-zip-windows-x64
+          path: artifacts/zip
+
+      - name: Download Windows ARM64 ZIP Packages
+        uses: actions/download-artifact@v8
+        with:
+          name: release-zip-windows-arm64
           path: artifacts/zip
 
       - name: Download Windows MSI Packages

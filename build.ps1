@@ -108,11 +108,15 @@ if (-not $SkipBuild) {
         $lcmProj = Join-Path $PSScriptRoot 'src\OpenDsc.Lcm\OpenDsc.Lcm.csproj'
         $serverProj = Join-Path $PSScriptRoot 'src\OpenDsc.Server\OpenDsc.Server.csproj'
 
-        $builds = @(
-            @{ Name = 'Resources'; Proj = $resourcesProj; Framework = 'net10.0-windows'; Runtime = $null; SC = $false; SingleFile = $false; Tags = @('always') }
-            @{ Name = 'Server'; Proj = $serverProj; Framework = 'net10.0-windows'; Runtime = $null; SC = $false; SingleFile = $false; Tags = @('always') }
-        )
+        $builds = @()
+        if (-not $Arch -or $Arch -eq 'x64') {
+            $builds += @(
+                @{ Name = 'Resources'; Proj = $resourcesProj; Framework = 'net10.0-windows'; Runtime = $null; SC = $false; SingleFile = $false; Tags = @('always') }
+                @{ Name = 'Server'; Proj = $serverProj; Framework = 'net10.0-windows'; Runtime = $null; SC = $false; SingleFile = $false; Tags = @('always') }
+            )
+        }
         foreach ($arch in @('x64', 'arm64')) {
+            if ($Arch -and $arch -ne $Arch) { continue }
             $rid = "win-$arch"
             $lcmTags = if ($arch -eq 'x64') { @('always', 'portable') } else { @('portable') }
             $builds += @(
@@ -188,12 +192,14 @@ if (-not $SkipBuild) {
             }
         }
 
-        Write-Host 'Building TestService...' -ForegroundColor Cyan
-        $testServiceProj = Join-Path $PSScriptRoot 'tests\TestService\TestService.csproj'
-        if (Test-Path $testServiceProj) {
-            $testServiceDir = Join-Path $PSScriptRoot 'artifacts\TestService'
-            dotnet publish $testServiceProj -c $Configuration -o $testServiceDir -p:GenerateDocumentationFile=false
-            if ($LASTEXITCODE -ne 0) { throw "Build failed for TestService with exit code $LASTEXITCODE" }
+        if (-not $Arch -or $Arch -eq 'x64') {
+            Write-Host 'Building TestService...' -ForegroundColor Cyan
+            $testServiceProj = Join-Path $PSScriptRoot 'tests\TestService\TestService.csproj'
+            if (Test-Path $testServiceProj) {
+                $testServiceDir = Join-Path $PSScriptRoot 'artifacts\TestService'
+                dotnet publish $testServiceProj -c $Configuration -o $testServiceDir -p:GenerateDocumentationFile=false
+                if ($LASTEXITCODE -ne 0) { throw "Build failed for TestService with exit code $LASTEXITCODE" }
+            }
         }
     } elseif ($IsLinux) {
         $resourcesProj = Join-Path $PSScriptRoot 'src\OpenDsc.Resources\OpenDsc.Resources.csproj'
