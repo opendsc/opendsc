@@ -209,7 +209,8 @@ jobs:
           test -x /usr/bin/opendsc-lcm
           test -f /lib/systemd/system/opendsc-lcm.service
           test -f /etc/opendsc/lcm/appsettings.json
-          /usr/bin/opendsc-lcm --help || true
+          pgrep -fa opendsc-lcm || true
+          pkill -f opendsc-lcm || true
 
       - name: Install opendsc-server
         shell: bash
@@ -255,7 +256,8 @@ jobs:
           test -x /usr/bin/opendsc-lcm
           test -f /lib/systemd/system/opendsc-lcm.service
           test -f /etc/opendsc/lcm/appsettings.json
-          /usr/bin/opendsc-lcm --help || true
+          pgrep -fa opendsc-lcm || true
+          pkill -f opendsc-lcm || true
 
       - name: Install opendsc-server
         shell: bash
@@ -327,7 +329,7 @@ jobs:
           brew install opendsc/local/opendsc-lcm
           $brewPrefix = brew --prefix
           if (-not (Test-Path "$brewPrefix/bin/opendsc-lcm")) { exit 1 }
-          opendsc-lcm --help; $global:LASTEXITCODE = 0
+          Get-Process opendsc-lcm -ErrorAction SilentlyContinue | Stop-Process -Force
           brew services list | Select-String -Pattern 'opendsc' -CaseInsensitive
 
   publish:
