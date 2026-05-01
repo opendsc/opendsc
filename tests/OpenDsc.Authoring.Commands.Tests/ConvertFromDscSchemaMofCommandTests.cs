@@ -43,7 +43,7 @@ public class ConvertFromDscSchemaMofCommandTests
 
     private static Runspace CreateRunspace()
     {
-        var iss = InitialSessionState.CreateDefault2();
+        var iss = InitialSessionState.Create();
         iss.Commands.Add(new SessionStateCmdletEntry("ConvertFrom-DscSchemaMof", typeof(ConvertFromDscSchemaMofCommand), null));
         var runspace = RunspaceFactory.CreateRunspace(iss);
         runspace.Open();
