@@ -113,9 +113,7 @@ internal static class CommandExecutor
 #else
             var entryLocation = Assembly.GetEntryAssembly()?.Location ?? string.Empty;
 #endif
-            var fullExeName = Path.GetFileName(entryLocation);
-            var exeName = Path.GetFileNameWithoutExtension(fullExeName);
-            var fileName = $"{exeName}.dsc.manifests.json";
+            var fileName = GetMultiResourceManifestFileName(entryLocation);
             var exePath = Path.GetDirectoryName(entryLocation);
             if (string.IsNullOrEmpty(exePath))
             {
@@ -128,6 +126,22 @@ internal static class CommandExecutor
         {
             Console.WriteLine(json);
         }
+    }
+
+    private static string GetMultiResourceManifestFileName(string entryLocation)
+    {
+        var normalizedEntryLocation = entryLocation.Replace('\\', Path.DirectorySeparatorChar);
+        var fullExeName = Path.GetFileName(normalizedEntryLocation);
+        if (string.IsNullOrEmpty(fullExeName))
+        {
+            throw new InvalidOperationException("Unable to determine executable name.");
+        }
+
+        var exeName = string.Equals(Path.GetExtension(fullExeName), ".exe", StringComparison.OrdinalIgnoreCase)
+            ? Path.GetFileNameWithoutExtension(fullExeName)
+            : fullExeName;
+
+        return $"{exeName}.dsc.manifests.json";
     }
 
     private static DscResourceManifest BuildResourceManifest(ResourceRegistration registration, bool isMultiResourceExe)

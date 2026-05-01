@@ -49,6 +49,11 @@
 .EXAMPLE
     .\build.ps1 -Msi
     Builds the MSI installer package.
+.EXAMPLE
+    .\build.ps1 -LinuxPackages
+    Builds .deb and .rpm packages for Linux (requires running on Linux with fpm installed).
+.PARAMETER Architecture
+    Limit runtime-specific builds to a specific architecture (x64 or arm64). Builds all architectures if not specified.
 #>
 param(
     [ValidateSet('Debug', 'Release')]
@@ -72,227 +77,328 @@ param(
 
     [switch] $Msi,
 
+    [switch] $LinuxPackages,
+
     [switch] $InstallSqlServer,
 
     [switch] $CollectCoverage,
 
-    [string] $GitHubToken
+    [string] $GitHubToken,
+
+    [ValidateSet('x64', 'arm64')]
+    [string] $Architecture
 )
 
 $ErrorActionPreference = 'Stop'
 
+function Get-PublishPath {
+    param([string]$Proj, [string]$Configuration, [string]$Framework, [string]$Runtime = $null)
+    $path = Join-Path (Split-Path $Proj) 'bin' $Configuration $Framework
+    if ($Runtime) { $path = Join-Path $path $Runtime }
+    return Join-Path $path 'publish'
+}
+
+function Get-HostArchitecture {
+    switch ([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture) {
+        ([System.Runtime.InteropServices.Architecture]::X64) { return 'x64' }
+        ([System.Runtime.InteropServices.Architecture]::Arm64) { return 'arm64' }
+        default { return $null }
+    }
+}
+
 if (-not $SkipBuild) {
     Write-Host 'Building OpenDsc solution...' -ForegroundColor Cyan
 
-    $publishDir = Join-Path $PSScriptRoot 'artifacts\publish'
-    New-Item -ItemType Directory -Path $publishDir -Force | Out-Null
-
-    if ($Portable) {
-        $version = ([xml](Get-Content (Join-Path $PSScriptRoot 'Directory.Build.props'))).Project.PropertyGroup.Version
-    }
+    $version = ([xml](Get-Content (Join-Path $PSScriptRoot 'Directory.Build.props'))).Project.PropertyGroup.Version
 
     if ($IsWindows) {
         $resourcesProj = Join-Path $PSScriptRoot 'src\OpenDsc.Resources\OpenDsc.Resources.csproj'
-        if (Test-Path $resourcesProj) {
-            dotnet publish $resourcesProj -c $Configuration -f net10.0-windows -o $publishDir -p:GenerateDocumentationFile=false
-            if ($LASTEXITCODE -ne 0) {
-                throw "Build failed for OpenDsc.Resources with exit code $LASTEXITCODE"
+        $lcmProj = Join-Path $PSScriptRoot 'src\OpenDsc.Lcm\OpenDsc.Lcm.csproj'
+        $serverProj = Join-Path $PSScriptRoot 'src\OpenDsc.Server\OpenDsc.Server.csproj'
+        $hostArchitecture = Get-HostArchitecture
+
+        $builds = @()
+        if (-not $Architecture -or $Architecture -eq 'x64') {
+            $builds += @(
+                @{ Name = 'Resources'; Proj = $resourcesProj; Framework = 'net10.0-windows'; Runtime = $null; SC = $false; SingleFile = $false; Tags = @('always') }
+                @{ Name = 'Server'; Proj = $serverProj; Framework = 'net10.0-windows'; Runtime = $null; SC = $false; SingleFile = $false; Tags = @('always') }
+            )
+        }
+        foreach ($arch in @('x64', 'arm64')) {
+            if ($Architecture -and $arch -ne $Architecture) { continue }
+            $rid = "win-$arch"
+            $builds += @(
+                @{ Name = 'Resources'; Proj = $resourcesProj; Framework = 'net10.0-windows'; Runtime = $rid; SC = $false; SingleFile = $false; Tags = @('portable', 'msi'); ZipName = "OpenDSC.Resources.Windows.$arch.FrameworkDependent-$version.zip" }
+                @{ Name = 'Resources'; Proj = $resourcesProj; Framework = 'net10.0-windows'; Runtime = $rid; SC = $true; SingleFile = $true; Tags = @('portable'); ZipName = "OpenDSC.Resources.Windows.$arch.SelfContained-$version.zip" }
+                @{ Name = 'Server'; Proj = $serverProj; Framework = 'net10.0-windows'; Runtime = $rid; SC = $false; SingleFile = $false; Tags = @('portable', 'msi'); ZipName = "OpenDSC.Server.Windows.$arch.FrameworkDependent-$version.zip" }
+                @{ Name = 'Server'; Proj = $serverProj; Framework = 'net10.0-windows'; Runtime = $rid; SC = $true; SingleFile = $true; Tags = @('portable'); ZipName = "OpenDSC.Server.Windows.$arch.SelfContained-$version.zip" }
+            )
+
+            if ($arch -eq $hostArchitecture) {
+                $lcmTags = if ($arch -eq 'x64') { @('always', 'portable', 'msi') } else { @('portable', 'msi') }
+                $builds += @(
+                    @{ Name = 'Lcm'; Proj = $lcmProj; Framework = 'net10.0-windows'; Runtime = $rid; SC = $true; SingleFile = $false; Tags = $lcmTags; ZipName = "OpenDSC.Lcm.Windows.$arch-$version.zip" }
+                )
+            }
+        }
+
+        foreach ($b in $builds) {
+            if (-not (($b.Tags -contains 'always') -or ($Portable -and $b.Tags -contains 'portable') -or ($Msi -and $b.Tags -contains 'msi'))) { continue }
+
+            $scLabel = if ($b.SC) { 'self-contained' } else { 'framework-dependent' }
+            $ridLabel = if ($b.Runtime) { " ($($b.Runtime), $scLabel)" } else { '' }
+            Write-Host "  Building $($b.Name)$ridLabel..." -ForegroundColor Cyan
+
+            $publishParams = @('publish', $b.Proj, '-c', $Configuration, '-f', $b.Framework, '-p:GenerateDocumentationFile=false')
+            if ($b.Runtime) { $publishParams += '-r', $b.Runtime }
+            $publishParams += if ($b.SC) { '--self-contained', 'true' } else { '--no-self-contained' }
+            if ($b.SingleFile) {
+                $publishParams += '-p:PublishSingleFile=true', '-p:IncludeNativeLibrariesForSelfExtract=true',
+                '-p:EnableCompressionInSingleFile=false', '-p:DebugType=None', '-p:DebugSymbols=false',
+                '-p:CopyOutputSymbolsToPublishDirectory=false'
+            }
+            dotnet @publishParams
+            if ($LASTEXITCODE -ne 0) { throw "Build failed for $($b.Name)$ridLabel with exit code $LASTEXITCODE" }
+        }
+
+        if ($Portable) {
+            Write-Host 'Building portable packages for Windows...' -ForegroundColor Cyan
+            $zipDir = Join-Path $PSScriptRoot 'artifacts\zip'
+            New-Item -ItemType Directory -Path $zipDir -Force | Out-Null
+
+            foreach ($b in $builds | Where-Object { $_.Tags -contains 'portable' -and $_.ZipName }) {
+                $publishPath = Get-PublishPath -Proj $b.Proj -Configuration $Configuration -Framework $b.Framework -Runtime $b.Runtime
+                $zipPath = Join-Path $zipDir $b.ZipName
+                Compress-Archive -Path "$publishPath\*" -DestinationPath $zipPath -Force
+                Write-Host "  Created: $zipPath" -ForegroundColor Green
             }
 
-            Write-Host 'Building LCM Service...' -ForegroundColor Cyan
-            $lcmProj = Join-Path $PSScriptRoot 'src\OpenDsc.Lcm\OpenDsc.Lcm.csproj'
-            if (Test-Path $lcmProj) {
-                $lcmDir = Join-Path $PSScriptRoot 'artifacts\Lcm'
-                dotnet publish $lcmProj -c $Configuration -f net10.0-windows -o $lcmDir -p:GenerateDocumentationFile=false
-                if ($LASTEXITCODE -ne 0) {
-                    throw "Build failed for OpenDsc.Lcm with exit code $LASTEXITCODE"
-                }
-            }
-
-            Write-Host 'Building Pull Server...' -ForegroundColor Cyan
-            $serverProj = Join-Path $PSScriptRoot 'src\OpenDsc.Server\OpenDsc.Server.csproj'
-            if (Test-Path $serverProj) {
-                $serverDir = Join-Path $PSScriptRoot 'artifacts\Server'
-                dotnet publish $serverProj -c $Configuration -f net10.0-windows -o $serverDir -p:GenerateDocumentationFile=false
-                if ($LASTEXITCODE -ne 0) {
-                    throw "Build failed for OpenDsc.Server with exit code $LASTEXITCODE"
-                }
-            }
-
-            if ($Portable) {
-                Write-Host 'Building self-contained portable version...' -ForegroundColor Cyan
-                $portableDir = Join-Path $PSScriptRoot 'artifacts\portable'
-                New-Item -ItemType Directory -Path $portableDir -Force | Out-Null
-                dotnet publish $resourcesProj `
-                    --configuration $Configuration `
-                    --runtime win-x64 `
-                    --self-contained true `
-                    -f net10.0-windows `
-                    -p:PublishSingleFile=true `
-                    -p:IncludeNativeLibrariesForSelfExtract=true `
-                    -p:EnableCompressionInSingleFile=false `
-                    -p:DebugType=None `
-                    -p:DebugSymbols=false `
-                    -p:GenerateDocumentationFile=false `
-                    -p:CopyOutputSymbolsToPublishDirectory=false `
-                    --output $portableDir
-                if ($LASTEXITCODE -ne 0) {
-                    throw "Portable build failed for OpenDsc.Resources with exit code $LASTEXITCODE"
-                }
-
-                Write-Host 'Creating portable ZIP archive...' -ForegroundColor Cyan
-                $zipDir = Join-Path $PSScriptRoot 'artifacts\zip'
-                New-Item -ItemType Directory -Path $zipDir -Force | Out-Null
-                $zipPath = Join-Path $zipDir "OpenDSC.Resources.Windows.Portable-$version.zip"
-                Compress-Archive -Path "$portableDir\*" -DestinationPath $zipPath -Force
-                Write-Host 'Self-contained portable version built successfully!' -ForegroundColor Green
-                Write-Host "Output location: $portableDir" -ForegroundColor Green
-                Write-Host "ZIP archive: $zipPath" -ForegroundColor Green
-            }
+            Write-Host 'Windows portable packages built successfully!' -ForegroundColor Green
         }
 
         if ($Msi) {
-            Write-Host 'Building MSI installer...' -ForegroundColor Cyan
-            $wixProj = Join-Path $PSScriptRoot 'packaging\msi\OpenDsc.Resources\OpenDsc.Resources.wixproj'
-            if (Test-Path $wixProj) {
-                dotnet build $wixProj -c $Configuration
-                if ($LASTEXITCODE -ne 0) {
-                    throw "Build failed for MSI installer with exit code $LASTEXITCODE"
-                }
-                $msiDir = Join-Path $PSScriptRoot 'artifacts\msi'
-                Write-Host 'MSI installer built successfully!' -ForegroundColor Green
-                Write-Host "Output location: $msiDir" -ForegroundColor Green
-            }
+            $msiDir = Join-Path $PSScriptRoot 'artifacts\msi'
+            $targetArchitectures = if ($Architecture) { @($Architecture) } else { @('x64', 'arm64') }
 
-            Write-Host 'Building LCM MSI installer...' -ForegroundColor Cyan
-            $lcmWixProj = Join-Path $PSScriptRoot 'packaging\msi\OpenDsc.Lcm\OpenDsc.Lcm.wixproj'
-            if (Test-Path $lcmWixProj) {
-                dotnet build $lcmWixProj -c $Configuration
-                if ($LASTEXITCODE -ne 0) {
-                    throw "Build failed for LCM MSI installer with exit code $LASTEXITCODE"
-                }
-                Write-Host 'LCM MSI installer built successfully!' -ForegroundColor Green
-                Write-Host "Output location: $msiDir" -ForegroundColor Green
-            }
+            foreach ($arch in $targetArchitectures) {
+                Write-Host "Building MSI installers for Windows $arch..." -ForegroundColor Cyan
 
-            Write-Host 'Building Server MSI installer...' -ForegroundColor Cyan
-            $serverWixProj = Join-Path $PSScriptRoot 'packaging\msi\OpenDsc.Server\OpenDsc.Server.wixproj'
-            if (Test-Path $serverWixProj) {
-                dotnet build $serverWixProj -c $Configuration
-                if ($LASTEXITCODE -ne 0) {
-                    throw "Build failed for Server MSI installer with exit code $LASTEXITCODE"
+                $wixProj = Join-Path $PSScriptRoot 'packaging\msi\OpenDsc.Resources\OpenDsc.Resources.wixproj'
+                if (Test-Path $wixProj) {
+                    dotnet build $wixProj -c $Configuration -p:Platform=$arch
+                    if ($LASTEXITCODE -ne 0) { throw "Build failed for Resources MSI installer ($arch) with exit code $LASTEXITCODE" }
                 }
-                Write-Host 'Server MSI installer built successfully!' -ForegroundColor Green
+
+                $lcmWixProj = Join-Path $PSScriptRoot 'packaging\msi\OpenDsc.Lcm\OpenDsc.Lcm.wixproj'
+                if ($arch -eq $hostArchitecture -and (Test-Path $lcmWixProj)) {
+                    dotnet build $lcmWixProj -c $Configuration -p:Platform=$arch
+                    if ($LASTEXITCODE -ne 0) { throw "Build failed for LCM MSI installer ($arch) with exit code $LASTEXITCODE" }
+                }
+
+                $serverWixProj = Join-Path $PSScriptRoot 'packaging\msi\OpenDsc.Server\OpenDsc.Server.wixproj'
+                if (Test-Path $serverWixProj) {
+                    dotnet build $serverWixProj -c $Configuration -p:Platform=$arch
+                    if ($LASTEXITCODE -ne 0) { throw "Build failed for Server MSI installer ($arch) with exit code $LASTEXITCODE" }
+                }
+
+                Write-Host "MSI installers built successfully for Windows $arch!" -ForegroundColor Green
                 Write-Host "Output location: $msiDir" -ForegroundColor Green
             }
         }
 
-        Write-Host 'Building TestService...' -ForegroundColor Cyan
-        $testServiceProj = Join-Path $PSScriptRoot 'tests\TestService\TestService.csproj'
-        if (Test-Path $testServiceProj) {
-            $testServiceDir = Join-Path $PSScriptRoot 'artifacts\TestService'
-            dotnet publish $testServiceProj -c $Configuration -o $testServiceDir -p:GenerateDocumentationFile=false
-            if ($LASTEXITCODE -ne 0) {
-                throw "Build failed for TestService with exit code $LASTEXITCODE"
+        if (-not $Architecture -or $Architecture -eq 'x64') {
+            Write-Host 'Building TestService...' -ForegroundColor Cyan
+            $testServiceProj = Join-Path $PSScriptRoot 'tests\TestService\TestService.csproj'
+            if (Test-Path $testServiceProj) {
+                $testServiceDir = Join-Path $PSScriptRoot 'artifacts\TestService'
+                dotnet publish $testServiceProj -c $Configuration -o $testServiceDir -p:GenerateDocumentationFile=false
+                if ($LASTEXITCODE -ne 0) { throw "Build failed for TestService with exit code $LASTEXITCODE" }
             }
         }
     } elseif ($IsLinux) {
         $resourcesProj = Join-Path $PSScriptRoot 'src\OpenDsc.Resources\OpenDsc.Resources.csproj'
-        if (Test-Path $resourcesProj) {
-            dotnet publish $resourcesProj -c $Configuration -f net10.0 -o $publishDir -p:GenerateDocumentationFile=false
-            if ($LASTEXITCODE -ne 0) {
-                throw "Build failed for OpenDsc.Resources with exit code $LASTEXITCODE"
+        $lcmProj = Join-Path $PSScriptRoot 'src\OpenDsc.Lcm\OpenDsc.Lcm.csproj'
+        $serverProj = Join-Path $PSScriptRoot 'src\OpenDsc.Server\OpenDsc.Server.csproj'
+        $hostArchitecture = Get-HostArchitecture
+
+        $builds = @(
+            @{ Name = 'Resources'; Proj = $resourcesProj; Framework = 'net10.0'; Runtime = $null; SC = $false; SingleFile = $false; Tags = @('always') }
+        )
+        foreach ($arch in @('x64', 'arm64')) {
+            if ($Architecture -and $arch -ne $Architecture) { continue }
+            $rid = "linux-$arch"
+            $builds += @(
+                @{ Name = 'Resources'; Proj = $resourcesProj; Framework = 'net10.0'; Runtime = $rid; SC = $false; SingleFile = $false; Tags = @('portable', 'package'); TarName = "OpenDSC.Resources.Linux.$arch.FrameworkDependent-$version.tar.gz"; PkgRole = 'publish' }
+                @{ Name = 'Resources'; Proj = $resourcesProj; Framework = 'net10.0'; Runtime = $rid; SC = $true; SingleFile = $true; Tags = @('portable'); TarName = "OpenDSC.Resources.Linux.$arch.SelfContained-$version.tar.gz" }
+                @{ Name = 'Server'; Proj = $serverProj; Framework = 'net10.0'; Runtime = $rid; SC = $false; SingleFile = $false; Tags = @('portable', 'package'); TarName = "OpenDSC.Server.Linux.$arch.FrameworkDependent-$version.tar.gz"; PkgRole = 'Server' }
+                @{ Name = 'Server'; Proj = $serverProj; Framework = 'net10.0'; Runtime = $rid; SC = $true; SingleFile = $true; Tags = @('portable'); TarName = "OpenDSC.Server.Linux.$arch.SelfContained-$version.tar.gz" }
+            )
+
+            if ($arch -eq $hostArchitecture) {
+                $lcmTags = if ($arch -eq 'x64') { @('always', 'portable', 'package') } else { @('portable', 'package') }
+                $builds += @(
+                    @{ Name = 'Lcm'; Proj = $lcmProj; Framework = 'net10.0'; Runtime = $rid; SC = $true; SingleFile = $false; Tags = $lcmTags; TarName = "OpenDSC.Lcm.Linux.$arch-$version.tar.gz"; PkgRole = 'Lcm' }
+                )
             }
         }
 
-        Write-Host 'Building LCM Service for Linux...' -ForegroundColor Cyan
-        $lcmProj = Join-Path $PSScriptRoot 'src\OpenDsc.Lcm\OpenDsc.Lcm.csproj'
-        if (Test-Path $lcmProj) {
-            $lcmDir = Join-Path $PSScriptRoot 'artifacts\Lcm'
-            dotnet publish $lcmProj -c $Configuration -f net10.0 -o $lcmDir -p:GenerateDocumentationFile=false
-            if ($LASTEXITCODE -ne 0) {
-                throw "Build failed for OpenDsc.Lcm with exit code $LASTEXITCODE"
+        foreach ($b in $builds) {
+            if (-not (($b.Tags -contains 'always') -or ($Portable -and $b.Tags -contains 'portable') -or ($LinuxPackages -and $b.Tags -contains 'package'))) { continue }
+
+            $scLabel = if ($b.SC) { 'self-contained' } else { 'framework-dependent' }
+            $ridLabel = if ($b.Runtime) { " ($($b.Runtime), $scLabel)" } else { '' }
+            Write-Host "  Building $($b.Name)$ridLabel..." -ForegroundColor Cyan
+
+            $publishParams = @('publish', $b.Proj, '-c', $Configuration, '-f', $b.Framework, '-p:GenerateDocumentationFile=false')
+            if ($b.Runtime) { $publishParams += '-r', $b.Runtime }
+            $publishParams += if ($b.SC) { '--self-contained', 'true' } else { '--no-self-contained' }
+            if ($b.SingleFile) {
+                $publishParams += '-p:PublishSingleFile=true', '-p:IncludeNativeLibrariesForSelfExtract=true',
+                '-p:EnableCompressionInSingleFile=false', '-p:DebugType=None', '-p:DebugSymbols=false',
+                '-p:CopyOutputSymbolsToPublishDirectory=false'
+            }
+            dotnet @publishParams
+            if ($LASTEXITCODE -ne 0) { throw "Build failed for $($b.Name)$ridLabel with exit code $LASTEXITCODE" }
+
+            # Generate manifest explicitly for base Resources build on Linux packaging
+            if ($b.Proj -eq $resourcesProj -and -not $b.Runtime -and $LinuxPackages) {
+                $publishPath = Get-PublishPath -Proj $b.Proj -Configuration $Configuration -Framework $b.Framework -Runtime $b.Runtime
+                $exePath = Join-Path $publishPath 'OpenDsc.Resources'
+                if (Test-Path $exePath) {
+                    & $exePath manifest --save
+                    if ($LASTEXITCODE -ne 0) { throw "Manifest generation failed for $($b.Name) with exit code $LASTEXITCODE" }
+                } else {
+                    throw "Manifest generation executable not found at $exePath"
+                }
             }
         }
 
         if ($Portable) {
-            Write-Host 'Building self-contained portable version for Linux...' -ForegroundColor Cyan
-            $portableLinuxDir = Join-Path $PSScriptRoot 'artifacts\portable'
-            New-Item -ItemType Directory -Path $portableLinuxDir -Force | Out-Null
-            dotnet publish $resourcesProj `
-                --configuration $Configuration `
-                --runtime linux-x64 `
-                --self-contained true `
-                -f net10.0 `
-                -p:PublishSingleFile=true `
-                -p:IncludeNativeLibrariesForSelfExtract=true `
-                -p:EnableCompressionInSingleFile=false `
-                -p:DebugType=None `
-                -p:DebugSymbols=false `
-                -p:GenerateDocumentationFile=false `
-                -p:CopyOutputSymbolsToPublishDirectory=false `
-                --output $portableLinuxDir
-            if ($LASTEXITCODE -ne 0) {
-                throw "Portable build failed for OpenDsc.Resources with exit code $LASTEXITCODE"
+            Write-Host 'Building portable packages for Linux...' -ForegroundColor Cyan
+            $tarDir = Join-Path $PSScriptRoot 'artifacts\tar'
+            New-Item -ItemType Directory -Path $tarDir -Force | Out-Null
+
+            foreach ($b in $builds | Where-Object { $_.Tags -contains 'portable' -and $_.TarName }) {
+                $publishPath = Get-PublishPath -Proj $b.Proj -Configuration $Configuration -Framework $b.Framework -Runtime $b.Runtime
+                $tarPath = Join-Path $tarDir $b.TarName
+                tar -czf $tarPath -C $publishPath .
+                Write-Host "  Created: $tarPath" -ForegroundColor Green
             }
 
-            Write-Host 'Creating portable ZIP archive for Linux...' -ForegroundColor Cyan
-            $zipDir = Join-Path $PSScriptRoot 'artifacts\zip'
-            New-Item -ItemType Directory -Path $zipDir -Force | Out-Null
-            $zipPath = Join-Path $zipDir "OpenDSC.Resources.Linux.Portable-$version.zip"
-            Compress-Archive -Path "$portableLinuxDir\*" -DestinationPath $zipPath -Force
-            Write-Host 'Self-contained portable version for Linux built successfully!' -ForegroundColor Green
-            Write-Host "Output location: $portableLinuxDir" -ForegroundColor Green
-            Write-Host "ZIP archive: $zipPath" -ForegroundColor Green
+            Write-Host 'Linux portable packages built successfully!' -ForegroundColor Green
+        }
+
+        if ($LinuxPackages) {
+            $packageArchitectures = if ($Architecture) { @($Architecture) } elseif ($hostArchitecture) { @($hostArchitecture) } else { @('x64') }
+            foreach ($arch in $packageArchitectures) {
+                if ($Architecture -and $arch -ne $Architecture) { continue }
+                $rid = "linux-$arch"
+                $fpmArch = if ($arch -eq 'x64') { 'amd64' } else { 'arm64' }
+                $pkgArtifactsDir = Join-Path $PSScriptRoot "artifacts\pkg-stage\$rid"
+                New-Item -ItemType Directory -Path $pkgArtifactsDir -Force | Out-Null
+
+                foreach ($build in $builds | Where-Object { $_.Runtime -eq $rid -and $_.PkgRole }) {
+                    $publishPath = Get-PublishPath -Proj $build.Proj -Configuration $Configuration -Framework $build.Framework -Runtime $build.Runtime
+                    $stagingPath = Join-Path $pkgArtifactsDir $build.PkgRole
+                    Copy-Item -Recurse -Force $publishPath $stagingPath
+
+                    if ($build.PkgRole -eq 'Lcm') {
+                        $lcmHostPath = Join-Path $stagingPath 'OpenDsc.Lcm'
+                        if (Test-Path $lcmHostPath) {
+                            Copy-Item -Force $lcmHostPath (Join-Path $stagingPath 'opendsc-lcm')
+                        } else {
+                            throw "LCM host executable not found at $lcmHostPath"
+                        }
+                    }
+
+                    if ($build.PkgRole -eq 'Server') {
+                        $serverHostPath = Join-Path $stagingPath 'OpenDsc.Server'
+                        if (Test-Path $serverHostPath) {
+                            Copy-Item -Force $serverHostPath (Join-Path $stagingPath 'opendsc-server')
+                        } else {
+                            throw "Server host executable not found at $serverHostPath"
+                        }
+                    }
+                }
+
+                # Copy manifest from base Resources build to packaging staging
+                $baseResourcesPublish = Get-PublishPath -Proj $resourcesProj -Configuration $Configuration -Framework 'net10.0' -Runtime $null
+                $manifestFile = Join-Path $baseResourcesPublish 'OpenDsc.Resources.dsc.manifests.json'
+                if (Test-Path $manifestFile) {
+                    $publishStagingDir = Join-Path $pkgArtifactsDir 'publish'
+                    New-Item -ItemType Directory -Path $publishStagingDir -Force | Out-Null
+                    Copy-Item -Force $manifestFile $publishStagingDir
+                } else {
+                    throw "Manifest file not found at $manifestFile"
+                }
+
+                $pkgOutputDir = Join-Path $PSScriptRoot "artifacts\packages\linux\$arch"
+                New-Item -ItemType Directory -Path $pkgOutputDir -Force | Out-Null
+
+                $buildPackagesScript = Join-Path $PSScriptRoot 'packaging\linux\build-packages.sh'
+                $lcmPostinstall = Join-Path $PSScriptRoot 'packaging\linux\lcm\postinstall.sh'
+                $lcmPreremove = Join-Path $PSScriptRoot 'packaging\linux\lcm\preremove.sh'
+                $serverPostinstall = Join-Path $PSScriptRoot 'packaging\linux\server\postinstall.sh'
+                $serverPreremove = Join-Path $PSScriptRoot 'packaging\linux\server\preremove.sh'
+                bash -c "chmod +x '$buildPackagesScript' '$lcmPostinstall' '$lcmPreremove' '$serverPostinstall' '$serverPreremove'"
+
+                bash $buildPackagesScript `
+                    --version $version `
+                    --artifacts-dir $pkgArtifactsDir `
+                    --output-dir $pkgOutputDir `
+                    --arch $fpmArch
+                if ($LASTEXITCODE -ne 0) { throw "FPM packaging failed for $rid with exit code $LASTEXITCODE" }
+            }
+
+            Write-Host 'Linux packages (.deb/.rpm) built successfully!' -ForegroundColor Green
+            Write-Host "Output: $(Join-Path $PSScriptRoot 'artifacts\packages\linux')" -ForegroundColor Green
         }
     } elseif ($IsMacOS) {
         $resourcesProj = Join-Path $PSScriptRoot 'src\OpenDsc.Resources\OpenDsc.Resources.csproj'
-        if (Test-Path $resourcesProj) {
-            dotnet publish $resourcesProj -c $Configuration -f net10.0 -o $publishDir -p:GenerateDocumentationFile=false
-            if ($LASTEXITCODE -ne 0) {
-                throw "Build failed for OpenDsc.Resources with exit code $LASTEXITCODE"
-            }
-        }
-
-        Write-Host 'Building LCM Service for macOS...' -ForegroundColor Cyan
         $lcmProj = Join-Path $PSScriptRoot 'src\OpenDsc.Lcm\OpenDsc.Lcm.csproj'
-        if (Test-Path $lcmProj) {
-            $lcmDir = Join-Path $PSScriptRoot 'artifacts\Lcm'
-            dotnet publish $lcmProj -c $Configuration -f net10.0 -o $lcmDir -p:GenerateDocumentationFile=false
-            if ($LASTEXITCODE -ne 0) {
-                throw "Build failed for OpenDsc.Lcm with exit code $LASTEXITCODE"
+        $serverProj = Join-Path $PSScriptRoot 'src\OpenDsc.Server\OpenDsc.Server.csproj'
+
+        $builds = @(
+            @{ Name = 'Resources'; Proj = $resourcesProj; Framework = 'net10.0'; Runtime = $null; SC = $false; SingleFile = $false; Tags = @('always') }
+            @{ Name = 'Lcm'; Proj = $lcmProj; Framework = 'net10.0'; Runtime = 'osx-arm64'; SC = $true; SingleFile = $false; Tags = @('always', 'portable'); TarName = "OpenDSC.Lcm.macOS.arm64-$version.tar.gz" }
+            @{ Name = 'Resources'; Proj = $resourcesProj; Framework = 'net10.0'; Runtime = 'osx-arm64'; SC = $false; SingleFile = $false; Tags = @('portable'); TarName = "OpenDSC.Resources.macOS.arm64.FrameworkDependent-$version.tar.gz" }
+            @{ Name = 'Resources'; Proj = $resourcesProj; Framework = 'net10.0'; Runtime = 'osx-arm64'; SC = $true; SingleFile = $true; Tags = @('portable'); TarName = "OpenDSC.Resources.macOS.arm64.SelfContained-$version.tar.gz" }
+            @{ Name = 'Server'; Proj = $serverProj; Framework = 'net10.0'; Runtime = 'osx-arm64'; SC = $false; SingleFile = $false; Tags = @('portable'); TarName = "OpenDSC.Server.macOS.arm64.FrameworkDependent-$version.tar.gz" }
+            @{ Name = 'Server'; Proj = $serverProj; Framework = 'net10.0'; Runtime = 'osx-arm64'; SC = $true; SingleFile = $true; Tags = @('portable'); TarName = "OpenDSC.Server.macOS.arm64.SelfContained-$version.tar.gz" }
+        )
+
+        foreach ($b in $builds) {
+            if (-not (($b.Tags -contains 'always') -or ($Portable -and $b.Tags -contains 'portable'))) { continue }
+
+            $scLabel = if ($b.SC) { 'self-contained' } else { 'framework-dependent' }
+            $ridLabel = if ($b.Runtime) { " ($($b.Runtime), $scLabel)" } else { '' }
+            Write-Host "  Building $($b.Name)$ridLabel..." -ForegroundColor Cyan
+
+            $publishParams = @('publish', $b.Proj, '-c', $Configuration, '-f', $b.Framework, '-p:GenerateDocumentationFile=false')
+            if ($b.Runtime) { $publishParams += '-r', $b.Runtime }
+            $publishParams += if ($b.SC) { '--self-contained', 'true' } else { '--no-self-contained' }
+            if ($b.SingleFile) {
+                $publishParams += '-p:PublishSingleFile=true', '-p:IncludeNativeLibrariesForSelfExtract=true',
+                '-p:EnableCompressionInSingleFile=false', '-p:DebugType=None', '-p:DebugSymbols=false',
+                '-p:CopyOutputSymbolsToPublishDirectory=false'
             }
+            dotnet @publishParams
+            if ($LASTEXITCODE -ne 0) { throw "Build failed for $($b.Name)$ridLabel with exit code $LASTEXITCODE" }
         }
 
         if ($Portable) {
-            Write-Host 'Building self-contained portable version for macOS...' -ForegroundColor Cyan
-            $portableMacDir = Join-Path $PSScriptRoot 'artifacts\portable'
-            New-Item -ItemType Directory -Path $portableMacDir -Force | Out-Null
-            dotnet publish $resourcesProj `
-                --configuration $Configuration `
-                --runtime osx-arm64 `
-                --self-contained true `
-                -f net10.0 `
-                -p:PublishSingleFile=true `
-                -p:IncludeNativeLibrariesForSelfExtract=true `
-                -p:EnableCompressionInSingleFile=false `
-                -p:DebugType=None `
-                -p:DebugSymbols=false `
-                -p:GenerateDocumentationFile=false `
-                -p:CopyOutputSymbolsToPublishDirectory=false `
-                --output $portableMacDir
-            if ($LASTEXITCODE -ne 0) {
-                throw "Portable build failed for OpenDsc.Resources with exit code $LASTEXITCODE"
+            Write-Host 'Building portable packages for macOS...' -ForegroundColor Cyan
+            $tarDir = Join-Path $PSScriptRoot 'artifacts\tar'
+            New-Item -ItemType Directory -Path $tarDir -Force | Out-Null
+
+            foreach ($b in $builds | Where-Object { $_.Tags -contains 'portable' -and $_.TarName }) {
+                $publishPath = Get-PublishPath -Proj $b.Proj -Configuration $Configuration -Framework $b.Framework -Runtime $b.Runtime
+                $tarPath = Join-Path $tarDir $b.TarName
+                tar -czf $tarPath -C $publishPath .
+                Write-Host "  Created: $tarPath" -ForegroundColor Green
             }
 
-            Write-Host 'Creating portable ZIP archive for macOS...' -ForegroundColor Cyan
-            $zipDir = Join-Path $PSScriptRoot 'artifacts\zip'
-            New-Item -ItemType Directory -Path $zipDir -Force | Out-Null
-            $zipPath = Join-Path $zipDir "OpenDSC.Resources.macOS.Portable-$version.zip"
-            Compress-Archive -Path "$portableMacDir\*" -DestinationPath $zipPath -Force
-            Write-Host 'Self-contained portable version for macOS built successfully!' -ForegroundColor Green
-            Write-Host "Output location: $portableMacDir" -ForegroundColor Green
-            Write-Host "ZIP archive: $zipPath" -ForegroundColor Green
+            Write-Host 'macOS portable packages built successfully!' -ForegroundColor Green
         }
     }
 
@@ -302,24 +408,6 @@ if (-not $SkipBuild) {
         dotnet pack $PSScriptRoot --configuration $Configuration --output $packagesDir
         if ($LASTEXITCODE -ne 0) {
             throw "Pack failed with exit code $LASTEXITCODE"
-        }
-    }
-
-    Write-Host 'Building test resources...' -ForegroundColor Cyan
-    $testResourceProjects = @(
-        @{ Name = 'TestResource.Aot'; Project = 'tests/TestResource.Aot/TestResource.Aot.csproj' },
-        @{ Name = 'TestResource.NonAot'; Project = 'tests/TestResource.NonAot/TestResource.NonAot.csproj' },
-        @{ Name = 'TestResource.Options'; Project = 'tests/TestResource.Options/TestResource.Options.csproj' },
-        @{ Name = 'TestResource.Multi'; Project = 'tests/TestResource.Multi/TestResource.Multi.csproj' }
-    )
-    foreach ($proj in $testResourceProjects) {
-        $projPath = Join-Path $PSScriptRoot $proj.Project
-        if (Test-Path $projPath) {
-            $outputDir = Join-Path $PSScriptRoot "artifacts\$($proj.Name)"
-            dotnet publish $projPath -c $Configuration -o $outputDir -p:GenerateDocumentationFile=false
-            if ($LASTEXITCODE -ne 0) {
-                throw "Build failed for $($proj.Name) with exit code $LASTEXITCODE"
-            }
         }
     }
 
@@ -376,30 +464,11 @@ if ($InstallDsc) {
     Write-Host "Installed DSC version: $dscVersion"
 }
 
-if (-not $IsWindows) {
-    $testExecutables = @(
-        'artifacts/TestResource.Aot/test-resource-aot',
-        'artifacts/TestResource.NonAot/test-resource-non-aot',
-        'artifacts/TestResource.Options/test-resource-options',
-        'artifacts/TestResource.Multi/test-resource-multi'
-    )
-    foreach ($exe in $testExecutables) {
-        if (Test-Path $exe) {
-            chmod +x $exe
-        }
-    }
-}
-
 if ($SkipTest) {
     exit 0
 }
 
 $env:BUILD_CONFIGURATION = $Configuration
-
-$publishDir = Join-Path $PSScriptRoot 'artifacts\publish'
-if (Test-Path $publishDir) {
-    $env:DSC_RESOURCE_PATH = $publishDir
-}
 
 Write-Host 'Running tests...' -ForegroundColor Cyan
 

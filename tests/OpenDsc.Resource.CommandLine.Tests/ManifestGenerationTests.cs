@@ -3,6 +3,8 @@
 // terms of the MIT license.
 
 using System.Text.Json;
+using System.Reflection;
+
 using Xunit;
 
 namespace OpenDsc.Resource.CommandLine.Tests;
@@ -208,6 +210,22 @@ public class ManifestGenerationTests
         Assert.NotEmpty(json);
         Assert.Contains("TestResource/All", json);
         Assert.Contains("1.0.0", json);
+    }
+
+    [Theory]
+    [InlineData(@"/tmp/OpenDsc.Resources", "OpenDsc.Resources.dsc.manifests.json")]
+    [InlineData(@"C:\tools\OpenDsc.Resources.exe", "OpenDsc.Resources.dsc.manifests.json")]
+    public void GenerateMultiResourceManifest_UsesExpectedFileName(string entryLocation, string expectedFileName)
+    {
+        // Arrange
+        var commandExecutorType = typeof(CommandBuilder).Assembly.GetType("OpenDsc.Resource.CommandLine.CommandExecutor", throwOnError: true);
+        var method = commandExecutorType!.GetMethod("GetMultiResourceManifestFileName", BindingFlags.NonPublic | BindingFlags.Static);
+
+        // Act
+        var actualFileName = method!.Invoke(null, [entryLocation]);
+
+        // Assert
+        Assert.Equal(expectedFileName, actualFileName);
     }
 
     [Fact]
