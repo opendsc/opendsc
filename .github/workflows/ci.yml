@@ -267,7 +267,7 @@ jobs:
           id opendsc-server
 
   test-homebrew:
-    name: test Homebrew formulas
+    name: test homebrew formulas
     needs: build
     runs-on: macos-latest
     steps:
