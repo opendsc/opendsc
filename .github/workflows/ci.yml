@@ -330,7 +330,7 @@ jobs:
           $brewPrefix = brew --prefix
           if (-not (Test-Path "$brewPrefix/bin/opendsc-lcm")) { exit 1 }
           Get-Process opendsc-lcm -ErrorAction SilentlyContinue | Stop-Process -Force
-          brew services list | Select-String -Pattern 'opendsc' -CaseInsensitive
+          brew services list | Select-String -Pattern 'opendsc'
 
   publish:
     needs: [ test, test-deb, test-rpm, test-homebrew ]

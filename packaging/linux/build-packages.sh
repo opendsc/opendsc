@@ -49,6 +49,11 @@ build_package() {
     local depends_args=("${@:4}")
 
     for format in deb rpm; do
+        local format_args=()
+        if [[ "$format" == "rpm" ]]; then
+            format_args+=(--rpm-rpmbuild-define "_build_id_links none")
+        fi
+
         echo "Building $name.$format ($ARCH)..."
         fpm \
             --input-type dir \
@@ -61,6 +66,7 @@ build_package() {
             --license MIT \
             --maintainer "OpenDSC <opendsc@users.noreply.github.com>" \
             --vendor "OpenDSC" \
+            "${format_args[@]}" \
             "${depends_args[@]}" \
             --package "$OUTPUT_DIR" \
             --chdir "$staging_dir" \
