@@ -162,7 +162,7 @@ jobs:
           flags: ${{ matrix.os }}
 
   test-deb:
-    name: Test .deb Packages
+    name: test .deb packages
     needs: build
     runs-on: ubuntu-latest
     container:
@@ -209,8 +209,7 @@ jobs:
           test -x /usr/bin/opendsc-lcm
           test -f /lib/systemd/system/opendsc-lcm.service
           test -f /etc/opendsc/lcm/appsettings.json
-          pgrep -fa opendsc-lcm || true
-          pkill -f opendsc-lcm || true
+          systemctl stop opendsc-lcm || true
 
       - name: Install opendsc-server
         shell: bash
@@ -222,7 +221,7 @@ jobs:
           id opendsc-server
 
   test-rpm:
-    name: Test .rpm Packages
+    name: test .rpm packages
     needs: build
     runs-on: ubuntu-latest
     container:
@@ -256,8 +255,7 @@ jobs:
           test -x /usr/bin/opendsc-lcm
           test -f /lib/systemd/system/opendsc-lcm.service
           test -f /etc/opendsc/lcm/appsettings.json
-          pgrep -fa opendsc-lcm || true
-          pkill -f opendsc-lcm || true
+          systemctl stop opendsc-lcm || true
 
       - name: Install opendsc-server
         shell: bash
@@ -269,7 +267,7 @@ jobs:
           id opendsc-server
 
   test-homebrew:
-    name: Test Homebrew Formulas
+    name: test Homebrew formulas
     needs: build
     runs-on: macos-latest
     steps:
