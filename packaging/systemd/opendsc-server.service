@@ -1,0 +1,30 @@
+[Unit]
+Description=OpenDSC Pull Server
+Documentation=https://opendsc.io/docs
+After=network.target
+Wants=network.target
+
+[Service]
+Type=notify
+ExecStart=/usr/bin/opendsc-server
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+
+# Dedicated non-root service user created by post-install
+User=opendsc-server
+Group=opendsc-server
+
+# Filesystem paths owned by the service user
+ConfigurationDirectory=opendsc/server
+StateDirectory=opendsc/server
+LogsDirectory=opendsc/server
+RuntimeDirectory=opendsc-server
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
-     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+  xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
 
   <Package
     Name="OpenDSC Resources"
@@ -14,10 +14,10 @@
       DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
 
     <Property Id="ARPURLINFOABOUT"
-              Value="https://github.com/OpenDSC/OpenDSC" />
+      Value="https://github.com/OpenDSC/OpenDSC" />
 
     <Property Id="ARPHELPLINK"
-              Value="https://github.com/OpenDSC/OpenDSC/issues" />
+      Value="https://github.com/OpenDSC/OpenDSC/issues" />
 
     <WixVariable Id="WixUILicenseRtf" Value="$(LicenseRtfPath)" />
     <ui:WixUI Id="WixUI_Minimal" />
@@ -39,8 +39,10 @@
     </Feature>
 
     <ComponentGroup Id="AppFiles" Directory="ResourcesRootFolder">
-      <Files Include="$(var.ProjectDir)..\..\..\artifacts\publish\**">
-        <Exclude Files="$(var.ProjectDir)..\..\..\artifacts\publish\**\*.pdb" />
+      <Files
+        Include="$(var.ProjectDir)..\..\..\src\OpenDsc.Resources\bin\$(var.Configuration)\net10.0-windows\$(var.RuntimeIdentifier)\publish\**">
+        <Exclude
+          Files="$(var.ProjectDir)..\..\..\src\OpenDsc.Resources\bin\$(var.Configuration)\net10.0-windows\$(var.RuntimeIdentifier)\publish\**\*.pdb" />
       </Files>
     </ComponentGroup>
 

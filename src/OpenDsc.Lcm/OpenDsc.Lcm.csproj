@@ -18,6 +18,10 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Console" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" />
+  </ItemGroup>
+
   <ItemGroup Condition="'$(TargetFramework)' == 'net10.0-windows'">
     <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" />
     <PackageReference Include="Microsoft.Extensions.Logging.EventLog" />

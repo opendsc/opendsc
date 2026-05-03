@@ -1,0 +1,73 @@
+# typed: false
+# frozen_string_literal: true
+
+class OpendscLcm < Formula
+  desc "OpenDSC Local Configuration Manager — monitors and remediates DSC configurations"
+  homepage "https://github.com/opendsc/opendsc"
+  url "{{LCM_URL}}"
+  sha256 "{{LCM_SHA256}}"
+  license "MIT"
+  version "{{VERSION}}"
+
+  depends_on arch: :arm64
+
+  def install
+    bin.install "OpenDsc.Lcm" => "opendsc-lcm"
+
+    plist_path = prefix/"Library/LaunchDaemons/com.opendsc.lcm.plist"
+    plist_path.parent.mkpath
+    plist_path.write plist
+  end
+
+  def plist
+    <<~EOS
+      <?xml version="1.0" encoding="UTF-8"?>
+      <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+      <plist version="1.0">
+      <dict>
+          <key>Label</key>
+          <string>com.opendsc.lcm</string>
+          <key>ProgramArguments</key>
+          <array>
+              <string>#{bin}/opendsc-lcm</string>
+          </array>
+          <key>RunAtLoad</key>
+          <true/>
+          <key>KeepAlive</key>
+          <true/>
+          <key>StandardOutPath</key>
+          <string>#{var}/log/opendsc/lcm.log</string>
+          <key>StandardErrorPath</key>
+          <string>#{var}/log/opendsc/lcm.log</string>
+      </dict>
+      </plist>
+    EOS
+  end
+
+  service do
+    run [opt_bin/"opendsc-lcm"]
+    keep_alive true
+    log_path var/"log/opendsc/lcm.log"
+    error_log_path var/"log/opendsc/lcm.log"
+  end
+
+  def caveats
+    <<~EOS
+      OpenDSC LCM has been installed.
+
+      Configuration file location:
+        /Library/Preferences/OpenDSC/LCM/appsettings.json
+
+      To start the LCM as a background service:
+        brew services start opendsc/opendsc/opendsc-lcm
+
+      To view logs:
+        tail -f #{var}/log/opendsc/lcm.log
+    EOS
+  end
+
+  test do
+    assert_predicate bin/"opendsc-lcm", :exist?
+    assert_predicate bin/"opendsc-lcm", :executable?
+  end
+end
