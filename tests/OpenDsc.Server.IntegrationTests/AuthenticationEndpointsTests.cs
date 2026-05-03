@@ -6,6 +6,8 @@ using System.Net;
 
 using AwesomeAssertions;
 
+using Microsoft.AspNetCore.Mvc;
+
 using Xunit;
 
 namespace OpenDsc.Server.IntegrationTests;
@@ -77,6 +79,10 @@ public class AuthenticationEndpointsTests : IAsyncLifetime
         var response = await _client.PostAsJsonAsync("/api/v1/auth/tokens", tokenRequest, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(TestContext.Current.CancellationToken);
+        problem.Should().NotBeNull();
+        problem!.Errors.Should().ContainKey("scopes");
+        problem.Errors["scopes"].Should().ContainSingle().Which.Should().Contain("fake.scope").And.Contain("another.invalid");
     }
 
     [Fact]
@@ -89,6 +95,18 @@ public class AuthenticationEndpointsTests : IAsyncLifetime
         var result = await response.Content.ReadFromJsonAsync<TokenResponse>(TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
         result!.Name.Should().Be("Valid Scopes Token");
+    }
+
+    [Fact]
+    public async Task CreateToken_WithDuplicateScopes_ReturnsDeduplicated()
+    {
+        var tokenRequest = new { name = "Dedup Token", scopes = new[] { "nodes.read", "nodes.read", "nodes.write" } };
+        var response = await _client.PostAsJsonAsync("/api/v1/auth/tokens", tokenRequest, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var result = await response.Content.ReadFromJsonAsync<TokenResponse>(TestContext.Current.CancellationToken);
+        result.Should().NotBeNull();
+        result!.Scopes.Should().BeEquivalentTo(["nodes.read", "nodes.write"]);
     }
 
     [Fact]
@@ -175,6 +193,6 @@ public class AuthenticationEndpointsTests : IAsyncLifetime
     }
 
     private record LoginResponse(string Username, string Email, bool RequirePasswordChange);
-    private record TokenResponse(string Token, string Name, DateTimeOffset? ExpiresAt);
+    private record TokenResponse(string Token, string Name, string[] Scopes, DateTimeOffset? ExpiresAt);
     private record TokenSummary(Guid Id, string Name, DateTimeOffset CreatedAt, DateTimeOffset? ExpiresAt, DateTimeOffset? LastUsedAt, bool IsRevoked);
 }
