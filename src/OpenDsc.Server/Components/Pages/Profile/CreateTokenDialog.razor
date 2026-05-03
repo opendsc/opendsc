@@ -3,7 +3,6 @@
    terms of the MIT license. *@
 
 @namespace OpenDsc.Server.Components.Pages
-@using System.Reflection
 @inject IPersonalAccessTokenService PatService
 @inject IUserContextService UserContext
 @inject ISnackbar Snackbar
@@ -68,14 +67,7 @@
 
     protected override void OnInitialized()
     {
-        var fields = typeof(Permissions).GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy);
-
-        _availablePermissions = fields
-            .Where(f => f.IsLiteral && !f.IsInitOnly && f.FieldType == typeof(string))
-            .Select(f => f.GetValue(null)?.ToString() ?? "")
-            .Where(v => !string.IsNullOrEmpty(v))
-            .OrderBy(v => v)
-            .ToList();
+        _availablePermissions = Permissions.AllScopes.OrderBy(v => v).ToList();
 
         foreach (var permission in _availablePermissions)
         {

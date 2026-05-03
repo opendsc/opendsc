@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
+using OpenDsc.Server.Authorization;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
 using OpenDsc.Server.Services;
@@ -227,7 +228,7 @@ public static class AuthenticationEndpoints
         return TypedResults.NoContent();
     }
 
-    private static async Task<Results<Created<CreateTokenResponse>, UnauthorizedHttpResult>> CreateToken(
+    private static async Task<Results<Created<CreateTokenResponse>, ValidationProblem, UnauthorizedHttpResult>> CreateToken(
         [FromBody] CreateTokenRequest request,
         IPersonalAccessTokenService patService,
         IUserContextService userContext)
@@ -238,10 +239,27 @@ public static class AuthenticationEndpoints
             return TypedResults.Unauthorized();
         }
 
+        var scopes = (request.Scopes ?? [])
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        var invalidScopes = scopes
+            .Where(s => !Permissions.AllScopes.Contains(s))
+            .ToArray();
+
+        if (invalidScopes.Length > 0)
+        {
+            return TypedResults.ValidationProblem(new Dictionary<string, string[]>
+            {
+                ["scopes"] = [$"Invalid scopes: {string.Join(", ", invalidScopes)}"]
+            });
+        }
+
         var (token, metadata) = await patService.CreateTokenAsync(
             userId.Value,
             request.Name,
-            request.Scopes,
+            scopes,
             request.ExpiresAt);
 
         return TypedResults.Created($"/api/v1/auth/tokens/{metadata.Id}", new CreateTokenResponse
@@ -250,7 +268,7 @@ public static class AuthenticationEndpoints
             TokenId = metadata.Id,
             Name = metadata.Name,
             TokenPrefix = metadata.TokenPrefix,
-            Scopes = request.Scopes,
+            Scopes = scopes,
             ExpiresAt = metadata.ExpiresAt,
             CreatedAt = metadata.CreatedAt
         });
