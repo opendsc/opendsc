@@ -8,6 +8,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
 
+using OpenDsc.Server.Authentication;
 using OpenDsc.Server.Data;
 
 namespace OpenDsc.Server.Services;
@@ -19,6 +20,11 @@ public sealed partial class GroupClaimsTransformation(ServerDbContext db, ILogge
 {
     public async Task<ClaimsPrincipal> TransformAsync(ClaimsPrincipal principal)
     {
+        if (principal.HasClaim(ClaimTypes.AuthenticationMethod, PersonalAccessTokenHandler.SchemeName))
+        {
+            return principal;
+        }
+
         var userIdClaim = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (userIdClaim == null || !Guid.TryParse(userIdClaim, out var userId))
         {
