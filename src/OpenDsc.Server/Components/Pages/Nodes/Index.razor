@@ -1,5 +1,5 @@
 @page "/nodes"
-@attribute [Authorize(Policy = "nodes.read")]
+@attribute [Authorize(Policy = NodePermissions.Read)]
 @inject ServerDbContext Db
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar

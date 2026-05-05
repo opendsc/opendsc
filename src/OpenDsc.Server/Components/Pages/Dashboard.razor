@@ -1,5 +1,5 @@
 @page "/"
-@attribute [Authorize(Policy = "nodes.read")]
+@attribute [Authorize(Policy = NodePermissions.Read)]
 @inject ServerDbContext Db
 @inject ISnackbar Snackbar
 
@@ -94,7 +94,7 @@ else
                     @if (chartData.Any())
                     {
                         <MudChart ChartType="ChartType.Pie" InputData="@chartData" InputLabels="@chartLabels" Width="100%"
-                            Height="350px" />
+                                  Height="350px" />
                     }
                     else
                     {
@@ -118,7 +118,7 @@ else
                     @if (lcmChartData.Any())
                     {
                         <MudChart ChartType="ChartType.Pie" InputData="@lcmChartData" InputLabels="@lcmChartLabels" Width="100%"
-                            Height="350px" />
+                                  Height="350px" />
                     }
                     else
                     {
@@ -274,8 +274,8 @@ else
                 labelList.Add($"Error ({errorCount})");
             }
 
-            chartData = [..dataList];
-            chartLabels = [..labelList];
+            chartData = [.. dataList];
+            chartLabels = [.. labelList];
 
             // Build LCM status chart data
             var lcmDataList = new List<double>();
@@ -286,8 +286,8 @@ else
             if (lcmActiveCount > 0) { lcmDataList.Add(lcmActiveCount); lcmLabelList.Add($"Active ({lcmActiveCount})"); }
             if (lcmErrorCount > 0) { lcmDataList.Add(lcmErrorCount); lcmLabelList.Add($"Error ({lcmErrorCount})"); }
 
-            lcmChartData = [..lcmDataList];
-            lcmChartLabels = [..lcmLabelList];
+            lcmChartData = [.. lcmDataList];
+            lcmChartLabels = [.. lcmLabelList];
 
             // Get recent reports (load and sort in memory due to SQLite DateTimeOffset limitation)
             var allReports = await Db.Reports
@@ -298,12 +298,12 @@ else
             .OrderByDescending(r => r.Timestamp)
             .Take(10)
             .Select(r => new ReportSummary
-                {
-                    NodeFqdn = r.Node.Fqdn,
-                    Timestamp = r.Timestamp,
-                    InDesiredState = r.InDesiredState,
-                    HadErrors = r.HadErrors
-                })
+            {
+                NodeFqdn = r.Node.Fqdn,
+                Timestamp = r.Timestamp,
+                InDesiredState = r.InDesiredState,
+                HadErrors = r.HadErrors
+            })
             .ToList();
 
             // Get recent LCM status events
@@ -318,11 +318,11 @@ else
             .OrderByDescending(e => e.Timestamp)
             .Take(10)
             .Select(e => new LcmEventSummary
-                {
-                    NodeFqdn = e.Node.Fqdn,
-                    Timestamp = e.Timestamp,
-                    LcmStatus = e.LcmStatus!.Value
-                })
+            {
+                NodeFqdn = e.Node.Fqdn,
+                Timestamp = e.Timestamp,
+                LcmStatus = e.LcmStatus!.Value
+            })
             .ToList();
         }
         catch (Exception ex)

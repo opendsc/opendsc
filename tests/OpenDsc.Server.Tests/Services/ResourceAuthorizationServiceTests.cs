@@ -48,7 +48,7 @@ public class ResourceAuthorizationServiceTests : IDisposable
         {
             Id = roleId,
             Name = "Admin",
-            Permissions = JsonSerializer.Serialize(new[] { Permissions.Configurations_AdminOverride })
+            Permissions = JsonSerializer.Serialize(new[] { ConfigurationPermissions.AdminOverride })
         };
         _db.Roles.Add(role);
         _db.UserRoles.Add(new UserRole { UserId = userId, RoleId = roleId });
@@ -235,7 +235,7 @@ public class ResourceAuthorizationServiceTests : IDisposable
         {
             Id = roleId,
             Name = "Admin",
-            Permissions = JsonSerializer.Serialize(new[] { Permissions.CompositeConfigurations_AdminOverride })
+            Permissions = JsonSerializer.Serialize(new[] { CompositeConfigurationPermissions.AdminOverride })
         };
         _db.Roles.Add(role);
         _db.UserRoles.Add(new UserRole { UserId = userId, RoleId = roleId });
@@ -320,7 +320,7 @@ public class ResourceAuthorizationServiceTests : IDisposable
         {
             Id = roleId,
             Name = "Admin",
-            Permissions = JsonSerializer.Serialize(new[] { Permissions.Parameters_AdminOverride })
+            Permissions = JsonSerializer.Serialize(new[] { ParameterPermissions.AdminOverride })
         };
         _db.Roles.Add(role);
         _db.UserRoles.Add(new UserRole { UserId = userId, RoleId = roleId });
@@ -406,7 +406,7 @@ public class ResourceAuthorizationServiceTests : IDisposable
         {
             Id = roleId,
             Name = "Admin",
-            Permissions = JsonSerializer.Serialize(new[] { Permissions.Configurations_AdminOverride })
+            Permissions = JsonSerializer.Serialize(new[] { ConfigurationPermissions.AdminOverride })
         };
         _db.Roles.Add(role);
         _db.UserRoles.Add(new UserRole { UserId = userId, RoleId = roleId });
@@ -506,7 +506,7 @@ public class ResourceAuthorizationServiceTests : IDisposable
         {
             Id = roleId,
             Name = "Admin",
-            Permissions = JsonSerializer.Serialize(new[] { Permissions.CompositeConfigurations_AdminOverride })
+            Permissions = JsonSerializer.Serialize(new[] { CompositeConfigurationPermissions.AdminOverride })
         };
         _db.Roles.Add(role);
         _db.UserRoles.Add(new UserRole { UserId = userId, RoleId = roleId });
@@ -533,7 +533,7 @@ public class ResourceAuthorizationServiceTests : IDisposable
         {
             Id = roleId,
             Name = "Admin",
-            Permissions = JsonSerializer.Serialize(new[] { Permissions.Parameters_AdminOverride })
+            Permissions = JsonSerializer.Serialize(new[] { ParameterPermissions.AdminOverride })
         };
         _db.Roles.Add(role);
         _db.UserRoles.Add(new UserRole { UserId = userId, RoleId = roleId });

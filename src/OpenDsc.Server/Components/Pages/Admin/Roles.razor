@@ -1,5 +1,7 @@
 @using Microsoft.EntityFrameworkCore
 @using System.Text.Json
+@using OpenDsc.Server.Authorization
+@using MudBlazor
 @inject ServerDbContext Db
 @inject ISnackbar Snackbar
 @inject IDialogService Dialog
@@ -10,7 +12,8 @@
             <MudText Typo="Typo.h6">Roles</MudText>
         </CardHeaderContent>
         <CardHeaderActions>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateRole" StartIcon="@Icons.Material.Filled.Add">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateRole"
+                       StartIcon="@Icons.Material.Filled.Add">
                 Create Role
             </MudButton>
         </CardHeaderActions>
@@ -20,11 +23,15 @@
             <Columns>
                 <PropertyColumn Property="x => x.Name" Title="Name" />
                 <PropertyColumn Property="x => x.Description" Title="Description" />
-                <TemplateColumn Title="System" SortBy="@(x => x.IsSystemRole)">
+                <TemplateColumn Title="Type" SortBy="@(x => x.IsSystemRole)">
                     <CellTemplate>
                         @if (context.Item.IsSystemRole)
                         {
                             <MudChip T="string" Size="Size.Small" Color="Color.Info">System</MudChip>
+                        }
+                        else
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Default">User</MudChip>
                         }
                     </CellTemplate>
                 </TemplateColumn>
@@ -42,18 +49,12 @@
                 </PropertyColumn>
                 <TemplateColumn Title="Actions" Sortable="false">
                     <CellTemplate>
-                        <MudIconButton Icon="@Icons.Material.Filled.Visibility"
-                                       Size="Size.Small"
+                        <MudIconButton Icon="@Icons.Material.Filled.Visibility" Size="Size.Small"
                                        OnClick="@(() => ViewRole(context.Item))" />
-                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                       Size="Size.Small"
-                                       OnClick="@(() => EditRole(context.Item))"
-                                       Disabled="@context.Item.IsSystemRole" />
-                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                       Size="Size.Small"
-                                       Color="Color.Error"
-                                       OnClick="@(() => DeleteRole(context.Item))"
-                                       Disabled="@context.Item.IsSystemRole" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                       OnClick="@(() => EditRole(context.Item))" Disabled="@context.Item.IsSystemRole" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                       OnClick="@(() => DeleteRole(context.Item))" Disabled="@context.Item.IsSystemRole" />
                     </CellTemplate>
                 </TemplateColumn>
             </Columns>
@@ -61,30 +62,10 @@
     </MudCardContent>
 </MudCard>
 
-@if (selectedRole != null && showViewDialog)
-{
-    <MudDialog @bind-Visible="showViewDialog" Options="new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true }">
-        <DialogContent>
-            <MudText Typo="Typo.h6" Class="mb-3">@selectedRole.Name</MudText>
-            <MudText Typo="Typo.body2" Class="mb-4">@selectedRole.Description</MudText>
-            <MudText Typo="Typo.subtitle2" Class="mb-2">Permissions:</MudText>
-            @foreach (var permission in GetPermissions(selectedRole.Permissions))
-            {
-                <MudChip T="string" Size="Size.Small" Class="mb-1">@permission</MudChip>
-            }
-        </DialogContent>
-        <DialogActions>
-            <MudButton OnClick="@(() => showViewDialog = false)">Close</MudButton>
-        </DialogActions>
-    </MudDialog>
-}
-
 @code {
     private List<Role> roles = [];
     private Dictionary<Guid, int> roleUserCounts = new();
     private Dictionary<Guid, int> roleGroupCounts = new();
-    private Role? selectedRole;
-    private bool showViewDialog;
     private bool loading = true;
 
     protected override async Task OnInitializedAsync()
@@ -132,17 +113,6 @@
         }
     }
 
-    private string[] GetPermissions(string permissionsJson)
-    {
-        try
-        {
-            return JsonSerializer.Deserialize<string[]>(permissionsJson) ?? [];
-        }
-        catch
-        {
-            return [];
-        }
-    }
 
     private int GetRoleUserCount(Guid roleId)
     {
@@ -154,10 +124,15 @@
         return roleGroupCounts.TryGetValue(roleId, out var count) ? count : 0;
     }
 
-    private void ViewRole(Role role)
+    private async Task ViewRole(Role role)
     {
-        selectedRole = role;
-        showViewDialog = true;
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var parameters = new DialogParameters<ViewRoleDialog>
+        {
+            { x => x.Role, role }
+        };
+
+        await Dialog.ShowAsync<ViewRoleDialog>($"View Role: {role.Name}", parameters, options);
     }
 
     private async Task CreateRole()

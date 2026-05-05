@@ -199,7 +199,7 @@ public sealed partial class ConfigurationService : IConfigurationService
 
             var userId = _userContext.GetCurrentUserId();
             if (userId is Guid creatorId &&
-                !await _authService.HasGlobalPermissionAsync(creatorId, Permissions.Configurations_AdminOverride))
+                !await _authService.HasGlobalPermissionAsync(creatorId, ConfigurationPermissions.AdminOverride))
             {
                 await _authService.GrantConfigurationPermissionAsync(
                     configuration.Id,

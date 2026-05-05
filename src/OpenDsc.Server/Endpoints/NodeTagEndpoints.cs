@@ -18,7 +18,7 @@ public static class NodeTagEndpoints
     {
         var group = app.MapGroup("/api/v1/nodes/{nodeId:guid}/tags")
             .WithTags("Node Tags")
-            .RequireAuthorization(Permissions.Scopes_AdminOverride);
+            .RequireAuthorization(ScopePermissions.AdminOverride);
 
         group.MapGet("/", GetNodeTags)
             .WithName("GetNodeTags")

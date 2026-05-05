@@ -63,14 +63,7 @@ builder.Services.AddScoped<ThemeService>();
 builder.Services.AddServerDatabase(builder.Configuration);
 builder.Services.AddServerAuthentication(builder.Environment, builder.Configuration);
 
-builder.Services.AddAuthorizationBuilder()
-    .AddPolicy("reports.write", policy => policy.RequireAuthenticatedUser())
-    .AddPolicy("configurations.read", policy => policy.RequireAuthenticatedUser())
-    .AddPolicy("configurations.write", policy => policy.RequireAuthenticatedUser())
-    .AddPolicy("parameters.read", policy => policy.RequireAuthenticatedUser())
-    .AddPolicy("parameters.write", policy => policy.RequireAuthenticatedUser())
-    .AddPolicy("settings.read", policy => policy.RequireAuthenticatedUser())
-    .AddPolicy("settings.write", policy => policy.RequireAuthenticatedUser());
+builder.Services.AddMemoryCache();
 
 builder.Services.AddSingleton<IParameterMerger, ParameterMerger>();
 builder.Services.AddScoped<IParameterMergeService, ParameterMergeService>();

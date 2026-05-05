@@ -1,6 +1,5 @@
 @using Microsoft.EntityFrameworkCore
 @using System.Text.Json
-@using System.Reflection
 @using MudBlazor
 @using OpenDsc.Server.Authorization
 @inject ServerDbContext Db
@@ -10,8 +9,10 @@
     <DialogContent>
         @if (role != null)
         {
-            <MudTextField @bind-Value="role.Name" Label="Role Name" Variant="Variant.Outlined" Required="true" Class="mb-3" />
-            <MudTextField @bind-Value="role.Description" Label="Description" Variant="Variant.Outlined" Lines="2" Class="mb-3" />
+            <MudTextField @bind-Value="role.Name" Label="Role Name" Variant="Variant.Outlined" Required="true"
+                          Class="mb-3" />
+            <MudTextField @bind-Value="role.Description" Label="Description" Variant="Variant.Outlined" Lines="2"
+                          Class="mb-3" />
 
             <MudText Typo="Typo.subtitle2" Class="mb-2">Groups:</MudText>
             <MudPaper Class="pa-3 mb-3" Style="max-height: 200px; overflow-y: auto;">
@@ -23,19 +24,23 @@
                 {
                     @foreach (var group in availableGroups)
                     {
-                        <MudCheckBox @bind-Value="@selectedGroups[group.Id]"
-                                     Label="@group.Name"
-                                     Dense="true" />
+                        <MudCheckBox @bind-Value="@selectedGroups[group.Id]" Label="@group.Name" Dense="true" />
                     }
                 }
             </MudPaper>
 
             <MudText Typo="Typo.subtitle2" Class="mb-2">Permissions:</MudText>
-            <MudPaper Class="pa-3" Style="max-height: 400px; overflow-y: auto;">
-                @foreach (var permission in availablePermissions)
-                {
-                    <MudCheckBox @bind-Value="@selectedPermissions[permission]" Label="@permission" Dense="true" />
-                }
+            <MudPaper Class="pa-3" Style="max-height: 400px; overflow-y: auto; border: 1px solid #e0e0e0;">
+                <MudTreeView T="string" Items="@permissionTreeItems" SelectedValues="_selectedPermissions"
+                             SelectionMode="SelectionMode.MultiSelection"
+                             SelectedValuesChanged="@(values => OnSelectedPermissionsChanged(values == null ? new HashSet<string>(StringComparer.Ordinal) : new HashSet<string>(values, StringComparer.Ordinal)))"
+                             CheckBoxColor="Color.Primary">
+                    <ItemTemplate Context="item">
+                        <MudTreeViewItem T="string" Expanded="_expandedItems.Contains(item.Value!)"
+                                         ExpandedChanged="@((bool e) => UpdateExpanded(item.Value!, e))" Items="item.Children"
+                                         Value="item.Value" Text="@item.Text" />
+                    </ItemTemplate>
+                </MudTreeView>
             </MudPaper>
         }
         else
@@ -45,7 +50,8 @@
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(role == null || string.IsNullOrWhiteSpace(role.Name))">Save</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit"
+                   Disabled="@(role == null || string.IsNullOrWhiteSpace(role.Name))">Save</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -61,9 +67,10 @@
     private IMudDialogInstance MudDialog { get; set; } = default!;
 
     private List<Group> availableGroups = [];
-    private List<string> availablePermissions = [];
+    private List<TreeItemData<string>> permissionTreeItems = [];
+    private HashSet<string> _selectedPermissions = [];
+    private HashSet<string> _expandedItems = [];
     private Dictionary<Guid, bool> selectedGroups = new();
-    private Dictionary<string, bool> selectedPermissions = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -83,16 +90,6 @@
             selectedGroups[group.Id] = existingGroupIds.Contains(group.Id);
         }
 
-        var permissionsType = typeof(Permissions);
-        var fields = permissionsType.GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy);
-
-        availablePermissions = fields
-            .Where(f => f.IsLiteral && !f.IsInitOnly && f.FieldType == typeof(string))
-            .Select(f => f.GetValue(null)?.ToString() ?? "")
-            .Where(v => !string.IsNullOrEmpty(v))
-            .OrderBy(v => v)
-            .ToList();
-
         var existingPermissions = new List<string>();
         if (role != null && !string.IsNullOrWhiteSpace(role.Permissions))
         {
@@ -103,10 +100,24 @@
             catch { }
         }
 
-        foreach (var permission in availablePermissions)
-        {
-            selectedPermissions[permission] = existingPermissions.Contains(permission);
-        }
+        permissionTreeItems = PermissionHierarchyHelper.CreateTreeData(Permissions.AllScopes, existingPermissions);
+        _selectedPermissions = new HashSet<string>(existingPermissions, StringComparer.Ordinal);
+        _expandedItems = permissionTreeItems.Where(item => item.Value != null).Select(item =>
+item.Value!).ToHashSet(StringComparer.Ordinal);
+    }
+
+    private void UpdateExpanded(string value, bool expanded)
+    {
+        if (expanded)
+            _expandedItems.Add(value);
+        else
+            _expandedItems.Remove(value);
+    }
+
+    private Task OnSelectedPermissionsChanged(HashSet<string> values)
+    {
+        _selectedPermissions = values ?? new();
+        return Task.CompletedTask;
     }
 
     private void Cancel()
@@ -129,17 +140,18 @@
             var selectedGroupIds = selectedGroups.Where(kvp => kvp.Value).Select(kvp => kvp.Key).ToHashSet();
             var currentGroupIds = currentGroups.Select(gr => gr.GroupId).ToHashSet();
 
-            var groupsToAdd = selectedGroupIds.Except(currentGroupIds).Select(groupId => new GroupRole { GroupId = groupId, RoleId = RoleId });
+            var groupsToAdd = selectedGroupIds.Except(currentGroupIds).Select(groupId => new GroupRole
+            {
+                GroupId = groupId,
+                RoleId = RoleId
+            });
             var groupsToRemove = currentGroups.Where(gr => !selectedGroupIds.Contains(gr.GroupId));
 
             Db.GroupRoles.AddRange(groupsToAdd);
             Db.GroupRoles.RemoveRange(groupsToRemove);
 
-            // Update permissions
-            var permissions = selectedPermissions
-                .Where(kvp => kvp.Value)
-                .Select(kvp => kvp.Key)
-                .ToArray();
+            // Use selected permissions from MudTreeView
+            var permissions = _selectedPermissions.OrderBy(p => p).ToArray();
 
             role.Permissions = JsonSerializer.Serialize(permissions);
             role.ModifiedAt = DateTimeOffset.UtcNow;

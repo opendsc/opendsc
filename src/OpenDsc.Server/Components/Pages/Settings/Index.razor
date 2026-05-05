@@ -1,5 +1,5 @@
 @page "/settings"
-@attribute [Authorize(Policy = "settings.read")]
+@attribute [Authorize(Policy = ServerPermissions.SettingsRead)]
 @inject ServerDbContext Db
 @inject ISnackbar Snackbar
 @using OpenDsc.Lcm.Contracts
@@ -26,18 +26,23 @@
                 }
                 else
                 {
-                    <MudTextField @bind-Value="certificateRotationDays" Label="Certificate Rotation Interval (days)" Variant="Variant.Outlined" Class="mb-3"
-                                  HelperText="How long before the LCM should rotate its client certificate." InputType="InputType.Number" />
+                    <MudTextField @bind-Value="certificateRotationDays" Label="Certificate Rotation Interval (days)"
+                                  Variant="Variant.Outlined" Class="mb-3"
+                                  HelperText="How long before the LCM should rotate its client certificate."
+                                  InputType="InputType.Number" />
 
-                    <MudTextField @bind-Value="stalenessMultiplier" Label="Staleness Multiplier" Variant="Variant.Outlined" Class="mb-3"
-                                  HelperText="A node is considered stale when it hasn't checked in for (Interval × Multiplier). Default is 2.0." InputType="InputType.Number" />
+                    <MudTextField @bind-Value="stalenessMultiplier" Label="Staleness Multiplier" Variant="Variant.Outlined"
+                                  Class="mb-3"
+                                  HelperText="A node is considered stale when it hasn't checked in for (Interval × Multiplier). Default is 2.0."
+                                  InputType="InputType.Number" />
 
                     @if (serverSettingsSaveError is not null)
                     {
                         <MudAlert Severity="Severity.Error" Class="mb-3">@serverSettingsSaveError</MudAlert>
                     }
 
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveServerSettings" Disabled="@serverSettingsSaving">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveServerSettings"
+                               Disabled="@serverSettingsSaving">
                         @if (serverSettingsSaving)
                         {
                             <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
@@ -63,53 +68,62 @@
                 else
                 {
                     <MudAlert Severity="Severity.Info" Class="mb-4">
-                        These values are used as defaults for all nodes. A node-level override takes precedence over the server default. Clearing a value removes the server default and lets nodes use their own local setting.
+                        These values are used as defaults for all nodes. A node-level override takes precedence over the
+                        server default. Clearing a value removes the server default and lets nodes use their own local
+                        setting.
                     </MudAlert>
 
-                    <MudSelect T="ConfigurationMode?" @bind-Value="defaultConfigMode" Label="Default Configuration Mode" Variant="Variant.Outlined" Class="mb-3" Clearable="true"
+                    <MudSelect T="ConfigurationMode?" @bind-Value="defaultConfigMode" Label="Default Configuration Mode"
+                               Variant="Variant.Outlined" Class="mb-3" Clearable="true"
                                HelperText="Monitor: check compliance only. Remediate: automatically fix drift. Leave empty for no server default.">
-                        <MudSelectItem T="ConfigurationMode?" Value="@((ConfigurationMode?)null)">No server default</MudSelectItem>
-                        <MudSelectItem T="ConfigurationMode?" Value="@((ConfigurationMode?)ConfigurationMode.Monitor)">Monitor</MudSelectItem>
-                        <MudSelectItem T="ConfigurationMode?" Value="@((ConfigurationMode?)ConfigurationMode.Remediate)">Remediate</MudSelectItem>
-                    </MudSelect>
+                        <MudSelectItem T="ConfigurationMode?" Value="@((ConfigurationMode?)null)">No server default
+                        </MudSelectItem>
+                        <MudSelectItem T="ConfigurationMode?" Value="@((ConfigurationMode?)ConfigurationMode.Monitor)">
+                            Monitor</MudSelectItem>
+                            <MudSelectItem T="ConfigurationMode?" Value="@((ConfigurationMode?)ConfigurationMode.Remediate)">
+                                Remediate</MudSelectItem>
+                            </MudSelect>
 
-                    <MudTextField @bind-Value="defaultIntervalText" Label="Default Configuration Interval (hh:mm:ss)" Variant="Variant.Outlined" Class="mb-3"
-                                  HelperText="How often the LCM runs, e.g. 00:15:00 for 15 minutes. Leave empty for no server default."
-                                  Clearable="true" />
+                            <MudTextField @bind-Value="defaultIntervalText" Label="Default Configuration Interval (hh:mm:ss)"
+                                          Variant="Variant.Outlined" Class="mb-3"
+                                          HelperText="How often the LCM runs, e.g. 00:15:00 for 15 minutes. Leave empty for no server default."
+                                          Clearable="true" />
 
-                    <MudSelect T="bool?" @bind-Value="defaultReportCompliance" Label="Default Report Compliance" Variant="Variant.Outlined" Class="mb-3" Clearable="true"
-                               HelperText="Whether nodes submit compliance reports to this server. Leave empty for no server default.">
-                        <MudSelectItem T="bool?" Value="@((bool?)null)">No server default</MudSelectItem>
-                        <MudSelectItem T="bool?" Value="@((bool?)true)">Yes</MudSelectItem>
-                        <MudSelectItem T="bool?" Value="@((bool?)false)">No</MudSelectItem>
-                    </MudSelect>
+                            <MudSelect T="bool?" @bind-Value="defaultReportCompliance" Label="Default Report Compliance"
+                                       Variant="Variant.Outlined" Class="mb-3" Clearable="true"
+                                       HelperText="Whether nodes submit compliance reports to this server. Leave empty for no server default.">
+                                <MudSelectItem T="bool?" Value="@((bool?)null)">No server default</MudSelectItem>
+                                <MudSelectItem T="bool?" Value="@((bool?)true)">Yes</MudSelectItem>
+                                <MudSelectItem T="bool?" Value="@((bool?)false)">No</MudSelectItem>
+                            </MudSelect>
 
-                    @if (lcmDefaultsSaveError is not null)
-                    {
-                        <MudAlert Severity="Severity.Error" Class="mb-3">@lcmDefaultsSaveError</MudAlert>
-                    }
+                            @if (lcmDefaultsSaveError is not null)
+                            {
+                                <MudAlert Severity="Severity.Error" Class="mb-3">@lcmDefaultsSaveError</MudAlert>
+                            }
 
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveLcmDefaults" Disabled="@lcmDefaultsSaving">
-                        @if (lcmDefaultsSaving)
-                        {
-                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveLcmDefaults"
+                                       Disabled="@lcmDefaultsSaving">
+                                @if (lcmDefaultsSaving)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                }
+                                Save
+                            </MudButton>
                         }
-                        Save
-                    </MudButton>
-                }
-            </MudCardContent>
-        </MudCard>
-    </MudTabPanel>
-    <MudTabPanel Text="Scopes" Icon="@Icons.Material.Filled.Category">
-        <Scopes />
-    </MudTabPanel>
-    <MudTabPanel Text="Retention Policies" Icon="@Icons.Material.Filled.History">
-        <RetentionPolicies />
-    </MudTabPanel>
-    <MudTabPanel Text="Run History" Icon="@Icons.Material.Filled.ManageHistory">
-        <RetentionHistory />
-    </MudTabPanel>
-</MudTabs>
+                    </MudCardContent>
+                </MudCard>
+            </MudTabPanel>
+            <MudTabPanel Text="Scopes" Icon="@Icons.Material.Filled.Category">
+                <Scopes />
+            </MudTabPanel>
+            <MudTabPanel Text="Retention Policies" Icon="@Icons.Material.Filled.History">
+                <RetentionPolicies />
+            </MudTabPanel>
+            <MudTabPanel Text="Run History" Icon="@Icons.Material.Filled.ManageHistory">
+                <RetentionHistory />
+            </MudTabPanel>
+        </MudTabs>
 
 @code {
     // Server Settings state

@@ -24,7 +24,7 @@ public static class SettingsEndpoints
             .WithDescription("Returns settings that nodes need before authenticating, such as the certificate rotation interval.");
 
         var group = app.MapGroup("/api/v1/settings")
-            .RequireAuthorization(Permissions.ServerSettings_Write)
+            .RequireAuthorization(ServerPermissions.SettingsWrite)
             .WithTags("Settings");
 
         group.MapGet("/", GetSettings)

@@ -15,7 +15,7 @@ public static class RetentionEndpoints
     public static void MapRetentionEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/v1/retention")
-            .RequireAuthorization(Permissions.Retention_Manage)
+            .RequireAuthorization(RetentionPermissions.Manage)
             .WithTags("Retention");
 
         group.MapPost("/configurations/cleanup", CleanupConfigurationVersions)

@@ -21,7 +21,7 @@ public static class GroupEndpoints
     {
         var group = app.MapGroup("/api/v1/groups")
             .WithTags("Groups")
-            .RequireAuthorization(Permissions.Groups_Manage);
+            .RequireAuthorization(ServerPermissions.GroupsManage);
 
         group.MapGet("/", GetGroups)
             .WithSummary("List all groups")

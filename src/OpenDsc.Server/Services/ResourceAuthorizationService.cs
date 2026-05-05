@@ -46,7 +46,7 @@ public sealed partial class ResourceAuthorizationService(ServerDbContext db, ILo
 {
     public async Task<bool> CanReadConfigurationAsync(Guid userId, Guid configurationId)
     {
-        if (await HasGlobalPermissionAsync(userId, Permissions.Configurations_AdminOverride))
+        if (await HasGlobalPermissionAsync(userId, ConfigurationPermissions.AdminOverride))
         {
             return true;
         }
@@ -56,7 +56,7 @@ public sealed partial class ResourceAuthorizationService(ServerDbContext db, ILo
 
     public async Task<bool> CanModifyConfigurationAsync(Guid userId, Guid configurationId)
     {
-        if (await HasGlobalPermissionAsync(userId, Permissions.Configurations_AdminOverride))
+        if (await HasGlobalPermissionAsync(userId, ConfigurationPermissions.AdminOverride))
         {
             return true;
         }
@@ -66,7 +66,7 @@ public sealed partial class ResourceAuthorizationService(ServerDbContext db, ILo
 
     public async Task<bool> CanManageConfigurationAsync(Guid userId, Guid configurationId)
     {
-        if (await HasGlobalPermissionAsync(userId, Permissions.Configurations_AdminOverride))
+        if (await HasGlobalPermissionAsync(userId, ConfigurationPermissions.AdminOverride))
         {
             return true;
         }
@@ -76,7 +76,7 @@ public sealed partial class ResourceAuthorizationService(ServerDbContext db, ILo
 
     public async Task<bool> CanReadCompositeConfigurationAsync(Guid userId, Guid compositeConfigurationId)
     {
-        if (await HasGlobalPermissionAsync(userId, Permissions.CompositeConfigurations_AdminOverride))
+        if (await HasGlobalPermissionAsync(userId, CompositeConfigurationPermissions.AdminOverride))
         {
             return true;
         }
@@ -86,7 +86,7 @@ public sealed partial class ResourceAuthorizationService(ServerDbContext db, ILo
 
     public async Task<bool> CanModifyCompositeConfigurationAsync(Guid userId, Guid compositeConfigurationId)
     {
-        if (await HasGlobalPermissionAsync(userId, Permissions.CompositeConfigurations_AdminOverride))
+        if (await HasGlobalPermissionAsync(userId, CompositeConfigurationPermissions.AdminOverride))
         {
             return true;
         }
@@ -96,7 +96,7 @@ public sealed partial class ResourceAuthorizationService(ServerDbContext db, ILo
 
     public async Task<bool> CanManageCompositeConfigurationAsync(Guid userId, Guid compositeConfigurationId)
     {
-        if (await HasGlobalPermissionAsync(userId, Permissions.CompositeConfigurations_AdminOverride))
+        if (await HasGlobalPermissionAsync(userId, CompositeConfigurationPermissions.AdminOverride))
         {
             return true;
         }
@@ -106,7 +106,7 @@ public sealed partial class ResourceAuthorizationService(ServerDbContext db, ILo
 
     public async Task<bool> CanReadParameterAsync(Guid userId, Guid parameterId)
     {
-        if (await HasGlobalPermissionAsync(userId, Permissions.Parameters_AdminOverride))
+        if (await HasGlobalPermissionAsync(userId, ParameterPermissions.AdminOverride))
         {
             return true;
         }
@@ -116,7 +116,7 @@ public sealed partial class ResourceAuthorizationService(ServerDbContext db, ILo
 
     public async Task<bool> CanModifyParameterAsync(Guid userId, Guid parameterId)
     {
-        if (await HasGlobalPermissionAsync(userId, Permissions.Parameters_AdminOverride))
+        if (await HasGlobalPermissionAsync(userId, ParameterPermissions.AdminOverride))
         {
             return true;
         }
@@ -126,7 +126,7 @@ public sealed partial class ResourceAuthorizationService(ServerDbContext db, ILo
 
     public async Task<bool> CanManageParameterAsync(Guid userId, Guid parameterId)
     {
-        if (await HasGlobalPermissionAsync(userId, Permissions.Parameters_AdminOverride))
+        if (await HasGlobalPermissionAsync(userId, ParameterPermissions.AdminOverride))
         {
             return true;
         }
@@ -136,7 +136,7 @@ public sealed partial class ResourceAuthorizationService(ServerDbContext db, ILo
 
     public async Task<List<Guid>> GetReadableConfigurationIdsAsync(Guid userId)
     {
-        if (await HasGlobalPermissionAsync(userId, Permissions.Configurations_AdminOverride))
+        if (await HasGlobalPermissionAsync(userId, ConfigurationPermissions.AdminOverride))
         {
             return await db.Configurations.Select(c => c.Id).ToListAsync();
         }
@@ -157,7 +157,7 @@ public sealed partial class ResourceAuthorizationService(ServerDbContext db, ILo
 
     public async Task<List<Guid>> GetReadableCompositeConfigurationIdsAsync(Guid userId)
     {
-        if (await HasGlobalPermissionAsync(userId, Permissions.CompositeConfigurations_AdminOverride))
+        if (await HasGlobalPermissionAsync(userId, CompositeConfigurationPermissions.AdminOverride))
         {
             return await db.CompositeConfigurations.Select(c => c.Id).ToListAsync();
         }
@@ -178,7 +178,7 @@ public sealed partial class ResourceAuthorizationService(ServerDbContext db, ILo
 
     public async Task<List<Guid>> GetReadableParameterIdsAsync(Guid userId)
     {
-        if (await HasGlobalPermissionAsync(userId, Permissions.Parameters_AdminOverride))
+        if (await HasGlobalPermissionAsync(userId, ParameterPermissions.AdminOverride))
         {
             return await db.ParameterFiles.Select(p => p.Id).ToListAsync();
         }

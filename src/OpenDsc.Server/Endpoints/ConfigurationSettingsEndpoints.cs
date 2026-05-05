@@ -17,7 +17,7 @@ internal static class ConfigurationSettingsEndpoints
     {
         var group = routes.MapGroup("/api/v1/configurations/{configName}/settings")
             .WithTags("Settings")
-            .RequireAuthorization(Permissions.Retention_Manage);
+            .RequireAuthorization(RetentionPermissions.Manage);
 
         group.MapGet("", GetConfigurationSettings)
             .WithName("GetConfigurationSettings");

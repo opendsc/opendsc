@@ -1,4 +1,4 @@
-@attribute [Authorize(Policy = "settings.write")]
+@attribute [Authorize(Policy = ScopePermissions.AdminOverride)]
 @inject ServerDbContext Db
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService

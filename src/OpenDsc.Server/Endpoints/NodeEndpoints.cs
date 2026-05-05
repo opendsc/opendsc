@@ -24,13 +24,7 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
     public void MapNodeEndpoints(IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/v1/nodes")
-            .RequireAuthorization(policy => policy
-                .RequireAuthenticatedUser()
-                .AddAuthenticationSchemes(
-                    CookieAuthenticationDefaults.AuthenticationScheme,
-                    PersonalAccessTokenHandler.SchemeName,
-                    CertificateAuthHandler.NodeScheme,
-                    AuthenticationExtensions.UserApiBearerScheme))
+            .RequireAuthorization()
             .WithTags("Nodes");
 
         group.MapPost("/register", RegisterNode)
@@ -39,17 +33,17 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
             .WithDescription("Registers a new node or re-registers an existing node with the server using mTLS.");
 
         group.MapGet("/", GetNodes)
-            .RequireAuthorization(Permissions.Nodes_Read)
+            .RequireAuthorization(NodePermissions.Read)
             .WithSummary("List all nodes")
             .WithDescription("Returns a list of all registered nodes.");
 
         group.MapGet("/{nodeId:guid}", GetNode)
-            .RequireAuthorization(Permissions.Nodes_Read)
+            .RequireAuthorization(NodePermissions.Read)
             .WithSummary("Get node details")
             .WithDescription("Returns details for a specific node.");
 
         group.MapDelete("/{nodeId:guid}", DeleteNode)
-            .RequireAuthorization(Permissions.Nodes_Delete)
+            .RequireAuthorization(NodePermissions.Delete)
             .WithSummary("Delete a node")
             .WithDescription("Deletes a node and its associated reports.");
 
@@ -59,12 +53,12 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
             .WithDescription("Downloads the configuration assigned to the node.");
 
         group.MapPut("/{nodeId:guid}/configuration", AssignConfiguration)
-            .RequireAuthorization(Permissions.Nodes_AssignConfiguration)
+            .RequireAuthorization(NodePermissions.AssignConfiguration)
             .WithSummary("Assign configuration")
             .WithDescription("Assigns a configuration to a node by name.");
 
         group.MapDelete("/{nodeId:guid}/configuration", UnassignConfiguration)
-            .RequireAuthorization(Permissions.Nodes_AssignConfiguration)
+            .RequireAuthorization(NodePermissions.AssignConfiguration)
             .WithSummary("Unassign configuration")
             .WithDescription("Removes the configuration assignment from a node.");
 
@@ -89,7 +83,7 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
             .WithDescription("Updates the node's current LCM operational status.");
 
         group.MapGet("/{nodeId:guid}/status-history", GetNodeStatusHistory)
-            .RequireAuthorization(Permissions.Nodes_Read)
+            .RequireAuthorization(NodePermissions.Read)
             .WithSummary("Get node status history")
             .WithDescription("Returns the LCM and compliance status event history for a node.");
 
@@ -99,7 +93,7 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
             .WithDescription("Returns the server-managed desired LCM configuration for the node.");
 
         group.MapPut("/{nodeId:guid}/lcm-config", UpdateNodeLcmConfig)
-            .RequireAuthorization(Permissions.Nodes_Write)
+            .RequireAuthorization(NodePermissions.Write)
             .WithSummary("Update desired LCM configuration")
             .WithDescription("Updates the server-managed desired LCM configuration for the node.");
 

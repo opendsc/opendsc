@@ -9,26 +9,20 @@
 
 <MudDialog>
     <DialogContent>
-        @if (Token.IsRevoked)
-        {
-            <MudAlert Severity="Severity.Warning" Class="mb-4">
-                This token has been revoked and can no longer be used.
-            </MudAlert>
-        }
+        <MudText Typo="Typo.h6" Class="mb-3">@Role.Name</MudText>
+        <MudText Typo="Typo.body2" Class="mb-4">@Role.Description</MudText>
+        <MudText Typo="Typo.subtitle2" Class="mb-3">Permissions:</MudText>
 
-        @if (_scopeValues.Count == 0)
+        @if (_rolePermissions.Count == 0)
         {
             <MudText Typo="Typo.body2" Color="Color.Secondary">
-                @(Token.IsRevoked ? "This token had no scopes assigned when it was revoked." : "This token has no scopes assigned.")
+                This role has no permissions assigned.
             </MudText>
         }
         else
         {
-            <MudText Typo="Typo.subtitle2" Class="mb-3">
-                @(Token.IsRevoked ? "Scopes that were granted to this token:" : "Scopes granted to this token:")
-            </MudText>
             <MudPaper Class="pa-3" Style="max-height: 400px; overflow-y: auto; border: 1px solid #e0e0e0;">
-                <MudTreeView T="string" Items="@_treeItems" SelectedValues="_selectedScopes"
+                <MudTreeView T="string" Items="@_treeItems" SelectedValues="_selectedPermissions"
                              SelectionMode="SelectionMode.MultiSelection" CheckBoxColor="Color.Primary">
                     <ItemTemplate Context="item">
                         <MudTreeViewItem T="string" Expanded="_expandedItems.Contains(item.Value!)"
@@ -46,29 +40,32 @@
 
 @code {
     [Parameter]
-    public PersonalAccessToken Token { get; set; } = default!;
+    public Role Role { get; set; } = default!;
 
     [CascadingParameter]
     private IMudDialogInstance MudDialog { get; set; } = default!;
 
-    private List<string> _scopeValues = [];
+    [Inject]
+    private ServerDbContext Db { get; set; } = default!;
+
+    private List<string> _rolePermissions = [];
     private List<TreeItemData<string>> _treeItems = [];
-    private HashSet<string> _selectedScopes = [];
+    private HashSet<string> _selectedPermissions = [];
     private HashSet<string> _expandedItems = [];
 
     protected override void OnParametersSet()
     {
         try
         {
-            _scopeValues = JsonSerializer.Deserialize<List<string>>(Token.Scopes) ?? [];
+            _rolePermissions = JsonSerializer.Deserialize<List<string>>(Role.Permissions) ?? [];
         }
         catch
         {
-            _scopeValues = [];
+            _rolePermissions = [];
         }
 
-        _treeItems = PermissionHierarchyHelper.CreateTreeData(Permissions.AllScopes, _scopeValues);
-        _selectedScopes = new HashSet<string>(_scopeValues, StringComparer.Ordinal);
+        _treeItems = PermissionHierarchyHelper.CreateTreeData(Permissions.AllScopes, _rolePermissions);
+        _selectedPermissions = new HashSet<string>(_rolePermissions, StringComparer.Ordinal);
         // Expand all items by default in readonly view
         _expandedItems = GetAllTreeItemValues(_treeItems);
     }

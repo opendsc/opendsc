@@ -1,5 +1,5 @@
 @page "/configurations"
-@attribute [Authorize(Policy = "configurations.read")]
+@attribute [Authorize]
 @using OpenDsc.Server.Services
 @inject ServerDbContext Db
 @inject NavigationManager Navigation

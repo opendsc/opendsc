@@ -1,5 +1,5 @@
 @page "/reports/{id:guid}"
-@attribute [Authorize(Policy = "reports.read")]
+@attribute [Authorize(Policy = ReportPermissions.Read)]
 @implements IDisposable
 @inject ServerDbContext Db
 @inject NavigationManager Navigation
@@ -535,8 +535,10 @@ else
         {
             var inDesired = ids.GetBoolean();
             var diffProps = result.TryGetProperty("differingProperties", out var dp) ? DeserializeStringArray(dp) : null;
-            var leftYaml = result.TryGetProperty("desiredState", out var ds) ? JsonYamlConverter.ConvertJsonToYaml(ds.GetRawText()) : null;
-            var rightYaml = result.TryGetProperty("actualState", out var as_) ? JsonYamlConverter.ConvertJsonToYaml(as_.GetRawText()) : null;
+            var leftYaml = result.TryGetProperty("desiredState", out var ds) ? JsonYamlConverter.ConvertJsonToYaml(ds.GetRawText())
+: null;
+            var rightYaml = result.TryGetProperty("actualState", out var as_) ?
+JsonYamlConverter.ConvertJsonToYaml(as_.GetRawText()) : null;
             return new ResourceRow(type, name,
                 inDesired ? ResourceStatus.InDesiredState : ResourceStatus.Drifted,
                 diffProps?.Length ?? 0,
@@ -550,8 +552,10 @@ else
         if (result.TryGetProperty("changedProperties", out var cp))
         {
             var props = DeserializeStringArray(cp);
-            var leftYaml = result.TryGetProperty("beforeState", out var bs) ? JsonYamlConverter.ConvertJsonToYaml(bs.GetRawText()) : null;
-            var rightYaml = result.TryGetProperty("afterState", out var af) ? JsonYamlConverter.ConvertJsonToYaml(af.GetRawText()) : null;
+            var leftYaml = result.TryGetProperty("beforeState", out var bs) ? JsonYamlConverter.ConvertJsonToYaml(bs.GetRawText()) :
+null;
+            var rightYaml = result.TryGetProperty("afterState", out var af) ? JsonYamlConverter.ConvertJsonToYaml(af.GetRawText()) :
+null;
             return new ResourceRow(type, name,
                 props?.Length > 0 ? ResourceStatus.Changed : ResourceStatus.NoChange,
                 props?.Length ?? 0,
@@ -562,7 +566,8 @@ else
                 RightLabel: "After");
         }
 
-        var actualYaml = result.TryGetProperty("actualState", out var act) ? JsonYamlConverter.ConvertJsonToYaml(act.GetRawText()) : null;
+        var actualYaml = result.TryGetProperty("actualState", out var act) ?
+JsonYamlConverter.ConvertJsonToYaml(act.GetRawText()) : null;
         return new ResourceRow(type, name, ResourceStatus.Retrieved, 0, groupName,
             LeftYaml: actualYaml,
             RightYaml: null,

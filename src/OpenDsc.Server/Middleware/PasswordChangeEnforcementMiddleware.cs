@@ -6,6 +6,7 @@ using System.Security.Claims;
 using System.Text.Json;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 using OpenDsc.Server.Data;
 
@@ -21,7 +22,7 @@ public sealed partial class PasswordChangeEnforcementMiddleware(RequestDelegate 
         "/api/v1/auth/me",
     };
 
-    public async Task InvokeAsync(HttpContext context, ServerDbContext db)
+    public async Task InvokeAsync(HttpContext context, ServerDbContext db, IMemoryCache cache)
     {
         if (context.User.Identity?.IsAuthenticated != true)
         {
@@ -44,11 +45,17 @@ public sealed partial class PasswordChangeEnforcementMiddleware(RequestDelegate 
             return;
         }
 
-        var requiresChange = await db.Users
-            .AsNoTracking()
-            .Where(u => u.Id == userId)
-            .Select(u => new { u.RequirePasswordChange, u.PasswordHash })
-            .FirstOrDefaultAsync();
+        var requiresChange = await cache.GetOrCreateAsync(
+            $"pwd-change-{userId}",
+            async entry =>
+            {
+                entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5);
+                return await db.Users
+                    .AsNoTracking()
+                    .Where(u => u.Id == userId)
+                    .Select(u => new { u.RequirePasswordChange, u.PasswordHash })
+                    .FirstOrDefaultAsync();
+            });
 
         if (requiresChange == null || !requiresChange.RequirePasswordChange || requiresChange.PasswordHash == null)
         {
