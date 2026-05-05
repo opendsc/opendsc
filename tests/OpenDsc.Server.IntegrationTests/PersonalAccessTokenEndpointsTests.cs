@@ -140,12 +140,12 @@ public class PersonalAccessTokenEndpointsTests : IClassFixture<ServerWebApplicat
     {
         var roleClient = await _factory.CreateUserWithPermissionsAsync(
             username: "pat-scope-user",
-            permissions: [Permissions.Nodes_Read, Permissions.Nodes_Delete]);
+            permissions: [NodePermissions.Read, NodePermissions.Delete]);
 
         var createRequest = new CreateTokenRequest
         {
             Name = "ReadOnlyNodesToken",
-            Scopes = [Permissions.Nodes_Read],
+            Scopes = [NodePermissions.Read],
             ExpiresAt = DateTimeOffset.UtcNow.AddDays(30)
         };
 
