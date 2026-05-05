@@ -1,4 +1,4 @@
-@attribute [Authorize(Policy = "settings.write")]
+@attribute [Authorize(Policy = RetentionPermissions.Manage)]
 @inject ServerDbContext Db
 @inject ISnackbar Snackbar
 @using Microsoft.EntityFrameworkCore

@@ -16,7 +16,7 @@ internal static class RetentionSettingsEndpoints
     {
         var group = routes.MapGroup("/api/v1/settings/retention")
             .WithTags("Settings")
-            .RequireAuthorization(ServerPermissions.Settings_Write);
+            .RequireAuthorization(ServerPermissions.SettingsWrite);
 
         group.MapGet("", GetRetentionSettings)
             .WithName("GetRetentionSettings")

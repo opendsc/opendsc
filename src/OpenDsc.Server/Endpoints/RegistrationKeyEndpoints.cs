@@ -18,7 +18,7 @@ public static class RegistrationKeyEndpoints
     public static void MapRegistrationKeyEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/v1/admin/registration-keys")
-            .RequireAuthorization(ServerPermissions.RegistrationKeys_Manage)
+            .RequireAuthorization(ServerPermissions.RegistrationKeysManage)
             .WithTags("Registration Keys");
 
         group.MapPost("/", CreateRegistrationKey)

@@ -1,4 +1,4 @@
-@attribute [Authorize(Policy = "settings.write")]
+@attribute [Authorize(Policy = ServerPermissions.RegistrationKeysManage)]
 @inject ServerDbContext Db
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
@@ -9,7 +9,8 @@
             <MudText Typo="Typo.h6">Node Registration Keys</MudText>
         </CardHeaderContent>
         <CardHeaderActions>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateKey" StartIcon="@Icons.Material.Filled.Add">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateKey"
+                       StartIcon="@Icons.Material.Filled.Add">
                 Create Key
             </MudButton>
         </CardHeaderActions>
@@ -72,7 +73,8 @@
                             {
                                 <MudChip T="string" Size="Size.Small" Color="Color.Warning">Expired</MudChip>
                             }
-                            else if (context.Item.MaxUses.HasValue && context.Item.CurrentUses >= context.Item.MaxUses.Value)
+                            else if (context.Item.MaxUses.HasValue && context.Item.CurrentUses >=
+                        context.Item.MaxUses.Value)
                             {
                                 <MudChip T="string" Size="Size.Small" Color="Color.Warning">Max Uses Reached</MudChip>
                             }
@@ -84,13 +86,9 @@
                     </TemplateColumn>
                     <TemplateColumn Title="Actions" Sortable="false">
                         <CellTemplate>
-                            <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                           Size="Size.Small"
-                                           Color="Color.Default"
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Default"
                                            OnClick="@(() => EditKeyDescription(context.Item))" />
-                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                           Size="Size.Small"
-                                           Color="Color.Error"
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
                                            OnClick="@(() => DeleteKey(context.Item))" />
                         </CellTemplate>
                     </TemplateColumn>

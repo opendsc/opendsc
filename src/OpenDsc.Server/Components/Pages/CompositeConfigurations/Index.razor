@@ -1,5 +1,5 @@
 @page "/composite-configurations"
-@attribute [Authorize(Policy = "configurations.read")]
+@attribute [Authorize]
 @inject ServerDbContext Db
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar

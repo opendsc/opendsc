@@ -34,12 +34,12 @@ public static class DatabaseSeeder
                 IsSystemRole = true,
                 Permissions = JsonSerializer.Serialize(new[]
                 {
-                    ServerPermissions.Settings_Read,
-                    ServerPermissions.Settings_Write,
-                    ServerPermissions.Users_Manage,
-                    ServerPermissions.Groups_Manage,
-                    ServerPermissions.Roles_Manage,
-                    ServerPermissions.RegistrationKeys_Manage,
+                    ServerPermissions.SettingsRead,
+                    ServerPermissions.SettingsWrite,
+                    ServerPermissions.UsersManage,
+                    ServerPermissions.GroupsManage,
+                    ServerPermissions.RolesManage,
+                    ServerPermissions.RegistrationKeysManage,
                     NodePermissions.Read,
                     NodePermissions.Write,
                     NodePermissions.Delete,
@@ -66,7 +66,7 @@ public static class DatabaseSeeder
                     NodePermissions.Write,
                     NodePermissions.AssignConfiguration,
                     ReportPermissions.Read,
-                    ServerPermissions.Settings_Read
+                    ServerPermissions.SettingsRead
                 }),
                 CreatedAt = now
             },
@@ -78,7 +78,7 @@ public static class DatabaseSeeder
                 IsSystemRole = true,
                 Permissions = JsonSerializer.Serialize(new[]
                 {
-                    ServerPermissions.Settings_Read,
+                    ServerPermissions.SettingsRead,
                     ReportPermissions.Read
                 }),
                 CreatedAt = now

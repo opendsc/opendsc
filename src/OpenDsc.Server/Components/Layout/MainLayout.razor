@@ -14,15 +14,16 @@
 
 <MudLayout>
     <MudAppBar Elevation="1">
-        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" />
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"
+                       OnClick="@ToggleDrawer" />
         <MudText Typo="Typo.h6" Class="ml-3">OpenDSC Server</MudText>
         <MudSpacer />
         <AuthorizeView>
             <Authorized>
                 <MudTooltip Text="@(_isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode")">
-                    <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
-                                   Color="Color.Inherit"
-                                   OnClick="ToggleTheme" />
+                    <MudIconButton
+                    Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+                    Color="Color.Inherit" OnClick="ToggleTheme" />
                 </MudTooltip>
                 <MudMenu AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
                     <ActivatorContent>
@@ -47,46 +48,56 @@
         <Authorized>
             @if (!_requirePasswordChange)
             {
-            <MudDrawer @bind-Open="_drawerOpen" Elevation="1" ClipMode="DrawerClipMode.Always">
-                <MudNavMenu>
-                    <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">Dashboard</MudNavLink>
-                    <MudNavLink Href="/nodes" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Computer">Nodes</MudNavLink>
-                    <MudNavLink Href="/configurations" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Settings">Configurations</MudNavLink>
-                    <MudNavLink Href="/composite-configurations" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.AccountTree">Composite Configurations</MudNavLink>
-                    <MudNavLink Href="/parameters" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Tune">Parameters</MudNavLink>
-                    <MudNavLink Href="/reports" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Assessment">Reports</MudNavLink>
+                <MudDrawer @bind-Open="_drawerOpen" Elevation="1" ClipMode="DrawerClipMode.Always">
+                    <MudNavMenu>
+                        <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">Dashboard
+                        </MudNavLink>
+                        <MudNavLink Href="/nodes" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Computer">Nodes
+                        </MudNavLink>
+                        <MudNavLink Href="/configurations" Match="NavLinkMatch.Prefix"
+                                    Icon="@Icons.Material.Filled.Settings">Configurations</MudNavLink>
+                        <MudNavLink Href="/composite-configurations" Match="NavLinkMatch.Prefix"
+                                    Icon="@Icons.Material.Filled.AccountTree">Composite Configurations</MudNavLink>
+                        <MudNavLink Href="/parameters" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Tune">
+                            Parameters</MudNavLink>
+                            <MudNavLink Href="/reports" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Assessment">
+                                Reports</MudNavLink>
 
-                    <AuthorizeView Policy="settings.read" Context="settingsAuth">
-                        <Authorized>
-                            <MudDivider Class="my-2" />
-                            <MudNavLink Href="/settings" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.AdminPanelSettings">Settings</MudNavLink>
-                        </Authorized>
-                    </AuthorizeView>
+                                <AuthorizeView Policy="@ServerPermissions.SettingsRead" Context="settingsAuth">
+                                    <Authorized>
+                                        <MudDivider Class="my-2" />
+                                        <MudNavLink Href="/settings" Match="NavLinkMatch.Prefix"
+                                                    Icon="@Icons.Material.Filled.AdminPanelSettings">Settings</MudNavLink>
+                                    </Authorized>
+                                </AuthorizeView>
 
-                    <AuthorizeView Policy="users.manage" Context="adminAuth">
-                        <Authorized>
-                            <MudNavLink Href="/admin" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.SupervisorAccount">Administration</MudNavLink>
-                        </Authorized>
-                    </AuthorizeView>
-                </MudNavMenu>
-            </MudDrawer>
-            }
-        </Authorized>
-    </AuthorizeView>
+                                <AuthorizeView Policy="@ServerPermissions.UsersManage" Context="adminAuth">
+                                    <Authorized>
+                                        <MudNavLink Href="/admin" Match="NavLinkMatch.Prefix"
+                                                    Icon="@Icons.Material.Filled.SupervisorAccount">Administration</MudNavLink>
+                                    </Authorized>
+                                </AuthorizeView>
+                            </MudNavMenu>
+                        </MudDrawer>
+                    }
+                </Authorized>
+            </AuthorizeView>
 
-    <MudMainContent>
-        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4 mb-4">
-            @if (_requirePasswordChange && !new Uri(Navigation.Uri).AbsolutePath.Equals("/change-password", StringComparison.OrdinalIgnoreCase))
-            {
-                <MudAlert Severity="Severity.Warning" Class="mb-4" Icon="@Icons.Material.Filled.Lock">
-                    You must change your password before continuing.
-                    <MudButton Href="/change-password" Variant="Variant.Text" Color="Color.Warning" Class="ml-2">Change Password</MudButton>
-                </MudAlert>
-            }
-            @Body
-        </MudContainer>
-    </MudMainContent>
-</MudLayout>
+            <MudMainContent>
+                <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4 mb-4">
+                    @if (_requirePasswordChange && !new Uri(Navigation.Uri).AbsolutePath.Equals("/change-password",
+                                StringComparison.OrdinalIgnoreCase))
+                    {
+                        <MudAlert Severity="Severity.Warning" Class="mb-4" Icon="@Icons.Material.Filled.Lock">
+                            You must change your password before continuing.
+                            <MudButton Href="/change-password" Variant="Variant.Text" Color="Color.Warning" Class="ml-2">Change
+                                Password</MudButton>
+                            </MudAlert>
+                        }
+                        @Body
+                    </MudContainer>
+                </MudMainContent>
+            </MudLayout>
 
 @code {
     [CascadingParameter]

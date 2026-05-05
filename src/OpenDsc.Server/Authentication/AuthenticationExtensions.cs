@@ -201,66 +201,63 @@ public static class AuthenticationExtensions
         }
 
         services.AddAuthorizationBuilder()
-            .SetDefaultPolicy(new AuthorizationPolicyBuilder(
-                    CookieAuthenticationDefaults.AuthenticationScheme,
-                    PersonalAccessTokenHandler.SchemeName,
-                    UserApiBearerScheme)
+            .SetDefaultPolicy(new AuthorizationPolicyBuilder(UserApiBearerScheme)
                 .RequireAuthenticatedUser()
                 .Build())
             .AddPolicy("Node", policy => policy
                 .RequireAuthenticatedUser()
                 .AddAuthenticationSchemes(CertificateAuthHandler.NodeScheme)
                 .RequireRole("Node"))
-            .AddPolicy(ServerPermissions.Settings_Read, policy => policy
-                .AddAuthenticationSchemes(CookieAuthenticationDefaults.AuthenticationScheme, PersonalAccessTokenHandler.SchemeName, UserApiBearerScheme)
-                .RequireClaim("permission", ServerPermissions.Settings_Read))
-            .AddPolicy(ServerPermissions.Settings_Write, policy => policy
-                .AddAuthenticationSchemes(CookieAuthenticationDefaults.AuthenticationScheme, PersonalAccessTokenHandler.SchemeName, UserApiBearerScheme)
-                .RequireClaim("permission", ServerPermissions.Settings_Write))
-            .AddPolicy(ServerPermissions.Users_Manage, policy => policy
-                .AddAuthenticationSchemes(CookieAuthenticationDefaults.AuthenticationScheme, PersonalAccessTokenHandler.SchemeName, UserApiBearerScheme)
-                .RequireClaim("permission", ServerPermissions.Users_Manage))
-            .AddPolicy(ServerPermissions.Groups_Manage, policy => policy
-                .AddAuthenticationSchemes(CookieAuthenticationDefaults.AuthenticationScheme, PersonalAccessTokenHandler.SchemeName, UserApiBearerScheme)
-                .RequireClaim("permission", ServerPermissions.Groups_Manage))
-            .AddPolicy(ServerPermissions.Roles_Manage, policy => policy
-                .AddAuthenticationSchemes(CookieAuthenticationDefaults.AuthenticationScheme, PersonalAccessTokenHandler.SchemeName, UserApiBearerScheme)
-                .RequireClaim("permission", ServerPermissions.Roles_Manage))
-            .AddPolicy(ServerPermissions.RegistrationKeys_Manage, policy => policy
-                .AddAuthenticationSchemes(CookieAuthenticationDefaults.AuthenticationScheme, PersonalAccessTokenHandler.SchemeName, UserApiBearerScheme)
-                .RequireClaim("permission", ServerPermissions.RegistrationKeys_Manage))
+            .AddPolicy(ServerPermissions.SettingsRead, policy => policy
+                .AddAuthenticationSchemes(UserApiBearerScheme)
+                .RequireClaim("permission", ServerPermissions.SettingsRead))
+            .AddPolicy(ServerPermissions.SettingsWrite, policy => policy
+                .AddAuthenticationSchemes(UserApiBearerScheme)
+                .RequireClaim("permission", ServerPermissions.SettingsWrite))
+            .AddPolicy(ServerPermissions.UsersManage, policy => policy
+                .AddAuthenticationSchemes(UserApiBearerScheme)
+                .RequireClaim("permission", ServerPermissions.UsersManage))
+            .AddPolicy(ServerPermissions.GroupsManage, policy => policy
+                .AddAuthenticationSchemes(UserApiBearerScheme)
+                .RequireClaim("permission", ServerPermissions.GroupsManage))
+            .AddPolicy(ServerPermissions.RolesManage, policy => policy
+                .AddAuthenticationSchemes(UserApiBearerScheme)
+                .RequireClaim("permission", ServerPermissions.RolesManage))
+            .AddPolicy(ServerPermissions.RegistrationKeysManage, policy => policy
+                .AddAuthenticationSchemes(UserApiBearerScheme)
+                .RequireClaim("permission", ServerPermissions.RegistrationKeysManage))
             .AddPolicy(NodePermissions.Read, policy => policy
-                .AddAuthenticationSchemes(CookieAuthenticationDefaults.AuthenticationScheme, PersonalAccessTokenHandler.SchemeName, UserApiBearerScheme)
+                .AddAuthenticationSchemes(UserApiBearerScheme)
                 .RequireClaim("permission", NodePermissions.Read))
             .AddPolicy(NodePermissions.Write, policy => policy
-                .AddAuthenticationSchemes(CookieAuthenticationDefaults.AuthenticationScheme, PersonalAccessTokenHandler.SchemeName, UserApiBearerScheme)
+                .AddAuthenticationSchemes(UserApiBearerScheme)
                 .RequireClaim("permission", NodePermissions.Write))
             .AddPolicy(NodePermissions.Delete, policy => policy
-                .AddAuthenticationSchemes(CookieAuthenticationDefaults.AuthenticationScheme, PersonalAccessTokenHandler.SchemeName, UserApiBearerScheme)
+                .AddAuthenticationSchemes(UserApiBearerScheme)
                 .RequireClaim("permission", NodePermissions.Delete))
             .AddPolicy(NodePermissions.AssignConfiguration, policy => policy
-                .AddAuthenticationSchemes(CookieAuthenticationDefaults.AuthenticationScheme, PersonalAccessTokenHandler.SchemeName, UserApiBearerScheme)
+                .AddAuthenticationSchemes(UserApiBearerScheme)
                 .RequireClaim("permission", NodePermissions.AssignConfiguration))
             .AddPolicy(ReportPermissions.Read, policy => policy
-                .AddAuthenticationSchemes(CookieAuthenticationDefaults.AuthenticationScheme, PersonalAccessTokenHandler.SchemeName, UserApiBearerScheme)
+                .AddAuthenticationSchemes(UserApiBearerScheme)
                 .RequireClaim("permission", ReportPermissions.Read))
             .AddPolicy(ReportPermissions.ReadAll, policy => policy
-                .AddAuthenticationSchemes(CookieAuthenticationDefaults.AuthenticationScheme, PersonalAccessTokenHandler.SchemeName, UserApiBearerScheme)
+                .AddAuthenticationSchemes(UserApiBearerScheme)
                 .RequireClaim("permission", ReportPermissions.ReadAll))
             .AddPolicy(RetentionPermissions.Manage, policy => policy
-                .AddAuthenticationSchemes(CookieAuthenticationDefaults.AuthenticationScheme, PersonalAccessTokenHandler.SchemeName, UserApiBearerScheme)
+                .AddAuthenticationSchemes(UserApiBearerScheme)
                 .RequireClaim("permission", RetentionPermissions.Manage))
             .AddPolicy(ConfigurationPermissions.AdminOverride, policy => policy
-                .AddAuthenticationSchemes(CookieAuthenticationDefaults.AuthenticationScheme, PersonalAccessTokenHandler.SchemeName, UserApiBearerScheme)
+                .AddAuthenticationSchemes(UserApiBearerScheme)
                 .RequireClaim("permission", ConfigurationPermissions.AdminOverride))
             .AddPolicy(CompositeConfigurationPermissions.AdminOverride, policy => policy
-                .AddAuthenticationSchemes(CookieAuthenticationDefaults.AuthenticationScheme, PersonalAccessTokenHandler.SchemeName, UserApiBearerScheme)
+                .AddAuthenticationSchemes(UserApiBearerScheme)
                 .RequireClaim("permission", CompositeConfigurationPermissions.AdminOverride))
             .AddPolicy(ParameterPermissions.AdminOverride, policy => policy
-                .AddAuthenticationSchemes(CookieAuthenticationDefaults.AuthenticationScheme, PersonalAccessTokenHandler.SchemeName, UserApiBearerScheme)
+                .AddAuthenticationSchemes(UserApiBearerScheme)
                 .RequireClaim("permission", ParameterPermissions.AdminOverride))
             .AddPolicy(ScopePermissions.AdminOverride, policy => policy
-                .AddAuthenticationSchemes(CookieAuthenticationDefaults.AuthenticationScheme, PersonalAccessTokenHandler.SchemeName, UserApiBearerScheme)
+                .AddAuthenticationSchemes(UserApiBearerScheme)
                 .RequireClaim("permission", ScopePermissions.AdminOverride));
 
         return services;

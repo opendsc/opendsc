@@ -1,5 +1,5 @@
 @page "/reports"
-@attribute [Authorize(Policy = "reports.read")]
+@attribute [Authorize(Policy = ReportPermissions.Read)]
 @inject ServerDbContext Db
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
@@ -12,7 +12,8 @@
     <MudCardContent>
         <MudGrid Class="mb-4">
             <MudItem xs="12" md="4">
-                <MudSelect T="Guid?" Label="Filter by Node" Value="@selectedNodeId" Clearable="true" ValueChanged="@((Guid? value) => OnNodeFilterChanged(value))">
+                <MudSelect T="Guid?" Label="Filter by Node" Value="@selectedNodeId" Clearable="true"
+                           ValueChanged="@((Guid? value) => OnNodeFilterChanged(value))">
                     @foreach (var node in nodes)
                     {
                         <MudSelectItem T="Guid?" Value="@node.Id">@node.Fqdn</MudSelectItem>
@@ -20,18 +21,16 @@
                 </MudSelect>
             </MudItem>
             <MudItem xs="12" md="4">
-                <MudSelect T="string" Label="Filter by Status" Value="@selectedStatus" Clearable="true" ValueChanged="@((string value) => OnStatusFilterChanged(value))">
+                <MudSelect T="string" Label="Filter by Status" Value="@selectedStatus" Clearable="true"
+                           ValueChanged="@((string value) => OnStatusFilterChanged(value))">
                     <MudSelectItem Value="@("Compliant")">Compliant</MudSelectItem>
                     <MudSelectItem Value="@("NonCompliant")">Non-Compliant</MudSelectItem>
                     <MudSelectItem Value="@("Error")">Error</MudSelectItem>
                 </MudSelect>
             </MudItem>
             <MudItem xs="12" md="4">
-                <MudDateRangePicker @bind-DateRange="_reportDateRange"
-                                    @bind-DateRange:after="ApplyFilters"
-                                    Label="Date range"
-                                    Variant="Variant.Outlined"
-                                    DateFormat="yyyy-MM-dd" />
+                <MudDateRangePicker @bind-DateRange="_reportDateRange" @bind-DateRange:after="ApplyFilters"
+                                    Label="Date range" Variant="Variant.Outlined" DateFormat="yyyy-MM-dd" />
             </MudItem>
 
         </MudGrid>
@@ -63,7 +62,8 @@
                 </TemplateColumn>
                 <TemplateColumn>
                     <CellTemplate>
-                        <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => ViewDetails(context.Item.Id))">
+                        <MudButton Size="Size.Small" Variant="Variant.Text"
+                                   OnClick="@(() => ViewDetails(context.Item.Id))">
                             View Details
                         </MudButton>
                     </CellTemplate>

@@ -89,12 +89,12 @@ public class ServerWebApplicationFactory : WebApplicationFactory<Program>
                 IsSystemRole = false,
                 Permissions = JsonSerializer.Serialize(new[]
                 {
-                    ServerPermissions.Settings_Read,
-                    ServerPermissions.Settings_Write,
-                    ServerPermissions.Users_Manage,
-                    ServerPermissions.Groups_Manage,
-                    ServerPermissions.Roles_Manage,
-                    ServerPermissions.RegistrationKeys_Manage,
+                    ServerPermissions.SettingsRead,
+                    ServerPermissions.SettingsWrite,
+                    ServerPermissions.UsersManage,
+                    ServerPermissions.GroupsManage,
+                    ServerPermissions.RolesManage,
+                    ServerPermissions.RegistrationKeysManage,
                     NodePermissions.Read,
                     NodePermissions.Write,
                     NodePermissions.Delete,

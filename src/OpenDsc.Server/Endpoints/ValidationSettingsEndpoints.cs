@@ -17,7 +17,7 @@ internal static class ValidationSettingsEndpoints
     {
         var group = routes.MapGroup("/api/v1/settings/validation")
             .WithTags("Settings")
-            .RequireAuthorization(ServerPermissions.Settings_Write);
+            .RequireAuthorization(ServerPermissions.SettingsWrite);
 
         group.MapGet("", GetValidationSettings)
             .WithName("GetValidationSettings");

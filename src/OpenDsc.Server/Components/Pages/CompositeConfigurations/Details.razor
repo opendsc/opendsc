@@ -1,5 +1,5 @@
 @page "/composite-configurations/{Name}"
-@attribute [Authorize(Policy = "configurations.read")]
+@attribute [Authorize]
 @using NuGet.Versioning
 @inject ServerDbContext Db
 @inject ISnackbar Snackbar

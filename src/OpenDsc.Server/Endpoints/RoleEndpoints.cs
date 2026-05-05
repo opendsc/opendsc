@@ -23,7 +23,7 @@ public static class RoleEndpoints
     {
         var group = app.MapGroup("/api/v1/roles")
             .WithTags("Roles")
-            .RequireAuthorization(ServerPermissions.Roles_Manage);
+            .RequireAuthorization(ServerPermissions.RolesManage);
 
         group.MapGet("/", GetRoles)
             .WithSummary("List all roles")

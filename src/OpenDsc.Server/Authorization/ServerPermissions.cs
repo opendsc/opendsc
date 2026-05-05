@@ -11,20 +11,20 @@ namespace OpenDsc.Server.Authorization;
 /// </summary>
 public static class ServerPermissions
 {
-    public const string Settings_Read = "server.settings.read";
-    public const string Settings_Write = "server.settings.write";
-    public const string Users_Manage = "users.manage";
-    public const string Groups_Manage = "groups.manage";
-    public const string Roles_Manage = "roles.manage";
-    public const string RegistrationKeys_Manage = "registration-keys.manage";
+    public const string SettingsRead = "server.settings.read";
+    public const string SettingsWrite = "server.settings.write";
+    public const string UsersManage = "users.manage";
+    public const string GroupsManage = "groups.manage";
+    public const string RolesManage = "roles.manage";
+    public const string RegistrationKeysManage = "registration-keys.manage";
 
     public static readonly FrozenSet<string> All = new[]
     {
-        Settings_Read,
-        Settings_Write,
-        Users_Manage,
-        Groups_Manage,
-        Roles_Manage,
-        RegistrationKeys_Manage,
+        SettingsRead,
+        SettingsWrite,
+        UsersManage,
+        GroupsManage,
+        RolesManage,
+        RegistrationKeysManage,
     }.ToFrozenSet(StringComparer.Ordinal);
 }
