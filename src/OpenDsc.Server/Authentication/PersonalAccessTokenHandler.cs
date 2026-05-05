@@ -28,6 +28,7 @@ public sealed partial class PersonalAccessTokenHandler(
     ILoggerFactory loggerFactory,
     UrlEncoder encoder,
     IServiceScopeFactory scopeFactory,
+    IPatUpdateQueue patUpdateQueue,
     ILogger<PersonalAccessTokenHandler> logger)
     : AuthenticationHandler<PersonalAccessTokenOptions>(options, loggerFactory, encoder)
 {
@@ -99,13 +100,7 @@ public sealed partial class PersonalAccessTokenHandler(
         var ticket = new AuthenticationTicket(principal, Scheme.Name);
 
         var ipAddress = userContextService.GetIpAddress() ?? "unknown";
-        _ = Task.Run(async () =>
-        {
-            using var updateScope = scopeFactory.CreateScope();
-            var updatePatService = updateScope.ServiceProvider.GetRequiredService<IPersonalAccessTokenService>();
-
-            await updatePatService.UpdateLastUsedAsync(tokenId, ipAddress);
-        });
+        patUpdateQueue.Enqueue(tokenId, ipAddress);
 
         LogPatHandlerSuccess(userId);
         return AuthenticateResult.Success(ticket);

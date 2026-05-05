@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 using OpenDsc.Server.Authorization;
 using OpenDsc.Server.Data;
@@ -87,6 +88,11 @@ public static class AuthenticationEndpoints
             return TypedResults.Unauthorized();
         }
 
+        if (user.LockoutEnd.HasValue && user.LockoutEnd.Value > DateTimeOffset.UtcNow)
+        {
+            return TypedResults.Unauthorized();
+        }
+
         if (!passwordHasher.ValidatePassword(request.Password, user.PasswordHash, user.PasswordSalt))
         {
             user.AccessFailedCount++;
@@ -95,11 +101,6 @@ public static class AuthenticationEndpoints
                 user.LockoutEnd = DateTimeOffset.UtcNow.AddMinutes(15);
             }
             await db.SaveChangesAsync();
-            return TypedResults.Unauthorized();
-        }
-
-        if (user.LockoutEnd.HasValue && user.LockoutEnd.Value > DateTimeOffset.UtcNow)
-        {
             return TypedResults.Unauthorized();
         }
 
@@ -193,7 +194,8 @@ public static class AuthenticationEndpoints
         [FromBody] ChangePasswordRequest request,
         ServerDbContext db,
         IPasswordHasher passwordHasher,
-        IUserContextService userContext)
+        IUserContextService userContext,
+        IMemoryCache cache)
     {
         var userId = userContext.GetCurrentUserId();
         if (userId == null)
@@ -224,6 +226,7 @@ public static class AuthenticationEndpoints
         user.ModifiedAt = DateTimeOffset.UtcNow;
 
         await db.SaveChangesAsync();
+        cache.Remove($"pwd-change-{userId.Value}");
 
         return TypedResults.NoContent();
     }

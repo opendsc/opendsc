@@ -29,12 +29,7 @@ public static class ParameterEndpoints
     {
         var group = app.MapGroup("/api/v1/parameters")
             .WithTags("Parameters")
-            .RequireAuthorization(policy => policy
-                .RequireAuthenticatedUser()
-                .AddAuthenticationSchemes(
-                    CookieAuthenticationDefaults.AuthenticationScheme,
-                    PersonalAccessTokenHandler.SchemeName,
-                    AuthenticationExtensions.UserApiBearerScheme));
+            .RequireAuthorization();
 
         group.MapPut("/{scopeTypeId:guid}/{configurationId:guid}", CreateOrUpdateParameter)
             .WithName("CreateOrUpdateParameter")
@@ -62,7 +57,7 @@ public static class ParameterEndpoints
 
         var nodeGroup = app.MapGroup("/api/v1/nodes/{nodeId:guid}/parameters")
             .WithTags("Parameters")
-            .RequireAuthorization(Permissions.Nodes_Read);
+            .RequireAuthorization(NodePermissions.Read);
 
         nodeGroup.MapGet("/provenance", GetNodeParameterProvenance)
             .WithName("GetNodeParameterProvenance")
@@ -74,12 +69,7 @@ public static class ParameterEndpoints
 
         var configGroup = app.MapGroup("/api/v1/configurations/{configurationName}/parameters")
             .WithTags("Parameters")
-            .RequireAuthorization(policy => policy
-                .RequireAuthenticatedUser()
-                .AddAuthenticationSchemes(
-                    CookieAuthenticationDefaults.AuthenticationScheme,
-                    PersonalAccessTokenHandler.SchemeName,
-                    AuthenticationExtensions.UserApiBearerScheme));
+            .RequireAuthorization();
 
         configGroup.MapPut("", UploadParameterSchema)
             .WithName("UploadParameterSchema")

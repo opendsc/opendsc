@@ -28,12 +28,7 @@ public static class ConfigurationEndpoints
     public static void MapConfigurationEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/v1/configurations")
-            .RequireAuthorization(policy => policy
-                .RequireAuthenticatedUser()
-                .AddAuthenticationSchemes(
-                    CookieAuthenticationDefaults.AuthenticationScheme,
-                    PersonalAccessTokenHandler.SchemeName,
-                    AuthenticationExtensions.UserApiBearerScheme))
+            .RequireAuthorization()
             .WithTags("Configurations");
 
         group.MapGet("/", GetConfigurations)

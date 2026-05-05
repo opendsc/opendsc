@@ -21,12 +21,7 @@ public static class CompositeConfigurationEndpoints
     public static void MapCompositeConfigurationEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/v1/composite-configurations")
-            .RequireAuthorization(policy => policy
-                .RequireAuthenticatedUser()
-                .AddAuthenticationSchemes(
-                    CookieAuthenticationDefaults.AuthenticationScheme,
-                    PersonalAccessTokenHandler.SchemeName,
-                    AuthenticationExtensions.UserApiBearerScheme))
+            .RequireAuthorization()
             .WithTags("Composite Configurations");
 
         group.MapGet("/", GetCompositeConfigurations)
@@ -151,7 +146,7 @@ public static class CompositeConfigurationEndpoints
         await db.SaveChangesAsync();
 
         var userId = userContext.GetCurrentUserId();
-        if (userId.HasValue && !await authService.HasGlobalPermissionAsync(userId.Value, Permissions.CompositeConfigurations_AdminOverride))
+        if (userId.HasValue && !await authService.HasGlobalPermissionAsync(userId.Value, CompositeConfigurationPermissions.AdminOverride))
         {
             await authService.GrantCompositeConfigurationPermissionAsync(
                 composite.Id,

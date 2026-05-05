@@ -18,7 +18,7 @@ public static class ScopeTypeEndpoints
     {
         var group = app.MapGroup("/api/v1/scope-types")
             .WithTags("Scope Types")
-            .RequireAuthorization(Permissions.Scopes_AdminOverride);
+            .RequireAuthorization(ScopePermissions.AdminOverride);
 
         group.MapGet("/", GetAllScopeTypes)
             .WithName("GetAllScopeTypes")

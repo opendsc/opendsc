@@ -28,12 +28,12 @@ public static class ReportEndpoints
             .WithDescription("Submits a compliance report from a node.");
 
         nodeGroup.MapGet("/", GetNodeReports)
-            .RequireAuthorization(Permissions.Reports_Read)
+            .RequireAuthorization(ReportPermissions.Read)
             .WithSummary("Get node reports")
             .WithDescription("Returns all compliance reports for a specific node.");
 
         var reportGroup = app.MapGroup("/api/v1/reports")
-            .RequireAuthorization(Permissions.Reports_ReadAll)
+            .RequireAuthorization(ReportPermissions.ReadAll)
             .WithTags("Reports");
 
         reportGroup.MapGet("/", GetAllReports)

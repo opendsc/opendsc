@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
@@ -138,6 +139,16 @@ internal sealed class OidcServerWebApplicationFactory : ServerWebApplicationFact
             services.PostConfigure<AuthenticationOptions>(options =>
             {
                 options.DefaultAuthenticateScheme = TestPolicyScheme;
+            });
+
+            // Include the test scheme in the default authorization policy so authenticated
+            // test users are accepted the same as cookie/PAT users.
+            services.PostConfigure<AuthorizationOptions>(options =>
+            {
+                var existing = options.DefaultPolicy;
+                options.DefaultPolicy = new AuthorizationPolicyBuilder(existing)
+                    .AddAuthenticationSchemes(TestAuthScheme, TestPolicyScheme)
+                    .Build();
             });
         });
     }

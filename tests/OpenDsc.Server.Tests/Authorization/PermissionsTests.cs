@@ -18,8 +18,20 @@ public class PermissionsTests
     [Fact]
     public void AllScopes_ContainsAllConstStringFields()
     {
-        var fields = typeof(Permissions)
-            .GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy)
+        var permissionTypes = new[]
+        {
+            typeof(ServerPermissions),
+            typeof(NodePermissions),
+            typeof(ReportPermissions),
+            typeof(RetentionPermissions),
+            typeof(ConfigurationPermissions),
+            typeof(CompositeConfigurationPermissions),
+            typeof(ParameterPermissions),
+            typeof(ScopePermissions)
+        };
+
+        var fields = permissionTypes
+            .SelectMany(t => t.GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy))
             .Where(f => f.IsLiteral && !f.IsInitOnly && f.FieldType == typeof(string))
             .Select(f => (string)f.GetValue(null)!)
             .ToList();

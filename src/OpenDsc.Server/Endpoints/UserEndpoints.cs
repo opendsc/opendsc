@@ -22,7 +22,7 @@ public static class UserEndpoints
     {
         var group = app.MapGroup("/api/v1/users")
             .WithTags("Users")
-            .RequireAuthorization(Permissions.Users_Manage);
+            .RequireAuthorization(ServerPermissions.Users_Manage);
 
         group.MapGet("/", GetUsers)
             .WithSummary("List all users")
