@@ -3,9 +3,11 @@
 // terms of the MIT license.
 
 using System.Net;
+using System.Net.Http.Headers;
 
 using AwesomeAssertions;
 
+using OpenDsc.Server.Authorization;
 using OpenDsc.Server.Endpoints;
 
 using Xunit;
@@ -131,5 +133,31 @@ public class PersonalAccessTokenEndpointsTests : IClassFixture<ServerWebApplicat
         var tokens = await getResponse.Content.ReadFromJsonAsync<List<TokenMetadata>>(TestContext.Current.CancellationToken);
         var revokedToken = tokens!.First(t => t.Id == createdToken.TokenId);
         revokedToken.IsRevoked.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task PatToken_WithReadScope_CannotPerformDeleteOperation()
+    {
+        var roleClient = await _factory.CreateUserWithPermissionsAsync(
+            username: "pat-scope-user",
+            permissions: [Permissions.Nodes_Read, Permissions.Nodes_Delete]);
+
+        var createRequest = new CreateTokenRequest
+        {
+            Name = "ReadOnlyNodesToken",
+            Scopes = [Permissions.Nodes_Read],
+            ExpiresAt = DateTimeOffset.UtcNow.AddDays(30)
+        };
+
+        var createResponse = await roleClient.PostAsJsonAsync("/api/v1/auth/tokens", createRequest, TestContext.Current.CancellationToken);
+        createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var createdToken = await createResponse.Content.ReadFromJsonAsync<CreateTokenResponse>(TestContext.Current.CancellationToken);
+        createdToken.Should().NotBeNull();
+
+        using var patClient = _factory.CreateClient();
+        patClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", createdToken!.Token);
+
+        var deleteResponse = await patClient.DeleteAsync($"/api/v1/nodes/{Guid.NewGuid()}", TestContext.Current.CancellationToken);
+        deleteResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 }

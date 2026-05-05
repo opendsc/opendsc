@@ -8,6 +8,7 @@ using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
 
+using OpenDsc.Server.Data;
 using OpenDsc.Server.Services;
 
 namespace OpenDsc.Server.Authentication;
@@ -61,6 +62,7 @@ public sealed partial class PersonalAccessTokenHandler(
         using var scope = scopeFactory.CreateScope();
         var patService = scope.ServiceProvider.GetRequiredService<IPersonalAccessTokenService>();
         var userContextService = scope.ServiceProvider.GetRequiredService<IUserContextService>();
+        var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
 
         var result = await patService.ValidateTokenAsync(token);
         if (result == null)
@@ -70,6 +72,10 @@ public sealed partial class PersonalAccessTokenHandler(
         }
 
         var (tokenId, userId, scopes) = result.Value;
+        var userPermissions = await RbacPermissionResolver.ResolveUserAndInternalGroupPermissionsAsync(db, userId);
+        var effectivePermissions = scopes
+            .Where(userPermissions.Contains)
+            .Distinct(StringComparer.Ordinal);
 
         var claims = new List<Claim>
         {
@@ -81,6 +87,11 @@ public sealed partial class PersonalAccessTokenHandler(
         foreach (var scopeItem in scopes)
         {
             claims.Add(new Claim("scope", scopeItem));
+        }
+
+        foreach (var permission in effectivePermissions)
+        {
+            claims.Add(new Claim("permission", permission));
         }
 
         var identity = new ClaimsIdentity(claims, Scheme.Name);
