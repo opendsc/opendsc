@@ -46,66 +46,12 @@ public sealed partial class GroupClaimsTransformation(ServerDbContext db, ILogge
 
     private async Task<HashSet<string>> ResolveUserPermissionsAsync(Guid userId, ClaimsPrincipal principal)
     {
-        var userRolePermissions = await GetUserRolePermissionsAsync(userId);
-        var internalGroupPermissions = await GetInternalGroupPermissionsAsync(userId);
+        var userAndInternalGroupPermissions = await RbacPermissionResolver.ResolveUserAndInternalGroupPermissionsAsync(db, userId);
         var externalGroupPermissions = await GetExternalGroupPermissionsAsync(principal);
 
-        return userRolePermissions
-            .Union(internalGroupPermissions)
+        return userAndInternalGroupPermissions
             .Union(externalGroupPermissions)
             .ToHashSet();
-    }
-
-    private async Task<HashSet<string>> GetUserRolePermissionsAsync(Guid userId)
-    {
-        var permissions = new HashSet<string>();
-
-        var roles = await db.UserRoles
-            .Where(ur => ur.UserId == userId)
-            .Join(db.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => r)
-            .ToListAsync();
-
-        foreach (var role in roles)
-        {
-            var rolePermissions = JsonSerializer.Deserialize<string[]>(role.Permissions) ?? [];
-            foreach (var permission in rolePermissions)
-            {
-                permissions.Add(permission);
-            }
-        }
-
-        return permissions;
-    }
-
-    private async Task<HashSet<string>> GetInternalGroupPermissionsAsync(Guid userId)
-    {
-        var permissions = new HashSet<string>();
-
-        var groupIds = await db.UserGroups
-            .Where(ug => ug.UserId == userId)
-            .Select(ug => ug.GroupId)
-            .ToListAsync();
-
-        if (groupIds.Count == 0)
-        {
-            return permissions;
-        }
-
-        var roles = await db.GroupRoles
-            .Where(gr => groupIds.Contains(gr.GroupId))
-            .Join(db.Roles, gr => gr.RoleId, r => r.Id, (gr, r) => r)
-            .ToListAsync();
-
-        foreach (var role in roles)
-        {
-            var rolePermissions = JsonSerializer.Deserialize<string[]>(role.Permissions) ?? [];
-            foreach (var permission in rolePermissions)
-            {
-                permissions.Add(permission);
-            }
-        }
-
-        return permissions;
     }
 
     private async Task<HashSet<string>> GetExternalGroupPermissionsAsync(ClaimsPrincipal principal)

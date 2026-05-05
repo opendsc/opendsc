@@ -136,7 +136,7 @@ public class PersonalAccessTokenEndpointsTests : IClassFixture<ServerWebApplicat
     }
 
     [Fact]
-    public async Task PatToken_WithReadScope_CannotPerformWriteOperation()
+    public async Task PatToken_WithReadScope_CannotPerformDeleteOperation()
     {
         var roleClient = await _factory.CreateUserWithPermissionsAsync(
             username: "pat-scope-user",

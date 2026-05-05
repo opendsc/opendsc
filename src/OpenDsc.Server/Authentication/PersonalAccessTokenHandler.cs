@@ -4,10 +4,8 @@
 
 using System.Security.Claims;
 using System.Text.Encodings.Web;
-using System.Text.Json;
 
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 using OpenDsc.Server.Data;
@@ -74,7 +72,7 @@ public sealed partial class PersonalAccessTokenHandler(
         }
 
         var (tokenId, userId, scopes) = result.Value;
-        var userPermissions = await GetUserRbacPermissionsAsync(db, userId);
+        var userPermissions = await RbacPermissionResolver.ResolveUserAndInternalGroupPermissionsAsync(db, userId);
         var effectivePermissions = scopes
             .Where(userPermissions.Contains)
             .Distinct(StringComparer.Ordinal);
@@ -118,49 +116,4 @@ public sealed partial class PersonalAccessTokenHandler(
 
     [LoggerMessage(EventId = EventIds.PatHandlerSuccess, Level = LogLevel.Debug, Message = "Personal access token authentication succeeded for user {UserId}")]
     private partial void LogPatHandlerSuccess(Guid userId);
-
-    private static async Task<HashSet<string>> GetUserRbacPermissionsAsync(ServerDbContext db, Guid userId)
-    {
-        var permissions = new HashSet<string>(StringComparer.Ordinal);
-
-        var userRoles = await db.UserRoles
-            .Where(ur => ur.UserId == userId)
-            .Join(db.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => r)
-            .ToListAsync();
-
-        foreach (var role in userRoles)
-        {
-            var rolePermissions = JsonSerializer.Deserialize<string[]>(role.Permissions) ?? [];
-            foreach (var permission in rolePermissions)
-            {
-                permissions.Add(permission);
-            }
-        }
-
-        var internalGroupIds = await db.UserGroups
-            .Where(ug => ug.UserId == userId)
-            .Select(ug => ug.GroupId)
-            .ToListAsync();
-
-        if (internalGroupIds.Count == 0)
-        {
-            return permissions;
-        }
-
-        var internalGroupRoles = await db.GroupRoles
-            .Where(gr => internalGroupIds.Contains(gr.GroupId))
-            .Join(db.Roles, gr => gr.RoleId, r => r.Id, (gr, r) => r)
-            .ToListAsync();
-
-        foreach (var role in internalGroupRoles)
-        {
-            var rolePermissions = JsonSerializer.Deserialize<string[]>(role.Permissions) ?? [];
-            foreach (var permission in rolePermissions)
-            {
-                permissions.Add(permission);
-            }
-        }
-
-        return permissions;
-    }
 }
