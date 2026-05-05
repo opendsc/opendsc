@@ -10,7 +10,7 @@ using OpenDsc.Server.Data;
 
 namespace OpenDsc.Server.Services;
 
-internal static class RbacPermissionResolver
+public static class RbacPermissionResolver
 {
     public static async Task<HashSet<string>> ResolveUserAndInternalGroupPermissionsAsync(ServerDbContext db, Guid userId)
     {

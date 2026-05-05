@@ -4,31 +4,47 @@
 
 @namespace OpenDsc.Server.Components.Pages
 @using System.Text.Json
+@using OpenDsc.Server.Authorization
+@using MudBlazor
 @inject ServerDbContext Db
+@inject IUserContextService UserContext
 @inject ISnackbar Snackbar
 
 <MudDialog>
     <DialogContent>
-        <MudText Typo="Typo.subtitle2" Class="mb-2">Scopes</MudText>
-        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-2">
-            Only select scopes that your account already has permission to use.
-        </MudText>
-        <MudPaper Outlined="true" Class="pa-3" Style="max-height: 300px; overflow-y: auto;">
-            @foreach (var permission in _availablePermissions)
-            {
-                <MudCheckBox @bind-Value="@_selectedPermissions[permission]"
-                             Label="@permission"
-                             Dense="true" />
-            }
-        </MudPaper>
+        @if (_isLoadingPermissions)
+        {
+            <MudProgressCircular Indeterminate="true" />
+        }
+        else
+        {
+            <MudText Typo="Typo.subtitle2" Class="mb-3">Scopes</MudText>
+            <MudPaper Class="pa-3" Style="max-height: 400px; overflow-y: auto; border: 1px solid #e0e0e0;">
+                <MudTreeView T="string" Items="@_treeItems" SelectedValues="_selectedScopes"
+                             SelectionMode="SelectionMode.MultiSelection"
+                             SelectedValuesChanged="@(values => OnSelectedValuesChanged(values == null ? new HashSet<string>(StringComparer.Ordinal) : new HashSet<string>(values, StringComparer.Ordinal)))"
+                             CheckBoxColor="Color.Primary">
+                    <ItemTemplate Context="item">
+                        @{
+                            // Only disable leaf items that user doesn't have access to
+                            var isLeafItem = item.Children == null || item.Children.Count == 0;
+                            var isDisabled = isLeafItem && !IsSelectableScope(item.Value!);
+                        }
+                        <MudTreeViewItem T="string" Expanded="_expandedItems.Contains(item.Value!)"
+                                         ExpandedChanged="@((bool e) => UpdateExpanded(item.Value!, e))" Items="item.Children"
+                                         Value="item.Value" Text="@item.Text" Disabled="@isDisabled" />
+                    </ItemTemplate>
+                </MudTreeView>
+            </MudPaper>
+        }
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@_isLoading">
-            @if (_isLoading)
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(_isLoading || _isLoadingPermissions)">
+            @if (_isLoading || _isLoadingPermissions)
             {
                 <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                <span>Saving...</span>
+                <span>@(_isLoadingPermissions ? "Loading..." : "Saving...")</span>
             }
             else
             {
@@ -45,31 +61,77 @@
     [CascadingParameter]
     private IMudDialogInstance MudDialog { get; set; } = default!;
 
-    private List<string> _availablePermissions = [];
-    private Dictionary<string, bool> _selectedPermissions = new();
+    private List<TreeItemData<string>> _treeItems = [];
+    private HashSet<string> _selectedScopes = [];
+    private HashSet<string> _userAccessiblePermissions = [];
+    private HashSet<string> _expandedItems = [];
     private bool _isLoading;
+    private bool _isLoadingPermissions = true;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        _availablePermissions = Permissions.AllScopes.OrderBy(v => v).ToList();
+        var userId = UserContext.GetCurrentUserId();
+        if (userId == null)
+        {
+            Snackbar.Add("Not authenticated", Severity.Error);
+            MudDialog.Cancel();
+            return;
+        }
 
-        var currentScopes = new List<string>();
         try
         {
-            currentScopes = JsonSerializer.Deserialize<List<string>>(Token.Scopes) ?? [];
-        }
-        catch { }
+            _userAccessiblePermissions = await RbacPermissionResolver.ResolveUserAndInternalGroupPermissionsAsync(Db, userId.Value);
 
-        foreach (var permission in _availablePermissions)
-        {
-            _selectedPermissions[permission] = currentScopes.Contains(permission);
+            var currentScopes = new List<string>();
+            try
+            {
+                currentScopes = JsonSerializer.Deserialize<List<string>>(Token.Scopes) ?? [];
+            }
+            catch { }
+
+            _treeItems = PermissionHierarchyHelper.CreateTreeData(Permissions.AllScopes, currentScopes);
+            _selectedScopes = new HashSet<string>(currentScopes, StringComparer.Ordinal);
+            _expandedItems = _treeItems.Where(item => item.Value != null).Select(item =>
+item.Value!).ToHashSet(StringComparer.Ordinal);
         }
+        finally
+        {
+            _isLoadingPermissions = false;
+        }
+    }
+
+    private bool IsSelectableScope(string scope)
+    {
+        // Only leaf nodes (actual permissions) are selectable, not category headers
+        return _userAccessiblePermissions.Contains(scope) && Permissions.AllScopes.Contains(scope);
+    }
+
+    private void UpdateExpanded(string value, bool expanded)
+    {
+        if (expanded)
+            _expandedItems.Add(value);
+        else
+            _expandedItems.Remove(value);
+    }
+
+    private Task OnSelectedValuesChanged(HashSet<string> values)
+    {
+        _selectedScopes = values ?? new();
+        return Task.CompletedTask;
     }
 
     private void Cancel() => MudDialog.Cancel();
 
     private async Task Submit()
     {
+        // Validate that all selected scopes are accessible to the user
+        var invalidScopes = _selectedScopes.Where(s => !_userAccessiblePermissions.Contains(s)).ToList();
+        if (invalidScopes.Count > 0)
+        {
+            Snackbar.Add("You attempted to select scopes you don't have access to.", Severity.Warning);
+            return;
+        }
+
         _isLoading = true;
 
         try
@@ -81,12 +143,7 @@
                 return;
             }
 
-            var scopes = _selectedPermissions
-                .Where(kv => kv.Value)
-                .Select(kv => kv.Key)
-                .ToArray();
-
-            token.Scopes = JsonSerializer.Serialize(scopes);
+            token.Scopes = JsonSerializer.Serialize(_selectedScopes.OrderBy(s => s).ToArray());
             await Db.SaveChangesAsync();
 
             MudDialog.Close(DialogResult.Ok(true));
