@@ -102,8 +102,7 @@
 
         permissionTreeItems = PermissionHierarchyHelper.CreateTreeData(Permissions.AllScopes, existingPermissions);
         _selectedPermissions = new HashSet<string>(existingPermissions, StringComparer.Ordinal);
-        _expandedItems = permissionTreeItems.Where(item => item.Value != null).Select(item =>
-item.Value!).ToHashSet(StringComparer.Ordinal);
+        _expandedItems = GetAllTreeNodeValues(permissionTreeItems).ToHashSet(StringComparer.Ordinal);
     }
 
     private void UpdateExpanded(string value, bool expanded)
@@ -112,6 +111,25 @@ item.Value!).ToHashSet(StringComparer.Ordinal);
             _expandedItems.Add(value);
         else
             _expandedItems.Remove(value);
+    }
+
+    private static IEnumerable<string> GetAllTreeNodeValues(List<TreeItemData<string>> items)
+    {
+        foreach (var item in items)
+        {
+            if (item.Value != null)
+            {
+                yield return item.Value;
+            }
+
+            if (item.Children?.Count > 0)
+            {
+                foreach (var childValue in GetAllTreeNodeValues(item.Children))
+                {
+                    yield return childValue;
+                }
+            }
+        }
     }
 
     private Task OnSelectedPermissionsChanged(HashSet<string> values)

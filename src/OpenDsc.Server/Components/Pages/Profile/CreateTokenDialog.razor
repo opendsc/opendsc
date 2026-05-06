@@ -89,10 +89,12 @@
         try
         {
             _userAccessiblePermissions = await RbacPermissionResolver.ResolveUserAndInternalGroupPermissionsAsync(Db, userId.Value);
-            _treeItems = PermissionHierarchyHelper.CreateTreeData(Permissions.AllScopes, []);
+            // Only show scopes the user actually has access to
+            var accessibleScopes = Permissions.AllScopes.Intersect(_userAccessiblePermissions, StringComparer.Ordinal).ToArray();
+            _treeItems = PermissionHierarchyHelper.CreateTreeData(accessibleScopes, []);
             _selectedScopes = new HashSet<string>(StringComparer.Ordinal);
-            _expandedItems = _treeItems.Where(item => item.Value != null).Select(item =>
-item.Value!).ToHashSet(StringComparer.Ordinal);
+            // Expand all categories by default
+            _expandedItems = GetAllTreeNodeValues(_treeItems).ToHashSet(StringComparer.Ordinal);
         }
         finally
         {
@@ -103,7 +105,26 @@ item.Value!).ToHashSet(StringComparer.Ordinal);
     private bool IsSelectableScope(string scope)
     {
         // Only leaf nodes (actual permissions) are selectable, not category headers
-        return _userAccessiblePermissions.Contains(scope) && Permissions.AllScopes.Contains(scope);
+        return Permissions.AllScopes.Contains(scope);
+    }
+
+    private static IEnumerable<string> GetAllTreeNodeValues(List<TreeItemData<string>> items)
+    {
+        foreach (var item in items)
+        {
+            if (item.Value != null)
+            {
+                yield return item.Value;
+            }
+
+            if (item.Children?.Count > 0)
+            {
+                foreach (var childValue in GetAllTreeNodeValues(item.Children))
+                {
+                    yield return childValue;
+                }
+            }
+        }
     }
 
     private void UpdateExpanded(string value, bool expanded)
@@ -128,14 +149,6 @@ item.Value!).ToHashSet(StringComparer.Ordinal);
         if (userId == null)
         {
             Snackbar.Add("Not authenticated", Severity.Error);
-            return;
-        }
-
-        // Validate that all selected scopes are accessible to the user
-        var invalidScopes = _selectedScopes.Where(s => !_userAccessiblePermissions.Contains(s)).ToList();
-        if (invalidScopes.Count > 0)
-        {
-            Snackbar.Add("You attempted to select scopes you don't have access to.", Severity.Warning);
             return;
         }
 
