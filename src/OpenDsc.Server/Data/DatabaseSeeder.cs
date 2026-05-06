@@ -32,7 +32,7 @@ public static class DatabaseSeeder
                 Name = "Administrator",
                 Description = "Full server administration with access to all resources",
                 IsSystemRole = true,
-                Permissions = JsonSerializer.Serialize(Permissions.AllScopes.Order().ToArray()),
+                Permissions = JsonSerializer.Serialize(Permissions.AllScopes.Order(StringComparer.Ordinal).ToArray()),
                 CreatedAt = now
             },
             new Role
@@ -95,9 +95,14 @@ public static class DatabaseSeeder
             return;
         }
 
-        var allPermissionsJson = JsonSerializer.Serialize(Permissions.AllScopes.Order().ToArray());
-        if (adminRole.Permissions != allPermissionsJson)
+        // Deserialize and compare as sets to avoid brittle string comparison
+        var existingPermissions = JsonSerializer.Deserialize<string[]>(adminRole.Permissions) ?? [];
+        var existingSet = new HashSet<string>(existingPermissions, StringComparer.Ordinal);
+        var allPermissionsSet = new HashSet<string>(Permissions.AllScopes, StringComparer.Ordinal);
+
+        if (!existingSet.SetEquals(allPermissionsSet))
         {
+            var allPermissionsJson = JsonSerializer.Serialize(Permissions.AllScopes.Order(StringComparer.Ordinal).ToArray());
             adminRole.Permissions = allPermissionsJson;
             adminRole.ModifiedAt = DateTimeOffset.UtcNow;
             db.Roles.Update(adminRole);

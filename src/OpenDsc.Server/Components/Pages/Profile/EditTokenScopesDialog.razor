@@ -92,7 +92,9 @@
             // Only show scopes the user actually has access to
             var accessibleScopes = Permissions.AllScopes.Intersect(_userAccessiblePermissions, StringComparer.Ordinal).ToArray();
             _treeItems = PermissionHierarchyHelper.CreateTreeData(accessibleScopes, currentScopes);
-            _selectedScopes = new HashSet<string>(currentScopes, StringComparer.Ordinal);
+            // Only select scopes that are both in the token and accessible to the user
+            var selectableScopes = currentScopes.Where(s => accessibleScopes.Contains(s)).ToArray();
+            _selectedScopes = new HashSet<string>(selectableScopes, StringComparer.Ordinal);
             // Expand all categories by default
             _expandedItems = GetAllTreeNodeValues(_treeItems).ToHashSet(StringComparer.Ordinal);
         }

@@ -8,9 +8,11 @@ using AwesomeAssertions;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 using OpenDsc.Server.Authorization;
 using OpenDsc.Server.Data;
+using OpenDsc.Server.Services;
 
 using Xunit;
 
@@ -36,7 +38,7 @@ public class AdminRolePermissionsTests : IClassFixture<ServerWebApplicationFacto
         // Act
         var adminRole = await db.Roles
             .AsNoTracking()
-            .FirstOrDefaultAsync(r => r.Name == "Administrator" && r.IsSystemRole);
+            .FirstOrDefaultAsync(r => r.Name == "Administrator" && r.IsSystemRole, TestContext.Current.CancellationToken);
 
         // Assert
         adminRole.Should().NotBeNull();
@@ -59,7 +61,7 @@ public class AdminRolePermissionsTests : IClassFixture<ServerWebApplicationFacto
         // Act
         var adminRole = await db.Roles
             .AsNoTracking()
-            .FirstOrDefaultAsync(r => r.Name == "Administrator" && r.IsSystemRole);
+            .FirstOrDefaultAsync(r => r.Name == "Administrator" && r.IsSystemRole, TestContext.Current.CancellationToken);
 
         var adminPermissions = JsonSerializer.Deserialize<string[]>(adminRole!.Permissions) ?? [];
         var adminSet = new HashSet<string>(adminPermissions, StringComparer.Ordinal);
@@ -83,7 +85,7 @@ public class AdminRolePermissionsTests : IClassFixture<ServerWebApplicationFacto
         var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
 
         var adminRole = await db.Roles
-            .FirstOrDefaultAsync(r => r.Name == "Administrator" && r.IsSystemRole);
+            .FirstOrDefaultAsync(r => r.Name == "Administrator" && r.IsSystemRole, TestContext.Current.CancellationToken);
 
         adminRole.Should().NotBeNull();
 
@@ -91,15 +93,15 @@ public class AdminRolePermissionsTests : IClassFixture<ServerWebApplicationFacto
         var oldPermissions = new[] { NodePermissions.Read, ServerPermissions.SettingsRead };
         adminRole!.Permissions = JsonSerializer.Serialize(oldPermissions);
         db.Roles.Update(adminRole);
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Act - Call the update method
-        await DatabaseSeeder.EnsureAdminRoleHasAllPermissionsAsync(db, LoggerMock.Create());
+        await DatabaseSeeder.EnsureAdminRoleHasAllPermissionsAsync(db, LoggerMock.Create<string>());
 
         // Assert
         var updatedRole = await db.Roles
             .AsNoTracking()
-            .FirstAsync(r => r.Name == "Administrator" && r.IsSystemRole);
+            .FirstAsync(r => r.Name == "Administrator" && r.IsSystemRole, TestContext.Current.CancellationToken);
 
         var updatedPermissions = JsonSerializer.Deserialize<string[]>(updatedRole.Permissions) ?? [];
 
@@ -116,21 +118,21 @@ public class AdminRolePermissionsTests : IClassFixture<ServerWebApplicationFacto
         var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
 
         var adminRole = await db.Roles
-            .FirstOrDefaultAsync(r => r.Name == "Administrator" && r.IsSystemRole);
+            .FirstOrDefaultAsync(r => r.Name == "Administrator" && r.IsSystemRole, TestContext.Current.CancellationToken);
 
         adminRole.Should().NotBeNull();
 
         // Record the modification time
         var originalModifiedAt = adminRole!.ModifiedAt;
-        await Task.Delay(10); // Small delay to ensure timestamp would be different if updated
+        await Task.Delay(10, TestContext.Current.CancellationToken); // Small delay to ensure timestamp would be different if updated
 
         // Act - Call the update method when role already has all permissions
-        await DatabaseSeeder.EnsureAdminRoleHasAllPermissionsAsync(db, LoggerMock.Create());
+        await DatabaseSeeder.EnsureAdminRoleHasAllPermissionsAsync(db, LoggerMock.Create<string>());
 
         // Assert
         var reloadedRole = await db.Roles
             .AsNoTracking()
-            .FirstAsync(r => r.Name == "Administrator" && r.IsSystemRole);
+            .FirstAsync(r => r.Name == "Administrator" && r.IsSystemRole, TestContext.Current.CancellationToken);
 
         // ModifiedAt should not have changed since no update was needed
         reloadedRole.ModifiedAt.Should().Be(originalModifiedAt);
@@ -140,12 +142,11 @@ public class AdminRolePermissionsTests : IClassFixture<ServerWebApplicationFacto
     public async Task AdminUser_ResolverReturnsAllPermissions()
     {
         // Arrange
-        var adminClient = _factory.CreateAuthenticatedClient(); // This is an admin user
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
 
         var adminUser = await db.Users
-            .FirstOrDefaultAsync(u => u.Username == "admin");
+            .FirstOrDefaultAsync(u => u.Username == "admin", TestContext.Current.CancellationToken);
 
         adminUser.Should().NotBeNull();
 
@@ -161,13 +162,13 @@ public class AdminRolePermissionsTests : IClassFixture<ServerWebApplicationFacto
     public async Task LimitedUser_ResolverReturnsOnlyAssignedPermissions()
     {
         // Arrange
-        var limitedClient = await _factory.CreateUserWithPermissionsAsync(
+        await _factory.CreateUserWithPermissionsAsync(
             username: "limited-user",
             permissions: [NodePermissions.Read, ReportPermissions.Read]);
 
-        var limitedUser = _factory.Services.CreateScope()
-            .ServiceProvider.GetRequiredService<ServerDbContext>()
-            .Users
+        using var userScope = _factory.Services.CreateScope();
+        var userDb = userScope.ServiceProvider.GetRequiredService<ServerDbContext>();
+        var limitedUser = userDb.Users
             .First(u => u.Username == "limited-user");
 
         // Act
