@@ -88,6 +88,7 @@ public static class DatabaseExtensions
             var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
 
             await DatabaseSeeder.SeedRolesAsync(context, logger);
+            await DatabaseSeeder.EnsureAdminRoleHasAllPermissionsAsync(context, logger);
             await DatabaseSeeder.SeedDefaultGroupsAsync(context, logger);
             await DatabaseSeeder.SeedSystemScopeTypesAsync(context, logger);
             await DatabaseSeeder.SeedInitialAdminAsync(context, passwordHasher, logger);

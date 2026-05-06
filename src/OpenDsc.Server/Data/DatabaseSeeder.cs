@@ -32,26 +32,7 @@ public static class DatabaseSeeder
                 Name = "Administrator",
                 Description = "Full server administration with access to all resources",
                 IsSystemRole = true,
-                Permissions = JsonSerializer.Serialize(new[]
-                {
-                    ServerPermissions.SettingsRead,
-                    ServerPermissions.SettingsWrite,
-                    ServerPermissions.UsersManage,
-                    ServerPermissions.GroupsManage,
-                    ServerPermissions.RolesManage,
-                    ServerPermissions.RegistrationKeysManage,
-                    NodePermissions.Read,
-                    NodePermissions.Write,
-                    NodePermissions.Delete,
-                    NodePermissions.AssignConfiguration,
-                    ReportPermissions.Read,
-                    ReportPermissions.ReadAll,
-                    RetentionPermissions.Manage,
-                    ConfigurationPermissions.AdminOverride,
-                    CompositeConfigurationPermissions.AdminOverride,
-                    ParameterPermissions.AdminOverride,
-                    ScopePermissions.AdminOverride
-                }),
+                Permissions = JsonSerializer.Serialize(Permissions.AllScopes.Order(StringComparer.Ordinal).ToArray()),
                 CreatedAt = now
             },
             new Role
@@ -100,6 +81,34 @@ public static class DatabaseSeeder
         }
 
         await db.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Updates the Administrator role to include all current permissions.
+    /// This ensures that if new permissions are added, the admin role automatically includes them.
+    /// </summary>
+    public static async Task EnsureAdminRoleHasAllPermissionsAsync(ServerDbContext db, ILogger logger)
+    {
+        var adminRole = await db.Roles.FirstOrDefaultAsync(r => r.Name == "Administrator" && r.IsSystemRole);
+        if (adminRole == null)
+        {
+            return;
+        }
+
+        // Deserialize and compare as sets to avoid brittle string comparison
+        var existingPermissions = JsonSerializer.Deserialize<string[]>(adminRole.Permissions) ?? [];
+        var existingSet = new HashSet<string>(existingPermissions, StringComparer.Ordinal);
+        var allPermissionsSet = new HashSet<string>(Permissions.AllScopes, StringComparer.Ordinal);
+
+        if (!existingSet.SetEquals(allPermissionsSet))
+        {
+            var allPermissionsJson = JsonSerializer.Serialize(Permissions.AllScopes.Order(StringComparer.Ordinal).ToArray());
+            adminRole.Permissions = allPermissionsJson;
+            adminRole.ModifiedAt = DateTimeOffset.UtcNow;
+            db.Roles.Update(adminRole);
+            await db.SaveChangesAsync();
+            logger.LogInformation("Updated Administrator role with all current permissions");
+        }
     }
 
     /// <summary>
