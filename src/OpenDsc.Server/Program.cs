@@ -74,6 +74,7 @@ builder.Services.AddScoped<IParameterCompatibilityService, ParameterCompatibilit
 builder.Services.AddScoped<IVersionRetentionService, VersionRetentionService>();
 builder.Services.AddHostedService<RetentionBackgroundService>();
 builder.Services.AddScoped<IConfigurationService, ConfigurationService>();
+builder.Services.AddScoped<ICompositeConfigurationService, CompositeConfigurationService>();
 builder.Services.AddScoped<IParameterService, ParameterService>();
 builder.Services.AddScoped<IJsonYamlConverter, JsonYamlConverter>();
 builder.Services.AddSingleton<NodeEndpoints>();

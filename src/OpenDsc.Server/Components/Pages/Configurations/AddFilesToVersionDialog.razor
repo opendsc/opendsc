@@ -123,21 +123,14 @@
 
         try
         {
-            var success = await ConfigurationService.AddFilesToVersionAsync(
+            await ConfigurationService.AddFilesToVersionAsync(
                 ConfigurationName,
                 Version,
                 selectedFiles);
 
-            if (success)
-            {
-                Snackbar.Add($"Added {selectedFiles.Count} file(s) to version {Version}", Severity.Success);
-                MudDialog.Close(DialogResult.Ok(true));
-                await OnFilesAdded.InvokeAsync();
-            }
-            else
-            {
-                validationError = "Failed to add files. Please check server logs.";
-            }
+            Snackbar.Add($"Added {selectedFiles.Count} file(s) to version {Version}", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+            await OnFilesAdded.InvokeAsync();
         }
         catch (Exception ex)
         {

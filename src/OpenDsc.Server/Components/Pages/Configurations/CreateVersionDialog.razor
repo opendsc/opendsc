@@ -182,23 +182,16 @@
 
         try
         {
-            var success = await ConfigurationService.CreateVersionAsync(
+            await ConfigurationService.CreateVersionAsync(
             ConfigurationName,
             version,
             isDraft,
             selectedFiles,
             string.IsNullOrWhiteSpace(entryPoint) ? null : entryPoint);
 
-            if (success)
-            {
-                Snackbar.Add($"Version {version} created successfully", Severity.Success);
-                MudDialog.Close(DialogResult.Ok(true));
-                await OnVersionCreated.InvokeAsync();
-            }
-            else
-            {
-                validationError = "Failed to create version. Please check server logs.";
-            }
+            Snackbar.Add($"Version {version} created successfully", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+            await OnVersionCreated.InvokeAsync();
         }
         catch (Exception ex)
         {

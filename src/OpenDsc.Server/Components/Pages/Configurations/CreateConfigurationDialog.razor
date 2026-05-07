@@ -220,7 +220,7 @@
 
         try
         {
-            var success = await ConfigurationService.CreateConfigurationAsync(
+            await ConfigurationService.CreateConfigurationAsync(
                 name,
                 description,
                 entryPoint,
@@ -229,16 +229,9 @@
                 useServerManagedParameters,
                 selectedFiles);
 
-            if (success)
-            {
-                Snackbar.Add($"Configuration '{name}' created successfully", Severity.Success);
-                MudDialog.Close(DialogResult.Ok(true));
-                await OnConfigurationCreated.InvokeAsync();
-            }
-            else
-            {
-                validationError = "Failed to create configuration. Please check server logs.";
-            }
+            Snackbar.Add($"Configuration '{name}' created successfully", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+            await OnConfigurationCreated.InvokeAsync();
         }
         catch (Exception ex)
         {

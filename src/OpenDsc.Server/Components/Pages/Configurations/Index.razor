@@ -1,7 +1,6 @@
 @page "/configurations"
 @attribute [Authorize]
 @using OpenDsc.Server.Services
-@inject ServerDbContext Db
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
@@ -39,16 +38,14 @@
         }
         else
         {
-            <MudDataGrid T="Configuration" Items="@filteredConfigurations" Hover="true" Dense="true">
+            <MudDataGrid T="ConfigurationSummaryDto" Items="@filteredConfigurations" Hover="true" Dense="true">
                 <Columns>
                     <PropertyColumn Property="x => x.Name" Title="Name" />
                     <TemplateColumn Title="Status" Sortable="false">
                         <CellTemplate>
                             @{
-                                var published = context.Item.Versions.Any(v => v.Status ==
-                        ConfigurationVersionStatus.Published);
-                                var chipColor = published ? Color.Success : Color.Warning;
-                                var chipText = published ? "Published" : "Draft";
+                                var chipColor = context.Item.HasPublishedVersion ? Color.Success : Color.Warning;
+                                var chipText = context.Item.HasPublishedVersion ? "Published" : "Draft";
                             }
                             <MudChip Color="@chipColor" Size="Size.Small" Variant="Variant.Filled">@chipText</MudChip>
                         </CellTemplate>
@@ -56,7 +53,7 @@
                     <PropertyColumn Property="x => x.Description" Title="Description" />
                     <TemplateColumn Title="Versions">
                         <CellTemplate>
-                            <MudChip T="string" Size="Size.Small">@context.Item.Versions.Count</MudChip>
+                            <MudChip T="string" Size="Size.Small">@context.Item.VersionCount</MudChip>
                         </CellTemplate>
                     </TemplateColumn>
                     <PropertyColumn Property="x => x.CreatedAt" Title="Created">
@@ -64,11 +61,6 @@
                             @context.Item.CreatedAt.LocalDateTime.ToString("g")
                         </CellTemplate>
                     </PropertyColumn>
-                    <TemplateColumn Title="Updated">
-                        <CellTemplate>
-                            @(context.Item.UpdatedAt?.LocalDateTime.ToString("g") ?? "Never")
-                        </CellTemplate>
-                    </TemplateColumn>
                     <TemplateColumn Title="Actions" Sortable="false">
                         <CellTemplate>
                             <MudTooltip Text="View Details">
@@ -88,8 +80,8 @@
 </MudCard>
 
 @code {
-    private List<Configuration> configurations = [];
-    private List<Configuration> filteredConfigurations = [];
+    private List<ConfigurationSummaryDto> configurations = [];
+    private List<ConfigurationSummaryDto> filteredConfigurations = [];
     private bool isLoading = true;
 
     private string _searchText = string.Empty;
@@ -139,11 +131,7 @@
         isLoading = true;
         try
         {
-            var configs = await Db.Configurations
-                .Include(c => c.Versions)
-                .ToListAsync();
-
-            configurations = configs;
+            configurations = await ConfigurationService.GetConfigurationsAsync();
             FilterConfigurations();
         }
         catch (Exception ex)
@@ -193,7 +181,7 @@
         filteredConfigurations = ApplySort(filtered).ToList();
     }
 
-    private IEnumerable<Configuration> ApplySort(IEnumerable<Configuration> items)
+    private IEnumerable<ConfigurationSummaryDto> ApplySort(IEnumerable<ConfigurationSummaryDto> items)
     {
         return _sortBy switch
         {
@@ -201,7 +189,7 @@
             SortOption.NameDesc => items.OrderByDescending(c => c.Name),
             SortOption.CreatedAsc => items.OrderBy(c => c.CreatedAt),
             SortOption.CreatedDesc => items.OrderByDescending(c => c.CreatedAt),
-            SortOption.UpdatedDesc => items.OrderByDescending(c => c.UpdatedAt ?? c.CreatedAt),
+            SortOption.UpdatedDesc => items.OrderByDescending(c => c.CreatedAt),
             _ => items
         };
     }
@@ -216,16 +204,15 @@
 
         if (confirmed == true)
         {
-            var success = await ConfigurationService.DeleteConfigurationAsync(name);
-
-            if (success)
+            try
             {
+                await ConfigurationService.DeleteConfigurationAsync(name);
                 Snackbar.Add($"Configuration '{name}' deleted successfully", Severity.Success);
                 await LoadConfigurationsAsync();
             }
-            else
+            catch (Exception ex)
             {
-                Snackbar.Add($"Failed to delete configuration '{name}'", Severity.Error);
+                Snackbar.Add($"Failed to delete configuration '{name}': {ex.Message}", Severity.Error);
             }
         }
     }

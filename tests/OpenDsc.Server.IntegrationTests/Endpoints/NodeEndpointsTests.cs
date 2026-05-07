@@ -14,6 +14,7 @@ using OpenDsc.Lcm.Contracts;
 using OpenDsc.Server.Contracts;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Endpoints;
+using OpenDsc.Server.Services;
 
 using Xunit;
 

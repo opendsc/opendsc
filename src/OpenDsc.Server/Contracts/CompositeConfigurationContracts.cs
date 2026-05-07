@@ -59,11 +59,12 @@ public sealed class AddChildConfigurationRequest
     public string ChildConfigurationName { get; set; } = string.Empty;
 
     /// <summary>
-    /// Optional specific version string to pin this child configuration to.
-    /// If null, will use the latest published version.
-    /// Example: "1.0.0", "2.1.3"
+    /// The major version to track for this child configuration.
+    /// The composite will use the latest patch version within this major version.
+    /// Example: 1 (will use v1.x.x latest), 2 (will use v2.x.x latest)
     /// </summary>
-    public string? ActiveVersion { get; set; }
+    [JsonRequired]
+    public int MajorVersion { get; set; }
 
     /// <summary>
     /// The order/sequence number for this child in the composite.
@@ -125,9 +126,19 @@ public sealed class CompositeConfigurationSummaryDto
     public string? LatestVersion { get; set; }
 
     /// <summary>
+    /// Whether any version is published.
+    /// </summary>
+    public bool HasPublishedVersion { get; set; }
+
+    /// <summary>
     /// When the composite configuration was created.
     /// </summary>
     public DateTimeOffset CreatedAt { get; set; }
+
+    /// <summary>
+    /// When the composite configuration was last updated.
+    /// </summary>
+    public DateTimeOffset? UpdatedAt { get; set; }
 }
 
 /// <summary>
@@ -237,6 +248,11 @@ public sealed class CompositeConfigurationItemDto
     /// Example: "1.0.0", "2.1.3"
     /// </summary>
     public string? ActiveVersion { get; set; }
+
+    /// <summary>
+    /// The major version to track, or null for any.
+    /// </summary>
+    public int? MajorVersion { get; set; }
 
     /// <summary>
     /// The order/sequence number.

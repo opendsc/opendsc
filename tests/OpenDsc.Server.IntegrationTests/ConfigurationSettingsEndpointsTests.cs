@@ -7,6 +7,7 @@ using System.Net;
 using AwesomeAssertions;
 
 using OpenDsc.Server.Endpoints;
+using OpenDsc.Server.Services;
 
 using Xunit;
 

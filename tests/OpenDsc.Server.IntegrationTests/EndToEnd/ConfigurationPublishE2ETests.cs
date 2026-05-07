@@ -8,6 +8,7 @@ using AwesomeAssertions;
 
 using OpenDsc.Server.Endpoints;
 using OpenDsc.Server.Entities;
+using OpenDsc.Server.Services;
 
 using Xunit;
 

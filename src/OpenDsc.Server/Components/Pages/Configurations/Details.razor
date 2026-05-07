@@ -1,9 +1,7 @@
 @page "/configurations/{Name}"
 @attribute [Authorize]
-@using Microsoft.EntityFrameworkCore
 @using OpenDsc.Server.Services
 @using NuGet.Versioning
-@inject ServerDbContext Db
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
 @inject IDialogService DialogService
@@ -390,8 +388,8 @@ else
     [Parameter]
     public string Name { get; set; } = string.Empty;
 
-    private Configuration? configuration;
-    private List<ConfigurationVersion> versions = [];
+    private ConfigurationDetailsDto? configuration;
+    private List<ConfigurationVersionDto> versions = [];
     private bool loading = true;
     private List<int> availableConfigMajors = [];
 
@@ -417,24 +415,16 @@ else
         loading = true;
         try
         {
-            configuration = await Db.Configurations
-                .Include(c => c.Versions)
-                    .ThenInclude(v => v.Files)
-                .AsSplitQuery()
-                .FirstOrDefaultAsync(c => c.Name == Name);
+            configuration = await ConfigurationService.GetConfigurationAsync(Name);
 
             if (configuration != null)
             {
-                versions = configuration.Versions
-                    .OrderByDescending(v => v.CreatedAt)
-                    .ToList();
+                versions = await ConfigurationService.GetVersionsAsync(Name) ?? [];
 
                 UpdateMajors();
                 await LoadRetentionSettings();
 
-                parameterSchemaId = (await Db.ParameterSchemas
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(ps => ps.ConfigurationId == configuration.Id))?.Id;
+                parameterSchemaId = await ConfigurationService.GetParameterSchemaIdAsync(Name);
             }
         }
         finally
@@ -457,18 +447,13 @@ else
     {
         retentionLoading = true;
 
-        var settings = await Db.Set<ConfigurationSettings>()
-            .AsNoTracking()
-            .FirstOrDefaultAsync(cs => cs.ConfigurationId == configuration!.Id);
-
-        if (settings is not null && (settings.RetentionKeepVersions.HasValue
-            || settings.RetentionKeepDays.HasValue
-            || settings.RetentionKeepReleaseVersions.HasValue))
+        var retention = await ConfigurationService.GetRetentionSettingsAsync(configuration!.Name);
+        if (retention is not null && retention.IsOverridden)
         {
             retentionOverrideActive = true;
-            retentionKeepVersions = settings.RetentionKeepVersions;
-            retentionKeepDays = settings.RetentionKeepDays;
-            retentionKeepReleaseVersions = settings.RetentionKeepReleaseVersions;
+            retentionKeepVersions = retention.KeepVersions;
+            retentionKeepDays = retention.KeepDays;
+            retentionKeepReleaseVersions = retention.KeepReleaseVersions;
         }
         else
         {
@@ -489,25 +474,7 @@ else
 
         try
         {
-            var settings = await Db.Set<ConfigurationSettings>()
-                .FirstOrDefaultAsync(cs => cs.ConfigurationId == configuration!.Id);
-
-            if (settings is null)
-            {
-                settings = new ConfigurationSettings
-                {
-                    ConfigurationId = configuration!.Id,
-                    UpdatedAt = DateTimeOffset.UtcNow
-                };
-                Db.Add(settings);
-            }
-
-            settings.RetentionKeepVersions = retentionKeepVersions;
-            settings.RetentionKeepDays = retentionKeepDays;
-            settings.RetentionKeepReleaseVersions = retentionKeepReleaseVersions;
-            settings.UpdatedAt = DateTimeOffset.UtcNow;
-
-            await Db.SaveChangesAsync();
+            await ConfigurationService.SaveRetentionSettingsAsync(configuration!.Name, null, retentionKeepVersions, retentionKeepDays, retentionKeepReleaseVersions);
 
             retentionOverrideActive = retentionKeepVersions.HasValue || retentionKeepDays.HasValue
                 || retentionKeepReleaseVersions.HasValue;
@@ -537,18 +504,7 @@ else
 
         try
         {
-            var settings = await Db.Set<ConfigurationSettings>()
-                .FirstOrDefaultAsync(cs => cs.ConfigurationId == configuration!.Id);
-
-            if (settings is not null)
-            {
-                settings.RetentionEnabled = null;
-                settings.RetentionKeepVersions = null;
-                settings.RetentionKeepDays = null;
-                settings.RetentionKeepReleaseVersions = null;
-                settings.UpdatedAt = DateTimeOffset.UtcNow;
-                await Db.SaveChangesAsync();
-            }
+            await ConfigurationService.ResetRetentionSettingsAsync(configuration!.Name);
 
             retentionKeepVersions = null;
             retentionKeepDays = null;
@@ -563,7 +519,7 @@ else
         }
     }
 
-    private async Task OpenFileViewer(ConfigurationVersion version, ConfigurationFile file, bool editMode)
+    private async Task OpenFileViewer(ConfigurationVersionDto version, ConfigurationFileDto file, bool editMode)
     {
         if (configuration == null)
             return;
@@ -597,7 +553,7 @@ else
         }
     }
 
-    private async Task DownloadSpecificFile(ConfigurationFile file, ConfigurationVersion version)
+    private async Task DownloadSpecificFile(ConfigurationFileDto file, ConfigurationVersionDto version)
     {
         if (configuration == null)
             return;
@@ -666,7 +622,7 @@ else
         }
     }
 
-    private async Task OpenAddFilesDialog(ConfigurationVersion version)
+    private async Task OpenAddFilesDialog(ConfigurationVersionDto version)
     {
         if (configuration == null)
             return;
@@ -692,7 +648,7 @@ else
         }
     }
 
-    private async Task OpenCreateFileDialog(ConfigurationVersion version)
+    private async Task OpenCreateFileDialog(ConfigurationVersionDto version)
     {
         if (configuration == null)
             return;
@@ -718,7 +674,7 @@ else
         }
     }
 
-    private async Task PublishVersion(ConfigurationVersion version)
+    private async Task PublishVersion(ConfigurationVersionDto version)
     {
         if (configuration == null)
             return;
@@ -770,44 +726,18 @@ else
         }
     }
 
-    private async Task DeleteVersion(ConfigurationVersion version)
+    private async Task DeleteVersion(ConfigurationVersionDto version)
     {
         if (configuration == null)
             return;
 
-        // Check if version is in use by any nodes
-        var nodesUsingVersion = await Db.NodeConfigurations
-            .Where(nc => nc.ConfigurationId == configuration.Id && nc.ActiveVersion == version.Version)
-            .Include(nc => nc.Node)
-            .ToListAsync();
+        var usageInfo = await ConfigurationService.IsVersionInUseAsync(configuration.Name, version.Version);
 
-        // Check if version is in use by any composite configurations
-        var compositeConfigsUsingVersion = await Db.CompositeConfigurationItems
-            .Where(cci => cci.ChildConfigurationId == configuration.Id && cci.ActiveVersion == version.Version)
-            .Include(cci => cci.CompositeConfigurationVersion)
-                .ThenInclude(ccv => ccv.CompositeConfiguration)
-            .ToListAsync();
-
-        if (nodesUsingVersion.Any() || compositeConfigsUsingVersion.Any())
+        if (usageInfo.IsInUse)
         {
-            var usageDetails = new List<string>();
-
-            if (nodesUsingVersion.Any())
-            {
-                usageDetails.Add($"- Nodes: {string.Join(", ", nodesUsingVersion.Select(n => n.Node.Fqdn))}");
-            }
-
-            if (compositeConfigsUsingVersion.Any())
-            {
-                var compositeNames = compositeConfigsUsingVersion
-                    .Select(c => $"{c.CompositeConfigurationVersion.CompositeConfiguration.Name} v{c.CompositeConfigurationVersion.Version}")
-                    .Distinct();
-                usageDetails.Add($"- Composite Configurations: {string.Join(", ", compositeNames)}");
-            }
-
             await DialogService.ShowMessageBox(
                 "Cannot Delete Version",
-                $"Version {version.Version} is currently in use and cannot be deleted:\n\n{string.Join("\n", usageDetails)}\n\nPlease remove these assignments before deleting this version.",
+                $"Version {version.Version} is currently in use and cannot be deleted:\n\n{string.Join("\n", usageInfo.Details)}\n\nPlease remove these assignments before deleting this version.",
                 yesText: "OK");
 
             return;
@@ -821,22 +751,20 @@ else
 
         if (confirmed == true)
         {
-            var success = await ConfigurationService.DeleteVersionAsync(configuration.Name, version.Version);
-
-            if (success)
+            try
             {
+                await ConfigurationService.DeleteVersionAsync(configuration.Name, version.Version);
                 Snackbar.Add($"Version {version.Version} deleted successfully", Severity.Success);
-
                 await LoadConfiguration();
             }
-            else
+            catch (Exception ex)
             {
-                Snackbar.Add("Failed to delete version", Severity.Error);
+                Snackbar.Add($"Failed to delete version: {ex.Message}", Severity.Error);
             }
         }
     }
 
-    private async Task DeleteFile(ConfigurationVersion version, ConfigurationFile file)
+    private async Task DeleteFile(ConfigurationVersionDto version, ConfigurationFileDto file)
     {
         if (configuration == null)
             return;
@@ -849,21 +777,20 @@ else
 
         if (confirmed == true)
         {
-            var success = await ConfigurationService.DeleteFileAsync(configuration.Name, version.Version, file.RelativePath);
-
-            if (success)
+            try
             {
+                await ConfigurationService.DeleteFileAsync(configuration.Name, version.Version, file.RelativePath);
                 Snackbar.Add($"File '{file.RelativePath}' deleted successfully", Severity.Success);
                 await LoadConfiguration();
             }
-            else
+            catch (Exception ex)
             {
-                Snackbar.Add("Failed to delete file", Severity.Error);
+                Snackbar.Add($"Failed to delete file: {ex.Message}", Severity.Error);
             }
         }
     }
 
-    private async Task SetEntryPoint(ConfigurationVersion version, ConfigurationFile file)
+    private async Task SetEntryPoint(ConfigurationVersionDto version, ConfigurationFileDto file)
     {
         if (configuration == null)
             return;
@@ -876,21 +803,20 @@ else
 
         if (confirmed == true)
         {
-            var success = await ConfigurationService.ChangeVersionEntryPointAsync(configuration.Name, version.Version, file.RelativePath);
-
-            if (success)
+            try
             {
+                await ConfigurationService.ChangeVersionEntryPointAsync(configuration.Name, version.Version, file.RelativePath);
                 Snackbar.Add($"Entry point changed to '{file.RelativePath}'", Severity.Success);
                 await LoadConfiguration();
             }
-            else
+            catch (Exception ex)
             {
-                Snackbar.Add("Failed to change entry point", Severity.Error);
+                Snackbar.Add($"Failed to change entry point: {ex.Message}", Severity.Error);
             }
         }
     }
 
-    private async Task OpenChangeEntryPointDialog(ConfigurationVersion version)
+    private async Task OpenChangeEntryPointDialog(ConfigurationVersionDto version)
     {
         if (configuration == null)
             return;

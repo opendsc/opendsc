@@ -1,6 +1,7 @@
 @page "/composite-configurations"
 @attribute [Authorize]
-@inject ServerDbContext Db
+@using OpenDsc.Server.Services
+@inject ICompositeConfigurationService CompositeConfigService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
@@ -47,15 +48,14 @@
         }
         else
         {
-            <MudDataGrid T="CompositeConfiguration" Items="@filteredComposites" Hover="true" Dense="true">
+                    <MudDataGrid T="CompositeConfigurationSummaryDto" Items="@filteredComposites" Hover="true" Dense="true">
                 <Columns>
                     <PropertyColumn Property="x => x.Name" Title="Name" />
                     <TemplateColumn Title="Status" Sortable="false">
                         <CellTemplate>
                             @{
-                                var published = context.Item.Versions.Any(v => v.Status == ConfigurationVersionStatus.Published);
-                                var chipColor = published ? Color.Success : Color.Warning;
-                                var chipText = published ? "Published" : "Draft";
+                                var chipColor = context.Item.HasPublishedVersion ? Color.Success : Color.Warning;
+                                var chipText = context.Item.HasPublishedVersion ? "Published" : "Draft";
                             }
                             <MudChip Color="@chipColor" Size="Size.Small" Variant="Variant.Filled">@chipText</MudChip>
                         </CellTemplate>
@@ -63,12 +63,12 @@
                     <PropertyColumn Property="x => x.Description" Title="Description" />
                     <TemplateColumn Title="Versions">
                         <CellTemplate>
-                            <MudChip T="string" Size="Size.Small">@context.Item.Versions.Count</MudChip>
+                            <MudChip T="string" Size="Size.Small">@context.Item.VersionCount</MudChip>
                         </CellTemplate>
                     </TemplateColumn>
                     <TemplateColumn Title="Latest Version" Sortable="false">
                         <CellTemplate>
-                            @(VersionResolver.LatestSemver(context.Item.Versions.Where(v => v.Status == ConfigurationVersionStatus.Published).Select(v => v.Version)) ?? "-")
+                            @(context.Item.LatestVersion ?? "-")
                         </CellTemplate>
                     </TemplateColumn>
                     <PropertyColumn Property="x => x.CreatedAt" Title="Created">
@@ -103,8 +103,8 @@
 </MudCard>
 
 @code {
-    private List<CompositeConfiguration> composites = [];
-    private List<CompositeConfiguration> filteredComposites = [];
+    private List<CompositeConfigurationSummaryDto> composites = [];
+    private List<CompositeConfigurationSummaryDto> filteredComposites = [];
     private bool isLoading = true;
 
     private string _searchText = string.Empty;
@@ -154,10 +154,7 @@
         isLoading = true;
         try
         {
-            composites = await Db.CompositeConfigurations
-                .Include(c => c.Versions)
-                .ToListAsync();
-
+            composites = await CompositeConfigService.GetCompositeConfigurationsAsync();
             FilterComposites();
         }
         catch (Exception ex)
@@ -207,7 +204,7 @@
         filteredComposites = ApplySort(filtered).ToList();
     }
 
-    private IEnumerable<CompositeConfiguration> ApplySort(IEnumerable<CompositeConfiguration> items)
+    private IEnumerable<CompositeConfigurationSummaryDto> ApplySort(IEnumerable<CompositeConfigurationSummaryDto> items)
     {
         return _sortBy switch
         {
@@ -220,25 +217,8 @@
         };
     }
 
-    private async Task DeleteComposite(CompositeConfiguration composite)
+    private async Task DeleteComposite(CompositeConfigurationSummaryDto composite)
     {
-        if (composite.NodeConfigurations.Count == 0)
-        {
-            // Reload to get current node assignment count
-            var fresh = await Db.CompositeConfigurations
-                .Include(c => c.NodeConfigurations)
-                .FirstOrDefaultAsync(c => c.Id == composite.Id);
-
-            if (fresh?.NodeConfigurations.Count > 0)
-            {
-                await DialogService.ShowMessageBox(
-                    "Cannot Delete",
-                    $"'{composite.Name}' is currently assigned to one or more nodes. Unassign it before deleting.",
-                    yesText: "OK");
-                return;
-            }
-        }
-
         var confirmed = await DialogService.ShowMessageBox(
             "Delete Composite Configuration",
             $"Are you sure you want to delete '{composite.Name}'? This will delete all versions and child references.",
@@ -249,20 +229,8 @@
         {
             try
             {
-                var toDelete = await Db.CompositeConfigurations
-                    .Include(c => c.NodeConfigurations)
-                    .FirstOrDefaultAsync(c => c.Id == composite.Id);
+                await CompositeConfigService.DeleteCompositeConfigurationAsync(composite.Id);
 
-                if (toDelete == null) return;
-
-                if (toDelete.NodeConfigurations.Count > 0)
-                {
-                    Snackbar.Add($"'{composite.Name}' is currently assigned to one or more nodes.", Severity.Error);
-                    return;
-                }
-
-                Db.CompositeConfigurations.Remove(toDelete);
-                await Db.SaveChangesAsync();
                 Snackbar.Add($"'{composite.Name}' deleted successfully", Severity.Success);
                 await LoadCompositesAsync();
             }

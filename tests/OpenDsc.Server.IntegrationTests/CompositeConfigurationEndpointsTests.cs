@@ -681,7 +681,7 @@ public class CompositeConfigurationEndpointsTests : IDisposable
         {
             ChildConfigurationName = childConfigName,
             Order = 0,
-            ActiveVersion = "99.99.99"
+            MajorVersion = 999
         };
         var response = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeId}/versions/1.0.0/children", addChildRequest, TestContext.Current.CancellationToken);
 

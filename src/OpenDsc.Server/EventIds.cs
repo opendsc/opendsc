@@ -22,9 +22,6 @@ internal static class EventIds
     public const int CannotAddFilesToPublishedVersion = 2013;
     public const int FileAlreadyExistsInVersion = 2014;
     public const int ErrorAddingFilesToVersion = 2015;
-    public const int FailedToParsePublishResponse = 2016;
-    public const int FailedToPublishVersion = 2017;
-    public const int ErrorPublishingVersion = 2018;
     public const int ErrorDeletingConfiguration = 2019;
     public const int VersionNotFound = 2020;
     public const int ErrorDeletingVersion = 2021;

@@ -2,10 +2,8 @@
 @* You may use, distribute and modify this code under the *@
 @* terms of the MIT license. *@
 
-@using Microsoft.EntityFrameworkCore
 @using NuGet.Versioning
 @using OpenDsc.Server.Services
-@inject ServerDbContext Db
 @inject IConfigurationService ConfigurationService
 @inject ISnackbar Snackbar
 
@@ -35,7 +33,7 @@
                         {
                             <MudChip T="string" Size="Size.Small" Color="Color.Success">Published</MudChip>
                         }
-                        <MudChip T="string" Size="Size.Small">@version.Files.Count files</MudChip>
+                        <MudChip T="string" Size="Size.Small">@version.FileCount files</MudChip>
                     </div>
                 </MudSelectItem>
             }
@@ -101,7 +99,7 @@
     private bool isSubmitting = false;
     private bool isLoading = true;
     private string? validationError;
-    private List<ConfigurationVersion> availableVersions = new();
+    private List<ConfigurationVersionDto> availableVersions = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -112,18 +110,12 @@
     {
         try
         {
-            var config = await Db.Configurations
-                .Include(c => c.Versions)
-                .ThenInclude(v => v.Files)
-                .FirstOrDefaultAsync(c => c.Name == ConfigurationName);
+            var versions = await ConfigurationService.GetVersionsAsync(ConfigurationName);
 
-            if (config != null)
+            if (versions != null)
             {
-                availableVersions = config.Versions
-                    .OrderByDescending(v => v.CreatedAt)
-                    .ToList();
+                availableVersions = versions;
 
-                // Select the most recent version by default
                 if (availableVersions.Any())
                 {
                     sourceVersion = availableVersions.First().Version;
@@ -170,22 +162,15 @@
 
         try
         {
-            var success = await ConfigurationService.CreateVersionFromExistingAsync(
+            await ConfigurationService.CreateVersionFromExistingAsync(
                 ConfigurationName,
                 sourceVersion,
                 newVersion,
                 isDraft);
 
-            if (success)
-            {
-                Snackbar.Add($"Version {newVersion} created from {sourceVersion}", Severity.Success);
-                MudDialog.Close(DialogResult.Ok(true));
-                await OnVersionCreated.InvokeAsync();
-            }
-            else
-            {
-                validationError = "Failed to create version. Please check server logs.";
-            }
+            Snackbar.Add($"Version {newVersion} created from {sourceVersion}", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+            await OnVersionCreated.InvokeAsync();
         }
         catch (Exception ex)
         {

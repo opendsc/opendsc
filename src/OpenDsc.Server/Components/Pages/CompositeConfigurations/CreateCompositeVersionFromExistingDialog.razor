@@ -1,5 +1,6 @@
 @using NuGet.Versioning
-@inject ServerDbContext Db
+@using OpenDsc.Server.Services
+@inject ICompositeConfigurationService CompositeConfigService
 @inject ISnackbar Snackbar
 
 <MudDialog>
@@ -77,7 +78,7 @@
     [CascadingParameter]
     private IMudDialogInstance MudDialog { get; set; } = default!;
 
-    private List<CompositeConfigurationVersion> availableVersions = [];
+    private List<CompositeConfigurationVersionDto> availableVersions = [];
     private string sourceVersion = string.Empty;
     private string newVersion = string.Empty;
     private bool isSubmitting;
@@ -93,14 +94,11 @@
     {
         try
         {
-            var composite = await Db.CompositeConfigurations
-                .Include(c => c.Versions)
-                    .ThenInclude(v => v.Items)
-                .FirstOrDefaultAsync(c => c.Name == CompositeName);
+            var versions = await CompositeConfigService.GetVersionsAsync(CompositeName);
 
-            if (composite != null)
+            if (versions != null)
             {
-                availableVersions = composite.Versions
+                availableVersions = versions
                     .OrderByDescending(v => v.CreatedAt)
                     .ToList();
 
@@ -136,60 +134,7 @@
 
         try
         {
-            var composite = await Db.CompositeConfigurations
-                .FirstOrDefaultAsync(c => c.Name == CompositeName);
-
-            if (composite is null)
-            {
-                validationError = $"Composite configuration '{CompositeName}' not found.";
-                return;
-            }
-
-            if (await Db.CompositeConfigurationVersions.AnyAsync(v =>
-                    v.CompositeConfigurationId == composite.Id && v.Version == newVersion))
-            {
-                validationError = $"Version '{newVersion}' already exists.";
-                return;
-            }
-
-            var source = await Db.CompositeConfigurationVersions
-                .Include(v => v.Items)
-                .FirstOrDefaultAsync(v =>
-                    v.CompositeConfigurationId == composite.Id &&
-                    v.Version == sourceVersion);
-
-            if (source is null)
-            {
-                validationError = "Source version not found.";
-                return;
-            }
-
-            var sv = SemanticVersion.Parse(newVersion);
-            var version = new CompositeConfigurationVersion
-            {
-                Id = Guid.NewGuid(),
-                CompositeConfigurationId = composite.Id,
-                Version = newVersion,
-                PrereleaseChannel = string.IsNullOrEmpty(sv.Release) ? null : sv.Release,
-                CreatedAt = DateTimeOffset.UtcNow
-            };
-
-            Db.CompositeConfigurationVersions.Add(version);
-
-            foreach (var item in source.Items.OrderBy(i => i.Order))
-            {
-                Db.CompositeConfigurationItems.Add(new CompositeConfigurationItem
-                {
-                    Id = Guid.NewGuid(),
-                    CompositeConfigurationVersionId = version.Id,
-                    ChildConfigurationId = item.ChildConfigurationId,
-                    MajorVersion = item.MajorVersion,
-                    Order = item.Order
-                });
-            }
-
-            composite.UpdatedAt = DateTimeOffset.UtcNow;
-            await Db.SaveChangesAsync();
+            await CompositeConfigService.CreateVersionFromExistingAsync(CompositeName, sourceVersion, newVersion);
 
             Snackbar.Add($"Version '{newVersion}' created from '{sourceVersion}' as draft", Severity.Success);
             MudDialog.Close(DialogResult.Ok(newVersion));

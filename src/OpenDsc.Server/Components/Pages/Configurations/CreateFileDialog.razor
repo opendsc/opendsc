@@ -112,21 +112,14 @@
             var bytes = Encoding.UTF8.GetBytes(fileContent);
             var browserFile = new ManualBrowserFile(fileName, bytes);
 
-            var success = await ConfigurationService.AddFilesToVersionAsync(
+            await ConfigurationService.AddFilesToVersionAsync(
                 ConfigurationName,
                 Version,
                 new[] { browserFile });
 
-            if (success)
-            {
-                Snackbar.Add($"File '{fileName}' created successfully", Severity.Success);
-                MudDialog.Close(DialogResult.Ok(true));
-                await OnFileCreated.InvokeAsync();
-            }
-            else
-            {
-                validationError = "Failed to create file. The file may already exist or the version may not be a draft.";
-            }
+            Snackbar.Add($"File '{fileName}' created successfully", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+            await OnFileCreated.InvokeAsync();
         }
         catch (Exception ex)
         {

@@ -80,18 +80,15 @@
 
         try
         {
-            var success = await ConfigurationService.ChangeVersionEntryPointAsync(ConfigurationName, VersionNumber, selectedFile);
+            await ConfigurationService.ChangeVersionEntryPointAsync(ConfigurationName, VersionNumber, selectedFile);
 
-            if (success)
-            {
-                Snackbar.Add($"Entry point changed to '{selectedFile}'", Severity.Success);
-                await OnEntryPointChanged.InvokeAsync();
-                MudDialog.Close();
-            }
-            else
-            {
-                Snackbar.Add("Failed to change entry point", Severity.Error);
-            }
+            Snackbar.Add($"Entry point changed to '{selectedFile}'", Severity.Success);
+            await OnEntryPointChanged.InvokeAsync();
+            MudDialog.Close();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to change entry point: {ex.Message}", Severity.Error);
         }
         finally
         {

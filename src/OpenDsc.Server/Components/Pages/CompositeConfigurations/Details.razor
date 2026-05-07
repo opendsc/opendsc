@@ -1,7 +1,8 @@
 @page "/composite-configurations/{Name}"
 @attribute [Authorize]
 @using NuGet.Versioning
-@inject ServerDbContext Db
+@using OpenDsc.Server.Services
+@inject ICompositeConfigurationService CompositeConfigService
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
 @inject IDialogService DialogService
@@ -173,8 +174,8 @@
                                                                     </MudTd>
                                                                 }
                                                                 <MudTd>
-                                                                    <MudLink Href="@($"/configurations/{context.ChildConfiguration.Name}")">
-                                                                        @context.ChildConfiguration.Name
+                                                                    <MudLink Href="@($"/configurations/{context.ChildConfigurationName}")">
+                                                                        @context.ChildConfigurationName
                                                                     </MudLink>
                                                                 </MudTd>
                                                                 <MudTd>
@@ -281,8 +282,8 @@ else
     [Parameter]
     public string Name { get; set; } = string.Empty;
 
-    private CompositeConfiguration? composite;
-    private List<CompositeConfigurationVersion> versions = [];
+    private CompositeConfigurationDetailsDto? composite;
+    private List<CompositeConfigurationVersionDto> versions = [];
     private bool loading = true;
     private List<int> availableMajors = [];
 
@@ -296,12 +297,7 @@ else
         loading = true;
         try
         {
-            composite = await Db.CompositeConfigurations
-                .Include(c => c.Versions)
-                    .ThenInclude(v => v.Items)
-                        .ThenInclude(i => i.ChildConfiguration)
-                .AsSplitQuery()
-                .FirstOrDefaultAsync(c => c.Name == Name);
+            composite = await CompositeConfigService.GetCompositeConfigurationAsync(Name);
 
             if (composite != null)
             {
@@ -366,7 +362,7 @@ else
         }
     }
 
-    private async Task OpenAddChildDialog(CompositeConfigurationVersion version)
+    private async Task OpenAddChildDialog(CompositeConfigurationVersionDto version)
     {
         if (composite == null) return;
 
@@ -389,7 +385,7 @@ else
         }
     }
 
-    private async Task OpenEditChildDialog(CompositeConfigurationVersion version, CompositeConfigurationItem item)
+    private async Task OpenEditChildDialog(CompositeConfigurationVersionDto version, CompositeConfigurationItemDto item)
     {
         if (composite == null) return;
 
@@ -410,7 +406,7 @@ else
         }
     }
 
-    private async Task MoveChildUp(CompositeConfigurationVersion version, CompositeConfigurationItem item)
+    private async Task MoveChildUp(CompositeConfigurationVersionDto version, CompositeConfigurationItemDto item)
     {
         var orderedItems = version.Items.OrderBy(i => i.Order).ToList();
         var index = orderedItems.IndexOf(item);
@@ -420,16 +416,10 @@ else
 
         try
         {
-            var tempOrder = -(item.Order + previous.Order);
-            var itemOrder = item.Order;
             var previousOrder = previous.Order;
-
-            item.Order = tempOrder;
-            await Db.SaveChangesAsync();
-
-            item.Order = previousOrder;
-            previous.Order = itemOrder;
-            await Db.SaveChangesAsync();
+            var itemOrder = item.Order;
+            await CompositeConfigService.ReorderChildAsync(item.Id, previousOrder);
+            await CompositeConfigService.ReorderChildAsync(previous.Id, itemOrder);
 
             Snackbar.Add("Order updated", Severity.Success);
             await LoadComposite();
@@ -440,7 +430,7 @@ else
         }
     }
 
-    private async Task MoveChildDown(CompositeConfigurationVersion version, CompositeConfigurationItem item)
+    private async Task MoveChildDown(CompositeConfigurationVersionDto version, CompositeConfigurationItemDto item)
     {
         var orderedItems = version.Items.OrderBy(i => i.Order).ToList();
         var index = orderedItems.IndexOf(item);
@@ -450,16 +440,10 @@ else
 
         try
         {
-            var tempOrder = -(item.Order + next.Order);
-            var itemOrder = item.Order;
             var nextOrder = next.Order;
-
-            item.Order = tempOrder;
-            await Db.SaveChangesAsync();
-
-            item.Order = nextOrder;
-            next.Order = itemOrder;
-            await Db.SaveChangesAsync();
+            var itemOrder = item.Order;
+            await CompositeConfigService.ReorderChildAsync(item.Id, nextOrder);
+            await CompositeConfigService.ReorderChildAsync(next.Id, itemOrder);
 
             Snackbar.Add("Order updated", Severity.Success);
             await LoadComposite();
@@ -470,7 +454,7 @@ else
         }
     }
 
-    private async Task PublishVersion(CompositeConfigurationVersion version)
+    private async Task PublishVersion(CompositeConfigurationVersionDto version)
     {
         if (composite == null) return;
 
@@ -484,14 +468,9 @@ else
         {
             try
             {
-                var v = await Db.CompositeConfigurationVersions.FindAsync(version.Id);
-                if (v != null)
-                {
-                    v.Status = ConfigurationVersionStatus.Published;
-                    await Db.SaveChangesAsync();
-                    Snackbar.Add($"Version {version.Version} published successfully", Severity.Success);
-                    await LoadComposite();
-                }
+                await CompositeConfigService.PublishVersionAsync(composite.Name, version.Version);
+                Snackbar.Add($"Version {version.Version} published successfully", Severity.Success);
+                await LoadComposite();
             }
             catch (Exception ex)
             {
@@ -500,26 +479,9 @@ else
         }
     }
 
-    private async Task DeleteVersion(CompositeConfigurationVersion version)
+    private async Task DeleteVersion(CompositeConfigurationVersionDto version)
     {
         if (composite == null) return;
-
-        if (version.Status != ConfigurationVersionStatus.Draft)
-        {
-            var nodesUsing = await Db.NodeConfigurations
-                .Where(nc => nc.CompositeConfigurationId == composite.Id)
-                .Include(nc => nc.Node)
-                .ToListAsync();
-
-            if (nodesUsing.Any())
-            {
-                await DialogService.ShowMessageBox(
-                    "Cannot Delete Version",
-                    $"Version {version.Version} cannot be deleted because the composite configuration is assigned to nodes: {string.Join(", ", nodesUsing.Select(n => n.Node.Fqdn))}",
-                    yesText: "OK");
-                return;
-            }
-        }
 
         var confirmed = await DialogService.ShowMessageBox(
             "Delete Version",
@@ -531,14 +493,9 @@ else
         {
             try
             {
-                var v = await Db.CompositeConfigurationVersions.FindAsync(version.Id);
-                if (v != null)
-                {
-                    Db.CompositeConfigurationVersions.Remove(v);
-                    await Db.SaveChangesAsync();
-                    Snackbar.Add($"Version {version.Version} deleted", Severity.Success);
-                    await LoadComposite();
-                }
+                await CompositeConfigService.DeleteVersionAsync(composite.Name, version.Version);
+                Snackbar.Add($"Version {version.Version} deleted", Severity.Success);
+                await LoadComposite();
             }
             catch (Exception ex)
             {
@@ -547,11 +504,11 @@ else
         }
     }
 
-    private async Task RemoveChild(CompositeConfigurationVersion version, CompositeConfigurationItem item)
+    private async Task RemoveChild(CompositeConfigurationVersionDto version, CompositeConfigurationItemDto item)
     {
         var confirmed = await DialogService.ShowMessageBox(
             "Remove Child Configuration",
-            $"Remove '{item.ChildConfiguration.Name}' from this version?",
+            $"Remove '{item.ChildConfigurationName}' from this version?",
             yesText: "Remove",
             cancelText: "Cancel");
 
@@ -559,14 +516,9 @@ else
         {
             try
             {
-                var toRemove = await Db.CompositeConfigurationItems.FindAsync(item.Id);
-                if (toRemove != null)
-                {
-                    Db.CompositeConfigurationItems.Remove(toRemove);
-                    await Db.SaveChangesAsync();
-                    Snackbar.Add($"'{item.ChildConfiguration.Name}' removed", Severity.Success);
-                    await LoadComposite();
-                }
+                await CompositeConfigService.RemoveChildAsync(item.Id);
+                Snackbar.Add($"'{item.ChildConfigurationName}' removed", Severity.Success);
+                await LoadComposite();
             }
             catch (Exception ex)
             {
