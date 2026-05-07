@@ -4,7 +4,8 @@
 
 using Microsoft.EntityFrameworkCore;
 
-using OpenDsc.Lcm.Contracts;
+using OpenDsc.Contracts.Configurations;
+using OpenDsc.Contracts.Lcm;
 using OpenDsc.Server.Entities;
 
 namespace OpenDsc.Server.Data;

@@ -5,8 +5,11 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 
-using OpenDsc.Server.Contracts;
+using OpenDsc.Contracts.CompositeConfigurations;
+using OpenDsc.Contracts.Permissions;
+using OpenDsc.Contracts.Settings;
 using OpenDsc.Server.Services;
+using ICompositeConfigurationService = OpenDsc.Server.Services.ICompositeConfigurationService;
 
 namespace OpenDsc.Server.Endpoints;
 
@@ -79,14 +82,14 @@ public static class CompositeConfigurationEndpoints
             .WithDescription("Revoke a permission on a composite configuration");
     }
 
-    private static async Task<Ok<List<CompositeConfigurationSummaryDto>>> GetCompositeConfigurations(
+    private static async Task<Ok<List<CompositeConfigurationSummary>>> GetCompositeConfigurations(
         ICompositeConfigurationService compositeService)
     {
         var result = await compositeService.GetCompositeConfigurationsAsync();
         return TypedResults.Ok(result);
     }
 
-    private static async Task<Results<Created<CompositeConfigurationDetailsDto>, BadRequest<ErrorResponse>, Conflict<ErrorResponse>>> CreateCompositeConfiguration(
+    private static async Task<Results<Created<CompositeConfigurationDetails>, BadRequest<ErrorResponse>, Conflict<ErrorResponse>>> CreateCompositeConfiguration(
         CreateCompositeConfigurationRequest request,
         ICompositeConfigurationService compositeService)
     {
@@ -106,7 +109,7 @@ public static class CompositeConfigurationEndpoints
         }
     }
 
-    private static async Task<Results<Ok<CompositeConfigurationDetailsDto>, NotFound, ForbidHttpResult>> GetCompositeConfigurationDetails(
+    private static async Task<Results<Ok<CompositeConfigurationDetails>, NotFound, ForbidHttpResult>> GetCompositeConfigurationDetails(
         string name,
         ICompositeConfigurationService compositeService)
     {
@@ -149,7 +152,7 @@ public static class CompositeConfigurationEndpoints
         }
     }
 
-    private static async Task<Results<Created<CompositeConfigurationVersionDto>, NotFound, BadRequest<ErrorResponse>, Conflict<ErrorResponse>, ForbidHttpResult>> CreateCompositeConfigurationVersion(
+    private static async Task<Results<Created<CompositeConfigurationVersionDetails>, NotFound, BadRequest<ErrorResponse>, Conflict<ErrorResponse>, ForbidHttpResult>> CreateCompositeConfigurationVersion(
         string name,
         CreateCompositeConfigurationVersionRequest request,
         ICompositeConfigurationService compositeService)
@@ -178,7 +181,7 @@ public static class CompositeConfigurationEndpoints
         }
     }
 
-    private static async Task<Results<Ok<List<CompositeConfigurationVersionDto>>, NotFound, ForbidHttpResult>> GetCompositeConfigurationVersions(
+    private static async Task<Results<Ok<List<CompositeConfigurationVersionDetails>>, NotFound, ForbidHttpResult>> GetCompositeConfigurationVersions(
         string name,
         ICompositeConfigurationService compositeService)
     {
@@ -198,7 +201,7 @@ public static class CompositeConfigurationEndpoints
         }
     }
 
-    private static async Task<Results<Ok<CompositeConfigurationVersionDto>, NotFound, ForbidHttpResult>> GetCompositeConfigurationVersionDetails(
+    private static async Task<Results<Ok<CompositeConfigurationVersionDetails>, NotFound, ForbidHttpResult>> GetCompositeConfigurationVersionDetails(
         string name,
         string version,
         ICompositeConfigurationService compositeService)
@@ -267,7 +270,7 @@ public static class CompositeConfigurationEndpoints
         }
     }
 
-    private static async Task<Results<Created<CompositeConfigurationItemDto>, NotFound, BadRequest<ErrorResponse>, Conflict<ErrorResponse>, ForbidHttpResult>> AddChildConfiguration(
+    private static async Task<Results<Created<CompositeConfigurationItemDetails>, NotFound, BadRequest<ErrorResponse>, Conflict<ErrorResponse>, ForbidHttpResult>> AddChildConfiguration(
         string name,
         string version,
         AddChildConfigurationRequest request,
@@ -297,7 +300,7 @@ public static class CompositeConfigurationEndpoints
         }
     }
 
-    private static async Task<Results<Ok<CompositeConfigurationItemDto>, NotFound, BadRequest<ErrorResponse>, ForbidHttpResult>> UpdateChildConfiguration(
+    private static async Task<Results<Ok<CompositeConfigurationItemDetails>, NotFound, BadRequest<ErrorResponse>, ForbidHttpResult>> UpdateChildConfiguration(
         string name,
         string version,
         Guid childId,
@@ -348,7 +351,7 @@ public static class CompositeConfigurationEndpoints
         }
     }
 
-    private static async Task<Results<Ok<List<PermissionEntryDto>>, NotFound, ForbidHttpResult>> GetCompositeConfigurationPermissions(
+    private static async Task<Results<Ok<List<PermissionEntry>>, NotFound, ForbidHttpResult>> GetCompositeConfigurationPermissions(
         string name,
         ICompositeConfigurationService compositeService)
     {
@@ -370,7 +373,7 @@ public static class CompositeConfigurationEndpoints
 
     private static async Task<Results<Ok, BadRequest<string>, NotFound, ForbidHttpResult>> GrantCompositeConfigurationPermission(
         string name,
-        [FromBody] PermissionGrantRequest request,
+        [FromBody] GrantPermissionRequest request,
         ICompositeConfigurationService compositeService)
     {
         try

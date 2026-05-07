@@ -4,7 +4,7 @@
 
 using System.Text.Json.Serialization;
 
-namespace OpenDsc.Server.Contracts;
+namespace OpenDsc.Contracts.Lcm;
 
 /// <summary>
 /// Request to create or update a configuration.

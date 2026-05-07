@@ -2,6 +2,7 @@
    You may use, distribute and modify this code under the
    terms of the MIT license. *@
 
+@using OpenDsc.Contracts.Permissions
 @inject ServerDbContext Db
 
 <MudDialog>
@@ -121,7 +122,7 @@
             return;
         }
 
-        MudDialog.Close(DialogResult.Ok(new PermissionGrantRequest
+        MudDialog.Close(DialogResult.Ok(new GrantPermissionRequest
         {
             PrincipalType = type,
             PrincipalId = principalId!.Value,

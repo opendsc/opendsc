@@ -4,9 +4,12 @@
 
 using System.Text.Json.Serialization;
 
-using OpenDsc.Lcm.Contracts;
+using OpenDsc.Contracts.CompositeConfigurations;
+using OpenDsc.Contracts.Lcm;
+using OpenDsc.Contracts.Nodes;
+using OpenDsc.Contracts.Reports;
+using OpenDsc.Contracts.Settings;
 using OpenDsc.Schema;
-using OpenDsc.Server.Contracts;
 using OpenDsc.Server.Endpoints;
 using OpenDsc.Server.Entities;
 using OpenDsc.Server.Services;
@@ -50,13 +53,13 @@ namespace OpenDsc.Server;
 [JsonSerializable(typeof(CreateCompositeConfigurationVersionRequest))]
 [JsonSerializable(typeof(AddChildConfigurationRequest))]
 [JsonSerializable(typeof(UpdateChildConfigurationRequest))]
-[JsonSerializable(typeof(CompositeConfigurationSummaryDto))]
-[JsonSerializable(typeof(List<CompositeConfigurationSummaryDto>))]
-[JsonSerializable(typeof(CompositeConfigurationDetailsDto))]
-[JsonSerializable(typeof(CompositeConfigurationVersionDto))]
-[JsonSerializable(typeof(List<CompositeConfigurationVersionDto>))]
-[JsonSerializable(typeof(CompositeConfigurationItemDto))]
-[JsonSerializable(typeof(List<CompositeConfigurationItemDto>))]
+[JsonSerializable(typeof(CompositeConfigurationSummary))]
+[JsonSerializable(typeof(List<CompositeConfigurationSummary>))]
+[JsonSerializable(typeof(CompositeConfigurationDetails))]
+[JsonSerializable(typeof(CompositeConfigurationVersionDetails))]
+[JsonSerializable(typeof(List<CompositeConfigurationVersionDetails>))]
+[JsonSerializable(typeof(CompositeConfigurationItemDetails))]
+[JsonSerializable(typeof(List<CompositeConfigurationItemDetails>))]
 // Report contracts
 [JsonSerializable(typeof(SubmitReportRequest))]
 [JsonSerializable(typeof(ReportSummary))]

@@ -6,7 +6,7 @@ using System.Text.Json.Serialization;
 
 using OpenDsc.Schema;
 
-namespace OpenDsc.Server.Contracts;
+namespace OpenDsc.Contracts.Reports;
 
 /// <summary>
 /// Request to submit a compliance report.

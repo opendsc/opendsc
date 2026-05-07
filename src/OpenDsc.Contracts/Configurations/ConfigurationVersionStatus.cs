@@ -4,7 +4,7 @@
 
 using System.Text.Json.Serialization;
 
-namespace OpenDsc.Server.Entities;
+namespace OpenDsc.Contracts.Configurations;
 
 [JsonConverter(typeof(JsonStringEnumConverter<ConfigurationVersionStatus>))]
 public enum ConfigurationVersionStatus

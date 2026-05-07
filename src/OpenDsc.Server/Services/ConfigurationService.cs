@@ -12,9 +12,10 @@ using Microsoft.Extensions.Options;
 using NuGet.Versioning;
 
 using OpenDsc.Server.Authorization;
-using OpenDsc.Server.Contracts;
+using OpenDsc.Contracts.Permissions;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
+using OpenDsc.Contracts.Configurations;
 
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
@@ -46,7 +47,7 @@ public interface IConfigurationService
     Task SaveRetentionSettingsAsync(string configName, bool? enabled, int? keepVersions, int? keepDays, bool? keepReleaseVersions);
     Task ResetRetentionSettingsAsync(string configName);
     Task<ConfigurationDetailsDto> UpdateConfigurationAsync(string name, string? description, bool? useServerManagedParameters);
-    Task<List<PermissionEntryDto>?> GetPermissionsAsync(string configName);
+    Task<List<PermissionEntry>?> GetPermissionsAsync(string configName);
     Task GrantPermissionAsync(string configName, Guid principalId, string principalType, string level);
     Task RevokePermissionAsync(string configName, Guid principalId, string principalType);
     Task<Guid?> GetParameterSchemaIdAsync(string configName);
@@ -1512,7 +1513,7 @@ public sealed partial class ConfigurationService : IConfigurationService
             .ToList();
     }
 
-    public async Task<List<PermissionEntryDto>?> GetPermissionsAsync(string configName)
+    public async Task<List<PermissionEntry>?> GetPermissionsAsync(string configName)
     {
         var config = await _db.Configurations.FirstOrDefaultAsync(c => c.Name == configName);
         if (config is null)
@@ -1583,7 +1584,7 @@ public sealed partial class ConfigurationService : IConfigurationService
         await _authService.RevokeConfigurationPermissionAsync(config.Id, principalId, parsedPrincipalType);
     }
 
-    private async Task<List<PermissionEntryDto>> BuildPermissionEntriesAsync(
+    private async Task<List<PermissionEntry>> BuildPermissionEntriesAsync(
         IEnumerable<(PrincipalType PrincipalType, Guid PrincipalId, ResourcePermission Level, DateTimeOffset GrantedAt, Guid? GrantedByUserId)> entries)
     {
         var list = entries.ToList();
@@ -1598,7 +1599,7 @@ public sealed partial class ConfigurationService : IConfigurationService
             .Where(g => groupIds.Contains(g.Id))
             .ToDictionaryAsync(g => g.Id, g => g.Name);
 
-        return list.Select(e => new PermissionEntryDto
+        return list.Select(e => new PermissionEntry
         {
             PrincipalType = e.PrincipalType.ToString(),
             PrincipalId = e.PrincipalId,

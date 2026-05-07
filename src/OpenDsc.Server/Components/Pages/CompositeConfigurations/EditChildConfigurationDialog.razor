@@ -1,3 +1,5 @@
+@using OpenDsc.Contracts.CompositeConfigurations
+@using ICompositeConfigurationService = OpenDsc.Server.Services.ICompositeConfigurationService
 @using NuGet.Versioning
 @using OpenDsc.Server.Services
 @inject ICompositeConfigurationService CompositeConfigService
@@ -50,7 +52,7 @@
     public string VersionString { get; set; } = string.Empty;
 
     [Parameter]
-    public CompositeConfigurationItemDto Item { get; set; } = default!;
+    public CompositeConfigurationItemDetails Item { get; set; } = default!;
 
     [CascadingParameter]
     private IMudDialogInstance MudDialog { get; set; } = default!;

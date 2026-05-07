@@ -7,7 +7,9 @@ using Microsoft.EntityFrameworkCore;
 using NuGet.Versioning;
 
 using OpenDsc.Server.Authorization;
-using OpenDsc.Server.Contracts;
+using OpenDsc.Contracts.CompositeConfigurations;
+using OpenDsc.Contracts.Permissions;
+using OpenDsc.Contracts.Configurations;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
 
@@ -15,34 +17,27 @@ namespace OpenDsc.Server.Services;
 
 public interface ICompositeConfigurationService
 {
-    Task<List<CompositeConfigurationSummaryDto>> GetCompositeConfigurationsAsync();
-    Task<CompositeConfigurationDetailsDto?> GetCompositeConfigurationAsync(string name);
-    Task<List<CompositeConfigurationVersionDto>?> GetVersionsAsync(string name);
-    Task<CompositeConfigurationVersionDto?> GetVersionAsync(string name, string version);
-    Task<List<ChildConfigurationOptionDto>> GetAvailableChildConfigurationsAsync(IEnumerable<Guid> excludeIds);
+    Task<List<CompositeConfigurationSummary>> GetCompositeConfigurationsAsync();
+    Task<CompositeConfigurationDetails?> GetCompositeConfigurationAsync(string name);
+    Task<List<CompositeConfigurationVersionDetails>?> GetVersionsAsync(string name);
+    Task<CompositeConfigurationVersionDetails?> GetVersionAsync(string name, string version);
+    Task<List<ChildConfigurationOption>> GetAvailableChildConfigurationsAsync(IEnumerable<Guid> excludeIds);
     Task<List<int>> GetAvailableMajorVersionsAsync(Guid configurationId);
-    Task<CompositeConfigurationDetailsDto> CreateCompositeConfigurationAsync(string name, string? description);
-    Task<CompositeConfigurationVersionDto> CreateVersionAsync(string name, string version);
+    Task<CompositeConfigurationDetails> CreateCompositeConfigurationAsync(string name, string? description);
+    Task<CompositeConfigurationVersionDetails> CreateVersionAsync(string name, string version);
     Task CreateVersionFromExistingAsync(string name, string sourceVersion, string newVersion);
     Task PublishVersionAsync(string name, string version);
     Task DeleteCompositeConfigurationAsync(Guid compositeId);
     Task DeleteCompositeConfigurationByNameAsync(string name);
     Task DeleteVersionAsync(string name, string version);
-    Task<CompositeConfigurationItemDto> AddChildAsync(string name, string version, Guid childConfigId, int? majorVersion, int order);
-    Task<CompositeConfigurationItemDto> AddChildByNameAsync(string name, string version, string childConfigurationName, int majorVersion, int order);
-    Task<CompositeConfigurationItemDto> UpdateChildAsync(Guid itemId, int? majorVersion, int order);
+    Task<CompositeConfigurationItemDetails> AddChildAsync(string name, string version, Guid childConfigId, int? majorVersion, int order);
+    Task<CompositeConfigurationItemDetails> AddChildByNameAsync(string name, string version, string childConfigurationName, int majorVersion, int order);
+    Task<CompositeConfigurationItemDetails> UpdateChildAsync(Guid itemId, int? majorVersion, int order);
     Task RemoveChildAsync(Guid itemId);
     Task ReorderChildAsync(Guid itemId, int newOrder);
-    Task<List<PermissionEntryDto>?> GetPermissionsAsync(string compositeName);
+    Task<List<PermissionEntry>?> GetPermissionsAsync(string compositeName);
     Task GrantPermissionAsync(string compositeName, Guid principalId, string principalType, string level);
     Task RevokePermissionAsync(string compositeName, Guid principalId, string principalType);
-}
-
-public sealed class ChildConfigurationOptionDto
-{
-    public Guid Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public List<int> AvailableMajorVersions { get; set; } = [];
 }
 
 public sealed class CompositeConfigurationService : ICompositeConfigurationService
@@ -61,7 +56,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
         _userContext = userContext;
     }
 
-    public async Task<List<CompositeConfigurationSummaryDto>> GetCompositeConfigurationsAsync()
+    public async Task<List<CompositeConfigurationSummary>> GetCompositeConfigurationsAsync()
     {
         var userId = _userContext.GetCurrentUserId();
         if (userId == null)
@@ -76,7 +71,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
             .Include(c => c.Versions)
             .ToListAsync();
 
-        return composites.Select(c => new CompositeConfigurationSummaryDto
+        return composites.Select(c => new CompositeConfigurationSummary
         {
             Id = c.Id,
             Name = c.Name,
@@ -90,7 +85,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
         }).ToList();
     }
 
-    public async Task<CompositeConfigurationDetailsDto?> GetCompositeConfigurationAsync(string name)
+    public async Task<CompositeConfigurationDetails?> GetCompositeConfigurationAsync(string name)
     {
         var composite = await _db.CompositeConfigurations
             .Include(c => c.Versions)
@@ -107,7 +102,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
         return MapToDetailsDto(composite);
     }
 
-    public async Task<List<CompositeConfigurationVersionDto>?> GetVersionsAsync(string name)
+    public async Task<List<CompositeConfigurationVersionDetails>?> GetVersionsAsync(string name)
     {
         var composite = await _db.CompositeConfigurations
             .Include(c => c.Versions)
@@ -126,7 +121,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
             .ToList();
     }
 
-    public async Task<CompositeConfigurationVersionDto?> GetVersionAsync(string name, string version)
+    public async Task<CompositeConfigurationVersionDetails?> GetVersionAsync(string name, string version)
     {
         var compositeVersion = await _db.CompositeConfigurationVersions
             .Include(v => v.CompositeConfiguration)
@@ -142,7 +137,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
         return MapToVersionDto(compositeVersion);
     }
 
-    public async Task<List<ChildConfigurationOptionDto>> GetAvailableChildConfigurationsAsync(IEnumerable<Guid> excludeIds)
+    public async Task<List<ChildConfigurationOption>> GetAvailableChildConfigurationsAsync(IEnumerable<Guid> excludeIds)
     {
         var excludeList = excludeIds.ToList();
 
@@ -152,7 +147,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
             .OrderBy(c => c.Name)
             .ToListAsync();
 
-        return configs.Select(c => new ChildConfigurationOptionDto
+        return configs.Select(c => new ChildConfigurationOption
         {
             Id = c.Id,
             Name = c.Name,
@@ -180,7 +175,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
             .ToList();
     }
 
-    public async Task<CompositeConfigurationDetailsDto> CreateCompositeConfigurationAsync(
+    public async Task<CompositeConfigurationDetails> CreateCompositeConfigurationAsync(
         string name,
         string? description)
     {
@@ -217,7 +212,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
                 userId.Value);
         }
 
-        return new CompositeConfigurationDetailsDto
+        return new CompositeConfigurationDetails
         {
             Id = composite.Id,
             Name = composite.Name,
@@ -229,7 +224,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
         };
     }
 
-    public async Task<CompositeConfigurationVersionDto> CreateVersionAsync(
+    public async Task<CompositeConfigurationVersionDetails> CreateVersionAsync(
         string name,
         string version)
     {
@@ -261,7 +256,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
         composite.UpdatedAt = DateTimeOffset.UtcNow;
         await _db.SaveChangesAsync();
 
-        return new CompositeConfigurationVersionDto
+        return new CompositeConfigurationVersionDetails
         {
             Id = newVersion.Id,
             Version = newVersion.Version,
@@ -387,7 +382,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
         await _db.SaveChangesAsync();
     }
 
-    public async Task<CompositeConfigurationItemDto> AddChildAsync(
+    public async Task<CompositeConfigurationItemDetails> AddChildAsync(
         string name,
         string version,
         Guid childConfigId,
@@ -432,7 +427,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
 
         await _db.SaveChangesAsync();
 
-        return new CompositeConfigurationItemDto
+        return new CompositeConfigurationItemDetails
         {
             Id = item.Id,
             ChildConfigurationId = item.ChildConfigurationId,
@@ -442,7 +437,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
         };
     }
 
-    public async Task<CompositeConfigurationItemDto> UpdateChildAsync(
+    public async Task<CompositeConfigurationItemDetails> UpdateChildAsync(
         Guid itemId,
         int? majorVersion,
         int order)
@@ -465,7 +460,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
 
         await _db.SaveChangesAsync();
 
-        return new CompositeConfigurationItemDto
+        return new CompositeConfigurationItemDetails
         {
             Id = item.Id,
             ChildConfigurationId = item.ChildConfigurationId,
@@ -534,7 +529,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
         await _db.SaveChangesAsync();
     }
 
-    public async Task<CompositeConfigurationItemDto> AddChildByNameAsync(
+    public async Task<CompositeConfigurationItemDetails> AddChildByNameAsync(
         string name,
         string version,
         string childConfigurationName,
@@ -600,7 +595,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
         compositeVersion.CompositeConfiguration.UpdatedAt = DateTimeOffset.UtcNow;
         await _db.SaveChangesAsync();
 
-        return new CompositeConfigurationItemDto
+        return new CompositeConfigurationItemDetails
         {
             Id = item.Id,
             ChildConfigurationId = item.ChildConfigurationId,
@@ -610,7 +605,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
         };
     }
 
-    public async Task<List<PermissionEntryDto>?> GetPermissionsAsync(string compositeName)
+    public async Task<List<PermissionEntry>?> GetPermissionsAsync(string compositeName)
     {
         var composite = await _db.CompositeConfigurations.FirstOrDefaultAsync(c => c.Name == compositeName);
         if (composite is null)
@@ -681,7 +676,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
         await _authService.RevokeCompositeConfigurationPermissionAsync(composite.Id, principalId, parsedPrincipalType);
     }
 
-    private async Task<List<PermissionEntryDto>> BuildPermissionEntriesAsync(
+    private async Task<List<PermissionEntry>> BuildPermissionEntriesAsync(
         IEnumerable<(PrincipalType PrincipalType, Guid PrincipalId, ResourcePermission Level, DateTimeOffset GrantedAt, Guid? GrantedByUserId)> entries)
     {
         var list = entries.ToList();
@@ -696,7 +691,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
             .Where(g => groupIds.Contains(g.Id))
             .ToDictionaryAsync(g => g.Id, g => g.Name);
 
-        return list.Select(e => new PermissionEntryDto
+        return list.Select(e => new PermissionEntry
         {
             PrincipalType = e.PrincipalType.ToString(),
             PrincipalId = e.PrincipalId,
@@ -709,7 +704,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
         }).ToList();
     }
 
-    private static CompositeConfigurationDetailsDto MapToDetailsDto(CompositeConfiguration composite) =>
+    private static CompositeConfigurationDetails MapToDetailsDto(CompositeConfiguration composite) =>
         new()
         {
             Id = composite.Id,
@@ -724,7 +719,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
             UpdatedAt = composite.UpdatedAt
         };
 
-    private static CompositeConfigurationVersionDto MapToVersionDto(CompositeConfigurationVersion v) =>
+    private static CompositeConfigurationVersionDetails MapToVersionDto(CompositeConfigurationVersion v) =>
         new()
         {
             Id = v.Id,
@@ -733,7 +728,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
             PrereleaseChannel = v.PrereleaseChannel,
             Items = v.Items
                 .OrderBy(i => i.Order)
-                .Select(i => new CompositeConfigurationItemDto
+                .Select(i => new CompositeConfigurationItemDetails
                 {
                     Id = i.Id,
                     ChildConfigurationId = i.ChildConfigurationId,

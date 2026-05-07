@@ -9,10 +9,12 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
-using OpenDsc.Lcm.Contracts;
+using OpenDsc.Contracts.Configurations;
+using OpenDsc.Contracts.Lcm;
 using OpenDsc.Server.Authentication;
 using OpenDsc.Server.Authorization;
-using OpenDsc.Server.Contracts;
+using OpenDsc.Contracts.Nodes;
+using OpenDsc.Contracts.Settings;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
 using OpenDsc.Server.Services;

@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 using OpenDsc.Server.Authorization;
-using OpenDsc.Server.Contracts;
+using OpenDsc.Contracts.Settings;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
 using OpenDsc.Server.Services;

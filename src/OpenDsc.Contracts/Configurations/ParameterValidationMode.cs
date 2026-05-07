@@ -2,7 +2,7 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
-namespace OpenDsc.Server.Entities;
+namespace OpenDsc.Contracts.Configurations;
 
 public enum ParameterValidationMode
 {

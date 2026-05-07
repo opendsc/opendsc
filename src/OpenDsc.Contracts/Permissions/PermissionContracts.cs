@@ -4,12 +4,12 @@
 
 using System.Text.Json.Serialization;
 
-namespace OpenDsc.Server.Contracts;
+namespace OpenDsc.Contracts.Permissions;
 
 /// <summary>
 /// Request to grant or update a permission on a resource.
 /// </summary>
-public sealed class PermissionGrantRequest
+public sealed class GrantPermissionRequest
 {
     /// <summary>
     /// The type of principal. Must be "User" or "Group".
@@ -33,7 +33,7 @@ public sealed class PermissionGrantRequest
 /// <summary>
 /// A single ACL entry on a resource.
 /// </summary>
-public sealed class PermissionEntryDto
+public sealed class PermissionEntry
 {
     /// <summary>
     /// The type of principal ("User" or "Group").
@@ -64,4 +64,22 @@ public sealed class PermissionEntryDto
     /// The ID of the user who granted this permission, if available.
     /// </summary>
     public Guid? GrantedByUserId { get; set; }
+}
+
+/// <summary>
+/// Request to revoke a permission from a principal on a resource.
+/// </summary>
+public sealed class RevokePermissionRequest
+{
+    /// <summary>
+    /// The unique identifier of the user or group.
+    /// </summary>
+    [JsonRequired]
+    public Guid PrincipalId { get; set; }
+
+    /// <summary>
+    /// The type of principal. Must be "User" or "Group".
+    /// </summary>
+    [JsonRequired]
+    public string PrincipalType { get; set; } = string.Empty;
 }

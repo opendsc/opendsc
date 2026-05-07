@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 using OpenDsc.Server.Authorization;
 using OpenDsc.Server.Entities;
+using OpenDsc.Contracts.Configurations;
 using OpenDsc.Server.Services;
 
 namespace OpenDsc.Server.Endpoints;

@@ -12,7 +12,7 @@ using Microsoft.Extensions.Options;
 
 using Moq;
 
-using OpenDsc.Lcm.Contracts;
+using OpenDsc.Contracts.Lcm;
 
 using Xunit;
 

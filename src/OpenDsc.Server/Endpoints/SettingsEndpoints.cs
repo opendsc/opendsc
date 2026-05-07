@@ -4,9 +4,9 @@
 
 using Microsoft.AspNetCore.Http.HttpResults;
 
-using OpenDsc.Lcm.Contracts;
+using OpenDsc.Contracts.Lcm;
+using OpenDsc.Contracts.Settings;
 using OpenDsc.Server.Authorization;
-using OpenDsc.Server.Contracts;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
 using OpenDsc.Server.Services;

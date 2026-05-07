@@ -9,7 +9,11 @@ using AwesomeAssertions;
 
 using Microsoft.EntityFrameworkCore;
 
-using OpenDsc.Server.Contracts;
+using OpenDsc.Contracts.Nodes;
+using OpenDsc.Contracts.CompositeConfigurations;
+using OpenDsc.Contracts.Reports;
+using OpenDsc.Contracts.Settings;
+using OpenDsc.Contracts.Permissions;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
 

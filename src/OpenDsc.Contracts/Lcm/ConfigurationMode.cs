@@ -4,7 +4,7 @@
 
 using System.Text.Json.Serialization;
 
-namespace OpenDsc.Lcm.Contracts;
+namespace OpenDsc.Contracts.Lcm;
 
 /// <summary>
 /// LCM service operating modes.

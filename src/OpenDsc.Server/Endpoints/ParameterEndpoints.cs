@@ -16,7 +16,7 @@ using NuGet.Versioning;
 
 using OpenDsc.Server.Authentication;
 using OpenDsc.Server.Authorization;
-using OpenDsc.Server.Contracts;
+using OpenDsc.Contracts.Permissions;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
 using OpenDsc.Server.Services;
@@ -1301,7 +1301,7 @@ public static class ParameterEndpoints
         return TypedResults.Ok();
     }
 
-    private static async Task<Results<Ok<List<PermissionEntryDto>>, NotFound, ForbidHttpResult>> GetParameterPermissions(
+    private static async Task<Results<Ok<List<PermissionEntry>>, NotFound, ForbidHttpResult>> GetParameterPermissions(
         string configurationName,
         ServerDbContext db,
         IResourceAuthorizationService authService,
@@ -1332,7 +1332,7 @@ public static class ParameterEndpoints
 
     private static async Task<Results<Ok, BadRequest<string>, NotFound, ForbidHttpResult>> GrantParameterPermission(
         string configurationName,
-        [FromBody] PermissionGrantRequest request,
+        [FromBody] GrantPermissionRequest request,
         ServerDbContext db,
         IResourceAuthorizationService authService,
         IUserContextService userContext)
@@ -1416,7 +1416,7 @@ public static class ParameterEndpoints
         return TypedResults.NoContent();
     }
 
-    private static async Task<List<PermissionEntryDto>> BuildPermissionEntries(
+    private static async Task<List<PermissionEntry>> BuildPermissionEntries(
         IEnumerable<(PrincipalType PrincipalType, Guid PrincipalId, ResourcePermission Level, DateTimeOffset GrantedAt, Guid? GrantedByUserId)> entries,
         ServerDbContext db)
     {
@@ -1432,7 +1432,7 @@ public static class ParameterEndpoints
             .Where(g => groupIds.Contains(g.Id))
             .ToDictionaryAsync(g => g.Id, g => g.Name);
 
-        return list.Select(e => new PermissionEntryDto
+        return list.Select(e => new PermissionEntry
         {
             PrincipalType = e.PrincipalType.ToString(),
             PrincipalId = e.PrincipalId,

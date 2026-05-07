@@ -6,8 +6,12 @@ using System.Net;
 
 using AwesomeAssertions;
 
-using OpenDsc.Lcm.Contracts;
-using OpenDsc.Server.Contracts;
+using OpenDsc.Contracts.Lcm;
+using OpenDsc.Contracts.Nodes;
+using OpenDsc.Contracts.CompositeConfigurations;
+using OpenDsc.Contracts.Reports;
+using OpenDsc.Contracts.Settings;
+using OpenDsc.Contracts.Permissions;
 using OpenDsc.Server.FunctionalTests.DatabaseProviders;
 
 using Xunit;

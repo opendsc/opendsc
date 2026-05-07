@@ -1,3 +1,5 @@
+@using OpenDsc.Contracts.CompositeConfigurations
+@using ICompositeConfigurationService = OpenDsc.Server.Services.ICompositeConfigurationService
 @using NuGet.Versioning
 @using OpenDsc.Server.Services
 @inject ICompositeConfigurationService CompositeConfigService
@@ -69,7 +71,7 @@
     [CascadingParameter]
     private IMudDialogInstance MudDialog { get; set; } = default!;
 
-    private List<ChildConfigurationOptionDto> availableConfigurations = [];
+    private List<ChildConfigurationOption> availableConfigurations = [];
     private List<int> availableMajorVersions = [];
     private Guid? selectedConfigId;
     private int? selectedMajorVersion;

@@ -4,7 +4,7 @@
 
 using System.ComponentModel.DataAnnotations;
 
-using OpenDsc.Lcm.Contracts;
+using OpenDsc.Contracts.Lcm;
 
 namespace OpenDsc.Lcm;
 

@@ -4,7 +4,7 @@
 
 using AwesomeAssertions;
 
-using OpenDsc.Lcm.Contracts;
+using OpenDsc.Contracts.Lcm;
 
 using Xunit;
 

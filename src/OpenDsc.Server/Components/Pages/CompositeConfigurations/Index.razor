@@ -1,3 +1,5 @@
+@using OpenDsc.Contracts.CompositeConfigurations
+@using ICompositeConfigurationService = OpenDsc.Server.Services.ICompositeConfigurationService
 @page "/composite-configurations"
 @attribute [Authorize]
 @using OpenDsc.Server.Services
@@ -48,7 +50,7 @@
         }
         else
         {
-                    <MudDataGrid T="CompositeConfigurationSummaryDto" Items="@filteredComposites" Hover="true" Dense="true">
+                    <MudDataGrid T="CompositeConfigurationSummary" Items="@filteredComposites" Hover="true" Dense="true">
                 <Columns>
                     <PropertyColumn Property="x => x.Name" Title="Name" />
                     <TemplateColumn Title="Status" Sortable="false">
@@ -103,8 +105,8 @@
 </MudCard>
 
 @code {
-    private List<CompositeConfigurationSummaryDto> composites = [];
-    private List<CompositeConfigurationSummaryDto> filteredComposites = [];
+    private List<CompositeConfigurationSummary> composites = [];
+    private List<CompositeConfigurationSummary> filteredComposites = [];
     private bool isLoading = true;
 
     private string _searchText = string.Empty;
@@ -204,7 +206,7 @@
         filteredComposites = ApplySort(filtered).ToList();
     }
 
-    private IEnumerable<CompositeConfigurationSummaryDto> ApplySort(IEnumerable<CompositeConfigurationSummaryDto> items)
+    private IEnumerable<CompositeConfigurationSummary> ApplySort(IEnumerable<CompositeConfigurationSummary> items)
     {
         return _sortBy switch
         {
@@ -217,7 +219,7 @@
         };
     }
 
-    private async Task DeleteComposite(CompositeConfigurationSummaryDto composite)
+    private async Task DeleteComposite(CompositeConfigurationSummary composite)
     {
         var confirmed = await DialogService.ShowMessageBox(
             "Delete Composite Configuration",

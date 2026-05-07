@@ -4,9 +4,9 @@
 
 using System.Text.Json.Serialization;
 
-using OpenDsc.Server.Entities;
+using OpenDsc.Contracts.Configurations;
 
-namespace OpenDsc.Server.Contracts;
+namespace OpenDsc.Contracts.CompositeConfigurations;
 
 /// <summary>
 /// Request to create a composite configuration.
@@ -93,7 +93,7 @@ public sealed class UpdateChildConfigurationRequest
 /// <summary>
 /// Summary information about a composite configuration.
 /// </summary>
-public sealed class CompositeConfigurationSummaryDto
+public sealed class CompositeConfigurationSummary
 {
     /// <summary>
     /// The composite configuration's unique identifier.
@@ -144,7 +144,7 @@ public sealed class CompositeConfigurationSummaryDto
 /// <summary>
 /// Full details about a composite configuration.
 /// </summary>
-public sealed class CompositeConfigurationDetailsDto
+public sealed class CompositeConfigurationDetails
 {
     /// <summary>
     /// The composite configuration's unique identifier.
@@ -169,7 +169,7 @@ public sealed class CompositeConfigurationDetailsDto
     /// <summary>
     /// All versions of this composite configuration.
     /// </summary>
-    public List<CompositeConfigurationVersionDto> Versions { get; set; } = [];
+    public List<CompositeConfigurationVersionDetails> Versions { get; set; } = [];
 
     /// <summary>
     /// When the composite configuration was created.
@@ -185,7 +185,7 @@ public sealed class CompositeConfigurationDetailsDto
 /// <summary>
 /// Information about a composite configuration version.
 /// </summary>
-public sealed class CompositeConfigurationVersionDto
+public sealed class CompositeConfigurationVersionDetails
 {
     /// <summary>
     /// The version's unique identifier.
@@ -210,7 +210,7 @@ public sealed class CompositeConfigurationVersionDto
     /// <summary>
     /// Child configurations in this version.
     /// </summary>
-    public List<CompositeConfigurationItemDto> Items { get; set; } = [];
+    public List<CompositeConfigurationItemDetails> Items { get; set; } = [];
 
     /// <summary>
     /// When the version was created.
@@ -226,7 +226,7 @@ public sealed class CompositeConfigurationVersionDto
 /// <summary>
 /// Information about a child configuration within a composite.
 /// </summary>
-public sealed class CompositeConfigurationItemDto
+public sealed class CompositeConfigurationItemDetails
 {
     /// <summary>
     /// The item's unique identifier.
@@ -258,4 +258,14 @@ public sealed class CompositeConfigurationItemDto
     /// The order/sequence number.
     /// </summary>
     public int Order { get; set; }
+}
+
+/// <summary>
+/// An available child configuration option for composite configuration building.
+/// </summary>
+public sealed class ChildConfigurationOption
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public List<int> AvailableMajorVersions { get; set; } = [];
 }

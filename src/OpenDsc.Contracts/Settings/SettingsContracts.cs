@@ -2,9 +2,9 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
-using OpenDsc.Lcm.Contracts;
+using OpenDsc.Contracts.Lcm;
 
-namespace OpenDsc.Server.Contracts;
+namespace OpenDsc.Contracts.Settings;
 
 /// <summary>
 /// Server settings response.

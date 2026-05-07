@@ -4,9 +4,9 @@
 
 using System.Text.Json.Serialization;
 
-using OpenDsc.Lcm.Contracts;
+using OpenDsc.Contracts.Lcm;
 
-namespace OpenDsc.Server.Contracts;
+namespace OpenDsc.Contracts.Nodes;
 
 /// <summary>
 /// Summary information about a node.

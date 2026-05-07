@@ -2,6 +2,7 @@
    You may use, distribute and modify this code under the
    terms of the MIT license. *@
 
+@using OpenDsc.Contracts.Permissions
 @inject ServerDbContext Db
 @inject IResourceAuthorizationService AuthService
 @inject AuthenticationStateProvider AuthStateProvider
@@ -214,7 +215,7 @@ else
         var dialogRef = await DialogService.ShowAsync<GrantPermissionDialog>("Grant Permission", parameters);
         var dialogResult = await dialogRef.Result;
 
-        if (dialogResult is { Canceled: false, Data: PermissionGrantRequest req })
+        if (dialogResult is { Canceled: false, Data: GrantPermissionRequest req })
         {
             try
             {
@@ -266,7 +267,7 @@ else
         var dialogRef = await DialogService.ShowAsync<GrantPermissionDialog>("Edit Permission", parameters);
         var result = await dialogRef.Result;
 
-        if (result is { Canceled: false, Data: PermissionGrantRequest req })
+        if (result is { Canceled: false, Data: GrantPermissionRequest req })
         {
             try
             {

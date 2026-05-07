@@ -6,7 +6,8 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 
 using OpenDsc.Server.Authorization;
-using OpenDsc.Server.Contracts;
+using OpenDsc.Contracts.Permissions;
+using OpenDsc.Contracts.Settings;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
 using OpenDsc.Server.Infrastructure;
@@ -341,7 +342,7 @@ public static class ConfigurationEndpoints
         return TypedResults.File(stream, contentType, fileName);
     }
 
-    private static async Task<Results<Ok<List<PermissionEntryDto>>, NotFound, ForbidHttpResult>> GetConfigurationPermissions(
+    private static async Task<Results<Ok<List<PermissionEntry>>, NotFound, ForbidHttpResult>> GetConfigurationPermissions(
         string name,
         IConfigurationService configService)
     {
@@ -363,7 +364,7 @@ public static class ConfigurationEndpoints
 
     private static async Task<Results<Ok, BadRequest<string>, NotFound, ForbidHttpResult>> GrantConfigurationPermission(
         string name,
-        [FromBody] PermissionGrantRequest request,
+        [FromBody] GrantPermissionRequest request,
         IConfigurationService configService)
     {
         try
