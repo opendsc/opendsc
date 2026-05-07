@@ -13,7 +13,7 @@
 @using OpenDsc.Server.Services
 @using NuGet.Versioning
 @using static OpenDsc.Server.Endpoints.ParameterEndpoints
-@inject IParameterService ParameterApiClient
+@inject IParameterService ParameterService
 @inject ServerDbContext Db
 @inject ThemeService ThemeService
 @inject IJSRuntime JSRuntime
@@ -22,22 +22,17 @@
     <MudCardContent>
         <MudGrid Class="mb-2">
             <MudItem xs="12" sm="6">
-                <MudAutocomplete T="Node"
-                                 @bind-Value="selectedNode"
-                                 @bind-Value:after="OnNodeChanged"
-                                 Label="Node"
-                                 Variant="Variant.Outlined"
-                                 SearchFunc="SearchNodesAsync"
-                                 ToStringFunc="@(n => n?.Fqdn ?? string.Empty)"
-                                 Clearable="true"
-                                 ResetValueOnEmptyText="true"
+                <MudAutocomplete T="Node" @bind-Value="selectedNode" @bind-Value:after="OnNodeChanged" Label="Node"
+                                 Variant="Variant.Outlined" SearchFunc="SearchNodesAsync"
+                                 ToStringFunc="@(n => n?.Fqdn ?? string.Empty)" Clearable="true" ResetValueOnEmptyText="true"
                                  CoerceText="true" />
             </MudItem>
             <MudItem xs="12" sm="6" class="d-flex align-center">
                 @if (selectedNode != null && configurationName != null)
                 {
                     <div>
-                        <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary)">Configuration</MudText>
+                        <MudText Typo="Typo.caption" Style="color: var(--mud-palette-text-secondary)">Configuration
+                        </MudText>
                         <MudText Typo="Typo.body1">@configurationName</MudText>
                     </div>
                 }
@@ -50,73 +45,82 @@
                     <div class="d-flex align-center gap-2 mt-1">
                         @if (!string.IsNullOrEmpty(provenanceData.PrereleaseChannel))
                         {
-                            <MudChip T="string" Size="Size.Small" Color="Color.Warning">Channel: @provenanceData.PrereleaseChannel</MudChip>
-                        }
+                            <MudChip T="string" Size="Size.Small" Color="Color.Warning">Channel:
+                                @provenanceData.PrereleaseChannel</MudChip>
+                            }
                         else
-                        {
-                            <MudChip T="string" Size="Size.Small" Color="Color.Default">Stable only</MudChip>
-                        }
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Default">Stable only</MudChip>
+                            }
+                        </div>
+                    }
+                </MudItem>
+            </MudGrid>
+
+            @if (selectedNode == null)
+            {
+                <MudAlert Severity="Severity.Info" Variant="Variant.Text">
+                    Select a node to view parameter provenance.
+                </MudAlert>
+            }
+            else if (isLoading)
+            {
+                <MudProgressLinear Indeterminate="true" />
+            }
+            else if (provenanceData == null || provenanceData.Provenance.Count == 0)
+            {
+                <MudAlert Severity="Severity.Info" Variant="Variant.Text">
+                    No active parameters found for this node and configuration.
+                </MudAlert>
+            }
+            else
+            {
+                var overriddenCount = provenanceData.Provenance.Values.Count(p => p.OverriddenBy?.Count > 0);
+                var scopeCount = provenanceData.Provenance.Values.Select(p => GetScopeLabel(p)).Distinct().Count();
+
+                <div class="d-flex align-center gap-2 mb-3">
+                    <MudChip T="string" Size="Size.Small">@provenanceData.Provenance.Count parameters</MudChip>
+                    @if (overriddenCount > 0)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Warning">@overriddenCount overridden</MudChip>
+                    }
+                    <MudChip T="string" Size="Size.Small" Color="Color.Info">@scopeCount @(scopeCount == 1 ? "scope" : "scopes")
+                        contributing</MudChip>
                     </div>
-                }
-            </MudItem>
-        </MudGrid>
 
-        @if (selectedNode == null)
-        {
-            <MudAlert Severity="Severity.Info" Variant="Variant.Text">
-                Select a node to view parameter provenance.
-            </MudAlert>
-        }
-        else if (isLoading)
-        {
-            <MudProgressLinear Indeterminate="true" />
-        }
-        else if (provenanceData == null || provenanceData.Provenance.Count == 0)
-        {
-            <MudAlert Severity="Severity.Info" Variant="Variant.Text">
-                No active parameters found for this node and configuration.
-            </MudAlert>
-        }
-        else
-        {
-            var overriddenCount = provenanceData.Provenance.Values.Count(p => p.OverriddenBy?.Count > 0);
-            var scopeCount = provenanceData.Provenance.Values.Select(p => GetScopeLabel(p)).Distinct().Count();
+                    <div class="provenance-tree">
+                        <div
+                            style="display: grid; grid-template-columns: 1fr 220px 1fr 76px; padding: 4px 0; border-bottom: 1px solid var(--mud-palette-divider); margin-bottom: 4px;">
+                            <MudText Typo="Typo.caption"
+                                     Style="font-weight: 600; color: var(--mud-palette-text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">
+                                Parameter</MudText>
+                                <MudText Typo="Typo.caption"
+                                         Style="font-weight: 600; color: var(--mud-palette-text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">
+                                    Value</MudText>
+                                    <MudText Typo="Typo.caption"
+                                             Style="font-weight: 600; color: var(--mud-palette-text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">
+                                        Source</MudText>
+                                        <MudText Typo="Typo.caption"
+                                                 Style="font-weight: 600; color: var(--mud-palette-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; text-align: center;">
+                                            Overrides</MudText>
+                                        </div>
+                                        @foreach (var treeNode in treeRoots)
+                                        {
+                                            @RenderTreeNode(treeNode, 0)
+                                        }
+                                    </div>
 
-            <div class="d-flex align-center gap-2 mb-3">
-                <MudChip T="string" Size="Size.Small">@provenanceData.Provenance.Count parameters</MudChip>
-                @if (overriddenCount > 0)
-                {
-                    <MudChip T="string" Size="Size.Small" Color="Color.Warning">@overriddenCount overridden</MudChip>
-                }
-                <MudChip T="string" Size="Size.Small" Color="Color.Info">@scopeCount @(scopeCount == 1 ? "scope" : "scopes") contributing</MudChip>
-            </div>
-
-            <div class="provenance-tree">
-                <div style="display: grid; grid-template-columns: 1fr 220px 1fr 76px; padding: 4px 0; border-bottom: 1px solid var(--mud-palette-divider); margin-bottom: 4px;">
-                    <MudText Typo="Typo.caption" Style="font-weight: 600; color: var(--mud-palette-text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">Parameter</MudText>
-                    <MudText Typo="Typo.caption" Style="font-weight: 600; color: var(--mud-palette-text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">Value</MudText>
-                    <MudText Typo="Typo.caption" Style="font-weight: 600; color: var(--mud-palette-text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">Source</MudText>
-                    <MudText Typo="Typo.caption" Style="font-weight: 600; color: var(--mud-palette-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; text-align: center;">Overrides</MudText>
-                </div>
-                @foreach (var treeNode in treeRoots)
-                {
-                    @RenderTreeNode(treeNode, 0)
-                }
-            </div>
-
-            <MudExpansionPanels Class="mt-4" Elevation="0">
-                <MudExpansionPanel Text="Merged Output (YAML)" Dense="true">
-                    <div style="height: 400px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
-                        <StandaloneCodeEditor @ref="_mergedEditor"
-                                              Id="provenance-merged-editor"
-                                              ConstructionOptions="GetMergedEditorOptions"
-                                              CssClass="monaco-editor-container" />
-                    </div>
-                </MudExpansionPanel>
-            </MudExpansionPanels>
-        }
-    </MudCardContent>
-</MudCard>
+                                    <MudExpansionPanels Class="mt-4" Elevation="0">
+                                        <MudExpansionPanel Text="Merged Output (YAML)" Dense="true">
+                                            <div style="height: 400px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
+                                                <StandaloneCodeEditor @ref="_mergedEditor" Id="provenance-merged-editor"
+                                                                      ConstructionOptions="GetMergedEditorOptions" CssClass="monaco-editor-container" />
+                                            </div>
+                                        </MudExpansionPanel>
+                                    </MudExpansionPanels>
+                                }
+                            </MudCardContent>
+                        </MudCard>
 
 @code {
     private List<Node> nodes = [];
@@ -174,7 +178,7 @@
         selectedConfigurationId = nodeConfig.ConfigurationId;
         configurationName = nodeConfig.Configuration?.Name;
 
-        provenanceData = await ParameterApiClient.GetNodeParameterProvenanceAsync(
+        provenanceData = await ParameterService.GetNodeParameterProvenanceAsync(
             selectedNode.Id, selectedConfigurationId.Value);
 
         if (provenanceData != null)
@@ -270,11 +274,10 @@
 
         if (!node.IsLeaf)
         {
-            <div style="@rowGrid cursor-pointer; border-radius: 4px;"
-                 @onclick="() => node.IsExpanded = !node.IsExpanded">
+            <div style="@rowGrid cursor-pointer; border-radius: 4px;" @onclick="() => node.IsExpanded = !node.IsExpanded">
                 <div class="d-flex align-center py-1">
                     <span style="width: @(indentPx)px; flex-shrink: 0; display: inline-block;"></span>
-                    <MudIcon Icon="@(node.IsExpanded ? Icons.Material.Filled.ExpandMore : Icons.Material.Filled.ChevronRight)"
+                    <MudIcon Icon="@(node.IsExpanded? Icons.Material.Filled.ExpandMore : Icons.Material.Filled.ChevronRight)"
                              Size="Size.Small" Style="color: var(--mud-palette-text-secondary); flex-shrink: 0;" />
                     <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Small" Class="mx-1"
                              Style="color: var(--mud-palette-warning-default); flex-shrink: 0;" />
@@ -302,17 +305,17 @@
             var rowStyle = overrideCount > 0 ? $"{rowGrid} cursor-pointer; border-radius: 4px;" : $"{rowGrid} border-radius: 4px;";
             var chevronColor = overrideCount > 0 ? "var(--mud-palette-text-secondary)" : "transparent";
 
-            <div style="@rowStyle"
-                 @onclick="() => { if (overrideCount > 0) node.ShowOverrides = !node.ShowOverrides; }">
+            <div style="@rowStyle" @onclick="() => { if (overrideCount > 0) node.ShowOverrides = !node.ShowOverrides; }">
                 <div class="d-flex align-center py-1">
                     <span style="width: @(indentPx)px; flex-shrink: 0; display: inline-block;"></span>
-                    <MudIcon Icon="@(node.ShowOverrides && overrideCount > 0 ? Icons.Material.Filled.ExpandMore : Icons.Material.Filled.ChevronRight)"
-                             Size="Size.Small" Class="mr-1"
-                             Style="@($"color: {chevronColor}; flex-shrink: 0;")" />
+                    <MudIcon
+                    Icon="@(node.ShowOverrides && overrideCount > 0 ? Icons.Material.Filled.ExpandMore : Icons.Material.Filled.ChevronRight)"
+                    Size="Size.Small" Class="mr-1" Style="@($"color: {chevronColor}; flex-shrink: 0;")" />
                     <MudText Typo="Typo.body2" Style="font-family: monospace;">@node.Name</MudText>
                 </div>
                 <MudTooltip Text="@(FormatValue(info.Value, full: true))" Placement="Placement.Top">
-                    <MudText Typo="Typo.body2" Style="font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 8px;">
+                    <MudText Typo="Typo.body2"
+                             Style="font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 8px;">
                         @FormatValue(info.Value)
                     </MudText>
                 </MudTooltip>
@@ -321,7 +324,8 @@
                     @if (!string.IsNullOrEmpty(info.ResolvedVersion))
                     {
                         <MudTooltip Text="@($"Resolved from v{info.ResolvedVersion}")">
-                            <MudChip T="string" Size="Size.Small" Color="@(info.IsPrerelease ? Color.Warning : Color.Default)" Variant="Variant.Outlined" Class="ml-1">v@info.ResolvedVersion</MudChip>
+                            <MudChip T="string" Size="Size.Small" Color="@(info.IsPrerelease? Color.Warning: Color.Default)"
+                                     Variant="Variant.Outlined" Class="ml-1">v@info.ResolvedVersion</MudChip>
                         </MudTooltip>
                     }
                 </div>

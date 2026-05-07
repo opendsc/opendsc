@@ -6,7 +6,7 @@
 @using NuGet.Versioning
 @using OpenDsc.Server.Services
 @inject ServerDbContext Db
-@inject IConfigurationService ApiClient
+@inject IConfigurationService ConfigurationService
 @inject ISnackbar Snackbar
 
 <MudDialog>
@@ -170,7 +170,7 @@
 
         try
         {
-            var success = await ApiClient.CreateVersionFromExistingAsync(
+            var success = await ConfigurationService.CreateVersionFromExistingAsync(
                 ConfigurationName,
                 sourceVersion,
                 newVersion,

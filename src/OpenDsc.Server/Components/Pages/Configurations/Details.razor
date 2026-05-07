@@ -7,7 +7,7 @@
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
 @inject IDialogService DialogService
-@inject IConfigurationService ApiClient
+@inject IConfigurationService ConfigurationService
 
 <PageTitle>@Name - Configuration</PageTitle>
 
@@ -731,7 +731,7 @@ else
 
         if (confirmed == true)
         {
-            var result = await ApiClient.PublishVersionAsync(configuration.Name, version.Version);
+            var result = await ConfigurationService.PublishVersionAsync(configuration.Name, version.Version);
 
             if (result.Success)
             {
@@ -821,7 +821,7 @@ else
 
         if (confirmed == true)
         {
-            var success = await ApiClient.DeleteVersionAsync(configuration.Name, version.Version);
+            var success = await ConfigurationService.DeleteVersionAsync(configuration.Name, version.Version);
 
             if (success)
             {
@@ -849,7 +849,7 @@ else
 
         if (confirmed == true)
         {
-            var success = await ApiClient.DeleteFileAsync(configuration.Name, version.Version, file.RelativePath);
+            var success = await ConfigurationService.DeleteFileAsync(configuration.Name, version.Version, file.RelativePath);
 
             if (success)
             {
@@ -876,7 +876,7 @@ else
 
         if (confirmed == true)
         {
-            var success = await ApiClient.ChangeVersionEntryPointAsync(configuration.Name, version.Version, file.RelativePath);
+            var success = await ConfigurationService.ChangeVersionEntryPointAsync(configuration.Name, version.Version, file.RelativePath);
 
             if (success)
             {

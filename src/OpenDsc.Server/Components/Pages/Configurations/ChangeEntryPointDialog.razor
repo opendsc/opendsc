@@ -3,7 +3,7 @@
 @* terms of the MIT license. *@
 
 @using OpenDsc.Server.Services
-@inject IConfigurationService ApiClient
+@inject IConfigurationService ConfigurationService
 @inject ISnackbar Snackbar
 
 <MudDialog>
@@ -13,7 +13,7 @@
         </MudText>
 
         <MudSelect T="string" @bind-Value="selectedFile" Label="Entry Point" Variant="Variant.Outlined" Required="true"
-            HelperText="The file DSC will use as the configuration entry point">
+                   HelperText="The file DSC will use as the configuration entry point">
             @foreach (var file in AvailableFiles)
             {
                 <MudSelectItem T="string" Value="@file">
@@ -80,7 +80,7 @@
 
         try
         {
-            var success = await ApiClient.ChangeVersionEntryPointAsync(ConfigurationName, VersionNumber, selectedFile);
+            var success = await ConfigurationService.ChangeVersionEntryPointAsync(ConfigurationName, VersionNumber, selectedFile);
 
             if (success)
             {

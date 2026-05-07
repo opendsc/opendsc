@@ -1,7 +1,7 @@
 @using Microsoft.AspNetCore.Components.Forms
 @using NuGet.Versioning
 @using OpenDsc.Server.Services
-@inject IConfigurationService ApiClient
+@inject IConfigurationService ConfigurationService
 @inject ISnackbar Snackbar
 
 <MudDialog>
@@ -11,12 +11,12 @@
         </MudText>
 
         <MudTextField @bind-Value="version" Label="Version" Variant="Variant.Outlined" Required="true" Class="mb-3"
-            Immediate="true" Error="@(!string.IsNullOrWhiteSpace(version) && !SemanticVersion.TryParse(version, out _))"
-            ErrorText="Version must follow semantic versioning (e.g., 1.0.0, 2.1.3-alpha, 1.0.0-beta+001)"
-            HelperText="Semantic version: major.minor.patch[-prerelease][+metadata]" />
+                      Immediate="true" Error="@(!string.IsNullOrWhiteSpace(version) && !SemanticVersion.TryParse(version, out _))"
+                      ErrorText="Version must follow semantic versioning (e.g., 1.0.0, 2.1.3-alpha, 1.0.0-beta+001)"
+                      HelperText="Semantic version: major.minor.patch[-prerelease][+metadata]" />
 
         <MudTextField @bind-Value="entryPoint" Label="Entry Point" Variant="Variant.Outlined" Class="mb-3"
-            HelperText="Main configuration file (e.g., main.dsc.yaml). Auto-detected from uploaded files or inherited from previous version." />
+                      HelperText="Main configuration file (e.g., main.dsc.yaml). Auto-detected from uploaded files or inherited from previous version." />
 
         <MudSwitch @bind-Value="isDraft" Label="Save as Draft" Color="Color.Info" Class="mb-3" />
         <MudText Typo="Typo.caption" Class="mb-3" Color="Color.Secondary">
@@ -182,7 +182,7 @@
 
         try
         {
-            var success = await ApiClient.CreateVersionAsync(
+            var success = await ConfigurationService.CreateVersionAsync(
             ConfigurationName,
             version,
             isDraft,

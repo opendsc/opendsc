@@ -8,7 +8,7 @@
 @using BlazorMonaco
 @using BlazorMonaco.Editor
 @using OpenDsc.Server.Services
-@inject IParameterService ParameterApiClient
+@inject IParameterService ParameterService
 @inject ISnackbar Snackbar
 @inject ThemeService ThemeService
 
@@ -27,18 +27,14 @@
         else
         {
             <div style="height: 500px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
-                <StandaloneCodeEditor @ref="_editor"
-                                      Id="parameter-edit-editor"
-                                      ConstructionOptions="GetEditorOptions"
+                <StandaloneCodeEditor @ref="_editor" Id="parameter-edit-editor" ConstructionOptions="GetEditorOptions"
                                       CssClass="monaco-editor-container" />
             </div>
         }
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary"
-                   Variant="Variant.Filled"
-                   OnClick="SaveParameter"
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveParameter"
                    Disabled="@(isLoading || isSaving)">
             @if (isSaving)
             {
@@ -84,7 +80,7 @@
 
         try
         {
-            initialContent = await ParameterApiClient.GetParameterContentAsync(ParameterId);
+            initialContent = await ParameterService.GetParameterContentAsync(ParameterId);
 
             if (initialContent == null)
             {
@@ -136,7 +132,7 @@
                 return;
             }
 
-            var (success, errorMessage) = await ParameterApiClient.UpdateParameterDraftAsync(ParameterId, content);
+            var (success, errorMessage) = await ParameterService.UpdateParameterDraftAsync(ParameterId, content);
 
             if (success)
             {

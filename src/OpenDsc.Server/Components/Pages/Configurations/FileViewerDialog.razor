@@ -16,8 +16,8 @@
 @inject ThemeService ThemeService
 @inject ServerDbContext Db
 @inject IJSRuntime JSRuntime
-@inject IParameterService ParameterApiClient
-@inject IConfigurationService ConfigApiClient
+@inject IParameterService ParameterService
+@inject IConfigurationService ConfigurationService
 
 <MudDialog>
     <DialogContent>
@@ -313,7 +313,7 @@
                         }
                         else
                         {
-                            compareFileContent = await ParameterApiClient.GetParameterContentAsync(parameterFile.Id);
+                            compareFileContent = await ParameterService.GetParameterContentAsync(parameterFile.Id);
                             if (string.IsNullOrEmpty(compareFileContent))
                             {
                                 compareFileContent = "// Unable to load parameter content";
@@ -453,7 +453,7 @@
         {
             var content = await _editor!.GetValue();
 
-            var success = await ConfigApiClient.SaveFileAsync(ConfigurationName, Version, FilePath, content ?? "");
+            var success = await ConfigurationService.SaveFileAsync(ConfigurationName, Version, FilePath, content ?? "");
 
             if (success)
             {

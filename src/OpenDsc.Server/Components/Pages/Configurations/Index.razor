@@ -5,15 +5,13 @@
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
-@inject IConfigurationService ApiClient
+@inject IConfigurationService ConfigurationService
 
 <PageTitle>Configurations</PageTitle>
 
 <div class="d-flex justify-space-between align-center mb-4">
     <MudText Typo="Typo.h4">DSC Configurations</MudText>
-    <MudButton Variant="Variant.Filled"
-               Color="Color.Primary"
-               StartIcon="@Icons.Material.Filled.Add"
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
                OnClick="OpenCreateDialog">
         Create Configuration
     </MudButton>
@@ -22,19 +20,11 @@
 <MudCard>
     <MudCardContent>
         <div class="d-flex gap-4 mb-4">
-            <MudTextField @bind-Value="SearchText"
-                         Label="Search"
-                         Placeholder="Search by name or description"
-                         Adornment="Adornment.Start"
-                         AdornmentIcon="@Icons.Material.Filled.Search"
-                         Immediate="true"
-                         Clearable="true"
-                         Class="flex-grow-1" />
-            <MudSelect @bind-Value="SortBy"
-                      Label="Sort By"
-                      T="SortOption"
-                      Variant="Variant.Outlined"
-                      AnchorOrigin="Origin.BottomCenter">
+            <MudTextField @bind-Value="SearchText" Label="Search" Placeholder="Search by name or description"
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Immediate="true"
+                          Clearable="true" Class="flex-grow-1" />
+            <MudSelect @bind-Value="SortBy" Label="Sort By" T="SortOption" Variant="Variant.Outlined"
+                       AnchorOrigin="Origin.BottomCenter">
                 <MudSelectItem Value="SortOption.NameAsc">Name (A-Z)</MudSelectItem>
                 <MudSelectItem Value="SortOption.NameDesc">Name (Z-A)</MudSelectItem>
                 <MudSelectItem Value="SortOption.CreatedDesc">Newest First</MudSelectItem>
@@ -55,7 +45,8 @@
                     <TemplateColumn Title="Status" Sortable="false">
                         <CellTemplate>
                             @{
-                                var published = context.Item.Versions.Any(v => v.Status == ConfigurationVersionStatus.Published);
+                                var published = context.Item.Versions.Any(v => v.Status ==
+                        ConfigurationVersionStatus.Published);
                                 var chipColor = published ? Color.Success : Color.Warning;
                                 var chipText = published ? "Published" : "Draft";
                             }
@@ -81,15 +72,12 @@
                     <TemplateColumn Title="Actions" Sortable="false">
                         <CellTemplate>
                             <MudTooltip Text="View Details">
-                                <MudIconButton Icon="@Icons.Material.Filled.Visibility"
-                                             Size="Size.Small"
-                                             OnClick="@(() => ViewConfiguration(context.Item.Name))" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Visibility" Size="Size.Small"
+                                               OnClick="@(() => ViewConfiguration(context.Item.Name))" />
                             </MudTooltip>
                             <MudTooltip Text="Delete Configuration">
-                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                             Size="Size.Small"
-                                             Color="Color.Error"
-                                             OnClick="@(() => DeleteConfiguration(context.Item.Name))" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                               OnClick="@(() => DeleteConfiguration(context.Item.Name))" />
                             </MudTooltip>
                         </CellTemplate>
                     </TemplateColumn>
@@ -228,7 +216,7 @@
 
         if (confirmed == true)
         {
-            var success = await ApiClient.DeleteConfigurationAsync(name);
+            var success = await ConfigurationService.DeleteConfigurationAsync(name);
 
             if (success)
             {

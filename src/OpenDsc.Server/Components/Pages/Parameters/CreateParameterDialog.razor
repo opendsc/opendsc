@@ -11,7 +11,7 @@
 @using Microsoft.EntityFrameworkCore
 @using System.Text.Json
 @using NuGet.Versioning
-@inject IParameterService ParameterApiClient
+@inject IParameterService ParameterService
 @inject ServerDbContext Db
 @inject ISnackbar Snackbar
 @inject ThemeService ThemeService
@@ -23,31 +23,21 @@
     <DialogContent>
         @if (LockScope && InitialMajorVersion.HasValue)
         {
-            <MudTextField @bind-Value="versionString"
-                          @bind-Value:after="OnVersionChanged"
-                          Label="Version"
-                          Variant="Variant.Outlined"
-                          Required="true"
-                          Immediate="true"
+            <MudTextField @bind-Value="versionString" @bind-Value:after="OnVersionChanged" Label="Version"
+                          Variant="Variant.Outlined" Required="true" Immediate="true"
                           HelperText="@($"Semantic version: {InitialMajorVersion}.minor.patch[-prerelease][+metadata]")"
-                          Error="@(versionError != null)"
-                          ErrorText="@versionError" />
+                          Error="@(versionError != null)" ErrorText="@versionError" />
         }
         else
         {
             <ScopeSelector @bind-SelectedConfigurationId="selectedConfigurationId"
-                           @bind-SelectedConfigurationId:after="OnConfigurationChanged"
-                           @bind-SelectedScopeTypeId="selectedScopeTypeId"
-                           @bind-SelectedScopeValue="selectedScopeValue"
-                           Locked="@LockScope" />
+                           @bind-SelectedConfigurationId:after="OnConfigurationChanged" @bind-SelectedScopeTypeId="selectedScopeTypeId"
+                           @bind-SelectedScopeValue="selectedScopeValue" Locked="@LockScope" />
 
             <MudGrid Class="mt-4">
                 <MudItem xs="12" sm="3">
-                    <MudSelect T="int?" @bind-Value="selectedMajor"
-                               @bind-Value:after="OnMajorVersionChanged"
-                               Label="Major Version"
-                               Variant="Variant.Outlined"
-                               Required="true"
+                    <MudSelect T="int?" @bind-Value="selectedMajor" @bind-Value:after="OnMajorVersionChanged"
+                               Label="Major Version" Variant="Variant.Outlined" Required="true"
                                Disabled="@(InitialMajorVersion.HasValue || !selectedConfigurationId.HasValue || availableMajors.Count == 0)"
                                HelperText="@(availableMajors.Count == 0 && selectedConfigurationId.HasValue ? "No schemas found" : "Select major")">
                         @foreach (var major in availableMajors)
@@ -57,10 +47,7 @@
                     </MudSelect>
                 </MudItem>
                 <MudItem xs="12" sm="6">
-                    <MudTextField @bind-Value="minorPatch"
-                                  Label="Minor.Patch"
-                                  Variant="Variant.Outlined"
-                                  Required="true"
+                    <MudTextField @bind-Value="minorPatch" Label="Minor.Patch" Variant="Variant.Outlined" Required="true"
                                   HelperText="e.g. 0.0" />
                 </MudItem>
             </MudGrid>
@@ -72,29 +59,22 @@
                 <MudText Typo="Typo.subtitle2">Parameter Content (YAML)</MudText>
                 @if (selectedConfigurationId.HasValue)
                 {
-                    <MudButton Size="Size.Small"
-                               Variant="Variant.Text"
-                               Color="Color.Primary"
-                               StartIcon="@Icons.Material.Filled.Schema"
-                               OnClick="OpenSchemaDialog"
+                    <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Schema" OnClick="OpenSchemaDialog"
                                Disabled="@(currentSchema == null)">
                         View Schema
                     </MudButton>
                 }
             </div>
             <div style="height: 400px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
-                <StandaloneCodeEditor @ref="_editor"
-                                      Id="parameter-create-editor"
-                                      ConstructionOptions="GetEditorOptions"
+                <StandaloneCodeEditor @ref="_editor" Id="parameter-create-editor" ConstructionOptions="GetEditorOptions"
                                       CssClass="monaco-editor-container" />
             </div>
         }
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary"
-                   Variant="Variant.Filled"
-                   OnClick="CreateParameter"
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="CreateParameter"
                    Disabled="@(!IsValid() || isCreating)">
             @if (isCreating)
             {
@@ -107,14 +87,16 @@
 
 @if (showSchemaDialog && currentSchema != null)
 {
-    <MudDialog @bind-Visible="showSchemaDialog" Options="@(new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.ExtraLarge, FullWidth = true })">
+    <MudDialog @bind-Visible="showSchemaDialog"
+               Options="@(new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.ExtraLarge, FullWidth = true })">
         <DialogContent>
             <MudText Typo="Typo.h6" Class="mb-3">Parameter Schema</MudText>
             <MudCard Outlined="true">
                 <MudCardContent>
                     <MudText Typo="Typo.caption">Configuration: @currentConfiguration?.Name</MudText>
                     <br />
-                    <MudText Typo="Typo.caption" Class="mb-3">Schema Version: v@(currentSchema.SchemaVersion ?? "unknown")</MudText>
+                    <MudText Typo="Typo.caption" Class="mb-3">Schema Version: v@(currentSchema.SchemaVersion ?? "unknown")
+                    </MudText>
 
                     <div class="d-flex justify-end mb-2">
                         <MudButtonGroup>
@@ -133,10 +115,8 @@
                         </MudButtonGroup>
                     </div>
                     <div style="height: 500px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
-                        <StandaloneCodeEditor @ref="_schemaEditor"
-                                              Id="parameter-schema-viewer"
-                                              ConstructionOptions="GetSchemaEditorOptions"
-                                              CssClass="monaco-editor-container" />
+                        <StandaloneCodeEditor @ref="_schemaEditor" Id="parameter-schema-viewer"
+                                              ConstructionOptions="GetSchemaEditorOptions" CssClass="monaco-editor-container" />
                     </div>
                 </MudCardContent>
             </MudCard>
@@ -217,7 +197,7 @@
             return;
         }
 
-        availableMajors = await ParameterApiClient.GetAvailableMajorVersionsAsync(selectedConfigurationId.Value);
+        availableMajors = await ParameterService.GetAvailableMajorVersionsAsync(selectedConfigurationId.Value);
         selectedMajor = InitialMajorVersion ?? (availableMajors.Count > 0 ? availableMajors[0] : null);
 
         await LoadSchemaForSelectedMajorAsync();
@@ -240,7 +220,7 @@
             return;
         }
 
-        var allVersions = await ParameterApiClient.GetParameterVersionsAsync(
+        var allVersions = await ParameterService.GetParameterVersionsAsync(
             selectedScopeTypeId.Value,
             selectedConfigurationId.Value,
             selectedScopeValue);
@@ -519,7 +499,7 @@
                 ? versionString.Trim()
                 : $"{selectedMajor}.{minorPatch.Trim()}";
 
-            var (success, errorMessage) = await ParameterApiClient.CreateOrUpdateParameterAsync(
+            var (success, errorMessage) = await ParameterService.CreateOrUpdateParameterAsync(
                 selectedScopeTypeId!.Value,
                 selectedConfigurationId!.Value,
                 selectedScopeValue,
@@ -599,7 +579,11 @@
         try
         {
             var jsonObj = System.Text.Json.JsonSerializer.Deserialize<object>(json);
-            return System.Text.Json.JsonSerializer.Serialize(jsonObj, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+            return System.Text.Json.JsonSerializer.Serialize(jsonObj, new System.Text.Json.JsonSerializerOptions
+            {
+                WriteIndented =
+true
+            });
         }
         catch
         {
