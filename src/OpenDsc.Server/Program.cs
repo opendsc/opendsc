@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.Server.Kestrel.Https;
 using MudBlazor.Services;
 
 using OpenDsc.Server;
+using OpenDsc.Contracts.Configurations;
+using OpenDsc.Contracts.CompositeConfigurations;
 using OpenDsc.Server.Authentication;
 using OpenDsc.Server.Components;
 using OpenDsc.Server.Data;

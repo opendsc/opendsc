@@ -8,8 +8,6 @@ using Microsoft.AspNetCore.Mvc;
 using OpenDsc.Contracts.CompositeConfigurations;
 using OpenDsc.Contracts.Permissions;
 using OpenDsc.Contracts.Settings;
-using OpenDsc.Server.Services;
-using ICompositeConfigurationService = OpenDsc.Server.Services.ICompositeConfigurationService;
 
 namespace OpenDsc.Server.Endpoints;
 
@@ -83,15 +81,17 @@ public static class CompositeConfigurationEndpoints
     }
 
     private static async Task<Ok<List<CompositeConfigurationSummary>>> GetCompositeConfigurations(
-        ICompositeConfigurationService compositeService)
+        ICompositeConfigurationService compositeService,
+        CancellationToken cancellationToken)
     {
-        var result = await compositeService.GetCompositeConfigurationsAsync();
+        var result = await compositeService.GetCompositeConfigurationsAsync(cancellationToken);
         return TypedResults.Ok(result);
     }
 
     private static async Task<Results<Created<CompositeConfigurationDetails>, BadRequest<ErrorResponse>, Conflict<ErrorResponse>>> CreateCompositeConfiguration(
         CreateCompositeConfigurationRequest request,
-        ICompositeConfigurationService compositeService)
+        ICompositeConfigurationService compositeService,
+        CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.Name))
         {
@@ -100,7 +100,7 @@ public static class CompositeConfigurationEndpoints
 
         try
         {
-            var details = await compositeService.CreateCompositeConfigurationAsync(request.Name, request.Description);
+            var details = await compositeService.CreateAsync(request, cancellationToken);
             return TypedResults.Created($"/api/v1/composite-configurations/{details.Name}", details);
         }
         catch (InvalidOperationException ex)
@@ -111,11 +111,12 @@ public static class CompositeConfigurationEndpoints
 
     private static async Task<Results<Ok<CompositeConfigurationDetails>, NotFound, ForbidHttpResult>> GetCompositeConfigurationDetails(
         string name,
-        ICompositeConfigurationService compositeService)
+        ICompositeConfigurationService compositeService,
+        CancellationToken cancellationToken)
     {
         try
         {
-            var details = await compositeService.GetCompositeConfigurationAsync(name);
+            var details = await compositeService.GetCompositeConfigurationAsync(name, cancellationToken);
             if (details is null)
             {
                 return TypedResults.NotFound();
@@ -131,11 +132,12 @@ public static class CompositeConfigurationEndpoints
 
     private static async Task<Results<NoContent, NotFound, BadRequest<ErrorResponse>, ForbidHttpResult>> DeleteCompositeConfiguration(
         string name,
-        ICompositeConfigurationService compositeService)
+        ICompositeConfigurationService compositeService,
+        CancellationToken cancellationToken)
     {
         try
         {
-            await compositeService.DeleteCompositeConfigurationByNameAsync(name);
+            await compositeService.DeleteAsync(name, cancellationToken);
             return TypedResults.NoContent();
         }
         catch (KeyNotFoundException)
@@ -155,7 +157,8 @@ public static class CompositeConfigurationEndpoints
     private static async Task<Results<Created<CompositeConfigurationVersionDetails>, NotFound, BadRequest<ErrorResponse>, Conflict<ErrorResponse>, ForbidHttpResult>> CreateCompositeConfigurationVersion(
         string name,
         CreateCompositeConfigurationVersionRequest request,
-        ICompositeConfigurationService compositeService)
+        ICompositeConfigurationService compositeService,
+        CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.Version))
         {
@@ -164,7 +167,7 @@ public static class CompositeConfigurationEndpoints
 
         try
         {
-            var version = await compositeService.CreateVersionAsync(name, request.Version);
+            var version = await compositeService.CreateVersionAsync(name, request, cancellationToken);
             return TypedResults.Created($"/api/v1/composite-configurations/{name}/versions/{version.Version}", version);
         }
         catch (KeyNotFoundException)
@@ -183,11 +186,12 @@ public static class CompositeConfigurationEndpoints
 
     private static async Task<Results<Ok<List<CompositeConfigurationVersionDetails>>, NotFound, ForbidHttpResult>> GetCompositeConfigurationVersions(
         string name,
-        ICompositeConfigurationService compositeService)
+        ICompositeConfigurationService compositeService,
+        CancellationToken cancellationToken)
     {
         try
         {
-            var versions = await compositeService.GetVersionsAsync(name);
+            var versions = await compositeService.GetVersionsAsync(name, cancellationToken);
             if (versions is null)
             {
                 return TypedResults.NotFound();
@@ -204,11 +208,12 @@ public static class CompositeConfigurationEndpoints
     private static async Task<Results<Ok<CompositeConfigurationVersionDetails>, NotFound, ForbidHttpResult>> GetCompositeConfigurationVersionDetails(
         string name,
         string version,
-        ICompositeConfigurationService compositeService)
+        ICompositeConfigurationService compositeService,
+        CancellationToken cancellationToken)
     {
         try
         {
-            var dto = await compositeService.GetVersionAsync(name, version);
+            var dto = await compositeService.GetVersionAsync(name, version, cancellationToken);
             if (dto is null)
             {
                 return TypedResults.NotFound();
@@ -225,11 +230,12 @@ public static class CompositeConfigurationEndpoints
     private static async Task<Results<Ok, NotFound, BadRequest<ErrorResponse>, ForbidHttpResult>> PublishCompositeConfigurationVersion(
         string name,
         string version,
-        ICompositeConfigurationService compositeService)
+        ICompositeConfigurationService compositeService,
+        CancellationToken cancellationToken)
     {
         try
         {
-            await compositeService.PublishVersionAsync(name, version);
+            await compositeService.PublishVersionAsync(name, version, cancellationToken);
             return TypedResults.Ok();
         }
         catch (KeyNotFoundException)
@@ -249,11 +255,12 @@ public static class CompositeConfigurationEndpoints
     private static async Task<Results<NoContent, NotFound, BadRequest<ErrorResponse>, ForbidHttpResult>> DeleteCompositeConfigurationVersion(
         string name,
         string version,
-        ICompositeConfigurationService compositeService)
+        ICompositeConfigurationService compositeService,
+        CancellationToken cancellationToken)
     {
         try
         {
-            await compositeService.DeleteVersionAsync(name, version);
+            await compositeService.DeleteVersionAsync(name, version, cancellationToken);
             return TypedResults.NoContent();
         }
         catch (KeyNotFoundException)
@@ -274,11 +281,12 @@ public static class CompositeConfigurationEndpoints
         string name,
         string version,
         AddChildConfigurationRequest request,
-        ICompositeConfigurationService compositeService)
+        ICompositeConfigurationService compositeService,
+        CancellationToken cancellationToken)
     {
         try
         {
-            var item = await compositeService.AddChildByNameAsync(name, version, request.ChildConfigurationName, request.MajorVersion, request.Order);
+            var item = await compositeService.AddChildAsync(name, version, request, cancellationToken);
             return TypedResults.Created($"/api/v1/composite-configurations/{name}/versions/{version}/children/{item.Id}", item);
         }
         catch (KeyNotFoundException)
@@ -305,11 +313,12 @@ public static class CompositeConfigurationEndpoints
         string version,
         Guid childId,
         UpdateChildConfigurationRequest request,
-        ICompositeConfigurationService compositeService)
+        ICompositeConfigurationService compositeService,
+        CancellationToken cancellationToken)
     {
         try
         {
-            var item = await compositeService.UpdateChildAsync(childId, null, request.Order);
+            var item = await compositeService.UpdateChildAsync(childId, request, cancellationToken);
             return TypedResults.Ok(item);
         }
         catch (KeyNotFoundException)
@@ -330,11 +339,12 @@ public static class CompositeConfigurationEndpoints
         string name,
         string version,
         Guid childId,
-        ICompositeConfigurationService compositeService)
+        ICompositeConfigurationService compositeService,
+        CancellationToken cancellationToken)
     {
         try
         {
-            await compositeService.RemoveChildAsync(childId);
+            await compositeService.RemoveChildAsync(childId, cancellationToken);
             return TypedResults.NoContent();
         }
         catch (KeyNotFoundException)
@@ -353,11 +363,12 @@ public static class CompositeConfigurationEndpoints
 
     private static async Task<Results<Ok<List<PermissionEntry>>, NotFound, ForbidHttpResult>> GetCompositeConfigurationPermissions(
         string name,
-        ICompositeConfigurationService compositeService)
+        ICompositeConfigurationService compositeService,
+        CancellationToken cancellationToken)
     {
         try
         {
-            var permissions = await compositeService.GetPermissionsAsync(name);
+            var permissions = await compositeService.GetPermissionsAsync(name, cancellationToken);
             if (permissions is null)
             {
                 return TypedResults.NotFound();
@@ -374,11 +385,12 @@ public static class CompositeConfigurationEndpoints
     private static async Task<Results<Ok, BadRequest<string>, NotFound, ForbidHttpResult>> GrantCompositeConfigurationPermission(
         string name,
         [FromBody] GrantPermissionRequest request,
-        ICompositeConfigurationService compositeService)
+        ICompositeConfigurationService compositeService,
+        CancellationToken cancellationToken)
     {
         try
         {
-            await compositeService.GrantPermissionAsync(name, request.PrincipalId, request.PrincipalType, request.Level);
+            await compositeService.GrantPermissionAsync(name, request, cancellationToken);
             return TypedResults.Ok();
         }
         catch (KeyNotFoundException)
@@ -399,11 +411,12 @@ public static class CompositeConfigurationEndpoints
         string name,
         string principalType,
         Guid principalId,
-        ICompositeConfigurationService compositeService)
+        ICompositeConfigurationService compositeService,
+        CancellationToken cancellationToken)
     {
         try
         {
-            await compositeService.RevokePermissionAsync(name, principalId, principalType);
+            await compositeService.RevokePermissionAsync(name, new RevokePermissionRequest { PrincipalId = principalId, PrincipalType = principalType }, cancellationToken);
             return TypedResults.NoContent();
         }
         catch (KeyNotFoundException)

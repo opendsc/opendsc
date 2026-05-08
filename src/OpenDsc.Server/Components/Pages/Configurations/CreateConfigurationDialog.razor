@@ -1,56 +1,36 @@
 @using Microsoft.AspNetCore.Components.Forms
 @using NuGet.Versioning
+@using OpenDsc.Contracts.Configurations
 @using OpenDsc.Server.Services
 @inject IConfigurationService ConfigurationService
 @inject ISnackbar Snackbar
 
 <MudDialog>
     <DialogContent>
-        <MudTextField @bind-Value="name"
-                      Label="Name"
-                      Variant="Variant.Outlined"
-                      Required="true"
-                      Class="mb-3"
+        <MudTextField @bind-Value="name" Label="Name" Variant="Variant.Outlined" Required="true" Class="mb-3"
                       HelperText="Unique identifier for the configuration" />
 
-        <MudTextField @bind-Value="description"
-                      Label="Description"
-                      Variant="Variant.Outlined"
-                      Lines="2"
-                      Class="mb-3"
+        <MudTextField @bind-Value="description" Label="Description" Variant="Variant.Outlined" Lines="2" Class="mb-3"
                       HelperText="Optional description" />
 
-        <MudTextField @bind-Value="entryPoint"
-                      Label="Entry Point"
-                      Variant="Variant.Outlined"
-                      Required="true"
-                      Class="mb-3"
-                      HelperText="Main configuration file (e.g., main.dsc.yaml)" />
+        <MudTextField @bind-Value="entryPoint" Label="Entry Point" Variant="Variant.Outlined" Required="true"
+                      Class="mb-3" HelperText="Main configuration file (e.g., main.dsc.yaml)" />
 
-        <MudTextField @bind-Value="version"
-                      Label="Version"
-                      Variant="Variant.Outlined"
-                      Required="true"
-                      Class="mb-3"
-                      Immediate="true"
-                      Error="@(!string.IsNullOrWhiteSpace(version) && !SemanticVersion.TryParse(version, out _))"
+        <MudTextField @bind-Value="version" Label="Version" Variant="Variant.Outlined" Required="true" Class="mb-3"
+                      Immediate="true" Error="@(!string.IsNullOrWhiteSpace(version) && !SemanticVersion.TryParse(version, out _))"
                       ErrorText="Version must follow semantic versioning (e.g., 1.0.0, 2.1.3-alpha, 1.0.0-beta+001)"
                       HelperText="Semantic version: major.minor.patch[-prerelease][+metadata]" />
 
-        <MudSwitch @bind-Value="isDraft"
-                   Label="Save as Draft"
-                   Color="Color.Info"
-                   Class="mb-3" />
+        <MudSwitch @bind-Value="isDraft" Label="Save as Draft" Color="Color.Info" Class="mb-3" />
         <MudText Typo="Typo.caption" Class="mb-3" Color="Color.Secondary">
             When unchecked, the version will be published immediately and become immutable.
         </MudText>
 
-        <MudSwitch @bind-Value="useServerManagedParameters"
-                   Label="Server Managed Parameters"
-                   Color="Color.Primary"
+        <MudSwitch @bind-Value="useServerManagedParameters" Label="Server Managed Parameters" Color="Color.Primary"
                    Class="mb-3" />
         <MudText Typo="Typo.caption" Class="mb-3" Color="Color.Secondary">
-            When enabled, parameters are merged from the server's parameter scopes and delivered in the configuration bundle.
+            When enabled, parameters are merged from the server's parameter scopes and delivered in the configuration
+            bundle.
         </MudText>
 
         <MudText Typo="Typo.body2" Class="mb-2">Configuration Files</MudText>
@@ -162,7 +142,8 @@
         }
 
         // If there are multiple .dsc files, look for common names
-        var commonNames = new[] { "main.dsc.yaml", "main.dsc.yml", "main.dsc.json", "config.dsc.yaml", "config.dsc.yml", "config.dsc.json" };
+        var commonNames = new[] { "main.dsc.yaml", "main.dsc.yml", "main.dsc.json", "config.dsc.yaml", "config.dsc.yml",
+"config.dsc.json" };
         var matchedFile = dscFiles.FirstOrDefault(f => commonNames.Contains(f.Name, StringComparer.OrdinalIgnoreCase));
 
         if (matchedFile != null)
@@ -220,14 +201,20 @@
 
         try
         {
-            await ConfigurationService.CreateConfigurationAsync(
-                name,
-                description,
-                entryPoint,
-                version,
-                isDraft,
-                useServerManagedParameters,
-                selectedFiles);
+            await ConfigurationService.CreateAsync(new CreateConfigurationAdminRequest
+            {
+                Name = name,
+                Description = description,
+                EntryPoint = entryPoint,
+                Version = version,
+                UseServerManagedParameters = useServerManagedParameters,
+                Files = selectedFiles.Select(ToFileUpload).ToList()
+            });
+
+            if (!isDraft)
+            {
+                await ConfigurationService.PublishVersionAsync(name, version);
+            }
 
             Snackbar.Add($"Configuration '{name}' created successfully", Severity.Success);
             MudDialog.Close(DialogResult.Ok(true));
@@ -242,6 +229,9 @@
             isSubmitting = false;
         }
     }
+
+    private static FileUpload ToFileUpload(IBrowserFile file) =>
+        new(file.Name, file.OpenReadStream(10 * 1024 * 1024), file.ContentType, file.Size);
 }
 
 <style>

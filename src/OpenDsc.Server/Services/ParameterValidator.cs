@@ -7,6 +7,8 @@ using System.Text.Json.Nodes;
 
 using Json.Schema;
 
+using OpenDsc.Contracts.Configurations;
+
 using YamlDotNet.Serialization;
 
 namespace OpenDsc.Server.Services;
@@ -183,11 +185,4 @@ public sealed class ValidationResult
     };
 }
 
-public sealed class ValidationError
-{
-    public required string Path { get; init; }
-    public required string Message { get; init; }
-    public required string Code { get; init; }
-    public string? ExpectedType { get; init; }
-    public string? ActualType { get; init; }
-}
+

@@ -5,7 +5,6 @@
 using System.Security.Cryptography;
 using System.Text.Json;
 
-using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -21,132 +20,6 @@ using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
 namespace OpenDsc.Server.Services;
-
-public interface IConfigurationService
-{
-    Task CreateConfigurationAsync(string name, string? description, string entryPoint, string version, bool isDraft, bool useServerManagedParameters, IReadOnlyList<IBrowserFile> files);
-    Task CreateVersionAsync(string name, string version, bool isDraft, IReadOnlyList<IBrowserFile> files, string? entryPoint = null);
-    Task CreateVersionFromExistingAsync(string name, string sourceVersion, string newVersion, bool isDraft);
-    Task AddFilesToVersionAsync(string name, string version, IReadOnlyList<IBrowserFile> files);
-    Task<PublishResult> PublishVersionAsync(string name, string version);
-    Task DeleteConfigurationAsync(string name);
-    Task DeleteVersionAsync(string name, string version);
-    Task DeleteFileAsync(string name, string version, string filePath);
-    Task ChangeVersionEntryPointAsync(string name, string version, string entryPoint);
-    Task<Stream?> DownloadFileAsync(string name, string version, string filePath);
-    Task SaveFileAsync(string name, string version, string filePath, string content);
-    Task<List<ConfigurationSummaryDto>> GetConfigurationsAsync();
-    Task<ConfigurationDetailsDto?> GetConfigurationAsync(string name);
-    Task<List<ConfigurationVersionDto>?> GetVersionsAsync(string name);
-    Task<bool> IsConfigurationAssignedAsync(string configName);
-    Task<VersionUsageInfo> IsVersionInUseAsync(string configName, string version);
-    Task<ConfigurationSettingsDto?> GetConfigurationSettingsAsync(string configName);
-    Task<ConfigurationSettingsDto> UpdateConfigurationSettingsAsync(string configName, bool? requireSemVer, ParameterValidationMode? paramValidation);
-    Task DeleteConfigurationSettingsAsync(string configName);
-    Task<ConfigurationRetentionDto?> GetRetentionSettingsAsync(string configName);
-    Task SaveRetentionSettingsAsync(string configName, bool? enabled, int? keepVersions, int? keepDays, bool? keepReleaseVersions);
-    Task ResetRetentionSettingsAsync(string configName);
-    Task<ConfigurationDetailsDto> UpdateConfigurationAsync(string name, string? description, bool? useServerManagedParameters);
-    Task<List<PermissionEntry>?> GetPermissionsAsync(string configName);
-    Task GrantPermissionAsync(string configName, Guid principalId, string principalType, string level);
-    Task RevokePermissionAsync(string configName, Guid principalId, string principalType);
-    Task<Guid?> GetParameterSchemaIdAsync(string configName);
-    Task<List<string>> GetConfigurationVersionListAsync(string configName);
-}
-
-public sealed class ConfigurationSummaryDto
-{
-    public required string Name { get; init; }
-    public string? Description { get; init; }
-    public required bool UseServerManagedParameters { get; init; }
-    public required int VersionCount { get; init; }
-    public string? LatestVersion { get; init; }
-    public required bool HasPublishedVersion { get; init; }
-    public required DateTimeOffset CreatedAt { get; init; }
-}
-
-public sealed class ConfigurationDetailsDto
-{
-    public required Guid Id { get; init; }
-    public required string Name { get; init; }
-    public string? Description { get; init; }
-    public required bool UseServerManagedParameters { get; init; }
-    public string? LatestVersion { get; init; }
-    public required DateTimeOffset CreatedAt { get; init; }
-    public DateTimeOffset? UpdatedAt { get; init; }
-}
-
-public sealed class ConfigurationFileDto
-{
-    public required string RelativePath { get; init; }
-    public string? ContentType { get; init; }
-}
-
-public sealed class ConfigurationVersionDto
-{
-    public required string Version { get; init; }
-    public required string EntryPoint { get; init; }
-    public ConfigurationVersionStatus Status { get; set; }
-    public string? PrereleaseChannel { get; init; }
-    public required int FileCount { get; init; }
-    public required DateTimeOffset CreatedAt { get; init; }
-    public string? CreatedBy { get; init; }
-    public List<ConfigurationFileDto> Files { get; init; } = [];
-}
-
-public sealed class CreateConfigurationDto
-{
-    public required string Name { get; init; }
-    public string? Description { get; init; }
-    public string? EntryPoint { get; init; }
-    public bool UseServerManagedParameters { get; init; } = true;
-    public string? Version { get; init; }
-}
-
-public sealed class UpdateConfigurationDto
-{
-    public string? Description { get; init; }
-    public bool? UseServerManagedParameters { get; init; }
-}
-
-public sealed class CreateConfigurationVersionDto
-{
-    public required string Version { get; init; }
-    public string? EntryPoint { get; init; }
-    public string? PrereleaseChannel { get; init; }
-}
-
-public sealed class ConfigurationSettingsDto
-{
-    public required bool IsOverridden { get; init; }
-    public required bool RequireSemVer { get; init; }
-    public required ParameterValidationMode ParameterValidationMode { get; init; }
-}
-
-public sealed class ConfigurationRetentionDto
-{
-    public bool IsOverridden { get; init; }
-    public bool? Enabled { get; init; }
-    public int? KeepVersions { get; init; }
-    public int? KeepDays { get; init; }
-    public bool? KeepReleaseVersions { get; init; }
-}
-
-public sealed class VersionUsageInfo
-{
-    public bool IsInUse { get; init; }
-    public IReadOnlyList<string> Details { get; init; } = [];
-}
-
-public sealed class PublishResult
-{
-    public bool Success { get; init; }
-    public CompatibilityReport? CompatibilityReport { get; init; }
-    public string? ErrorMessage { get; init; }
-    public ConfigurationVersionStatus? UpdatedStatus { get; init; }
-    public string? UpdatedVersion { get; init; }
-    public string? UpdatedPrereleaseChannel { get; init; }
-}
 
 public sealed partial class ConfigurationService : IConfigurationService
 {
@@ -182,15 +55,18 @@ public sealed partial class ConfigurationService : IConfigurationService
         _parameterValidator = parameterValidator;
     }
 
-    public async Task CreateConfigurationAsync(
-        string name,
-        string? description,
-        string entryPoint,
-        string version,
-        bool isDraft,
-        bool useServerManagedParameters,
-        IReadOnlyList<IBrowserFile> files)
+    public async Task<ConfigurationDetails> CreateAsync(
+        CreateConfigurationAdminRequest request,
+        CancellationToken cancellationToken = default)
     {
+        var name = request.Name;
+        var description = request.Description;
+        var entryPoint = request.EntryPoint;
+        var version = request.Version;
+        var isDraft = request.IsDraft;
+        var useServerManagedParameters = request.UseServerManagedParameters;
+        var files = request.Files;
+
         if (string.IsNullOrWhiteSpace(name))
         {
             LogConfigurationNameRequired();
@@ -209,7 +85,7 @@ public sealed partial class ConfigurationService : IConfigurationService
             throw new InvalidOperationException($"Configuration '{name}' already exists.");
         }
 
-        if (!files.Any(f => f.Name == entryPoint))
+        if (!files.Any(f => f.FileName == entryPoint))
         {
             LogEntryPointNotFoundInUploadedFiles(entryPoint);
             throw new ArgumentException($"Entry point '{entryPoint}' was not found in the uploaded files.", nameof(entryPoint));
@@ -244,7 +120,7 @@ public sealed partial class ConfigurationService : IConfigurationService
 
         foreach (var file in files)
         {
-            var relativePath = file.Name;
+            var relativePath = file.FileName;
             var filePath = Path.Combine(versionDir, relativePath);
             var fileDir = Path.GetDirectoryName(filePath);
             if (!string.IsNullOrEmpty(fileDir) && !Directory.Exists(fileDir))
@@ -254,11 +130,11 @@ public sealed partial class ConfigurationService : IConfigurationService
 
             await using (var stream = File.Create(filePath))
             {
-                await file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024).CopyToAsync(stream);
+                await file.Content.CopyToAsync(stream, cancellationToken);
             }
 
             var checksum = await ComputeFileChecksumAsync(filePath);
-            var contentType = GetContentType(file);
+            var contentType = file.ContentType ?? GetContentTypeFromFileName(file.FileName);
 
             var configFile = new ConfigurationFile
             {
@@ -273,13 +149,13 @@ public sealed partial class ConfigurationService : IConfigurationService
             _db.ConfigurationFiles.Add(configFile);
         }
 
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(cancellationToken);
 
         // Extract and generate parameter schema from entry point file
         var entryPointPath = Path.Combine(versionDir, configVersion.EntryPoint);
         if (File.Exists(entryPointPath))
         {
-            var entryPointContent = await File.ReadAllTextAsync(entryPointPath);
+            var entryPointContent = await File.ReadAllTextAsync(entryPointPath, cancellationToken);
             var parametersBlock = ExtractParametersFromYaml(entryPointContent);
 
             if (parametersBlock != null && parametersBlock.Count > 0)
@@ -299,7 +175,7 @@ public sealed partial class ConfigurationService : IConfigurationService
 
                 _db.ParameterSchemas.Add(paramSchema);
                 configVersion.ParameterSchemaId = paramSchema.Id;
-                await _db.SaveChangesAsync();
+                await _db.SaveChangesAsync(cancellationToken);
             }
         }
 
@@ -315,20 +191,33 @@ public sealed partial class ConfigurationService : IConfigurationService
                 creatorId);
         }
 
+        return new ConfigurationDetails
+        {
+            Id = configuration.Id,
+            Name = configuration.Name,
+            Description = configuration.Description,
+            UseServerManagedParameters = configuration.UseServerManagedParameters,
+            LatestVersion = version,
+            CreatedAt = configuration.CreatedAt,
+            UpdatedAt = configuration.UpdatedAt
+        };
     }
 
-    public async Task CreateVersionAsync(
+    public async Task<ConfigurationVersionDetails> CreateVersionAsync(
         string name,
-        string version,
-        bool isDraft,
-        IReadOnlyList<IBrowserFile> files,
-        string? entryPoint = null)
+        CreateConfigurationVersionRequest request,
+        CancellationToken cancellationToken = default)
     {
+        var version = request.Version;
+        var isDraft = request.IsDraft;
+        var files = request.Files;
+        var entryPoint = request.EntryPoint;
+
         var configuration = await _db.Configurations
-            .FirstOrDefaultAsync(c => c.Name == name)
+            .FirstOrDefaultAsync(c => c.Name == name, cancellationToken)
             ?? throw new KeyNotFoundException($"Configuration '{name}' not found.");
 
-        if (await _db.ConfigurationVersions.AnyAsync(v => v.ConfigurationId == configuration.Id && v.Version == version))
+        if (await _db.ConfigurationVersions.AnyAsync(v => v.ConfigurationId == configuration.Id && v.Version == version, cancellationToken))
         {
             LogVersionAlreadyExists(version, name);
             throw new InvalidOperationException($"Version '{version}' already exists for configuration '{name}'.");
@@ -363,7 +252,7 @@ public sealed partial class ConfigurationService : IConfigurationService
 
         foreach (var file in files)
         {
-            var relativePath = file.Name;
+            var relativePath = file.FileName;
             var filePath = Path.Combine(versionDir, relativePath);
             var fileDir = Path.GetDirectoryName(filePath);
             if (!string.IsNullOrEmpty(fileDir) && !Directory.Exists(fileDir))
@@ -373,11 +262,11 @@ public sealed partial class ConfigurationService : IConfigurationService
 
             await using (var stream = File.Create(filePath))
             {
-                await file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024).CopyToAsync(stream);
+                await file.Content.CopyToAsync(stream, cancellationToken);
             }
 
             var checksum = await ComputeFileChecksumAsync(filePath);
-            var contentType = GetContentType(file);
+            var contentType = file.ContentType ?? GetContentTypeFromFileName(file.FileName);
 
             var configFile = new ConfigurationFile
             {
@@ -393,13 +282,13 @@ public sealed partial class ConfigurationService : IConfigurationService
         }
 
         configuration.UpdatedAt = DateTimeOffset.UtcNow;
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(cancellationToken);
 
         // Extract and generate parameter schema from entry point file
         var entryPointPath = Path.Combine(versionDir, configVersion.EntryPoint);
         if (File.Exists(entryPointPath))
         {
-            var entryPointContent = await File.ReadAllTextAsync(entryPointPath);
+            var entryPointContent = await File.ReadAllTextAsync(entryPointPath, cancellationToken);
             var parametersBlock = ExtractParametersFromYaml(entryPointContent);
 
             if (parametersBlock != null && parametersBlock.Count > 0)
@@ -409,7 +298,7 @@ public sealed partial class ConfigurationService : IConfigurationService
                 var jsonSchema = _schemaBuilder.SerializeSchema(jsonSchemaObj);
 
                 var existingSchema = await _db.ParameterSchemas
-                    .FirstOrDefaultAsync(ps => ps.ConfigurationId == configuration.Id && ps.SchemaVersion == version);
+                    .FirstOrDefaultAsync(ps => ps.ConfigurationId == configuration.Id && ps.SchemaVersion == version, cancellationToken);
 
                 if (existingSchema == null)
                 {
@@ -431,25 +320,42 @@ public sealed partial class ConfigurationService : IConfigurationService
                     existingSchema.UpdatedAt = DateTimeOffset.UtcNow;
                 }
 
-                await _db.SaveChangesAsync();
+                await _db.SaveChangesAsync(cancellationToken);
             }
         }
 
+        return new ConfigurationVersionDetails
+        {
+            Version = configVersion.Version,
+            EntryPoint = configVersion.EntryPoint,
+            Status = configVersion.Status,
+            PrereleaseChannel = configVersion.PrereleaseChannel,
+            FileCount = files.Count,
+            CreatedAt = configVersion.CreatedAt,
+            Files = files.Select(f => new ConfigurationFileDetails { RelativePath = f.FileName, ContentType = f.ContentType }).ToList()
+        };
     }
 
-    public async Task CreateVersionFromExistingAsync(string name, string sourceVersion, string newVersion, bool isDraft)
+    public async Task<ConfigurationVersionDetails> CreateVersionFromExistingAsync(
+        string name,
+        CreateVersionFromExistingRequest request,
+        CancellationToken cancellationToken = default)
     {
+        var sourceVersion = request.SourceVersion;
+        var newVersion = request.NewVersion;
+        var isDraft = request.IsDraft;
+
         var configuration = await _db.Configurations
             .Include(c => c.Versions)
             .ThenInclude(v => v.Files)
-            .FirstOrDefaultAsync(c => c.Name == name)
+            .FirstOrDefaultAsync(c => c.Name == name, cancellationToken)
             ?? throw new KeyNotFoundException($"Configuration '{name}' not found.");
 
         var sourceConfigVersion = configuration.Versions
             .FirstOrDefault(v => v.Version == sourceVersion)
             ?? throw new KeyNotFoundException($"Source version '{sourceVersion}' not found for configuration '{name}'.");
 
-        if (await _db.ConfigurationVersions.AnyAsync(v => v.ConfigurationId == configuration.Id && v.Version == newVersion))
+        if (await _db.ConfigurationVersions.AnyAsync(v => v.ConfigurationId == configuration.Id && v.Version == newVersion, cancellationToken))
         {
             LogVersionAlreadyExists(newVersion, name);
             throw new InvalidOperationException($"Version '{newVersion}' already exists for configuration '{name}'.");
@@ -514,13 +420,12 @@ public sealed partial class ConfigurationService : IConfigurationService
         }
 
         configuration.UpdatedAt = DateTimeOffset.UtcNow;
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(cancellationToken);
 
-        // Extract and generate parameter schema from copied entry point file
         var entryPointPath = Path.Combine(newVersionDir, configVersion.EntryPoint);
         if (File.Exists(entryPointPath))
         {
-            var entryPointContent = await File.ReadAllTextAsync(entryPointPath);
+            var entryPointContent = await File.ReadAllTextAsync(entryPointPath, cancellationToken);
             var parametersBlock = ExtractParametersFromYaml(entryPointContent);
 
             if (parametersBlock != null && parametersBlock.Count > 0)
@@ -530,7 +435,7 @@ public sealed partial class ConfigurationService : IConfigurationService
                 var jsonSchema = _schemaBuilder.SerializeSchema(jsonSchemaObj);
 
                 var existingSchema = await _db.ParameterSchemas
-                    .FirstOrDefaultAsync(ps => ps.ConfigurationId == configuration.Id && ps.SchemaVersion == newVersion);
+                    .FirstOrDefaultAsync(ps => ps.ConfigurationId == configuration.Id && ps.SchemaVersion == newVersion, cancellationToken);
 
                 if (existingSchema == null)
                 {
@@ -552,18 +457,32 @@ public sealed partial class ConfigurationService : IConfigurationService
                     existingSchema.UpdatedAt = DateTimeOffset.UtcNow;
                 }
 
-                await _db.SaveChangesAsync();
+                await _db.SaveChangesAsync(cancellationToken);
             }
         }
 
+        return new ConfigurationVersionDetails
+        {
+            Version = configVersion.Version,
+            EntryPoint = configVersion.EntryPoint,
+            Status = configVersion.Status,
+            PrereleaseChannel = configVersion.PrereleaseChannel,
+            FileCount = sourceConfigVersion.Files.Count,
+            CreatedAt = configVersion.CreatedAt,
+            Files = sourceConfigVersion.Files.Select(f => new ConfigurationFileDetails { RelativePath = f.RelativePath, ContentType = f.ContentType }).ToList()
+        };
     }
 
-    public async Task AddFilesToVersionAsync(string name, string version, IReadOnlyList<IBrowserFile> files)
+    public async Task AddFilesAsync(
+        string name,
+        string version,
+        IReadOnlyList<FileUpload> files,
+        CancellationToken cancellationToken = default)
     {
         var configuration = await _db.Configurations
             .Include(c => c.Versions)
             .ThenInclude(v => v.Files)
-            .FirstOrDefaultAsync(c => c.Name == name)
+            .FirstOrDefaultAsync(c => c.Name == name, cancellationToken)
             ?? throw new KeyNotFoundException($"Configuration '{name}' not found.");
 
         var configVersion = configuration.Versions
@@ -581,7 +500,7 @@ public sealed partial class ConfigurationService : IConfigurationService
 
         foreach (var file in files)
         {
-            var relativePath = file.Name;
+            var relativePath = file.FileName;
 
             if (configVersion.Files.Any(f => f.RelativePath == relativePath))
             {
@@ -598,11 +517,11 @@ public sealed partial class ConfigurationService : IConfigurationService
 
             await using (var stream = File.Create(filePath))
             {
-                await file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024).CopyToAsync(stream);
+                await file.Content.CopyToAsync(stream, cancellationToken);
             }
 
             var checksum = await ComputeFileChecksumAsync(filePath);
-            var contentType = GetContentType(file);
+            var contentType = file.ContentType ?? GetContentTypeFromFileName(file.FileName);
 
             var configFile = new ConfigurationFile
             {
@@ -618,12 +537,12 @@ public sealed partial class ConfigurationService : IConfigurationService
         }
 
         configuration.UpdatedAt = DateTimeOffset.UtcNow;
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task<PublishResult> PublishVersionAsync(string name, string version)
+    public async Task<PublishResult> PublishVersionAsync(string name, string version, CancellationToken cancellationToken = default)
     {
-        var configuration = await _db.Configurations.FirstOrDefaultAsync(c => c.Name == name)
+        var configuration = await _db.Configurations.FirstOrDefaultAsync(c => c.Name == name, cancellationToken)
             ?? throw new KeyNotFoundException($"Configuration '{name}' not found.");
 
         var userId = _userContext.GetCurrentUserId();
@@ -634,7 +553,7 @@ public sealed partial class ConfigurationService : IConfigurationService
 
         var configVersion = await _db.ConfigurationVersions
             .Include(v => v.Files)
-            .FirstOrDefaultAsync(v => v.ConfigurationId == configuration.Id && v.Version == version)
+            .FirstOrDefaultAsync(v => v.ConfigurationId == configuration.Id && v.Version == version, cancellationToken)
             ?? throw new KeyNotFoundException($"Version '{version}' not found for configuration '{name}'.");
 
         if (configVersion.Status != ConfigurationVersionStatus.Draft)
@@ -661,7 +580,7 @@ public sealed partial class ConfigurationService : IConfigurationService
             throw new FileNotFoundException($"Entry point file '{configVersion.EntryPoint}' not found.", entryPointPath);
         }
 
-        var entryPointContent = await File.ReadAllTextAsync(entryPointPath);
+        var entryPointContent = await File.ReadAllTextAsync(entryPointPath, cancellationToken);
         var parametersJson = await _parameterSchemaService.ParseParameterBlockAsync(entryPointContent);
 
         CompatibilityReport? compatibilityReport = null;
@@ -671,7 +590,7 @@ public sealed partial class ConfigurationService : IConfigurationService
             await _parameterSchemaService.GenerateAndStoreSchemaAsync(configuration.Id, parametersJson, version);
 
             var parameterSchema = await _db.ParameterSchemas
-                .FirstOrDefaultAsync(ps => ps.ConfigurationId == configuration.Id);
+                .FirstOrDefaultAsync(ps => ps.ConfigurationId == configuration.Id, cancellationToken);
 
             if (parameterSchema != null && !string.IsNullOrWhiteSpace(parameterSchema.SchemaVersion) &&
                 parameterSchema.SchemaVersion != version)
@@ -693,7 +612,7 @@ public sealed partial class ConfigurationService : IConfigurationService
                     var affectedFiles = await _db.ParameterFiles
                         .Include(pf => pf.ScopeType)
                         .Where(pf => pf.ParameterSchemaId == parameterSchema.Id && pf.MajorVersion == oldMajor)
-                        .ToListAsync();
+                        .ToListAsync(cancellationToken);
 
                     compatibilityReport = new CompatibilityReport
                     {
@@ -723,7 +642,7 @@ public sealed partial class ConfigurationService : IConfigurationService
                         .Where(pf => pf.ParameterSchemaId == parameterSchema.Id &&
                                      pf.MajorVersion == oldMajor &&
                                      pf.Status == ParameterVersionStatus.Published)
-                        .ToListAsync();
+                        .ToListAsync(cancellationToken);
 
                     foreach (var activeParam in activeParameters)
                     {
@@ -731,7 +650,8 @@ public sealed partial class ConfigurationService : IConfigurationService
                             .AnyAsync(pf => pf.ParameterSchemaId == parameterSchema.Id &&
                                             pf.MajorVersion == newMajor &&
                                             pf.ScopeTypeId == activeParam.ScopeTypeId &&
-                                            pf.ScopeValue == activeParam.ScopeValue);
+                                            pf.ScopeValue == activeParam.ScopeValue,
+                                      cancellationToken);
 
                         if (!existsInNewMajor)
                         {
@@ -770,13 +690,13 @@ public sealed partial class ConfigurationService : IConfigurationService
                         }
                     }
 
-                    await _db.SaveChangesAsync();
+                    await _db.SaveChangesAsync(cancellationToken);
                 }
             }
         }
 
         configVersion.Status = ConfigurationVersionStatus.Published;
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(cancellationToken);
 
         return new PublishResult
         {
@@ -787,11 +707,17 @@ public sealed partial class ConfigurationService : IConfigurationService
         };
     }
 
-    public async Task<ConfigurationDetailsDto> UpdateConfigurationAsync(string name, string? description, bool? useServerManagedParameters)
+    public async Task<ConfigurationDetails> UpdateAsync(
+        string name,
+        UpdateConfigurationAdminRequest request,
+        CancellationToken cancellationToken = default)
     {
+        var description = request.Description;
+        var useServerManagedParameters = request.UseServerManagedParameters;
+
         var configuration = await _db.Configurations
             .Include(c => c.Versions)
-            .FirstOrDefaultAsync(c => c.Name == name)
+            .FirstOrDefaultAsync(c => c.Name == name, cancellationToken)
             ?? throw new KeyNotFoundException($"Configuration '{name}' not found.");
 
         var userId = _userContext.GetCurrentUserId();
@@ -824,14 +750,14 @@ public sealed partial class ConfigurationService : IConfigurationService
         }
 
         configuration.UpdatedAt = DateTimeOffset.UtcNow;
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(cancellationToken);
 
         var latestVersion = configuration.Versions
             .OrderByDescending(v => v.CreatedAt)
             .Select(v => v.Version)
             .FirstOrDefault();
 
-        return new ConfigurationDetailsDto
+        return new ConfigurationDetails
         {
             Id = configuration.Id,
             Name = configuration.Name,
@@ -843,19 +769,18 @@ public sealed partial class ConfigurationService : IConfigurationService
         };
     }
 
-    public async Task DeleteConfigurationAsync(string name)
+    public async Task DeleteAsync(string name, CancellationToken cancellationToken = default)
     {
         var configuration = await _db.Configurations
             .Include(c => c.Versions)
                 .ThenInclude(v => v.Files)
-            .FirstOrDefaultAsync(c => c.Name == name)
+            .FirstOrDefaultAsync(c => c.Name == name, cancellationToken)
             ?? throw new KeyNotFoundException($"Configuration '{name}' not found.");
 
-        // Check if configuration is assigned to nodes
         var assignedNodes = await _db.NodeConfigurations
             .Where(nc => nc.ConfigurationId == configuration.Id)
             .Include(nc => nc.Node)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
         if (assignedNodes.Count > 0)
         {
@@ -887,26 +812,25 @@ public sealed partial class ConfigurationService : IConfigurationService
         }
 
         _db.Configurations.Remove(configuration);
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task DeleteVersionAsync(string name, string version)
+    public async Task DeleteVersionAsync(string name, string version, CancellationToken cancellationToken = default)
     {
         var configuration = await _db.Configurations
             .Include(c => c.Versions)
                 .ThenInclude(v => v.Files)
-            .FirstOrDefaultAsync(c => c.Name == name)
+            .FirstOrDefaultAsync(c => c.Name == name, cancellationToken)
             ?? throw new KeyNotFoundException($"Configuration '{name}' not found.");
 
         var configVersion = configuration.Versions
             .FirstOrDefault(v => v.Version == version)
             ?? throw new KeyNotFoundException($"Version '{version}' not found for configuration '{name}'.");
 
-        // Check if version is assigned to nodes
         var assignedNodes = await _db.NodeConfigurations
             .Where(nc => nc.ConfigurationId == configuration.Id && nc.ActiveVersion == version)
             .Include(nc => nc.Node)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
         if (assignedNodes.Count > 0)
         {
@@ -914,31 +838,27 @@ public sealed partial class ConfigurationService : IConfigurationService
                 $"Cannot delete version '{version}' of configuration '{name}' because it is assigned to {assignedNodes.Count} node(s): {string.Join(", ", assignedNodes.Select(n => n.Node.Fqdn))}");
         }
 
-        // Extract major version from the version string
         var versionMajor = ExtractMajorVersion(version);
 
-        // Check if this major version is referenced in composite configurations
         if (versionMajor.HasValue)
         {
             var compositeUsage = await _db.CompositeConfigurationItems
                 .Where(cci => cci.ChildConfigurationId == configuration.Id && cci.MajorVersion == versionMajor.Value)
                 .Include(cci => cci.CompositeConfigurationVersion)
                     .ThenInclude(ccv => ccv.CompositeConfiguration)
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
 
             if (compositeUsage.Count > 0)
             {
-                // Count how many published versions exist with this major version
                 var publishedVersionsWithMajor = await _db.ConfigurationVersions
                     .Where(v => v.ConfigurationId == configuration.Id &&
                            v.Status == ConfigurationVersionStatus.Published)
                     .Select(v => v.Version)
-                    .ToListAsync();
+                    .ToListAsync(cancellationToken);
 
                 var majorVersionCount = publishedVersionsWithMajor
                     .Count(v => ExtractMajorVersion(v) == versionMajor);
 
-                // Only prevent deletion if this is the last published version with this major
                 if (majorVersionCount == 1)
                 {
                     var compositeNames = compositeUsage
@@ -959,7 +879,7 @@ public sealed partial class ConfigurationService : IConfigurationService
 
         _db.ConfigurationVersions.Remove(configVersion);
         configuration.UpdatedAt = DateTimeOffset.UtcNow;
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(cancellationToken);
     }
 
     private static int? ExtractMajorVersion(string version)
@@ -972,12 +892,12 @@ public sealed partial class ConfigurationService : IConfigurationService
         return null;
     }
 
-    public async Task DeleteFileAsync(string name, string version, string filePath)
+    public async Task DeleteFileAsync(string name, string version, string filePath, CancellationToken cancellationToken = default)
     {
         var configuration = await _db.Configurations
             .Include(c => c.Versions)
                 .ThenInclude(v => v.Files)
-            .FirstOrDefaultAsync(c => c.Name == name)
+            .FirstOrDefaultAsync(c => c.Name == name, cancellationToken)
             ?? throw new KeyNotFoundException($"Configuration '{name}' not found.");
 
         var configVersion = configuration.Versions
@@ -1003,15 +923,15 @@ public sealed partial class ConfigurationService : IConfigurationService
 
         _db.ConfigurationFiles.Remove(configFile);
         configuration.UpdatedAt = DateTimeOffset.UtcNow;
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task ChangeVersionEntryPointAsync(string name, string version, string entryPoint)
+    public async Task ChangeEntryPointAsync(string name, string version, string entryPoint, CancellationToken cancellationToken = default)
     {
         var configVersion = await _db.ConfigurationVersions
             .Include(v => v.Files)
             .Include(v => v.Configuration)
-            .FirstOrDefaultAsync(v => v.Configuration.Name == name && v.Version == version)
+            .FirstOrDefaultAsync(v => v.Configuration.Name == name && v.Version == version, cancellationToken)
             ?? throw new KeyNotFoundException($"Version '{version}' not found for configuration '{name}'.");
 
         if (configVersion.Status != ConfigurationVersionStatus.Draft)
@@ -1027,10 +947,10 @@ public sealed partial class ConfigurationService : IConfigurationService
         }
 
         configVersion.EntryPoint = entryPoint;
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task<Stream?> DownloadFileAsync(string name, string version, string filePath)
+    public async Task<Stream?> DownloadFileAsync(string name, string version, string filePath, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -1046,7 +966,7 @@ public sealed partial class ConfigurationService : IConfigurationService
             var memory = new MemoryStream();
             await using (var fileStream = File.OpenRead(fullPath))
             {
-                await fileStream.CopyToAsync(memory);
+                await fileStream.CopyToAsync(memory, cancellationToken);
             }
             memory.Position = 0;
 
@@ -1059,12 +979,12 @@ public sealed partial class ConfigurationService : IConfigurationService
         }
     }
 
-    public async Task SaveFileAsync(string name, string version, string filePath, string content)
+    public async Task SaveFileAsync(string name, string version, string filePath, string content, CancellationToken cancellationToken = default)
     {
         var configVersion = await _db.ConfigurationVersions
             .Include(v => v.Files)
             .Include(v => v.Configuration)
-            .FirstOrDefaultAsync(v => v.Configuration.Name == name && v.Version == version)
+            .FirstOrDefaultAsync(v => v.Configuration.Name == name && v.Version == version, cancellationToken)
             ?? throw new KeyNotFoundException($"Version '{version}' not found for configuration '{name}'.");
 
         var configFile = configVersion.Files.FirstOrDefault(f => f.RelativePath == filePath)
@@ -1074,10 +994,10 @@ public sealed partial class ConfigurationService : IConfigurationService
         var versionDir = Path.Combine(dataDir, name, $"v{version}");
         var fullPath = Path.Combine(versionDir, filePath);
 
-        await File.WriteAllTextAsync(fullPath, content);
+        await File.WriteAllTextAsync(fullPath, content, cancellationToken);
 
         configFile.Checksum = await ComputeFileChecksumAsync(fullPath);
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(cancellationToken);
 
         if (configVersion.EntryPoint == filePath)
         {
@@ -1089,7 +1009,7 @@ public sealed partial class ConfigurationService : IConfigurationService
                 var jsonSchema = _schemaBuilder.SerializeSchema(jsonSchemaObj);
 
                 var existingSchema = await _db.ParameterSchemas
-                    .FirstOrDefaultAsync(ps => ps.ConfigurationId == configVersion.ConfigurationId && ps.SchemaVersion == version);
+                    .FirstOrDefaultAsync(ps => ps.ConfigurationId == configVersion.ConfigurationId && ps.SchemaVersion == version, cancellationToken);
 
                 if (existingSchema == null)
                 {
@@ -1112,12 +1032,12 @@ public sealed partial class ConfigurationService : IConfigurationService
                     configVersion.ParameterSchemaId = existingSchema.Id;
                 }
 
-                await _db.SaveChangesAsync();
+                await _db.SaveChangesAsync(cancellationToken);
             }
         }
     }
 
-    public async Task<List<ConfigurationSummaryDto>> GetConfigurationsAsync()
+    public async Task<List<ConfigurationSummary>> GetConfigurationsAsync(CancellationToken cancellationToken = default)
     {
         var userId = _userContext.GetCurrentUserId();
         if (userId == null)
@@ -1130,9 +1050,9 @@ public sealed partial class ConfigurationService : IConfigurationService
         var configs = await _db.Configurations
             .Where(c => readableIds.Contains(c.Id))
             .Include(c => c.Versions)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
-        return configs.Select(c => new ConfigurationSummaryDto
+        return configs.Select(c => new ConfigurationSummary
         {
             Name = c.Name,
             Description = c.Description,
@@ -1147,11 +1067,11 @@ public sealed partial class ConfigurationService : IConfigurationService
         }).ToList();
     }
 
-    public async Task<ConfigurationDetailsDto?> GetConfigurationAsync(string name)
+    public async Task<ConfigurationDetails?> GetConfigurationAsync(string name, CancellationToken cancellationToken = default)
     {
         var config = await _db.Configurations
             .Include(c => c.Versions)
-            .FirstOrDefaultAsync(c => c.Name == name);
+            .FirstOrDefaultAsync(c => c.Name == name, cancellationToken);
 
         if (config is null)
         {
@@ -1163,7 +1083,7 @@ public sealed partial class ConfigurationService : IConfigurationService
             .Select(v => v.Version)
             .FirstOrDefault();
 
-        return new ConfigurationDetailsDto
+        return new ConfigurationDetails
         {
             Id = config.Id,
             Name = config.Name,
@@ -1175,12 +1095,12 @@ public sealed partial class ConfigurationService : IConfigurationService
         };
     }
 
-    public async Task<List<ConfigurationVersionDto>?> GetVersionsAsync(string name)
+    public async Task<List<ConfigurationVersionDetails>?> GetVersionsAsync(string name, CancellationToken cancellationToken = default)
     {
         var config = await _db.Configurations
             .Include(c => c.Versions)
                 .ThenInclude(v => v.Files)
-            .FirstOrDefaultAsync(c => c.Name == name);
+            .FirstOrDefaultAsync(c => c.Name == name, cancellationToken);
 
         if (config is null)
         {
@@ -1189,7 +1109,7 @@ public sealed partial class ConfigurationService : IConfigurationService
 
         return config.Versions
             .OrderByDescending(v => v.CreatedAt)
-            .Select(v => new ConfigurationVersionDto
+            .Select(v => new ConfigurationVersionDetails
             {
                 Version = v.Version,
                 EntryPoint = v.EntryPoint,
@@ -1198,56 +1118,52 @@ public sealed partial class ConfigurationService : IConfigurationService
                 FileCount = v.Files.Count,
                 CreatedAt = v.CreatedAt,
                 CreatedBy = v.CreatedBy,
-                Files = v.Files.Select(f => new ConfigurationFileDto { RelativePath = f.RelativePath, ContentType = f.ContentType }).ToList()
+                Files = v.Files.Select(f => new ConfigurationFileDetails { RelativePath = f.RelativePath, ContentType = f.ContentType }).ToList()
             })
             .ToList();
     }
 
-    public async Task<bool> IsConfigurationAssignedAsync(string configName)
+    public async Task<bool> IsConfigurationAssignedAsync(string configName, CancellationToken cancellationToken = default)
     {
-        var config = await _db.Configurations.FirstOrDefaultAsync(c => c.Name == configName);
+        var config = await _db.Configurations.FirstOrDefaultAsync(c => c.Name == configName, cancellationToken);
         if (config is null) return false;
-        return await _db.NodeConfigurations.AnyAsync(nc => nc.ConfigurationId == config.Id)
-            || await _db.CompositeConfigurationItems.AnyAsync(i => i.ChildConfigurationId == config.Id);
+        return await _db.NodeConfigurations.AnyAsync(nc => nc.ConfigurationId == config.Id, cancellationToken)
+            || await _db.CompositeConfigurationItems.AnyAsync(i => i.ChildConfigurationId == config.Id, cancellationToken);
     }
 
-    public async Task<VersionUsageInfo> IsVersionInUseAsync(string configName, string version)
+    public async Task<VersionUsageInfo> IsVersionInUseAsync(string configName, string version, CancellationToken cancellationToken = default)
     {
-        var config = await _db.Configurations.FirstOrDefaultAsync(c => c.Name == configName);
+        var config = await _db.Configurations.FirstOrDefaultAsync(c => c.Name == configName, cancellationToken);
         if (config is null) return new VersionUsageInfo { IsInUse = false };
         var configId = config.Id;
 
         var nodesUsing = await _db.NodeConfigurations
             .Where(nc => nc.ConfigurationId == configId && nc.ActiveVersion == version)
             .Include(nc => nc.Node)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
-        // Extract major version from the version string
         var versionMajor = ExtractMajorVersion(version);
 
         var compositesUsing = new List<CompositeConfigurationItem>();
         if (versionMajor.HasValue)
         {
-            // Check if this major version is used in composites
             var compositesByMajor = await _db.CompositeConfigurationItems
                 .Where(cci => cci.ChildConfigurationId == configId && cci.MajorVersion == versionMajor.Value)
                 .Include(cci => cci.CompositeConfigurationVersion)
                     .ThenInclude(ccv => ccv.CompositeConfiguration)
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
 
             if (compositesByMajor.Any())
             {
-                // Count how many published versions exist with this major version
                 var publishedVersionsWithMajor = await _db.ConfigurationVersions
                     .Where(v => v.ConfigurationId == configId &&
                            v.Status == ConfigurationVersionStatus.Published)
                     .Select(v => v.Version)
-                    .ToListAsync();
+                    .ToListAsync(cancellationToken);
 
                 var majorVersionCount = publishedVersionsWithMajor
                     .Count(v => ExtractMajorVersion(v) == versionMajor);
 
-                // Only mark as in-use if this is the last published version with this major
                 if (majorVersionCount == 1)
                 {
                     compositesUsing = compositesByMajor;
@@ -1278,23 +1194,23 @@ public sealed partial class ConfigurationService : IConfigurationService
         return new VersionUsageInfo { IsInUse = true, Details = details };
     }
 
-    public async Task<ConfigurationSettingsDto?> GetConfigurationSettingsAsync(string configName)
+    public async Task<ConfigurationSettingsSummary?> GetSettingsAsync(string configName, CancellationToken cancellationToken = default)
     {
-        var configuration = await _db.Configurations.FirstOrDefaultAsync(c => c.Name == configName);
+        var configuration = await _db.Configurations.FirstOrDefaultAsync(c => c.Name == configName, cancellationToken);
         if (configuration is null)
         {
             return null;
         }
 
         var settings = await _db.Set<ConfigurationSettings>()
-            .FirstOrDefaultAsync(cs => cs.ConfigurationId == configuration.Id);
+            .FirstOrDefaultAsync(cs => cs.ConfigurationId == configuration.Id, cancellationToken);
 
         if (settings is null)
         {
-            var globalSettings = await _db.Set<ValidationSettings>().FirstOrDefaultAsync()
+            var globalSettings = await _db.Set<ValidationSettings>().FirstOrDefaultAsync(cancellationToken)
                                  ?? new ValidationSettings();
 
-            return new ConfigurationSettingsDto
+            return new ConfigurationSettingsSummary
             {
                 IsOverridden = false,
                 RequireSemVer = globalSettings.EnforceSemverCompliance,
@@ -1302,7 +1218,7 @@ public sealed partial class ConfigurationService : IConfigurationService
             };
         }
 
-        return new ConfigurationSettingsDto
+        return new ConfigurationSettingsSummary
         {
             IsOverridden = true,
             RequireSemVer = settings.EnforceSemverCompliance ?? true,
@@ -1310,12 +1226,15 @@ public sealed partial class ConfigurationService : IConfigurationService
         };
     }
 
-    public async Task<ConfigurationSettingsDto> UpdateConfigurationSettingsAsync(
+    public async Task<ConfigurationSettingsSummary> UpdateSettingsAsync(
         string configName,
-        bool? requireSemVer,
-        ParameterValidationMode? paramValidation)
+        UpdateConfigurationSettingsRequest request,
+        CancellationToken cancellationToken = default)
     {
-        var configuration = await _db.Configurations.FirstOrDefaultAsync(c => c.Name == configName)
+        var requireSemVer = request.RequireSemVer;
+        var paramValidation = request.ParameterValidationMode;
+
+        var configuration = await _db.Configurations.FirstOrDefaultAsync(c => c.Name == configName, cancellationToken)
             ?? throw new KeyNotFoundException($"Configuration '{configName}' not found.");
 
         var globalSettings = await _db.Set<ValidationSettings>().FirstOrDefaultAsync()
@@ -1355,9 +1274,9 @@ public sealed partial class ConfigurationService : IConfigurationService
             settings.UpdatedAt = DateTimeOffset.UtcNow;
         }
 
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(cancellationToken);
 
-        return new ConfigurationSettingsDto
+        return new ConfigurationSettingsSummary
         {
             IsOverridden = true,
             RequireSemVer = settings.EnforceSemverCompliance ?? true,
@@ -1365,32 +1284,32 @@ public sealed partial class ConfigurationService : IConfigurationService
         };
     }
 
-    public async Task DeleteConfigurationSettingsAsync(string configName)
+    public async Task DeleteSettingsAsync(string configName, CancellationToken cancellationToken = default)
     {
-        var configuration = await _db.Configurations.FirstOrDefaultAsync(c => c.Name == configName);
+        var configuration = await _db.Configurations.FirstOrDefaultAsync(c => c.Name == configName, cancellationToken);
         if (configuration is null)
         {
             return;
         }
 
         var settings = await _db.Set<ConfigurationSettings>()
-            .FirstOrDefaultAsync(cs => cs.ConfigurationId == configuration.Id);
+            .FirstOrDefaultAsync(cs => cs.ConfigurationId == configuration.Id, cancellationToken);
 
         if (settings is not null)
         {
             _db.Remove(settings);
-            await _db.SaveChangesAsync();
+            await _db.SaveChangesAsync(cancellationToken);
         }
     }
 
-    public async Task<ConfigurationRetentionDto?> GetRetentionSettingsAsync(string configName)
+    public async Task<ConfigurationRetentionSummary?> GetRetentionSettingsAsync(string configName, CancellationToken cancellationToken = default)
     {
-        var config = await _db.Configurations.FirstOrDefaultAsync(c => c.Name == configName);
+        var config = await _db.Configurations.FirstOrDefaultAsync(c => c.Name == configName, cancellationToken);
         if (config is null) return null;
 
         var settings = await _db.Set<ConfigurationSettings>()
             .AsNoTracking()
-            .FirstOrDefaultAsync(cs => cs.ConfigurationId == config.Id);
+            .FirstOrDefaultAsync(cs => cs.ConfigurationId == config.Id, cancellationToken);
 
         if (settings is null
             || (settings.RetentionEnabled is null
@@ -1398,10 +1317,10 @@ public sealed partial class ConfigurationService : IConfigurationService
                 && settings.RetentionKeepDays is null
                 && settings.RetentionKeepReleaseVersions is null))
         {
-            return new ConfigurationRetentionDto { IsOverridden = false };
+            return new ConfigurationRetentionSummary { IsOverridden = false };
         }
 
-        return new ConfigurationRetentionDto
+        return new ConfigurationRetentionSummary
         {
             IsOverridden = true,
             Enabled = settings.RetentionEnabled,
@@ -1411,13 +1330,13 @@ public sealed partial class ConfigurationService : IConfigurationService
         };
     }
 
-    public async Task SaveRetentionSettingsAsync(string configName, bool? enabled, int? keepVersions, int? keepDays, bool? keepReleaseVersions)
+    public async Task SaveRetentionSettingsAsync(string configName, SaveRetentionSettingsRequest request, CancellationToken cancellationToken = default)
     {
-        var config = await _db.Configurations.FirstOrDefaultAsync(c => c.Name == configName);
+        var config = await _db.Configurations.FirstOrDefaultAsync(c => c.Name == configName, cancellationToken);
         if (config is null) return;
 
         var settings = await _db.Set<ConfigurationSettings>()
-            .FirstOrDefaultAsync(cs => cs.ConfigurationId == config.Id);
+            .FirstOrDefaultAsync(cs => cs.ConfigurationId == config.Id, cancellationToken);
 
         if (settings is null)
         {
@@ -1429,22 +1348,22 @@ public sealed partial class ConfigurationService : IConfigurationService
             _db.Add(settings);
         }
 
-        if (enabled.HasValue) settings.RetentionEnabled = enabled.Value;
-        if (keepVersions.HasValue) settings.RetentionKeepVersions = keepVersions.Value;
-        if (keepDays.HasValue) settings.RetentionKeepDays = keepDays.Value;
-        if (keepReleaseVersions.HasValue) settings.RetentionKeepReleaseVersions = keepReleaseVersions.Value;
+        if (request.Enabled.HasValue) settings.RetentionEnabled = request.Enabled.Value;
+        if (request.KeepVersions.HasValue) settings.RetentionKeepVersions = request.KeepVersions.Value;
+        if (request.KeepDays.HasValue) settings.RetentionKeepDays = request.KeepDays.Value;
+        if (request.KeepReleaseVersions.HasValue) settings.RetentionKeepReleaseVersions = request.KeepReleaseVersions.Value;
         settings.UpdatedAt = DateTimeOffset.UtcNow;
 
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task ResetRetentionSettingsAsync(string configName)
+    public async Task ResetRetentionSettingsAsync(string configName, CancellationToken cancellationToken = default)
     {
-        var config = await _db.Configurations.FirstOrDefaultAsync(c => c.Name == configName);
+        var config = await _db.Configurations.FirstOrDefaultAsync(c => c.Name == configName, cancellationToken);
         if (config is null) return;
 
         var settings = await _db.Set<ConfigurationSettings>()
-            .FirstOrDefaultAsync(cs => cs.ConfigurationId == config.Id);
+            .FirstOrDefaultAsync(cs => cs.ConfigurationId == config.Id, cancellationToken);
 
         if (settings is not null)
         {
@@ -1453,7 +1372,7 @@ public sealed partial class ConfigurationService : IConfigurationService
             settings.RetentionKeepDays = null;
             settings.RetentionKeepReleaseVersions = null;
             settings.UpdatedAt = DateTimeOffset.UtcNow;
-            await _db.SaveChangesAsync();
+            await _db.SaveChangesAsync(cancellationToken);
         }
     }
 
@@ -1465,14 +1384,9 @@ public sealed partial class ConfigurationService : IConfigurationService
         return Convert.ToHexString(hashBytes);
     }
 
-    private static string GetContentType(IBrowserFile file)
+    private static string GetContentTypeFromFileName(string fileName)
     {
-        if (!string.IsNullOrWhiteSpace(file.ContentType))
-        {
-            return file.ContentType;
-        }
-
-        var extension = Path.GetExtension(file.Name).ToLowerInvariant();
+        var extension = Path.GetExtension(fileName).ToLowerInvariant();
         return extension switch
         {
             ".yaml" or ".yml" => "application/x-yaml",
@@ -1481,9 +1395,9 @@ public sealed partial class ConfigurationService : IConfigurationService
         };
     }
 
-    public async Task<Guid?> GetParameterSchemaIdAsync(string configName)
+    public async Task<Guid?> GetParameterSchemaIdAsync(string configName, CancellationToken cancellationToken = default)
     {
-        var config = await _db.Configurations.FirstOrDefaultAsync(c => c.Name == configName);
+        var config = await _db.Configurations.FirstOrDefaultAsync(c => c.Name == configName, cancellationToken);
         if (config is null)
         {
             return null;
@@ -1491,16 +1405,16 @@ public sealed partial class ConfigurationService : IConfigurationService
 
         var schema = await _db.ParameterSchemas
             .AsNoTracking()
-            .FirstOrDefaultAsync(ps => ps.ConfigurationId == config.Id);
+            .FirstOrDefaultAsync(ps => ps.ConfigurationId == config.Id, cancellationToken);
 
         return schema?.Id;
     }
 
-    public async Task<List<string>> GetConfigurationVersionListAsync(string configName)
+    public async Task<List<string>> GetConfigurationVersionListAsync(string configName, CancellationToken cancellationToken = default)
     {
         var config = await _db.Configurations
             .Include(c => c.Versions)
-            .FirstOrDefaultAsync(c => c.Name == configName);
+            .FirstOrDefaultAsync(c => c.Name == configName, cancellationToken);
 
         if (config is null)
         {
@@ -1513,9 +1427,9 @@ public sealed partial class ConfigurationService : IConfigurationService
             .ToList();
     }
 
-    public async Task<List<PermissionEntry>?> GetPermissionsAsync(string configName)
+    public async Task<List<PermissionEntry>?> GetPermissionsAsync(string configName, CancellationToken cancellationToken = default)
     {
-        var config = await _db.Configurations.FirstOrDefaultAsync(c => c.Name == configName);
+        var config = await _db.Configurations.FirstOrDefaultAsync(c => c.Name == configName, cancellationToken);
         if (config is null)
         {
             return null;
@@ -1531,9 +1445,13 @@ public sealed partial class ConfigurationService : IConfigurationService
         return await BuildPermissionEntriesAsync(acl.Select(p => (p.PrincipalType, p.PrincipalId, p.PermissionLevel, p.GrantedAt, p.GrantedByUserId)));
     }
 
-    public async Task GrantPermissionAsync(string configName, Guid principalId, string principalType, string level)
+    public async Task GrantPermissionAsync(string configName, GrantPermissionRequest request, CancellationToken cancellationToken = default)
     {
-        var config = await _db.Configurations.FirstOrDefaultAsync(c => c.Name == configName)
+        var principalId = request.PrincipalId;
+        var principalType = request.PrincipalType;
+        var level = request.Level;
+
+        var config = await _db.Configurations.FirstOrDefaultAsync(c => c.Name == configName, cancellationToken)
             ?? throw new KeyNotFoundException($"Configuration '{configName}' not found.");
 
         var userId = _userContext.GetCurrentUserId();
@@ -1552,12 +1470,12 @@ public sealed partial class ConfigurationService : IConfigurationService
             throw new ArgumentException($"Invalid permission level '{level}'. Must be 'Read', 'Modify', or 'Manage'.", nameof(level));
         }
 
-        if (parsedPrincipalType == PrincipalType.User && !await _db.Users.AnyAsync(u => u.Id == principalId))
+        if (parsedPrincipalType == PrincipalType.User && !await _db.Users.AnyAsync(u => u.Id == principalId, cancellationToken))
         {
             throw new KeyNotFoundException($"User '{principalId}' not found.");
         }
 
-        if (parsedPrincipalType == PrincipalType.Group && !await _db.Groups.AnyAsync(g => g.Id == principalId))
+        if (parsedPrincipalType == PrincipalType.Group && !await _db.Groups.AnyAsync(g => g.Id == principalId, cancellationToken))
         {
             throw new KeyNotFoundException($"Group '{principalId}' not found.");
         }
@@ -1565,9 +1483,12 @@ public sealed partial class ConfigurationService : IConfigurationService
         await _authService.GrantConfigurationPermissionAsync(config.Id, principalId, parsedPrincipalType, parsedLevel, userId.Value);
     }
 
-    public async Task RevokePermissionAsync(string configName, Guid principalId, string principalType)
+    public async Task RevokePermissionAsync(string configName, RevokePermissionRequest request, CancellationToken cancellationToken = default)
     {
-        var config = await _db.Configurations.FirstOrDefaultAsync(c => c.Name == configName)
+        var principalId = request.PrincipalId;
+        var principalType = request.PrincipalType;
+
+        var config = await _db.Configurations.FirstOrDefaultAsync(c => c.Name == configName, cancellationToken)
             ?? throw new KeyNotFoundException($"Configuration '{configName}' not found.");
 
         var userId = _userContext.GetCurrentUserId();

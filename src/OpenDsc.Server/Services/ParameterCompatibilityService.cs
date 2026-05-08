@@ -6,6 +6,8 @@ using System.Text.Json.Nodes;
 
 using NuGet.Versioning;
 
+using OpenDsc.Contracts.Configurations;
+
 namespace OpenDsc.Server.Services;
 
 public interface IParameterCompatibilityService
@@ -436,32 +438,4 @@ public sealed partial class ParameterCompatibilityService(ILogger<ParameterCompa
     private partial void LogSchemaComparisonComplete(int breakingCount, int nonBreakingCount, string oldVersion, string newVersion);
 }
 
-public sealed class CompatibilityReport
-{
-    public required string OldVersion { get; init; }
-    public required string NewVersion { get; init; }
-    public required int NewMajorVersion { get; init; }
-    public required bool HasBreakingChanges { get; init; }
-    public required List<SchemaChange> BreakingChanges { get; init; }
-    public required List<SchemaChange> NonBreakingChanges { get; init; }
-    public required List<ParameterFileMigrationStatus> AffectedParameterFiles { get; init; }
-}
 
-public sealed class SchemaChange
-{
-    public required string ParameterName { get; init; }
-    public required string ChangeType { get; init; }
-    public string? OldValue { get; init; }
-    public string? NewValue { get; init; }
-    public string? Description { get; init; }
-}
-
-public sealed class ParameterFileMigrationStatus
-{
-    public required Guid FileId { get; init; }
-    public required string ScopeTypeName { get; init; }
-    public string? ScopeValue { get; init; }
-    public required string Version { get; init; }
-    public required bool NeedsMigration { get; init; }
-    public List<ValidationError>? Errors { get; init; }
-}

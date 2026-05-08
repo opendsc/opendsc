@@ -6,8 +6,7 @@ using System.Net;
 
 using AwesomeAssertions;
 
-using OpenDsc.Server.Endpoints;
-using OpenDsc.Server.Services;
+using OpenDsc.Contracts.Configurations;
 
 using Xunit;
 
@@ -39,7 +38,7 @@ public sealed class ConfigurationSettingsEndpointsTests : IDisposable
         var response = await client.GetAsync("/api/v1/configurations/test-config/settings/retention", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var dto = await response.Content.ReadFromJsonAsync<ConfigurationRetentionDto>(TestContext.Current.CancellationToken);
+        var dto = await response.Content.ReadFromJsonAsync<ConfigurationRetentionSummary>(TestContext.Current.CancellationToken);
         dto.Should().NotBeNull();
         dto!.IsOverridden.Should().BeFalse();
         dto.KeepVersions.Should().BeNull();
@@ -74,7 +73,7 @@ public sealed class ConfigurationSettingsEndpointsTests : IDisposable
     {
         using var client = CreateAuthenticatedClient();
 
-        var request = new UpdateConfigurationRetentionRequest
+        var request = new SaveRetentionSettingsRequest
         {
             KeepVersions = 5,
             KeepDays = 30,
@@ -86,7 +85,7 @@ public sealed class ConfigurationSettingsEndpointsTests : IDisposable
 
         var getResponse = await client.GetAsync("/api/v1/configurations/test-config/settings/retention", TestContext.Current.CancellationToken);
         getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var dto = await getResponse.Content.ReadFromJsonAsync<ConfigurationRetentionDto>(TestContext.Current.CancellationToken);
+        var dto = await getResponse.Content.ReadFromJsonAsync<ConfigurationRetentionSummary>(TestContext.Current.CancellationToken);
         dto.Should().NotBeNull();
         dto!.IsOverridden.Should().BeTrue();
         dto.KeepVersions.Should().Be(5);
@@ -101,14 +100,14 @@ public sealed class ConfigurationSettingsEndpointsTests : IDisposable
 
         // Set initial overrides
         await client.PutAsJsonAsync("/api/v1/configurations/test-config/settings/retention",
-            new UpdateConfigurationRetentionRequest { KeepVersions = 7, KeepDays = 60 }, TestContext.Current.CancellationToken);
+            new SaveRetentionSettingsRequest { KeepVersions = 7, KeepDays = 60 }, TestContext.Current.CancellationToken);
 
         // Update only KeepVersions
         var putResponse = await client.PutAsJsonAsync("/api/v1/configurations/test-config/settings/retention",
-            new UpdateConfigurationRetentionRequest { KeepVersions = 3 }, TestContext.Current.CancellationToken);
+            new SaveRetentionSettingsRequest { KeepVersions = 3 }, TestContext.Current.CancellationToken);
         putResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var dto = await putResponse.Content.ReadFromJsonAsync<ConfigurationRetentionDto>(TestContext.Current.CancellationToken);
+        var dto = await putResponse.Content.ReadFromJsonAsync<ConfigurationRetentionSummary>(TestContext.Current.CancellationToken);
         dto.Should().NotBeNull();
         dto!.KeepVersions.Should().Be(3);
         dto.KeepDays.Should().Be(60);
@@ -120,7 +119,7 @@ public sealed class ConfigurationSettingsEndpointsTests : IDisposable
         using var client = CreateAuthenticatedClient();
 
         var response = await client.PutAsJsonAsync("/api/v1/configurations/nonexistent-config/settings/retention",
-            new UpdateConfigurationRetentionRequest { KeepVersions = 5 }, TestContext.Current.CancellationToken);
+            new SaveRetentionSettingsRequest { KeepVersions = 5 }, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
@@ -131,7 +130,7 @@ public sealed class ConfigurationSettingsEndpointsTests : IDisposable
         using var client = _factory.CreateClient();
 
         var response = await client.PutAsJsonAsync("/api/v1/configurations/test-config/settings/retention",
-            new UpdateConfigurationRetentionRequest { KeepVersions = 5 }, TestContext.Current.CancellationToken);
+            new SaveRetentionSettingsRequest { KeepVersions = 5 }, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
@@ -145,7 +144,7 @@ public sealed class ConfigurationSettingsEndpointsTests : IDisposable
 
         // Set overrides first
         await client.PutAsJsonAsync("/api/v1/configurations/test-config/settings/retention",
-            new UpdateConfigurationRetentionRequest { KeepVersions = 5, KeepDays = 30 }, TestContext.Current.CancellationToken);
+            new SaveRetentionSettingsRequest { KeepVersions = 5, KeepDays = 30 }, TestContext.Current.CancellationToken);
 
         // Delete overrides
         var deleteResponse = await client.DeleteAsync("/api/v1/configurations/test-config/settings/retention", TestContext.Current.CancellationToken);
@@ -154,7 +153,7 @@ public sealed class ConfigurationSettingsEndpointsTests : IDisposable
         // Confirm they're gone
         var getResponse = await client.GetAsync("/api/v1/configurations/test-config/settings/retention", TestContext.Current.CancellationToken);
         getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var dto = await getResponse.Content.ReadFromJsonAsync<ConfigurationRetentionDto>(TestContext.Current.CancellationToken);
+        var dto = await getResponse.Content.ReadFromJsonAsync<ConfigurationRetentionSummary>(TestContext.Current.CancellationToken);
         dto.Should().NotBeNull();
         dto!.IsOverridden.Should().BeFalse();
         dto.KeepVersions.Should().BeNull();

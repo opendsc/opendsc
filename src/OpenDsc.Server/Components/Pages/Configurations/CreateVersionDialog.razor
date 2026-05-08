@@ -1,5 +1,6 @@
 @using Microsoft.AspNetCore.Components.Forms
 @using NuGet.Versioning
+@using OpenDsc.Contracts.Configurations
 @using OpenDsc.Server.Services
 @inject IConfigurationService ConfigurationService
 @inject ISnackbar Snackbar
@@ -183,11 +184,18 @@
         try
         {
             await ConfigurationService.CreateVersionAsync(
-            ConfigurationName,
-            version,
-            isDraft,
-            selectedFiles,
-            string.IsNullOrWhiteSpace(entryPoint) ? null : entryPoint);
+                ConfigurationName,
+                new CreateConfigurationVersionRequest
+                {
+                    Version = version,
+                    EntryPoint = string.IsNullOrWhiteSpace(entryPoint) ? null : entryPoint,
+                    Files = selectedFiles.Select(ToFileUpload).ToList()
+                });
+
+            if (!isDraft)
+            {
+                await ConfigurationService.PublishVersionAsync(ConfigurationName, version);
+            }
 
             Snackbar.Add($"Version {version} created successfully", Severity.Success);
             MudDialog.Close(DialogResult.Ok(true));
@@ -202,6 +210,9 @@
             isSubmitting = false;
         }
     }
+
+    private static FileUpload ToFileUpload(IBrowserFile file) =>
+        new(file.Name, file.OpenReadStream(10 * 1024 * 1024), file.ContentType, file.Size);
 }
 
 <style>

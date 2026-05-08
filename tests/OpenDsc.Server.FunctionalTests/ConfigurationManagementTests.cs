@@ -8,14 +8,11 @@ using AwesomeAssertions;
 
 using OpenDsc.Contracts.Lcm;
 using OpenDsc.Contracts.Nodes;
-using OpenDsc.Contracts.CompositeConfigurations;
-using OpenDsc.Contracts.Reports;
-using OpenDsc.Contracts.Settings;
-using OpenDsc.Contracts.Permissions;
 using OpenDsc.Server.FunctionalTests.DatabaseProviders;
-using OpenDsc.Server.Services;
 
 using Xunit;
+
+using ConfigurationDetails = OpenDsc.Contracts.Configurations.ConfigurationDetails;
 
 namespace OpenDsc.Server.FunctionalTests;
 
@@ -59,7 +56,7 @@ resources:
         var getResponse = await adminClient.GetAsync($"/api/v1/configurations/{configName}", TestContext.Current.CancellationToken);
         getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var configDetails = await getResponse.Content.ReadFromJsonAsync<ConfigurationDetailsDto>(TestContext.Current.CancellationToken);
+        var configDetails = await getResponse.Content.ReadFromJsonAsync<ConfigurationDetails>(TestContext.Current.CancellationToken);
         configDetails.Should().NotBeNull();
         configDetails!.LatestVersion.Should().Be("1.0.0");
     }
@@ -163,7 +160,7 @@ resources: []
         createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
         var getResponse = await adminClient.GetAsync($"/api/v1/configurations/{configName}", TestContext.Current.CancellationToken);
-        var configDetails = await getResponse.Content.ReadFromJsonAsync<ConfigurationDetailsDto>(TestContext.Current.CancellationToken);
+        var configDetails = await getResponse.Content.ReadFromJsonAsync<ConfigurationDetails>(TestContext.Current.CancellationToken);
         configDetails.Should().NotBeNull();
         configDetails!.LatestVersion.Should().Be("1.0.0");
 
@@ -172,7 +169,7 @@ resources: []
         publishResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var verifyResponse = await adminClient.GetAsync($"/api/v1/configurations/{configName}", TestContext.Current.CancellationToken);
-        var verifiedConfig = await verifyResponse.Content.ReadFromJsonAsync<ConfigurationDetailsDto>(TestContext.Current.CancellationToken);
+        var verifiedConfig = await verifyResponse.Content.ReadFromJsonAsync<ConfigurationDetails>(TestContext.Current.CancellationToken);
         verifiedConfig.Should().NotBeNull();
     }
 }

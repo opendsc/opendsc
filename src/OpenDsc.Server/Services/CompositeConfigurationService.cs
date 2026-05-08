@@ -6,39 +6,14 @@ using Microsoft.EntityFrameworkCore;
 
 using NuGet.Versioning;
 
-using OpenDsc.Server.Authorization;
+using OpenDsc.Contracts.Configurations;
 using OpenDsc.Contracts.CompositeConfigurations;
 using OpenDsc.Contracts.Permissions;
-using OpenDsc.Contracts.Configurations;
+using OpenDsc.Server.Authorization;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
 
 namespace OpenDsc.Server.Services;
-
-public interface ICompositeConfigurationService
-{
-    Task<List<CompositeConfigurationSummary>> GetCompositeConfigurationsAsync();
-    Task<CompositeConfigurationDetails?> GetCompositeConfigurationAsync(string name);
-    Task<List<CompositeConfigurationVersionDetails>?> GetVersionsAsync(string name);
-    Task<CompositeConfigurationVersionDetails?> GetVersionAsync(string name, string version);
-    Task<List<ChildConfigurationOption>> GetAvailableChildConfigurationsAsync(IEnumerable<Guid> excludeIds);
-    Task<List<int>> GetAvailableMajorVersionsAsync(Guid configurationId);
-    Task<CompositeConfigurationDetails> CreateCompositeConfigurationAsync(string name, string? description);
-    Task<CompositeConfigurationVersionDetails> CreateVersionAsync(string name, string version);
-    Task CreateVersionFromExistingAsync(string name, string sourceVersion, string newVersion);
-    Task PublishVersionAsync(string name, string version);
-    Task DeleteCompositeConfigurationAsync(Guid compositeId);
-    Task DeleteCompositeConfigurationByNameAsync(string name);
-    Task DeleteVersionAsync(string name, string version);
-    Task<CompositeConfigurationItemDetails> AddChildAsync(string name, string version, Guid childConfigId, int? majorVersion, int order);
-    Task<CompositeConfigurationItemDetails> AddChildByNameAsync(string name, string version, string childConfigurationName, int majorVersion, int order);
-    Task<CompositeConfigurationItemDetails> UpdateChildAsync(Guid itemId, int? majorVersion, int order);
-    Task RemoveChildAsync(Guid itemId);
-    Task ReorderChildAsync(Guid itemId, int newOrder);
-    Task<List<PermissionEntry>?> GetPermissionsAsync(string compositeName);
-    Task GrantPermissionAsync(string compositeName, Guid principalId, string principalType, string level);
-    Task RevokePermissionAsync(string compositeName, Guid principalId, string principalType);
-}
 
 public sealed class CompositeConfigurationService : ICompositeConfigurationService
 {
@@ -56,7 +31,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
         _userContext = userContext;
     }
 
-    public async Task<List<CompositeConfigurationSummary>> GetCompositeConfigurationsAsync()
+    public async Task<List<CompositeConfigurationSummary>> GetCompositeConfigurationsAsync(CancellationToken cancellationToken = default)
     {
         var userId = _userContext.GetCurrentUserId();
         if (userId == null)
@@ -69,7 +44,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
         var composites = await _db.CompositeConfigurations
             .Where(c => readableIds.Contains(c.Id))
             .Include(c => c.Versions)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
         return composites.Select(c => new CompositeConfigurationSummary
         {
@@ -85,14 +60,14 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
         }).ToList();
     }
 
-    public async Task<CompositeConfigurationDetails?> GetCompositeConfigurationAsync(string name)
+    public async Task<CompositeConfigurationDetails?> GetCompositeConfigurationAsync(string name, CancellationToken cancellationToken = default)
     {
         var composite = await _db.CompositeConfigurations
             .Include(c => c.Versions)
                 .ThenInclude(v => v.Items)
                     .ThenInclude(i => i.ChildConfiguration)
             .AsSplitQuery()
-            .FirstOrDefaultAsync(c => c.Name == name);
+            .FirstOrDefaultAsync(c => c.Name == name, cancellationToken);
 
         if (composite is null)
         {
@@ -102,13 +77,13 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
         return MapToDetailsDto(composite);
     }
 
-    public async Task<List<CompositeConfigurationVersionDetails>?> GetVersionsAsync(string name)
+    public async Task<List<CompositeConfigurationVersionDetails>?> GetVersionsAsync(string name, CancellationToken cancellationToken = default)
     {
         var composite = await _db.CompositeConfigurations
             .Include(c => c.Versions)
                 .ThenInclude(v => v.Items)
                     .ThenInclude(i => i.ChildConfiguration)
-            .FirstOrDefaultAsync(c => c.Name == name);
+            .FirstOrDefaultAsync(c => c.Name == name, cancellationToken);
 
         if (composite is null)
         {
@@ -121,13 +96,13 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
             .ToList();
     }
 
-    public async Task<CompositeConfigurationVersionDetails?> GetVersionAsync(string name, string version)
+    public async Task<CompositeConfigurationVersionDetails?> GetVersionAsync(string name, string version, CancellationToken cancellationToken = default)
     {
         var compositeVersion = await _db.CompositeConfigurationVersions
             .Include(v => v.CompositeConfiguration)
             .Include(v => v.Items)
                 .ThenInclude(i => i.ChildConfiguration)
-            .FirstOrDefaultAsync(v => v.CompositeConfiguration.Name == name && v.Version == version);
+            .FirstOrDefaultAsync(v => v.CompositeConfiguration.Name == name && v.Version == version, cancellationToken);
 
         if (compositeVersion is null)
         {
@@ -137,7 +112,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
         return MapToVersionDto(compositeVersion);
     }
 
-    public async Task<List<ChildConfigurationOption>> GetAvailableChildConfigurationsAsync(IEnumerable<Guid> excludeIds)
+    public async Task<List<ChildConfigurationOption>> GetAvailableChildConfigurationsAsync(IEnumerable<Guid> excludeIds, CancellationToken cancellationToken = default)
     {
         var excludeList = excludeIds.ToList();
 
@@ -145,7 +120,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
             .Include(c => c.Versions.Where(v => v.Status == ConfigurationVersionStatus.Published))
             .Where(c => !excludeList.Contains(c.Id) && c.Versions.Any(v => v.Status == ConfigurationVersionStatus.Published))
             .OrderBy(c => c.Name)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
         return configs.Select(c => new ChildConfigurationOption
         {
@@ -160,12 +135,12 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
         }).ToList();
     }
 
-    public async Task<List<int>> GetAvailableMajorVersionsAsync(Guid configurationId)
+    public async Task<List<int>> GetAvailableMajorVersionsAsync(Guid configurationId, CancellationToken cancellationToken = default)
     {
         var versions = await _db.ConfigurationVersions
             .Where(v => v.ConfigurationId == configurationId && v.Status == ConfigurationVersionStatus.Published)
             .Select(v => v.Version)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
         return versions
             .Select(v => SemanticVersion.TryParse(v, out var sv) ? sv.Major : -1)
@@ -175,31 +150,31 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
             .ToList();
     }
 
-    public async Task<CompositeConfigurationDetails> CreateCompositeConfigurationAsync(
-        string name,
-        string? description)
+    public async Task<CompositeConfigurationDetails> CreateAsync(
+        CreateCompositeConfigurationRequest request,
+        CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(name))
+        if (string.IsNullOrWhiteSpace(request.Name))
         {
-            throw new ArgumentException("Composite configuration name is required.", nameof(name));
+            throw new ArgumentException("Composite configuration name is required.", nameof(request));
         }
 
-        if (await _db.CompositeConfigurations.AnyAsync(c => c.Name == name))
+        if (await _db.CompositeConfigurations.AnyAsync(c => c.Name == request.Name, cancellationToken))
         {
-            throw new InvalidOperationException($"Composite configuration '{name}' already exists.");
+            throw new InvalidOperationException($"Composite configuration '{request.Name}' already exists.");
         }
 
         var composite = new CompositeConfiguration
         {
             Id = Guid.NewGuid(),
-            Name = name,
-            Description = string.IsNullOrWhiteSpace(description) ? null : description,
-            EntryPoint = "main.dsc.yaml",
+            Name = request.Name,
+            Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description,
+            EntryPoint = request.EntryPoint ?? "main.dsc.yaml",
             CreatedAt = DateTimeOffset.UtcNow
         };
 
         _db.CompositeConfigurations.Add(composite);
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(cancellationToken);
 
         var userId = _userContext.GetCurrentUserId();
         if (userId.HasValue && !await _authService.HasGlobalPermissionAsync(userId.Value, CompositeConfigurationPermissions.AdminOverride))
@@ -226,35 +201,36 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
 
     public async Task<CompositeConfigurationVersionDetails> CreateVersionAsync(
         string name,
-        string version)
+        CreateCompositeConfigurationVersionRequest request,
+        CancellationToken cancellationToken = default)
     {
-        if (!SemanticVersion.TryParse(version, out var sv))
+        if (!SemanticVersion.TryParse(request.Version, out var sv))
         {
-            throw new ArgumentException($"Version '{version}' is not a valid semantic version.", nameof(version));
+            throw new ArgumentException($"Version '{request.Version}' is not a valid semantic version.", nameof(request));
         }
 
         var composite = await _db.CompositeConfigurations
             .Include(c => c.Versions)
-            .FirstOrDefaultAsync(c => c.Name == name)
+            .FirstOrDefaultAsync(c => c.Name == name, cancellationToken)
             ?? throw new KeyNotFoundException($"Composite configuration '{name}' not found.");
 
-        if (composite.Versions.Any(v => v.Version == version))
+        if (composite.Versions.Any(v => v.Version == request.Version))
         {
-            throw new InvalidOperationException($"Version '{version}' already exists.");
+            throw new InvalidOperationException($"Version '{request.Version}' already exists.");
         }
 
         var newVersion = new CompositeConfigurationVersion
         {
             Id = Guid.NewGuid(),
             CompositeConfigurationId = composite.Id,
-            Version = version,
-            PrereleaseChannel = string.IsNullOrEmpty(sv.Release) ? null : sv.Release,
+            Version = request.Version,
+            PrereleaseChannel = string.IsNullOrEmpty(sv.Release) ? request.PrereleaseChannel : sv.Release,
             CreatedAt = DateTimeOffset.UtcNow
         };
 
         _db.CompositeConfigurationVersions.Add(newVersion);
         composite.UpdatedAt = DateTimeOffset.UtcNow;
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(cancellationToken);
 
         return new CompositeConfigurationVersionDetails
         {
@@ -270,34 +246,34 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
 
     public async Task CreateVersionFromExistingAsync(
         string name,
-        string sourceVersion,
-        string newVersion)
+        CreateCompositeVersionFromExistingRequest request,
+        CancellationToken cancellationToken = default)
     {
-        if (!SemanticVersion.TryParse(newVersion, out var sv))
+        if (!SemanticVersion.TryParse(request.NewVersion, out var sv))
         {
-            throw new ArgumentException($"Version '{newVersion}' is not a valid semantic version.", nameof(newVersion));
+            throw new ArgumentException($"Version '{request.NewVersion}' is not a valid semantic version.", nameof(request));
         }
 
         var composite = await _db.CompositeConfigurations
-            .FirstOrDefaultAsync(c => c.Name == name)
+            .FirstOrDefaultAsync(c => c.Name == name, cancellationToken)
             ?? throw new KeyNotFoundException($"Composite configuration '{name}' not found.");
 
         if (await _db.CompositeConfigurationVersions.AnyAsync(v =>
-                v.CompositeConfigurationId == composite.Id && v.Version == newVersion))
+                v.CompositeConfigurationId == composite.Id && v.Version == request.NewVersion, cancellationToken))
         {
-            throw new InvalidOperationException($"Version '{newVersion}' already exists.");
+            throw new InvalidOperationException($"Version '{request.NewVersion}' already exists.");
         }
 
         var source = await _db.CompositeConfigurationVersions
             .Include(v => v.Items)
-            .FirstOrDefaultAsync(v => v.CompositeConfigurationId == composite.Id && v.Version == sourceVersion)
-            ?? throw new KeyNotFoundException($"Source version '{sourceVersion}' not found.");
+            .FirstOrDefaultAsync(v => v.CompositeConfigurationId == composite.Id && v.Version == request.SourceVersion, cancellationToken)
+            ?? throw new KeyNotFoundException($"Source version '{request.SourceVersion}' not found.");
 
         var version = new CompositeConfigurationVersion
         {
             Id = Guid.NewGuid(),
             CompositeConfigurationId = composite.Id,
-            Version = newVersion,
+            Version = request.NewVersion,
             PrereleaseChannel = string.IsNullOrEmpty(sv.Release) ? null : sv.Release,
             CreatedAt = DateTimeOffset.UtcNow
         };
@@ -317,15 +293,15 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
         }
 
         composite.UpdatedAt = DateTimeOffset.UtcNow;
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task PublishVersionAsync(string name, string version)
+    public async Task PublishVersionAsync(string name, string version, CancellationToken cancellationToken = default)
     {
         var compositeVersion = await _db.CompositeConfigurationVersions
             .Include(v => v.CompositeConfiguration)
             .Include(v => v.Items)
-            .FirstOrDefaultAsync(v => v.CompositeConfiguration.Name == name && v.Version == version)
+            .FirstOrDefaultAsync(v => v.CompositeConfiguration.Name == name && v.Version == version, cancellationToken)
             ?? throw new KeyNotFoundException($"Version '{version}' not found.");
 
         if (compositeVersion.Status != ConfigurationVersionStatus.Draft)
@@ -341,31 +317,37 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
         compositeVersion.Status = ConfigurationVersionStatus.Published;
         compositeVersion.CompositeConfiguration.UpdatedAt = DateTimeOffset.UtcNow;
 
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task DeleteCompositeConfigurationAsync(Guid compositeId)
+    public async Task DeleteAsync(string name, CancellationToken cancellationToken = default)
     {
         var composite = await _db.CompositeConfigurations
             .Include(c => c.NodeConfigurations)
-            .FirstOrDefaultAsync(c => c.Id == compositeId)
-            ?? throw new KeyNotFoundException("Composite configuration not found.");
+            .FirstOrDefaultAsync(c => c.Name == name, cancellationToken)
+            ?? throw new KeyNotFoundException($"Composite configuration '{name}' not found.");
+
+        var userId = _userContext.GetCurrentUserId();
+        if (userId == null || !await _authService.CanManageCompositeConfigurationAsync(userId.Value, composite.Id))
+        {
+            throw new UnauthorizedAccessException($"Access denied to composite configuration '{name}'.");
+        }
 
         if (composite.NodeConfigurations.Count > 0)
         {
-            throw new InvalidOperationException($"'{composite.Name}' is currently assigned to one or more nodes. Unassign it before deleting.");
+            throw new InvalidOperationException("Cannot delete composite configuration that is assigned to nodes.");
         }
 
         _db.CompositeConfigurations.Remove(composite);
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task DeleteVersionAsync(string name, string version)
+    public async Task DeleteVersionAsync(string name, string version, CancellationToken cancellationToken = default)
     {
         var compositeVersion = await _db.CompositeConfigurationVersions
             .Include(v => v.CompositeConfiguration)
             .Include(v => v.NodeConfigurations)
-            .FirstOrDefaultAsync(v => v.CompositeConfiguration.Name == name && v.Version == version)
+            .FirstOrDefaultAsync(v => v.CompositeConfiguration.Name == name && v.Version == version, cancellationToken)
             ?? throw new KeyNotFoundException($"Version '{version}' not found.");
 
         if (compositeVersion.Status != ConfigurationVersionStatus.Draft)
@@ -379,167 +361,19 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
         }
 
         _db.CompositeConfigurationVersions.Remove(compositeVersion);
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<CompositeConfigurationItemDetails> AddChildAsync(
         string name,
         string version,
-        Guid childConfigId,
-        int? majorVersion,
-        int order)
+        AddChildConfigurationRequest request,
+        CancellationToken cancellationToken = default)
     {
         var compositeVersion = await _db.CompositeConfigurationVersions
             .Include(v => v.CompositeConfiguration)
             .Include(v => v.Items)
-            .FirstOrDefaultAsync(v => v.CompositeConfiguration.Name == name && v.Version == version)
-            ?? throw new KeyNotFoundException($"Composite configuration version '{version}' not found.");
-
-        if (compositeVersion.Status != ConfigurationVersionStatus.Draft)
-        {
-            throw new InvalidOperationException("Cannot add children to a published version.");
-        }
-
-        if (await _db.CompositeConfigurations.AnyAsync(c => c.Id == childConfigId))
-        {
-            throw new InvalidOperationException("Cannot add a composite configuration as a child. Only regular configurations are allowed.");
-        }
-
-        var childConfig = await _db.Configurations.FirstOrDefaultAsync(c => c.Id == childConfigId)
-            ?? throw new KeyNotFoundException("Child configuration not found.");
-
-        if (compositeVersion.Items.Any(i => i.ChildConfigurationId == childConfigId))
-        {
-            throw new InvalidOperationException($"Child configuration '{childConfig.Name}' is already in this composite version.");
-        }
-
-        var item = new CompositeConfigurationItem
-        {
-            Id = Guid.NewGuid(),
-            CompositeConfigurationVersionId = compositeVersion.Id,
-            ChildConfigurationId = childConfigId,
-            MajorVersion = majorVersion,
-            Order = order
-        };
-
-        _db.CompositeConfigurationItems.Add(item);
-        compositeVersion.CompositeConfiguration.UpdatedAt = DateTimeOffset.UtcNow;
-
-        await _db.SaveChangesAsync();
-
-        return new CompositeConfigurationItemDetails
-        {
-            Id = item.Id,
-            ChildConfigurationId = item.ChildConfigurationId,
-            ChildConfigurationName = childConfig.Name,
-            MajorVersion = item.MajorVersion,
-            Order = item.Order
-        };
-    }
-
-    public async Task<CompositeConfigurationItemDetails> UpdateChildAsync(
-        Guid itemId,
-        int? majorVersion,
-        int order)
-    {
-        var item = await _db.CompositeConfigurationItems
-            .Include(i => i.CompositeConfigurationVersion)
-                .ThenInclude(v => v.CompositeConfiguration)
-            .Include(i => i.ChildConfiguration)
-            .FirstOrDefaultAsync(i => i.Id == itemId)
-            ?? throw new KeyNotFoundException("Child configuration item not found.");
-
-        if (item.CompositeConfigurationVersion.Status != ConfigurationVersionStatus.Draft)
-        {
-            throw new InvalidOperationException("Cannot modify a published version.");
-        }
-
-        item.MajorVersion = majorVersion;
-        item.Order = order;
-        item.CompositeConfigurationVersion.CompositeConfiguration.UpdatedAt = DateTimeOffset.UtcNow;
-
-        await _db.SaveChangesAsync();
-
-        return new CompositeConfigurationItemDetails
-        {
-            Id = item.Id,
-            ChildConfigurationId = item.ChildConfigurationId,
-            ChildConfigurationName = item.ChildConfiguration.Name,
-            MajorVersion = item.MajorVersion,
-            Order = item.Order
-        };
-    }
-
-    public async Task RemoveChildAsync(Guid itemId)
-    {
-        var item = await _db.CompositeConfigurationItems
-            .Include(i => i.CompositeConfigurationVersion)
-                .ThenInclude(v => v.CompositeConfiguration)
-            .FirstOrDefaultAsync(i => i.Id == itemId)
-            ?? throw new KeyNotFoundException("Child configuration item not found.");
-
-        if (item.CompositeConfigurationVersion.Status != ConfigurationVersionStatus.Draft)
-        {
-            throw new InvalidOperationException("Cannot modify a published version.");
-        }
-
-        _db.CompositeConfigurationItems.Remove(item);
-        item.CompositeConfigurationVersion.CompositeConfiguration.UpdatedAt = DateTimeOffset.UtcNow;
-
-        await _db.SaveChangesAsync();
-    }
-
-    public async Task ReorderChildAsync(Guid itemId, int newOrder)
-    {
-        var item = await _db.CompositeConfigurationItems
-            .Include(i => i.CompositeConfigurationVersion)
-                .ThenInclude(v => v.CompositeConfiguration)
-            .FirstOrDefaultAsync(i => i.Id == itemId)
-            ?? throw new KeyNotFoundException("Child configuration item not found.");
-
-        if (item.CompositeConfigurationVersion.Status != ConfigurationVersionStatus.Draft)
-        {
-            throw new InvalidOperationException("Cannot modify a published version.");
-        }
-
-        item.Order = newOrder;
-        item.CompositeConfigurationVersion.CompositeConfiguration.UpdatedAt = DateTimeOffset.UtcNow;
-        await _db.SaveChangesAsync();
-    }
-
-    public async Task DeleteCompositeConfigurationByNameAsync(string name)
-    {
-        var composite = await _db.CompositeConfigurations
-            .Include(c => c.NodeConfigurations)
-            .FirstOrDefaultAsync(c => c.Name == name)
-            ?? throw new KeyNotFoundException($"Composite configuration '{name}' not found.");
-
-        var userId = _userContext.GetCurrentUserId();
-        if (userId == null || !await _authService.CanManageCompositeConfigurationAsync(userId.Value, composite.Id))
-        {
-            throw new UnauthorizedAccessException($"Access denied to composite configuration '{name}'.");
-        }
-
-        if (composite.NodeConfigurations.Count > 0)
-        {
-            throw new InvalidOperationException($"Cannot delete composite configuration that is assigned to nodes.");
-        }
-
-        _db.CompositeConfigurations.Remove(composite);
-        await _db.SaveChangesAsync();
-    }
-
-    public async Task<CompositeConfigurationItemDetails> AddChildByNameAsync(
-        string name,
-        string version,
-        string childConfigurationName,
-        int majorVersion,
-        int order)
-    {
-        var compositeVersion = await _db.CompositeConfigurationVersions
-            .Include(v => v.CompositeConfiguration)
-            .Include(v => v.Items)
-            .FirstOrDefaultAsync(v => v.CompositeConfiguration.Name == name && v.Version == version)
+            .FirstOrDefaultAsync(v => v.CompositeConfiguration.Name == name && v.Version == version, cancellationToken)
             ?? throw new KeyNotFoundException($"Composite configuration version '{version}' not found.");
 
         var userId = _userContext.GetCurrentUserId();
@@ -553,33 +387,33 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
             throw new InvalidOperationException("Cannot add children to a published version.");
         }
 
-        if (await _db.CompositeConfigurations.AnyAsync(c => c.Name == childConfigurationName))
+        if (await _db.CompositeConfigurations.AnyAsync(c => c.Name == request.ChildConfigurationName, cancellationToken))
         {
             throw new InvalidOperationException("Cannot add a composite configuration as a child. Only regular configurations are allowed.");
         }
 
-        var childConfig = await _db.Configurations.FirstOrDefaultAsync(c => c.Name == childConfigurationName)
-            ?? throw new KeyNotFoundException($"Child configuration '{childConfigurationName}' not found.");
+        var childConfig = await _db.Configurations.FirstOrDefaultAsync(c => c.Name == request.ChildConfigurationName, cancellationToken)
+            ?? throw new KeyNotFoundException($"Child configuration '{request.ChildConfigurationName}' not found.");
 
         if (compositeVersion.Items.Any(i => i.ChildConfigurationId == childConfig.Id))
         {
-            throw new InvalidOperationException($"Child configuration '{childConfigurationName}' is already in this composite version.");
+            throw new InvalidOperationException($"Child configuration '{request.ChildConfigurationName}' is already in this composite version.");
         }
 
         var publishedVersions = await _db.ConfigurationVersions
             .Where(v => v.ConfigurationId == childConfig.Id && v.Status == ConfigurationVersionStatus.Published)
             .Select(v => v.Version)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
         var majorVersionExists = publishedVersions.Any(v =>
         {
             var match = System.Text.RegularExpressions.Regex.Match(v, @"^(\d+)");
-            return match.Success && int.TryParse(match.Groups[1].Value, out var major) && major == majorVersion;
+            return match.Success && int.TryParse(match.Groups[1].Value, out var major) && major == request.MajorVersion;
         });
 
         if (!majorVersionExists)
         {
-            throw new InvalidOperationException($"No published version with major version {majorVersion} found for configuration '{childConfigurationName}'.");
+            throw new InvalidOperationException($"No published version with major version {request.MajorVersion} found for configuration '{request.ChildConfigurationName}'.");
         }
 
         var item = new CompositeConfigurationItem
@@ -587,13 +421,13 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
             Id = Guid.NewGuid(),
             CompositeConfigurationVersionId = compositeVersion.Id,
             ChildConfigurationId = childConfig.Id,
-            MajorVersion = majorVersion,
-            Order = order
+            MajorVersion = request.MajorVersion,
+            Order = request.Order
         };
 
         _db.CompositeConfigurationItems.Add(item);
         compositeVersion.CompositeConfiguration.UpdatedAt = DateTimeOffset.UtcNow;
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(cancellationToken);
 
         return new CompositeConfigurationItemDetails
         {
@@ -605,9 +439,80 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
         };
     }
 
-    public async Task<List<PermissionEntry>?> GetPermissionsAsync(string compositeName)
+    public async Task<CompositeConfigurationItemDetails> UpdateChildAsync(
+        Guid itemId,
+        UpdateChildConfigurationRequest request,
+        CancellationToken cancellationToken = default)
     {
-        var composite = await _db.CompositeConfigurations.FirstOrDefaultAsync(c => c.Name == compositeName);
+        var item = await _db.CompositeConfigurationItems
+            .Include(i => i.CompositeConfigurationVersion)
+                .ThenInclude(v => v.CompositeConfiguration)
+            .Include(i => i.ChildConfiguration)
+            .FirstOrDefaultAsync(i => i.Id == itemId, cancellationToken)
+            ?? throw new KeyNotFoundException("Child configuration item not found.");
+
+        if (item.CompositeConfigurationVersion.Status != ConfigurationVersionStatus.Draft)
+        {
+            throw new InvalidOperationException("Cannot modify a published version.");
+        }
+
+        item.ActiveVersion = request.ActiveVersion;
+        item.Order = request.Order;
+        item.CompositeConfigurationVersion.CompositeConfiguration.UpdatedAt = DateTimeOffset.UtcNow;
+
+        await _db.SaveChangesAsync(cancellationToken);
+
+        return new CompositeConfigurationItemDetails
+        {
+            Id = item.Id,
+            ChildConfigurationId = item.ChildConfigurationId,
+            ChildConfigurationName = item.ChildConfiguration.Name,
+            ActiveVersion = item.ActiveVersion,
+            MajorVersion = item.MajorVersion,
+            Order = item.Order
+        };
+    }
+
+    public async Task RemoveChildAsync(Guid itemId, CancellationToken cancellationToken = default)
+    {
+        var item = await _db.CompositeConfigurationItems
+            .Include(i => i.CompositeConfigurationVersion)
+                .ThenInclude(v => v.CompositeConfiguration)
+            .FirstOrDefaultAsync(i => i.Id == itemId, cancellationToken)
+            ?? throw new KeyNotFoundException("Child configuration item not found.");
+
+        if (item.CompositeConfigurationVersion.Status != ConfigurationVersionStatus.Draft)
+        {
+            throw new InvalidOperationException("Cannot modify a published version.");
+        }
+
+        _db.CompositeConfigurationItems.Remove(item);
+        item.CompositeConfigurationVersion.CompositeConfiguration.UpdatedAt = DateTimeOffset.UtcNow;
+
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task ReorderChildAsync(Guid itemId, int newOrder, CancellationToken cancellationToken = default)
+    {
+        var item = await _db.CompositeConfigurationItems
+            .Include(i => i.CompositeConfigurationVersion)
+                .ThenInclude(v => v.CompositeConfiguration)
+            .FirstOrDefaultAsync(i => i.Id == itemId, cancellationToken)
+            ?? throw new KeyNotFoundException("Child configuration item not found.");
+
+        if (item.CompositeConfigurationVersion.Status != ConfigurationVersionStatus.Draft)
+        {
+            throw new InvalidOperationException("Cannot modify a published version.");
+        }
+
+        item.Order = newOrder;
+        item.CompositeConfigurationVersion.CompositeConfiguration.UpdatedAt = DateTimeOffset.UtcNow;
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<List<PermissionEntry>?> GetPermissionsAsync(string name, CancellationToken cancellationToken = default)
+    {
+        var composite = await _db.CompositeConfigurations.FirstOrDefaultAsync(c => c.Name == name, cancellationToken);
         if (composite is null)
         {
             return null;
@@ -616,68 +521,69 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
         var userId = _userContext.GetCurrentUserId();
         if (userId == null || !await _authService.CanManageCompositeConfigurationAsync(userId.Value, composite.Id))
         {
-            throw new UnauthorizedAccessException($"Access denied to composite configuration '{compositeName}'.");
+            throw new UnauthorizedAccessException($"Access denied to composite configuration '{name}'.");
         }
 
         var acl = await _authService.GetCompositeConfigurationAclAsync(composite.Id);
-        return await BuildPermissionEntriesAsync(acl.Select(p => (p.PrincipalType, p.PrincipalId, p.PermissionLevel, p.GrantedAt, p.GrantedByUserId)));
+        return await BuildPermissionEntriesAsync(acl.Select(p => (p.PrincipalType, p.PrincipalId, p.PermissionLevel, p.GrantedAt, p.GrantedByUserId)), cancellationToken);
     }
 
-    public async Task GrantPermissionAsync(string compositeName, Guid principalId, string principalType, string level)
+    public async Task GrantPermissionAsync(string name, GrantPermissionRequest request, CancellationToken cancellationToken = default)
     {
-        var composite = await _db.CompositeConfigurations.FirstOrDefaultAsync(c => c.Name == compositeName)
-            ?? throw new KeyNotFoundException($"Composite configuration '{compositeName}' not found.");
+        var composite = await _db.CompositeConfigurations.FirstOrDefaultAsync(c => c.Name == name, cancellationToken)
+            ?? throw new KeyNotFoundException($"Composite configuration '{name}' not found.");
 
         var userId = _userContext.GetCurrentUserId();
         if (userId == null || !await _authService.CanManageCompositeConfigurationAsync(userId.Value, composite.Id))
         {
-            throw new UnauthorizedAccessException($"Access denied to composite configuration '{compositeName}'.");
+            throw new UnauthorizedAccessException($"Access denied to composite configuration '{name}'.");
         }
 
-        if (!Enum.TryParse<PrincipalType>(principalType, ignoreCase: true, out var parsedPrincipalType))
+        if (!Enum.TryParse<PrincipalType>(request.PrincipalType, ignoreCase: true, out var parsedPrincipalType))
         {
-            throw new ArgumentException($"Invalid principal type '{principalType}'. Must be 'User' or 'Group'.", nameof(principalType));
+            throw new ArgumentException($"Invalid principal type '{request.PrincipalType}'. Must be 'User' or 'Group'.", nameof(request));
         }
 
-        if (!Enum.TryParse<ResourcePermission>(level, ignoreCase: true, out var parsedLevel))
+        if (!Enum.TryParse<ResourcePermission>(request.Level, ignoreCase: true, out var parsedLevel))
         {
-            throw new ArgumentException($"Invalid permission level '{level}'. Must be 'Read', 'Modify', or 'Manage'.", nameof(level));
+            throw new ArgumentException($"Invalid permission level '{request.Level}'. Must be 'Read', 'Modify', or 'Manage'.", nameof(request));
         }
 
-        if (parsedPrincipalType == PrincipalType.User && !await _db.Users.AnyAsync(u => u.Id == principalId))
+        if (parsedPrincipalType == PrincipalType.User && !await _db.Users.AnyAsync(u => u.Id == request.PrincipalId, cancellationToken))
         {
-            throw new KeyNotFoundException($"User '{principalId}' not found.");
+            throw new KeyNotFoundException($"User '{request.PrincipalId}' not found.");
         }
 
-        if (parsedPrincipalType == PrincipalType.Group && !await _db.Groups.AnyAsync(g => g.Id == principalId))
+        if (parsedPrincipalType == PrincipalType.Group && !await _db.Groups.AnyAsync(g => g.Id == request.PrincipalId, cancellationToken))
         {
-            throw new KeyNotFoundException($"Group '{principalId}' not found.");
+            throw new KeyNotFoundException($"Group '{request.PrincipalId}' not found.");
         }
 
-        await _authService.GrantCompositeConfigurationPermissionAsync(composite.Id, principalId, parsedPrincipalType, parsedLevel, userId.Value);
+        await _authService.GrantCompositeConfigurationPermissionAsync(composite.Id, request.PrincipalId, parsedPrincipalType, parsedLevel, userId.Value);
     }
 
-    public async Task RevokePermissionAsync(string compositeName, Guid principalId, string principalType)
+    public async Task RevokePermissionAsync(string name, RevokePermissionRequest request, CancellationToken cancellationToken = default)
     {
-        var composite = await _db.CompositeConfigurations.FirstOrDefaultAsync(c => c.Name == compositeName)
-            ?? throw new KeyNotFoundException($"Composite configuration '{compositeName}' not found.");
+        var composite = await _db.CompositeConfigurations.FirstOrDefaultAsync(c => c.Name == name, cancellationToken)
+            ?? throw new KeyNotFoundException($"Composite configuration '{name}' not found.");
 
         var userId = _userContext.GetCurrentUserId();
         if (userId == null || !await _authService.CanManageCompositeConfigurationAsync(userId.Value, composite.Id))
         {
-            throw new UnauthorizedAccessException($"Access denied to composite configuration '{compositeName}'.");
+            throw new UnauthorizedAccessException($"Access denied to composite configuration '{name}'.");
         }
 
-        if (!Enum.TryParse<PrincipalType>(principalType, ignoreCase: true, out var parsedPrincipalType))
+        if (!Enum.TryParse<PrincipalType>(request.PrincipalType, ignoreCase: true, out var parsedPrincipalType))
         {
-            throw new ArgumentException($"Invalid principal type '{principalType}'. Must be 'User' or 'Group'.", nameof(principalType));
+            throw new ArgumentException($"Invalid principal type '{request.PrincipalType}'. Must be 'User' or 'Group'.", nameof(request));
         }
 
-        await _authService.RevokeCompositeConfigurationPermissionAsync(composite.Id, principalId, parsedPrincipalType);
+        await _authService.RevokeCompositeConfigurationPermissionAsync(composite.Id, request.PrincipalId, parsedPrincipalType);
     }
 
     private async Task<List<PermissionEntry>> BuildPermissionEntriesAsync(
-        IEnumerable<(PrincipalType PrincipalType, Guid PrincipalId, ResourcePermission Level, DateTimeOffset GrantedAt, Guid? GrantedByUserId)> entries)
+        IEnumerable<(PrincipalType PrincipalType, Guid PrincipalId, ResourcePermission Level, DateTimeOffset GrantedAt, Guid? GrantedByUserId)> entries,
+        CancellationToken cancellationToken)
     {
         var list = entries.ToList();
         var userIds = list.Where(e => e.PrincipalType == PrincipalType.User).Select(e => e.PrincipalId).ToList();
@@ -685,11 +591,11 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
 
         var userNames = await _db.Users
             .Where(u => userIds.Contains(u.Id))
-            .ToDictionaryAsync(u => u.Id, u => u.Username);
+            .ToDictionaryAsync(u => u.Id, u => u.Username, cancellationToken);
 
         var groupNames = await _db.Groups
             .Where(g => groupIds.Contains(g.Id))
-            .ToDictionaryAsync(g => g.Id, g => g.Name);
+            .ToDictionaryAsync(g => g.Id, g => g.Name, cancellationToken);
 
         return list.Select(e => new PermissionEntry
         {

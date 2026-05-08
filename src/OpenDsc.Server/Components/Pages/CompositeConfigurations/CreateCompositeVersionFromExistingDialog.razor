@@ -1,6 +1,5 @@
 @using OpenDsc.Contracts.CompositeConfigurations
 @using OpenDsc.Contracts.Configurations
-@using ICompositeConfigurationService = OpenDsc.Server.Services.ICompositeConfigurationService
 @using NuGet.Versioning
 @using OpenDsc.Server.Services
 @inject ICompositeConfigurationService CompositeConfigService
@@ -12,13 +11,8 @@
             Create a new version from an existing version for <strong>@CompositeName</strong>
         </MudText>
 
-        <MudSelect T="string"
-                   @bind-Value="sourceVersion"
-                   Label="Source Version"
-                   Variant="Variant.Outlined"
-                   Required="true"
-                   Class="mb-3"
-                   HelperText="Select the version to copy child configurations from">
+        <MudSelect T="string" @bind-Value="sourceVersion" Label="Source Version" Variant="Variant.Outlined"
+                   Required="true" Class="mb-3" HelperText="Select the version to copy child configurations from">
             @foreach (var version in availableVersions)
             {
                 <MudSelectItem Value="@version.Version">
@@ -32,47 +26,44 @@
                         {
                             <MudChip T="string" Size="Size.Small" Color="Color.Success">Published</MudChip>
                         }
-                        <MudChip T="string" Size="Size.Small">@version.Items.Count @(version.Items.Count == 1 ? "child" : "children")</MudChip>
-                    </div>
-                </MudSelectItem>
-            }
-        </MudSelect>
+                        <MudChip T="string" Size="Size.Small">@version.Items.Count @(version.Items.Count == 1 ? "child" :
+                                                                          "children")</MudChip>
+                        </div>
+                    </MudSelectItem>
+                }
+            </MudSelect>
 
-        <MudTextField @bind-Value="newVersion"
-                      Label="New Version"
-                      Variant="Variant.Outlined"
-                      Required="true"
-                      Class="mb-3"
-                      Immediate="true"
-                      Error="@(!string.IsNullOrWhiteSpace(newVersion) && !SemanticVersion.TryParse(newVersion, out _))"
-                      ErrorText="Version must follow semantic versioning (e.g., 1.0.0, 2.1.3-alpha, 1.0.0-beta+001)"
-                      HelperText="Semantic version: major.minor.patch[-prerelease][+metadata]" />
+            <MudTextField @bind-Value="newVersion" Label="New Version" Variant="Variant.Outlined" Required="true"
+                          Class="mb-3" Immediate="true"
+                          Error="@(!string.IsNullOrWhiteSpace(newVersion) && !SemanticVersion.TryParse(newVersion, out _))"
+                          ErrorText="Version must follow semantic versioning (e.g., 1.0.0, 2.1.3-alpha, 1.0.0-beta+001)"
+                          HelperText="Semantic version: major.minor.patch[-prerelease][+metadata]" />
 
-        @if (!string.IsNullOrWhiteSpace(validationError))
-        {
-            <MudAlert Severity="Severity.Error" Class="mt-3">@validationError</MudAlert>
-        }
-
-        @if (isLoading)
-        {
-            <MudProgressLinear Indeterminate="true" Class="mt-3" />
-            <MudText Typo="Typo.caption" Class="mt-2">Loading versions...</MudText>
-        }
-    </DialogContent>
-    <DialogActions>
-        <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(!IsValid() || isSubmitting || isLoading)">
-            @if (isSubmitting)
+            @if (!string.IsNullOrWhiteSpace(validationError))
             {
-                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                <MudAlert Severity="Severity.Error" Class="mt-3">@validationError</MudAlert>
             }
-            else
+
+            @if (isLoading)
             {
-                <text>Create Version</text>
+                <MudProgressLinear Indeterminate="true" Class="mt-3" />
+                <MudText Typo="Typo.caption" Class="mt-2">Loading versions...</MudText>
             }
-        </MudButton>
-    </DialogActions>
-</MudDialog>
+        </DialogContent>
+        <DialogActions>
+            <MudButton OnClick="Cancel">Cancel</MudButton>
+            <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(!IsValid() || isSubmitting || isLoading)">
+                @if (isSubmitting)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                }
+                else
+                {
+                    <text>Create Version</text>
+                }
+            </MudButton>
+        </DialogActions>
+    </MudDialog>
 
 @code {
     [Parameter]
@@ -137,7 +128,11 @@
 
         try
         {
-            await CompositeConfigService.CreateVersionFromExistingAsync(CompositeName, sourceVersion, newVersion);
+            await CompositeConfigService.CreateVersionFromExistingAsync(CompositeName, new CreateCompositeVersionFromExistingRequest
+            {
+                SourceVersion = sourceVersion,
+                NewVersion = newVersion
+            });
 
             Snackbar.Add($"Version '{newVersion}' created from '{sourceVersion}' as draft", Severity.Success);
             MudDialog.Close(DialogResult.Ok(newVersion));
@@ -152,3 +147,4 @@
         }
     }
 }
+

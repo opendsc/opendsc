@@ -1,5 +1,4 @@
 @using OpenDsc.Contracts.CompositeConfigurations
-@using ICompositeConfigurationService = OpenDsc.Server.Services.ICompositeConfigurationService
 @page "/composite-configurations"
 @attribute [Authorize]
 @using OpenDsc.Server.Services
@@ -12,9 +11,7 @@
 
 <div class="d-flex justify-space-between align-center mb-4">
     <MudText Typo="Typo.h4">Composite Configurations</MudText>
-    <MudButton Variant="Variant.Filled"
-               Color="Color.Primary"
-               StartIcon="@Icons.Material.Filled.Add"
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
                OnClick="OpenCreateDialog">
         Create Composite Configuration
     </MudButton>
@@ -23,19 +20,11 @@
 <MudCard>
     <MudCardContent>
         <div class="d-flex gap-4 mb-4">
-            <MudTextField @bind-Value="SearchText"
-                         Label="Search"
-                         Placeholder="Search by name or description"
-                         Adornment="Adornment.Start"
-                         AdornmentIcon="@Icons.Material.Filled.Search"
-                         Immediate="true"
-                         Clearable="true"
-                         Class="flex-grow-1" />
-            <MudSelect @bind-Value="SortBy"
-                      Label="Sort By"
-                      T="SortOption"
-                      Variant="Variant.Outlined"
-                      AnchorOrigin="Origin.BottomCenter">
+            <MudTextField @bind-Value="SearchText" Label="Search" Placeholder="Search by name or description"
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Immediate="true"
+                          Clearable="true" Class="flex-grow-1" />
+            <MudSelect @bind-Value="SortBy" Label="Sort By" T="SortOption" Variant="Variant.Outlined"
+                       AnchorOrigin="Origin.BottomCenter">
                 <MudSelectItem Value="SortOption.NameAsc">Name (A-Z)</MudSelectItem>
                 <MudSelectItem Value="SortOption.NameDesc">Name (Z-A)</MudSelectItem>
                 <MudSelectItem Value="SortOption.CreatedDesc">Newest First</MudSelectItem>
@@ -50,7 +39,7 @@
         }
         else
         {
-                    <MudDataGrid T="CompositeConfigurationSummary" Items="@filteredComposites" Hover="true" Dense="true">
+            <MudDataGrid T="CompositeConfigurationSummary" Items="@filteredComposites" Hover="true" Dense="true">
                 <Columns>
                     <PropertyColumn Property="x => x.Name" Title="Name" />
                     <TemplateColumn Title="Status" Sortable="false">
@@ -86,15 +75,12 @@
                     <TemplateColumn Title="Actions" Sortable="false">
                         <CellTemplate>
                             <MudTooltip Text="View Details">
-                                <MudIconButton Icon="@Icons.Material.Filled.Visibility"
-                                             Size="Size.Small"
-                                             OnClick="@(() => ViewComposite(context.Item.Name))" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Visibility" Size="Size.Small"
+                                               OnClick="@(() => ViewComposite(context.Item.Name))" />
                             </MudTooltip>
                             <MudTooltip Text="Delete Composite Configuration">
-                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                             Size="Size.Small"
-                                             Color="Color.Error"
-                                             OnClick="@(() => DeleteComposite(context.Item))" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                               OnClick="@(() => DeleteComposite(context.Item))" />
                             </MudTooltip>
                         </CellTemplate>
                     </TemplateColumn>
@@ -182,7 +168,8 @@
             FullWidth = true
         };
 
-        var dialog = await DialogService.ShowAsync<CreateCompositeConfigurationDialog>("Create Composite Configuration", options);
+        var dialog = await DialogService.ShowAsync<CreateCompositeConfigurationDialog>("Create Composite Configuration",
+options);
         var result = await dialog.Result;
 
         if (result is not null && !result.Canceled)
@@ -231,7 +218,7 @@
         {
             try
             {
-                await CompositeConfigService.DeleteCompositeConfigurationAsync(composite.Id);
+                await CompositeConfigService.DeleteAsync(composite.Name);
 
                 Snackbar.Add($"'{composite.Name}' deleted successfully", Severity.Success);
                 await LoadCompositesAsync();
@@ -243,3 +230,4 @@
         }
     }
 }
+

@@ -3,7 +3,7 @@
 @* terms of the MIT license. *@
 
 @using System.Text
-@using Microsoft.AspNetCore.Components.Forms
+@using OpenDsc.Contracts.Configurations
 @using OpenDsc.Server.Services
 @inject IConfigurationService ConfigurationService
 @inject ISnackbar Snackbar
@@ -15,23 +15,13 @@
             Create a new file in <strong>@ConfigurationName</strong> version <strong>@Version</strong>
         </MudText>
 
-        <MudTextField @bind-Value="fileName"
-                      Label="File Name"
-                      Variant="Variant.Outlined"
-                      Required="true"
-                      Class="mb-3"
-                      Immediate="true"
-                      HelperText="e.g., config.dsc.yaml, settings.json"
+        <MudTextField @bind-Value="fileName" Label="File Name" Variant="Variant.Outlined" Required="true" Class="mb-3"
+                      Immediate="true" HelperText="e.g., config.dsc.yaml, settings.json"
                       Error="@(!string.IsNullOrWhiteSpace(fileName) && !IsValidFileName(fileName))"
                       ErrorText="Invalid file name or extension. Only .yaml, .yml, and .json files are allowed." />
 
-        <MudTextField @bind-Value="fileContent"
-                      Label="File Content"
-                      Variant="Variant.Outlined"
-                      Lines="15"
-                      Required="true"
-                      Class="mb-3"
-                      HelperText="Enter the file content" />
+        <MudTextField @bind-Value="fileContent" Label="File Content" Variant="Variant.Outlined" Lines="15"
+                      Required="true" Class="mb-3" HelperText="Enter the file content" />
 
         @if (!string.IsNullOrWhiteSpace(validationError))
         {
@@ -108,14 +98,13 @@
 
         try
         {
-            // Create an in-memory file from the content
             var bytes = Encoding.UTF8.GetBytes(fileContent);
-            var browserFile = new ManualBrowserFile(fileName, bytes);
+            var stream = new MemoryStream(bytes);
 
-            await ConfigurationService.AddFilesToVersionAsync(
+            await ConfigurationService.AddFilesAsync(
                 ConfigurationName,
                 Version,
-                new[] { browserFile });
+                [new FileUpload(fileName, stream, GetContentType(fileName), bytes.Length)]);
 
             Snackbar.Add($"File '{fileName}' created successfully", Severity.Success);
             MudDialog.Close(DialogResult.Ok(true));
@@ -131,26 +120,8 @@
         }
     }
 
-    // Helper class to create IBrowserFile from manual content
-    private sealed class ManualBrowserFile(string name, byte[] bytes) : IBrowserFile
-    {
-        public string Name { get; } = name;
-        public DateTimeOffset LastModified { get; } = DateTimeOffset.UtcNow;
-        public long Size { get; } = bytes.Length;
-        public string ContentType { get; } = name.EndsWith(".json", StringComparison.OrdinalIgnoreCase)
+    private static string GetContentType(string name) =>
+        name.EndsWith(".json", StringComparison.OrdinalIgnoreCase)
             ? "application/json"
             : "application/x-yaml";
-
-        public Stream OpenReadStream(long maxAllowedSize = 512000, CancellationToken cancellationToken = default)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            if ((long)bytes.Length > maxAllowedSize)
-            {
-                throw new InvalidOperationException($"The file size ({bytes.Length} bytes) exceeds the maximum allowed size ({maxAllowedSize} bytes).");
-            }
-
-            return new MemoryStream(bytes);
-        }
-    }
 }

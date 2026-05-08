@@ -4,6 +4,7 @@
 
 using System.Text.Json.Serialization;
 
+using OpenDsc.Contracts.Configurations;
 using OpenDsc.Contracts.CompositeConfigurations;
 using OpenDsc.Contracts.Lcm;
 using OpenDsc.Contracts.Nodes;
@@ -34,20 +35,22 @@ namespace OpenDsc.Server;
 [JsonSerializable(typeof(AssignConfigurationRequest))]
 [JsonSerializable(typeof(ConfigurationChecksumResponse))]
 // Configuration contracts
-[JsonSerializable(typeof(ConfigurationSummaryDto))]
-[JsonSerializable(typeof(List<ConfigurationSummaryDto>))]
-[JsonSerializable(typeof(ConfigurationDetailsDto))]
-[JsonSerializable(typeof(CreateConfigurationDto))]
-[JsonSerializable(typeof(UpdateConfigurationDto))]
-[JsonSerializable(typeof(ConfigurationVersionDto))]
-[JsonSerializable(typeof(List<ConfigurationVersionDto>))]
-[JsonSerializable(typeof(CreateConfigurationVersionDto))]
+[JsonSerializable(typeof(Contracts.Configurations.ConfigurationSummary))]
+[JsonSerializable(typeof(List<Contracts.Configurations.ConfigurationSummary>))]
+[JsonSerializable(typeof(Contracts.Configurations.ConfigurationDetails))]
+[JsonSerializable(typeof(ConfigurationVersionDetails))]
+[JsonSerializable(typeof(List<ConfigurationVersionDetails>))]
+[JsonSerializable(typeof(CreateConfigurationAdminRequest))]
+[JsonSerializable(typeof(UpdateConfigurationAdminRequest))]
+[JsonSerializable(typeof(CreateConfigurationVersionRequest))]
+[JsonSerializable(typeof(CreateVersionFromExistingRequest))]
+[JsonSerializable(typeof(UpdateConfigurationSettingsRequest))]
+[JsonSerializable(typeof(SaveRetentionSettingsRequest))]
+[JsonSerializable(typeof(ConfigurationSettingsSummary))]
+[JsonSerializable(typeof(ConfigurationRetentionSummary))]
 // Legacy configuration contracts (deprecated)
 [JsonSerializable(typeof(CreateConfigurationRequest))]
 [JsonSerializable(typeof(UpdateConfigurationRequest))]
-[JsonSerializable(typeof(ConfigurationSummary))]
-[JsonSerializable(typeof(List<ConfigurationSummary>))]
-[JsonSerializable(typeof(ConfigurationDetails))]
 // Composite configuration contracts
 [JsonSerializable(typeof(CreateCompositeConfigurationRequest))]
 [JsonSerializable(typeof(CreateCompositeConfigurationVersionRequest))]
@@ -157,6 +160,8 @@ namespace OpenDsc.Server;
 [JsonSerializable(typeof(CompatibilityReport))]
 [JsonSerializable(typeof(SchemaChange))]
 [JsonSerializable(typeof(ParameterFileMigrationStatus))]
+[JsonSerializable(typeof(VersionUsageInfo))]
+[JsonSerializable(typeof(PublishResult))]
 // Schema types
 [JsonSerializable(typeof(DscResult))]
 [JsonSerializable(typeof(DscOperation))]

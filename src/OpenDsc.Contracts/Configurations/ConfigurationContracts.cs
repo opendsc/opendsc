@@ -199,3 +199,55 @@ public sealed class ConfigurationRetentionSummary
     /// </summary>
     public bool? KeepReleaseVersions { get; set; }
 }
+
+/// <summary>
+/// Information about whether a configuration version is currently in use.
+/// </summary>
+public sealed class VersionUsageInfo
+{
+    /// <summary>
+    /// Whether the version is currently in use by any node or composite configuration.
+    /// </summary>
+    public bool IsInUse { get; init; }
+
+    /// <summary>
+    /// Human-readable details about where the version is in use.
+    /// </summary>
+    public IReadOnlyList<string> Details { get; init; } = [];
+}
+
+/// <summary>
+/// Result of a publish version operation.
+/// </summary>
+public sealed class PublishResult
+{
+    /// <summary>
+    /// Whether the publish succeeded.
+    /// </summary>
+    public bool Success { get; init; }
+
+    /// <summary>
+    /// Compatibility report if the publish was blocked due to breaking schema changes.
+    /// </summary>
+    public CompatibilityReport? CompatibilityReport { get; init; }
+
+    /// <summary>
+    /// Error message if the publish failed for a non-compatibility reason.
+    /// </summary>
+    public string? ErrorMessage { get; init; }
+
+    /// <summary>
+    /// The updated status after a successful publish.
+    /// </summary>
+    public ConfigurationVersionStatus? UpdatedStatus { get; init; }
+
+    /// <summary>
+    /// The published version string.
+    /// </summary>
+    public string? UpdatedVersion { get; init; }
+
+    /// <summary>
+    /// The prerelease channel of the published version.
+    /// </summary>
+    public string? UpdatedPrereleaseChannel { get; init; }
+}

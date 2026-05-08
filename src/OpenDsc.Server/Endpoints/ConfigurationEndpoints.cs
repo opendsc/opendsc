@@ -5,13 +5,9 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 
-using OpenDsc.Server.Authorization;
+using OpenDsc.Contracts.Configurations;
 using OpenDsc.Contracts.Permissions;
 using OpenDsc.Contracts.Settings;
-using OpenDsc.Server.Data;
-using OpenDsc.Server.Entities;
-using OpenDsc.Server.Infrastructure;
-using OpenDsc.Server.Services;
 
 namespace OpenDsc.Server.Endpoints;
 
@@ -78,17 +74,19 @@ public static class ConfigurationEndpoints
             .WithDescription("Revoke a permission on a configuration");
     }
 
-    private static async Task<Ok<List<ConfigurationSummaryDto>>> GetConfigurations(
-        IConfigurationService configService)
+    private static async Task<Ok<List<ConfigurationSummary>>> GetConfigurations(
+        IConfigurationService configService,
+        CancellationToken cancellationToken)
     {
-        var result = await configService.GetConfigurationsAsync();
+        var result = await configService.GetConfigurationsAsync(cancellationToken);
         return TypedResults.Ok(result);
     }
 
-    private static async Task<Results<Created<ConfigurationDetailsDto>, BadRequest<string>, Conflict<string>>> CreateConfiguration(
-        [FromForm] CreateConfigurationDto request,
+    private static async Task<Results<Created<ConfigurationDetails>, BadRequest<string>, Conflict<string>>> CreateConfiguration(
+        [FromForm] CreateConfigurationAdminRequest request,
         IFormFileCollection files,
-        IConfigurationService configService)
+        IConfigurationService configService,
+        CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.Name))
         {
@@ -108,13 +106,20 @@ public static class ConfigurationEndpoints
         }
 
         var version = request.Version ?? "1.0.0";
-        var adapted = files.Select(f => new FormFileBrowserFileAdapter(f)).ToList();
+        var fileUploads = files.Select(f => new FileUpload(f.FileName, f.OpenReadStream(), f.ContentType, f.Length)).ToList();
 
         try
         {
-            await configService.CreateConfigurationAsync(
-                request.Name, request.Description, entryPoint, version,
-                isDraft: true, request.UseServerManagedParameters, adapted);
+            await configService.CreateAsync(
+                new CreateConfigurationAdminRequest
+                {
+                    Name = request.Name,
+                    Description = request.Description,
+                    EntryPoint = entryPoint,
+                    Version = version,
+                    UseServerManagedParameters = request.UseServerManagedParameters,
+                    Files = fileUploads
+                }, cancellationToken);
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("already exists"))
         {
@@ -125,15 +130,16 @@ public static class ConfigurationEndpoints
             return TypedResults.BadRequest(ex.Message);
         }
 
-        var details = await configService.GetConfigurationAsync(request.Name);
+        var details = await configService.GetConfigurationAsync(request.Name, cancellationToken);
         return TypedResults.Created($"/api/v1/configurations/{request.Name}", details!);
     }
 
-    private static async Task<Results<Ok<ConfigurationDetailsDto>, NotFound, ForbidHttpResult>> GetConfigurationDetails(
+    private static async Task<Results<Ok<ConfigurationDetails>, NotFound, ForbidHttpResult>> GetConfigurationDetails(
         string name,
-        IConfigurationService configService)
+        IConfigurationService configService,
+        CancellationToken cancellationToken)
     {
-        var details = await configService.GetConfigurationAsync(name);
+        var details = await configService.GetConfigurationAsync(name, cancellationToken);
         if (details is null)
         {
             return TypedResults.NotFound();
@@ -142,11 +148,12 @@ public static class ConfigurationEndpoints
         return TypedResults.Ok(details);
     }
 
-    private static async Task<Results<Ok<List<ConfigurationVersionDto>>, NotFound, ForbidHttpResult>> GetConfigurationVersions(
+    private static async Task<Results<Ok<List<ConfigurationVersionDetails>>, NotFound, ForbidHttpResult>> GetConfigurationVersions(
         string name,
-        IConfigurationService configService)
+        IConfigurationService configService,
+        CancellationToken cancellationToken)
     {
-        var versions = await configService.GetVersionsAsync(name);
+        var versions = await configService.GetVersionsAsync(name, cancellationToken);
         if (versions is null)
         {
             return TypedResults.NotFound();
@@ -155,23 +162,24 @@ public static class ConfigurationEndpoints
         return TypedResults.Ok(versions);
     }
 
-    private static async Task<Results<Created<ConfigurationVersionDto>, NotFound, BadRequest<string>, ForbidHttpResult>> CreateConfigurationVersion(
+    private static async Task<Results<Created<ConfigurationVersionDetails>, NotFound, BadRequest<string>, ForbidHttpResult>> CreateConfigurationVersion(
         string name,
-        [FromForm] CreateConfigurationVersionDto request,
+        [FromForm] CreateConfigurationVersionRequest request,
         IFormFileCollection files,
-        IConfigurationService configService)
+        IConfigurationService configService,
+        CancellationToken cancellationToken)
     {
         if (files.Count == 0)
         {
             return TypedResults.BadRequest("At least one file is required");
         }
 
-        var adapted = files.Select(f => new FormFileBrowserFileAdapter(f)).ToList();
+        var fileUploads = files.Select(f => new FileUpload(f.FileName, f.OpenReadStream(), f.ContentType, f.Length)).ToList();
 
         try
         {
             await configService.CreateVersionAsync(
-                name, request.Version, isDraft: true, adapted, request.EntryPoint);
+                name, new CreateConfigurationVersionRequest { Version = request.Version, EntryPoint = request.EntryPoint, Files = fileUploads }, cancellationToken);
         }
         catch (KeyNotFoundException)
         {
@@ -186,7 +194,7 @@ public static class ConfigurationEndpoints
             return TypedResults.BadRequest(ex.Message);
         }
 
-        var versions = await configService.GetVersionsAsync(name);
+        var versions = await configService.GetVersionsAsync(name, cancellationToken);
         var created = versions?.FirstOrDefault(v => v.Version == request.Version);
         if (created is null)
         {
@@ -196,15 +204,16 @@ public static class ConfigurationEndpoints
         return TypedResults.Created($"/api/v1/configurations/{name}/versions/{created.Version}", created);
     }
 
-    private static async Task<Results<Ok<ConfigurationVersionDto>, NotFound, BadRequest<string>, Conflict<CompatibilityReport>, ForbidHttpResult>> PublishConfigurationVersion(
+    private static async Task<Results<Ok<ConfigurationVersionDetails>, NotFound, BadRequest<string>, Conflict<CompatibilityReport>, ForbidHttpResult>> PublishConfigurationVersion(
         string name,
         string version,
-        IConfigurationService configService)
+        IConfigurationService configService,
+        CancellationToken cancellationToken)
     {
         PublishResult result;
         try
         {
-            result = await configService.PublishVersionAsync(name, version);
+            result = await configService.PublishVersionAsync(name, version, cancellationToken);
         }
         catch (KeyNotFoundException)
         {
@@ -232,7 +241,7 @@ public static class ConfigurationEndpoints
             return TypedResults.Conflict(result.CompatibilityReport);
         }
 
-        var versions = await configService.GetVersionsAsync(name);
+        var versions = await configService.GetVersionsAsync(name, cancellationToken);
         var versionDto = versions?.FirstOrDefault(v => v.Version == version);
         if (versionDto is null)
         {
@@ -242,14 +251,15 @@ public static class ConfigurationEndpoints
         return TypedResults.Ok(versionDto);
     }
 
-    private static async Task<Results<Ok<ConfigurationDetailsDto>, NotFound, Conflict<ErrorResponse>, ForbidHttpResult>> UpdateConfiguration(
+    private static async Task<Results<Ok<ConfigurationDetails>, NotFound, Conflict<ErrorResponse>, ForbidHttpResult>> UpdateConfiguration(
         string name,
-        [FromBody] UpdateConfigurationDto request,
-        IConfigurationService configService)
+        [FromBody] UpdateConfigurationAdminRequest request,
+        IConfigurationService configService,
+        CancellationToken cancellationToken)
     {
         try
         {
-            var details = await configService.UpdateConfigurationAsync(name, request.Description, request.UseServerManagedParameters);
+            var details = await configService.UpdateAsync(name, request, cancellationToken);
             return TypedResults.Ok(details);
         }
         catch (KeyNotFoundException)
@@ -268,11 +278,12 @@ public static class ConfigurationEndpoints
 
     private static async Task<Results<NoContent, NotFound, Conflict<string>, ForbidHttpResult>> DeleteConfiguration(
         string name,
-        IConfigurationService configService)
+        IConfigurationService configService,
+        CancellationToken cancellationToken)
     {
         try
         {
-            await configService.DeleteConfigurationAsync(name);
+            await configService.DeleteAsync(name, cancellationToken);
             return TypedResults.NoContent();
         }
         catch (KeyNotFoundException)
@@ -292,11 +303,12 @@ public static class ConfigurationEndpoints
     private static async Task<Results<NoContent, NotFound, Conflict<string>, ForbidHttpResult>> DeleteConfigurationVersion(
         string name,
         string version,
-        IConfigurationService configService)
+        IConfigurationService configService,
+        CancellationToken cancellationToken)
     {
         try
         {
-            await configService.DeleteVersionAsync(name, version);
+            await configService.DeleteVersionAsync(name, version, cancellationToken);
             return TypedResults.NoContent();
         }
         catch (KeyNotFoundException)
@@ -317,12 +329,13 @@ public static class ConfigurationEndpoints
         string name,
         string version,
         string filePath,
-        IConfigurationService configService)
+        IConfigurationService configService,
+        CancellationToken cancellationToken)
     {
         Stream? stream;
         try
         {
-            stream = await configService.DownloadFileAsync(name, version, filePath);
+            stream = await configService.DownloadFileAsync(name, version, filePath, cancellationToken);
         }
         catch (UnauthorizedAccessException)
         {
@@ -344,11 +357,12 @@ public static class ConfigurationEndpoints
 
     private static async Task<Results<Ok<List<PermissionEntry>>, NotFound, ForbidHttpResult>> GetConfigurationPermissions(
         string name,
-        IConfigurationService configService)
+        IConfigurationService configService,
+        CancellationToken cancellationToken)
     {
         try
         {
-            var permissions = await configService.GetPermissionsAsync(name);
+            var permissions = await configService.GetPermissionsAsync(name, cancellationToken);
             if (permissions is null)
             {
                 return TypedResults.NotFound();
@@ -365,11 +379,12 @@ public static class ConfigurationEndpoints
     private static async Task<Results<Ok, BadRequest<string>, NotFound, ForbidHttpResult>> GrantConfigurationPermission(
         string name,
         [FromBody] GrantPermissionRequest request,
-        IConfigurationService configService)
+        IConfigurationService configService,
+        CancellationToken cancellationToken)
     {
         try
         {
-            await configService.GrantPermissionAsync(name, request.PrincipalId, request.PrincipalType, request.Level);
+            await configService.GrantPermissionAsync(name, request, cancellationToken);
             return TypedResults.Ok();
         }
         catch (KeyNotFoundException)
@@ -390,11 +405,12 @@ public static class ConfigurationEndpoints
         string name,
         string principalType,
         Guid principalId,
-        IConfigurationService configService)
+        IConfigurationService configService,
+        CancellationToken cancellationToken)
     {
         try
         {
-            await configService.RevokePermissionAsync(name, principalId, principalType);
+            await configService.RevokePermissionAsync(name, new RevokePermissionRequest { PrincipalId = principalId, PrincipalType = principalType }, cancellationToken);
             return TypedResults.NoContent();
         }
         catch (KeyNotFoundException)

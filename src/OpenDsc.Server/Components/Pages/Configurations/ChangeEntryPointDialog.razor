@@ -80,7 +80,7 @@
 
         try
         {
-            await ConfigurationService.ChangeVersionEntryPointAsync(ConfigurationName, VersionNumber, selectedFile);
+            await ConfigurationService.ChangeEntryPointAsync(ConfigurationName, VersionNumber, selectedFile);
 
             Snackbar.Add($"Entry point changed to '{selectedFile}'", Severity.Success);
             await OnEntryPointChanged.InvokeAsync();

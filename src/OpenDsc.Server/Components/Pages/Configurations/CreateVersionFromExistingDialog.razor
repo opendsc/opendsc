@@ -3,6 +3,7 @@
 @* terms of the MIT license. *@
 
 @using NuGet.Versioning
+@using OpenDsc.Contracts.Configurations
 @using OpenDsc.Server.Services
 @inject IConfigurationService ConfigurationService
 @inject ISnackbar Snackbar
@@ -13,13 +14,8 @@
             Create a new version from an existing version for <strong>@ConfigurationName</strong>
         </MudText>
 
-        <MudSelect T="string"
-                   @bind-Value="sourceVersion"
-                   Label="Source Version"
-                   Variant="Variant.Outlined"
-                   Required="true"
-                   Class="mb-3"
-                   HelperText="Select the version to copy files from">
+        <MudSelect T="string" @bind-Value="sourceVersion" Label="Source Version" Variant="Variant.Outlined"
+                   Required="true" Class="mb-3" HelperText="Select the version to copy files from">
             @foreach (var version in availableVersions)
             {
                 <MudSelectItem Value="@version.Version">
@@ -39,20 +35,13 @@
             }
         </MudSelect>
 
-        <MudTextField @bind-Value="newVersion"
-                      Label="New Version"
-                      Variant="Variant.Outlined"
-                      Required="true"
-                      Class="mb-3"
-                      Immediate="true"
+        <MudTextField @bind-Value="newVersion" Label="New Version" Variant="Variant.Outlined" Required="true"
+                      Class="mb-3" Immediate="true"
                       Error="@(!string.IsNullOrWhiteSpace(newVersion) && !SemanticVersion.TryParse(newVersion, out _))"
                       ErrorText="Version must follow semantic versioning (e.g., 1.0.0, 2.1.3-alpha, 1.0.0-beta+001)"
                       HelperText="Semantic version: major.minor.patch[-prerelease][+metadata]" />
 
-        <MudSwitch @bind-Value="isDraft"
-                   Label="Save as Draft"
-                   Color="Color.Info"
-                   Class="mb-3" />
+        <MudSwitch @bind-Value="isDraft" Label="Save as Draft" Color="Color.Info" Class="mb-3" />
         <MudText Typo="Typo.caption" Class="mb-3" Color="Color.Secondary">
             When unchecked, the version will be published immediately and become immutable.
         </MudText>
@@ -99,7 +88,7 @@
     private bool isSubmitting = false;
     private bool isLoading = true;
     private string? validationError;
-    private List<ConfigurationVersionDto> availableVersions = new();
+    private List<ConfigurationVersionDetails> availableVersions = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -164,9 +153,16 @@
         {
             await ConfigurationService.CreateVersionFromExistingAsync(
                 ConfigurationName,
-                sourceVersion,
-                newVersion,
-                isDraft);
+                new CreateVersionFromExistingRequest
+                {
+                    SourceVersion = sourceVersion,
+                    NewVersion = newVersion
+                });
+
+            if (!isDraft)
+            {
+                await ConfigurationService.PublishVersionAsync(ConfigurationName, newVersion);
+            }
 
             Snackbar.Add($"Version {newVersion} created from {sourceVersion}", Severity.Success);
             MudDialog.Close(DialogResult.Ok(true));
@@ -182,3 +178,4 @@
         }
     }
 }
+

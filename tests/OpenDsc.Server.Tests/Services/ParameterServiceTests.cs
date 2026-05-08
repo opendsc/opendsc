@@ -2,8 +2,6 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
-using System.Text.Json;
-
 using AwesomeAssertions;
 
 using Microsoft.EntityFrameworkCore;
@@ -12,12 +10,12 @@ using Microsoft.Extensions.Options;
 
 using Moq;
 
+using OpenDsc.Contracts.Configurations;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
 using OpenDsc.Server.Services;
 
 using Xunit;
-using Xunit.Sdk;
 
 namespace OpenDsc.Server.Tests.Services;
 

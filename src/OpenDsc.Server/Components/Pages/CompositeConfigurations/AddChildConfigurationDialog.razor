@@ -1,5 +1,4 @@
 @using OpenDsc.Contracts.CompositeConfigurations
-@using ICompositeConfigurationService = OpenDsc.Server.Services.ICompositeConfigurationService
 @using NuGet.Versioning
 @using OpenDsc.Server.Services
 @inject ICompositeConfigurationService CompositeConfigService
@@ -11,26 +10,16 @@
             Add a child configuration to <strong>@CompositeName</strong> v<strong>@VersionString</strong>
         </MudText>
 
-        <MudSelect @bind-Value="selectedConfigId"
-                   @bind-Value:after="OnConfigurationSelected"
-                   T="Guid?"
-                   Label="Configuration"
-                   Variant="Variant.Outlined"
-                   Class="mb-3"
-                   Required="true">
+        <MudSelect @bind-Value="selectedConfigId" @bind-Value:after="OnConfigurationSelected" T="Guid?"
+                   Label="Configuration" Variant="Variant.Outlined" Class="mb-3" Required="true">
             @foreach (var config in availableConfigurations)
             {
                 <MudSelectItem T="Guid?" Value="@((Guid?)config.Id)">@config.Name</MudSelectItem>
             }
         </MudSelect>
 
-        <MudSelect @bind-Value="selectedMajorVersion"
-                   T="int?"
-                   Label="Major Version"
-                   Variant="Variant.Outlined"
-                   Class="mb-3"
-                   Required="true"
-                   Disabled="@(!selectedConfigId.HasValue || !availableMajorVersions.Any())"
+        <MudSelect @bind-Value="selectedMajorVersion" T="int?" Label="Major Version" Variant="Variant.Outlined"
+                   Class="mb-3" Required="true" Disabled="@(!selectedConfigId.HasValue || !availableMajorVersions.Any())"
                    HelperText="Select the major version to track">
             @foreach (var major in availableMajorVersions)
             {
@@ -114,7 +103,14 @@
                 nextOrder = currentVersion.Items.Max(i => i.Order) + 1;
             }
 
-            await CompositeConfigService.AddChildAsync(CompositeName, VersionString, selectedConfigId!.Value, selectedMajorVersion, nextOrder);
+            var selectedConfiguration = availableConfigurations.First(c => c.Id == selectedConfigId!.Value);
+
+            await CompositeConfigService.AddChildAsync(CompositeName, VersionString, new AddChildConfigurationRequest
+            {
+                ChildConfigurationName = selectedConfiguration.Name,
+                MajorVersion = selectedMajorVersion!.Value,
+                Order = nextOrder
+            });
 
             Snackbar.Add("Child configuration added", Severity.Success);
             MudDialog.Close(DialogResult.Ok(true));
@@ -129,3 +125,4 @@
         }
     }
 }
+

@@ -1,5 +1,4 @@
 @using OpenDsc.Contracts.CompositeConfigurations
-@using ICompositeConfigurationService = OpenDsc.Server.Services.ICompositeConfigurationService
 @using NuGet.Versioning
 @using OpenDsc.Server.Services
 @inject ICompositeConfigurationService CompositeConfigService
@@ -11,13 +10,8 @@
             Editing <strong>@Item.ChildConfigurationName</strong> in version <strong>@VersionString</strong>
         </MudText>
 
-        <MudSelect @bind-Value="selectedMajorVersion"
-                   T="int?"
-                   Label="Major Version"
-                   Variant="Variant.Outlined"
-                   Class="mb-3"
-                   Required="true"
-                   HelperText="Select the major version to track">
+        <MudSelect @bind-Value="selectedMajorVersion" T="int?" Label="Major Version" Variant="Variant.Outlined"
+                   Class="mb-3" Required="true" HelperText="Select the major version to track">
             @foreach (var major in availableMajorVersions)
             {
                 <MudSelectItem T="int?" Value="@((int?)major)">v@(major)</MudSelectItem>
@@ -79,7 +73,11 @@
 
         try
         {
-            await CompositeConfigService.UpdateChildAsync(Item.Id, selectedMajorVersion, Item.Order);
+            await CompositeConfigService.UpdateChildAsync(Item.Id, new UpdateChildConfigurationRequest
+            {
+                ActiveVersion = selectedMajorVersion.HasValue ? $"{selectedMajorVersion.Value}.0.0" : null,
+                Order = Item.Order
+            });
 
             Snackbar.Add("Major version updated", Severity.Success);
             MudDialog.Close(DialogResult.Ok(true));
@@ -94,3 +92,4 @@
         }
     }
 }
+

@@ -12,15 +12,12 @@ using Microsoft.EntityFrameworkCore;
 
 using OpenDsc.Contracts.Lcm;
 using OpenDsc.Contracts.Nodes;
-using OpenDsc.Contracts.CompositeConfigurations;
-using OpenDsc.Contracts.Reports;
 using OpenDsc.Contracts.Settings;
-using OpenDsc.Contracts.Permissions;
 using OpenDsc.Server.Data;
-using OpenDsc.Server.Endpoints;
-using OpenDsc.Server.Services;
 
 using Xunit;
+
+using ConfigurationDetails = OpenDsc.Contracts.Configurations.ConfigurationDetails;
 
 namespace OpenDsc.Server.IntegrationTests.Endpoints;
 
@@ -230,7 +227,7 @@ public class NodeEndpointsTests : IClassFixture<ServerWebApplicationFactory>
         configFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         configContent.Add(configFile, "files", "main.dsc.yaml");
         var createResponse = await adminClient.PostAsync("/api/v1/configurations", configContent, TestContext.Current.CancellationToken);
-        var configDto = await createResponse.Content.ReadFromJsonAsync<ConfigurationDetailsDto>(TestContext.Current.CancellationToken);
+        var configDto = await createResponse.Content.ReadFromJsonAsync<ConfigurationDetails>(TestContext.Current.CancellationToken);
 
         await adminClient.PutAsync($"/api/v1/configurations/test-assign-config/versions/{configDto!.LatestVersion}/publish", null, TestContext.Current.CancellationToken);
 
@@ -308,7 +305,7 @@ public class NodeEndpointsTests : IClassFixture<ServerWebApplicationFactory>
         configFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         configContent.Add(configFile, "files", "deploy.dsc.yaml");
         var createResponse = await adminClient.PostAsync("/api/v1/configurations", configContent, TestContext.Current.CancellationToken);
-        var configDto = await createResponse.Content.ReadFromJsonAsync<ConfigurationDetailsDto>(TestContext.Current.CancellationToken);
+        var configDto = await createResponse.Content.ReadFromJsonAsync<ConfigurationDetails>(TestContext.Current.CancellationToken);
         await adminClient.PutAsync($"/api/v1/configurations/{configName}/versions/{configDto!.LatestVersion}/publish", null, TestContext.Current.CancellationToken);
 
         // Assign configuration to node

@@ -1,5 +1,4 @@
 @using OpenDsc.Contracts.CompositeConfigurations
-@using ICompositeConfigurationService = OpenDsc.Server.Services.ICompositeConfigurationService
 @using NuGet.Versioning
 @using OpenDsc.Server.Services
 @inject ICompositeConfigurationService CompositeConfigService
@@ -8,18 +7,10 @@
 
 <MudDialog>
     <DialogContent>
-        <MudTextField @bind-Value="name"
-                      Label="Name"
-                      Variant="Variant.Outlined"
-                      Required="true"
-                      Class="mb-3"
+        <MudTextField @bind-Value="name" Label="Name" Variant="Variant.Outlined" Required="true" Class="mb-3"
                       HelperText="Unique identifier for the composite configuration" />
 
-        <MudTextField @bind-Value="description"
-                      Label="Description"
-                      Variant="Variant.Outlined"
-                      Lines="2"
-                      Class="mb-3"
+        <MudTextField @bind-Value="description" Label="Description" Variant="Variant.Outlined" Lines="2" Class="mb-3"
                       HelperText="Optional description" />
 
         @if (!string.IsNullOrWhiteSpace(validationError))
@@ -62,7 +53,11 @@
 
         try
         {
-            var result = await CompositeConfigService.CreateCompositeConfigurationAsync(name, string.IsNullOrWhiteSpace(description) ? null : description);
+            var result = await CompositeConfigService.CreateAsync(new CreateCompositeConfigurationRequest
+            {
+                Name = name,
+                Description = string.IsNullOrWhiteSpace(description) ? null : description
+            });
 
             Snackbar.Add($"Composite configuration '{name}' created", Severity.Success);
             MudDialog.Close(DialogResult.Ok(name));
@@ -78,3 +73,4 @@
         }
     }
 }
+

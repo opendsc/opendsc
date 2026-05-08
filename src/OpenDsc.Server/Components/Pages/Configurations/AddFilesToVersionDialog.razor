@@ -3,6 +3,7 @@
 @* terms of the MIT license. *@
 
 @using Microsoft.AspNetCore.Components.Forms
+@using OpenDsc.Contracts.Configurations
 @using OpenDsc.Server.Services
 @inject IConfigurationService ConfigurationService
 @inject ISnackbar Snackbar
@@ -123,10 +124,10 @@
 
         try
         {
-            await ConfigurationService.AddFilesToVersionAsync(
+            await ConfigurationService.AddFilesAsync(
                 ConfigurationName,
                 Version,
-                selectedFiles);
+                selectedFiles.Select(ToFileUpload).ToList());
 
             Snackbar.Add($"Added {selectedFiles.Count} file(s) to version {Version}", Severity.Success);
             MudDialog.Close(DialogResult.Ok(true));
@@ -141,6 +142,9 @@
             isSubmitting = false;
         }
     }
+
+    private static FileUpload ToFileUpload(IBrowserFile file) =>
+        new(file.Name, file.OpenReadStream(10 * 1024 * 1024), file.ContentType, file.Size);
 }
 
 <style>

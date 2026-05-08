@@ -6,10 +6,7 @@ using System.Net;
 
 using AwesomeAssertions;
 
-using OpenDsc.Server.Endpoints;
-using OpenDsc.Server.Entities;
 using OpenDsc.Contracts.Configurations;
-using OpenDsc.Server.Services;
 
 using Xunit;
 
@@ -60,13 +57,13 @@ resources:
         // Step 2: Verify configuration was created as draft
         var getResponse = await client.GetAsync($"/api/v1/configurations/{configName}", TestContext.Current.CancellationToken);
         getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var configDto = await getResponse.Content.ReadFromJsonAsync<ConfigurationDetailsDto>(TestContext.Current.CancellationToken);
+        var configDto = await getResponse.Content.ReadFromJsonAsync<ConfigurationDetails>(TestContext.Current.CancellationToken);
         configDto.Should().NotBeNull();
         configDto!.LatestVersion.Should().Be("1.0.0");
 
         var versionResponse = await client.GetAsync($"/api/v1/configurations/{configName}/versions", TestContext.Current.CancellationToken);
         versionResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var versions = await versionResponse.Content.ReadFromJsonAsync<List<ConfigurationVersionDto>>(TestContext.Current.CancellationToken);
+        var versions = await versionResponse.Content.ReadFromJsonAsync<List<ConfigurationVersionDetails>>(TestContext.Current.CancellationToken);
         versions.Should().NotBeNull();
         versions.Should().HaveCount(1);
         versions![0].Status.Should().Be(ConfigurationVersionStatus.Draft);
@@ -78,7 +75,7 @@ resources:
         // Step 4: Verify the version is now published
         var verifyVersionResponse = await client.GetAsync($"/api/v1/configurations/{configName}/versions", TestContext.Current.CancellationToken);
         verifyVersionResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var publishedVersions = await verifyVersionResponse.Content.ReadFromJsonAsync<List<ConfigurationVersionDto>>(TestContext.Current.CancellationToken);
+        var publishedVersions = await verifyVersionResponse.Content.ReadFromJsonAsync<List<ConfigurationVersionDetails>>(TestContext.Current.CancellationToken);
         publishedVersions.Should().NotBeNull();
         publishedVersions.Should().HaveCount(1);
         publishedVersions![0].Status.Should().Be(ConfigurationVersionStatus.Published);
@@ -86,7 +83,7 @@ resources:
         // Step 5: Verify configuration details show published version
         var finalGetResponse = await client.GetAsync($"/api/v1/configurations/{configName}", TestContext.Current.CancellationToken);
         finalGetResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var finalConfigDto = await finalGetResponse.Content.ReadFromJsonAsync<ConfigurationDetailsDto>(TestContext.Current.CancellationToken);
+        var finalConfigDto = await finalGetResponse.Content.ReadFromJsonAsync<ConfigurationDetails>(TestContext.Current.CancellationToken);
         finalConfigDto.Should().NotBeNull();
         finalConfigDto!.LatestVersion.Should().Be("1.0.0");
     }
@@ -151,7 +148,7 @@ resources:
 
         // Verify both versions are published
         var versionsResponse = await client.GetAsync($"/api/v1/configurations/{configName}/versions", TestContext.Current.CancellationToken);
-        var versions = await versionsResponse.Content.ReadFromJsonAsync<List<ConfigurationVersionDto>>(TestContext.Current.CancellationToken);
+        var versions = await versionsResponse.Content.ReadFromJsonAsync<List<ConfigurationVersionDetails>>(TestContext.Current.CancellationToken);
         versions.Should().NotBeNull();
         versions.Should().HaveCount(2);
         versions!.All(v => v.Status == ConfigurationVersionStatus.Published).Should().BeTrue();

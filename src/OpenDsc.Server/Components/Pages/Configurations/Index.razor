@@ -1,6 +1,8 @@
 @page "/configurations"
 @attribute [Authorize]
 @using OpenDsc.Server.Services
+@using OpenDsc.Contracts.Configurations
+@using ConfigurationSummary = OpenDsc.Contracts.Configurations.ConfigurationSummary
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
@@ -38,7 +40,7 @@
         }
         else
         {
-            <MudDataGrid T="ConfigurationSummaryDto" Items="@filteredConfigurations" Hover="true" Dense="true">
+            <MudDataGrid T="ConfigurationSummary" Items="@filteredConfigurations" Hover="true" Dense="true">
                 <Columns>
                     <PropertyColumn Property="x => x.Name" Title="Name" />
                     <TemplateColumn Title="Status" Sortable="false">
@@ -80,8 +82,8 @@
 </MudCard>
 
 @code {
-    private List<ConfigurationSummaryDto> configurations = [];
-    private List<ConfigurationSummaryDto> filteredConfigurations = [];
+    private List<ConfigurationSummary> configurations = [];
+    private List<ConfigurationSummary> filteredConfigurations = [];
     private bool isLoading = true;
 
     private string _searchText = string.Empty;
@@ -181,7 +183,7 @@
         filteredConfigurations = ApplySort(filtered).ToList();
     }
 
-    private IEnumerable<ConfigurationSummaryDto> ApplySort(IEnumerable<ConfigurationSummaryDto> items)
+    private IEnumerable<ConfigurationSummary> ApplySort(IEnumerable<ConfigurationSummary> items)
     {
         return _sortBy switch
         {
@@ -206,7 +208,7 @@
         {
             try
             {
-                await ConfigurationService.DeleteConfigurationAsync(name);
+                await ConfigurationService.DeleteAsync(name);
                 Snackbar.Add($"Configuration '{name}' deleted successfully", Severity.Success);
                 await LoadConfigurationsAsync();
             }
@@ -217,3 +219,4 @@
         }
     }
 }
+

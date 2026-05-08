@@ -4,10 +4,8 @@
 
 using Microsoft.AspNetCore.Http.HttpResults;
 
-using OpenDsc.Server.Authorization;
-using OpenDsc.Server.Entities;
 using OpenDsc.Contracts.Configurations;
-using OpenDsc.Server.Services;
+using OpenDsc.Server.Authorization;
 
 namespace OpenDsc.Server.Endpoints;
 
@@ -45,11 +43,12 @@ internal static class ConfigurationSettingsEndpoints
         return group;
     }
 
-    private static async Task<Results<Ok<ConfigurationSettingsDto>, NotFound>> GetConfigurationSettings(
+    private static async Task<Results<Ok<ConfigurationSettingsSummary>, NotFound>> GetConfigurationSettings(
         string configName,
-        IConfigurationService configService)
+        IConfigurationService configService,
+        CancellationToken cancellationToken)
     {
-        var result = await configService.GetConfigurationSettingsAsync(configName);
+        var result = await configService.GetSettingsAsync(configName, cancellationToken);
         if (result is null)
         {
             return TypedResults.NotFound();
@@ -58,15 +57,15 @@ internal static class ConfigurationSettingsEndpoints
         return TypedResults.Ok(result);
     }
 
-    private static async Task<Results<Ok<ConfigurationSettingsDto>, NotFound, Conflict<string>>> UpdateConfigurationSettings(
+    private static async Task<Results<Ok<ConfigurationSettingsSummary>, NotFound, Conflict<string>>> UpdateConfigurationSettings(
         string configName,
-        ConfigurationSettingsUpdateRequest request,
-        IConfigurationService configService)
+        UpdateConfigurationSettingsRequest request,
+        IConfigurationService configService,
+        CancellationToken cancellationToken)
     {
         try
         {
-            var result = await configService.UpdateConfigurationSettingsAsync(
-                configName, request.RequireSemVer, request.ParameterValidationMode);
+            var result = await configService.UpdateSettingsAsync(configName, request, cancellationToken);
             return TypedResults.Ok(result);
         }
         catch (KeyNotFoundException)
@@ -81,40 +80,28 @@ internal static class ConfigurationSettingsEndpoints
 
     private static async Task<Results<NoContent, NotFound>> DeleteConfigurationSettings(
         string configName,
-        IConfigurationService configService)
+        IConfigurationService configService,
+        CancellationToken cancellationToken)
     {
-        var settings = await configService.GetConfigurationSettingsAsync(configName);
+        var settings = await configService.GetSettingsAsync(configName, cancellationToken);
         if (settings is null)
         {
             return TypedResults.NotFound();
         }
 
-        await configService.DeleteConfigurationSettingsAsync(configName);
+        await configService.DeleteSettingsAsync(configName, cancellationToken);
         return TypedResults.NoContent();
     }
 }
 
-public sealed record ConfigurationSettingsUpdateRequest
-{
-    public bool? RequireSemVer { get; init; }
-    public ParameterValidationMode? ParameterValidationMode { get; init; }
-}
-
-public sealed record UpdateConfigurationRetentionRequest
-{
-    public bool? Enabled { get; init; }
-    public int? KeepVersions { get; init; }
-    public int? KeepDays { get; init; }
-    public bool? KeepReleaseVersions { get; init; }
-}
-
 internal static partial class ConfigurationRetentionHandlers
 {
-    public static async Task<Results<Ok<ConfigurationRetentionDto>, NotFound>> GetConfigurationRetentionSettings(
+    public static async Task<Results<Ok<ConfigurationRetentionSummary>, NotFound>> GetConfigurationRetentionSettings(
         string configName,
-        IConfigurationService configService)
+        IConfigurationService configService,
+        CancellationToken cancellationToken)
     {
-        var result = await configService.GetRetentionSettingsAsync(configName);
+        var result = await configService.GetRetentionSettingsAsync(configName, cancellationToken);
         if (result is null)
         {
             return TypedResults.NotFound();
@@ -123,34 +110,36 @@ internal static partial class ConfigurationRetentionHandlers
         return TypedResults.Ok(result);
     }
 
-    public static async Task<Results<Ok<ConfigurationRetentionDto>, NotFound>> UpdateConfigurationRetentionSettings(
+    public static async Task<Results<Ok<ConfigurationRetentionSummary>, NotFound>> UpdateConfigurationRetentionSettings(
         string configName,
-        UpdateConfigurationRetentionRequest request,
-        IConfigurationService configService)
+        SaveRetentionSettingsRequest request,
+        IConfigurationService configService,
+        CancellationToken cancellationToken)
     {
-        var existing = await configService.GetRetentionSettingsAsync(configName);
+        var existing = await configService.GetRetentionSettingsAsync(configName, cancellationToken);
         if (existing is null)
         {
             return TypedResults.NotFound();
         }
 
-        await configService.SaveRetentionSettingsAsync(configName, request.Enabled, request.KeepVersions, request.KeepDays, request.KeepReleaseVersions);
+        await configService.SaveRetentionSettingsAsync(configName, request, cancellationToken);
 
-        var result = await configService.GetRetentionSettingsAsync(configName);
+        var result = await configService.GetRetentionSettingsAsync(configName, cancellationToken);
         return TypedResults.Ok(result!);
     }
 
     public static async Task<Results<NoContent, NotFound>> DeleteConfigurationRetentionSettings(
         string configName,
-        IConfigurationService configService)
+        IConfigurationService configService,
+        CancellationToken cancellationToken)
     {
-        var existing = await configService.GetRetentionSettingsAsync(configName);
+        var existing = await configService.GetRetentionSettingsAsync(configName, cancellationToken);
         if (existing is null)
         {
             return TypedResults.NotFound();
         }
 
-        await configService.ResetRetentionSettingsAsync(configName);
+        await configService.ResetRetentionSettingsAsync(configName, cancellationToken);
         return TypedResults.NoContent();
     }
 }
