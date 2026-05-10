@@ -63,7 +63,6 @@ public sealed partial class ConfigurationService : IConfigurationService
         var description = request.Description;
         var entryPoint = request.EntryPoint;
         var version = request.Version;
-        var isDraft = request.IsDraft;
         var useServerManagedParameters = request.UseServerManagedParameters;
         var files = request.Files;
 
@@ -108,7 +107,7 @@ public sealed partial class ConfigurationService : IConfigurationService
             ConfigurationId = configuration.Id,
             Version = version,
             EntryPoint = entryPoint,
-            Status = isDraft ? ConfigurationVersionStatus.Draft : ConfigurationVersionStatus.Published,
+            Status = ConfigurationVersionStatus.Draft,
             CreatedAt = DateTimeOffset.UtcNow
         };
 
@@ -209,7 +208,6 @@ public sealed partial class ConfigurationService : IConfigurationService
         CancellationToken cancellationToken = default)
     {
         var version = request.Version;
-        var isDraft = request.IsDraft;
         var files = request.Files;
         var entryPoint = request.EntryPoint;
 
@@ -240,7 +238,7 @@ public sealed partial class ConfigurationService : IConfigurationService
             ConfigurationId = configuration.Id,
             Version = version,
             EntryPoint = resolvedEntryPoint,
-            Status = isDraft ? ConfigurationVersionStatus.Draft : ConfigurationVersionStatus.Published,
+            Status = ConfigurationVersionStatus.Draft,
             CreatedAt = DateTimeOffset.UtcNow
         };
 
@@ -343,7 +341,6 @@ public sealed partial class ConfigurationService : IConfigurationService
     {
         var sourceVersion = request.SourceVersion;
         var newVersion = request.NewVersion;
-        var isDraft = request.IsDraft;
 
         var configuration = await _db.Configurations
             .Include(c => c.Versions)
@@ -367,7 +364,7 @@ public sealed partial class ConfigurationService : IConfigurationService
             ConfigurationId = configuration.Id,
             Version = newVersion,
             EntryPoint = sourceConfigVersion.EntryPoint,
-            Status = isDraft ? ConfigurationVersionStatus.Draft : ConfigurationVersionStatus.Published,
+            Status = ConfigurationVersionStatus.Draft,
             CreatedAt = DateTimeOffset.UtcNow
         };
 
@@ -1078,6 +1075,12 @@ public sealed partial class ConfigurationService : IConfigurationService
             return null;
         }
 
+        var userId = _userContext.GetCurrentUserId();
+        if (userId == null || !await _authService.CanReadConfigurationAsync(userId.Value, config.Id))
+        {
+            throw new UnauthorizedAccessException($"Access denied to configuration '{name}'.");
+        }
+
         var latestVersion = config.Versions
             .OrderByDescending(v => v.CreatedAt)
             .Select(v => v.Version)
@@ -1105,6 +1108,12 @@ public sealed partial class ConfigurationService : IConfigurationService
         if (config is null)
         {
             return null;
+        }
+
+        var userId = _userContext.GetCurrentUserId();
+        if (userId == null || !await _authService.CanReadConfigurationAsync(userId.Value, config.Id))
+        {
+            throw new UnauthorizedAccessException($"Access denied to configuration '{name}'.");
         }
 
         return config.Versions

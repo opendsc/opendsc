@@ -74,6 +74,12 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
             return null;
         }
 
+        var userId = _userContext.GetCurrentUserId();
+        if (userId == null || !await _authService.CanReadCompositeConfigurationAsync(userId.Value, composite.Id))
+        {
+            throw new UnauthorizedAccessException($"Access denied to composite configuration '{name}'.");
+        }
+
         return MapToDetailsDto(composite);
     }
 
@@ -88,6 +94,12 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
         if (composite is null)
         {
             return null;
+        }
+
+        var userId = _userContext.GetCurrentUserId();
+        if (userId == null || !await _authService.CanReadCompositeConfigurationAsync(userId.Value, composite.Id))
+        {
+            throw new UnauthorizedAccessException($"Access denied to composite configuration '{name}'.");
         }
 
         return composite.Versions
@@ -107,6 +119,12 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
         if (compositeVersion is null)
         {
             return null;
+        }
+
+        var userId = _userContext.GetCurrentUserId();
+        if (userId == null || !await _authService.CanReadCompositeConfigurationAsync(userId.Value, compositeVersion.CompositeConfigurationId))
+        {
+            throw new UnauthorizedAccessException($"Access denied to composite configuration '{name}'.");
         }
 
         return MapToVersionDto(compositeVersion);
@@ -456,6 +474,26 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
             throw new InvalidOperationException("Cannot modify a published version.");
         }
 
+        var userId = _userContext.GetCurrentUserId();
+        if (userId == null || !await _authService.CanModifyCompositeConfigurationAsync(userId.Value, item.CompositeConfigurationVersion.CompositeConfigurationId))
+        {
+            throw new UnauthorizedAccessException($"Access denied to composite configuration '{item.CompositeConfigurationVersion.CompositeConfiguration.Name}'.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.ActiveVersion))
+        {
+            var versionExists = await _db.ConfigurationVersions.AnyAsync(
+                v => v.ConfigurationId == item.ChildConfigurationId &&
+                     v.Version == request.ActiveVersion &&
+                     v.Status == ConfigurationVersionStatus.Published,
+                cancellationToken);
+
+            if (!versionExists)
+            {
+                throw new InvalidOperationException($"Invalid ActiveVersion '{request.ActiveVersion}'. A published version for child configuration '{item.ChildConfiguration.Name}' was not found.");
+            }
+        }
+
         item.ActiveVersion = request.ActiveVersion;
         item.Order = request.Order;
         item.CompositeConfigurationVersion.CompositeConfiguration.UpdatedAt = DateTimeOffset.UtcNow;
@@ -484,6 +522,12 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
         if (item.CompositeConfigurationVersion.Status != ConfigurationVersionStatus.Draft)
         {
             throw new InvalidOperationException("Cannot modify a published version.");
+        }
+
+        var userId = _userContext.GetCurrentUserId();
+        if (userId == null || !await _authService.CanModifyCompositeConfigurationAsync(userId.Value, item.CompositeConfigurationVersion.CompositeConfigurationId))
+        {
+            throw new UnauthorizedAccessException($"Access denied to composite configuration '{item.CompositeConfigurationVersion.CompositeConfiguration.Name}'.");
         }
 
         _db.CompositeConfigurationItems.Remove(item);

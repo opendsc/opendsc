@@ -151,7 +151,6 @@ resources: []
         using var content = new MultipartFormDataContent();
         content.Add(new StringContent(configName), "name");
         content.Add(new StringContent("main.dsc.yaml"), "entryPoint");
-        content.Add(new StringContent("true"), "isDraft");
         var file = new ByteArrayContent(System.Text.Encoding.UTF8.GetBytes(configContent));
         file.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         content.Add(file, "files", "main.dsc.yaml");

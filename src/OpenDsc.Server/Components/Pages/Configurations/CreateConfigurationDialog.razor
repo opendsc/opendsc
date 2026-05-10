@@ -13,18 +13,10 @@
         <MudTextField @bind-Value="description" Label="Description" Variant="Variant.Outlined" Lines="2" Class="mb-3"
                       HelperText="Optional description" />
 
-        <MudTextField @bind-Value="entryPoint" Label="Entry Point" Variant="Variant.Outlined" Required="true"
-                      Class="mb-3" HelperText="Main configuration file (e.g., main.dsc.yaml)" />
-
         <MudTextField @bind-Value="version" Label="Version" Variant="Variant.Outlined" Required="true" Class="mb-3"
                       Immediate="true" Error="@(!string.IsNullOrWhiteSpace(version) && !SemanticVersion.TryParse(version, out _))"
                       ErrorText="Version must follow semantic versioning (e.g., 1.0.0, 2.1.3-alpha, 1.0.0-beta+001)"
                       HelperText="Semantic version: major.minor.patch[-prerelease][+metadata]" />
-
-        <MudSwitch @bind-Value="isDraft" Label="Save as Draft" Color="Color.Info" Class="mb-3" />
-        <MudText Typo="Typo.caption" Class="mb-3" Color="Color.Secondary">
-            When unchecked, the version will be published immediately and become immutable.
-        </MudText>
 
         <MudSwitch @bind-Value="useServerManagedParameters" Label="Server Managed Parameters" Color="Color.Primary"
                    Class="mb-3" />
@@ -47,6 +39,15 @@
                 }
             </MudChipSet>
         }
+
+        <MudSelect T="string" @bind-Value="entryPoint" Label="Entry Point" Variant="Variant.Outlined" Required="true"
+                   Class="mt-3" HelperText="Select the main configuration file from uploaded files"
+                   Disabled="@(selectedFiles.Count == 0)">
+            @foreach (var file in selectedFiles)
+            {
+                <MudSelectItem T="string" Value="@file.Name">@file.Name</MudSelectItem>
+            }
+        </MudSelect>
 
         @if (!string.IsNullOrWhiteSpace(validationError))
         {
@@ -79,7 +80,6 @@
     private string? description;
     private string entryPoint = string.Empty;
     private string version = "1.0.0";
-    private bool isDraft = true;
     private bool useServerManagedParameters = true;
     private bool isSubmitting = false;
     private List<IBrowserFile> selectedFiles = [];
@@ -156,6 +156,12 @@
     {
         selectedFiles.Remove(file);
         validationError = null;
+
+        if (!selectedFiles.Any(f => f.Name.Equals(entryPoint, StringComparison.OrdinalIgnoreCase)))
+        {
+            entryPoint = string.Empty;
+            AutoDetectEntryPoint();
+        }
     }
 
     private bool IsValid()
@@ -210,11 +216,6 @@
                 UseServerManagedParameters = useServerManagedParameters,
                 Files = selectedFiles.Select(ToFileUpload).ToList()
             });
-
-            if (!isDraft)
-            {
-                await ConfigurationService.PublishVersionAsync(name, version);
-            }
 
             Snackbar.Add($"Configuration '{name}' created successfully", Severity.Success);
             MudDialog.Close(DialogResult.Ok(true));

@@ -109,7 +109,7 @@ public static class TestableConfigurationEndpoints
     public static Dictionary<string, object>? ExtractParametersFromYaml(string yamlContent)
     {
         // Use reflection to call the private method
-        var method = typeof(ConfigurationEndpoints).GetMethod(
+        var method = typeof(ConfigurationService).GetMethod(
             "ExtractParametersFromYaml",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
 
@@ -124,7 +124,7 @@ public static class TestableConfigurationEndpoints
     public static Dictionary<string, ParameterDefinition> ConvertToParameterDefinitions(Dictionary<string, object> parametersBlock)
     {
         // Use reflection to call the private method
-        var method = typeof(ConfigurationEndpoints).GetMethod(
+        var method = typeof(ConfigurationService).GetMethod(
             "ConvertToParameterDefinitions",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
 

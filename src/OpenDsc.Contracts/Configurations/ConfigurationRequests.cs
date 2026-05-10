@@ -22,7 +22,6 @@ public sealed class CreateConfigurationAdminRequest
     public string? Description { get; set; }
     public string EntryPoint { get; set; } = string.Empty;
     public string Version { get; set; } = string.Empty;
-    public bool IsDraft { get; set; }
     public bool UseServerManagedParameters { get; set; }
     public IReadOnlyList<FileUpload> Files { get; set; } = [];
 }
@@ -42,7 +41,6 @@ public sealed class UpdateConfigurationAdminRequest
 public sealed class CreateConfigurationVersionRequest
 {
     public string Version { get; set; } = string.Empty;
-    public bool IsDraft { get; set; }
     public IReadOnlyList<FileUpload> Files { get; set; } = [];
     public string? EntryPoint { get; set; }
 }
@@ -54,7 +52,6 @@ public sealed class CreateVersionFromExistingRequest
 {
     public string SourceVersion { get; set; } = string.Empty;
     public string NewVersion { get; set; } = string.Empty;
-    public bool IsDraft { get; set; }
 }
 
 /// <summary>

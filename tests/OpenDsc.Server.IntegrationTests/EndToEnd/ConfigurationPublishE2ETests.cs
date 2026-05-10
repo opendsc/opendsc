@@ -35,7 +35,6 @@ public class ConfigurationPublishE2ETests : IDisposable
         configContent.Add(new StringContent(configName), "name");
         configContent.Add(new StringContent("Test E2E Configuration"), "description");
         configContent.Add(new StringContent("main.dsc.yaml"), "entryPoint");
-        configContent.Add(new StringContent("true"), "isDraft");
 
         var configFileContent = @"
 $schema: https://raw.githubusercontent.com/PowerShell/DSC/main/schemas/2024/04/config/document.json
@@ -98,7 +97,6 @@ resources:
         using var configContent = new MultipartFormDataContent();
         configContent.Add(new StringContent(configName), "name");
         configContent.Add(new StringContent("main.dsc.yaml"), "entryPoint");
-        configContent.Add(new StringContent("true"), "isDraft");
         var configFile = new ByteArrayContent("content"u8.ToArray());
         configFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         configContent.Add(configFile, "files", "main.dsc.yaml");
@@ -123,7 +121,6 @@ resources:
         using var initialContent = new MultipartFormDataContent();
         initialContent.Add(new StringContent(configName), "name");
         initialContent.Add(new StringContent("main.dsc.yaml"), "entryPoint");
-        initialContent.Add(new StringContent("true"), "isDraft");
         var initialFile = new ByteArrayContent("v1"u8.ToArray());
         initialFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         initialContent.Add(initialFile, "files", "main.dsc.yaml");
@@ -136,7 +133,6 @@ resources:
         // Create version 2.0.0 as draft
         using var v2Content = new MultipartFormDataContent();
         v2Content.Add(new StringContent("2.0.0"), "version");
-        v2Content.Add(new StringContent("true"), "isDraft");
         var v2File = new ByteArrayContent("v2"u8.ToArray());
         v2File.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         v2Content.Add(v2File, "files", "main.dsc.yaml");

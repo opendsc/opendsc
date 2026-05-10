@@ -4,6 +4,7 @@
 
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Primitives;
 
 using OpenDsc.Contracts.Configurations;
 using OpenDsc.Contracts.Permissions;
@@ -83,11 +84,14 @@ public static class ConfigurationEndpoints
     }
 
     private static async Task<Results<Created<ConfigurationDetails>, BadRequest<string>, Conflict<string>>> CreateConfiguration(
-        [FromForm] CreateConfigurationAdminRequest request,
-        IFormFileCollection files,
+        HttpRequest httpRequest,
         IConfigurationService configService,
         CancellationToken cancellationToken)
     {
+        var form = await httpRequest.ReadFormAsync(cancellationToken);
+        var request = BindCreateConfigurationRequest(form);
+        var files = form.Files;
+
         if (string.IsNullOrWhiteSpace(request.Name))
         {
             return TypedResults.BadRequest("Configuration name is required");
@@ -98,14 +102,14 @@ public static class ConfigurationEndpoints
             return TypedResults.BadRequest("At least one file is required");
         }
 
-        var entryPoint = request.EntryPoint ?? "main.dsc.yaml";
+        var entryPoint = string.IsNullOrWhiteSpace(request.EntryPoint) ? "main.dsc.yaml" : request.EntryPoint;
 
         if (!files.Any(f => f.FileName == entryPoint))
         {
             return TypedResults.BadRequest($"Entry point file '{entryPoint}' not found in uploaded files");
         }
 
-        var version = request.Version ?? "1.0.0";
+        var version = string.IsNullOrWhiteSpace(request.Version) ? "1.0.0" : request.Version;
         var fileUploads = files.Select(f => new FileUpload(f.FileName, f.OpenReadStream(), f.ContentType, f.Length)).ToList();
 
         try
@@ -139,13 +143,20 @@ public static class ConfigurationEndpoints
         IConfigurationService configService,
         CancellationToken cancellationToken)
     {
-        var details = await configService.GetConfigurationAsync(name, cancellationToken);
-        if (details is null)
+        try
         {
-            return TypedResults.NotFound();
-        }
+            var details = await configService.GetConfigurationAsync(name, cancellationToken);
+            if (details is null)
+            {
+                return TypedResults.NotFound();
+            }
 
-        return TypedResults.Ok(details);
+            return TypedResults.Ok(details);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return TypedResults.Forbid();
+        }
     }
 
     private static async Task<Results<Ok<List<ConfigurationVersionDetails>>, NotFound, ForbidHttpResult>> GetConfigurationVersions(
@@ -153,22 +164,32 @@ public static class ConfigurationEndpoints
         IConfigurationService configService,
         CancellationToken cancellationToken)
     {
-        var versions = await configService.GetVersionsAsync(name, cancellationToken);
-        if (versions is null)
+        try
         {
-            return TypedResults.NotFound();
-        }
+            var versions = await configService.GetVersionsAsync(name, cancellationToken);
+            if (versions is null)
+            {
+                return TypedResults.NotFound();
+            }
 
-        return TypedResults.Ok(versions);
+            return TypedResults.Ok(versions);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return TypedResults.Forbid();
+        }
     }
 
     private static async Task<Results<Created<ConfigurationVersionDetails>, NotFound, BadRequest<string>, ForbidHttpResult>> CreateConfigurationVersion(
         string name,
-        [FromForm] CreateConfigurationVersionRequest request,
-        IFormFileCollection files,
+        HttpRequest httpRequest,
         IConfigurationService configService,
         CancellationToken cancellationToken)
     {
+        var form = await httpRequest.ReadFormAsync(cancellationToken);
+        var request = BindCreateConfigurationVersionRequest(form);
+        var files = form.Files;
+
         if (files.Count == 0)
         {
             return TypedResults.BadRequest("At least one file is required");
@@ -179,7 +200,14 @@ public static class ConfigurationEndpoints
         try
         {
             await configService.CreateVersionAsync(
-                name, new CreateConfigurationVersionRequest { Version = request.Version, EntryPoint = request.EntryPoint, Files = fileUploads }, cancellationToken);
+                name,
+                new CreateConfigurationVersionRequest
+                {
+                    Version = request.Version,
+                    EntryPoint = request.EntryPoint,
+                    Files = fileUploads
+                },
+                cancellationToken);
         }
         catch (KeyNotFoundException)
         {
@@ -353,6 +381,60 @@ public static class ConfigurationEndpoints
             : filePath.EndsWith(".json", StringComparison.OrdinalIgnoreCase) ? "application/json" : "application/octet-stream";
 
         return TypedResults.File(stream, contentType, fileName);
+    }
+
+    private static CreateConfigurationAdminRequest BindCreateConfigurationRequest(IFormCollection form)
+    {
+        return new CreateConfigurationAdminRequest
+        {
+            Name = GetFormValue(form, "name"),
+            Description = GetOptionalFormValue(form, "description"),
+            EntryPoint = GetOptionalFormValue(form, "entryPoint") ?? string.Empty,
+            Version = GetOptionalFormValue(form, "version") ?? string.Empty,
+            UseServerManagedParameters = GetFormBool(form, "useServerManagedParameters")
+        };
+    }
+
+    private static CreateConfigurationVersionRequest BindCreateConfigurationVersionRequest(IFormCollection form)
+    {
+        return new CreateConfigurationVersionRequest
+        {
+            Version = GetFormValue(form, "version"),
+            EntryPoint = GetOptionalFormValue(form, "entryPoint")
+        };
+    }
+
+    private static string GetFormValue(IFormCollection form, string fieldName)
+    {
+        return GetOptionalFormValue(form, fieldName) ?? string.Empty;
+    }
+
+    private static string? GetOptionalFormValue(IFormCollection form, string fieldName)
+    {
+        var pascalCase = char.ToUpperInvariant(fieldName[0]) + fieldName[1..];
+        var candidates = new[]
+        {
+            fieldName,
+            $"request.{fieldName}",
+            pascalCase,
+            $"request.{pascalCase}"
+        };
+
+        foreach (var candidate in candidates)
+        {
+            if (form.TryGetValue(candidate, out var value) && !StringValues.IsNullOrEmpty(value))
+            {
+                return value.ToString();
+            }
+        }
+
+        return null;
+    }
+
+    private static bool GetFormBool(IFormCollection form, string fieldName)
+    {
+        var value = GetOptionalFormValue(form, fieldName);
+        return bool.TryParse(value, out var result) && result;
     }
 
     private static async Task<Results<Ok<List<PermissionEntry>>, NotFound, ForbidHttpResult>> GetConfigurationPermissions(

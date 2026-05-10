@@ -226,7 +226,6 @@ public class ConfigurationEndpointsTests : IDisposable
         using var configContent = new MultipartFormDataContent();
         configContent.Add(new StringContent("publish-test-config"), "name");
         configContent.Add(new StringContent("main.dsc.yaml"), "entryPoint");
-        configContent.Add(new StringContent("true"), "isDraft");
         var configFile = new ByteArrayContent("content"u8.ToArray());
         configFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         configContent.Add(configFile, "files", "main.dsc.yaml");
@@ -247,7 +246,6 @@ public class ConfigurationEndpointsTests : IDisposable
         using var configContent = new MultipartFormDataContent();
         configContent.Add(new StringContent(configName), "name");
         configContent.Add(new StringContent("config.dsc.yaml"), "entryPoint");
-        configContent.Add(new StringContent("true"), "isDraft");
 
         // Create a configuration file with parameters block
         var configFileContent = @"
@@ -403,7 +401,6 @@ resources: []
 
         using var v2Content = new MultipartFormDataContent();
         v2Content.Add(new StringContent("2.0.0"), "version");
-        v2Content.Add(new StringContent("true"), "isDraft");
         var v2File = new ByteArrayContent("v2"u8.ToArray());
         v2File.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         v2Content.Add(v2File, "files", "main.dsc.yaml");
@@ -571,7 +568,6 @@ resources: []
         using var configContent = new MultipartFormDataContent();
         configContent.Add(new StringContent("cookie-auth-test-config"), "name");
         configContent.Add(new StringContent("main.dsc.yaml"), "entryPoint");
-        configContent.Add(new StringContent("true"), "isDraft");
         var configFile = new ByteArrayContent("content"u8.ToArray());
         configFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         configContent.Add(configFile, "files", "main.dsc.yaml");
@@ -587,7 +583,7 @@ resources: []
     [Fact]
     public async Task PublishConfigurationVersion_ReturnsUpdatedVersionData()
     {
-        // Root cause fix: Verify that the publish endpoint returns the updated isDraft status
+        // Root cause fix: Verify that the publish endpoint returns the updated version status
         // This allows the UI to update immediately without requiring a database reload
         using var client = CreateAuthenticatedClient();
         var configName = $"publish-data-test-{Guid.NewGuid()}";
@@ -595,7 +591,6 @@ resources: []
         using var configContent = new MultipartFormDataContent();
         configContent.Add(new StringContent(configName), "name");
         configContent.Add(new StringContent("main.dsc.yaml"), "entryPoint");
-        configContent.Add(new StringContent("true"), "isDraft");
         var configFile = new ByteArrayContent("resources: []"u8.ToArray());
         configFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         configContent.Add(configFile, "files", "main.dsc.yaml");
