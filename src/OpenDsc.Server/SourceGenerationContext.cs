@@ -8,6 +8,7 @@ using OpenDsc.Contracts.Configurations;
 using OpenDsc.Contracts.CompositeConfigurations;
 using OpenDsc.Contracts.Lcm;
 using OpenDsc.Contracts.Nodes;
+using OpenDsc.Contracts.Parameters;
 using OpenDsc.Contracts.Reports;
 using OpenDsc.Contracts.Settings;
 using OpenDsc.Schema;
@@ -92,14 +93,21 @@ namespace OpenDsc.Server;
 [JsonSerializable(typeof(List<NodeTagDto>))]
 [JsonSerializable(typeof(AssignNodeTagRequest))]
 // Parameter contracts
-[JsonSerializable(typeof(ParameterFileDto))]
-[JsonSerializable(typeof(List<ParameterFileDto>))]
-[JsonSerializable(typeof(CreateParameterRequest))]
-[JsonSerializable(typeof(ParameterProvenanceDto))]
-[JsonSerializable(typeof(ParameterSourceInfo))]
-[JsonSerializable(typeof(ScopeInfo))]
-[JsonSerializable(typeof(ParameterProvenance))]
-[JsonSerializable(typeof(Dictionary<string, ParameterProvenance>))]
+[JsonSerializable(typeof(OpenDsc.Contracts.Parameters.ParameterVersionDetails))]
+[JsonSerializable(typeof(List<OpenDsc.Contracts.Parameters.ParameterVersionDetails>))]
+[JsonSerializable(typeof(OpenDsc.Contracts.Parameters.CreateParameterRequest))]
+[JsonSerializable(typeof(OpenDsc.Contracts.Parameters.ParameterProvenanceDetails))]
+[JsonSerializable(typeof(OpenDsc.Contracts.Parameters.ParameterSourceInfo))]
+[JsonSerializable(typeof(OpenDsc.Contracts.Parameters.ScopeInfo))]
+[JsonSerializable(typeof(OpenDsc.Contracts.Parameters.ParameterResolutionDetails))]
+[JsonSerializable(typeof(OpenDsc.Contracts.Parameters.ScopeResolutionDetails))]
+[JsonSerializable(typeof(OpenDsc.Contracts.Parameters.MajorVersionSummary))]
+[JsonSerializable(typeof(OpenDsc.Contracts.Parameters.ValidationResult), TypeInfoPropertyName = "ParameterValidationResult")]
+[JsonSerializable(typeof(OpenDsc.Contracts.Parameters.ValidationError), TypeInfoPropertyName = "ParameterValidationError")]
+[JsonSerializable(typeof(OpenDsc.Contracts.Parameters.PublishResult), TypeInfoPropertyName = "ParameterPublishResult")]
+[JsonSerializable(typeof(OpenDsc.Contracts.Parameters.CompatibilityReport), TypeInfoPropertyName = "ParameterCompatibilityReport")]
+[JsonSerializable(typeof(OpenDsc.Contracts.Parameters.ParameterChange))]
+[JsonSerializable(typeof(OpenDsc.Contracts.Parameters.ParameterFileMigrationStatus), TypeInfoPropertyName = "ParameterFileMigrationStatusModel")]
 [JsonSerializable(typeof(ScopeValueInfo))]
 [JsonSerializable(typeof(MergeResult))]
 // Health contracts
@@ -154,14 +162,17 @@ namespace OpenDsc.Server;
 [JsonSerializable(typeof(RetentionSettingsDto))]
 [JsonSerializable(typeof(UpdateRetentionSettingsRequest))]
 // Parameter validation
-[JsonSerializable(typeof(ValidationError))]
-[JsonSerializable(typeof(List<ValidationError>))]
-[JsonSerializable(typeof(ValidationResult))]
-[JsonSerializable(typeof(CompatibilityReport))]
+[JsonSerializable(typeof(OpenDsc.Contracts.Configurations.ValidationError), TypeInfoPropertyName = "ConfigurationValidationError")]
+[JsonSerializable(typeof(List<OpenDsc.Contracts.Configurations.ValidationError>), TypeInfoPropertyName = "ConfigurationListValidationError")]
+[JsonSerializable(typeof(List<OpenDsc.Contracts.Parameters.ValidationError>), TypeInfoPropertyName = "ParameterListValidationError")]
+[JsonSerializable(typeof(OpenDsc.Server.Services.ValidationResult), TypeInfoPropertyName = "ServerValidationResult")]
+[JsonSerializable(typeof(OpenDsc.Contracts.Configurations.CompatibilityReport), TypeInfoPropertyName = "ConfigurationCompatibilityReport")]
 [JsonSerializable(typeof(SchemaChange))]
-[JsonSerializable(typeof(ParameterFileMigrationStatus))]
+[JsonSerializable(typeof(OpenDsc.Contracts.Configurations.ParameterFileMigrationStatus), TypeInfoPropertyName = "ConfigurationParameterFileMigrationStatus")]
+[JsonSerializable(typeof(List<OpenDsc.Contracts.Configurations.ParameterFileMigrationStatus>), TypeInfoPropertyName = "ConfigurationListParameterFileMigrationStatus")]
+[JsonSerializable(typeof(List<OpenDsc.Contracts.Parameters.ParameterFileMigrationStatus>), TypeInfoPropertyName = "ParameterListParameterFileMigrationStatus")]
 [JsonSerializable(typeof(VersionUsageInfo))]
-[JsonSerializable(typeof(PublishResult))]
+[JsonSerializable(typeof(OpenDsc.Contracts.Configurations.PublishResult), TypeInfoPropertyName = "ConfigurationPublishResult")]
 // Schema types
 [JsonSerializable(typeof(DscResult))]
 [JsonSerializable(typeof(DscOperation))]

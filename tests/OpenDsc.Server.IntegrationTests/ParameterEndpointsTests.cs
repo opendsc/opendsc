@@ -14,6 +14,7 @@ using OpenDsc.Contracts.CompositeConfigurations;
 using OpenDsc.Contracts.Reports;
 using OpenDsc.Contracts.Settings;
 using OpenDsc.Contracts.Permissions;
+using OpenDsc.Contracts.Parameters;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
 

@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using OpenDsc.Server.Authorization;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
+using OpenDsc.Contracts.Parameters;
 
 namespace OpenDsc.Server.Endpoints;
 

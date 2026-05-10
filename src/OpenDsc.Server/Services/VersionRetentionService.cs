@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
+using OpenDsc.Contracts.Parameters;
 using OpenDsc.Contracts.Configurations;
 
 namespace OpenDsc.Server.Services;

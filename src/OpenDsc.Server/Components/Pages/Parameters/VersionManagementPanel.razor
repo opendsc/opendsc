@@ -7,9 +7,11 @@
 @using MudBlazor
 @using NuGet.Versioning
 @using Microsoft.EntityFrameworkCore
+@using OpenDsc.Contracts.Parameters
 @using OpenDsc.Server.Services
 @using OpenDsc.Server.Entities
 @using static OpenDsc.Server.Endpoints.ParameterEndpoints
+@using ParameterVersionStatusContract = OpenDsc.Contracts.Parameters.ParameterVersionStatus
 @inject IParameterService ParameterService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
@@ -42,12 +44,12 @@
         .Where(v => v.MajorVersion == major)
         .OrderByDescending(v => SemanticVersion.TryParse(v.Version, out var sv) ? sv : new SemanticVersion(0, 0, 0))
         .ToList();
-                            var publishedVersions = majorVersions.Where(v => v.Status == ParameterVersionStatus.Published).ToList();
+                            var publishedVersions = majorVersions.Where(v => v.Status == ParameterVersionStatusContract.Published).ToList();
                             var publishedStable = publishedVersions.FirstOrDefault(v => SemanticVersion.TryParse(v.Version, out var sv)
                 && !sv.IsPrerelease);
                             var publishedPrerelease = publishedVersions.FirstOrDefault(v => SemanticVersion.TryParse(v.Version, out var
                 sv) && sv.IsPrerelease);
-                            var draftCount = majorVersions.Count(v => v.Status == ParameterVersionStatus.Draft);
+                            var draftCount = majorVersions.Count(v => v.Status == ParameterVersionStatusContract.Draft);
                             var isConfigPublished = publishedConfigMajors.Contains(major);
                             <MudExpansionPanel Expanded="false">
                                 <TitleContent>
@@ -112,7 +114,7 @@
                                                                 Copy from Existing
                                                             </MudMenuItem>
                                                         }
-                                                        @if (majorVersions.Any(v => v.Status == ParameterVersionStatus.Published &&
+                                                        @if (majorVersions.Any(v => v.Status == ParameterVersionStatusContract.Published &&
                                                                                     !v.IsPassthrough))
                                                         {
                                                             <MudMenuItem Icon="@Icons.Material.Filled.SkipNext"
@@ -125,18 +127,18 @@
                                             </div>
                                             @if (majorVersions.Any())
                                             {
-                                                <MudDataGrid T="ParameterFileDto" Items="@majorVersions" Dense="true" Hover="true" sortable="true"
-                                                             sort-by="@((ParameterFileDto v) => v.Version)" sort-direction="SortDirection.Descending">
+                                                <MudDataGrid T="ParameterVersionDetails" Items="@majorVersions" Dense="true" Hover="true" sortable="true"
+                                                             sort-by="@((ParameterVersionDetails v) => v.Version)" sort-direction="SortDirection.Descending">
                                                     <Columns>
                                                         <PropertyColumn Property="x => x.Version" Title="Version"
                                                                         InitialDirection="SortDirection.Descending" />
                                                         <TemplateColumn Title="Status" Sortable="false">
                                                             <CellTemplate>
-                                                                @if (context.Item.Status == ParameterVersionStatus.Published)
+                                                                @if (context.Item.Status == ParameterVersionStatusContract.Published)
                                                                 {
                                                                     <MudChip T="string" Size="Size.Small" Color="Color.Success">Published</MudChip>
                                                                 }
-                                                                else if (context.Item.Status == ParameterVersionStatus.Draft)
+                                                                else if (context.Item.Status == ParameterVersionStatusContract.Draft)
                                                                 {
                                                                     <MudChip T="string" Size="Size.Small" Color="Color.Info">Draft</MudChip>
                                                                 }
@@ -169,7 +171,7 @@
                                                                     <MudIconButton Icon="@Icons.Material.Filled.Visibility" Size="Size.Small"
                                                                                    Disabled="@context.Item.IsPassthrough"
                                                                                    OnClick="@(() => ViewParameter(context.Item))" title="View" />
-                                                                    @if (context.Item.Status == ParameterVersionStatus.Draft)
+                                                                    @if (context.Item.Status == ParameterVersionStatusContract.Draft)
                                                                     {
                                                                         <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
                                                                                        Color="Color.Primary" OnClick="@(() => EditParameter(context.Item))"
@@ -214,8 +216,8 @@
     private Guid? selectedConfigurationId;
     private Guid? selectedScopeTypeId;
     private string? selectedScopeValue;
-    private List<ParameterFileDto> versions = [];
-    private List<int> availableConfigMajors = [];
+    private IReadOnlyList<ParameterVersionDetails> versions = [];
+    private IReadOnlyList<int> availableConfigMajors = [];
     private HashSet<int> publishedConfigMajors = [];
     private bool isLoading;
     private bool isDefaultScopeType;
@@ -239,7 +241,7 @@
 
         try
         {
-            versions = await ParameterService.GetParameterVersionsAsync(
+            versions = await ParameterService.GetVersionsAsync(
                 selectedScopeTypeId.Value,
                 selectedConfigurationId.Value,
                 selectedScopeValue);
@@ -286,9 +288,9 @@
             .ToHashSet();
     }
 
-    private async Task ViewParameter(ParameterFileDto parameter)
+    private async Task ViewParameter(ParameterVersionDetails parameter)
     {
-        var content = await ParameterService.GetParameterContentAsync(parameter.Id);
+        var content = await ParameterService.GetContentAsync(parameter.Id);
 
         if (string.IsNullOrEmpty(content))
         {
@@ -319,7 +321,7 @@
         await DialogService.ShowAsync<FileViewerDialog>($"View Parameter Version {parameter.Version}", parameters, options);
     }
 
-    private async Task EditParameter(ParameterFileDto parameter)
+    private async Task EditParameter(ParameterVersionDetails parameter)
     {
         var parameters = new DialogParameters<EditParameterDialog>
         {
@@ -345,7 +347,7 @@
         }
     }
 
-    private async Task PublishParameter(ParameterFileDto parameter)
+    private async Task PublishParameter(ParameterVersionDetails parameter)
     {
         if (SemanticVersion.TryParse(parameter.Version, out var semVer) && semVer.IsPrerelease)
         {
@@ -374,26 +376,26 @@
             }
         }
 
-        var (success, errorMessage) = await ParameterService.PublishParameterVersionAsync(
-            parameter.ScopeTypeId,
-            parameter.ConfigurationId,
-            parameter.ScopeValue,
-            parameter.Version);
-
-        if (success)
+        try
         {
+            await ParameterService.PublishAsync(
+                parameter.ScopeTypeId,
+                parameter.ConfigurationId,
+                parameter.ScopeValue,
+                parameter.Version);
+
             Snackbar.Add($"Parameter version {parameter.Version} published", Severity.Success);
             await LoadVersions();
         }
-        else
+        catch (Exception ex)
         {
-            Snackbar.Add($"Failed to publish: {errorMessage}", Severity.Error);
+            Snackbar.Add($"Failed to publish: {ex.Message}", Severity.Error);
         }
     }
 
-    private async Task DeleteParameter(ParameterFileDto parameter)
+    private async Task DeleteParameter(ParameterVersionDetails parameter)
     {
-        var message = parameter.Status == ParameterVersionStatus.Published
+        var message = parameter.Status == ParameterVersionStatusContract.Published
             ? $"Delete published parameter version {parameter.Version}? Nodes currently using this version may stop receiving parameters. This action cannot be undone."
             : $"Delete parameter version {parameter.Version}? This action cannot be undone.";
 
@@ -408,20 +410,20 @@
             return;
         }
 
-        var (success, errorMessage) = await ParameterService.DeleteParameterVersionAsync(
-            parameter.ScopeTypeId,
-            parameter.ConfigurationId,
-            parameter.ScopeValue,
-            parameter.Version);
-
-        if (success)
+        try
         {
+            await ParameterService.DeleteAsync(
+                parameter.ScopeTypeId,
+                parameter.ConfigurationId,
+                parameter.ScopeValue,
+                parameter.Version);
+
             Snackbar.Add($"Parameter version {parameter.Version} deleted", Severity.Success);
             await LoadVersions();
         }
-        else
+        catch (Exception ex)
         {
-            Snackbar.Add($"Failed to delete: {errorMessage}", Severity.Error);
+            Snackbar.Add($"Failed to delete: {ex.Message}", Severity.Error);
         }
     }
 
@@ -431,7 +433,7 @@
     private Task ShowCreatePassthroughVersionDialog(int major)
         => OpenCreateVersionDialog(major, true, null, "Create New Passthrough Version");
 
-    private async Task ShowCopyFromExistingDialog(int major, List<ParameterFileDto> majorVersions)
+    private async Task ShowCopyFromExistingDialog(int major, IReadOnlyList<ParameterVersionDetails> majorVersions)
     {
         if (!selectedConfigurationId.HasValue || !selectedScopeTypeId.HasValue)
             return;
@@ -449,7 +451,7 @@
             return;
         }
 
-        var content = await ParameterService.GetParameterContentAsync(latestVersion.Id);
+        var content = await ParameterService.GetContentAsync(latestVersion.Id);
         if (string.IsNullOrEmpty(content))
         {
             Snackbar.Add("Failed to load parameter content for copying", Severity.Error);

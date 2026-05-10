@@ -7,6 +7,7 @@
 @using MudBlazor
 @using BlazorMonaco
 @using BlazorMonaco.Editor
+@using OpenDsc.Contracts.Parameters
 @using OpenDsc.Server.Services
 @using Microsoft.EntityFrameworkCore
 @using System.Text.Json
@@ -197,7 +198,7 @@
             return;
         }
 
-        availableMajors = await ParameterService.GetAvailableMajorVersionsAsync(selectedConfigurationId.Value);
+        availableMajors = (await ParameterService.GetAvailableMajorVersionsAsync(selectedConfigurationId.Value)).ToList();
         selectedMajor = InitialMajorVersion ?? (availableMajors.Count > 0 ? availableMajors[0] : null);
 
         await LoadSchemaForSelectedMajorAsync();
@@ -220,7 +221,7 @@
             return;
         }
 
-        var allVersions = await ParameterService.GetParameterVersionsAsync(
+        var allVersions = await ParameterService.GetVersionsAsync(
             selectedScopeTypeId.Value,
             selectedConfigurationId.Value,
             selectedScopeValue);
@@ -499,23 +500,19 @@
                 ? versionString.Trim()
                 : $"{selectedMajor}.{minorPatch.Trim()}";
 
-            var (success, errorMessage) = await ParameterService.CreateOrUpdateParameterAsync(
+            await ParameterService.CreateAsync(
                 selectedScopeTypeId!.Value,
                 selectedConfigurationId!.Value,
-                selectedScopeValue,
-                fullVersion,
-                content,
-                isPassthrough);
+                new CreateParameterRequest
+                {
+                    ScopeValue = selectedScopeValue,
+                    Version = fullVersion,
+                    Content = content,
+                    IsPassthrough = isPassthrough
+                });
 
-            if (success)
-            {
-                Snackbar.Add("Parameter created successfully", Severity.Success);
-                MudDialog.Close(DialogResult.Ok(true));
-            }
-            else
-            {
-                Snackbar.Add($"Failed to create parameter: {errorMessage}", Severity.Error);
-            }
+            Snackbar.Add("Parameter created successfully", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
         }
         catch (Exception ex)
         {

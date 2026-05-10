@@ -16,6 +16,8 @@ using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
 using OpenDsc.Contracts.Configurations;
 
+using ParameterVersionStatus = OpenDsc.Contracts.Parameters.ParameterVersionStatus;
+
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
@@ -664,8 +666,8 @@ public sealed partial class ConfigurationService : IConfigurationService
                                 if (!validationResult.IsValid)
                                 {
                                     validationErrors = JsonSerializer.Serialize(
-                                        validationResult.Errors,
-                                        SourceGenerationContext.Default.ListValidationError);
+                                        validationResult.Errors?.ToList() ?? [],
+                                        SourceGenerationContext.Default.ConfigurationListValidationError);
                                 }
                             }
 

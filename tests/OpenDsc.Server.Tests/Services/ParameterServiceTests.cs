@@ -15,7 +15,11 @@ using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
 using OpenDsc.Server.Services;
 
+using ParameterVersionStatus = OpenDsc.Contracts.Parameters.ParameterVersionStatus;
+
 using Xunit;
+
+#pragma warning disable xUnit1051
 
 namespace OpenDsc.Server.Tests.Services;
 
@@ -68,6 +72,52 @@ public class ParameterServiceTests : IDisposable
             _mockValidator.Object,
             new NullLogger<ParameterService>()
         );
+    }
+
+    private async Task<(bool Success, string? ErrorMessage)> CreateOrUpdateParameterAsync(
+        Guid scopeTypeId,
+        Guid configurationId,
+        string? scopeValue,
+        string version,
+        string content,
+        bool isPassthrough = false)
+    {
+        try
+        {
+            await _service.CreateAsync(
+                scopeTypeId,
+                configurationId,
+                new OpenDsc.Contracts.Parameters.CreateParameterRequest
+                {
+                    ScopeValue = scopeValue,
+                    Version = version,
+                    Content = content,
+                    IsPassthrough = isPassthrough
+                });
+            return (true, null);
+        }
+        catch (Exception ex)
+        {
+            return (false, ex.Message);
+        }
+    }
+
+    private async Task<(bool Success, string? ErrorMessage)> UpdateParameterVersionAsync(Guid parameterId, string content)
+    {
+        try
+        {
+            await _service.UpdateAsync(
+                parameterId,
+                new OpenDsc.Contracts.Parameters.UpdateParameterRequest
+                {
+                    Content = content
+                });
+            return (true, null);
+        }
+        catch (Exception ex)
+        {
+            return (false, ex.Message);
+        }
     }
 
     #region CreateOrUpdateParameterAsync Tests
@@ -269,13 +319,22 @@ public class ParameterServiceTests : IDisposable
             .Returns(new ValidationResult { IsValid = true });
 
         // Create initial version
-        await _service.CreateOrUpdateParameterAsync(scopeTypeId, configId, null, version, originalContent);
+        var created = await _service.CreateAsync(
+            scopeTypeId,
+            configId,
+            new OpenDsc.Contracts.Parameters.CreateParameterRequest
+            {
+                ScopeValue = null,
+                Version = version,
+                Content = originalContent
+            });
 
         // Act - Update the draft
-        var result = await _service.CreateOrUpdateParameterAsync(scopeTypeId, configId, null, version, updatedContent);
+        await _service.UpdateAsync(
+            created.Id,
+            new OpenDsc.Contracts.Parameters.UpdateParameterRequest { Content = updatedContent });
 
         // Assert
-        result.Success.Should().BeTrue();
         var files = await _db.ParameterFiles.Where(pf => pf.Version == version).ToListAsync(TestContext.Current.CancellationToken);
         files.Should().HaveCount(1);
     }
@@ -293,14 +352,14 @@ public class ParameterServiceTests : IDisposable
 
         // Create and publish version
         await _service.CreateOrUpdateParameterAsync(scopeTypeId, configId, null, version, content);
-        await _service.PublishParameterVersionAsync(scopeTypeId, configId, null, version);
+        await _service.PublishAsync(scopeTypeId, configId, null, version);
 
-        // Act - Try to update published version
-        var result = await _service.CreateOrUpdateParameterAsync(scopeTypeId, configId, null, version, "new: content");
+        // Act - Try to create a duplicate version
+        var result = await CreateOrUpdateParameterAsync(scopeTypeId, configId, null, version, "new: content");
 
         // Assert
         result.Success.Should().BeFalse();
-        result.ErrorMessage.Should().Contain("Cannot modify a published parameter version");
+        result.ErrorMessage.Should().Contain("already exists");
     }
 
     #endregion
@@ -364,7 +423,7 @@ public class ParameterServiceTests : IDisposable
         await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Act
-        var result = await _service.GetParameterVersionsAsync(scopeTypeId, configId, null);
+        var result = await _service.GetVersionsAsync(scopeTypeId, configId, null);
 
         // Assert
         result.Should().HaveCount(3);
@@ -384,7 +443,7 @@ public class ParameterServiceTests : IDisposable
         _db.SaveChanges();
 
         // Act
-        var result = await _service.GetParameterVersionsAsync(scopeTypeId, configId, null);
+        var result = await _service.GetVersionsAsync(scopeTypeId, configId, null);
 
         // Assert
         result.Should().BeEmpty();
@@ -408,43 +467,36 @@ public class ParameterServiceTests : IDisposable
         await _service.CreateOrUpdateParameterAsync(scopeTypeId, configId, null, version, content);
 
         // Act
-        var result = await _service.PublishParameterVersionAsync(scopeTypeId, configId, null, version);
+        await _service.PublishAsync(scopeTypeId, configId, null, version);
 
         // Assert
-        result.Success.Should().BeTrue();
         var file = await _db.ParameterFiles.FirstOrDefaultAsync(pf => pf.Version == version, TestContext.Current.CancellationToken);
         file!.Status.Should().Be(ParameterVersionStatus.Published);
     }
 
     [Fact]
-    public async Task PublishParameterVersionAsync_WithMissingVersion_ReturnsFail()
+    public async Task PublishParameterVersionAsync_WithMissingVersion_Throws()
     {
         // Arrange
         var (scopeTypeId, configId, _) = await SetupParameterEntitiesAsync();
         const string version = "1.0.0";
 
-        // Act
-        var result = await _service.PublishParameterVersionAsync(scopeTypeId, configId, null, version);
-
-        // Assert
-        result.Success.Should().BeFalse();
-        result.ErrorMessage.Should().Contain("not found");
+        // Act & Assert
+        await FluentActions.Invoking(() => _service.PublishAsync(scopeTypeId, configId, null, version))
+            .Should().ThrowAsync<KeyNotFoundException>().WithMessage("*not found*");
     }
 
     [Fact]
-    public async Task PublishParameterVersionAsync_WithUnauthenticatedUser_ReturnsFail()
+    public async Task PublishParameterVersionAsync_WithUnauthenticatedUser_Throws()
     {
         // Arrange
         _mockUserContext.Setup(x => x.GetCurrentUserId()).Returns((Guid?)null);
         var (scopeTypeId, configId, _) = await SetupParameterEntitiesAsync();
         const string version = "1.0.0";
 
-        // Act
-        var result = await _service.PublishParameterVersionAsync(scopeTypeId, configId, null, version);
-
-        // Assert
-        result.Success.Should().BeFalse();
-        result.ErrorMessage.Should().Contain("not authenticated");
+        // Act & Assert
+        await FluentActions.Invoking(() => _service.PublishAsync(scopeTypeId, configId, null, version))
+            .Should().ThrowAsync<UnauthorizedAccessException>().WithMessage("*not authenticated*");
     }
 
     [Fact]
@@ -464,12 +516,9 @@ public class ParameterServiceTests : IDisposable
         _mockAuthService.Setup(x => x.CanModifyParameterAsync(It.IsAny<Guid>(), It.IsAny<Guid>()))
             .ReturnsAsync(false);
 
-        // Act
-        var result = await _service.PublishParameterVersionAsync(scopeTypeId, configId, null, version);
-
-        // Assert
-        result.Success.Should().BeFalse();
-        result.ErrorMessage.Should().Contain("Access denied");
+        // Act & Assert
+        await FluentActions.Invoking(() => _service.PublishAsync(scopeTypeId, configId, null, version))
+            .Should().ThrowAsync<UnauthorizedAccessException>().WithMessage("*Access denied*");
     }
 
     #endregion
@@ -493,42 +542,35 @@ public class ParameterServiceTests : IDisposable
         await _service.CreateOrUpdateParameterAsync(scopeTypeId, configId, null, version, content);
 
         // Act
-        var result = await _service.DeleteParameterVersionAsync(scopeTypeId, configId, null, version);
+        await _service.DeleteAsync(scopeTypeId, configId, null, version);
 
         // Assert
-        result.Success.Should().BeTrue();
         var file = await _db.ParameterFiles.FirstOrDefaultAsync(pf => pf.Version == version, TestContext.Current.CancellationToken);
         file.Should().BeNull();
     }
 
     [Fact]
-    public async Task DeleteParameterVersionAsync_WithMissingVersion_ReturnsFail()
+    public async Task DeleteParameterVersionAsync_WithMissingVersion_Throws()
     {
         // Arrange
         var (scopeTypeId, configId, _) = await SetupParameterEntitiesAsync();
         const string version = "1.0.0";
 
-        // Act
-        var result = await _service.DeleteParameterVersionAsync(scopeTypeId, configId, null, version);
-
-        // Assert
-        result.Success.Should().BeFalse();
-        result.ErrorMessage.Should().Contain("not found");
+        // Act & Assert
+        await FluentActions.Invoking(() => _service.DeleteAsync(scopeTypeId, configId, null, version))
+            .Should().ThrowAsync<KeyNotFoundException>().WithMessage("*not found*");
     }
 
     [Fact]
-    public async Task DeleteParameterVersionAsync_WithUnauthenticatedUser_ReturnsFail()
+    public async Task DeleteParameterVersionAsync_WithUnauthenticatedUser_Throws()
     {
         // Arrange
         _mockUserContext.Setup(x => x.GetCurrentUserId()).Returns((Guid?)null);
         var (scopeTypeId, configId, _) = await SetupParameterEntitiesAsync();
 
-        // Act
-        var result = await _service.DeleteParameterVersionAsync(scopeTypeId, configId, null, "1.0.0");
-
-        // Assert
-        result.Success.Should().BeFalse();
-        result.ErrorMessage.Should().Contain("not authenticated");
+        // Act & Assert
+        await FluentActions.Invoking(() => _service.DeleteAsync(scopeTypeId, configId, null, "1.0.0"))
+            .Should().ThrowAsync<UnauthorizedAccessException>().WithMessage("*not authenticated*");
     }
 
     #endregion
@@ -606,7 +648,7 @@ public class ParameterServiceTests : IDisposable
             .ReturnsAsync(mergeResult);
 
         // Act
-        var result = await _service.GetNodeParameterProvenanceAsync(nodeId, configId);
+        var result = await _service.GetNodeProvenanceAsync(nodeId, configId);
 
         // Assert
         result.Should().NotBeNull();
@@ -624,7 +666,7 @@ public class ParameterServiceTests : IDisposable
         var configId = Guid.NewGuid();
 
         // Act
-        var result = await _service.GetNodeParameterProvenanceAsync(nodeId, configId);
+        var result = await _service.GetNodeProvenanceAsync(nodeId, configId);
 
         // Assert
         result.Should().BeNull();
@@ -644,7 +686,7 @@ public class ParameterServiceTests : IDisposable
             .ReturnsAsync((MergeResult?)null);
 
         // Act
-        var result = await _service.GetNodeParameterProvenanceAsync(nodeId, configId);
+        var result = await _service.GetNodeProvenanceAsync(nodeId, configId);
 
         // Assert
         result.Should().BeNull();
@@ -682,7 +724,7 @@ public class ParameterServiceTests : IDisposable
             .ReturnsAsync(mergeResult);
 
         // Act
-        var result = await _service.GetNodeParameterProvenanceAsync(nodeId, configId);
+        var result = await _service.GetNodeProvenanceAsync(nodeId, configId);
 
         // Assert
         result.Should().NotBeNull();
@@ -704,7 +746,7 @@ public class ParameterServiceTests : IDisposable
             .ThrowsAsync(new InvalidOperationException("Test error"));
 
         // Act
-        var result = await _service.GetNodeParameterProvenanceAsync(nodeId, configId);
+        var result = await _service.GetNodeProvenanceAsync(nodeId, configId);
 
         // Assert
         result.Should().BeNull();
@@ -712,10 +754,10 @@ public class ParameterServiceTests : IDisposable
 
     #endregion
 
-    #region UpdateParameterDraftAsync Tests
+    #region UpdateParameterVersionAsync Tests
 
     [Fact]
-    public async Task UpdateParameterDraftAsync_WithValidDraft_UpdatesSuccessfully()
+    public async Task UpdateParameterVersionAsync_WithValidDraft_UpdatesSuccessfully()
     {
         // Arrange
         var (scopeTypeId, configId, paramSchemaId) = await SetupParameterEntitiesAsync();
@@ -732,33 +774,28 @@ public class ParameterServiceTests : IDisposable
         paramFile.Should().NotBeNull();
 
         // Act
-        var result = await _service.UpdateParameterDraftAsync(paramFile!.Id, updatedContent);
+        await _service.UpdateAsync(paramFile!.Id,
+            new OpenDsc.Contracts.Parameters.UpdateParameterRequest { Content = updatedContent });
 
         // Assert
-        result.Success.Should().BeTrue();
-        result.ErrorMessage.Should().BeNull();
-
         var updatedFile = await _db.ParameterFiles.FirstOrDefaultAsync(pf => pf.Id == paramFile.Id, TestContext.Current.CancellationToken);
         updatedFile.Should().NotBeNull();
     }
 
     [Fact]
-    public async Task UpdateParameterDraftAsync_WithMissingParameter_ReturnsFail()
+    public async Task UpdateParameterVersionAsync_WithMissingParameter_Throws()
     {
         // Arrange
         var parameterId = Guid.NewGuid();
-        const string content = "parameters: {}";
 
-        // Act
-        var result = await _service.UpdateParameterDraftAsync(parameterId, content);
-
-        // Assert
-        result.Success.Should().BeFalse();
-        result.ErrorMessage.Should().Contain("Parameter version not found");
+        // Act & Assert
+        await FluentActions.Invoking(() => _service.UpdateAsync(parameterId,
+                new OpenDsc.Contracts.Parameters.UpdateParameterRequest { Content = "parameters: {}" }))
+            .Should().ThrowAsync<KeyNotFoundException>().WithMessage("*not found*");
     }
 
     [Fact]
-    public async Task UpdateParameterDraftAsync_WithPublishedVersion_ReturnsFail()
+    public async Task UpdateParameterVersionAsync_WithPublishedVersion_Throws()
     {
         // Arrange
         var (scopeTypeId, configId, paramSchemaId) = await SetupParameterEntitiesAsync();
@@ -772,18 +809,16 @@ public class ParameterServiceTests : IDisposable
         var paramFile = await _db.ParameterFiles.FirstOrDefaultAsync(pf => pf.Version == version, TestContext.Current.CancellationToken);
 
         // Publish the version
-        await _service.PublishParameterVersionAsync(scopeTypeId, configId, null, version);
+        await _service.PublishAsync(scopeTypeId, configId, null, version);
 
-        // Act
-        var result = await _service.UpdateParameterDraftAsync(paramFile!.Id, "new content");
-
-        // Assert
-        result.Success.Should().BeFalse();
-        result.ErrorMessage.Should().Contain("Only draft versions can be edited");
+        // Act & Assert
+        await FluentActions.Invoking(() => _service.UpdateAsync(paramFile!.Id,
+                new OpenDsc.Contracts.Parameters.UpdateParameterRequest { Content = "new content" }))
+            .Should().ThrowAsync<InvalidOperationException>().WithMessage("*draft*");
     }
 
     [Fact]
-    public async Task UpdateParameterDraftAsync_WithUnauthenticatedUser_ReturnsFail()
+    public async Task UpdateParameterVersionAsync_WithUnauthenticatedUser_Throws()
     {
         // Arrange
         var (scopeTypeId, configId, _) = await SetupParameterEntitiesAsync();
@@ -801,16 +836,14 @@ public class ParameterServiceTests : IDisposable
         // Now set up for unauthenticated update
         _mockUserContext.Setup(x => x.GetCurrentUserId()).Returns((Guid?)null);
 
-        // Act
-        var result = await _service.UpdateParameterDraftAsync(paramFile!.Id, "new content");
-
-        // Assert
-        result.Success.Should().BeFalse();
-        result.ErrorMessage.Should().Contain("not authenticated");
+        // Act & Assert
+        await FluentActions.Invoking(() => _service.UpdateAsync(paramFile!.Id,
+                new OpenDsc.Contracts.Parameters.UpdateParameterRequest { Content = "new content" }))
+            .Should().ThrowAsync<UnauthorizedAccessException>().WithMessage("*not authenticated*");
     }
 
     [Fact]
-    public async Task UpdateParameterDraftAsync_WithNoAccess_ReturnsFail()
+    public async Task UpdateParameterVersionAsync_WithNoAccess_Throws()
     {
         // Arrange
         var (scopeTypeId, configId, paramSchemaId) = await SetupParameterEntitiesAsync();
@@ -829,12 +862,10 @@ public class ParameterServiceTests : IDisposable
         _mockAuthService.Setup(x => x.CanModifyParameterAsync(It.IsAny<Guid>(), It.IsAny<Guid>()))
             .ReturnsAsync(false);
 
-        // Act
-        var result = await _service.UpdateParameterDraftAsync(paramFile!.Id, "new content");
-
-        // Assert
-        result.Success.Should().BeFalse();
-        result.ErrorMessage.Should().Contain("Access denied");
+        // Act & Assert
+        await FluentActions.Invoking(() => _service.UpdateAsync(paramFile!.Id,
+                new OpenDsc.Contracts.Parameters.UpdateParameterRequest { Content = "new content" }))
+            .Should().ThrowAsync<UnauthorizedAccessException>().WithMessage("*Access denied*");
     }
 
     #endregion
@@ -856,7 +887,7 @@ public class ParameterServiceTests : IDisposable
         var paramFile = await _db.ParameterFiles.FirstOrDefaultAsync(pf => pf.Version == version, TestContext.Current.CancellationToken);
 
         // Act
-        var result = await _service.GetParameterContentAsync(paramFile!.Id);
+        var result = await _service.GetContentAsync(paramFile!.Id);
 
         // Assert
         result.Should().Be(content);
@@ -869,7 +900,7 @@ public class ParameterServiceTests : IDisposable
         var parameterId = Guid.NewGuid();
 
         // Act
-        var result = await _service.GetParameterContentAsync(parameterId);
+        var result = await _service.GetContentAsync(parameterId);
 
         // Assert
         result.Should().BeNull();
@@ -900,7 +931,7 @@ public class ParameterServiceTests : IDisposable
         }
 
         // Act
-        var result = await _service.GetParameterContentAsync(paramFile.Id);
+        var result = await _service.GetContentAsync(paramFile.Id);
 
         // Assert
         result.Should().BeNull();
@@ -944,7 +975,7 @@ public class ParameterServiceTests : IDisposable
         );
 
         // Act
-        var result = await service.GetParameterContentAsync(paramFile.Id);
+        var result = await service.GetContentAsync(paramFile.Id);
 
         // Assert
         result.Should().BeNull();
@@ -997,6 +1028,59 @@ public class ParameterServiceTests : IDisposable
         if (Directory.Exists(_tempDir))
         {
             Directory.Delete(_tempDir, true);
+        }
+    }
+}
+
+public static class ParameterServiceCompatibilityExtensions
+{
+    public static async Task<(bool Success, string? ErrorMessage)> CreateOrUpdateParameterAsync(
+        this ParameterService service,
+        Guid scopeTypeId,
+        Guid configurationId,
+        string? scopeValue,
+        string version,
+        string content,
+        bool isPassthrough = false)
+    {
+        try
+        {
+            await service.CreateAsync(
+                scopeTypeId,
+                configurationId,
+                new OpenDsc.Contracts.Parameters.CreateParameterRequest
+                {
+                    ScopeValue = scopeValue,
+                    Version = version,
+                    Content = content,
+                    IsPassthrough = isPassthrough
+                });
+            return (true, null);
+        }
+        catch (Exception ex)
+        {
+            return (false, ex.Message);
+        }
+    }
+
+    public static async Task<(bool Success, string? ErrorMessage)> UpdateParameterVersionAsync(
+        this ParameterService service,
+        Guid parameterId,
+        string content)
+    {
+        try
+        {
+            await service.UpdateAsync(
+                parameterId,
+                new OpenDsc.Contracts.Parameters.UpdateParameterRequest
+                {
+                    Content = content
+                });
+            return (true, null);
+        }
+        catch (Exception ex)
+        {
+            return (false, ex.Message);
         }
     }
 }

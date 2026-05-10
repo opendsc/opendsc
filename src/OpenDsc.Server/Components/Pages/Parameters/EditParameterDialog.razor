@@ -7,6 +7,7 @@
 @using MudBlazor
 @using BlazorMonaco
 @using BlazorMonaco.Editor
+@using OpenDsc.Contracts.Parameters
 @using OpenDsc.Server.Services
 @inject IParameterService ParameterService
 @inject ISnackbar Snackbar
@@ -80,7 +81,7 @@
 
         try
         {
-            initialContent = await ParameterService.GetParameterContentAsync(ParameterId);
+            initialContent = await ParameterService.GetContentAsync(ParameterId);
 
             if (initialContent == null)
             {
@@ -132,17 +133,12 @@
                 return;
             }
 
-            var (success, errorMessage) = await ParameterService.UpdateParameterDraftAsync(ParameterId, content);
+            await ParameterService.UpdateAsync(
+                ParameterId,
+                new UpdateParameterRequest { Content = content });
 
-            if (success)
-            {
-                Snackbar.Add($"Draft parameter saved", Severity.Success);
-                MudDialog.Close(DialogResult.Ok(true));
-            }
-            else
-            {
-                Snackbar.Add($"Failed to save parameter: {errorMessage}", Severity.Error);
-            }
+            Snackbar.Add("Draft parameter saved", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
         }
         catch (Exception ex)
         {

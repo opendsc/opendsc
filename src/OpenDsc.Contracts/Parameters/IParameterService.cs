@@ -5,8 +5,11 @@
 namespace OpenDsc.Contracts.Parameters;
 
 /// <summary>
-/// Read and management operations for configuration parameters.
+/// Umbrella service interface for all parameter operations.
+/// Implements all capability sub-interfaces; register via this umbrella in DI.
 /// </summary>
 public interface IParameterService
+        : IParameterReader,
+          IParameterManager
 {
 }

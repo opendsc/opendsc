@@ -9,6 +9,7 @@
 @using MudBlazor
 @using BlazorMonaco
 @using BlazorMonaco.Editor
+@using OpenDsc.Contracts.Parameters
 @using OpenDsc.Server.Entities
 @using OpenDsc.Server.Services
 @using NuGet.Versioning
@@ -128,7 +129,7 @@
     private Guid? selectedConfigurationId;
     private string? configurationName;
     private bool isLoading;
-    private ParameterProvenanceDto? provenanceData;
+    private ParameterProvenanceDetails? provenanceData;
     private List<ProvenanceTreeNode> treeRoots = [];
     private StandaloneCodeEditor? _mergedEditor;
     private string mergedYamlContent = string.Empty;
@@ -178,7 +179,7 @@
         selectedConfigurationId = nodeConfig.ConfigurationId;
         configurationName = nodeConfig.Configuration?.Name;
 
-        provenanceData = await ParameterService.GetNodeParameterProvenanceAsync(
+        provenanceData = await ParameterService.GetNodeProvenanceAsync(
             selectedNode.Id, selectedConfigurationId.Value);
 
         if (provenanceData != null)

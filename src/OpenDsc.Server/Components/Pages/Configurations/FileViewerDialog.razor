@@ -8,6 +8,7 @@
 @using BlazorMonaco
 @using BlazorMonaco.Editor
 @using Microsoft.JSInterop
+@using OpenDsc.Contracts.Parameters
 @using OpenDsc.Server.Services
 @using Microsoft.Extensions.Options
 @inject ISnackbar Snackbar
@@ -21,7 +22,7 @@
     <DialogContent>
         <div class="d-flex align-center justify-space-between mb-2">
             <MudText Typo="Typo.body2" Color="Color.Secondary">Version @Version @(IsEditMode ? "(Editing)" :
-                         "(Read-only)")</MudText>
+                                                         "(Read-only)")</MudText>
                 @if (!IsEditMode)
                 {
                     <MudButtonGroup Size="Size.Small">
@@ -276,7 +277,7 @@
             // Parameter mode - load via API
             if (ParameterConfigurationId.HasValue && ParameterScopeTypeId.HasValue)
             {
-                var parameterFiles = await ParameterService.GetParameterVersionsAsync(
+                var parameterFiles = await ParameterService.GetVersionsAsync(
                     ParameterScopeTypeId.Value, ParameterConfigurationId.Value, ParameterScopeValue);
 
                 if (parameterFiles.Count > 0)
@@ -292,7 +293,7 @@
                         }
                         else
                         {
-                            compareFileContent = await ParameterService.GetParameterContentAsync(parameterFile.Id);
+                            compareFileContent = await ParameterService.GetContentAsync(parameterFile.Id);
                             if (string.IsNullOrEmpty(compareFileContent))
                             {
                                 compareFileContent = "// Unable to load parameter content";
@@ -455,7 +456,7 @@
 
         try
         {
-            var parameterFiles = await ParameterService.GetParameterVersionsAsync(
+            var parameterFiles = await ParameterService.GetVersionsAsync(
                 ParameterScopeTypeId.Value, ParameterConfigurationId.Value, ParameterScopeValue);
 
             if (parameterFiles.Count > 0)

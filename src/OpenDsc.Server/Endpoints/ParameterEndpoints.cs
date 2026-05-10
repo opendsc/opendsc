@@ -6,7 +6,6 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
-using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -14,9 +13,9 @@ using Microsoft.Extensions.Options;
 
 using NuGet.Versioning;
 
-using OpenDsc.Server.Authentication;
 using OpenDsc.Server.Authorization;
 using OpenDsc.Contracts.Permissions;
+using OpenDsc.Contracts.Parameters;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
 using OpenDsc.Server.Services;
@@ -100,7 +99,7 @@ public static class ParameterEndpoints
         return app;
     }
 
-    private static async Task<Results<Ok<ParameterFileDto>, BadRequest<string>, NotFound, ForbidHttpResult>> CreateOrUpdateParameter(
+    private static async Task<Results<Ok<ParameterVersionDetails>, BadRequest<string>, NotFound, ForbidHttpResult>> CreateOrUpdateParameter(
         Guid scopeTypeId,
         Guid configurationId,
         [FromBody] CreateParameterRequest request,
@@ -257,7 +256,7 @@ public static class ParameterEndpoints
             existingVersion.ContentType = isPassthrough ? null : (request.ContentType ?? "application/x-yaml");
             await db.SaveChangesAsync();
 
-            return TypedResults.Ok(new ParameterFileDto
+            return TypedResults.Ok(new ParameterVersionDetails
             {
                 Id = existingVersion.Id,
                 ScopeTypeId = existingVersion.ScopeTypeId,
@@ -322,7 +321,7 @@ public static class ParameterEndpoints
         db.ParameterFiles.Add(parameterFile);
         await db.SaveChangesAsync();
 
-        return TypedResults.Ok(new ParameterFileDto
+        return TypedResults.Ok(new ParameterVersionDetails
         {
             Id = parameterFile.Id,
             ScopeTypeId = parameterFile.ScopeTypeId,
@@ -337,7 +336,7 @@ public static class ParameterEndpoints
         });
     }
 
-    private static async Task<Results<Ok<List<ParameterFileDto>>, NotFound, ForbidHttpResult>> GetParameterVersions(
+    private static async Task<Results<Ok<List<ParameterVersionDetails>>, NotFound, ForbidHttpResult>> GetParameterVersions(
         Guid scopeTypeId,
         Guid configurationId,
         [FromQuery] string? scopeValue,
@@ -375,7 +374,7 @@ public static class ParameterEndpoints
 
         var orderedVersions = versions
             .OrderByDescending(pf => pf.CreatedAt)
-            .Select(pf => new ParameterFileDto
+            .Select(pf => new ParameterVersionDetails
             {
                 Id = pf.Id,
                 ScopeTypeId = pf.ScopeTypeId,
@@ -393,7 +392,7 @@ public static class ParameterEndpoints
         return TypedResults.Ok(orderedVersions);
     }
 
-    private static async Task<Results<Ok<ParameterFileDto>, NotFound, Conflict<string>, ForbidHttpResult>> PublishParameterVersion(
+    private static async Task<Results<Ok<ParameterVersionDetails>, NotFound, Conflict<string>, ForbidHttpResult>> PublishParameterVersion(
         Guid scopeTypeId,
         Guid configurationId,
         string version,
@@ -465,7 +464,7 @@ public static class ParameterEndpoints
         parameterFile.Status = ParameterVersionStatus.Published;
         await db.SaveChangesAsync();
 
-        return TypedResults.Ok(new ParameterFileDto
+        return TypedResults.Ok(new ParameterVersionDetails
         {
             Id = parameterFile.Id,
             ScopeTypeId = parameterFile.ScopeTypeId,
@@ -519,7 +518,7 @@ public static class ParameterEndpoints
         return TypedResults.NoContent();
     }
 
-    private static async Task<Results<Ok<ParameterProvenanceDto>, NotFound>> GetNodeParameterProvenance(
+    private static async Task<Results<Ok<ParameterProvenanceDetails>, NotFound>> GetNodeParameterProvenance(
         Guid nodeId,
         [FromQuery] Guid? configurationId,
         ServerDbContext db,
@@ -566,7 +565,6 @@ public static class ParameterEndpoints
             .Where(nt => nt.NodeId == nodeId)
             .OrderBy(nt => nt.ScopeValue.ScopeType.Precedence)
             .ToListAsync();
-
         var scopeTypes = new HashSet<Guid>(nodeTags.Select(nt => nt.ScopeValue.ScopeTypeId));
 
         var defaultScopeType = await db.ScopeTypes
@@ -677,7 +675,7 @@ public static class ParameterEndpoints
 
         if (parameterSources.Count == 0)
         {
-            return TypedResults.Ok(new ParameterProvenanceDto
+            return TypedResults.Ok(new ParameterProvenanceDetails
             {
                 NodeId = nodeId,
                 ConfigurationId = configurationId.Value,
@@ -719,7 +717,7 @@ public static class ParameterEndpoints
                 };
             });
 
-        return TypedResults.Ok(new ParameterProvenanceDto
+        return TypedResults.Ok(new ParameterProvenanceDetails
         {
             NodeId = nodeId,
             ConfigurationId = configurationId.Value,
@@ -729,7 +727,7 @@ public static class ParameterEndpoints
         });
     }
 
-    private static async Task<Results<Ok<ParameterResolutionDto>, NotFound>> GetNodeParameterResolution(
+    private static async Task<Results<Ok<ParameterResolutionDetails>, NotFound>> GetNodeParameterResolution(
         Guid nodeId,
         [FromQuery] Guid? configurationId,
         ServerDbContext db)
@@ -762,7 +760,7 @@ public static class ParameterEndpoints
             return TypedResults.NotFound();
         }
 
-        var scopes = new List<ScopeResolutionDto>();
+        var scopes = new List<ScopeResolutionDetails>();
 
         var nodeTags = await db.NodeTags
             .Include(nt => nt.ScopeValue)
@@ -793,7 +791,7 @@ public static class ParameterEndpoints
             var isPrerelease = version is not null &&
                 SemanticVersion.TryParse(version, out var sv) && sv.IsPrerelease;
 
-            scopes.Add(new ScopeResolutionDto
+            scopes.Add(new ScopeResolutionDetails
             {
                 ScopeTypeName = "Default",
                 ScopeValue = null,
@@ -820,7 +818,7 @@ public static class ParameterEndpoints
             var isPrerelease = version is not null &&
                 SemanticVersion.TryParse(version, out var sv) && sv.IsPrerelease;
 
-            scopes.Add(new ScopeResolutionDto
+            scopes.Add(new ScopeResolutionDetails
             {
                 ScopeTypeName = tag.ScopeValue.ScopeType.Name,
                 ScopeValue = tag.ScopeValue.Value,
@@ -850,7 +848,7 @@ public static class ParameterEndpoints
             var isPrerelease = version is not null &&
                 SemanticVersion.TryParse(version, out var sv) && sv.IsPrerelease;
 
-            scopes.Add(new ScopeResolutionDto
+            scopes.Add(new ScopeResolutionDetails
             {
                 ScopeTypeName = "Node",
                 ScopeValue = node.Fqdn,
@@ -860,7 +858,7 @@ public static class ParameterEndpoints
             });
         }
 
-        return TypedResults.Ok(new ParameterResolutionDto
+        return TypedResults.Ok(new ParameterResolutionDetails
         {
             NodeId = nodeId,
             ConfigurationId = configurationId.Value,
@@ -869,7 +867,7 @@ public static class ParameterEndpoints
         });
     }
 
-    private static async Task<Results<Ok<List<MajorVersionDto>>, NotFound, ForbidHttpResult>> GetMajorVersions(
+    private static async Task<Results<Ok<List<MajorVersionSummary>>, NotFound, ForbidHttpResult>> GetMajorVersions(
         Guid scopeTypeId,
         Guid configurationId,
         [FromQuery] string? scopeValue,
@@ -907,7 +905,7 @@ public static class ParameterEndpoints
 
         var majorVersions = allFiles
             .GroupBy(pf => pf.MajorVersion)
-            .Select(g => new MajorVersionDto
+            .Select(g => new MajorVersionSummary
             {
                 MajorVersion = g.Key,
                 VersionCount = g.Count(),
@@ -921,7 +919,7 @@ public static class ParameterEndpoints
         return TypedResults.Ok(majorVersions);
     }
 
-    private static async Task<Results<Ok<ParameterFileDto>, NotFound, ForbidHttpResult>> GetActiveParameterForMajor(
+    private static async Task<Results<Ok<ParameterVersionDetails>, NotFound, ForbidHttpResult>> GetActiveParameterForMajor(
         Guid scopeTypeId,
         Guid configurationId,
         int major,
@@ -964,7 +962,7 @@ public static class ParameterEndpoints
             return TypedResults.NotFound();
         }
 
-        return TypedResults.Ok(new ParameterFileDto
+        return TypedResults.Ok(new ParameterVersionDetails
         {
             Id = activeParameter.Id,
             ScopeTypeId = activeParameter.ScopeTypeId,
@@ -979,7 +977,7 @@ public static class ParameterEndpoints
         });
     }
 
-    private static async Task<Results<Ok, Conflict<PublishResultDto>, BadRequest<string>, NotFound, ForbidHttpResult>> UploadParameterSchema(
+    private static async Task<Results<Ok, Conflict<PublishResult>, BadRequest<string>, NotFound, ForbidHttpResult>> UploadParameterSchema(
         string configurationName,
         [FromForm] string version,
         [FromForm] IFormFile parametersFile,
@@ -1075,7 +1073,7 @@ public static class ParameterEndpoints
                     .Where(pf => pf.ParameterSchemaId == previousSchema.Id)
                     .ToListAsync();
 
-                var migrationRequirements = new List<ParameterFileMigrationStatusDto>();
+                var migrationRequirements = new List<ParameterFileMigrationStatus>();
 
                 foreach (var paramFile in parameterFiles)
                 {
@@ -1084,7 +1082,7 @@ public static class ParameterEndpoints
 
                     // TODO: Read the actual parameter file content and validate
                     // For now, just mark all affected files as needing migration
-                    migrationRequirements.Add(new ParameterFileMigrationStatusDto
+                    migrationRequirements.Add(new ParameterFileMigrationStatus
                     {
                         ScopeTypeName = scopeType.Name,
                         ScopeValue = paramFile.ScopeValue ?? "Global",
@@ -1095,19 +1093,19 @@ public static class ParameterEndpoints
                     });
                 }
 
-                return TypedResults.Conflict(new PublishResultDto
+                return TypedResults.Conflict(new PublishResult
                 {
                     Success = false,
-                    CompatibilityReport = new CompatibilityReportDto
+                    CompatibilityReport = new CompatibilityReport
                     {
                         HasBreakingChanges = compatibilityReport.HasBreakingChanges,
-                        BreakingChanges = compatibilityReport.BreakingChanges?.Select(c => new ParameterChangeDto
+                        BreakingChanges = compatibilityReport.BreakingChanges?.Select(c => new ParameterChange
                         {
                             ParameterName = c.ParameterName,
                             ChangeType = c.ChangeType,
                             Details = c.Description ?? string.Empty
                         }).ToList(),
-                        NonBreakingChanges = compatibilityReport.NonBreakingChanges?.Select(c => new ParameterChangeDto
+                        NonBreakingChanges = compatibilityReport.NonBreakingChanges?.Select(c => new ParameterChange
                         {
                             ParameterName = c.ParameterName,
                             ChangeType = c.ChangeType,
@@ -1135,7 +1133,7 @@ public static class ParameterEndpoints
         return TypedResults.Ok();
     }
 
-    private static async Task<Results<Ok<ValidationResultDto>, BadRequest<string>, NotFound, ForbidHttpResult>> ValidateParameterFile(
+    private static async Task<Results<Ok<OpenDsc.Contracts.Parameters.ValidationResult>, BadRequest<string>, NotFound, ForbidHttpResult>> ValidateParameterFile(
         string configurationName,
         [FromQuery] string version,
         [FromBody] System.Text.Json.JsonElement parameterContent,
@@ -1177,10 +1175,10 @@ public static class ParameterEndpoints
 
         var validationResult = validator.Validate(jsonSchema, parameterContent.ToString());
 
-        return TypedResults.Ok(new ValidationResultDto
+        return TypedResults.Ok(new OpenDsc.Contracts.Parameters.ValidationResult
         {
             IsValid = validationResult.IsValid,
-            Errors = validationResult.Errors?.Select(e => new ValidationErrorDto
+            Errors = validationResult.Errors?.Select(e => new OpenDsc.Contracts.Parameters.ValidationError
             {
                 Path = e.Path,
                 Message = e.Message,
@@ -1453,81 +1451,4 @@ public static class ParameterEndpoints
     }
 }
 
-public sealed class CreateParameterRequest
-{
-    public string? ScopeValue { get; init; }
-    public required string Version { get; init; }
-    public string? Content { get; init; }
-    public string? ContentType { get; init; }
-    public bool? IsPassthrough { get; init; }
-}
 
-public sealed class MajorVersionDto
-{
-    public required int MajorVersion { get; init; }
-    public required int VersionCount { get; init; }
-    public required bool HasActive { get; init; }
-    public required string LatestVersion { get; init; }
-    public required bool HasMigrationNeeded { get; init; }
-}
-
-public sealed class ValidationResultDto
-{
-    public required bool IsValid { get; init; }
-    public List<ValidationErrorDto>? Errors { get; init; }
-}
-
-public sealed class ValidationErrorDto
-{
-    public required string Path { get; init; }
-    public required string Message { get; init; }
-    public required string Code { get; init; }
-}
-
-public sealed class PublishResultDto
-{
-    public required bool Success { get; init; }
-    public CompatibilityReportDto? CompatibilityReport { get; init; }
-    public List<ParameterFileMigrationStatusDto>? MigrationRequirements { get; init; }
-}
-
-public sealed class CompatibilityReportDto
-{
-    public required bool HasBreakingChanges { get; init; }
-    public List<ParameterChangeDto>? BreakingChanges { get; init; }
-    public List<ParameterChangeDto>? NonBreakingChanges { get; init; }
-}
-
-public sealed class ParameterChangeDto
-{
-    public required string ParameterName { get; init; }
-    public required string ChangeType { get; init; }
-    public required string Details { get; init; }
-}
-
-public sealed class ParameterFileMigrationStatusDto
-{
-    public required string ScopeTypeName { get; init; }
-    public required string ScopeValue { get; init; }
-    public required string Version { get; init; }
-    public required int MajorVersion { get; init; }
-    public required bool NeedsMigration { get; init; }
-    public required List<ValidationErrorDto> Errors { get; init; }
-}
-
-public sealed class ParameterResolutionDto
-{
-    public required Guid NodeId { get; init; }
-    public required Guid ConfigurationId { get; init; }
-    public string? PrereleaseChannel { get; init; }
-    public required List<ScopeResolutionDto> Scopes { get; init; }
-}
-
-public sealed class ScopeResolutionDto
-{
-    public required string ScopeTypeName { get; init; }
-    public string? ScopeValue { get; init; }
-    public string? ResolvedVersion { get; init; }
-    public bool IsPrerelease { get; init; }
-    public bool NoPublishedVersion { get; init; }
-}

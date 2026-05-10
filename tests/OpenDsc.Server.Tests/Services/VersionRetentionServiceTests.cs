@@ -16,6 +16,8 @@ using OpenDsc.Server.Entities;
 using OpenDsc.Contracts.Configurations;
 using OpenDsc.Server.Services;
 
+using ParameterVersionStatus = OpenDsc.Contracts.Parameters.ParameterVersionStatus;
+
 using Xunit;
 
 namespace OpenDsc.Server.Tests.Services;
