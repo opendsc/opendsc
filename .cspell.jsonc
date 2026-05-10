@@ -67,6 +67,7 @@
     "MSOLEDBSQL",
     "msvc",
     "myapp",
+    "nameof",
     "netstandard",
     "netsvcs",
     "Nieto",

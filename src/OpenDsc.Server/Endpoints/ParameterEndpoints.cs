@@ -190,7 +190,7 @@ public static class ParameterEndpoints
                 return TypedResults.BadRequest($"Node '{request.ScopeValue}' is not registered.");
             }
         }
-        else if (scopeType.ValueMode == ScopeValueMode.Restricted)
+        else if (scopeType.ValueMode == Contracts.Configurations.ScopeValueMode.Restricted)
         {
             if (string.IsNullOrWhiteSpace(request.ScopeValue))
             {
@@ -1133,10 +1133,10 @@ public static class ParameterEndpoints
         return TypedResults.Ok();
     }
 
-    private static async Task<Results<Ok<OpenDsc.Contracts.Parameters.ValidationResult>, BadRequest<string>, NotFound, ForbidHttpResult>> ValidateParameterFile(
+    private static async Task<Results<Ok<Contracts.Parameters.ValidationResult>, BadRequest<string>, NotFound, ForbidHttpResult>> ValidateParameterFile(
         string configurationName,
         [FromQuery] string version,
-        [FromBody] System.Text.Json.JsonElement parameterContent,
+        [FromBody] JsonElement parameterContent,
         ServerDbContext db,
         IParameterValidator validator,
         IResourceAuthorizationService authService,
@@ -1175,10 +1175,10 @@ public static class ParameterEndpoints
 
         var validationResult = validator.Validate(jsonSchema, parameterContent.ToString());
 
-        return TypedResults.Ok(new OpenDsc.Contracts.Parameters.ValidationResult
+        return TypedResults.Ok(new Contracts.Parameters.ValidationResult
         {
             IsValid = validationResult.IsValid,
-            Errors = validationResult.Errors?.Select(e => new OpenDsc.Contracts.Parameters.ValidationError
+            Errors = validationResult.Errors?.Select(e => new Contracts.Parameters.ValidationError
             {
                 Path = e.Path,
                 Message = e.Message,

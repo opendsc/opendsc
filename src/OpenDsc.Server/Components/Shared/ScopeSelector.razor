@@ -1,5 +1,6 @@
 @using Microsoft.EntityFrameworkCore
 @using MudBlazor
+@using OpenDsc.Contracts.Configurations
 @using OpenDsc.Server.Entities
 @using Microsoft.Extensions.Logging
 @inject ServerDbContext Db
@@ -8,8 +9,7 @@
 <MudGrid>
     <MudItem xs="12" sm="4">
         <MudSelect T="Guid?" Value="@selectedConfigurationId" ValueChanged="@OnConfigurationChanged"
-                   Label="Configuration" Variant="Variant.Outlined"
-                   Clearable="true" Disabled="@Locked">
+                   Label="Configuration" Variant="Variant.Outlined" Clearable="true" Disabled="@Locked">
             @foreach (var config in configurations)
             {
                 <MudSelectItem Value="@((Guid?)config.Id)">@config.Name</MudSelectItem>
@@ -17,9 +17,8 @@
         </MudSelect>
     </MudItem>
     <MudItem xs="12" sm="4">
-        <MudSelect T="Guid?" Value="@selectedScopeTypeId" ValueChanged="@OnScopeTypeChanged"
-                   Label="Scope Type" Variant="Variant.Outlined"
-                   Clearable="true" Disabled="@(Locked || !selectedConfigurationId.HasValue)">
+        <MudSelect T="Guid?" Value="@selectedScopeTypeId" ValueChanged="@OnScopeTypeChanged" Label="Scope Type"
+                   Variant="Variant.Outlined" Clearable="true" Disabled="@(Locked || !selectedConfigurationId.HasValue)">
             @foreach (var scopeType in scopeTypes)
             {
                 <MudSelectItem Value="@((Guid?)scopeType.Id)">@scopeType.Name</MudSelectItem>
@@ -35,8 +34,9 @@
 
         @if (isNodeScope)
         {
-            <MudSelect T="string" Value="@selectedScopeValue" ValueChanged="@OnScopeValueChanged" Label="Node" Variant="Variant.Outlined"
-                       Clearable="true" Disabled="@(Locked || !selectedScopeTypeId.HasValue || isDefaultScope)"
+            <MudSelect T="string" Value="@selectedScopeValue" ValueChanged="@OnScopeValueChanged" Label="Node"
+                       Variant="Variant.Outlined" Clearable="true"
+                       Disabled="@(Locked || !selectedScopeTypeId.HasValue || isDefaultScope)"
                        HelperText="Select a registered node">
                 @foreach (var node in nodes)
                 {
@@ -46,8 +46,9 @@
         }
         else if (isRestricted)
         {
-            <MudSelect T="string" Value="@selectedScopeValue" ValueChanged="@OnScopeValueChanged" Label="Scope Value" Variant="Variant.Outlined"
-                       Clearable="true" Disabled="@(Locked || !selectedScopeTypeId.HasValue || isDefaultScope)">
+            <MudSelect T="string" Value="@selectedScopeValue" ValueChanged="@OnScopeValueChanged" Label="Scope Value"
+                       Variant="Variant.Outlined" Clearable="true"
+                       Disabled="@(Locked || !selectedScopeTypeId.HasValue || isDefaultScope)">
                 @foreach (var scopeValue in scopeValues)
                 {
                     <MudSelectItem Value="@scopeValue.Value">@scopeValue.Value</MudSelectItem>
@@ -56,11 +57,10 @@
         }
         else
         {
-            <MudAutocomplete T="string" Value="@selectedScopeValue" ValueChanged="@OnScopeValueChanged" Label="Scope Value" Variant="Variant.Outlined"
-                             Clearable="true" Disabled="@(Locked || !selectedScopeTypeId.HasValue || isDefaultScope)"
-                             SearchFunc="@SearchUnrestrictedScopeValuesAsync"
-                             Strict="false"
-                             CoerceValue="true"
+            <MudAutocomplete T="string" Value="@selectedScopeValue" ValueChanged="@OnScopeValueChanged" Label="Scope Value"
+                             Variant="Variant.Outlined" Clearable="true"
+                             Disabled="@(Locked || !selectedScopeTypeId.HasValue || isDefaultScope)"
+                             SearchFunc="@SearchUnrestrictedScopeValuesAsync" Strict="false" CoerceValue="true"
                              HelperText="@(isDefaultScope ? "Not applicable for Default scope" : "Select existing or enter a new scope value")" />
         }
     </MudItem>

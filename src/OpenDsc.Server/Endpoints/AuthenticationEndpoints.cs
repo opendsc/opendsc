@@ -11,9 +11,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 
+using OpenDsc.Contracts.Users;
 using OpenDsc.Server.Authorization;
 using OpenDsc.Server.Data;
-using OpenDsc.Server.Entities;
 using OpenDsc.Server.Services;
 
 namespace OpenDsc.Server.Endpoints;

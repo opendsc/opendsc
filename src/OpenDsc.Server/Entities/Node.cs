@@ -3,6 +3,7 @@
 // terms of the MIT license.
 
 using OpenDsc.Contracts.Lcm;
+using OpenDsc.Contracts.Nodes;
 
 namespace OpenDsc.Server.Entities;
 
@@ -108,30 +109,4 @@ public sealed class Node
     /// Navigation property for status events.
     /// </summary>
     public ICollection<NodeStatusEvent> StatusEvents { get; set; } = [];
-}
-
-/// <summary>
-/// Compliance status of a node.
-/// </summary>
-public enum NodeStatus
-{
-    /// <summary>
-    /// Status is unknown (node has not reported).
-    /// </summary>
-    Unknown,
-
-    /// <summary>
-    /// Node is in desired state.
-    /// </summary>
-    Compliant,
-
-    /// <summary>
-    /// Node is not in desired state.
-    /// </summary>
-    NonCompliant,
-
-    /// <summary>
-    /// Last operation had errors.
-    /// </summary>
-    Error
 }

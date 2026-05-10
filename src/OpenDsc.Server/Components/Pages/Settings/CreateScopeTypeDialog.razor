@@ -1,5 +1,6 @@
 @using Microsoft.EntityFrameworkCore
 @using MudBlazor
+@using OpenDsc.Contracts.Configurations
 @using OpenDsc.Server.Entities
 @inject ServerDbContext Db
 @inject ISnackbar Snackbar
@@ -9,7 +10,8 @@
         <MudTextField @bind-Value="name" Label="Name" Variant="Variant.Outlined" Required="true" Class="mb-3"
                       HelperText="e.g., Environment, Location, Department" />
         <MudTextField @bind-Value="description" Label="Description" Variant="Variant.Outlined" Lines="2" Class="mb-3" />
-        <MudSelect @bind-Value="valueMode" Label="Value Mode" Variant="Variant.Outlined" Class="mb-3" T="ScopeValueMode">
+        <MudSelect @bind-Value="valueMode" Label="Value Mode" Variant="Variant.Outlined" Class="mb-3"
+                   T="ScopeValueMode">
             <MudSelectItem Value="@ScopeValueMode.Unrestricted">Unrestricted (Free text)</MudSelectItem>
             <MudSelectItem Value="@ScopeValueMode.Restricted">Restricted (Predefined values only)</MudSelectItem>
         </MudSelect>
@@ -26,7 +28,8 @@
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Create" Disabled="@string.IsNullOrWhiteSpace(name)">
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Create"
+                   Disabled="@string.IsNullOrWhiteSpace(name)">
             Create
         </MudButton>
     </DialogActions>

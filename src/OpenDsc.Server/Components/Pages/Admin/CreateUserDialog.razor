@@ -1,6 +1,7 @@
 @using Microsoft.EntityFrameworkCore
 @using MudBlazor
 @using System.Text.RegularExpressions
+@using OpenDsc.Contracts.Users
 @inject ServerDbContext Db
 @inject ISnackbar Snackbar
 @inject IPasswordHasher PasswordHasher
@@ -8,10 +9,12 @@
 <MudDialog>
     <DialogContent>
         <MudTextField @bind-Value="username" Label="Username" Variant="Variant.Outlined" Required="true" Class="mb-3" />
-        <MudTextField @bind-Value="email" Label="Email" Variant="Variant.Outlined" InputType="InputType.Email" Required="true" Class="mb-3"
-                      Immediate="true" Validation="@(new Func<string?, string?>(ValidateEmail))" />
-        <MudTextField @bind-Value="password" Label="Password" Variant="Variant.Outlined" InputType="InputType.Password" Required="true" Class="mb-3" />
-        <MudSelect @bind-Value="accountType" Label="Account Type" Variant="Variant.Outlined" Class="mb-3" T="AccountType">
+        <MudTextField @bind-Value="email" Label="Email" Variant="Variant.Outlined" InputType="InputType.Email"
+                      Required="true" Class="mb-3" Immediate="true" Validation="@(new Func<string?, string?>(ValidateEmail))" />
+        <MudTextField @bind-Value="password" Label="Password" Variant="Variant.Outlined" InputType="InputType.Password"
+                      Required="true" Class="mb-3" />
+        <MudSelect @bind-Value="accountType" Label="Account Type" Variant="Variant.Outlined" Class="mb-3"
+                   T="AccountType">
             <MudSelectItem Value="@AccountType.User">User</MudSelectItem>
             <MudSelectItem Value="@AccountType.ServiceAccount">Service Account</MudSelectItem>
         </MudSelect>
@@ -39,7 +42,8 @@
     [CascadingParameter]
     private IMudDialogInstance MudDialog { get; set; } = default!;
 
-    private static readonly Regex EmailRegex = new(@"^[^\s@]+@[^\s@]+\.[^\s@]+$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex EmailRegex = new(@"^[^\s@]+@[^\s@]+\.[^\s@]+$", RegexOptions.Compiled |
+RegexOptions.IgnoreCase);
 
     private string? ValidateEmail(string? value)
     {

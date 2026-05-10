@@ -6,6 +6,9 @@ using Microsoft.EntityFrameworkCore;
 
 using OpenDsc.Contracts.Configurations;
 using OpenDsc.Contracts.Lcm;
+using OpenDsc.Contracts.Nodes;
+using OpenDsc.Contracts.Permissions;
+using OpenDsc.Contracts.Users;
 using OpenDsc.Server.Entities;
 
 namespace OpenDsc.Server.Data;

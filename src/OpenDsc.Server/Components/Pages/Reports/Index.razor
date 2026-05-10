@@ -1,8 +1,9 @@
 @page "/reports"
 @attribute [Authorize(Policy = ReportPermissions.Read)]
-@inject ServerDbContext Db
+@inject IReportService ReportService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
+@using OpenDsc.Contracts.Reports
 
 <PageTitle>Compliance Reports</PageTitle>
 
@@ -35,7 +36,7 @@
 
         </MudGrid>
 
-        <MudDataGrid T="ReportViewModel" Items="@filteredReports" Loading="@isLoading" Hover="true" Dense="true">
+        <MudDataGrid T="ReportSummary" Items="@filteredReports" Loading="@isLoading" Hover="true" Dense="true">
             <Columns>
                 <PropertyColumn Property="x => x.NodeFqdn" Title="Node" />
                 <PropertyColumn Property="x => x.Operation" Title="Operation" />
@@ -70,16 +71,16 @@
                 </TemplateColumn>
             </Columns>
             <PagerContent>
-                <MudDataGridPager T="ReportViewModel" PageSizeOptions="@(new int[] { 10, 25, 50, 100 })" />
+                <MudDataGridPager T="ReportSummary" PageSizeOptions="@(new int[] { 10, 25, 50, 100 })" />
             </PagerContent>
         </MudDataGrid>
     </MudCardContent>
 </MudCard>
 
 @code {
-    private List<Node> nodes = [];
-    private List<ReportViewModel> allReports = [];
-    private List<ReportViewModel> filteredReports = [];
+    private List<NodeOption> nodes = [];
+    private List<ReportSummary> allReports = [];
+    private List<ReportSummary> filteredReports = [];
     private bool isLoading = true;
     private Guid? selectedNodeId;
     private string? selectedStatus;
@@ -95,25 +96,11 @@
         isLoading = true;
         try
         {
-            Db.ChangeTracker.Clear();
-            nodes = await Db.Nodes.AsNoTracking().OrderBy(n => n.Fqdn).ToListAsync();
-
-            var reports = await Db.Reports
-                .Include(r => r.Node)
-                .ToListAsync();
-
-            allReports = reports
-                .OrderByDescending(r => r.Timestamp)
-                .Select(r => new ReportViewModel
-                {
-                    Id = r.Id,
-                    NodeId = r.NodeId,
-                    NodeFqdn = r.Node.Fqdn,
-                    Operation = r.Operation,
-                    Timestamp = r.Timestamp,
-                    InDesiredState = r.InDesiredState,
-                    HadErrors = r.HadErrors
-                })
+            allReports = (await ReportService.GetReportsAsync()).ToList();
+            nodes = allReports
+                .GroupBy(r => new { r.NodeId, r.NodeFqdn })
+                .Select(g => new NodeOption { Id = g.Key.NodeId, Fqdn = g.Key.NodeFqdn })
+                .OrderBy(n => n.Fqdn)
                 .ToList();
 
             filteredReports = allReports;
@@ -176,14 +163,14 @@
         Navigation.NavigateTo($"/reports/{id}");
     }
 
-    private class ReportViewModel
+    private sealed class NodeOption
     {
         public Guid Id { get; set; }
-        public Guid NodeId { get; set; }
         public string NodeFqdn { get; set; } = string.Empty;
-        public DscOperation Operation { get; set; }
-        public DateTimeOffset Timestamp { get; set; }
-        public bool InDesiredState { get; set; }
-        public bool HadErrors { get; set; }
+        public string Fqdn
+        {
+            get => NodeFqdn;
+            set => NodeFqdn = value;
+        }
     }
 }

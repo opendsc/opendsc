@@ -9,4 +9,24 @@ namespace OpenDsc.Contracts.Reports;
 /// </summary>
 public interface IReportService
 {
+    Task<IReadOnlyList<ReportSummary>> GetReportsAsync(
+        Guid? nodeId = null,
+        int? skip = null,
+        int? take = null,
+        DateTimeOffset? from = null,
+        DateTimeOffset? to = null,
+        CancellationToken cancellationToken = default);
+
+    Task<ReportDetails?> GetReportAsync(
+        Guid reportId,
+        CancellationToken cancellationToken = default);
+
+    Task<Nodes.NodeSummary?> GetReportNodeAsync(
+        Guid reportId,
+        CancellationToken cancellationToken = default);
+
+    Task<ReportSummary> SubmitReportAsync(
+        Guid nodeId,
+        SubmitReportRequest request,
+        CancellationToken cancellationToken = default);
 }

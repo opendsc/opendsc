@@ -4,11 +4,9 @@
 
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
+using OpenDsc.Contracts.Nodes;
 using OpenDsc.Server.Authorization;
-using OpenDsc.Server.Data;
-using OpenDsc.Server.Entities;
 
 namespace OpenDsc.Server.Endpoints;
 
@@ -35,128 +33,64 @@ public static class NodeTagEndpoints
         return app;
     }
 
-    private static async Task<Results<Ok<List<NodeTagDto>>, NotFound>> GetNodeTags(
+    private static async Task<Results<Ok<List<NodeTagSummary>>, NotFound>> GetNodeTags(
         Guid nodeId,
-        ServerDbContext db)
+        INodeReader nodeReader,
+        CancellationToken cancellationToken)
     {
-        var node = await db.Nodes.FindAsync(nodeId);
-        if (node is null)
+        try
+        {
+            var tags = await nodeReader.GetNodeTagsAsync(nodeId, cancellationToken);
+            return TypedResults.Ok(tags.ToList());
+        }
+        catch (KeyNotFoundException)
         {
             return TypedResults.NotFound();
         }
-
-        var tags = await db.NodeTags
-            .Include(nt => nt.ScopeValue)
-            .ThenInclude(sv => sv.ScopeType)
-            .Where(nt => nt.NodeId == nodeId)
-            .OrderBy(nt => nt.ScopeValue.ScopeType.Precedence)
-            .Select(nt => new NodeTagDto
-            {
-                NodeId = nt.NodeId,
-                ScopeValueId = nt.ScopeValueId,
-                ScopeTypeName = nt.ScopeValue.ScopeType.Name,
-                ScopeValue = nt.ScopeValue.Value,
-                Precedence = nt.ScopeValue.ScopeType.Precedence,
-                AssignedAt = nt.AssignedAt
-            })
-            .ToListAsync();
-
-        return TypedResults.Ok(tags);
     }
 
-    private static async Task<Results<Created<NodeTagDto>, BadRequest<string>, NotFound, Conflict<string>>> AssignNodeTag(
+    private static async Task<Results<Created<NodeTagSummary>, BadRequest<string>, NotFound, Conflict<string>>> AssignNodeTag(
         Guid nodeId,
-        [FromBody] AssignNodeTagRequest request,
-        ServerDbContext db)
+        [FromBody] AddNodeTagRequest request,
+        INodeTagManager nodeTagManager,
+        CancellationToken cancellationToken)
     {
-        var node = await db.Nodes.FindAsync(nodeId);
-        if (node is null)
+        try
+        {
+            var tag = await nodeTagManager.AddNodeTagAsync(nodeId, request, cancellationToken);
+            return TypedResults.Created($"/api/v1/nodes/{nodeId}/tags/{tag.ScopeValueId}", tag);
+        }
+        catch (ArgumentException ex)
+        {
+            return TypedResults.BadRequest(ex.Message);
+        }
+        catch (KeyNotFoundException)
         {
             return TypedResults.NotFound();
         }
-
-        var scopeValue = await db.ScopeValues
-            .Include(sv => sv.ScopeType)
-            .FirstOrDefaultAsync(sv => sv.Id == request.ScopeValueId);
-
-        if (scopeValue is null)
+        catch (InvalidOperationException ex)
         {
-            return TypedResults.BadRequest("Scope value not found");
+            return TypedResults.Conflict(ex.Message);
         }
-
-        var existingTagWithSameType = await db.NodeTags
-            .Include(nt => nt.ScopeValue)
-            .FirstOrDefaultAsync(nt =>
-                nt.NodeId == nodeId &&
-                nt.ScopeValue.ScopeTypeId == scopeValue.ScopeTypeId);
-
-        if (existingTagWithSameType != null)
-        {
-            return TypedResults.Conflict($"Node already has a tag for scope type '{scopeValue.ScopeType.Name}'. Remove the existing tag first.");
-        }
-
-        var existingTag = await db.NodeTags
-            .FirstOrDefaultAsync(nt => nt.NodeId == nodeId && nt.ScopeValueId == request.ScopeValueId);
-
-        if (existingTag != null)
-        {
-            return TypedResults.Conflict("This scope value is already assigned to the node");
-        }
-
-        var nodeTag = new NodeTag
-        {
-            NodeId = nodeId,
-            ScopeValueId = request.ScopeValueId,
-            AssignedAt = DateTimeOffset.UtcNow
-        };
-
-        db.NodeTags.Add(nodeTag);
-        await db.SaveChangesAsync();
-
-        var dto = new NodeTagDto
-        {
-            NodeId = nodeTag.NodeId,
-            ScopeValueId = nodeTag.ScopeValueId,
-            ScopeTypeName = scopeValue.ScopeType.Name,
-            ScopeValue = scopeValue.Value,
-            Precedence = scopeValue.ScopeType.Precedence,
-            AssignedAt = nodeTag.AssignedAt
-        };
-
-        return TypedResults.Created($"/api/v1/nodes/{nodeId}/tags/{scopeValue.Id}", dto);
     }
 
     private static async Task<Results<NoContent, NotFound>> RemoveNodeTag(
         Guid nodeId,
         Guid scopeValueId,
-        ServerDbContext db)
+        INodeTagManager nodeTagManager,
+        CancellationToken cancellationToken)
     {
-        var nodeTag = await db.NodeTags
-            .FirstOrDefaultAsync(nt => nt.NodeId == nodeId && nt.ScopeValueId == scopeValueId);
-
-        if (nodeTag is null)
+        try
+        {
+            await nodeTagManager.RemoveNodeTagAsync(
+                nodeId,
+                new RemoveNodeTagRequest { ScopeValueId = scopeValueId },
+                cancellationToken);
+            return TypedResults.NoContent();
+        }
+        catch (KeyNotFoundException)
         {
             return TypedResults.NotFound();
         }
-
-        db.NodeTags.Remove(nodeTag);
-        await db.SaveChangesAsync();
-
-        return TypedResults.NoContent();
     }
-}
-
-public sealed class NodeTagDto
-{
-    public required Guid NodeId { get; init; }
-    public required Guid ScopeValueId { get; init; }
-    public required string ScopeTypeName { get; init; }
-    public required string ScopeValue { get; init; }
-    public required int Precedence { get; init; }
-    public required DateTimeOffset AssignedAt { get; init; }
-}
-
-public sealed class AssignNodeTagRequest
-{
-    public required Guid ScopeValueId { get; init; }
 }

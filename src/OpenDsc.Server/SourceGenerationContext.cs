@@ -9,11 +9,12 @@ using OpenDsc.Contracts.CompositeConfigurations;
 using OpenDsc.Contracts.Lcm;
 using OpenDsc.Contracts.Nodes;
 using OpenDsc.Contracts.Parameters;
+using OpenDsc.Contracts.Permissions;
 using OpenDsc.Contracts.Reports;
 using OpenDsc.Contracts.Settings;
+using OpenDsc.Contracts.Users;
 using OpenDsc.Schema;
 using OpenDsc.Server.Endpoints;
-using OpenDsc.Server.Entities;
 using OpenDsc.Server.Services;
 
 namespace OpenDsc.Server;
@@ -89,9 +90,9 @@ namespace OpenDsc.Server;
 [JsonSerializable(typeof(CreateScopeValueRequest))]
 [JsonSerializable(typeof(UpdateScopeValueRequest))]
 // Node Tag contracts
-[JsonSerializable(typeof(NodeTagDto))]
-[JsonSerializable(typeof(List<NodeTagDto>))]
-[JsonSerializable(typeof(AssignNodeTagRequest))]
+[JsonSerializable(typeof(NodeTagSummary))]
+[JsonSerializable(typeof(List<NodeTagSummary>))]
+[JsonSerializable(typeof(AddNodeTagRequest))]
 // Parameter contracts
 [JsonSerializable(typeof(OpenDsc.Contracts.Parameters.ParameterVersionDetails))]
 [JsonSerializable(typeof(List<OpenDsc.Contracts.Parameters.ParameterVersionDetails>))]
@@ -178,6 +179,10 @@ namespace OpenDsc.Server;
 [JsonSerializable(typeof(DscOperation))]
 // Enums
 [JsonSerializable(typeof(ScopeValueMode))]
+[JsonSerializable(typeof(AccountType), TypeInfoPropertyName = "AccountType")]
+[JsonSerializable(typeof(NodeStatus), TypeInfoPropertyName = "NodeStatus")]
+[JsonSerializable(typeof(ResourcePermission), TypeInfoPropertyName = "ResourcePermission")]
+[JsonSerializable(typeof(PrincipalType), TypeInfoPropertyName = "PrincipalType")]
 public partial class SourceGenerationContext : JsonSerializerContext
 {
 }

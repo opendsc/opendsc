@@ -1,7 +1,8 @@
 @page "/"
 @attribute [Authorize(Policy = NodePermissions.Read)]
-@inject ServerDbContext Db
+@inject IDashboardService DashboardService
 @inject ISnackbar Snackbar
+@using OpenDsc.Contracts.Dashboard
 
 <PageTitle>Dashboard</PageTitle>
 
@@ -225,7 +226,7 @@ else
     private double[] lcmChartData = [];
     private string[] lcmChartLabels = [];
     private List<ReportSummary> recentReports = [];
-    private List<LcmEventSummary> recentLcmEvents = [];
+    private List<NodeStatusEventSummary> recentLcmEvents = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -237,17 +238,17 @@ else
         isLoading = true;
         try
         {
-            var nodes = await Db.Nodes.ToListAsync();
-            totalNodes = nodes.Count;
-            compliantCount = nodes.Count(n => n.Status == NodeStatus.Compliant);
-            nonCompliantCount = nodes.Count(n => n.Status == NodeStatus.NonCompliant);
-            errorCount = nodes.Count(n => n.Status == NodeStatus.Error);
-            unknownCount = nodes.Count(n => n.Status == NodeStatus.Unknown);
+            var nodeSummary = await DashboardService.GetNodeSummaryAsync();
+            totalNodes = nodeSummary.TotalCount;
+            compliantCount = nodeSummary.CompliantCount;
+            nonCompliantCount = nodeSummary.NonCompliantCount;
+            errorCount = nodeSummary.ErrorCount;
+            unknownCount = nodeSummary.UnknownCount;
 
-            lcmIdleCount = nodes.Count(n => n.LcmStatus == LcmStatus.Idle);
-            lcmActiveCount = nodes.Count(n => n.LcmStatus is LcmStatus.Testing or LcmStatus.Remediating or LcmStatus.Downloading);
-            lcmUnknownCount = nodes.Count(n => n.LcmStatus == LcmStatus.Unknown);
-            lcmErrorCount = nodes.Count(n => n.LcmStatus == LcmStatus.Error);
+            lcmIdleCount = nodeSummary.LcmIdleCount;
+            lcmActiveCount = nodeSummary.LcmActiveCount;
+            lcmUnknownCount = nodeSummary.LcmUnknownCount;
+            lcmErrorCount = nodeSummary.LcmErrorCount;
 
             // Build chart data
             var dataList = new List<double>();
@@ -290,40 +291,8 @@ else
             lcmChartLabels = [.. lcmLabelList];
 
             // Get recent reports (load and sort in memory due to SQLite DateTimeOffset limitation)
-            var allReports = await Db.Reports
-            .Include(r => r.Node)
-            .ToListAsync();
-
-            recentReports = allReports
-            .OrderByDescending(r => r.Timestamp)
-            .Take(10)
-            .Select(r => new ReportSummary
-            {
-                NodeFqdn = r.Node.Fqdn,
-                Timestamp = r.Timestamp,
-                InDesiredState = r.InDesiredState,
-                HadErrors = r.HadErrors
-            })
-            .ToList();
-
-            // Get recent LCM status events
-            var allLcmEvents = await Db.NodeStatusEvents
-            .Include(e => e.Node)
-            .Where(e => e.LcmStatus != null)
-            .OrderByDescending(e => e.Id)
-            .Take(50)
-            .ToListAsync();
-
-            recentLcmEvents = allLcmEvents
-            .OrderByDescending(e => e.Timestamp)
-            .Take(10)
-            .Select(e => new LcmEventSummary
-            {
-                NodeFqdn = e.Node.Fqdn,
-                Timestamp = e.Timestamp,
-                LcmStatus = e.LcmStatus!.Value
-            })
-            .ToList();
+            recentReports = (await DashboardService.GetReportSummaryAsync()).RecentReports.ToList();
+            recentLcmEvents = (await DashboardService.GetStatusEventSummaryAsync()).RecentStatusEvents.ToList();
         }
         catch (Exception ex)
         {
@@ -335,28 +304,13 @@ else
         }
     }
 
-    private class ReportSummary
+    private static Color GetLcmStatusColor(string? status) => status switch
     {
-        public string NodeFqdn { get; set; } = string.Empty;
-        public DateTimeOffset Timestamp { get; set; }
-        public bool InDesiredState { get; set; }
-        public bool HadErrors { get; set; }
-    }
-
-    private class LcmEventSummary
-    {
-        public string NodeFqdn { get; set; } = string.Empty;
-        public DateTimeOffset Timestamp { get; set; }
-        public LcmStatus LcmStatus { get; set; }
-    }
-
-    private static Color GetLcmStatusColor(LcmStatus status) => status switch
-    {
-        LcmStatus.Idle => Color.Success,
-        LcmStatus.Testing => Color.Info,
-        LcmStatus.Downloading => Color.Info,
-        LcmStatus.Remediating => Color.Info,
-        LcmStatus.Error => Color.Error,
+        nameof(LcmStatus.Idle) => Color.Success,
+        nameof(LcmStatus.Testing) => Color.Info,
+        nameof(LcmStatus.Downloading) => Color.Info,
+        nameof(LcmStatus.Remediating) => Color.Info,
+        nameof(LcmStatus.Error) => Color.Error,
         _ => Color.Default
     };
 }

@@ -5,8 +5,15 @@
 namespace OpenDsc.Contracts.Nodes;
 
 /// <summary>
-/// Read and management operations for registered nodes.
+/// Umbrella service interface for all node operations.
+/// Implements all capability sub-interfaces; register via this umbrella in DI.
 /// </summary>
 public interface INodeService
+    : INodeReader,
+      INodeConfigurationManager,
+      INodeTagManager,
+      INodeRegistrationManager,
+      INodeLcmManager,
+      INodeManager
 {
 }

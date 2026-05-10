@@ -9,6 +9,7 @@ using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 
+using OpenDsc.Contracts.Users;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
 using OpenDsc.Server.Services;

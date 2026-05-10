@@ -7,12 +7,9 @@ using System.Net;
 using AwesomeAssertions;
 
 using OpenDsc.Contracts.Nodes;
-using OpenDsc.Contracts.CompositeConfigurations;
-using OpenDsc.Contracts.Reports;
+using OpenDsc.Contracts.Configurations;
 using OpenDsc.Contracts.Settings;
-using OpenDsc.Contracts.Permissions;
 using OpenDsc.Server.Endpoints;
-using OpenDsc.Server.Entities;
 
 using Xunit;
 
@@ -240,7 +237,7 @@ public sealed class ScopeValueEndpointsTests : IDisposable
         var scopeTypeId = await CreateScopeTypeAsync(client, "DeleteWithTagsTest");
         var scopeValueId = await CreateScopeValueAsync(client, scopeTypeId, "TaggedValue");
 
-        await client.PostAsJsonAsync($"/api/v1/nodes/{nodeId}/tags", new AssignNodeTagRequest { ScopeValueId = scopeValueId }, TestContext.Current.CancellationToken);
+        await client.PostAsJsonAsync($"/api/v1/nodes/{nodeId}/tags", new AddNodeTagRequest { ScopeValueId = scopeValueId }, TestContext.Current.CancellationToken);
 
         var response = await client.DeleteAsync($"/api/v1/scope-types/{scopeTypeId}/values/{scopeValueId}", TestContext.Current.CancellationToken);
 

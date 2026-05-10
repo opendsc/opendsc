@@ -9,13 +9,10 @@ using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 
 using OpenDsc.Contracts.Nodes;
-using OpenDsc.Contracts.CompositeConfigurations;
-using OpenDsc.Contracts.Reports;
+using OpenDsc.Contracts.Configurations;
 using OpenDsc.Contracts.Settings;
-using OpenDsc.Contracts.Permissions;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Endpoints;
-using OpenDsc.Server.Entities;
 
 using Xunit;
 
@@ -286,7 +283,7 @@ public sealed class ScopeTypeEndpointsTests : IDisposable
 
         var registerResponse = await client.PostAsJsonAsync("/api/v1/nodes/register", new RegisterNodeRequest { Fqdn = "delete-node.local", RegistrationKey = keyValue }, TestContext.Current.CancellationToken);
         var nodeId = (await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>(TestContext.Current.CancellationToken))!.NodeId;
-        await client.PostAsJsonAsync($"/api/v1/nodes/{nodeId}/tags", new AssignNodeTagRequest { ScopeValueId = scopeValue!.Id }, TestContext.Current.CancellationToken);
+        await client.PostAsJsonAsync($"/api/v1/nodes/{nodeId}/tags", new AddNodeTagRequest { ScopeValueId = scopeValue!.Id }, TestContext.Current.CancellationToken);
 
         var response = await client.DeleteAsync($"/api/v1/scope-types/{scopeType.Id}", TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);

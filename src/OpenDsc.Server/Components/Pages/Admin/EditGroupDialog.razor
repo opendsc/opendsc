@@ -1,5 +1,6 @@
 @using Microsoft.EntityFrameworkCore
 @using MudBlazor
+@using OpenDsc.Contracts.Users
 @inject ServerDbContext Db
 @inject ISnackbar Snackbar
 
@@ -7,8 +8,10 @@
     <DialogContent>
         @if (group != null)
         {
-            <MudTextField @bind-Value="group.Name" Label="Group Name" Variant="Variant.Outlined" Required="true" Class="mb-3" />
-            <MudTextField @bind-Value="group.Description" Label="Description" Variant="Variant.Outlined" Lines="2" Class="mb-3" />
+            <MudTextField @bind-Value="group.Name" Label="Group Name" Variant="Variant.Outlined" Required="true"
+                          Class="mb-3" />
+            <MudTextField @bind-Value="group.Description" Label="Description" Variant="Variant.Outlined" Lines="2"
+                          Class="mb-3" />
 
             <MudText Typo="Typo.subtitle2" Class="mb-2 mt-4">Members:</MudText>
             <MudPaper Class="pa-3 mb-3" Style="max-height: 300px; overflow-y: auto;">
@@ -20,8 +23,7 @@
                 {
                     @foreach (var user in availableUsers)
                     {
-                        <MudCheckBox @bind-Value="@selectedMembers[user.Id]"
-                                     Label="@($"{user.Username} ({user.Email})")"
+                        <MudCheckBox @bind-Value="@selectedMembers[user.Id]" Label="@($"{user.Username} ({user.Email})")"
                                      Dense="true" />
                     }
                 }
@@ -37,9 +39,7 @@
                 {
                     @foreach (var role in availableRoles)
                     {
-                        <MudCheckBox @bind-Value="@selectedRoles[role.Id]"
-                                     Label="@role.Name"
-                                     Dense="true" />
+                        <MudCheckBox @bind-Value="@selectedRoles[role.Id]" Label="@role.Name" Dense="true" />
                     }
                 }
             </MudPaper>
@@ -51,7 +51,8 @@
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(group == null || string.IsNullOrWhiteSpace(group.Name))">Save</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit"
+                   Disabled="@(group == null || string.IsNullOrWhiteSpace(group.Name))">Save</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -127,7 +128,11 @@
             var selectedUserIds = selectedMembers.Where(kvp => kvp.Value).Select(kvp => kvp.Key).ToHashSet();
             var currentUserIds = currentMembers.Select(ug => ug.UserId).ToHashSet();
 
-            var toAdd = selectedUserIds.Except(currentUserIds).Select(userId => new UserGroup { UserId = userId, GroupId = GroupId });
+            var toAdd = selectedUserIds.Except(currentUserIds).Select(userId => new UserGroup
+            {
+                UserId = userId,
+                GroupId = GroupId
+            });
             var toRemove = currentMembers.Where(ug => !selectedUserIds.Contains(ug.UserId));
 
             Db.UserGroups.AddRange(toAdd);
@@ -141,7 +146,12 @@
             var selectedRoleIds = selectedRoles.Where(kvp => kvp.Value).Select(kvp => kvp.Key).ToHashSet();
             var currentRoleIds = currentRoles.Select(gr => gr.RoleId).ToHashSet();
 
-            var rolesToAdd = selectedRoleIds.Except(currentRoleIds).Select(roleId => new GroupRole { GroupId = GroupId, RoleId = roleId });
+            var rolesToAdd = selectedRoleIds.Except(currentRoleIds).Select(roleId => new GroupRole
+            {
+                GroupId = GroupId,
+                RoleId =
+roleId
+            });
             var rolesToRemove = currentRoles.Where(gr => !selectedRoleIds.Contains(gr.RoleId));
 
             Db.GroupRoles.AddRange(rolesToAdd);

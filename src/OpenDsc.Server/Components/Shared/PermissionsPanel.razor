@@ -23,11 +23,8 @@ else
             <CardHeaderActions>
                 @if (canManage)
                 {
-                    <MudButton Variant="Variant.Filled"
-                               Color="Color.Primary"
-                               Size="Size.Small"
-                               StartIcon="@Icons.Material.Filled.PersonAdd"
-                               OnClick="OpenGrantDialog">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.PersonAdd" OnClick="OpenGrantDialog">
                         Grant Permission
                     </MudButton>
                 }
@@ -45,8 +42,7 @@ else
                         <PropertyColumn Property="x => x.PrincipalName" Title="Principal" />
                         <PropertyColumn Property="x => x.PrincipalType" Title="Type">
                             <CellTemplate>
-                                <MudChip T="string"
-                                         Size="Size.Small"
+                                <MudChip T="string" Size="Size.Small"
                                          Color="@(context.Item.PrincipalType == PrincipalType.User ? Color.Primary : Color.Secondary)">
                                     @context.Item.PrincipalType
                                 </MudChip>
@@ -69,14 +65,11 @@ else
                             <TemplateColumn Title="Actions" Sortable="false">
                                 <CellTemplate>
                                     <MudTooltip Text="Edit Permission">
-                                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                                       Size="Size.Small"
+                                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
                                                        OnClick="@(() => EditPermission(context.Item))" />
                                     </MudTooltip>
                                     <MudTooltip Text="Revoke Permission">
-                                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                                       Size="Size.Small"
-                                                       Color="Color.Error"
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
                                                        OnClick="@(() => RevokePermission(context.Item))" />
                                     </MudTooltip>
                                 </CellTemplate>
@@ -208,8 +201,10 @@ else
 
         var parameters = new DialogParameters<GrantPermissionDialog>
         {
-            { x => x.ExistingUserIds, rows.Where(r => r.PrincipalType == PrincipalType.User).Select(r => r.PrincipalId).ToHashSet() },
-            { x => x.ExistingGroupIds, rows.Where(r => r.PrincipalType == PrincipalType.Group).Select(r => r.PrincipalId).ToHashSet() }
+            { x => x.ExistingUserIds, rows.Where(r => r.PrincipalType == PrincipalType.User).Select(r => r.PrincipalId).ToHashSet()
+},
+            { x => x.ExistingGroupIds, rows.Where(r => r.PrincipalType == PrincipalType.Group).Select(r =>
+r.PrincipalId).ToHashSet() }
         };
 
         var dialogRef = await DialogService.ShowAsync<GrantPermissionDialog>("Grant Permission", parameters);
@@ -229,10 +224,12 @@ else
                 switch (ResourceType)
                 {
                     case PermissionResource.Configuration:
-                        await AuthService.GrantConfigurationPermissionAsync(ResourceId, req.PrincipalId, principalType, level, currentUserId.Value);
+                        await AuthService.GrantConfigurationPermissionAsync(ResourceId, req.PrincipalId, principalType, level,
+currentUserId.Value);
                         break;
                     case PermissionResource.CompositeConfiguration:
-                        await AuthService.GrantCompositeConfigurationPermissionAsync(ResourceId, req.PrincipalId, principalType, level, currentUserId.Value);
+                        await AuthService.GrantCompositeConfigurationPermissionAsync(ResourceId, req.PrincipalId, principalType, level,
+currentUserId.Value);
                         break;
                     case PermissionResource.Parameter:
                         await AuthService.GrantParameterPermissionAsync(ResourceId, req.PrincipalId, principalType, level, currentUserId.Value);
@@ -281,10 +278,12 @@ else
                 switch (ResourceType)
                 {
                     case PermissionResource.Configuration:
-                        await AuthService.GrantConfigurationPermissionAsync(ResourceId, req.PrincipalId, principalType, level, currentUserId.Value);
+                        await AuthService.GrantConfigurationPermissionAsync(ResourceId, req.PrincipalId, principalType, level,
+currentUserId.Value);
                         break;
                     case PermissionResource.CompositeConfiguration:
-                        await AuthService.GrantCompositeConfigurationPermissionAsync(ResourceId, req.PrincipalId, principalType, level, currentUserId.Value);
+                        await AuthService.GrantCompositeConfigurationPermissionAsync(ResourceId, req.PrincipalId, principalType, level,
+currentUserId.Value);
                         break;
                     case PermissionResource.Parameter:
                         await AuthService.GrantParameterPermissionAsync(ResourceId, req.PrincipalId, principalType, level, currentUserId.Value);

@@ -3,16 +3,12 @@
 // terms of the MIT license.
 
 using System.Security.Claims;
-using System.Text.Json;
 
 using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.EntityFrameworkCore;
 
-using OpenDsc.Server.Authorization;
 using OpenDsc.Contracts.Reports;
 using OpenDsc.Contracts.Settings;
-using OpenDsc.Server.Data;
-using OpenDsc.Server.Entities;
+using OpenDsc.Server.Authorization;
 
 namespace OpenDsc.Server.Endpoints;
 
@@ -50,8 +46,7 @@ public static class ReportEndpoints
         Guid nodeId,
         SubmitReportRequest request,
         ClaimsPrincipal user,
-        ServerDbContext db,
-        JsonSerializerOptions jsonOptions,
+        IReportService reportService,
         CancellationToken cancellationToken)
     {
         var authenticatedNodeId = user.FindFirst("node_id")?.Value;
@@ -60,166 +55,63 @@ public static class ReportEndpoints
             return TypedResults.Forbid();
         }
 
-        if (request.Result is null)
+        try
         {
-            return TypedResults.BadRequest(new ErrorResponse { Error = "Result is required." });
+            var summary = await reportService.SubmitReportAsync(nodeId, request, cancellationToken);
+            return TypedResults.Created($"/api/v1/reports/{summary.Id}", summary);
         }
-
-        var node = await db.Nodes.FindAsync([nodeId], cancellationToken);
-        if (node is null)
+        catch (ArgumentException ex)
         {
-            return TypedResults.NotFound(new ErrorResponse { Error = "Node not found." });
+            return TypedResults.BadRequest(new ErrorResponse { Error = ex.Message });
         }
-
-        bool inDesiredState = request.Result.Results?.All(r =>
+        catch (KeyNotFoundException ex)
         {
-            if (r.Result.TryGetProperty("inDesiredState", out var prop))
-            {
-                return prop.GetBoolean();
-            }
-            return true;
-        }) ?? true;
-
-        var report = new Report
-        {
-            Id = Guid.NewGuid(),
-            NodeId = nodeId,
-            Timestamp = DateTimeOffset.UtcNow,
-            Operation = request.Operation,
-            InDesiredState = inDesiredState,
-            HadErrors = request.Result.HadErrors,
-            ResultJson = JsonSerializer.Serialize(request.Result, jsonOptions)
-        };
-
-        db.Reports.Add(report);
-
-        var previousStatus = node.Status;
-        node.LastCheckIn = DateTimeOffset.UtcNow;
-        node.Status = report.HadErrors ? NodeStatus.Error
-            : report.InDesiredState ? NodeStatus.Compliant
-            : NodeStatus.NonCompliant;
-
-        await db.SaveChangesAsync(cancellationToken);
-
-        var summary = new ReportSummary
-        {
-            Id = report.Id,
-            NodeId = report.NodeId,
-            NodeFqdn = node.Fqdn,
-            Timestamp = report.Timestamp,
-            Operation = report.Operation,
-            InDesiredState = report.InDesiredState,
-            HadErrors = report.HadErrors
-        };
-
-        return TypedResults.Created($"/api/v1/reports/{report.Id}", summary);
+            return TypedResults.NotFound(new ErrorResponse { Error = ex.Message });
+        }
     }
 
     private static async Task<Results<Ok<List<ReportSummary>>, NotFound<ErrorResponse>>> GetNodeReports(
         Guid nodeId,
-        ServerDbContext db,
+        IReportService reportService,
         int? skip,
         int? take,
         DateTimeOffset? from,
         DateTimeOffset? to,
         CancellationToken cancellationToken)
     {
-        var nodeExists = await db.Nodes.AnyAsync(n => n.Id == nodeId, cancellationToken);
-        if (!nodeExists)
+        try
         {
-            return TypedResults.NotFound(new ErrorResponse { Error = "Node not found." });
+            var reports = await reportService.GetReportsAsync(nodeId, skip, take, from, to, cancellationToken);
+            return TypedResults.Ok(reports.ToList());
         }
-
-        var allReports = await db.Reports
-            .AsNoTracking()
-            .Include(r => r.Node)
-            .Where(r => r.NodeId == nodeId)
-            .Where(r => from == null || r.Timestamp >= from)
-            .Where(r => to == null || r.Timestamp <= to)
-            .Select(r => new ReportSummary
-            {
-                Id = r.Id,
-                NodeId = r.NodeId,
-                NodeFqdn = r.Node!.Fqdn,
-                Timestamp = r.Timestamp,
-                Operation = r.Operation,
-                InDesiredState = r.InDesiredState,
-                HadErrors = r.HadErrors
-            })
-            .ToListAsync(cancellationToken);
-
-        var reports = allReports
-            .OrderByDescending(r => r.Timestamp)
-            .Skip(skip ?? 0)
-            .Take(take ?? 100)
-            .ToList();
-
-        return TypedResults.Ok(reports);
+        catch (KeyNotFoundException ex)
+        {
+            return TypedResults.NotFound(new ErrorResponse { Error = ex.Message });
+        }
     }
 
     private static async Task<Ok<List<ReportSummary>>> GetAllReports(
-        ServerDbContext db,
+        IReportService reportService,
         int? skip,
         int? take,
         DateTimeOffset? from,
         DateTimeOffset? to,
         CancellationToken cancellationToken)
     {
-        var allReports = await db.Reports
-            .AsNoTracking()
-            .Include(r => r.Node)
-            .Where(r => from == null || r.Timestamp >= from)
-            .Where(r => to == null || r.Timestamp <= to)
-            .Select(r => new ReportSummary
-            {
-                Id = r.Id,
-                NodeId = r.NodeId,
-                NodeFqdn = r.Node!.Fqdn,
-                Timestamp = r.Timestamp,
-                Operation = r.Operation,
-                InDesiredState = r.InDesiredState,
-                HadErrors = r.HadErrors
-            })
-            .ToListAsync(cancellationToken);
-
-        var reports = allReports
-            .OrderByDescending(r => r.Timestamp)
-            .Skip(skip ?? 0)
-            .Take(take ?? 100)
-            .ToList();
-
-        return TypedResults.Ok(reports);
+        var reports = await reportService.GetReportsAsync(null, skip, take, from, to, cancellationToken);
+        return TypedResults.Ok(reports.ToList());
     }
 
     private static async Task<Results<Ok<ReportDetails>, NotFound<ErrorResponse>>> GetReport(
         Guid reportId,
-        ServerDbContext db,
-        JsonSerializerOptions jsonOptions,
+        IReportService reportService,
         CancellationToken cancellationToken)
     {
-        var report = await db.Reports
-            .AsNoTracking()
-            .Include(r => r.Node)
-            .FirstOrDefaultAsync(r => r.Id == reportId, cancellationToken);
-
-        if (report is null)
+        var details = await reportService.GetReportAsync(reportId, cancellationToken);
+        if (details is null)
         {
             return TypedResults.NotFound(new ErrorResponse { Error = "Report not found." });
         }
-
-        var details = new ReportDetails
-        {
-            Id = report.Id,
-            NodeId = report.NodeId,
-            NodeFqdn = report.Node?.Fqdn ?? string.Empty,
-            Timestamp = report.Timestamp,
-            Operation = report.Operation,
-            InDesiredState = report.InDesiredState,
-            HadErrors = report.HadErrors,
-            Result = report.ResultJson is not null
-                ? JsonSerializer.Deserialize<Schema.DscResult>(report.ResultJson, jsonOptions)
-                : null
-        };
 
         return TypedResults.Ok(details);
     }

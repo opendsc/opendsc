@@ -295,7 +295,7 @@ public sealed class OidcMiddlewareTests : IAsyncLifetime
             IsActive = true,
             RequirePasswordChange = true,
             PasswordHash = null,
-            AccountType = OpenDsc.Server.Entities.AccountType.User,
+            AccountType = OpenDsc.Contracts.Users.AccountType.User,
             CreatedAt = DateTimeOffset.UtcNow,
         });
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);

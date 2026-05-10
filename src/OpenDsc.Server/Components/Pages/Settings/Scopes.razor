@@ -3,16 +3,19 @@
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 @using Microsoft.EntityFrameworkCore
+@using OpenDsc.Contracts.Configurations
 @using OpenDsc.Server.Entities
 
 <MudCard Class="mt-4">
     <MudCardHeader>
         <CardHeaderContent>
             <MudText Typo="Typo.h6">Scopes</MudText>
-            <MudText Typo="Typo.body2">Manage scope types and their values. Higher precedence types are evaluated first.</MudText>
+            <MudText Typo="Typo.body2">Manage scope types and their values. Higher precedence types are evaluated first.
+            </MudText>
         </CardHeaderContent>
         <CardHeaderActions>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateScopeType" StartIcon="@Icons.Material.Filled.Add">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateScopeType"
+                       StartIcon="@Icons.Material.Filled.Add">
                 Create Scope Type
             </MudButton>
         </CardHeaderActions>
@@ -30,12 +33,10 @@
                     <MudCardHeader>
                         <CardHeaderContent>
                             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                                <MudIconButton Icon="@Icons.Material.Filled.ArrowUpward"
-                                               Size="Size.Small"
+                                <MudIconButton Icon="@Icons.Material.Filled.ArrowUpward" Size="Size.Small"
                                                Disabled="@(scopeType.IsSystem || scopeType == scopeTypes.First() || (scopeTypes.IndexOf(scopeType) > 0 && scopeTypes[scopeTypes.IndexOf(scopeType) - 1].IsSystem))"
                                                OnClick="@(() => MoveUp(scopeType))" />
-                                <MudIconButton Icon="@Icons.Material.Filled.ArrowDownward"
-                                               Size="Size.Small"
+                                <MudIconButton Icon="@Icons.Material.Filled.ArrowDownward" Size="Size.Small"
                                                Disabled="@(scopeType.IsSystem || scopeType == scopeTypes.Last() || (scopeTypes.IndexOf(scopeType) < scopeTypes.Count - 1 && scopeTypes[scopeTypes.IndexOf(scopeType) + 1].IsSystem))"
                                                OnClick="@(() => MoveDown(scopeType))" />
                                 <MudText Typo="Typo.h6">@scopeType.Name</MudText>
@@ -57,208 +58,207 @@
                                 }
                                 @if (scopeType.Name == "Node")
                                 {
-                                    <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Filled.Computer">@nodeCount Nodes</MudChip>
-                                    <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Filled.Article">@scopeTypeAllParamFileCounts.GetValueOrDefault(scopeType.Id, 0) Parameter Files</MudChip>
-                                }
+                                    <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Filled.Computer">@nodeCount Nodes
+                                    </MudChip>
+                                    <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Filled.Article">
+                                        @scopeTypeAllParamFileCounts.GetValueOrDefault(scopeType.Id, 0) Parameter Files</MudChip>
+                                    }
                                 else if (scopeType.Name == "Default")
-                                {
-                                    <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Filled.Article">@scopeTypeAllParamFileCounts.GetValueOrDefault(scopeType.Id, 0) Parameter Files</MudChip>
-                                }
-                                else
-                                {
-                                    var scopeNodeTotal = scopeValues.Where(sv => sv.ScopeTypeId == scopeType.Id).Sum(sv => sv.NodeTags.Count);
-                                    <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Filled.Computer">@scopeNodeTotal Nodes</MudChip>
-                                    <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Filled.Article">@scopeTypeAllParamFileCounts.GetValueOrDefault(scopeType.Id, 0) Parameter Files</MudChip>
-                                }
-                                <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">Precedence: @scopeType.Precedence</MudChip>
-                            </MudStack>
-                            @if (!string.IsNullOrEmpty(scopeType.Description))
-                            {
-                                <MudText Typo="Typo.body2">@scopeType.Description</MudText>
-                            }
-                        </CardHeaderContent>
-                        <CardHeaderActions>
-                            @if (scopeType.ValueMode == ScopeValueMode.Restricted && scopeType.Name != "Node")
-                            {
-                                <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Primary" OnClick="@(() => CreateScopeValue(scopeType))" StartIcon="@Icons.Material.Filled.Add">
-                                    Add Value
-                                </MudButton>
-                            }
-                            <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                           Size="Size.Small"
-                                           Color="Color.Primary"
-                                           Disabled="@(scopeType.IsSystem || scopeType.Name == "Node" || scopeType.Name == "Default")"
-                                           OnClick="@(() => EditScopeType(scopeType))" />
-                            <MudTooltip Text="@(scopeType.IsSystem ? "System types cannot be deleted" : (!CanDeleteScopeType(scopeType) ? "One or more values are in use; remove associated nodes/parameter files first" : null))">
-                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                               Size="Size.Small"
-                                               Color="Color.Error"
-                                               Disabled="@(scopeType.IsSystem || !CanDeleteScopeType(scopeType))"
-                                               OnClick="@(() => DeleteScopeType(scopeType))" />
-                            </MudTooltip>
-                            @if (scopeType.IsSystem)
-                            {
-                                @if (scopeType.IsEnabled)
-                                {
-                                    var disableParamCount = scopeTypeAllParamFileCounts.GetValueOrDefault(scopeType.Id, 0);
-                                    var disableBlocked = disableParamCount > 0;
-                                    var disableTooltip = disableBlocked
-                                        ? $"Cannot disable: {disableParamCount} parameter file(s) exist."
-                                        : "Disable this scope type";
-                                    <MudTooltip Text="@disableTooltip">
-                                        <MudIconButton Icon="@Icons.Material.Filled.Block"
-                                                       Size="Size.Small"
-                                                       Color="Color.Warning"
-                                                       Disabled="@disableBlocked"
-                                                       OnClick="@(() => DisableScopeType(scopeType))" />
-                                    </MudTooltip>
-                                }
-                                else
-                                {
-                                    <MudTooltip Text="Enable this scope type">
-                                        <MudIconButton Icon="@Icons.Material.Filled.CheckCircle"
-                                                       Size="Size.Small"
-                                                       Color="Color.Success"
-                                                       OnClick="@(() => EnableScopeType(scopeType))" />
-                                    </MudTooltip>
-                                }
-                            }
-                        </CardHeaderActions>
-                    </MudCardHeader>
-                    @if (scopeType.ValueMode == ScopeValueMode.Restricted)
-                    {
-                        var values = scopeValues.Where(sv => sv.ScopeTypeId == scopeType.Id).ToList();
-                        @if (values.Any())
-                        {
-                            <MudCardContent>
-                                <MudTable Items="@values" Dense="true" Hover="true">
-                                    <HeaderContent>
-                                        <MudTh>Value</MudTh>
-                                        <MudTh>Description</MudTh>
-                                        <MudTh>Nodes</MudTh>
-                                        <MudTh>Parameter Files</MudTh>
-                                        <MudTh>Actions</MudTh>
-                                    </HeaderContent>
-                                    <RowTemplate>
-                                        <MudTd>@context.Value</MudTd>
-                                        <MudTd>@context.Description</MudTd>
-                                        <MudTd>
-                                            <MudChip T="string" Size="Size.Small">@context.NodeTags.Count</MudChip>
-                                        </MudTd>
-                                        <MudTd>
-                                            <MudChip T="string" Size="Size.Small">@parameterFileCounts.GetValueOrDefault((scopeType.Id, context.Value), 0)</MudChip>
-                                        </MudTd>
-                                        <MudTd>
-                                            <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                                           Size="Size.Small"
-                                                           Color="Color.Primary"
-                                                           OnClick="@(() => EditScopeValue(context))" />
-                                            @{
-                                            bool valueHasNodes = context.NodeTags.Count > 0;
-                                            bool valueHasParams = parameterFileCounts.GetValueOrDefault((scopeType.Id, context.Value), 0) > 0;
-                                            bool canDelete = !valueHasNodes && !valueHasParams;
-                                            string? tooltip = valueHasNodes
-                                                ? "Cannot delete value while nodes are tagged"
-                                                : valueHasParams
-                                                    ? "Cannot delete value while parameter files reference it"
-                                                    : null;
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Filled.Article">
+                                            @scopeTypeAllParamFileCounts.GetValueOrDefault(scopeType.Id, 0) Parameter Files</MudChip>
                                         }
-                                        <MudTooltip Text="@tooltip">
-                                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                                           Size="Size.Small"
-                                                           Color="Color.Error"
-                                                           Disabled="@(!canDelete)"
-                                                           OnClick="@(() => DeleteScopeValue(context))" />
-                                        </MudTooltip>
-                                        </MudTd>
-                                    </RowTemplate>
-                                </MudTable>
-                            </MudCardContent>
-                        }
+                                else
+                                        {
+                                            var scopeNodeTotal = scopeValues.Where(sv => sv.ScopeTypeId == scopeType.Id).Sum(sv =>
+                                sv.NodeTags.Count);
+                                            <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Filled.Computer">@scopeNodeTotal
+                                                Nodes</MudChip>
+                                                <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Filled.Article">
+                                                    @scopeTypeAllParamFileCounts.GetValueOrDefault(scopeType.Id, 0) Parameter Files</MudChip>
+                                                }
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">
+                                                    Precedence: @scopeType.Precedence</MudChip>
+                                                </MudStack>
+                                                @if (!string.IsNullOrEmpty(scopeType.Description))
+                                                {
+                                                    <MudText Typo="Typo.body2">@scopeType.Description</MudText>
+                                                }
+                                            </CardHeaderContent>
+                                            <CardHeaderActions>
+                                                @if (scopeType.ValueMode == ScopeValueMode.Restricted && scopeType.Name != "Node")
+                                                {
+                                                    <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Primary"
+                                                               OnClick="@(() => CreateScopeValue(scopeType))" StartIcon="@Icons.Material.Filled.Add">
+                                                        Add Value
+                                                    </MudButton>
+                                                }
+                                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary"
+                                                               Disabled="@(scopeType.IsSystem || scopeType.Name == "Node" || scopeType.Name == "Default")"
+                                                               OnClick="@(() => EditScopeType(scopeType))" />
+                                                <MudTooltip
+                                                    Text="@(scopeType.IsSystem ? "System types cannot be deleted" : (!CanDeleteScopeType(scopeType) ? "One or more values are in use; remove associated nodes/parameter files first" : null))">
+                                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                                                   Disabled="@(scopeType.IsSystem || !CanDeleteScopeType(scopeType))"
+                                                                   OnClick="@(() => DeleteScopeType(scopeType))" />
+                                                </MudTooltip>
+                                                @if (scopeType.IsSystem)
+                                                {
+                                                    @if (scopeType.IsEnabled)
+                                                    {
+                                                        var disableParamCount = scopeTypeAllParamFileCounts.GetValueOrDefault(scopeType.Id, 0);
+                                                        var disableBlocked = disableParamCount > 0;
+                                                        var disableTooltip = disableBlocked
+                                                            ? $"Cannot disable: {disableParamCount} parameter file(s) exist."
+                                                            : "Disable this scope type";
+                                                        <MudTooltip Text="@disableTooltip">
+                                                            <MudIconButton Icon="@Icons.Material.Filled.Block" Size="Size.Small" Color="Color.Warning"
+                                                                           Disabled="@disableBlocked" OnClick="@(() => DisableScopeType(scopeType))" />
+                                                        </MudTooltip>
+                                                    }
+                                                    else
+                                                    {
+                                                        <MudTooltip Text="Enable this scope type">
+                                                            <MudIconButton Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" Color="Color.Success"
+                                                                           OnClick="@(() => EnableScopeType(scopeType))" />
+                                                        </MudTooltip>
+                                                    }
+                                                }
+                                            </CardHeaderActions>
+                                        </MudCardHeader>
+                                        @if (scopeType.ValueMode == ScopeValueMode.Restricted)
+                                        {
+                                            var values = scopeValues.Where(sv => sv.ScopeTypeId == scopeType.Id).ToList();
+                                            @if (values.Any())
+                                            {
+                                                <MudCardContent>
+                                                    <MudTable Items="@values" Dense="true" Hover="true">
+                                                        <HeaderContent>
+                                                            <MudTh>Value</MudTh>
+                                                            <MudTh>Description</MudTh>
+                                                            <MudTh>Nodes</MudTh>
+                                                            <MudTh>Parameter Files</MudTh>
+                                                            <MudTh>Actions</MudTh>
+                                                        </HeaderContent>
+                                                        <RowTemplate>
+                                                            <MudTd>@context.Value</MudTd>
+                                                            <MudTd>@context.Description</MudTd>
+                                                            <MudTd>
+                                                                <MudChip T="string" Size="Size.Small">@context.NodeTags.Count</MudChip>
+                                                            </MudTd>
+                                                            <MudTd>
+                                                                <MudChip T="string" Size="Size.Small">@parameterFileCounts.GetValueOrDefault((scopeType.Id,
+                                                                                                    context.Value), 0)</MudChip>
+                                                                </MudTd>
+                                                                <MudTd>
+                                                                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary"
+                                                                                   OnClick="@(() => EditScopeValue(context))" />
+                                                                    @{
+                                                                        bool valueHasNodes = context.NodeTags.Count > 0;
+                                                                        bool valueHasParams = parameterFileCounts.GetValueOrDefault((scopeType.Id, context.Value),
+                                                        0) > 0;
+                                                                        bool canDelete = !valueHasNodes && !valueHasParams;
+                                                                        string? tooltip = valueHasNodes
+                                                                            ? "Cannot delete value while nodes are tagged"
+                                                                            : valueHasParams
+                                                                                ? "Cannot delete value while parameter files reference it"
+                                                                                : null;
+                                                                    }
+                                                                    <MudTooltip Text="@tooltip">
+                                                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                                                                       Color="Color.Error" Disabled="@(!canDelete)"
+                                                                                       OnClick="@(() => DeleteScopeValue(context))" />
+                                                                    </MudTooltip>
+                                                                </MudTd>
+                                                            </RowTemplate>
+                                                        </MudTable>
+                                                    </MudCardContent>
+                                                }
                         else
-                        {
-                            <MudCardContent>
-                                <MudAlert Severity="Severity.Info" Dense="true">
-                                    <MudText Typo="Typo.body2">No values defined. Click "Add Value" to create predefined values.</MudText>
-                                </MudAlert>
-                            </MudCardContent>
-                        }
-                    }
-                    else if (scopeType.Name == "Node")
-                    {
-                        <MudCardContent>
-                            <MudAlert Severity="Severity.Info" Dense="true">
-                                <MudText Typo="Typo.body2">Node scope validates against registered nodes in the system.</MudText>
-                            </MudAlert>
-                        </MudCardContent>
-                    }
-                    else if (scopeType.Name == "Default")
-                    {
-                        <MudCardContent>
-                            <MudAlert Severity="Severity.Info" Dense="true">
-                                <MudText Typo="Typo.body2">Default scope applies globally without scope values.</MudText>
-                            </MudAlert>
-                        </MudCardContent>
-                    }
-                    else
-                    {
-                        var unrestrictedValues = scopeValues
-                            .Where(sv => sv.ScopeTypeId == scopeType.Id)
-                            .Select(sv => sv.Value)
-                            .Union(parameterFileCounts.Keys
-                                .Where(k => k.scopeTypeId == scopeType.Id)
-                                .Select(k => k.value))
-                            .OrderBy(v => v)
-                            .Select(v => new
-                            {
-                                Value = v,
-                                NodeCount = scopeValues.FirstOrDefault(sv => sv.ScopeTypeId == scopeType.Id && sv.Value == v)?.NodeTags.Count ?? 0,
-                                ParameterFileCount = parameterFileCounts.GetValueOrDefault((scopeType.Id, v), 0)
-                            })
-                            .ToList();
-                        @if (unrestrictedValues.Any())
-                        {
-                            <MudCardContent>
-                                <MudTable Items="@unrestrictedValues" Dense="true" Hover="true">
-                                    <HeaderContent>
-                                        <MudTh>Value</MudTh>
-                                        <MudTh>Nodes</MudTh>
-                                        <MudTh>Parameter Files</MudTh>
-                                        <MudTh>Actions</MudTh>
-                                    </HeaderContent>
-                                    <RowTemplate>
-                                        <MudTd>@context.Value</MudTd>
-                                        <MudTd>
-                                            <MudChip T="string" Size="Size.Small">@context.NodeCount</MudChip>
-                                        </MudTd>
-                                        <MudTd>
-                                            <MudChip T="string" Size="Size.Small">@context.ParameterFileCount</MudChip>
-                                        </MudTd>
-                                        <MudTd>
-                                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                                           Size="Size.Small"
-                                                           Color="Color.Error"
-                                                           Disabled="@(context.NodeCount > 0 || context.ParameterFileCount > 0)"
-                                                           OnClick="@(() => DeleteUnrestrictedValue(scopeType.Id, context.Value, context.NodeCount, context.ParameterFileCount))" />
-                                        </MudTd>
-                                    </RowTemplate>
-                                </MudTable>
-                            </MudCardContent>
-                        }
-                        else
-                        {
-                            <MudCardContent>
-                                <MudAlert Severity="Severity.Info" Dense="true">
-                                    <MudText Typo="Typo.body2">No values have been used yet. Values appear here when nodes are tagged or parameter files are created for this scope.</MudText>
-                                </MudAlert>
-                            </MudCardContent>
-                        }
-                    }
-                </MudCard>
-            }
-        }
-    </MudCardContent>
-</MudCard>
+                                                {
+                                                    <MudCardContent>
+                                                        <MudAlert Severity="Severity.Info" Dense="true">
+                                                            <MudText Typo="Typo.body2">No values defined. Click "Add Value" to create predefined values.
+                                                            </MudText>
+                                                        </MudAlert>
+                                                    </MudCardContent>
+                                                }
+                                            }
+                                            else if (scopeType.Name == "Node")
+                                            {
+                                                <MudCardContent>
+                                                    <MudAlert Severity="Severity.Info" Dense="true">
+                                                        <MudText Typo="Typo.body2">Node scope validates against registered nodes in the system.</MudText>
+                                                    </MudAlert>
+                                                </MudCardContent>
+                                            }
+                                            else if (scopeType.Name == "Default")
+                                            {
+                                                <MudCardContent>
+                                                    <MudAlert Severity="Severity.Info" Dense="true">
+                                                        <MudText Typo="Typo.body2">Default scope applies globally without scope values.</MudText>
+                                                    </MudAlert>
+                                                </MudCardContent>
+                                            }
+                                            else
+                                            {
+                                                var unrestrictedValues = scopeValues
+                                                    .Where(sv => sv.ScopeTypeId == scopeType.Id)
+                                                    .Select(sv => sv.Value)
+                                                    .Union(parameterFileCounts.Keys
+                                                        .Where(k => k.scopeTypeId == scopeType.Id)
+                                                        .Select(k => k.value))
+                                                    .OrderBy(v => v)
+                                                    .Select(v => new
+                                                    {
+                                                        Value = v,
+                                                        NodeCount = scopeValues.FirstOrDefault(sv => sv.ScopeTypeId == scopeType.Id && sv.Value ==
+                                    v)?.NodeTags.Count ?? 0,
+                                                        ParameterFileCount = parameterFileCounts.GetValueOrDefault((scopeType.Id, v), 0)
+                                                    })
+                                                    .ToList();
+                                                @if (unrestrictedValues.Any())
+                                                {
+                                                    <MudCardContent>
+                                                        <MudTable Items="@unrestrictedValues" Dense="true" Hover="true">
+                                                            <HeaderContent>
+                                                                <MudTh>Value</MudTh>
+                                                                <MudTh>Nodes</MudTh>
+                                                                <MudTh>Parameter Files</MudTh>
+                                                                <MudTh>Actions</MudTh>
+                                                            </HeaderContent>
+                                                            <RowTemplate>
+                                                                <MudTd>@context.Value</MudTd>
+                                                                <MudTd>
+                                                                    <MudChip T="string" Size="Size.Small">@context.NodeCount</MudChip>
+                                                                </MudTd>
+                                                                <MudTd>
+                                                                    <MudChip T="string" Size="Size.Small">@context.ParameterFileCount</MudChip>
+                                                                </MudTd>
+                                                                <MudTd>
+                                                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                                                                   Disabled="@(context.NodeCount > 0 || context.ParameterFileCount > 0)"
+                                                                                   OnClick="@(() => DeleteUnrestrictedValue(scopeType.Id, context.Value, context.NodeCount, context.ParameterFileCount))" />
+                                                                </MudTd>
+                                                            </RowTemplate>
+                                                        </MudTable>
+                                                    </MudCardContent>
+                                                }
+                                                else
+                                                {
+                                                    <MudCardContent>
+                                                        <MudAlert Severity="Severity.Info" Dense="true">
+                                                            <MudText Typo="Typo.body2">No values have been used yet. Values appear here when nodes are tagged or
+                                                                parameter files are created for this scope.</MudText>
+                                                            </MudAlert>
+                                                        </MudCardContent>
+                                                    }
+                                                }
+                                            </MudCard>
+                                        }
+                                    }
+                                </MudCardContent>
+                            </MudCard>
 
 @code {
     private List<ScopeType> scopeTypes = [];
@@ -463,7 +463,8 @@
                 return false;
         }
 
-        if (parameterFileCounts.Keys.Any(k => k.scopeTypeId == scopeType.Id && !values.Any(v => v.Value == k.value) && parameterFileCounts[k] > 0))
+        if (parameterFileCounts.Keys.Any(k => k.scopeTypeId == scopeType.Id && !values.Any(v => v.Value == k.value) &&
+parameterFileCounts[k] > 0))
         {
             return false;
         }
@@ -516,7 +517,8 @@
     {
         if (!CanDeleteScopeType(scopeType))
         {
-            Snackbar.Add("Cannot delete scope type because one or more values are in use by nodes or parameter files.", Severity.Warning);
+            Snackbar.Add("Cannot delete scope type because one or more values are in use by nodes or parameter files.",
+Severity.Warning);
             return;
         }
 
@@ -560,14 +562,16 @@
 
         if (parameterCount > 0)
         {
-            Snackbar.Add($"Cannot delete scope value '{fresh.Value}' because {parameterCount} parameter(s) are using it.", Severity.Warning);
+            Snackbar.Add($"Cannot delete scope value '{fresh.Value}' because {parameterCount} parameter(s) are using it.",
+Severity.Warning);
             return;
         }
 
         var nodeCount = fresh.NodeTags.Count;
         if (nodeCount > 0)
         {
-            Snackbar.Add($"Cannot delete scope value '{fresh.Value}' because it is assigned to {nodeCount} node(s).", Severity.Warning);
+            Snackbar.Add($"Cannot delete scope value '{fresh.Value}' because it is assigned to {nodeCount} node(s).",
+Severity.Warning);
             return;
         }
         var message = $"Delete '{fresh.Value}'?";

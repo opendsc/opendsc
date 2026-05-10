@@ -1,6 +1,7 @@
 @using Microsoft.EntityFrameworkCore
 @using MudBlazor
 @using System.Text.RegularExpressions
+@using OpenDsc.Contracts.Users
 @inject ServerDbContext Db
 @inject ISnackbar Snackbar
 @inject IPasswordHasher PasswordHasher
@@ -9,14 +10,17 @@
     <DialogContent>
         @if (user != null)
         {
-            <MudTextField @bind-Value="user.Username" Label="Username" Variant="Variant.Outlined" Disabled="true" Class="mb-3" />
+            <MudTextField @bind-Value="user.Username" Label="Username" Variant="Variant.Outlined" Disabled="true"
+                          Class="mb-3" />
             <MudTextField @bind-Value="user.Email" Label="Email" Variant="Variant.Outlined" Required="true" Class="mb-3"
                           Immediate="true" Validation="@(new Func<string?, string?>(ValidateEmail))" />
-            <MudSelect @bind-Value="user.AccountType" Label="Account Type" Variant="Variant.Outlined" Class="mb-3" T="AccountType">
+            <MudSelect @bind-Value="user.AccountType" Label="Account Type" Variant="Variant.Outlined" Class="mb-3"
+                       T="AccountType">
                 <MudSelectItem Value="@AccountType.User">User</MudSelectItem>
                 <MudSelectItem Value="@AccountType.ServiceAccount">Service Account</MudSelectItem>
             </MudSelect>
-            <MudTextField @bind-Value="user.Description" Label="Description" Variant="Variant.Outlined" Lines="2" Class="mb-3" />
+            <MudTextField @bind-Value="user.Description" Label="Description" Variant="Variant.Outlined" Lines="2"
+                          Class="mb-3" />
 
             <MudDivider Class="my-3" />
             <MudText Typo="Typo.subtitle2" Class="mb-2">Status</MudText>
@@ -27,7 +31,8 @@
 
             <MudDivider Class="my-3" />
             <MudText Typo="Typo.subtitle2" Class="mb-2">Change Password (optional)</MudText>
-            <MudTextField @bind-Value="newPassword" Label="New Password" Variant="Variant.Outlined" InputType="InputType.Password" />
+            <MudTextField @bind-Value="newPassword" Label="New Password" Variant="Variant.Outlined"
+                          InputType="InputType.Password" />
         }
         else
         {
@@ -36,7 +41,8 @@
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(user == null || ValidateEmail(user?.Email) != null)">Save</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit"
+                   Disabled="@(user == null || ValidateEmail(user?.Email) != null)">Save</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -54,7 +60,8 @@
     private string? newPassword;
     private bool isLocked;
 
-    private static readonly Regex EmailRegex = new(@"^[^\s@]+@[^\s@]+\.[^\s@]+$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex EmailRegex = new(@"^[^\s@]+@[^\s@]+\.[^\s@]+$", RegexOptions.Compiled |
+RegexOptions.IgnoreCase);
 
     private string? ValidateEmail(string? value)
     {

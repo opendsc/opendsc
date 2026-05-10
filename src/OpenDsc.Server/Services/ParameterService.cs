@@ -10,6 +10,7 @@ using Microsoft.Extensions.Options;
 
 using NuGet.Versioning;
 
+using OpenDsc.Contracts.Configurations;
 using OpenDsc.Contracts.Parameters;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;

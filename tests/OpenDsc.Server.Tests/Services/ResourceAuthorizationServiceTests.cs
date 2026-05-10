@@ -11,6 +11,7 @@ using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 
+using OpenDsc.Contracts.Permissions;
 using OpenDsc.Server.Authorization;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
