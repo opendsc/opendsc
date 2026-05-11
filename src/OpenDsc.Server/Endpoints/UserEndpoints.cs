@@ -4,13 +4,9 @@
 
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 using OpenDsc.Contracts.Users;
 using OpenDsc.Server.Authorization;
-using OpenDsc.Server.Data;
-using OpenDsc.Server.Entities;
-using OpenDsc.Server.Services;
 
 namespace OpenDsc.Server.Endpoints;
 
@@ -62,348 +58,144 @@ public static class UserEndpoints
             .WithDescription("Sets the roles for a user, replacing existing role assignments.");
     }
 
-    private static async Task<Ok<List<UserDto>>> GetUsers(ServerDbContext db)
+    private static async Task<Ok<List<UserSummary>>> GetUsers(
+        IUserService service,
+        CancellationToken cancellationToken)
     {
-        var users = await db.Users
-            .OrderBy(u => u.Username)
-            .Select(u => new UserDto
-            {
-                Id = u.Id,
-                Username = u.Username,
-                Email = u.Email,
-                AccountType = u.AccountType.ToString(),
-                IsActive = u.IsActive,
-                RequirePasswordChange = u.RequirePasswordChange,
-                LockoutEnd = u.LockoutEnd,
-                CreatedAt = u.CreatedAt,
-                ModifiedAt = u.ModifiedAt
-            })
-            .ToListAsync();
-
-        return TypedResults.Ok(users);
+        return TypedResults.Ok((await service.GetUsersAsync(cancellationToken)).ToList());
     }
 
-    private static async Task<Results<Ok<UserDetailDto>, NotFound>> GetUser(
+    private static async Task<Results<Ok<UserDetails>, NotFound>> GetUser(
         Guid id,
-        ServerDbContext db)
+        IUserService service,
+        CancellationToken cancellationToken)
     {
-        var user = await db.Users.FindAsync(id);
-        if (user == null)
+        try
+        {
+            var user = await service.GetUserAsync(id, cancellationToken);
+            return TypedResults.Ok(user);
+        }
+        catch (KeyNotFoundException)
         {
             return TypedResults.NotFound();
         }
-
-        var roleIds = await db.UserRoles
-            .Where(ur => ur.UserId == id)
-            .Select(ur => ur.RoleId)
-            .ToListAsync();
-
-        var roles = await db.Roles
-            .Where(r => roleIds.Contains(r.Id))
-            .Select(r => new RoleDto
-            {
-                Id = r.Id,
-                Name = r.Name,
-                IsSystemRole = r.IsSystemRole
-            })
-            .ToListAsync();
-
-        var groupIds = await db.UserGroups
-            .Where(ug => ug.UserId == id)
-            .Select(ug => ug.GroupId)
-            .ToListAsync();
-
-        var groups = await db.Groups
-            .Where(g => groupIds.Contains(g.Id))
-            .Select(g => new GroupDto
-            {
-                Id = g.Id,
-                Name = g.Name
-            })
-            .ToListAsync();
-
-        return TypedResults.Ok(new UserDetailDto
-        {
-            Id = user.Id,
-            Username = user.Username,
-            Email = user.Email,
-            AccountType = user.AccountType.ToString(),
-            IsActive = user.IsActive,
-            RequirePasswordChange = user.RequirePasswordChange,
-            LockoutEnd = user.LockoutEnd,
-            AccessFailedCount = user.AccessFailedCount,
-            CreatedAt = user.CreatedAt,
-            ModifiedAt = user.ModifiedAt ?? user.CreatedAt,
-            Roles = roles,
-            Groups = groups
-        });
     }
 
-    private static async Task<Results<Created<UserDto>, BadRequest<string>>> CreateUser(
+    private static async Task<Results<Created<UserSummary>, BadRequest<string>>> CreateUser(
         [FromBody] CreateUserRequest request,
-        ServerDbContext db,
-        IPasswordHasher passwordHasher)
+        IUserService service,
+        CancellationToken cancellationToken)
     {
-        if (await db.Users.AnyAsync(u => u.Username == request.Username))
+        try
         {
-            return TypedResults.BadRequest("Username already exists");
+            var user = await service.CreateUserAsync(request, cancellationToken);
+            return TypedResults.Created($"/api/v1/users/{user.Id}", user);
         }
-
-        if (!Enum.TryParse<AccountType>(request.AccountType, ignoreCase: true, out var accountType))
+        catch (InvalidOperationException ex)
         {
-            var validValues = string.Join(", ", Enum.GetNames(typeof(AccountType)));
-            return TypedResults.BadRequest($"Invalid account type '{request.AccountType}'. Valid values are: {validValues}.");
+            return TypedResults.BadRequest(ex.Message);
         }
-
-        var (hash, salt) = passwordHasher.HashPassword(request.Password);
-
-        var user = new User
-        {
-            Id = Guid.NewGuid(),
-            Username = request.Username,
-            Email = request.Email,
-            AccountType = accountType,
-            PasswordHash = hash,
-            PasswordSalt = salt,
-            IsActive = true,
-            RequirePasswordChange = request.RequirePasswordChange,
-            CreatedAt = DateTimeOffset.UtcNow,
-            ModifiedAt = DateTimeOffset.UtcNow
-        };
-
-        db.Users.Add(user);
-        await db.SaveChangesAsync();
-
-        return TypedResults.Created($"/api/v1/users/{user.Id}", new UserDto
-        {
-            Id = user.Id,
-            Username = user.Username,
-            Email = user.Email,
-            AccountType = user.AccountType.ToString(),
-            IsActive = user.IsActive,
-            RequirePasswordChange = user.RequirePasswordChange,
-            LockoutEnd = user.LockoutEnd,
-            CreatedAt = user.CreatedAt,
-            ModifiedAt = user.ModifiedAt
-        });
     }
 
-    private static async Task<Results<Ok<UserDto>, NotFound, BadRequest<string>>> UpdateUser(
+    private static async Task<Results<Ok<UserSummary>, NotFound, BadRequest<string>>> UpdateUser(
         Guid id,
         [FromBody] UpdateUserRequest request,
-        ServerDbContext db)
+        IUserService service,
+        CancellationToken cancellationToken)
     {
-        var user = await db.Users.FindAsync(id);
-        if (user == null)
+        try
         {
-            return TypedResults.NotFound();
+            var updated = await service.UpdateUserAsync(id, request, cancellationToken);
+            if (updated is null)
+            {
+                return TypedResults.NotFound();
+            }
+
+            return TypedResults.Ok(updated);
         }
-
-        if (request.Username != user.Username &&
-            await db.Users.AnyAsync(u => u.Username == request.Username && u.Id != id))
+        catch (InvalidOperationException ex)
         {
-            return TypedResults.BadRequest("Username already exists");
+            return TypedResults.BadRequest(ex.Message);
         }
-
-        user.Username = request.Username;
-        user.Email = request.Email;
-        user.IsActive = request.IsActive;
-        user.ModifiedAt = DateTimeOffset.UtcNow;
-
-        await db.SaveChangesAsync();
-
-        return TypedResults.Ok(new UserDto
-        {
-            Id = user.Id,
-            Username = user.Username,
-            Email = user.Email,
-            AccountType = user.AccountType.ToString(),
-            IsActive = user.IsActive,
-            RequirePasswordChange = user.RequirePasswordChange,
-            LockoutEnd = user.LockoutEnd,
-            CreatedAt = user.CreatedAt,
-            ModifiedAt = user.ModifiedAt
-        });
     }
 
     private static async Task<Results<NoContent, NotFound>> DeleteUser(
         Guid id,
-        ServerDbContext db)
+        IUserService service,
+        CancellationToken cancellationToken)
     {
-        var user = await db.Users.FindAsync(id);
-        if (user == null)
+        try
+        {
+            await service.DeleteUserAsync(id, cancellationToken);
+            return TypedResults.NoContent();
+        }
+        catch (KeyNotFoundException)
         {
             return TypedResults.NotFound();
         }
-
-        db.Users.Remove(user);
-        await db.SaveChangesAsync();
-
-        return TypedResults.NoContent();
     }
 
     private static async Task<Results<NoContent, NotFound>> ResetPassword(
         Guid id,
         [FromBody] ResetPasswordRequest request,
-        ServerDbContext db,
-        IPasswordHasher passwordHasher)
+        IUserService service,
+        CancellationToken cancellationToken)
     {
-        var user = await db.Users.FindAsync(id);
-        if (user == null)
+        try
+        {
+            await service.ResetPasswordAsync(id, request, cancellationToken);
+            return TypedResults.NoContent();
+        }
+        catch (KeyNotFoundException)
         {
             return TypedResults.NotFound();
         }
-
-        var (hash, salt) = passwordHasher.HashPassword(request.NewPassword);
-        user.PasswordHash = hash;
-        user.PasswordSalt = salt;
-        user.RequirePasswordChange = true;
-        user.ModifiedAt = DateTimeOffset.UtcNow;
-
-        await db.SaveChangesAsync();
-
-        return TypedResults.NoContent();
     }
 
     private static async Task<Results<Ok, NotFound>> UnlockUser(
         Guid id,
-        ServerDbContext db)
+        IUserService service,
+        CancellationToken cancellationToken)
     {
-        var user = await db.Users.FindAsync(id);
-        if (user == null)
+        try
+        {
+            await service.UnlockUserAsync(id, cancellationToken);
+            return TypedResults.Ok();
+        }
+        catch (KeyNotFoundException)
         {
             return TypedResults.NotFound();
         }
-
-        user.LockoutEnd = null;
-        user.AccessFailedCount = 0;
-        user.ModifiedAt = DateTimeOffset.UtcNow;
-
-        await db.SaveChangesAsync();
-
-        return TypedResults.Ok();
     }
 
-    private static async Task<Results<Ok<List<RoleDto>>, NotFound>> GetUserRoles(
+    private static async Task<Results<Ok<List<RoleSummary>>, NotFound>> GetUserRoles(
         Guid id,
-        ServerDbContext db)
+        IUserService service,
+        CancellationToken cancellationToken)
     {
-        if (!await db.Users.AnyAsync(u => u.Id == id))
+        var roles = await service.GetUserRolesAsync(id, cancellationToken);
+        if (roles is null)
         {
             return TypedResults.NotFound();
         }
 
-        var roleIds = await db.UserRoles
-            .Where(ur => ur.UserId == id)
-            .Select(ur => ur.RoleId)
-            .ToListAsync();
-
-        var roles = await db.Roles
-            .Where(r => roleIds.Contains(r.Id))
-            .Select(r => new RoleDto
-            {
-                Id = r.Id,
-                Name = r.Name,
-                IsSystemRole = r.IsSystemRole
-            })
-            .ToListAsync();
-
-        return TypedResults.Ok(roles);
+        return TypedResults.Ok(roles.ToList());
     }
 
     private static async Task<Results<Ok, NotFound>> SetUserRoles(
         Guid id,
-        [FromBody] SetRolesRequest request,
-        ServerDbContext db)
+        [FromBody] SetUserRolesRequest request,
+        IUserService service,
+        CancellationToken cancellationToken)
     {
-        if (!await db.Users.AnyAsync(u => u.Id == id))
+        try
+        {
+            await service.SetUserRolesAsync(id, request, cancellationToken);
+            return TypedResults.Ok();
+        }
+        catch (KeyNotFoundException)
         {
             return TypedResults.NotFound();
         }
-
-        var existingRoles = await db.UserRoles
-            .Where(ur => ur.UserId == id)
-            .ToListAsync();
-
-        db.UserRoles.RemoveRange(existingRoles);
-
-        var newRoles = request.RoleIds.Select(roleId => new UserRole
-        {
-            UserId = id,
-            RoleId = roleId
-        });
-
-        db.UserRoles.AddRange(newRoles);
-        await db.SaveChangesAsync();
-
-        return TypedResults.Ok();
     }
-}
-
-public sealed class UserDto
-{
-    public Guid Id { get; set; }
-    public string Username { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-    public string AccountType { get; set; } = string.Empty;
-    public bool IsActive { get; set; }
-    public bool RequirePasswordChange { get; set; }
-    public DateTimeOffset? LockoutEnd { get; set; }
-    public DateTimeOffset CreatedAt { get; set; }
-    public DateTimeOffset? ModifiedAt { get; set; }
-}
-
-public sealed class UserDetailDto
-{
-    public Guid Id { get; set; }
-    public string Username { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-    public string AccountType { get; set; } = string.Empty;
-    public bool IsActive { get; set; }
-    public bool RequirePasswordChange { get; set; }
-    public DateTimeOffset? LockoutEnd { get; set; }
-    public int AccessFailedCount { get; set; }
-    public DateTimeOffset CreatedAt { get; set; }
-    public DateTimeOffset? ModifiedAt { get; set; }
-    public List<RoleDto> Roles { get; set; } = [];
-    public List<GroupDto> Groups { get; set; } = [];
-}
-
-public sealed class CreateUserRequest
-{
-    public string Username { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-    public string Password { get; set; } = string.Empty;
-    public string AccountType { get; set; } = "User";
-    public bool RequirePasswordChange { get; set; } = true;
-}
-
-public sealed class UpdateUserRequest
-{
-    public string Username { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-    public bool IsActive { get; set; }
-}
-
-public sealed class ResetPasswordRequest
-{
-    public string NewPassword { get; set; } = string.Empty;
-}
-
-public sealed class SetRolesRequest
-{
-    public Guid[] RoleIds { get; set; } = [];
-}
-
-public sealed class RoleDto
-{
-    public Guid Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public bool IsSystemRole { get; set; }
-}
-
-public sealed class GroupDto
-{
-    public Guid Id { get; set; }
-    public string Name { get; set; } = string.Empty;
 }

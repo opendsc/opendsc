@@ -86,7 +86,7 @@ public class ParameterEndpointsTests : IDisposable
         var result = await response.Content.ReadFromJsonAsync<ParameterFileDto>(TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
         result!.Version.Should().Be("1.0.0");
-        result.Status.Should().Be(ParameterVersionStatus.Draft);
+        result.Status.Should().Be("Draft");
     }
 
     [Fact]
@@ -148,7 +148,7 @@ public class ParameterEndpointsTests : IDisposable
         var result = await response.Content.ReadFromJsonAsync<ParameterFileDto>(TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
         result!.Version.Should().Be("1.0.0");
-        result.Status.Should().Be(ParameterVersionStatus.Published);
+        result.Status.Should().Be("Published");
     }
 
     [Fact]
@@ -395,7 +395,7 @@ public class ParameterEndpointsTests : IDisposable
         var result = await response.Content.ReadFromJsonAsync<ParameterFileDto>(TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
         result!.ScopeValue.Should().Be("Development");
-        result.Status.Should().Be(ParameterVersionStatus.Draft);
+        result.Status.Should().Be("Draft");
     }
 
     [Fact]
@@ -540,7 +540,7 @@ public class ParameterEndpointsTests : IDisposable
         var result = await response.Content.ReadFromJsonAsync<ParameterFileDto>(TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
         result!.ScopeValue.Should().BeNullOrEmpty();
-        result.Status.Should().Be(ParameterVersionStatus.Draft);
+        result.Status.Should().Be("Draft");
     }
 
     // ── Unrestricted (user-created) scope type ───────────────────────────────
@@ -596,7 +596,7 @@ public class ParameterEndpointsTests : IDisposable
         var result = await response.Content.ReadFromJsonAsync<ParameterFileDto>(TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
         result!.ScopeValue.Should().Be("us-west");
-        result.Status.Should().Be(ParameterVersionStatus.Draft);
+        result.Status.Should().Be("Draft");
     }
 }
 
@@ -615,7 +615,7 @@ public sealed class ParameterFileDto
     public required string Version { get; init; }
     public required int MajorVersion { get; init; }
     public required string Checksum { get; init; }
-    public required ParameterVersionStatus Status { get; init; }
+    public required string Status { get; init; }
     public required bool IsPassthrough { get; init; }
     public required DateTimeOffset CreatedAt { get; init; }
 }

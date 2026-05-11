@@ -6,8 +6,8 @@
 @attribute [Authorize]
 @using System.Security.Claims
 @using System.Text.RegularExpressions
-@inject ServerDbContext Db
-@inject IPasswordHasher PasswordHasher
+@using OpenDsc.Contracts.Users
+@inject IUserService UserService
 @inject IHttpContextAccessor HttpContextAccessor
 @inject IPersonalAccessTokenService PatService
 @inject IDialogService Dialog
@@ -28,25 +28,15 @@
             </CardHeaderContent>
         </MudCardHeader>
         <MudCardContent>
-            <MudTextField Value="@_username"
-                          Label="Username"
-                          Variant="Variant.Outlined"
-                          ReadOnly="true"
-                          Disabled="true"
+            <MudTextField Value="@_username" Label="Username" Variant="Variant.Outlined" ReadOnly="true" Disabled="true"
                           Class="mb-3" />
 
-            <MudTextField @bind-Value="_email"
-                          Label="Email Address"
-                          Variant="Variant.Outlined"
-                          InputType="InputType.Email"
-                          Class="mb-1"
-                          Immediate="true"
+            <MudTextField @bind-Value="_email" Label="Email Address" Variant="Variant.Outlined"
+                          InputType="InputType.Email" Class="mb-1" Immediate="true"
                           Validation="@(new Func<string?, string?>(ValidateEmail))" />
         </MudCardContent>
         <MudCardActions>
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Primary"
-                       OnClick="SaveProfile"
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveProfile"
                        Disabled="@(_savingProfile || ValidateEmail(_email) != null)">
                 @if (_savingProfile)
                 {
@@ -64,157 +54,146 @@
     @* --- Change Password --- *@
     @if (_authProvider != null)
     {
-        <MudAlert Severity="Severity.Info">Authenticated via @_authProvider. Password management is not available for external accounts.</MudAlert>
-    }
+        <MudAlert Severity="Severity.Info">Authenticated via @_authProvider. Password management is not available for
+            external accounts.</MudAlert>
+        }
     else
-    {
-    <MudCard>
-        <MudCardHeader>
-            <CardHeaderContent>
-                <MudText Typo="Typo.h6">Change Password</MudText>
-            </CardHeaderContent>
-        </MudCardHeader>
-        <MudCardContent>
-            <MudTextField @bind-Value="_currentPassword"
-                          Label="Current Password"
-                          InputType="InputType.Password"
-                          Variant="Variant.Outlined"
-                          Class="mb-3" />
+        {
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Change Password</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudTextField @bind-Value="_currentPassword" Label="Current Password" InputType="InputType.Password"
+                                  Variant="Variant.Outlined" Class="mb-3" />
 
-            <MudTextField @bind-Value="_newPassword"
-                          Label="New Password"
-                          InputType="InputType.Password"
-                          Variant="Variant.Outlined"
-                          Class="mb-3" />
+                    <MudTextField @bind-Value="_newPassword" Label="New Password" InputType="InputType.Password"
+                                  Variant="Variant.Outlined" Class="mb-3" />
 
-            <MudTextField @bind-Value="_confirmPassword"
-                          Label="Confirm New Password"
-                          InputType="InputType.Password"
-                          Variant="Variant.Outlined"
-                          Class="mb-1" />
-        </MudCardContent>
-        <MudCardActions>
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Primary"
-                       OnClick="ChangePassword"
-                       Disabled="@(_savingPassword || string.IsNullOrWhiteSpace(_currentPassword) || string.IsNullOrWhiteSpace(_newPassword))">
-                @if (_savingPassword)
+                    <MudTextField @bind-Value="_confirmPassword" Label="Confirm New Password" InputType="InputType.Password"
+                                  Variant="Variant.Outlined" Class="mb-1" />
+                </MudCardContent>
+                <MudCardActions>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ChangePassword"
+                               Disabled="@(_savingPassword || string.IsNullOrWhiteSpace(_currentPassword) || string.IsNullOrWhiteSpace(_newPassword))">
+                        @if (_savingPassword)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            <span>Changing...</span>
+                        }
+                        else
+                        {
+                            <span>Change Password</span>
+                        }
+                    </MudButton>
+                </MudCardActions>
+            </MudCard>
+        }
+
+        @* --- Personal Access Tokens --- *@
+        <MudCard>
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">Personal Access Tokens</MudText>
+                </CardHeaderContent>
+                <CardHeaderActions>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+                               OnClick="CreateToken">
+                        Create Token
+                    </MudButton>
+                </CardHeaderActions>
+            </MudCardHeader>
+            <MudCardContent>
+                @if (_newToken is { } newToken)
                 {
-                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                    <span>Changing...</span>
-                }
-                else
-                {
-                    <span>Change Password</span>
-                }
-            </MudButton>
-        </MudCardActions>
-    </MudCard>
-    }
-
-    @* --- Personal Access Tokens --- *@
-    <MudCard>
-        <MudCardHeader>
-            <CardHeaderContent>
-                <MudText Typo="Typo.h6">Personal Access Tokens</MudText>
-            </CardHeaderContent>
-            <CardHeaderActions>
-                <MudButton Variant="Variant.Filled"
-                           Color="Color.Primary"
-                           StartIcon="@Icons.Material.Filled.Add"
-                           OnClick="CreateToken">
-                    Create Token
-                </MudButton>
-            </CardHeaderActions>
-        </MudCardHeader>
-        <MudCardContent>
-            @if (_newToken is { } newToken)
-            {
-                <MudAlert Severity="Severity.Success" Class="mb-4" ShowCloseIcon="true" CloseIconClicked="DismissNewToken">
-                    <MudText Typo="Typo.body2" Class="mb-1">
-                        <strong>Token created: @newToken.Metadata.Name</strong> — Copy it now, it won't be shown again.
-                    </MudText>
-                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                        <MudText Typo="Typo.body2" Style="font-family: monospace; word-break: break-all;">@newToken.PlaintextToken</MudText>
-                        <MudTooltip Text="Copy to clipboard">
-                            <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
-                                           Size="Size.Small"
-                                           OnClick="@(() => CopyToken(newToken.PlaintextToken))" />
-                        </MudTooltip>
-                    </MudStack>
-                </MudAlert>
-            }
-
-            <MudDataGrid T="PersonalAccessToken" Items="@_tokens" Hover="true" Dense="true"
-                         sortable="true" sort-by="@((PersonalAccessToken x) => x.CreatedAt)" sort-direction="SortDirection.Descending">
-                <Columns>
-                    <PropertyColumn Property="x => x.Name" Title="Name" />
-                    <PropertyColumn Property="x => x.TokenPrefix" Title="Prefix">
-                        <CellTemplate><code>@context.Item.TokenPrefix</code></CellTemplate>
-                    </PropertyColumn>
-                    <PropertyColumn Property="x => x.CreatedAt" Title="Created">
-                        <CellTemplate>@context.Item.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd")</CellTemplate>
-                    </PropertyColumn>
-                    <PropertyColumn Property="x => x.LastUsedAt" Title="Last Used">
-                        <CellTemplate>@(context.Item.LastUsedAt.HasValue ? context.Item.LastUsedAt.Value.ToLocalTime().ToString("yyyy-MM-dd") : "—")</CellTemplate>
-                    </PropertyColumn>
-                    <PropertyColumn Property="x => x.ExpiresAt" Title="Expires">
-                        <CellTemplate>@(context.Item.ExpiresAt.HasValue ? context.Item.ExpiresAt.Value.ToLocalTime().ToString("yyyy-MM-dd") : "Never")</CellTemplate>
-                    </PropertyColumn>
-                    <TemplateColumn Title="Status" SortBy="@((PersonalAccessToken x) => TokenStatusSortKey(x))">
-                        <CellTemplate>
-                            @if (context.Item.IsRevoked)
-                            {
-                                <MudChip T="string" Color="Color.Error" Size="Size.Small">Revoked</MudChip>
-                            }
-                            else if (context.Item.ExpiresAt.HasValue && context.Item.ExpiresAt.Value <= DateTimeOffset.UtcNow)
-                            {
-                                <MudChip T="string" Color="Color.Warning" Size="Size.Small">Expired</MudChip>
-                            }
-                            else
-                            {
-                                <MudChip T="string" Color="Color.Success" Size="Size.Small">Active</MudChip>
-                            }
-                        </CellTemplate>
-                    </TemplateColumn>
-                    <TemplateColumn Title="Actions" Sortable="false">
-                        <CellTemplate>
-                            <MudTooltip Text="View scopes">
-                                <MudIconButton Icon="@Icons.Material.Filled.Visibility"
-                                               Size="Size.Small"
-                                               OnClick="@(() => ViewTokenScopes(context.Item))" />
-                            </MudTooltip>
-                            @if (!context.Item.IsRevoked && !(context.Item.ExpiresAt.HasValue && context.Item.ExpiresAt.Value <= DateTimeOffset.UtcNow))
-                            {
-                                <MudTooltip Text="Edit scopes">
-                                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                                   Size="Size.Small"
-                                                   OnClick="@(() => EditTokenScopes(context.Item))" />
+                    <MudAlert Severity="Severity.Success" Class="mb-4" ShowCloseIcon="true" CloseIconClicked="DismissNewToken">
+                        <MudText Typo="Typo.body2" Class="mb-1">
+                            <strong>Token created: @newToken.Metadata.Name</strong> — Copy it now, it won't be shown again.
+                        </MudText>
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                            <MudText Typo="Typo.body2" Style="font-family: monospace; word-break: break-all;">
+                                @newToken.PlaintextToken</MudText>
+                                <MudTooltip Text="Copy to clipboard">
+                                    <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small"
+                                                   OnClick="@(() => CopyToken(newToken.PlaintextToken))" />
                                 </MudTooltip>
-                                <MudTooltip Text="Revoke token">
-                                    <MudIconButton Icon="@Icons.Material.Filled.Block"
-                                                   Color="Color.Error"
-                                                   Size="Size.Small"
-                                                   OnClick="@(() => RevokeToken(context.Item))" />
-                                </MudTooltip>
-                            }
-                        </CellTemplate>
-                    </TemplateColumn>
-                </Columns>
-                <NoRecordsContent>
-                    <MudText Typo="Typo.body2" Color="Color.Secondary">No personal access tokens yet.</MudText>
-                </NoRecordsContent>
-            </MudDataGrid>
-        </MudCardContent>
-    </MudCard>
+                            </MudStack>
+                        </MudAlert>
+                    }
 
-</MudStack>
+                    <MudDataGrid T="PersonalAccessToken" Items="@_tokens" Hover="true" Dense="true" sortable="true"
+                                 sort-by="@((PersonalAccessToken x) => x.CreatedAt)" sort-direction="SortDirection.Descending">
+                        <Columns>
+                            <PropertyColumn Property="x => x.Name" Title="Name" />
+                            <PropertyColumn Property="x => x.TokenPrefix" Title="Prefix">
+                                <CellTemplate><code>@context.Item.TokenPrefix</code></CellTemplate>
+                            </PropertyColumn>
+                            <PropertyColumn Property="x => x.CreatedAt" Title="Created">
+                                <CellTemplate>@context.Item.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd")</CellTemplate>
+                            </PropertyColumn>
+                            <PropertyColumn Property="x => x.LastUsedAt" Title="Last Used">
+                                <CellTemplate>@(context.Item.LastUsedAt.HasValue ?
+                                                            context.Item.LastUsedAt.Value.ToLocalTime().ToString("yyyy-MM-dd") : "—")</CellTemplate>
+                                </PropertyColumn>
+                                <PropertyColumn Property="x => x.ExpiresAt" Title="Expires">
+                                    <CellTemplate>@(context.Item.ExpiresAt.HasValue ?
+                                                                context.Item.ExpiresAt.Value.ToLocalTime().ToString("yyyy-MM-dd") : "Never")</CellTemplate>
+                                    </PropertyColumn>
+                                    <TemplateColumn Title="Status" SortBy="@((PersonalAccessToken x) => TokenStatusSortKey(x))">
+                                        <CellTemplate>
+                                            @if (context.Item.IsRevoked)
+                                            {
+                                                <MudChip T="string" Color="Color.Error" Size="Size.Small">Revoked</MudChip>
+                                            }
+                                            else if (context.Item.ExpiresAt.HasValue && context.Item.ExpiresAt.Value <=
+                                            DateTimeOffset.UtcNow)
+                                            {
+                                                <MudChip T="string" Color="Color.Warning" Size="Size.Small">Expired</MudChip>
+                                            }
+                                            else
+                                            {
+                                                <MudChip T="string" Color="Color.Success" Size="Size.Small">Active</MudChip>
+                                            }
+                                        </CellTemplate>
+                                    </TemplateColumn>
+                                    <TemplateColumn Title="Actions" Sortable="false">
+                                        <CellTemplate>
+                                            <MudTooltip Text="View scopes">
+                                                <MudIconButton Icon="@Icons.Material.Filled.Visibility" Size="Size.Small"
+                                                               OnClick="@(() => ViewTokenScopes(context.Item))" />
+                                            </MudTooltip>
+                                            @if (!context.Item.IsRevoked && !(context.Item.ExpiresAt.HasValue &&
+                                                                        context.Item.ExpiresAt.Value <= DateTimeOffset.UtcNow))
+                                            {
+                                                <MudTooltip Text="Edit scopes">
+                                                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
+                                                                   OnClick="@(() => EditTokenScopes(context.Item))" />
+                                                </MudTooltip>
+                                                <MudTooltip Text="Revoke token">
+                                                    <MudIconButton Icon="@Icons.Material.Filled.Block" Color="Color.Error" Size="Size.Small"
+                                                                   OnClick="@(() => RevokeToken(context.Item))" />
+                                                </MudTooltip>
+                                            }
+                                        </CellTemplate>
+                                    </TemplateColumn>
+                                </Columns>
+                                <NoRecordsContent>
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">No personal access tokens yet.</MudText>
+                                </NoRecordsContent>
+                            </MudDataGrid>
+                        </MudCardContent>
+                    </MudCard>
+
+                </MudStack>
 
 @code {
     private string _username = string.Empty;
     private string _email = string.Empty;
     private Guid _userId;
     private string? _authProvider;
+    private UserDetails? _user;
 
     private bool _savingProfile;
     private bool _savingPassword;
@@ -223,7 +202,8 @@
     private string _newPassword = string.Empty;
     private string _confirmPassword = string.Empty;
 
-    private static readonly Regex EmailRegex = new(@"^[^\s@]+@[^\s@]+\.[^\s@]+$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex EmailRegex = new(@"^[^\s@]+@[^\s@]+\.[^\s@]+$", RegexOptions.Compiled |
+RegexOptions.IgnoreCase);
 
     private string? ValidateEmail(string? email)
     {
@@ -245,16 +225,14 @@
         var userIdStr = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (userIdStr == null || !Guid.TryParse(userIdStr, out _userId)) return;
 
-        var user = await Db.Users.FindAsync(_userId);
+        var user = await UserService.GetUserAsync(_userId);
         if (user == null) return;
 
+        _user = user;
         _username = user.Username;
         _email = user.Email;
 
-        _authProvider = await Db.ExternalLogins
-            .Where(el => el.UserId == _userId)
-            .Select(el => el.Provider)
-            .FirstOrDefaultAsync();
+        _authProvider = await UserService.GetExternalLoginAsync(_userId);
 
         _tokens = await PatService.GetUserTokensAsync(_userId);
     }
@@ -265,26 +243,37 @@
 
         try
         {
-            var trimmedEmail = _email.Trim();
-
-            var conflict = await Db.Users
-                .AnyAsync(u => u.Email == trimmedEmail && u.Id != _userId);
-
-            if (conflict)
+            if (_user is null)
             {
-                Snackbar.Add("That email address is already in use.", Severity.Error);
+                Snackbar.Add("User not found.", Severity.Error);
                 return;
             }
 
-            var user = await Db.Users.FindAsync(_userId);
-            if (user == null) return;
+            var trimmedEmail = _email.Trim();
 
-            user.Email = trimmedEmail;
-            user.ModifiedAt = DateTimeOffset.UtcNow;
-            await Db.SaveChangesAsync();
+            var updated = await UserService.UpdateUserAsync(_userId, new UpdateUserRequest
+            {
+                Username = _user.Username,
+                Email = trimmedEmail,
+                IsActive = _user.IsActive,
+                RequirePasswordChange = _user.RequirePasswordChange,
+                AccountType = _user.AccountType,
+                Description = _user.Description,
+                IsLocked = _user.LockoutEnd.HasValue && _user.LockoutEnd.Value > DateTimeOffset.UtcNow
+            });
+
+            if (updated is null)
+            {
+                Snackbar.Add("User not found.", Severity.Error);
+                return;
+            }
 
             _email = trimmedEmail;
             Snackbar.Add("Profile saved.", Severity.Success);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
         }
         catch (Exception ex)
         {
@@ -308,31 +297,21 @@
 
         try
         {
-            var user = await Db.Users.FindAsync(_userId);
-            if (user == null || user.PasswordHash == null || user.PasswordSalt == null)
+            await UserService.ChangePasswordAsync(_userId, new ChangePasswordRequest
             {
-                Snackbar.Add("User not found.", Severity.Error);
-                return;
-            }
-
-            if (!PasswordHasher.ValidatePassword(_currentPassword, user.PasswordHash, user.PasswordSalt))
-            {
-                Snackbar.Add("Current password is incorrect.", Severity.Error);
-                return;
-            }
-
-            var (newHash, newSalt) = PasswordHasher.HashPassword(_newPassword);
-            user.PasswordHash = newHash;
-            user.PasswordSalt = newSalt;
-            user.RequirePasswordChange = false;
-            user.ModifiedAt = DateTimeOffset.UtcNow;
-            await Db.SaveChangesAsync();
+                CurrentPassword = _currentPassword,
+                NewPassword = _newPassword
+            });
 
             _currentPassword = string.Empty;
             _newPassword = string.Empty;
             _confirmPassword = string.Empty;
 
             Snackbar.Add("Password changed successfully.", Severity.Success);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
         }
         catch (Exception ex)
         {

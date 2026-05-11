@@ -3,7 +3,9 @@
    terms of the MIT license. *@
 
 @using OpenDsc.Contracts.Permissions
-@inject ServerDbContext Db
+@using OpenDsc.Contracts.Users
+@inject IUserService UserService
+@inject IGroupService GroupService
 @inject IResourceAuthorizationService AuthService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IDialogService DialogService
@@ -167,13 +169,13 @@ else
                 .Distinct()
                 .ToList();
 
-            var userNames = await Db.Users
+            var userNames = (await UserService.GetUsersAsync())
                 .Where(u => userIds.Contains(u.Id))
-                .ToDictionaryAsync(u => u.Id, u => u.Username);
+                .ToDictionary(u => u.Id, u => u.Username);
 
-            var groupNames = await Db.Groups
+            var groupNames = (await GroupService.GetGroupsAsync())
                 .Where(g => groupIds.Contains(g.Id))
-                .ToDictionaryAsync(g => g.Id, g => g.Name);
+                .ToDictionary(g => g.Id, g => g.Name);
 
             rows = entries.Select(e => new PermissionRow(
                 e.PrincipalType,

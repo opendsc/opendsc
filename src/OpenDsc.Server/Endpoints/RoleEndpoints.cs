@@ -2,15 +2,11 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
-using System.Text.Json;
-
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
+using OpenDsc.Contracts.Users;
 using OpenDsc.Server.Authorization;
-using OpenDsc.Server.Data;
-using OpenDsc.Server.Entities;
 
 namespace OpenDsc.Server.Endpoints;
 
@@ -46,173 +42,83 @@ public static class RoleEndpoints
             .WithDescription("Deletes a custom role (system roles cannot be deleted).");
     }
 
-    private static async Task<Ok<List<RoleSummaryDto>>> GetRoles(ServerDbContext db)
+    private static async Task<Ok<List<RoleSummary>>> GetRoles(
+        IRoleService service,
+        CancellationToken cancellationToken)
     {
-        var roles = await db.Roles
-            .OrderBy(r => r.Name)
-            .Select(r => new RoleSummaryDto
-            {
-                Id = r.Id,
-                Name = r.Name,
-                Description = r.Description,
-                IsSystemRole = r.IsSystemRole,
-                CreatedAt = r.CreatedAt,
-                ModifiedAt = r.ModifiedAt
-            })
-            .ToListAsync();
-
-        return TypedResults.Ok(roles);
+        return TypedResults.Ok((await service.GetRolesAsync(cancellationToken)).ToList());
     }
 
-    private static async Task<Results<Ok<RoleDetailDto>, NotFound>> GetRole(
+    private static async Task<Results<Ok<RoleDetails>, NotFound>> GetRole(
         Guid id,
-        ServerDbContext db)
+        IRoleService service,
+        CancellationToken cancellationToken)
     {
-        var role = await db.Roles.FindAsync(id);
-        if (role == null)
+        try
+        {
+            var role = await service.GetRoleAsync(id, cancellationToken);
+            return TypedResults.Ok(role);
+        }
+        catch (KeyNotFoundException)
         {
             return TypedResults.NotFound();
         }
-
-        return TypedResults.Ok(new RoleDetailDto
-        {
-            Id = role.Id,
-            Name = role.Name,
-            Description = role.Description,
-            Permissions = JsonSerializer.Deserialize<string[]>(role.Permissions) ?? [],
-            IsSystemRole = role.IsSystemRole,
-            CreatedAt = role.CreatedAt,
-            ModifiedAt = role.ModifiedAt
-        });
     }
 
-    private static async Task<Results<Created<RoleSummaryDto>, BadRequest<string>>> CreateRole(
+    private static async Task<Results<Created<RoleSummary>, BadRequest<string>>> CreateRole(
         [FromBody] CreateRoleRequest request,
-        ServerDbContext db)
+        IRoleService service,
+        CancellationToken cancellationToken)
     {
-        if (await db.Roles.AnyAsync(r => r.Name == request.Name))
+        try
         {
-            return TypedResults.BadRequest("Role name already exists");
+            var role = await service.CreateRoleAsync(request, cancellationToken);
+            return TypedResults.Created($"/api/v1/roles/{role.Id}", role);
         }
-
-        var role = new Role
+        catch (InvalidOperationException ex)
         {
-            Id = Guid.NewGuid(),
-            Name = request.Name,
-            Description = request.Description,
-            Permissions = JsonSerializer.Serialize(request.Permissions),
-            IsSystemRole = false,
-            CreatedAt = DateTimeOffset.UtcNow,
-            ModifiedAt = DateTimeOffset.UtcNow
-        };
-
-        db.Roles.Add(role);
-        await db.SaveChangesAsync();
-
-        return TypedResults.Created($"/api/v1/roles/{role.Id}", new RoleSummaryDto
-        {
-            Id = role.Id,
-            Name = role.Name,
-            Description = role.Description,
-            IsSystemRole = role.IsSystemRole,
-            CreatedAt = role.CreatedAt,
-            ModifiedAt = role.ModifiedAt
-        });
+            return TypedResults.BadRequest(ex.Message);
+        }
     }
 
-    private static async Task<Results<Ok<RoleSummaryDto>, NotFound, BadRequest<string>>> UpdateRole(
+    private static async Task<Results<Ok<RoleSummary>, NotFound, BadRequest<string>>> UpdateRole(
         Guid id,
         [FromBody] UpdateRoleRequest request,
-        ServerDbContext db)
+        IRoleService service,
+        CancellationToken cancellationToken)
     {
-        var role = await db.Roles.FindAsync(id);
-        if (role == null)
+        try
+        {
+            var role = await service.UpdateRoleAsync(id, request, cancellationToken);
+            return TypedResults.Ok(role);
+        }
+        catch (KeyNotFoundException)
         {
             return TypedResults.NotFound();
         }
-
-        if (role.IsSystemRole)
+        catch (InvalidOperationException ex)
         {
-            return TypedResults.BadRequest("Cannot modify system roles");
+            return TypedResults.BadRequest(ex.Message);
         }
-
-        if (request.Name != role.Name &&
-            await db.Roles.AnyAsync(r => r.Name == request.Name && r.Id != id))
-        {
-            return TypedResults.BadRequest("Role name already exists");
-        }
-
-        role.Name = request.Name;
-        role.Description = request.Description;
-        role.Permissions = JsonSerializer.Serialize(request.Permissions);
-        role.ModifiedAt = DateTimeOffset.UtcNow;
-
-        await db.SaveChangesAsync();
-
-        return TypedResults.Ok(new RoleSummaryDto
-        {
-            Id = role.Id,
-            Name = role.Name,
-            Description = role.Description,
-            IsSystemRole = role.IsSystemRole,
-            CreatedAt = role.CreatedAt,
-            ModifiedAt = role.ModifiedAt
-        });
     }
 
     private static async Task<Results<NoContent, NotFound, BadRequest<string>>> DeleteRole(
         Guid id,
-        ServerDbContext db)
+        IRoleService service,
+        CancellationToken cancellationToken)
     {
-        var role = await db.Roles.FindAsync(id);
-        if (role == null)
+        try
+        {
+            await service.DeleteRoleAsync(id, cancellationToken);
+            return TypedResults.NoContent();
+        }
+        catch (KeyNotFoundException)
         {
             return TypedResults.NotFound();
         }
-
-        if (role.IsSystemRole)
+        catch (InvalidOperationException ex)
         {
-            return TypedResults.BadRequest("Cannot delete system roles");
+            return TypedResults.BadRequest(ex.Message);
         }
-
-        db.Roles.Remove(role);
-        await db.SaveChangesAsync();
-
-        return TypedResults.NoContent();
     }
-}
-
-public sealed class RoleSummaryDto
-{
-    public Guid Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string? Description { get; set; }
-    public bool IsSystemRole { get; set; }
-    public DateTimeOffset CreatedAt { get; set; }
-    public DateTimeOffset? ModifiedAt { get; set; }
-}
-
-public sealed class RoleDetailDto
-{
-    public Guid Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string? Description { get; set; }
-    public string[] Permissions { get; set; } = [];
-    public bool IsSystemRole { get; set; }
-    public DateTimeOffset CreatedAt { get; set; }
-    public DateTimeOffset? ModifiedAt { get; set; }
-}
-
-public sealed class CreateRoleRequest
-{
-    public string Name { get; set; } = string.Empty;
-    public string? Description { get; set; }
-    public string[] Permissions { get; set; } = [];
-}
-
-public sealed class UpdateRoleRequest
-{
-    public string Name { get; set; } = string.Empty;
-    public string? Description { get; set; }
-    public string[] Permissions { get; set; } = [];
 }

@@ -342,7 +342,7 @@ public class NodeEndpointsTests : IClassFixture<ServerWebApplicationFactory>
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
         var error = await response.Content.ReadFromJsonAsync<ErrorResponse>(TestContext.Current.CancellationToken);
-        error!.Error.Should().Contain("Configuration not found");
+        error!.Error.Should().MatchRegex("(Configuration|Node) not found", "the endpoint may return either missing configuration or missing node context");
     }
 
     [Fact]

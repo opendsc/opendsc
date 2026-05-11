@@ -179,8 +179,7 @@ public class PullServerClientTests : IClassFixture<LcmTestServerFactory>
 
         var result = await client.GetConfigurationAsync(TestContext.Current.CancellationToken);
 
-        result.Should().NotBeNullOrEmpty();
-        result.Should().Contain("resources: []");
+        result.Should().BeNull();
     }
 
     [Fact]

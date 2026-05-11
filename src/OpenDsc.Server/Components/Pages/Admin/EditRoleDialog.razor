@@ -1,8 +1,8 @@
-@using Microsoft.EntityFrameworkCore
-@using System.Text.Json
 @using MudBlazor
+@using OpenDsc.Contracts.Users
 @using OpenDsc.Server.Authorization
-@inject ServerDbContext Db
+@inject IRoleService RoleService
+@inject IGroupService GroupService
 @inject ISnackbar Snackbar
 
 <MudDialog>
@@ -62,11 +62,11 @@
     [Parameter]
     public EventCallback OnRoleUpdated { get; set; }
 
-    private Role? role;
+    private RoleDetails? role;
     [CascadingParameter]
     private IMudDialogInstance MudDialog { get; set; } = default!;
 
-    private List<Group> availableGroups = [];
+    private List<GroupSummary> availableGroups = [];
     private List<TreeItemData<string>> permissionTreeItems = [];
     private HashSet<string> _selectedPermissions = [];
     private HashSet<string> _expandedItems = [];
@@ -74,35 +74,32 @@
 
     protected override async Task OnInitializedAsync()
     {
-        role = await Db.Roles.FindAsync(RoleId);
-
-        availableGroups = await Db.Groups
-            .OrderBy(g => g.Name)
-            .ToListAsync();
-
-        var existingGroupIds = await Db.GroupRoles
-            .Where(gr => gr.RoleId == RoleId)
-            .Select(gr => gr.GroupId)
-            .ToListAsync();
-
-        foreach (var group in availableGroups)
+        try
         {
-            selectedGroups[group.Id] = existingGroupIds.Contains(group.Id);
-        }
+            role = await RoleService.GetRoleAsync(RoleId);
 
-        var existingPermissions = new List<string>();
-        if (role != null && !string.IsNullOrWhiteSpace(role.Permissions))
-        {
-            try
+            availableGroups = (await GroupService.GetGroupsAsync()).ToList();
+
+            var existingGroupIds = (await RoleService.GetGroupsForRoleAsync(RoleId))?
+                .Select(g => g.Id)
+                .ToHashSet() ?? [];
+
+            foreach (var group in availableGroups)
             {
-                existingPermissions = JsonSerializer.Deserialize<List<string>>(role.Permissions) ?? [];
+                selectedGroups[group.Id] = existingGroupIds.Contains(group.Id);
             }
-            catch { }
-        }
 
-        permissionTreeItems = PermissionHierarchyHelper.CreateTreeData(Permissions.AllScopes, existingPermissions);
-        _selectedPermissions = new HashSet<string>(existingPermissions, StringComparer.Ordinal);
-        _expandedItems = GetAllTreeNodeValues(permissionTreeItems).ToHashSet(StringComparer.Ordinal);
+            var existingPermissions = role.Permissions?.ToList() ?? [];
+
+            permissionTreeItems = PermissionHierarchyHelper.CreateTreeData(Permissions.AllScopes, existingPermissions);
+            _selectedPermissions = new HashSet<string>(existingPermissions, StringComparer.Ordinal);
+            _expandedItems = GetAllTreeNodeValues(permissionTreeItems).ToHashSet(StringComparer.Ordinal);
+        }
+        catch (KeyNotFoundException)
+        {
+            Snackbar.Add("Role not found", Severity.Error);
+            MudDialog.Cancel();
+        }
     }
 
     private void UpdateExpanded(string value, bool expanded)
@@ -145,39 +142,35 @@
 
     private async Task Submit()
     {
-        if (role == null)
-            return;
-
         try
         {
-            // Update groups
-            var currentGroups = await Db.GroupRoles
-                .Where(gr => gr.RoleId == RoleId)
-                .ToListAsync();
-
-            var selectedGroupIds = selectedGroups.Where(kvp => kvp.Value).Select(kvp => kvp.Key).ToHashSet();
-            var currentGroupIds = currentGroups.Select(gr => gr.GroupId).ToHashSet();
-
-            var groupsToAdd = selectedGroupIds.Except(currentGroupIds).Select(groupId => new GroupRole
-            {
-                GroupId = groupId,
-                RoleId = RoleId
-            });
-            var groupsToRemove = currentGroups.Where(gr => !selectedGroupIds.Contains(gr.GroupId));
-
-            Db.GroupRoles.AddRange(groupsToAdd);
-            Db.GroupRoles.RemoveRange(groupsToRemove);
-
-            // Use selected permissions from MudTreeView
             var permissions = _selectedPermissions.OrderBy(p => p).ToArray();
 
-            role.Permissions = JsonSerializer.Serialize(permissions);
-            role.ModifiedAt = DateTimeOffset.UtcNow;
+            var updated = await RoleService.UpdateRoleAsync(RoleId, new UpdateRoleRequest
+            {
+                Name = role!.Name,
+                Description = role.Description,
+                Permissions = permissions
+            });
 
-            await Db.SaveChangesAsync();
+            await RoleService.SetGroupsForRoleAsync(RoleId, new SetRoleGroupsRequest
+            {
+                GroupIds = selectedGroups
+                    .Where(kvp => kvp.Value)
+                    .Select(kvp => kvp.Key)
+                    .ToArray()
+            });
 
             Snackbar.Add($"Role '{role.Name}' updated successfully", Severity.Success);
             await OnRoleUpdated.InvokeAsync();
+        }
+        catch (KeyNotFoundException)
+        {
+            Snackbar.Add("Role not found", Severity.Error);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
         }
         catch (Exception ex)
         {

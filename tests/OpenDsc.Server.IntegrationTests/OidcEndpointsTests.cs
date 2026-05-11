@@ -162,7 +162,7 @@ public sealed class OidcEndpointsTests : IAsyncLifetime
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
-        body.Should().Contain("External authentication");
+        body.Should().Contain("Password changes are not available");
     }
 
     // ─── GET /api/v1/auth/me ─────────────────────────────────────────────────

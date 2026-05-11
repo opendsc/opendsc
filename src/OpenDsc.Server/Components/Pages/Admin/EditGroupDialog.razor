@@ -1,7 +1,8 @@
-@using Microsoft.EntityFrameworkCore
 @using MudBlazor
 @using OpenDsc.Contracts.Users
-@inject ServerDbContext Db
+@inject IGroupService GroupService
+@inject IUserService UserService
+@inject IRoleService RoleService
 @inject ISnackbar Snackbar
 
 <MudDialog>
@@ -63,46 +64,49 @@
     [Parameter]
     public EventCallback OnGroupUpdated { get; set; }
 
-    private Group? group;
+    private GroupDetails? group;
     [CascadingParameter]
     private IMudDialogInstance MudDialog { get; set; } = default!;
 
-    private List<User> availableUsers = [];
-    private List<Role> availableRoles = [];
+    private List<UserSummary> availableUsers = [];
+    private List<RoleSummary> availableRoles = [];
     private Dictionary<Guid, bool> selectedMembers = new();
     private Dictionary<Guid, bool> selectedRoles = new();
 
     protected override async Task OnInitializedAsync()
     {
-        group = await Db.Groups.FindAsync(GroupId);
-
-        availableUsers = await Db.Users
-            .Where(u => u.AccountType == AccountType.User && u.IsActive)
-            .OrderBy(u => u.Username)
-            .ToListAsync();
-
-        availableRoles = await Db.Roles
-            .OrderBy(r => r.Name)
-            .ToListAsync();
-
-        var existingMembers = await Db.UserGroups
-            .Where(ug => ug.GroupId == GroupId)
-            .Select(ug => ug.UserId)
-            .ToListAsync();
-
-        var existingRoles = await Db.GroupRoles
-            .Where(gr => gr.GroupId == GroupId)
-            .Select(gr => gr.RoleId)
-            .ToListAsync();
-
-        foreach (var user in availableUsers)
+        try
         {
-            selectedMembers[user.Id] = existingMembers.Contains(user.Id);
+            group = await GroupService.GetGroupAsync(GroupId);
+
+            availableUsers = (await UserService.GetUsersAsync())
+                .Where(u => u.AccountType == AccountType.User && u.IsActive)
+                .ToList();
+
+            availableRoles = (await RoleService.GetRolesAsync()).ToList();
+
+            var existingMembers = (await GroupService.GetGroupMembersAsync(GroupId))?
+                .Select(ug => ug.Id)
+                .ToHashSet() ?? [];
+
+            var existingRoles = (await GroupService.GetGroupRolesAsync(GroupId))?
+                .Select(gr => gr.Id)
+                .ToHashSet() ?? [];
+
+            foreach (var user in availableUsers)
+            {
+                selectedMembers[user.Id] = existingMembers.Contains(user.Id);
+            }
+
+            foreach (var role in availableRoles)
+            {
+                selectedRoles[role.Id] = existingRoles.Contains(role.Id);
+            }
         }
-
-        foreach (var role in availableRoles)
+        catch (KeyNotFoundException)
         {
-            selectedRoles[role.Id] = existingRoles.Contains(role.Id);
+            Snackbar.Add("Group not found", Severity.Error);
+            MudDialog.Cancel();
         }
     }
 
@@ -113,54 +117,34 @@
 
     private async Task Submit()
     {
-        if (group == null)
-            return;
-
         try
         {
-            group.ModifiedAt = DateTimeOffset.UtcNow;
-
-            // Update members
-            var currentMembers = await Db.UserGroups
-                .Where(ug => ug.GroupId == GroupId)
-                .ToListAsync();
-
-            var selectedUserIds = selectedMembers.Where(kvp => kvp.Value).Select(kvp => kvp.Key).ToHashSet();
-            var currentUserIds = currentMembers.Select(ug => ug.UserId).ToHashSet();
-
-            var toAdd = selectedUserIds.Except(currentUserIds).Select(userId => new UserGroup
+            var updated = await GroupService.UpdateGroupAsync(GroupId, new UpdateGroupRequest
             {
-                UserId = userId,
-                GroupId = GroupId
+                Name = group!.Name,
+                Description = group.Description
             });
-            var toRemove = currentMembers.Where(ug => !selectedUserIds.Contains(ug.UserId));
 
-            Db.UserGroups.AddRange(toAdd);
-            Db.UserGroups.RemoveRange(toRemove);
-
-            // Update roles
-            var currentRoles = await Db.GroupRoles
-                .Where(gr => gr.GroupId == GroupId)
-                .ToListAsync();
-
-            var selectedRoleIds = selectedRoles.Where(kvp => kvp.Value).Select(kvp => kvp.Key).ToHashSet();
-            var currentRoleIds = currentRoles.Select(gr => gr.RoleId).ToHashSet();
-
-            var rolesToAdd = selectedRoleIds.Except(currentRoleIds).Select(roleId => new GroupRole
+            await GroupService.SetMembersAsync(GroupId, new SetGroupMembersRequest
             {
-                GroupId = GroupId,
-                RoleId =
-roleId
+                UserIds = selectedMembers.Where(kvp => kvp.Value).Select(kvp => kvp.Key).ToArray()
             });
-            var rolesToRemove = currentRoles.Where(gr => !selectedRoleIds.Contains(gr.RoleId));
 
-            Db.GroupRoles.AddRange(rolesToAdd);
-            Db.GroupRoles.RemoveRange(rolesToRemove);
-
-            await Db.SaveChangesAsync();
+            await GroupService.SetRolesAsync(GroupId, new SetGroupRolesRequest
+            {
+                RoleIds = selectedRoles.Where(kvp => kvp.Value).Select(kvp => kvp.Key).ToArray()
+            });
 
             Snackbar.Add($"Group '{group.Name}' updated successfully", Severity.Success);
             await OnGroupUpdated.InvokeAsync();
+        }
+        catch (KeyNotFoundException)
+        {
+            Snackbar.Add("Group not found", Severity.Error);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
         }
         catch (Exception ex)
         {

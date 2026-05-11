@@ -1,5 +1,5 @@
-@using Microsoft.EntityFrameworkCore
-@inject ServerDbContext Db
+@using OpenDsc.Contracts.Users
+@inject IGroupService GroupService
 @inject ISnackbar Snackbar
 @inject IDialogService Dialog
 
@@ -15,7 +15,7 @@
         </CardHeaderActions>
     </MudCardHeader>
     <MudCardContent>
-        <MudDataGrid T="Group" Items="@groups" Hover="true" Dense="true" Loading="@loading" SortMode="SortMode.Single">
+        <MudDataGrid T="GroupSummary" Items="@groups" Hover="true" Dense="true" Loading="@loading" SortMode="SortMode.Single">
             <Columns>
                 <PropertyColumn Property="x => x.Name" Title="Name" />
                 <PropertyColumn Property="x => x.Description" Title="Description" />
@@ -55,7 +55,7 @@
 </MudCard>
 
 @code {
-    private List<Group> groups = [];
+    private List<GroupSummary> groups = [];
     private Dictionary<Guid, int> groupMemberCounts = new();
     private Dictionary<Guid, int> groupRoleCounts = new();
     private bool loading = true;
@@ -70,21 +70,9 @@
         loading = true;
         try
         {
-            groups = await Db.Groups
-                .OrderBy(g => g.Name)
-                .ToListAsync();
-
-            var memberCountsQuery = await Db.Set<UserGroup>()
-                .GroupBy(ug => ug.GroupId)
-                .Select(g => new { GroupId = g.Key, Count = g.Count() })
-                .ToListAsync();
-            groupMemberCounts = memberCountsQuery.ToDictionary(x => x.GroupId, x => x.Count);
-
-            var roleCountsQuery = await Db.Set<GroupRole>()
-                .GroupBy(gr => gr.GroupId)
-                .Select(g => new { GroupId = g.Key, Count = g.Count() })
-                .ToListAsync();
-            groupRoleCounts = roleCountsQuery.ToDictionary(x => x.GroupId, x => x.Count);
+            groups = (await GroupService.GetGroupsAsync()).ToList();
+            groupMemberCounts = new Dictionary<Guid, int>(await GroupService.GetGroupMemberCountsAsync());
+            groupRoleCounts = new Dictionary<Guid, int>(await GroupService.GetGroupRoleCountsAsync());
         }
         finally
         {
@@ -113,7 +101,7 @@
         await Dialog.ShowAsync<CreateGroupDialog>("Create Group", parameters, options);
     }
 
-    private async Task EditGroup(Group group)
+    private async Task EditGroup(GroupSummary group)
     {
         var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Large, FullWidth = true };
         var parameters = new DialogParameters<EditGroupDialog>
@@ -125,7 +113,7 @@
         await Dialog.ShowAsync<EditGroupDialog>("Edit Group", parameters, options);
     }
 
-    private async Task DeleteGroup(Group group)
+    private async Task DeleteGroup(GroupSummary group)
     {
         if (group.IsSystemGroup)
         {
@@ -149,8 +137,7 @@
         {
             try
             {
-                Db.Groups.Remove(group);
-                await Db.SaveChangesAsync();
+                await GroupService.DeleteGroupAsync(group.Id);
                 await LoadGroupsAsync();
                 Snackbar.Add($"Group '{group.Name}' deleted successfully", Severity.Success);
             }

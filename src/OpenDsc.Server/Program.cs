@@ -15,6 +15,7 @@ using OpenDsc.Contracts.Dashboard;
 using OpenDsc.Contracts.Nodes;
 using OpenDsc.Contracts.Parameters;
 using OpenDsc.Contracts.Reports;
+using OpenDsc.Contracts.Users;
 using OpenDsc.Server.Authentication;
 using OpenDsc.Server.Components;
 using OpenDsc.Server.Data;
@@ -84,6 +85,9 @@ builder.Services.AddScoped<ICompositeConfigurationService, CompositeConfiguratio
 builder.Services.AddScoped<IParameterService, ParameterService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IRoleService, RoleService>();
+builder.Services.AddScoped<IGroupService, GroupService>();
 builder.Services.AddScoped<INodeReader, NodeService>();
 builder.Services.AddScoped<INodeTagManager, NodeService>();
 builder.Services.AddScoped<INodeConfigurationManager, NodeService>();

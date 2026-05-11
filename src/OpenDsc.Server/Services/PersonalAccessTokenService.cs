@@ -7,6 +7,7 @@ using System.Text.Json;
 
 using Microsoft.EntityFrameworkCore;
 
+using OpenDsc.Contracts.Users;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
 
@@ -57,6 +58,19 @@ public interface IPersonalAccessTokenService
     /// <param name="tokenId">Token ID.</param>
     /// <param name="ipAddress">IP address.</param>
     Task UpdateLastUsedAsync(Guid tokenId, string ipAddress);
+
+    /// <summary>
+    /// Updates token scopes for a specific token owned by a specific user.
+    /// </summary>
+    /// <param name="tokenId">Token ID.</param>
+    /// <param name="userId">Owning user ID.</param>
+    /// <param name="request">Requested scopes.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task UpdateScopesAsync(
+        Guid tokenId,
+        Guid userId,
+        UpdateTokenScopesRequest request,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -189,6 +203,29 @@ public sealed partial class PersonalAccessTokenService(
             token.LastUsedIpAddress = ipAddress;
             await db.SaveChangesAsync();
         }
+    }
+
+    public async Task UpdateScopesAsync(
+        Guid tokenId,
+        Guid userId,
+        UpdateTokenScopesRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var token = await db.PersonalAccessTokens
+            .FirstOrDefaultAsync(t => t.Id == tokenId, cancellationToken);
+
+        if (token is null || token.UserId != userId)
+        {
+            throw new KeyNotFoundException("Token not found");
+        }
+
+        token.Scopes = JsonSerializer.Serialize((request.Scopes ?? [])
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(s => s)
+            .ToArray());
+
+        await db.SaveChangesAsync(cancellationToken);
     }
 
     [LoggerMessage(EventId = EventIds.PatCreated, Level = LogLevel.Information, Message = "Personal access token created for user {UserId}")]

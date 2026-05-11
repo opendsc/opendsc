@@ -1,8 +1,7 @@
-@using Microsoft.EntityFrameworkCore
-@using System.Text.Json
 @using MudBlazor
+@using OpenDsc.Contracts.Users
 @using OpenDsc.Server.Authorization
-@inject ServerDbContext Db
+@inject IRoleService RoleService
 @inject ISnackbar Snackbar
 
 <MudDialog>
@@ -91,32 +90,21 @@
     {
         try
         {
-            var existingRole = await Db.Roles
-                .FirstOrDefaultAsync(r => r.Name == name);
-
-            if (existingRole != null)
-            {
-                Snackbar.Add("Role name already exists", Severity.Error);
-                return;
-            }
-
             var permissions = _selectedPermissions.OrderBy(p => p).ToArray();
 
-            var role = new Role
+            await RoleService.CreateRoleAsync(new CreateRoleRequest
             {
-                Id = Guid.NewGuid(),
                 Name = name,
                 Description = string.IsNullOrWhiteSpace(description) ? null : description,
-                IsSystemRole = false,
-                Permissions = JsonSerializer.Serialize(permissions),
-                CreatedAt = DateTimeOffset.UtcNow
-            };
-
-            Db.Roles.Add(role);
-            await Db.SaveChangesAsync();
+                Permissions = permissions
+            });
 
             Snackbar.Add($"Role '{name}' created successfully", Severity.Success);
             await OnRoleCreated.InvokeAsync();
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
         }
         catch (Exception ex)
         {
