@@ -356,15 +356,15 @@ public class ParameterEndpointsTests : IDisposable
         var scopeTypeRequest = new { name = scopeTypeName, valueMode = "Restricted" };
         var scopeTypeResponse = await client.PostAsJsonAsync("/api/v1/scope-types", scopeTypeRequest);
         scopeTypeResponse.EnsureSuccessStatusCode();
-        var scopeTypeDto = await scopeTypeResponse.Content.ReadFromJsonAsync<ScopeTypeSimpleDto>();
-        var scopeTypeId = scopeTypeDto!.Id;
+        var ScopeTypeDetails = await scopeTypeResponse.Content.ReadFromJsonAsync<ScopeTypeSimpleDto>();
+        var scopeTypeId = ScopeTypeDetails!.Id;
 
         // Create scope value
         var scopeValueRequest = new { value = scopeValue };
         var scopeValueResponse = await client.PostAsJsonAsync($"/api/v1/scope-types/{scopeTypeId}/values", scopeValueRequest);
         scopeValueResponse.EnsureSuccessStatusCode();
-        var scopeValueDto = await scopeValueResponse.Content.ReadFromJsonAsync<ScopeValueSimpleDto>();
-        var scopeValueId = scopeValueDto!.Id;
+        var ScopeValueDetails = await scopeValueResponse.Content.ReadFromJsonAsync<ScopeValueSimpleDto>();
+        var scopeValueId = ScopeValueDetails!.Id;
 
         return (scopeTypeId, scopeValueId);
     }
@@ -554,7 +554,7 @@ public class ParameterEndpointsTests : IDisposable
         var scopeTypeRequest = new { name = $"Region-{Guid.NewGuid()}", valueMode = "Unrestricted" };
         var scopeTypeResponse = await client.PostAsJsonAsync("/api/v1/scope-types", scopeTypeRequest, TestContext.Current.CancellationToken);
         scopeTypeResponse.EnsureSuccessStatusCode();
-        var scopeTypeDto = await scopeTypeResponse.Content.ReadFromJsonAsync<ScopeTypeSimpleDto>(TestContext.Current.CancellationToken);
+        var ScopeTypeDetails = await scopeTypeResponse.Content.ReadFromJsonAsync<ScopeTypeSimpleDto>(TestContext.Current.CancellationToken);
 
         var request = new
         {
@@ -565,7 +565,7 @@ public class ParameterEndpointsTests : IDisposable
             isDraft = true
         };
 
-        var response = await client.PutAsJsonAsync($"/api/v1/parameters/{scopeTypeDto!.Id}/{configId}", request, TestContext.Current.CancellationToken);
+        var response = await client.PutAsJsonAsync($"/api/v1/parameters/{ScopeTypeDetails!.Id}/{configId}", request, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -579,7 +579,7 @@ public class ParameterEndpointsTests : IDisposable
         var scopeTypeRequest = new { name = $"Region-{Guid.NewGuid()}", valueMode = "Unrestricted" };
         var scopeTypeResponse = await client.PostAsJsonAsync("/api/v1/scope-types", scopeTypeRequest, TestContext.Current.CancellationToken);
         scopeTypeResponse.EnsureSuccessStatusCode();
-        var scopeTypeDto = await scopeTypeResponse.Content.ReadFromJsonAsync<ScopeTypeSimpleDto>(TestContext.Current.CancellationToken);
+        var ScopeTypeDetails = await scopeTypeResponse.Content.ReadFromJsonAsync<ScopeTypeSimpleDto>(TestContext.Current.CancellationToken);
 
         var request = new
         {
@@ -590,7 +590,7 @@ public class ParameterEndpointsTests : IDisposable
             isDraft = true
         };
 
-        var response = await client.PutAsJsonAsync($"/api/v1/parameters/{scopeTypeDto!.Id}/{configId}", request, TestContext.Current.CancellationToken);
+        var response = await client.PutAsJsonAsync($"/api/v1/parameters/{ScopeTypeDetails!.Id}/{configId}", request, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var result = await response.Content.ReadFromJsonAsync<ParameterFileDto>(TestContext.Current.CancellationToken);
@@ -685,3 +685,4 @@ public sealed class ScopeValueSimpleDto
     public required Guid Id { get; init; }
     public required string Value { get; init; }
 }
+

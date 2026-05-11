@@ -169,3 +169,4 @@ public class ReportEndpointsTests : IDisposable
         events!.Should().BeEmpty();
     }
 }
+

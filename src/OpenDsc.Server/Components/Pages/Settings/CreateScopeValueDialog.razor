@@ -1,25 +1,17 @@
-@using Microsoft.EntityFrameworkCore
 @using MudBlazor
-@using OpenDsc.Server.Entities
-@inject ServerDbContext Db
+@using OpenDsc.Contracts.Settings
+@inject IScopeService ScopeService
 @inject ISnackbar Snackbar
 
 <MudDialog>
     <DialogContent>
-        @if (ScopeTypeId == null)
+        @if (ScopeType == null)
         {
-            <MudSelect @bind-Value="scopeTypeId" Label="Scope Type" Variant="Variant.Outlined" Required="true" Class="mb-3"
-                T="Guid?">
-                @foreach (var scopeType in ScopeTypes)
-                {
-                    <MudSelectItem Value="@((Guid?)scopeType.Id)">@scopeType.Name</MudSelectItem>
-                }
-            </MudSelect>
+            <MudText Typo="Typo.body2" Color="Color.Error">No scope type selected.</MudText>
         }
         else
         {
-            var selectedScope = ScopeTypes.FirstOrDefault(st => st.Id == ScopeTypeId.Value);
-            <MudText Typo="Typo.subtitle2" Class="mb-3">Scope Type: <strong>@selectedScope?.Name</strong></MudText>
+            <MudText Typo="Typo.subtitle2" Class="mb-3">Scope Type: <strong>@ScopeType.Name</strong></MudText>
         }
         @if (isNodeScope)
         {
@@ -48,10 +40,7 @@
     private IMudDialogInstance MudDialog { get; set; } = default!;
 
     [Parameter]
-    public List<ScopeType> ScopeTypes { get; set; } = [];
-
-    [Parameter]
-    public Guid? ScopeTypeId { get; set; }
+    public ScopeTypeDetails? ScopeType { get; set; }
 
     [Parameter]
     public EventCallback OnScopeValueCreated { get; set; }
@@ -60,27 +49,25 @@
     private string value = string.Empty;
     private string? description;
     private bool isNodeScope;
-    private List<Node> nodes = [];
+    private List<ScopeNodeInfo> nodes = [];
 
     protected override async Task OnInitializedAsync()
     {
-        if (ScopeTypeId.HasValue)
+        if (ScopeType != null)
         {
-            scopeTypeId = ScopeTypeId.Value;
-            var scopeType = ScopeTypes.FirstOrDefault(st => st.Id == ScopeTypeId.Value);
-            isNodeScope = scopeType?.Name == "Node";
+            scopeTypeId = ScopeType.Id;
+            isNodeScope = ScopeType.Name == "Node";
 
             if (isNodeScope)
             {
-                Db.ChangeTracker.Clear();
-                nodes = await Db.Nodes.AsNoTracking().OrderBy(n => n.Fqdn).ToListAsync();
+                nodes = (await ScopeService.GetScopeNodesAsync(ScopeType.Id)).ToList();
             }
         }
     }
 
     private bool IsValid()
     {
-        var effectiveScopeTypeId = ScopeTypeId ?? scopeTypeId;
+        var effectiveScopeTypeId = ScopeType?.Id ?? scopeTypeId;
         return effectiveScopeTypeId.HasValue && !string.IsNullOrWhiteSpace(value);
     }
 
@@ -94,20 +81,18 @@
         if (!IsValid())
             return;
 
+        var effectiveScopeTypeId = ScopeType?.Id ?? scopeTypeId;
+        if (!effectiveScopeTypeId.HasValue) return;
+
         try
         {
-            var effectiveScopeTypeId = ScopeTypeId ?? scopeTypeId;
-            var scopeValue = new ScopeValue
+            await ScopeService.CreateScopeValueAsync(
+                effectiveScopeTypeId.Value,
+                new CreateScopeValueRequest
                 {
-                    Id = Guid.NewGuid(),
-                    ScopeTypeId = effectiveScopeTypeId!.Value,
                     Value = value,
-                    Description = string.IsNullOrWhiteSpace(description) ? null : description,
-                    CreatedAt = DateTimeOffset.UtcNow
-                };
-
-            Db.ScopeValues.Add(scopeValue);
-            await Db.SaveChangesAsync();
+                    Description = string.IsNullOrWhiteSpace(description) ? null : description
+                });
 
             Snackbar.Add("Scope value created successfully", Severity.Success);
             MudDialog.Close();

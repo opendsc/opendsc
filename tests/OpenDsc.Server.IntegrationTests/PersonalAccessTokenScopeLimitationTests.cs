@@ -376,3 +376,4 @@ public class PersonalAccessTokenScopeLimitationTests : IClassFixture<ServerWebAp
         token.Scopes.Should().Contain(ServerPermissions.SettingsWrite);
     }
 }
+

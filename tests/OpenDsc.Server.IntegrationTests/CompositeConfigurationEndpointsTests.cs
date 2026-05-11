@@ -1073,3 +1073,4 @@ public class CompositeConfigurationEndpointsTests : IDisposable
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 }
+

@@ -191,3 +191,4 @@ public sealed class ConfigurationSettingsEndpointsTests : IDisposable
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 }
+

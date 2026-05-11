@@ -229,3 +229,4 @@ public class RegistrationKeyEndpointsTests : IDisposable
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 }
+

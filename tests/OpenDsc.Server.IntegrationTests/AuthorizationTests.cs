@@ -184,3 +184,4 @@ public class AuthorizationTests : IAsyncLifetime
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 }
+

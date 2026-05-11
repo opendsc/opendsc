@@ -35,7 +35,7 @@ public sealed class NodeTagEndpointsTests : IDisposable
     {
         var request = new CreateScopeTypeRequest { Name = name, ValueMode = ScopeValueMode.Restricted };
         var response = await client.PostAsJsonAsync("/api/v1/scope-types", request, SourceGenerationContext.Default.Options);
-        var result = await response.Content.ReadFromJsonAsync<ScopeTypeDto>(SourceGenerationContext.Default.Options);
+        var result = await response.Content.ReadFromJsonAsync<ScopeTypeDetails>(SourceGenerationContext.Default.Options);
         return result!.Id;
     }
 
@@ -43,7 +43,7 @@ public sealed class NodeTagEndpointsTests : IDisposable
     {
         var request = new CreateScopeValueRequest { Value = value };
         var response = await client.PostAsJsonAsync($"/api/v1/scope-types/{scopeTypeId}/values", request);
-        var result = await response.Content.ReadFromJsonAsync<ScopeValueDto>();
+        var result = await response.Content.ReadFromJsonAsync<ScopeValueDetails>();
         return result!.Id;
     }
 
@@ -227,3 +227,4 @@ public sealed class NodeTagEndpointsTests : IDisposable
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 }
+

@@ -1,7 +1,6 @@
-@using Microsoft.EntityFrameworkCore
 @using MudBlazor
-@using OpenDsc.Server.Entities
-@inject ServerDbContext Db
+@using OpenDsc.Contracts.Settings
+@inject IScopeService ScopeService
 @inject ISnackbar Snackbar
 
 <MudDialog>
@@ -22,7 +21,7 @@
     private IMudDialogInstance MudDialog { get; set; } = default!;
 
     [Parameter]
-    public ScopeValue ScopeValue { get; set; } = default!;
+    public ScopeValueDetails ScopeValue { get; set; } = default!;
 
     [Parameter]
     public EventCallback OnScopeValueUpdated { get; set; }
@@ -40,9 +39,10 @@
     {
         try
         {
-            ScopeValue.Description = string.IsNullOrWhiteSpace(description) ? null : description;
-            ScopeValue.UpdatedAt = DateTimeOffset.UtcNow;
-            await Db.SaveChangesAsync();
+            await ScopeService.UpdateScopeValueAsync(
+                ScopeValue.ScopeTypeId,
+                ScopeValue.Id,
+                new UpdateScopeValueRequest { Description = string.IsNullOrWhiteSpace(description) ? null : description });
 
             Snackbar.Add($"Scope value '{value}' updated successfully", Severity.Success);
             MudDialog.Close();

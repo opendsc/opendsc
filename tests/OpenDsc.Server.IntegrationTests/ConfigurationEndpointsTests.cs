@@ -805,3 +805,4 @@ public sealed class ValidationErrorDto
     public required string Message { get; init; }
     public required string Code { get; init; }
 }
+

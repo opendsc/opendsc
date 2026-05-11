@@ -330,3 +330,4 @@ public sealed class GroupEndpointExternalGroupMappingResponse
     public required string ExternalGroupId { get; init; }
     public required Guid GroupId { get; init; }
 }
+

@@ -1053,6 +1053,7 @@ public sealed partial class ConfigurationService : IConfigurationService
 
         return configs.Select(c => new ConfigurationSummary
         {
+            Id = c.Id,
             Name = c.Name,
             Description = c.Description,
             UseServerManagedParameters = c.UseServerManagedParameters,

@@ -7,9 +7,6 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using OpenDsc.Contracts.Lcm;
 using OpenDsc.Contracts.Settings;
 using OpenDsc.Server.Authorization;
-using OpenDsc.Server.Data;
-using OpenDsc.Server.Entities;
-using OpenDsc.Server.Services;
 
 namespace OpenDsc.Server.Endpoints;
 
@@ -49,138 +46,83 @@ public static class SettingsEndpoints
     }
 
     private static async Task<Results<Ok<PublicSettingsResponse>, NotFound<ErrorResponse>>> GetPublicSettings(
-        ServerDbContext db,
+        ISettingsService settingsService,
         CancellationToken cancellationToken)
     {
-        var settings = await db.ServerSettings.FindAsync([1], cancellationToken);
-        if (settings is null)
+        try
         {
-            return TypedResults.NotFound(new ErrorResponse { Error = "Server settings not found." });
+            return TypedResults.Ok(await settingsService.GetPublicSettingsAsync(cancellationToken));
         }
-
-        return TypedResults.Ok(new PublicSettingsResponse
+        catch (KeyNotFoundException ex)
         {
-            CertificateRotationInterval = settings.CertificateRotationInterval
-        });
+            return TypedResults.NotFound(new ErrorResponse { Error = ex.Message });
+        }
     }
 
     private static async Task<Results<Ok<ServerSettingsResponse>, NotFound<ErrorResponse>>> GetSettings(
-        ServerDbContext db,
+        ISettingsService settingsService,
         CancellationToken cancellationToken)
     {
-        var settings = await db.ServerSettings.FindAsync([1], cancellationToken);
-        if (settings is null)
+        try
         {
-            return TypedResults.NotFound(new ErrorResponse { Error = "Server settings not found." });
+            return TypedResults.Ok(await settingsService.GetServerSettingsAsync(cancellationToken));
         }
-
-        return TypedResults.Ok(new ServerSettingsResponse
+        catch (KeyNotFoundException ex)
         {
-            CertificateRotationInterval = settings.CertificateRotationInterval,
-            StalenessMultiplier = settings.StalenessMultiplier
-        });
+            return TypedResults.NotFound(new ErrorResponse { Error = ex.Message });
+        }
     }
 
     private static async Task<Results<Ok<ServerSettingsResponse>, NotFound<ErrorResponse>>> UpdateSettings(
         UpdateServerSettingsRequest request,
-        ServerDbContext db,
+        ISettingsService settingsService,
         CancellationToken cancellationToken)
     {
-        var settings = await db.ServerSettings.FindAsync([1], cancellationToken);
-        if (settings is null)
+        try
         {
-            return TypedResults.NotFound(new ErrorResponse { Error = "Server settings not found." });
+            return TypedResults.Ok(
+                await settingsService.UpdateServerSettingsAsync(request, cancellationToken));
         }
-
-        if (request.CertificateRotationInterval.HasValue)
+        catch (KeyNotFoundException ex)
         {
-            settings.CertificateRotationInterval = request.CertificateRotationInterval.Value;
+            return TypedResults.NotFound(new ErrorResponse { Error = ex.Message });
         }
-
-        if (request.StalenessMultiplier.HasValue)
-        {
-            settings.StalenessMultiplier = request.StalenessMultiplier.Value;
-        }
-
-        await db.SaveChangesAsync(cancellationToken);
-
-        return TypedResults.Ok(new ServerSettingsResponse
-        {
-            CertificateRotationInterval = settings.CertificateRotationInterval,
-            StalenessMultiplier = settings.StalenessMultiplier
-        });
     }
 
     private static async Task<Ok<RegistrationKeyResponse>> RotateRegistrationKey(
-        ServerDbContext db,
+        IRegistrationKeyService registrationKeyService,
         CancellationToken cancellationToken)
     {
-        var key = KeyGenerator.GenerateRegistrationKey();
-        var expiresAt = DateTimeOffset.UtcNow.AddDays(30);
-
-        var registrationKey = new RegistrationKey
-        {
-            Id = Guid.NewGuid(),
-            Key = key,
-            ExpiresAt = expiresAt,
-            CreatedAt = DateTimeOffset.UtcNow,
-            MaxUses = null,
-            CurrentUses = 0,
-            IsRevoked = false
-        };
-
-        db.RegistrationKeys.Add(registrationKey);
-        await db.SaveChangesAsync(cancellationToken);
-
-        return TypedResults.Ok(new RegistrationKeyResponse
-        {
-            Id = registrationKey.Id,
-            Key = key,
-            ExpiresAt = expiresAt,
-            MaxUses = null,
-            CurrentUses = 0
-        });
+        return TypedResults.Ok(await registrationKeyService.RotateKeyAsync(cancellationToken));
     }
 
     private static async Task<Results<Ok<ServerLcmDefaultsResponse>, NotFound<ErrorResponse>>> GetLcmDefaults(
-        ServerDbContext db,
+        ISettingsService settingsService,
         CancellationToken cancellationToken)
     {
-        var settings = await db.ServerSettings.FindAsync([1], cancellationToken);
-        if (settings is null)
+        try
         {
-            return TypedResults.NotFound(new ErrorResponse { Error = "Server settings not found." });
+            return TypedResults.Ok(await settingsService.GetServerLcmDefaultsAsync(cancellationToken));
         }
-
-        return TypedResults.Ok(new ServerLcmDefaultsResponse
+        catch (KeyNotFoundException ex)
         {
-            DefaultConfigurationMode = settings.DefaultConfigurationMode,
-            DefaultConfigurationModeInterval = settings.DefaultConfigurationModeInterval,
-            DefaultReportCompliance = settings.DefaultReportCompliance
-        });
+            return TypedResults.NotFound(new ErrorResponse { Error = ex.Message });
+        }
     }
 
     private static async Task<Results<Ok<ServerLcmDefaultsResponse>, NotFound<ErrorResponse>>> UpdateLcmDefaults(
         UpdateServerLcmDefaultsRequest request,
-        ServerDbContext db,
+        ISettingsService settingsService,
         CancellationToken cancellationToken)
     {
-        var settings = await db.ServerSettings.FindAsync([1], cancellationToken);
-        if (settings is null)
+        try
         {
-            return TypedResults.NotFound(new ErrorResponse { Error = "Server settings not found." });
+            return TypedResults.Ok(
+                await settingsService.UpdateServerLcmDefaultsAsync(request, cancellationToken));
         }
-
-        settings.DefaultConfigurationMode = request.DefaultConfigurationMode;
-        settings.DefaultConfigurationModeInterval = request.DefaultConfigurationModeInterval;
-        settings.DefaultReportCompliance = request.DefaultReportCompliance;
-        await db.SaveChangesAsync(cancellationToken);
-
-        return TypedResults.Ok(new ServerLcmDefaultsResponse
+        catch (KeyNotFoundException ex)
         {
-            DefaultConfigurationMode = settings.DefaultConfigurationMode,
-            DefaultConfigurationModeInterval = settings.DefaultConfigurationModeInterval,
-            DefaultReportCompliance = settings.DefaultReportCompliance
-        });
+            return TypedResults.NotFound(new ErrorResponse { Error = ex.Message });
+        }
     }
 }

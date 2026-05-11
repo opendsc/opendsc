@@ -250,3 +250,4 @@ public class SettingsEndpointsTests : IDisposable
         GC.SuppressFinalize(this);
     }
 }
+

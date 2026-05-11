@@ -3,6 +3,7 @@
 // terms of the MIT license.
 
 using OpenDsc.Contracts.Lcm;
+using OpenDsc.Contracts.Configurations;
 
 namespace OpenDsc.Contracts.Settings;
 
@@ -81,81 +82,73 @@ public sealed class UpdateServerLcmDefaultsRequest
 }
 
 /// <summary>
-/// Request to create a registration key.
+/// Validation settings response.
 /// </summary>
-public sealed class CreateRegistrationKeyRequest
+public sealed class ValidationSettingsResponse
 {
-    /// <summary>
-    /// When the key should expire (optional, defaults to 7 days from now).
-    /// </summary>
-    public DateTimeOffset? ExpiresAt { get; set; }
-
-    /// <summary>
-    /// Maximum number of times this key can be used (null = unlimited).
-    /// </summary>
-    public int? MaxUses { get; set; }
-
-    /// <summary>
-    /// Optional description of the key's intended usage or purpose.
-    /// </summary>
-    public string? Description { get; set; }
+    public required bool RequireSemVer { get; init; }
+    public required ParameterValidationMode DefaultParameterValidationMode { get; init; }
+    public required bool AllowConfigurationOverride { get; init; }
+    public required bool AllowParameterValidationOverride { get; init; }
 }
 
 /// <summary>
-/// Request to update a registration key.
+/// Request to update validation settings.
 /// </summary>
-public sealed class UpdateRegistrationKeyRequest
+public sealed class UpdateValidationSettingsRequest
 {
-    /// <summary>
-    /// Description of the key's intended usage or purpose.
-    /// </summary>
-    public string? Description { get; set; }
+    public bool? RequireSemVer { get; init; }
+    public ParameterValidationMode? DefaultParameterValidationMode { get; init; }
+    public bool? AllowConfigurationOverride { get; init; }
+    public bool? AllowParameterValidationOverride { get; init; }
 }
 
 /// <summary>
-/// Response with registration key details.
+/// Global retention policy settings.
 /// </summary>
-public sealed class RegistrationKeyResponse
+public sealed class RetentionSettingsResponse
 {
-    /// <summary>
-    /// The unique identifier for the key.
-    /// </summary>
-    public Guid Id { get; set; }
+    public required bool Enabled { get; init; }
+    public required int KeepVersions { get; init; }
+    public required int KeepDays { get; init; }
+    public required bool KeepReleaseVersions { get; init; }
+    public required int ScheduleIntervalHours { get; init; }
+    public required int ReportKeepCount { get; init; }
+    public required int ReportKeepDays { get; init; }
+    public required int StatusEventKeepCount { get; init; }
+    public required int StatusEventKeepDays { get; init; }
+}
 
-    /// <summary>
-    /// The registration key value (only returned on creation).
-    /// </summary>
-    public string? Key { get; set; }
+/// <summary>
+/// Request to update global retention policy settings. Null fields leave existing values unchanged.
+/// </summary>
+public sealed class UpdateRetentionSettingsRequest
+{
+    public bool? Enabled { get; init; }
+    public int? KeepVersions { get; init; }
+    public int? KeepDays { get; init; }
+    public bool? KeepReleaseVersions { get; init; }
+    public int? ScheduleIntervalHours { get; init; }
+    public int? ReportKeepCount { get; init; }
+    public int? ReportKeepDays { get; init; }
+    public int? StatusEventKeepCount { get; init; }
+    public int? StatusEventKeepDays { get; init; }
+}
 
-    /// <summary>
-    /// When the key expires.
-    /// </summary>
-    public DateTimeOffset ExpiresAt { get; set; }
-
-    /// <summary>
-    /// When the key was created.
-    /// </summary>
-    public DateTimeOffset CreatedAt { get; set; }
-
-    /// <summary>
-    /// Maximum number of uses (null = unlimited).
-    /// </summary>
-    public int? MaxUses { get; set; }
-
-    /// <summary>
-    /// Current number of uses.
-    /// </summary>
-    public int CurrentUses { get; set; }
-
-    /// <summary>
-    /// Whether the key is revoked.
-    /// </summary>
-    public bool IsRevoked { get; set; }
-
-    /// <summary>
-    /// Optional description of the key's intended usage or purpose.
-    /// </summary>
-    public string? Description { get; set; }
+/// <summary>
+/// Summary of a retention cleanup run.
+/// </summary>
+public sealed class RetentionRunSummary
+{
+    public required Guid Id { get; init; }
+    public required DateTimeOffset StartedAt { get; init; }
+    public DateTimeOffset? CompletedAt { get; init; }
+    public required string VersionType { get; init; }
+    public required bool IsScheduled { get; init; }
+    public required bool IsDryRun { get; init; }
+    public required int DeletedCount { get; init; }
+    public required int KeptCount { get; init; }
+    public string? Error { get; init; }
 }
 
 /// <summary>

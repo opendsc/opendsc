@@ -79,14 +79,14 @@ namespace OpenDsc.Server;
 [JsonSerializable(typeof(List<RegistrationKeyResponse>))]
 [JsonSerializable(typeof(ErrorResponse))]
 // Scope Type contracts
-[JsonSerializable(typeof(ScopeTypeDto))]
-[JsonSerializable(typeof(List<ScopeTypeDto>))]
+[JsonSerializable(typeof(ScopeTypeDetails))]
+[JsonSerializable(typeof(List<ScopeTypeDetails>))]
 [JsonSerializable(typeof(CreateScopeTypeRequest))]
 [JsonSerializable(typeof(UpdateScopeTypeRequest))]
 [JsonSerializable(typeof(ReorderScopeTypesRequest))]
 // Scope Value contracts
-[JsonSerializable(typeof(ScopeValueDto))]
-[JsonSerializable(typeof(List<ScopeValueDto>))]
+[JsonSerializable(typeof(ScopeValueDetails))]
+[JsonSerializable(typeof(List<ScopeValueDetails>))]
 [JsonSerializable(typeof(CreateScopeValueRequest))]
 [JsonSerializable(typeof(UpdateScopeValueRequest))]
 // Node Tag contracts
@@ -159,7 +159,7 @@ namespace OpenDsc.Server;
 [JsonSerializable(typeof(List<VersionDeletionInfo>))]
 [JsonSerializable(typeof(RetentionRunDto))]
 [JsonSerializable(typeof(List<RetentionRunDto>))]
-[JsonSerializable(typeof(RetentionSettingsDto))]
+[JsonSerializable(typeof(RetentionSettingsResponse))]
 [JsonSerializable(typeof(UpdateRetentionSettingsRequest))]
 // Parameter validation
 [JsonSerializable(typeof(OpenDsc.Contracts.Configurations.ValidationError), TypeInfoPropertyName = "ConfigurationValidationError")]

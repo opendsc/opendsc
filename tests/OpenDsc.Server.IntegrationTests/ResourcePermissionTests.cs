@@ -360,3 +360,4 @@ public class ResourcePermissionTests : IAsyncLifetime
         readResponse.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 }
+

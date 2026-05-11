@@ -10,6 +10,11 @@ namespace OpenDsc.Contracts.Configurations;
 public sealed class ConfigurationSummary
 {
     /// <summary>
+    /// The configuration's unique identifier.
+    /// </summary>
+    public Guid Id { get; set; }
+
+    /// <summary>
     /// The configuration's name.
     /// </summary>
     public string Name { get; set; } = string.Empty;

@@ -1,9 +1,9 @@
-@using Microsoft.EntityFrameworkCore
 @using MudBlazor
 @using OpenDsc.Contracts.Configurations
-@using OpenDsc.Server.Entities
+@using OpenDsc.Contracts.Settings
 @using Microsoft.Extensions.Logging
-@inject ServerDbContext Db
+@inject IConfigurationService ConfigurationService
+@inject IScopeService ScopeService
 @inject ILogger<ScopeSelector> Logger
 
 <MudGrid>
@@ -120,12 +120,12 @@
     private Guid? selectedScopeTypeId;
     private string? selectedScopeValue;
 
-    private List<Configuration> configurations = [];
-    private List<ScopeType> scopeTypes = [];
-    private List<ScopeValue> scopeValues = [];
-    private List<Node> nodes = [];
+    private List<OpenDsc.Contracts.Configurations.ConfigurationSummary> configurations = [];
+    private List<ScopeTypeDetails> scopeTypes = [];
+    private List<ScopeValueDetails> scopeValues = [];
+    private List<ScopeNodeInfo> nodes = [];
     private List<string> unrestrictedScopeValues = [];
-    private ScopeType? currentScopeType;
+    private ScopeTypeDetails? currentScopeType;
 
     private async Task OnConfigurationChanged(Guid? value)
     {
@@ -191,17 +191,14 @@
 
     private async Task LoadConfigurationsAsync()
     {
-        configurations = await Db.Configurations
-            .OrderBy(c => c.Name)
-            .ToListAsync();
+        configurations = await ConfigurationService.GetConfigurationsAsync();
+        configurations = [.. configurations.OrderBy(c => c.Name)];
     }
 
     private async Task LoadScopeTypesAsync()
     {
-        scopeTypes = await Db.ScopeTypes
-            .Where(st => st.IsEnabled)
-            .OrderBy(st => st.Precedence)
-            .ToListAsync();
+        var types = await ScopeService.GetScopeTypesAsync();
+        scopeTypes = types.Where(st => st.IsEnabled).OrderBy(st => st.Precedence).ToList();
     }
 
     private async Task LoadScopeValuesAsync()
@@ -228,27 +225,17 @@
 
         if (currentScopeType.Name == "Node")
         {
-            nodes = await Db.Nodes
-                .OrderBy(n => n.Fqdn)
-                .ToListAsync();
+            nodes = (await ScopeService.GetScopeNodesAsync(selectedScopeTypeId.Value)).ToList();
             scopeValues = [];
         }
         else if (currentScopeType.ValueMode == ScopeValueMode.Restricted)
         {
-            scopeValues = await Db.ScopeValues
-                .Where(sv => sv.ScopeTypeId == selectedScopeTypeId.Value)
-                .OrderBy(sv => sv.Value)
-                .ToListAsync();
+            scopeValues = (await ScopeService.GetScopeValuesAsync(selectedScopeTypeId.Value)).OrderBy(sv => sv.Value).ToList();
             nodes = [];
         }
         else
         {
-            unrestrictedScopeValues = await Db.ParameterFiles
-                .Where(pf => pf.ScopeTypeId == selectedScopeTypeId.Value && pf.ScopeValue != null)
-                .Select(pf => pf.ScopeValue!)
-                .Distinct()
-                .OrderBy(v => v)
-                .ToListAsync();
+            unrestrictedScopeValues = (await ScopeService.GetUnrestrictedScopeValuesAsync(selectedScopeTypeId.Value)).ToList();
             scopeValues = [];
             nodes = [];
         }

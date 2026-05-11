@@ -161,3 +161,4 @@ public class PersonalAccessTokenEndpointsTests : IClassFixture<ServerWebApplicat
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 }
+

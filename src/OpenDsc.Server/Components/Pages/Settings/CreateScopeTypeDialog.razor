@@ -1,8 +1,6 @@
-@using Microsoft.EntityFrameworkCore
 @using MudBlazor
-@using OpenDsc.Contracts.Configurations
-@using OpenDsc.Server.Entities
-@inject ServerDbContext Db
+@using OpenDsc.Contracts.Settings
+@inject IScopeService ScopeService
 @inject ISnackbar Snackbar
 
 <MudDialog>
@@ -50,71 +48,12 @@
     {
         try
         {
-            var now = DateTimeOffset.UtcNow;
-
-            // Load all existing scope types in a deterministic order
-            var allScopeTypes = await Db.ScopeTypes
-                .OrderBy(s => s.Precedence)
-                .ToListAsync();
-
-            // Find Node scope (should be last/highest precedence)
-            var nodeScope = allScopeTypes.FirstOrDefault(s => s.IsSystem && s.Name == "Node");
-
-            // Create new scope type
-            var newScopeType = new ScopeType
+            await ScopeService.CreateScopeTypeAsync(new CreateScopeTypeRequest
             {
-                Id = Guid.NewGuid(),
                 Name = name,
                 Description = string.IsNullOrWhiteSpace(description) ? null : description,
-                ValueMode = valueMode,
-                Precedence = 0, // Temporary value
-                CreatedAt = now
-            };
-
-            Db.ScopeTypes.Add(newScopeType);
-
-            // Two-phase renumbering to avoid unique constraint violations
-            // Phase 1: Set all to temporary negative values
-            for (int i = 0; i < allScopeTypes.Count; i++)
-            {
-                allScopeTypes[i].Precedence = -(i + 1);
-                allScopeTypes[i].UpdatedAt = now;
-            }
-            newScopeType.Precedence = -(allScopeTypes.Count + 1);
-            await Db.SaveChangesAsync();
-
-            // Phase 2: Renumber - Default first, other system scopes, user scopes, new scope, Node last
-            var defaultScope = allScopeTypes.FirstOrDefault(s => s.IsSystem && s.Name == "Default");
-            var otherSystemScopes = allScopeTypes
-                .Where(s => s.IsSystem && s.Name != "Default" && s.Name != "Node")
-                .OrderBy(s => s.Precedence)
-                .ToList();
-            var userScopes = allScopeTypes.Where(s => !s.IsSystem).OrderBy(s => s.CreatedAt).ToList();
-
-            int precedence = 0;
-            if (defaultScope != null)
-            {
-                defaultScope.Precedence = precedence++;
-            }
-
-            foreach (var scope in otherSystemScopes)
-            {
-                scope.Precedence = precedence++;
-            }
-
-            foreach (var scope in userScopes)
-            {
-                scope.Precedence = precedence++;
-            }
-
-            newScopeType.Precedence = precedence++;
-
-            if (nodeScope != null)
-            {
-                nodeScope.Precedence = precedence++;
-            }
-
-            await Db.SaveChangesAsync();
+                ValueMode = valueMode
+            });
 
             Snackbar.Add($"Scope type '{name}' created successfully", Severity.Success);
             MudDialog.Close();

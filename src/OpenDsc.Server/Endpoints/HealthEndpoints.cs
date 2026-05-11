@@ -4,7 +4,7 @@
 
 using Microsoft.AspNetCore.Http.HttpResults;
 
-using OpenDsc.Server.Data;
+using OpenDsc.Contracts.Settings;
 
 namespace OpenDsc.Server.Endpoints;
 
@@ -34,12 +34,15 @@ public static class HealthEndpoints
     }
 
     private static async Task<Results<Ok<ReadinessResponse>, StatusCodeHttpResult>> GetReadiness(
-        ServerDbContext db,
+        IHealthService healthService,
         CancellationToken cancellationToken)
     {
         try
         {
-            await db.Database.CanConnectAsync(cancellationToken);
+            if (!await healthService.CanConnectAsync(cancellationToken))
+            {
+                return TypedResults.StatusCode(503);
+            }
 
             return TypedResults.Ok(new ReadinessResponse
             {
