@@ -13,9 +13,9 @@ using OpenDsc.Contracts.Settings;
 
 namespace OpenDsc.Server.Endpoints;
 
-public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
+public static class NodeEndpoints
 {
-    public void MapNodeEndpoints(IEndpointRouteBuilder app)
+    public static void MapNodeEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/v1/nodes")
             .RequireAuthorization()
@@ -97,7 +97,7 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
             .WithDescription("Called by the node to report its current LCM configuration to the server.");
     }
 
-    private async Task<Results<Ok<RegisterNodeResponse>, BadRequest<ErrorResponse>, Conflict<ErrorResponse>>> RegisterNode(
+    private static async Task<Results<Ok<RegisterNodeResponse>, BadRequest<ErrorResponse>, Conflict<ErrorResponse>>> RegisterNode(
         RegisterNodeRequest request,
         HttpContext httpContext,
         IWebHostEnvironment env,
@@ -165,7 +165,7 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
         }
     }
 
-    private async Task<Ok<List<NodeSummary>>> GetNodes(
+    private static async Task<Ok<List<NodeSummary>>> GetNodes(
         INodeService nodeService,
         CancellationToken cancellationToken)
     {
@@ -173,7 +173,7 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
         return TypedResults.Ok(nodes.ToList());
     }
 
-    private async Task<Results<Ok<NodeDetails>, NotFound<ErrorResponse>>> GetNode(
+    private static async Task<Results<Ok<NodeDetails>, NotFound<ErrorResponse>>> GetNode(
         Guid nodeId,
         INodeService nodeService,
         CancellationToken cancellationToken)
@@ -187,7 +187,7 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
         return TypedResults.Ok(node);
     }
 
-    private async Task<Results<NoContent, NotFound<ErrorResponse>>> DeleteNode(
+    private static async Task<Results<NoContent, NotFound<ErrorResponse>>> DeleteNode(
         Guid nodeId,
         INodeService nodeService,
         CancellationToken cancellationToken)
@@ -203,42 +203,32 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
         }
     }
 
-    private async Task<Results<Ok<string>, NotFound<ErrorResponse>, ForbidHttpResult>> GetNodeConfiguration(
+    private static async Task<Results<Ok<string>, NotFound<ErrorResponse>, ForbidHttpResult>> GetNodeConfiguration(
         Guid nodeId,
         ClaimsPrincipal user,
         IWebHostEnvironment env,
         INodeService nodeService,
         CancellationToken cancellationToken)
     {
-        LogGettingNodeConfiguration(nodeId);
-        try
+        if (!env.IsEnvironment("Testing"))
         {
-            if (!env.IsEnvironment("Testing"))
+            var authenticatedNodeId = user.FindFirst("node_id")?.Value;
+            if (authenticatedNodeId is null || !Guid.TryParse(authenticatedNodeId, out var authNodeId) || authNodeId != nodeId)
             {
-                var authenticatedNodeId = user.FindFirst("node_id")?.Value;
-                if (authenticatedNodeId is null || !Guid.TryParse(authenticatedNodeId, out var authNodeId) || authNodeId != nodeId)
-                {
-                    return TypedResults.Forbid();
-                }
+                return TypedResults.Forbid();
             }
-
-            var manifest = await nodeService.GetNodeConfigurationManifestAsync(nodeId, cancellationToken);
-            if (manifest is null)
-            {
-                LogNoConfigurationFoundForNode(nodeId);
-                return TypedResults.NotFound(new ErrorResponse { Error = "No configuration assigned." });
-            }
-
-            LogReturningNodeConfiguration(manifest.Content);
-            return TypedResults.Ok(manifest.Content);
         }
-        catch
+
+        var manifest = await nodeService.GetNodeConfigurationManifestAsync(nodeId, cancellationToken);
+        if (manifest is null)
         {
-            throw;
+            return TypedResults.NotFound(new ErrorResponse { Error = "No configuration assigned." });
         }
+
+        return TypedResults.Ok(manifest.Content);
     }
 
-    private async Task<Results<FileStreamHttpResult, NotFound<ErrorResponse>>> GetConfigurationBundle(
+    private static async Task<Results<FileStreamHttpResult, NotFound<ErrorResponse>>> GetConfigurationBundle(
         Guid nodeId,
         INodeService nodeService,
         CancellationToken cancellationToken)
@@ -252,7 +242,7 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
         return TypedResults.File(new MemoryStream(bundle.Content), bundle.ContentType, bundle.FileName);
     }
 
-    private async Task<Results<NoContent, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> AssignConfiguration(
+    private static async Task<Results<NoContent, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> AssignConfiguration(
         Guid nodeId,
         AssignConfigurationRequest request,
         INodeService nodeService,
@@ -278,7 +268,7 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
         }
     }
 
-    private async Task<Results<NoContent, NotFound<ErrorResponse>>> UnassignConfiguration(
+    private static async Task<Results<NoContent, NotFound<ErrorResponse>>> UnassignConfiguration(
         Guid nodeId,
         INodeService nodeService,
         CancellationToken cancellationToken)
@@ -294,7 +284,7 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
         }
     }
 
-    private async Task<Results<Ok<ConfigurationChecksumResponse>, NotFound<ErrorResponse>, ForbidHttpResult>> GetConfigurationChecksum(
+    private static async Task<Results<Ok<ConfigurationChecksumResponse>, NotFound<ErrorResponse>, ForbidHttpResult>> GetConfigurationChecksum(
         Guid nodeId,
         ClaimsPrincipal user,
         INodeService nodeService,
@@ -314,7 +304,7 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
         return TypedResults.Ok(response);
     }
 
-    private async Task<Results<NoContent, NotFound<ErrorResponse>, ForbidHttpResult>> UpdateLcmStatus(
+    private static async Task<Results<NoContent, NotFound<ErrorResponse>, ForbidHttpResult>> UpdateLcmStatus(
         Guid nodeId,
         UpdateLcmStatusRequest request,
         ClaimsPrincipal user,
@@ -338,7 +328,7 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
         }
     }
 
-    private async Task<Results<Ok<List<NodeStatusEventSummary>>, NotFound<ErrorResponse>>> GetNodeStatusHistory(
+    private static async Task<Results<Ok<List<NodeStatusEventSummary>>, NotFound<ErrorResponse>>> GetNodeStatusHistory(
         Guid nodeId,
         INodeService nodeService,
         int? skip,
@@ -365,7 +355,7 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
         }
     }
 
-    private async Task<Results<Ok<RotateCertificateResponse>, NotFound<ErrorResponse>, BadRequest<ErrorResponse>, ForbidHttpResult>> RotateCertificate(
+    private static async Task<Results<Ok<RotateCertificateResponse>, NotFound<ErrorResponse>, BadRequest<ErrorResponse>, ForbidHttpResult>> RotateCertificate(
         Guid nodeId,
         RotateCertificateRequest request,
         ClaimsPrincipal user,
@@ -399,7 +389,7 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
         }
     }
 
-    private async Task<Results<Ok<NodeLcmConfigResponse>, NotFound<ErrorResponse>, ForbidHttpResult>> GetNodeLcmConfig(
+    private static async Task<Results<Ok<NodeLcmConfigResponse>, NotFound<ErrorResponse>, ForbidHttpResult>> GetNodeLcmConfig(
         Guid nodeId,
         ClaimsPrincipal user,
         IWebHostEnvironment env,
@@ -431,7 +421,7 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
         }
     }
 
-    private async Task<Results<Ok<NodeLcmConfigResponse>, NotFound<ErrorResponse>>> UpdateNodeLcmConfig(
+    private static async Task<Results<Ok<NodeLcmConfigResponse>, NotFound<ErrorResponse>>> UpdateNodeLcmConfig(
         Guid nodeId,
         UpdateNodeLcmConfigRequest request,
         INodeService nodeService,
@@ -453,7 +443,7 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
         }
     }
 
-    private async Task<Results<NoContent, NotFound<ErrorResponse>, ForbidHttpResult>> ReportNodeLcmConfig(
+    private static async Task<Results<NoContent, NotFound<ErrorResponse>, ForbidHttpResult>> ReportNodeLcmConfig(
         Guid nodeId,
         ReportNodeLcmConfigRequest request,
         ClaimsPrincipal user,
@@ -480,43 +470,4 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
             return TypedResults.NotFound(new ErrorResponse { Error = "Node not found." });
         }
     }
-
-    [LoggerMessage(EventId = EventIds.GettingNodeConfiguration, Level = LogLevel.Debug, Message = "GetNodeConfiguration called for nodeId: {NodeId}")]
-    private partial void LogGettingNodeConfiguration(Guid nodeId);
-
-    [LoggerMessage(EventId = EventIds.NodeConfigurationFound, Level = LogLevel.Debug, Message = "NodeConfigurations lookup: nodeConfig is {Found}")]
-    private partial void LogNodeConfigurationFound(bool found);
-
-    [LoggerMessage(EventId = EventIds.NodeConfigurationContentSetFromAssignment, Level = LogLevel.Debug, Message = "Set configContent from NodeConfigurations")]
-    private partial void LogNodeConfigurationContentSetFromAssignment();
-
-    [LoggerMessage(EventId = EventIds.NodeConfigurationFallback, Level = LogLevel.Debug, Message = "Fallback: node found: {NodeFound}, ConfigurationName: {ConfigurationName}")]
-    private partial void LogNodeConfigurationFallback(bool nodeFound, string? configurationName);
-
-    [LoggerMessage(EventId = EventIds.LookingForConfigurationByName, Level = LogLevel.Debug, Message = "Looking for config with name: {ConfigName}")]
-    private partial void LogLookingForConfigurationByName(string configName);
-
-    [LoggerMessage(EventId = EventIds.ConfigurationByNameFound, Level = LogLevel.Debug, Message = "Config found: {Found}")]
-    private partial void LogConfigurationByNameFound(bool found);
-
-    [LoggerMessage(EventId = EventIds.ConfigurationVersionDetails, Level = LogLevel.Debug, Message = "Found config '{ConfigName}' with {VersionCount} versions, activeVersion: {ActiveVersion}")]
-    private partial void LogConfigurationVersionDetails(string configName, int versionCount, string? activeVersion);
-
-    [LoggerMessage(EventId = EventIds.ConfigurationFileDetails, Level = LogLevel.Debug, Message = "Found {FileCount} files, mainFile found: {MainFileFound}")]
-    private partial void LogConfigurationFileDetails(int fileCount, bool mainFileFound);
-
-    [LoggerMessage(EventId = EventIds.NodeConfigurationContentSetFromFallback, Level = LogLevel.Debug, Message = "Set configContent from fallback: {ConfigContent}")]
-    private partial void LogNodeConfigurationContentSetFromFallback(string configContent);
-
-    [LoggerMessage(EventId = EventIds.NoConfigurationFoundForNode, Level = LogLevel.Warning, Message = "No configuration found for node {NodeId}")]
-    private partial void LogNoConfigurationFoundForNode(Guid nodeId);
-
-    [LoggerMessage(EventId = EventIds.ReturningNodeConfiguration, Level = LogLevel.Debug, Message = "Returning Ok with content: '{ConfigContent}'")]
-    private partial void LogReturningNodeConfiguration(string? configContent);
-}
-
-public static class NodeEndpointExtensions
-{
-    public static void MapNodeEndpoints(this IEndpointRouteBuilder app)
-        => app.ServiceProvider.GetRequiredService<NodeEndpoints>().MapNodeEndpoints(app);
 }

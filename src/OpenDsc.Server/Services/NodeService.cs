@@ -18,23 +18,26 @@ using NuGet.Versioning;
 
 namespace OpenDsc.Server.Services;
 
-public sealed class NodeService : INodeService
+public sealed partial class NodeService : INodeService
 {
     private readonly ServerDbContext _db;
     private readonly IParameterMergeService _parameterMergeService;
     private readonly IOptions<ServerConfig> _serverConfig;
     private readonly IWebHostEnvironment _env;
+    private readonly ILogger<NodeService> _logger;
 
     public NodeService(
         ServerDbContext db,
         IParameterMergeService parameterMergeService,
         IOptions<ServerConfig> serverConfig,
-        IWebHostEnvironment env)
+        IWebHostEnvironment env,
+        ILogger<NodeService> logger)
     {
         _db = db;
         _parameterMergeService = parameterMergeService;
         _serverConfig = serverConfig;
         _env = env;
+        _logger = logger;
     }
 
     public async Task<IReadOnlyList<NodeSummary>> GetNodesAsync(
@@ -141,12 +144,14 @@ public sealed class NodeService : INodeService
 
         if (assignment is null)
         {
+            LogNoConfigurationFoundForNode(nodeId);
             return null;
         }
 
         var content = await BuildConfigurationContentAsync(nodeId, assignment, cancellationToken);
         if (content is null)
         {
+            LogNoConfigurationFoundForNode(nodeId);
             return null;
         }
 
@@ -1167,4 +1172,7 @@ public sealed class NodeService : INodeService
             ContentType = "application/zip"
         };
     }
+
+    [LoggerMessage(EventId = EventIds.NoConfigurationFoundForNode, Level = LogLevel.Warning, Message = "No configuration found for node {NodeId}")]
+    private partial void LogNoConfigurationFoundForNode(Guid nodeId);
 }

@@ -73,21 +73,21 @@ builder.Services.AddServerAuthentication(builder.Environment, builder.Configurat
 
 builder.Services.AddMemoryCache();
 
-builder.Services.AddSingleton<IParameterMerger, ParameterMerger>();
+builder.Services.AddHostedService<RetentionBackgroundService>();
+
+builder.Services.AddScoped<IParameterMerger, ParameterMerger>();
 builder.Services.AddScoped<IParameterMergeService, ParameterMergeService>();
 builder.Services.AddScoped<IParameterSchemaService, ParameterSchemaService>();
 builder.Services.AddScoped<IParameterSchemaBuilder, ParameterSchemaBuilder>();
 builder.Services.AddScoped<IParameterValidator, ParameterValidator>();
 builder.Services.AddScoped<IParameterCompatibilityService, ParameterCompatibilityService>();
 builder.Services.AddScoped<IVersionRetentionService, VersionRetentionService>();
-builder.Services.AddHostedService<RetentionBackgroundService>();
 builder.Services.AddScoped<IConfigurationService, ConfigurationService>();
 builder.Services.AddScoped<ICompositeConfigurationService, CompositeConfigurationService>();
 builder.Services.AddScoped<IParameterService, ParameterService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IUserService, UserService>();
-builder.Services.AddScoped<IUserReader, UserService>();
 builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddScoped<IGroupService, GroupService>();
 builder.Services.AddScoped<ISettingsService, SettingsService>();
@@ -96,7 +96,6 @@ builder.Services.AddScoped<IRegistrationKeyService, RegistrationKeyService>();
 builder.Services.AddScoped<IHealthService, HealthService>();
 builder.Services.AddScoped<INodeService, NodeService>();
 builder.Services.AddScoped<IJsonYamlConverter, JsonYamlConverter>();
-builder.Services.AddSingleton<NodeEndpoints>();
 
 #if !WINDOWS
 if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))

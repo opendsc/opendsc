@@ -4,7 +4,7 @@
 @using OpenDsc.Contracts.Users
 @inject ThemeService ThemeService
 @inject ProtectedLocalStorage LocalStorage
-@inject IUserReader UserReader
+@inject IUserService UserService
 @inject NavigationManager Navigation
 @inject ILogger<MainLayout> Logger
 
@@ -166,7 +166,7 @@
 
         try
         {
-            var userDetails = await UserReader.GetUserAsync(userId);
+            var userDetails = await UserService.GetUserAsync(userId);
             _requirePasswordChange = userDetails.RequirePasswordChange;
         }
         catch (KeyNotFoundException)
