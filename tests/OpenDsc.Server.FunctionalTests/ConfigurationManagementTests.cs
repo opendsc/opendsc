@@ -6,12 +6,13 @@ using System.Net;
 
 using AwesomeAssertions;
 
-using OpenDsc.Lcm.Contracts;
-using OpenDsc.Server.Contracts;
-using OpenDsc.Server.Endpoints;
+using OpenDsc.Contracts.Lcm;
+using OpenDsc.Contracts.Nodes;
 using OpenDsc.Server.FunctionalTests.DatabaseProviders;
 
 using Xunit;
+
+using ConfigurationDetails = OpenDsc.Contracts.Configurations.ConfigurationDetails;
 
 namespace OpenDsc.Server.FunctionalTests;
 
@@ -55,7 +56,7 @@ resources:
         var getResponse = await adminClient.GetAsync($"/api/v1/configurations/{configName}", TestContext.Current.CancellationToken);
         getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var configDetails = await getResponse.Content.ReadFromJsonAsync<ConfigurationDetailsDto>(TestContext.Current.CancellationToken);
+        var configDetails = await getResponse.Content.ReadFromJsonAsync<ConfigurationDetails>(TestContext.Current.CancellationToken);
         configDetails.Should().NotBeNull();
         configDetails!.LatestVersion.Should().Be("1.0.0");
     }
@@ -109,14 +110,21 @@ resources: []
         using var adminClient = await AuthenticationHelper.CreateAuthenticatedClientAsync(Fixture);
 
         var configName = $"checksum-test-{Guid.NewGuid()}";
-        var configContent = "test content for checksum";
+        var configContent = @"
+$schema: https://raw.githubusercontent.com/PowerShell/DSC/main/schemas/2024/04/config/document.json
+resources: []
+";
 
-        var createRequest = new CreateConfigurationRequest
-        {
-            Name = configName,
-            Content = configContent
-        };
-        await adminClient.PostAsJsonAsync("/api/v1/configurations", createRequest, TestContext.Current.CancellationToken);
+        using var content = new MultipartFormDataContent();
+        content.Add(new StringContent(configName), "name");
+        content.Add(new StringContent("main.dsc.yaml"), "entryPoint");
+        var file = new ByteArrayContent(System.Text.Encoding.UTF8.GetBytes(configContent));
+        file.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+        content.Add(file, "files", "main.dsc.yaml");
+
+        var createResponse = await adminClient.PostAsync("/api/v1/configurations", content, TestContext.Current.CancellationToken);
+        createResponse.EnsureSuccessStatusCode();
+        await adminClient.PutAsync($"/api/v1/configurations/{configName}/versions/1.0.0/publish", null, TestContext.Current.CancellationToken);
 
         var fqdn = $"checksum-node-{Guid.NewGuid()}.example.com";
         var registerRequest = new RegisterNodeRequest
@@ -131,7 +139,8 @@ resources: []
         {
             ConfigurationName = configName
         };
-        await adminClient.PutAsJsonAsync($"/api/v1/nodes/{registerResult!.NodeId}/configuration", assignRequest, TestContext.Current.CancellationToken);
+        var assignResponse = await adminClient.PutAsJsonAsync($"/api/v1/nodes/{registerResult!.NodeId}/configuration", assignRequest, TestContext.Current.CancellationToken);
+        assignResponse.EnsureSuccessStatusCode();
 
         await Task.CompletedTask;
     }
@@ -150,7 +159,6 @@ resources: []
         using var content = new MultipartFormDataContent();
         content.Add(new StringContent(configName), "name");
         content.Add(new StringContent("main.dsc.yaml"), "entryPoint");
-        content.Add(new StringContent("true"), "isDraft");
         var file = new ByteArrayContent(System.Text.Encoding.UTF8.GetBytes(configContent));
         file.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         content.Add(file, "files", "main.dsc.yaml");
@@ -159,7 +167,7 @@ resources: []
         createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
         var getResponse = await adminClient.GetAsync($"/api/v1/configurations/{configName}", TestContext.Current.CancellationToken);
-        var configDetails = await getResponse.Content.ReadFromJsonAsync<ConfigurationDetailsDto>(TestContext.Current.CancellationToken);
+        var configDetails = await getResponse.Content.ReadFromJsonAsync<ConfigurationDetails>(TestContext.Current.CancellationToken);
         configDetails.Should().NotBeNull();
         configDetails!.LatestVersion.Should().Be("1.0.0");
 
@@ -168,7 +176,7 @@ resources: []
         publishResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var verifyResponse = await adminClient.GetAsync($"/api/v1/configurations/{configName}", TestContext.Current.CancellationToken);
-        var verifiedConfig = await verifyResponse.Content.ReadFromJsonAsync<ConfigurationDetailsDto>(TestContext.Current.CancellationToken);
+        var verifiedConfig = await verifyResponse.Content.ReadFromJsonAsync<ConfigurationDetails>(TestContext.Current.CancellationToken);
         verifiedConfig.Should().NotBeNull();
     }
 }

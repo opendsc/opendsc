@@ -1,7 +1,8 @@
 @attribute [Authorize(Policy = ServerPermissions.RegistrationKeysManage)]
-@inject ServerDbContext Db
+@inject IRegistrationKeyService RegistrationKeyService
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
+@using OpenDsc.Contracts.Settings
 
 <MudCard Class="mt-4">
     <MudCardHeader>
@@ -22,11 +23,11 @@
         }
         else
         {
-            <MudDataGrid T="RegistrationKey" Items="@registrationKeys" Hover="true" Dense="true" sortable="true">
+            <MudDataGrid T="RegistrationKeyResponse" Items="@registrationKeys" Hover="true" Dense="true" sortable="true">
                 <Columns>
                     <TemplateColumn Title="Key">
                         <CellTemplate>
-                            <code>@context.Item.Key.Substring(0, Math.Min(16, context.Item.Key.Length))...</code>
+                            <code>@(context.Item.KeyPreview)...</code>
                         </CellTemplate>
                     </TemplateColumn>
                     <TemplateColumn Title="Description">
@@ -99,7 +100,7 @@
 </MudCard>
 
 @code {
-    private List<RegistrationKey> registrationKeys = [];
+    private List<RegistrationKeyResponse> registrationKeys = [];
     private bool isLoading = true;
 
     protected override async Task OnInitializedAsync()
@@ -112,8 +113,7 @@
         isLoading = true;
         try
         {
-            var keys = await Db.RegistrationKeys.ToListAsync();
-            registrationKeys = keys.OrderByDescending(k => k.CreatedAt).ToList();
+            registrationKeys = (await RegistrationKeyService.GetKeysAsync()).ToList();
         }
         catch (Exception ex)
         {
@@ -142,11 +142,11 @@
         await DialogService.ShowAsync<CreateKeyDialog>("Create Registration Key", parameters, options);
     }
 
-    private async Task EditKeyDescription(RegistrationKey key)
+    private async Task EditKeyDescription(RegistrationKeyResponse key)
     {
         var parameters = new DialogParameters<EditKeyDescriptionDialog>
         {
-            { x => x.Key, key },
+            { x => x.RegistrationKey, key },
             { x => x.OnUpdated, EventCallback.Factory.Create(this, LoadKeysAsync) }
         };
 
@@ -160,7 +160,7 @@
         await DialogService.ShowAsync<EditKeyDescriptionDialog>("Edit Description", parameters, options);
     }
 
-    private async Task DeleteKey(RegistrationKey key)
+    private async Task DeleteKey(RegistrationKeyResponse key)
     {
         var result = await DialogService.ShowMessageBox(
             "Delete Registration Key",
@@ -172,8 +172,7 @@
         {
             try
             {
-                Db.RegistrationKeys.Remove(key);
-                await Db.SaveChangesAsync();
+                await RegistrationKeyService.RevokeKeyAsync(key.Id);
                 Snackbar.Add("Registration key deleted", Severity.Success);
                 await LoadKeysAsync();
             }

@@ -7,104 +7,93 @@
 @using MudBlazor
 @using BlazorMonaco
 @using BlazorMonaco.Editor
-@using Microsoft.EntityFrameworkCore
 @using Microsoft.JSInterop
+@using OpenDsc.Contracts.Parameters
 @using OpenDsc.Server.Services
 @using Microsoft.Extensions.Options
 @inject ISnackbar Snackbar
 @inject IOptions<ServerConfig> ServerConfig
 @inject ThemeService ThemeService
-@inject ServerDbContext Db
 @inject IJSRuntime JSRuntime
-@inject IParameterService ParameterApiClient
-@inject IConfigurationService ConfigApiClient
+@inject IParameterService ParameterService
+@inject IConfigurationService ConfigurationService
 
 <MudDialog>
     <DialogContent>
         <div class="d-flex align-center justify-space-between mb-2">
-            <MudText Typo="Typo.body2" Color="Color.Secondary">Version @Version @(IsEditMode ? "(Editing)" : "(Read-only)")</MudText>
-            @if (!IsEditMode)
-            {
-                <MudButtonGroup Size="Size.Small">
-                    <MudButton OnClick="@(() => SwitchMode(ViewMode.View))"
-                               Variant="@(currentMode == ViewMode.View ? Variant.Filled : Variant.Text)"
-                               Color="@(currentMode == ViewMode.View ? Color.Primary : Color.Default)"
-                               Style="@(currentMode == ViewMode.View ? "" : "opacity: 0.6")">
-                        <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" Class="mr-1" />
-                        View
-                    </MudButton>
-                    <MudButton OnClick="@(() => SwitchMode(ViewMode.Compare))"
-                               Variant="@(currentMode == ViewMode.Compare ? Variant.Filled : Variant.Text)"
-                               Color="@(currentMode == ViewMode.Compare ? Color.Primary : Color.Default)"
-                               Style="@(currentMode == ViewMode.Compare ? "" : "opacity: 0.6")"
-                               Disabled="@(availableVersions.Count < 2 || string.IsNullOrEmpty(compareVersion))">
-                        <MudIcon Icon="@Icons.Material.Filled.CompareArrows" Size="Size.Small" Class="mr-1" />
-                        Compare
-                    </MudButton>
-                </MudButtonGroup>
-            }
-        </div>
-
-        @if (currentMode == ViewMode.Compare)
-        {
-            <MudSelect T="string"
-                       Value="@compareVersion"
-                       Label="Compare with version"
-                       Variant="Variant.Outlined"
-                       Class="mb-3"
-                       Disabled="isLoading"
-                       ValueChanged="OnCompareVersionChanged">
-                @foreach (var v in availableVersions.Where(v => v != Version))
+            <MudText Typo="Typo.body2" Color="Color.Secondary">Version @Version @(IsEditMode ? "(Editing)" :
+                                                         "(Read-only)")</MudText>
+                @if (!IsEditMode)
                 {
-                    <MudSelectItem Value="@v">Version @v</MudSelectItem>
+                    <MudButtonGroup Size="Size.Small">
+                        <MudButton OnClick="@(() => SwitchMode(ViewMode.View))"
+                                   Variant="@(currentMode == ViewMode.View ? Variant.Filled : Variant.Text)"
+                                   Color="@(currentMode == ViewMode.View ? Color.Primary : Color.Default)"
+                                   Style="@(currentMode == ViewMode.View ? "" : "opacity: 0.6")">
+                            <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" Class="mr-1" />
+                            View
+                        </MudButton>
+                        <MudButton OnClick="@(() => SwitchMode(ViewMode.Compare))"
+                                   Variant="@(currentMode == ViewMode.Compare ? Variant.Filled : Variant.Text)"
+                                   Color="@(currentMode == ViewMode.Compare ? Color.Primary : Color.Default)"
+                                   Style="@(currentMode == ViewMode.Compare ? "" : "opacity: 0.6")"
+                                   Disabled="@(availableVersions.Count < 2 || string.IsNullOrEmpty(compareVersion))">
+                            <MudIcon Icon="@Icons.Material.Filled.CompareArrows" Size="Size.Small" Class="mr-1" />
+                            Compare
+                        </MudButton>
+                    </MudButtonGroup>
                 }
-            </MudSelect>
-        }
+            </div>
 
-        @if (isLoading)
-        {
-            <MudProgressCircular Indeterminate="true" />
-            <MudText Typo="Typo.caption">Loading file...</MudText>
-        }
-        else if (fileContent != null)
-        {
-            @if (currentMode == ViewMode.View)
+            @if (currentMode == ViewMode.Compare)
             {
-                <div style="height: 600px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
-                    <StandaloneCodeEditor @ref="_editor"
-                                          Id="file-editor-config"
-                                          ConstructionOptions="GetEditorOptions"
-                                          CssClass="file-viewer-editor" />
-                </div>
+                <MudSelect T="string" Value="@compareVersion" Label="Compare with version" Variant="Variant.Outlined"
+                           Class="mb-3" Disabled="isLoading" ValueChanged="OnCompareVersionChanged">
+                    @foreach (var v in availableVersions.Where(v => v != Version))
+                    {
+                        <MudSelectItem Value="@v">Version @v</MudSelectItem>
+                    }
+                </MudSelect>
+            }
+
+            @if (isLoading)
+            {
+                <MudProgressCircular Indeterminate="true" />
+                <MudText Typo="Typo.caption">Loading file...</MudText>
+            }
+            else if (fileContent != null)
+            {
+                @if (currentMode == ViewMode.View)
+                {
+                    <div style="height: 600px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
+                        <StandaloneCodeEditor @ref="_editor" Id="file-editor-config" ConstructionOptions="GetEditorOptions"
+                                              CssClass="file-viewer-editor" />
+                    </div>
+                }
+                else
+                {
+                    <div style="height: 600px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
+                        <StandaloneDiffEditor @ref="_diffEditor" Id="file-diff-editor" ConstructionOptions="GetDiffEditorOptions"
+                                              CssClass="file-viewer-editor" />
+                    </div>
+                }
             }
             else
             {
-                <div style="height: 600px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
-                    <StandaloneDiffEditor @ref="_diffEditor"
-                                          Id="file-diff-editor"
-                                          ConstructionOptions="GetDiffEditorOptions"
-                                          CssClass="file-viewer-editor" />
-                </div>
+                <MudAlert Severity="Severity.Error">Failed to load file content.</MudAlert>
             }
-        }
-        else
-        {
-            <MudAlert Severity="Severity.Error">Failed to load file content.</MudAlert>
-        }
-    </DialogContent>
-    <DialogActions>
-        @if (IsEditMode)
-        {
-            <MudButton OnClick="SaveFile"
-                       Color="Color.Primary"
-                       Variant="Variant.Filled"
-                       Disabled="@(isLoading || currentMode == ViewMode.Compare)">
-                Save
-            </MudButton>
-        }
-        <MudButton OnClick="Cancel">Close</MudButton>
-    </DialogActions>
-</MudDialog>
+        </DialogContent>
+        <DialogActions>
+            @if (IsEditMode)
+            {
+                <MudButton OnClick="SaveFile" Color="Color.Primary" Variant="Variant.Filled"
+                           Disabled="@(isLoading || currentMode == ViewMode.Compare)">
+                    Save
+                </MudButton>
+            }
+            <MudButton OnClick="Cancel">Close</MudButton>
+        </DialogActions>
+    </MudDialog>
 
 @code {
     [CascadingParameter]
@@ -229,16 +218,11 @@
     {
         try
         {
-            var config = await Db.Configurations
-                .Include(c => c.Versions)
-                .FirstOrDefaultAsync(c => c.Name == ConfigurationName);
+            var versionList = await ConfigurationService.GetConfigurationVersionListAsync(ConfigurationName);
 
-            if (config != null)
+            if (versionList.Count > 0)
             {
-                availableVersions = config.Versions
-                    .OrderByDescending(v => v.CreatedAt)
-                    .Select(v => v.Version)
-                    .ToList();
+                availableVersions = versionList;
 
                 if (availableVersions.Count > 1)
                 {
@@ -293,17 +277,13 @@
             // Parameter mode - load via API
             if (ParameterConfigurationId.HasValue && ParameterScopeTypeId.HasValue)
             {
-                var parameterSchema = await Db.ParameterSchemas
-                    .FirstOrDefaultAsync(ps => ps.ConfigurationId == ParameterConfigurationId.Value);
+                var parameterFiles = await ParameterService.GetVersionsAsync(
+                    ParameterScopeTypeId.Value, ParameterConfigurationId.Value, ParameterScopeValue);
 
-                if (parameterSchema != null)
+                if (parameterFiles.Count > 0)
                 {
-                    var parameterFile = await Db.ParameterFiles
-                        .FirstOrDefaultAsync(pf =>
-                            pf.ParameterSchemaId == parameterSchema.Id &&
-                            pf.ScopeTypeId == ParameterScopeTypeId.Value &&
-                            pf.ScopeValue == ParameterScopeValue &&
-                            pf.Version == compareVersion);
+                    var parameterFile = parameterFiles
+                        .FirstOrDefault(pf => pf.Version == compareVersion);
 
                     if (parameterFile != null)
                     {
@@ -313,7 +293,7 @@
                         }
                         else
                         {
-                            compareFileContent = await ParameterApiClient.GetParameterContentAsync(parameterFile.Id);
+                            compareFileContent = await ParameterService.GetContentAsync(parameterFile.Id);
                             if (string.IsNullOrEmpty(compareFileContent))
                             {
                                 compareFileContent = "// Unable to load parameter content";
@@ -453,17 +433,10 @@
         {
             var content = await _editor!.GetValue();
 
-            var success = await ConfigApiClient.SaveFileAsync(ConfigurationName, Version, FilePath, content ?? "");
+            await ConfigurationService.SaveFileAsync(ConfigurationName, Version, FilePath, content ?? "");
 
-            if (success)
-            {
-                Snackbar.Add("File saved successfully", Severity.Success);
-                MudDialog.Close(DialogResult.Ok(true));
-            }
-            else
-            {
-                Snackbar.Add("Error saving file", Severity.Error);
-            }
+            Snackbar.Add("File saved successfully", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
         }
         catch (Exception ex)
         {
@@ -483,20 +456,12 @@
 
         try
         {
-            var parameterSchema = await Db.ParameterSchemas
-                .FirstOrDefaultAsync(ps => ps.ConfigurationId == ParameterConfigurationId.Value);
+            var parameterFiles = await ParameterService.GetVersionsAsync(
+                ParameterScopeTypeId.Value, ParameterConfigurationId.Value, ParameterScopeValue);
 
-            if (parameterSchema != null)
+            if (parameterFiles.Count > 0)
             {
-                var versions = await Db.ParameterFiles
-                    .Where(pf =>
-                        pf.ParameterSchemaId == parameterSchema.Id &&
-                        pf.ScopeTypeId == ParameterScopeTypeId.Value &&
-                        pf.ScopeValue == ParameterScopeValue)
-                    .Select(pf => new { pf.Version, pf.CreatedAt })
-                    .ToListAsync();
-
-                availableVersions = versions
+                availableVersions = parameterFiles
                     .OrderByDescending(pf => pf.CreatedAt)
                     .Select(pf => pf.Version)
                     .ToList();
@@ -504,7 +469,9 @@
                 // Set default compare version to most recent version other than current
                 if (availableVersions.Count > 1)
                 {
-                    var currentFile = await Db.ParameterFiles.FindAsync(ParameterFileId);
+                    var currentFile = ParameterFileId.HasValue
+                        ? parameterFiles.FirstOrDefault(pf => pf.Id == ParameterFileId.Value)
+                        : null;
                     if (currentFile != null)
                     {
                         compareVersion = availableVersions.FirstOrDefault(v => v != currentFile.Version) ?? string.Empty;

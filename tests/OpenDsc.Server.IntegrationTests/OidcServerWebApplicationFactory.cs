@@ -12,11 +12,11 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
+using OpenDsc.Contracts.Users;
 using OpenDsc.Server.Authentication;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
@@ -307,3 +307,4 @@ internal sealed class TestAuthHandler(
         return Task.FromResult(AuthenticateResult.Success(ticket));
     }
 }
+

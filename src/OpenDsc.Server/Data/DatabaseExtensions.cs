@@ -5,6 +5,7 @@
 using Microsoft.EntityFrameworkCore;
 
 using OpenDsc.Server.Entities;
+using OpenDsc.Contracts.Configurations;
 using OpenDsc.Server.Services;
 
 namespace OpenDsc.Server.Data;
@@ -246,3 +247,4 @@ public static class DatabaseExtensions
         logger.LogInformation("Test data seeded successfully");
     }
 }
+

@@ -4,11 +4,9 @@
 
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
+using OpenDsc.Contracts.Users;
 using OpenDsc.Server.Authorization;
-using OpenDsc.Server.Data;
-using OpenDsc.Server.Entities;
 
 namespace OpenDsc.Server.Endpoints;
 
@@ -72,415 +70,189 @@ public static class GroupEndpoints
             .WithDescription("Removes an external group mapping.");
     }
 
-    private static async Task<Ok<List<GroupSummaryDto>>> GetGroups(ServerDbContext db)
+    private static async Task<Ok<List<GroupSummary>>> GetGroups(
+        IGroupService service,
+        CancellationToken cancellationToken)
     {
-        var groups = await db.Groups
-            .OrderBy(g => g.Name)
-            .Select(g => new GroupSummaryDto
-            {
-                Id = g.Id,
-                Name = g.Name,
-                Description = g.Description,
-                CreatedAt = g.CreatedAt,
-                ModifiedAt = g.ModifiedAt
-            })
-            .ToListAsync();
-
-        return TypedResults.Ok(groups);
+        return TypedResults.Ok((await service.GetGroupsAsync(cancellationToken)).ToList());
     }
 
-    private static async Task<Results<Ok<GroupDetailDto>, NotFound>> GetGroup(
+    private static async Task<Results<Ok<GroupDetails>, NotFound>> GetGroup(
         Guid id,
-        ServerDbContext db)
+        IGroupService service,
+        CancellationToken cancellationToken)
     {
-        var group = await db.Groups.FindAsync(id);
-        if (group == null)
+        try
+        {
+            var group = await service.GetGroupAsync(id, cancellationToken);
+            return TypedResults.Ok(group);
+        }
+        catch (KeyNotFoundException)
         {
             return TypedResults.NotFound();
         }
-
-        var memberIds = await db.UserGroups
-            .Where(ug => ug.GroupId == id)
-            .Select(ug => ug.UserId)
-            .ToListAsync();
-
-        var members = await db.Users
-            .Where(u => memberIds.Contains(u.Id))
-            .Select(u => new UserDto
-            {
-                Id = u.Id,
-                Username = u.Username,
-                Email = u.Email,
-                AccountType = u.AccountType.ToString(),
-                IsActive = u.IsActive,
-                RequirePasswordChange = u.RequirePasswordChange,
-                LockoutEnd = u.LockoutEnd,
-                CreatedAt = u.CreatedAt,
-                ModifiedAt = u.ModifiedAt
-            })
-            .ToListAsync();
-
-        var roleIds = await db.GroupRoles
-            .Where(gr => gr.GroupId == id)
-            .Select(gr => gr.RoleId)
-            .ToListAsync();
-
-        var roles = await db.Roles
-            .Where(r => roleIds.Contains(r.Id))
-            .Select(r => new RoleDto
-            {
-                Id = r.Id,
-                Name = r.Name,
-                IsSystemRole = r.IsSystemRole
-            })
-            .ToListAsync();
-
-        return TypedResults.Ok(new GroupDetailDto
-        {
-            Id = group.Id,
-            Name = group.Name,
-            Description = group.Description,
-            CreatedAt = group.CreatedAt,
-            ModifiedAt = group.ModifiedAt,
-            Members = members,
-            Roles = roles
-        });
     }
 
-    private static async Task<Results<Created<GroupSummaryDto>, BadRequest<string>>> CreateGroup(
+    private static async Task<Results<Created<GroupSummary>, BadRequest<string>>> CreateGroup(
         [FromBody] CreateGroupRequest request,
-        ServerDbContext db)
+        IGroupService service,
+        CancellationToken cancellationToken)
     {
-        if (await db.Groups.AnyAsync(g => g.Name == request.Name))
+        try
         {
-            return TypedResults.BadRequest("Group name already exists");
+            var group = await service.CreateGroupAsync(request, cancellationToken);
+            return TypedResults.Created($"/api/v1/groups/{group.Id}", group);
         }
-
-        var group = new Group
+        catch (InvalidOperationException ex)
         {
-            Id = Guid.NewGuid(),
-            Name = request.Name,
-            Description = request.Description,
-            CreatedAt = DateTimeOffset.UtcNow,
-            ModifiedAt = DateTimeOffset.UtcNow
-        };
-
-        db.Groups.Add(group);
-        await db.SaveChangesAsync();
-
-        return TypedResults.Created($"/api/v1/groups/{group.Id}", new GroupSummaryDto
-        {
-            Id = group.Id,
-            Name = group.Name,
-            Description = group.Description,
-            CreatedAt = group.CreatedAt,
-            ModifiedAt = group.ModifiedAt
-        });
+            return TypedResults.BadRequest(ex.Message);
+        }
     }
 
-    private static async Task<Results<Ok<GroupSummaryDto>, NotFound, BadRequest<string>>> UpdateGroup(
+    private static async Task<Results<Ok<GroupSummary>, NotFound, BadRequest<string>>> UpdateGroup(
         Guid id,
         [FromBody] UpdateGroupRequest request,
-        ServerDbContext db)
+        IGroupService service,
+        CancellationToken cancellationToken)
     {
-        var group = await db.Groups.FindAsync(id);
-        if (group == null)
+        try
+        {
+            var group = await service.UpdateGroupAsync(id, request, cancellationToken);
+            return TypedResults.Ok(group);
+        }
+        catch (KeyNotFoundException)
         {
             return TypedResults.NotFound();
         }
-
-        if (request.Name != group.Name &&
-            await db.Groups.AnyAsync(g => g.Name == request.Name && g.Id != id))
+        catch (InvalidOperationException ex)
         {
-            return TypedResults.BadRequest("Group name already exists");
+            return TypedResults.BadRequest(ex.Message);
         }
-
-        group.Name = request.Name;
-        group.Description = request.Description;
-        group.ModifiedAt = DateTimeOffset.UtcNow;
-
-        await db.SaveChangesAsync();
-
-        return TypedResults.Ok(new GroupSummaryDto
-        {
-            Id = group.Id,
-            Name = group.Name,
-            Description = group.Description,
-            CreatedAt = group.CreatedAt,
-            ModifiedAt = group.ModifiedAt
-        });
     }
 
-    private static async Task<Results<NoContent, NotFound>> DeleteGroup(
+    private static async Task<Results<NoContent, NotFound, BadRequest<string>>> DeleteGroup(
         Guid id,
-        ServerDbContext db)
+        IGroupService service,
+        CancellationToken cancellationToken)
     {
-        var group = await db.Groups.FindAsync(id);
-        if (group == null)
+        try
+        {
+            await service.DeleteGroupAsync(id, cancellationToken);
+            return TypedResults.NoContent();
+        }
+        catch (KeyNotFoundException)
         {
             return TypedResults.NotFound();
         }
-
-        db.Groups.Remove(group);
-        await db.SaveChangesAsync();
-
-        return TypedResults.NoContent();
+        catch (InvalidOperationException ex)
+        {
+            return TypedResults.BadRequest(ex.Message);
+        }
     }
 
-    private static async Task<Results<Ok<List<UserDto>>, NotFound>> GetGroupMembers(
+    private static async Task<Results<Ok<List<UserSummary>>, NotFound>> GetGroupMembers(
         Guid id,
-        ServerDbContext db)
+        IGroupService service,
+        CancellationToken cancellationToken)
     {
-        if (!await db.Groups.AnyAsync(g => g.Id == id))
+        var users = await service.GetGroupMembersAsync(id, cancellationToken);
+        if (users is null)
         {
             return TypedResults.NotFound();
         }
 
-        var userIds = await db.UserGroups
-            .Where(ug => ug.GroupId == id)
-            .Select(ug => ug.UserId)
-            .ToListAsync();
-
-        var users = await db.Users
-            .Where(u => userIds.Contains(u.Id))
-            .Select(u => new UserDto
-            {
-                Id = u.Id,
-                Username = u.Username,
-                Email = u.Email,
-                AccountType = u.AccountType.ToString(),
-                IsActive = u.IsActive,
-                RequirePasswordChange = u.RequirePasswordChange,
-                LockoutEnd = u.LockoutEnd,
-                CreatedAt = u.CreatedAt,
-                ModifiedAt = u.ModifiedAt
-            })
-            .ToListAsync();
-
-        return TypedResults.Ok(users);
+        return TypedResults.Ok(users.ToList());
     }
 
     private static async Task<Results<Ok, NotFound>> SetGroupMembers(
         Guid id,
-        [FromBody] SetMembersRequest request,
-        ServerDbContext db)
+        [FromBody] SetGroupMembersRequest request,
+        IGroupService service,
+        CancellationToken cancellationToken)
     {
-        if (!await db.Groups.AnyAsync(g => g.Id == id))
+        try
+        {
+            await service.SetMembersAsync(id, request, cancellationToken);
+            return TypedResults.Ok();
+        }
+        catch (KeyNotFoundException)
         {
             return TypedResults.NotFound();
         }
-
-        var existingMembers = await db.UserGroups
-            .Where(ug => ug.GroupId == id)
-            .ToListAsync();
-
-        db.UserGroups.RemoveRange(existingMembers);
-
-        var newMembers = request.UserIds.Select(userId => new UserGroup
-        {
-            GroupId = id,
-            UserId = userId
-        });
-
-        db.UserGroups.AddRange(newMembers);
-        await db.SaveChangesAsync();
-
-        return TypedResults.Ok();
     }
 
-    private static async Task<Results<Ok<List<RoleDto>>, NotFound>> GetGroupRoles(
+    private static async Task<Results<Ok<List<RoleSummary>>, NotFound>> GetGroupRoles(
         Guid id,
-        ServerDbContext db)
+        IGroupService service,
+        CancellationToken cancellationToken)
     {
-        if (!await db.Groups.AnyAsync(g => g.Id == id))
+        var roles = await service.GetGroupRolesAsync(id, cancellationToken);
+        if (roles is null)
         {
             return TypedResults.NotFound();
         }
 
-        var roleIds = await db.GroupRoles
-            .Where(gr => gr.GroupId == id)
-            .Select(gr => gr.RoleId)
-            .ToListAsync();
-
-        var roles = await db.Roles
-            .Where(r => roleIds.Contains(r.Id))
-            .Select(r => new RoleDto
-            {
-                Id = r.Id,
-                Name = r.Name,
-                IsSystemRole = r.IsSystemRole
-            })
-            .ToListAsync();
-
-        return TypedResults.Ok(roles);
+        return TypedResults.Ok(roles.ToList());
     }
 
     private static async Task<Results<Ok, NotFound>> SetGroupRoles(
         Guid id,
-        [FromBody] SetRolesRequest request,
-        ServerDbContext db)
+        [FromBody] SetGroupRolesRequest request,
+        IGroupService service,
+        CancellationToken cancellationToken)
     {
-        if (!await db.Groups.AnyAsync(g => g.Id == id))
+        try
+        {
+            await service.SetRolesAsync(id, request, cancellationToken);
+            return TypedResults.Ok();
+        }
+        catch (KeyNotFoundException)
         {
             return TypedResults.NotFound();
         }
-
-        var existingRoles = await db.GroupRoles
-            .Where(gr => gr.GroupId == id)
-            .ToListAsync();
-
-        db.GroupRoles.RemoveRange(existingRoles);
-
-        var newRoles = request.RoleIds.Select(roleId => new GroupRole
-        {
-            GroupId = id,
-            RoleId = roleId
-        });
-
-        db.GroupRoles.AddRange(newRoles);
-        await db.SaveChangesAsync();
-
-        return TypedResults.Ok();
     }
 
-    private static async Task<Ok<List<ExternalGroupMappingDto>>> GetExternalGroupMappings(
-        ServerDbContext db)
+    private static async Task<Ok<List<ExternalGroupMappingInfo>>> GetExternalGroupMappings(
+        IGroupService service,
+        CancellationToken cancellationToken)
     {
-        var mappings = await db.ExternalGroupMappings
-            .Select(m => new ExternalGroupMappingDto
-            {
-                Id = m.Id,
-                Provider = m.Provider,
-                ExternalGroupId = m.ExternalGroupId,
-                ExternalGroupName = m.ExternalGroupName,
-                GroupId = m.GroupId,
-                GroupName = string.Empty,
-                CreatedAt = m.CreatedAt
-            })
-            .ToListAsync();
-
-        var groupIds = mappings.Select(m => m.GroupId).Distinct().ToList();
-        var groups = await db.Groups.Where(g => groupIds.Contains(g.Id)).ToDictionaryAsync(g => g.Id, g => g.Name);
-
-        foreach (var mapping in mappings.Where(m => groups.ContainsKey(m.GroupId)))
-        {
-            mapping.GroupName = groups[mapping.GroupId] ?? string.Empty;
-        }
-
-        return TypedResults.Ok(mappings);
+        return TypedResults.Ok((await service.GetExternalGroupMappingsAsync(cancellationToken)).ToList());
     }
 
-    private static async Task<Results<Created<ExternalGroupMappingDto>, NotFound, BadRequest<string>>> CreateExternalGroupMapping(
+    private static async Task<Results<Created<ExternalGroupMappingInfo>, NotFound, BadRequest<string>>> CreateExternalGroupMapping(
         [FromBody] CreateExternalGroupMappingRequest request,
-        ServerDbContext db)
+        IGroupService service,
+        CancellationToken cancellationToken)
     {
-        var group = await db.Groups.FindAsync(request.GroupId);
-        if (group == null)
+        try
         {
-            return TypedResults.NotFound();
-        }
-
-        if (await db.ExternalGroupMappings.AnyAsync(m =>
-            m.Provider == request.Provider && m.ExternalGroupId == request.ExternalGroupId))
-        {
-            return TypedResults.BadRequest("External group mapping already exists");
-        }
-
-        var mapping = new ExternalGroupMapping
-        {
-            Id = Guid.NewGuid(),
-            Provider = request.Provider,
-            ExternalGroupId = request.ExternalGroupId,
-            ExternalGroupName = request.ExternalGroupName,
-            GroupId = request.GroupId,
-            CreatedAt = DateTimeOffset.UtcNow
-        };
-
-        db.ExternalGroupMappings.Add(mapping);
-        await db.SaveChangesAsync();
-
-        return TypedResults.Created($"/api/v1/groups/external-mappings/{mapping.Id}",
-            new ExternalGroupMappingDto
+            var mapping = await service.CreateExternalGroupMappingAsync(request, cancellationToken);
+            if (mapping is null)
             {
-                Id = mapping.Id,
-                Provider = mapping.Provider,
-                ExternalGroupId = mapping.ExternalGroupId,
-                ExternalGroupName = mapping.ExternalGroupName,
-                GroupId = mapping.GroupId,
-                GroupName = group.Name,
-                CreatedAt = mapping.CreatedAt
-            });
+                return TypedResults.NotFound();
+            }
+
+            return TypedResults.Created($"/api/v1/groups/external-mappings/{mapping.Id}", mapping);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return TypedResults.BadRequest(ex.Message);
+        }
     }
 
     private static async Task<Results<Ok, NotFound>> DeleteExternalGroupMapping(
         Guid id,
-        ServerDbContext db)
+        IGroupService service,
+        CancellationToken cancellationToken)
     {
-        var mapping = await db.ExternalGroupMappings.FindAsync(id);
-        if (mapping == null)
+        try
+        {
+            await service.DeleteExternalGroupMappingAsync(id, cancellationToken);
+            return TypedResults.Ok();
+        }
+        catch (KeyNotFoundException)
         {
             return TypedResults.NotFound();
         }
-
-        db.ExternalGroupMappings.Remove(mapping);
-        await db.SaveChangesAsync();
-
-        return TypedResults.Ok();
     }
-}
-
-public sealed class GroupSummaryDto
-{
-    public Guid Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string? Description { get; set; }
-    public DateTimeOffset CreatedAt { get; set; }
-    public DateTimeOffset? ModifiedAt { get; set; }
-}
-
-public sealed class GroupDetailDto
-{
-    public Guid Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string? Description { get; set; }
-    public DateTimeOffset CreatedAt { get; set; }
-    public DateTimeOffset? ModifiedAt { get; set; }
-    public List<UserDto> Members { get; set; } = [];
-    public List<RoleDto> Roles { get; set; } = [];
-}
-
-public sealed class CreateGroupRequest
-{
-    public string Name { get; set; } = string.Empty;
-    public string? Description { get; set; }
-}
-
-public sealed class UpdateGroupRequest
-{
-    public string Name { get; set; } = string.Empty;
-    public string? Description { get; set; }
-}
-
-public sealed class SetMembersRequest
-{
-    public Guid[] UserIds { get; set; } = [];
-}
-
-public sealed class ExternalGroupMappingDto
-{
-    public Guid Id { get; set; }
-    public string Provider { get; set; } = string.Empty;
-    public string ExternalGroupId { get; set; } = string.Empty;
-    public string? ExternalGroupName { get; set; }
-    public Guid GroupId { get; set; }
-    public string GroupName { get; set; } = string.Empty;
-    public DateTimeOffset CreatedAt { get; set; }
-}
-
-public sealed class CreateExternalGroupMappingRequest
-{
-    public string Provider { get; set; } = string.Empty;
-    public string ExternalGroupId { get; set; } = string.Empty;
-    public string? ExternalGroupName { get; set; }
-    public Guid GroupId { get; set; }
 }

@@ -1,24 +1,16 @@
+@using OpenDsc.Contracts.CompositeConfigurations
 @using NuGet.Versioning
-@inject ServerDbContext Db
+@using OpenDsc.Server.Services
+@inject ICompositeConfigurationService CompositeConfigService
 @inject ISnackbar Snackbar
-@inject IResourceAuthorizationService AuthService
-@inject IUserContextService UserContext
 @inject NavigationManager Navigation
 
 <MudDialog>
     <DialogContent>
-        <MudTextField @bind-Value="name"
-                      Label="Name"
-                      Variant="Variant.Outlined"
-                      Required="true"
-                      Class="mb-3"
+        <MudTextField @bind-Value="name" Label="Name" Variant="Variant.Outlined" Required="true" Class="mb-3"
                       HelperText="Unique identifier for the composite configuration" />
 
-        <MudTextField @bind-Value="description"
-                      Label="Description"
-                      Variant="Variant.Outlined"
-                      Lines="2"
-                      Class="mb-3"
+        <MudTextField @bind-Value="description" Label="Description" Variant="Variant.Outlined" Lines="2" Class="mb-3"
                       HelperText="Optional description" />
 
         @if (!string.IsNullOrWhiteSpace(validationError))
@@ -61,34 +53,11 @@
 
         try
         {
-            if (await Db.CompositeConfigurations.AnyAsync(c => c.Name == name))
+            var result = await CompositeConfigService.CreateAsync(new CreateCompositeConfigurationRequest
             {
-                validationError = $"Composite configuration '{name}' already exists.";
-                return;
-            }
-
-            var composite = new CompositeConfiguration
-            {
-                Id = Guid.NewGuid(),
                 Name = name,
-                Description = string.IsNullOrWhiteSpace(description) ? null : description,
-                EntryPoint = "main.dsc.yaml",
-                CreatedAt = DateTimeOffset.UtcNow
-            };
-
-            Db.CompositeConfigurations.Add(composite);
-            await Db.SaveChangesAsync();
-
-            var userId = UserContext.GetCurrentUserId();
-            if (userId.HasValue)
-            {
-                await AuthService.GrantCompositeConfigurationPermissionAsync(
-                    composite.Id,
-                    userId.Value,
-                    PrincipalType.User,
-                    ResourcePermission.Manage,
-                    userId.Value);
-            }
+                Description = string.IsNullOrWhiteSpace(description) ? null : description
+            });
 
             Snackbar.Add($"Composite configuration '{name}' created", Severity.Success);
             MudDialog.Close(DialogResult.Ok(name));
@@ -104,3 +73,4 @@
         }
     }
 }
+

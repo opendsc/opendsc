@@ -1,9 +1,8 @@
 @attribute [Authorize(Policy = RetentionPermissions.Manage)]
-@inject ServerDbContext Db
+@inject ISettingsService SettingsService
 @inject ISnackbar Snackbar
 @inject IVersionRetentionService RetentionService
-@using Microsoft.EntityFrameworkCore
-@using OpenDsc.Server.Entities
+@using OpenDsc.Contracts.Settings
 @using OpenDsc.Server.Services
 
 <MudCard Class="mt-2">
@@ -11,18 +10,19 @@
         <CardHeaderContent>
             <MudText Typo="Typo.h6">Manual Cleanup</MudText>
             <MudText Typo="Typo.body2">
-                Trigger a cleanup run now using the current global policy. Use <em>Dry Run</em> to preview changes without deleting anything.
+                Trigger a cleanup run now using the current global policy. Use <em>Dry Run</em> to preview changes
+                without deleting anything.
             </MudText>
         </CardHeaderContent>
     </MudCardHeader>
     <MudCardContent>
         <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="mb-4">
-            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="RunDryRun"
-                       Disabled="@runInProgress" StartIcon="@Icons.Material.Filled.Preview">
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="RunDryRun" Disabled="@runInProgress"
+                       StartIcon="@Icons.Material.Filled.Preview">
                 Dry Run
             </MudButton>
-            <MudButton Variant="Variant.Filled" Color="Color.Warning" OnClick="RunCleanup"
-                       Disabled="@runInProgress" StartIcon="@Icons.Material.Filled.DeleteSweep">
+            <MudButton Variant="Variant.Filled" Color="Color.Warning" OnClick="RunCleanup" Disabled="@runInProgress"
+                       StartIcon="@Icons.Material.Filled.DeleteSweep">
                 Apply Now
             </MudButton>
             @if (runInProgress)
@@ -65,7 +65,9 @@
                                 </HeaderContent>
                                 <RowTemplate>
                                     <MudTd>@context.Name</MudTd>
-                                    <MudTd><MudChip T="string" Size="Size.Small">@context.Version</MudChip></MudTd>
+                                    <MudTd>
+                                        <MudChip T="string" Size="Size.Small">@context.Version</MudChip>
+                                    </MudTd>
                                     <MudTd>@context.CreatedAt.ToString("yyyy-MM-dd HH:mm")</MudTd>
                                     <MudTd>@context.Reason</MudTd>
                                 </RowTemplate>
@@ -114,11 +116,8 @@
                 </MudSelect>
             </MudItem>
             <MudItem xs="12" md="6">
-                <MudDateRangePicker @bind-DateRange="_historyDateRange"
-                                    @bind-DateRange:after="ApplyHistoryFilter"
-                                    Label="Date range"
-                                    Variant="Variant.Outlined"
-                                    DateFormat="yyyy-MM-dd" />
+                <MudDateRangePicker @bind-DateRange="_historyDateRange" @bind-DateRange:after="ApplyHistoryFilter"
+                                    Label="Date range" Variant="Variant.Outlined" DateFormat="yyyy-MM-dd" />
             </MudItem>
         </MudGrid>
 
@@ -152,12 +151,13 @@
                     <MudTd>@context.StartedAt.ToString("yyyy-MM-dd HH:mm")</MudTd>
                     <MudTd>@context.VersionType</MudTd>
                     <MudTd>
-                        <MudChip T="string" Size="Size.Small" Color="@(context.IsScheduled ? Color.Default : Color.Primary)">
+                        <MudChip T="string" Size="Size.Small"
+                                 Color="@(context.IsScheduled ? Color.Default : Color.Primary)">
                             @(context.IsScheduled ? "Scheduled" : "Manual")
                         </MudChip>
                     </MudTd>
                     <MudTd>
-                        <MudChip T="string" Size="Size.Small" Color="@(context.IsDryRun ? Color.Info : Color.Warning)">
+                        <MudChip T="string" Size="Size.Small" Color="@(context.IsDryRun? Color.Info: Color.Warning)">
                             @(context.IsDryRun ? "Dry Run" : "Applied")
                         </MudChip>
                     </MudTd>
@@ -197,8 +197,8 @@
 
 @code {
     private bool historyLoading = true;
-    private List<RetentionRun> runHistory = [];
-    private List<RetentionRun> filteredHistory = [];
+    private List<RetentionRunSummary> runHistory = [];
+    private List<RetentionRunSummary> filteredHistory = [];
     private MudBlazor.DateRange _historyDateRange = new(DateTime.Today.AddDays(-7), DateTime.Today);
     private string? selectedRunType;
     private string? selectedRunTrigger;
@@ -224,25 +224,20 @@
 
     private async Task LoadSettingsAsync()
     {
-        var settings = await Db.ServerSettings.AsNoTracking().FirstOrDefaultAsync();
-        if (settings is not null)
-        {
-            keepVersions = settings.RetentionKeepVersions;
-            keepDays = settings.RetentionKeepDays;
-            keepReleaseVersions = settings.RetentionKeepReleaseVersions;
-            reportKeepCount = settings.RetentionReportKeepCount;
-            reportKeepDays = settings.RetentionReportKeepDays;
-            statusEventKeepCount = settings.RetentionStatusEventKeepCount;
-            statusEventKeepDays = settings.RetentionStatusEventKeepDays;
-        }
+        var settings = await SettingsService.GetRetentionSettingsAsync();
+        keepVersions = settings.KeepVersions;
+        keepDays = settings.KeepDays;
+        keepReleaseVersions = settings.KeepReleaseVersions;
+        reportKeepCount = settings.ReportKeepCount;
+        reportKeepDays = settings.ReportKeepDays;
+        statusEventKeepCount = settings.StatusEventKeepCount;
+        statusEventKeepDays = settings.StatusEventKeepDays;
     }
 
     private async Task LoadHistoryAsync()
     {
         historyLoading = true;
-        runHistory = await Db.RetentionRuns
-            .OrderByDescending(r => r.StartedAt)
-            .ToListAsync();
+        runHistory = (await SettingsService.GetRetentionHistoryAsync()).ToList();
         ApplyHistoryFilter();
         historyLoading = false;
     }

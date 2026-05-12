@@ -22,9 +22,6 @@ internal static class EventIds
     public const int CannotAddFilesToPublishedVersion = 2013;
     public const int FileAlreadyExistsInVersion = 2014;
     public const int ErrorAddingFilesToVersion = 2015;
-    public const int FailedToParsePublishResponse = 2016;
-    public const int FailedToPublishVersion = 2017;
-    public const int ErrorPublishingVersion = 2018;
     public const int ErrorDeletingConfiguration = 2019;
     public const int VersionNotFound = 2020;
     public const int ErrorDeletingVersion = 2021;
@@ -46,18 +43,8 @@ internal static class EventIds
     public const int ErrorUpdatingDraftParameter = 3005;
     public const int ErrorReadingParameterContent = 3006;
 
-    // Node Endpoint Events: 4000-4099
-    public const int GettingNodeConfiguration = 4001;
-    public const int NodeConfigurationFound = 4002;
-    public const int NodeConfigurationContentSetFromAssignment = 4003;
-    public const int NodeConfigurationFallback = 4004;
-    public const int LookingForConfigurationByName = 4005;
-    public const int ConfigurationByNameFound = 4006;
-    public const int ConfigurationVersionDetails = 4007;
-    public const int ConfigurationFileDetails = 4008;
-    public const int NodeConfigurationContentSetFromFallback = 4009;
+    // Node Service Events: 4000-4099
     public const int NoConfigurationFoundForNode = 4010;
-    public const int ReturningNodeConfiguration = 4011;
 
     // Version Retention Service Events: 5000-5099
     public const int VersionInActiveUseKeeping = 5001;

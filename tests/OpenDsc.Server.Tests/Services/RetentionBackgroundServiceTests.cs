@@ -4,12 +4,10 @@
 
 #pragma warning disable xUnit1051
 
-using AwesomeAssertions;
-
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
@@ -442,7 +440,13 @@ public class RetentionBackgroundServiceTests
     [Fact]
     public async Task ExecuteAsync_RereadsSettingsAfterWait()
     {
-        var db = CreateInMemoryDb();
+        var databaseRoot = new InMemoryDatabaseRoot();
+        var databaseName = Guid.NewGuid().ToString();
+        var options = new DbContextOptionsBuilder<ServerDbContext>()
+            .UseInMemoryDatabase(databaseName, databaseRoot)
+            .Options;
+
+        await using var db = new ServerDbContext(options);
         var settings = new ServerSettings
         {
             RetentionEnabled = false,
@@ -452,7 +456,27 @@ public class RetentionBackgroundServiceTests
         await db.SaveChangesAsync();
 
         var mockRetentionService = new Mock<IVersionRetentionService>();
-        SetupServiceScope(db, mockRetentionService.Object);
+        _mockScopeFactory
+            .Setup(f => f.CreateScope())
+            .Returns(() =>
+            {
+                var mockScope = new Mock<IServiceScope>();
+                var mockServiceProvider = new Mock<IServiceProvider>();
+                var scopedDb = new ServerDbContext(options);
+
+                mockServiceProvider
+                    .Setup(p => p.GetService(typeof(ServerDbContext)))
+                    .Returns(scopedDb);
+
+                mockServiceProvider
+                    .Setup(p => p.GetService(typeof(IVersionRetentionService)))
+                    .Returns(mockRetentionService.Object);
+
+                mockScope.Setup(s => s.ServiceProvider).Returns(mockServiceProvider.Object);
+                mockScope.Setup(s => s.Dispose()).Callback(scopedDb.Dispose);
+
+                return mockScope.Object;
+            });
 
         var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(150));
         var service = new RetentionBackgroundService(_mockScopeFactory.Object, _mockLogger.Object);
@@ -460,8 +484,12 @@ public class RetentionBackgroundServiceTests
         await service.StartAsync(cts.Token);
 
         // Simulate enabling retention mid-run by updating settings
-        settings.RetentionEnabled = true;
-        await db.SaveChangesAsync();
+        await using (var updateDb = new ServerDbContext(options))
+        {
+            var updatedSettings = await updateDb.ServerSettings.SingleAsync();
+            updatedSettings.RetentionEnabled = true;
+            await updateDb.SaveChangesAsync();
+        }
 
         await Task.Delay(200);
         cts.Cancel();

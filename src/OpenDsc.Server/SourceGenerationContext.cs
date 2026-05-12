@@ -4,11 +4,17 @@
 
 using System.Text.Json.Serialization;
 
-using OpenDsc.Lcm.Contracts;
+using OpenDsc.Contracts.Configurations;
+using OpenDsc.Contracts.CompositeConfigurations;
+using OpenDsc.Contracts.Lcm;
+using OpenDsc.Contracts.Nodes;
+using OpenDsc.Contracts.Parameters;
+using OpenDsc.Contracts.Permissions;
+using OpenDsc.Contracts.Reports;
+using OpenDsc.Contracts.Settings;
+using OpenDsc.Contracts.Users;
 using OpenDsc.Schema;
-using OpenDsc.Server.Contracts;
 using OpenDsc.Server.Endpoints;
-using OpenDsc.Server.Entities;
 using OpenDsc.Server.Services;
 
 namespace OpenDsc.Server;
@@ -31,32 +37,34 @@ namespace OpenDsc.Server;
 [JsonSerializable(typeof(AssignConfigurationRequest))]
 [JsonSerializable(typeof(ConfigurationChecksumResponse))]
 // Configuration contracts
-[JsonSerializable(typeof(ConfigurationSummaryDto))]
-[JsonSerializable(typeof(List<ConfigurationSummaryDto>))]
-[JsonSerializable(typeof(ConfigurationDetailsDto))]
-[JsonSerializable(typeof(CreateConfigurationDto))]
-[JsonSerializable(typeof(UpdateConfigurationDto))]
-[JsonSerializable(typeof(ConfigurationVersionDto))]
-[JsonSerializable(typeof(List<ConfigurationVersionDto>))]
-[JsonSerializable(typeof(CreateConfigurationVersionDto))]
+[JsonSerializable(typeof(Contracts.Configurations.ConfigurationSummary))]
+[JsonSerializable(typeof(List<Contracts.Configurations.ConfigurationSummary>))]
+[JsonSerializable(typeof(Contracts.Configurations.ConfigurationDetails))]
+[JsonSerializable(typeof(ConfigurationVersionDetails))]
+[JsonSerializable(typeof(List<ConfigurationVersionDetails>))]
+[JsonSerializable(typeof(CreateConfigurationAdminRequest))]
+[JsonSerializable(typeof(UpdateConfigurationAdminRequest))]
+[JsonSerializable(typeof(CreateConfigurationVersionRequest))]
+[JsonSerializable(typeof(CreateVersionFromExistingRequest))]
+[JsonSerializable(typeof(UpdateConfigurationSettingsRequest))]
+[JsonSerializable(typeof(SaveRetentionSettingsRequest))]
+[JsonSerializable(typeof(ConfigurationSettingsSummary))]
+[JsonSerializable(typeof(ConfigurationRetentionSummary))]
 // Legacy configuration contracts (deprecated)
 [JsonSerializable(typeof(CreateConfigurationRequest))]
 [JsonSerializable(typeof(UpdateConfigurationRequest))]
-[JsonSerializable(typeof(ConfigurationSummary))]
-[JsonSerializable(typeof(List<ConfigurationSummary>))]
-[JsonSerializable(typeof(ConfigurationDetails))]
 // Composite configuration contracts
 [JsonSerializable(typeof(CreateCompositeConfigurationRequest))]
 [JsonSerializable(typeof(CreateCompositeConfigurationVersionRequest))]
 [JsonSerializable(typeof(AddChildConfigurationRequest))]
 [JsonSerializable(typeof(UpdateChildConfigurationRequest))]
-[JsonSerializable(typeof(CompositeConfigurationSummaryDto))]
-[JsonSerializable(typeof(List<CompositeConfigurationSummaryDto>))]
-[JsonSerializable(typeof(CompositeConfigurationDetailsDto))]
-[JsonSerializable(typeof(CompositeConfigurationVersionDto))]
-[JsonSerializable(typeof(List<CompositeConfigurationVersionDto>))]
-[JsonSerializable(typeof(CompositeConfigurationItemDto))]
-[JsonSerializable(typeof(List<CompositeConfigurationItemDto>))]
+[JsonSerializable(typeof(CompositeConfigurationSummary))]
+[JsonSerializable(typeof(List<CompositeConfigurationSummary>))]
+[JsonSerializable(typeof(CompositeConfigurationDetails))]
+[JsonSerializable(typeof(CompositeConfigurationVersionDetails))]
+[JsonSerializable(typeof(List<CompositeConfigurationVersionDetails>))]
+[JsonSerializable(typeof(CompositeConfigurationItemDetails))]
+[JsonSerializable(typeof(List<CompositeConfigurationItemDetails>))]
 // Report contracts
 [JsonSerializable(typeof(SubmitReportRequest))]
 [JsonSerializable(typeof(ReportSummary))]
@@ -71,29 +79,36 @@ namespace OpenDsc.Server;
 [JsonSerializable(typeof(List<RegistrationKeyResponse>))]
 [JsonSerializable(typeof(ErrorResponse))]
 // Scope Type contracts
-[JsonSerializable(typeof(ScopeTypeDto))]
-[JsonSerializable(typeof(List<ScopeTypeDto>))]
+[JsonSerializable(typeof(ScopeTypeDetails))]
+[JsonSerializable(typeof(List<ScopeTypeDetails>))]
 [JsonSerializable(typeof(CreateScopeTypeRequest))]
 [JsonSerializable(typeof(UpdateScopeTypeRequest))]
 [JsonSerializable(typeof(ReorderScopeTypesRequest))]
 // Scope Value contracts
-[JsonSerializable(typeof(ScopeValueDto))]
-[JsonSerializable(typeof(List<ScopeValueDto>))]
+[JsonSerializable(typeof(ScopeValueDetails))]
+[JsonSerializable(typeof(List<ScopeValueDetails>))]
 [JsonSerializable(typeof(CreateScopeValueRequest))]
 [JsonSerializable(typeof(UpdateScopeValueRequest))]
 // Node Tag contracts
-[JsonSerializable(typeof(NodeTagDto))]
-[JsonSerializable(typeof(List<NodeTagDto>))]
-[JsonSerializable(typeof(AssignNodeTagRequest))]
+[JsonSerializable(typeof(NodeTagSummary))]
+[JsonSerializable(typeof(List<NodeTagSummary>))]
+[JsonSerializable(typeof(AddNodeTagRequest))]
 // Parameter contracts
-[JsonSerializable(typeof(ParameterFileDto))]
-[JsonSerializable(typeof(List<ParameterFileDto>))]
-[JsonSerializable(typeof(CreateParameterRequest))]
-[JsonSerializable(typeof(ParameterProvenanceDto))]
-[JsonSerializable(typeof(ParameterSourceInfo))]
-[JsonSerializable(typeof(ScopeInfo))]
-[JsonSerializable(typeof(ParameterProvenance))]
-[JsonSerializable(typeof(Dictionary<string, ParameterProvenance>))]
+[JsonSerializable(typeof(OpenDsc.Contracts.Parameters.ParameterVersionDetails))]
+[JsonSerializable(typeof(List<OpenDsc.Contracts.Parameters.ParameterVersionDetails>))]
+[JsonSerializable(typeof(OpenDsc.Contracts.Parameters.CreateParameterRequest))]
+[JsonSerializable(typeof(OpenDsc.Contracts.Parameters.ParameterProvenanceDetails))]
+[JsonSerializable(typeof(OpenDsc.Contracts.Parameters.ParameterSourceInfo))]
+[JsonSerializable(typeof(OpenDsc.Contracts.Parameters.ScopeInfo))]
+[JsonSerializable(typeof(OpenDsc.Contracts.Parameters.ParameterResolutionDetails))]
+[JsonSerializable(typeof(OpenDsc.Contracts.Parameters.ScopeResolutionDetails))]
+[JsonSerializable(typeof(OpenDsc.Contracts.Parameters.MajorVersionSummary))]
+[JsonSerializable(typeof(OpenDsc.Contracts.Parameters.ValidationResult), TypeInfoPropertyName = "ParameterValidationResult")]
+[JsonSerializable(typeof(OpenDsc.Contracts.Parameters.ValidationError), TypeInfoPropertyName = "ParameterValidationError")]
+[JsonSerializable(typeof(OpenDsc.Contracts.Parameters.PublishResult), TypeInfoPropertyName = "ParameterPublishResult")]
+[JsonSerializable(typeof(OpenDsc.Contracts.Parameters.CompatibilityReport), TypeInfoPropertyName = "ParameterCompatibilityReport")]
+[JsonSerializable(typeof(OpenDsc.Contracts.Parameters.ParameterChange))]
+[JsonSerializable(typeof(OpenDsc.Contracts.Parameters.ParameterFileMigrationStatus), TypeInfoPropertyName = "ParameterFileMigrationStatusModel")]
 [JsonSerializable(typeof(ScopeValueInfo))]
 [JsonSerializable(typeof(MergeResult))]
 // Health contracts
@@ -111,31 +126,30 @@ namespace OpenDsc.Server;
 [JsonSerializable(typeof(OidcProviderInfo))]
 [JsonSerializable(typeof(IEnumerable<OidcProviderInfo>))]
 // User contracts
-[JsonSerializable(typeof(UserDto))]
-[JsonSerializable(typeof(List<UserDto>))]
-[JsonSerializable(typeof(UserDetailDto))]
+[JsonSerializable(typeof(UserSummary))]
+[JsonSerializable(typeof(List<UserSummary>))]
+[JsonSerializable(typeof(UserDetails))]
 [JsonSerializable(typeof(CreateUserRequest))]
 [JsonSerializable(typeof(UpdateUserRequest))]
 [JsonSerializable(typeof(ResetPasswordRequest))]
-[JsonSerializable(typeof(SetRolesRequest))]
-[JsonSerializable(typeof(RoleDto))]
-[JsonSerializable(typeof(List<RoleDto>))]
-[JsonSerializable(typeof(GroupDto))]
-[JsonSerializable(typeof(List<GroupDto>))]
+[JsonSerializable(typeof(SetUserRolesRequest))]
+[JsonSerializable(typeof(RoleSummary))]
+[JsonSerializable(typeof(List<RoleSummary>))]
+[JsonSerializable(typeof(GroupSummary))]
+[JsonSerializable(typeof(List<GroupSummary>))]
+[JsonSerializable(typeof(RoleDetails))]
+[JsonSerializable(typeof(GroupDetails))]
+[JsonSerializable(typeof(SetRoleGroupsRequest))]
+[JsonSerializable(typeof(SetGroupMembersRequest))]
+[JsonSerializable(typeof(SetGroupRolesRequest))]
+[JsonSerializable(typeof(ExternalGroupMappingInfo))]
+[JsonSerializable(typeof(List<ExternalGroupMappingInfo>))]
+[JsonSerializable(typeof(UpdateTokenScopesRequest))]
 // Group contracts
-[JsonSerializable(typeof(GroupSummaryDto))]
-[JsonSerializable(typeof(List<GroupSummaryDto>))]
-[JsonSerializable(typeof(GroupDetailDto))]
 [JsonSerializable(typeof(CreateGroupRequest))]
 [JsonSerializable(typeof(UpdateGroupRequest))]
-[JsonSerializable(typeof(SetMembersRequest))]
-[JsonSerializable(typeof(ExternalGroupMappingDto))]
-[JsonSerializable(typeof(List<ExternalGroupMappingDto>))]
 [JsonSerializable(typeof(CreateExternalGroupMappingRequest))]
 // Role contracts
-[JsonSerializable(typeof(RoleSummaryDto))]
-[JsonSerializable(typeof(List<RoleSummaryDto>))]
-[JsonSerializable(typeof(RoleDetailDto))]
 [JsonSerializable(typeof(CreateRoleRequest))]
 [JsonSerializable(typeof(UpdateRoleRequest))]
 // Retention contracts
@@ -145,20 +159,29 @@ namespace OpenDsc.Server;
 [JsonSerializable(typeof(List<VersionDeletionInfo>))]
 [JsonSerializable(typeof(RetentionRunDto))]
 [JsonSerializable(typeof(List<RetentionRunDto>))]
-[JsonSerializable(typeof(RetentionSettingsDto))]
+[JsonSerializable(typeof(RetentionSettingsResponse))]
 [JsonSerializable(typeof(UpdateRetentionSettingsRequest))]
 // Parameter validation
-[JsonSerializable(typeof(ValidationError))]
-[JsonSerializable(typeof(List<ValidationError>))]
-[JsonSerializable(typeof(ValidationResult))]
-[JsonSerializable(typeof(CompatibilityReport))]
+[JsonSerializable(typeof(OpenDsc.Contracts.Configurations.ValidationError), TypeInfoPropertyName = "ConfigurationValidationError")]
+[JsonSerializable(typeof(List<OpenDsc.Contracts.Configurations.ValidationError>), TypeInfoPropertyName = "ConfigurationListValidationError")]
+[JsonSerializable(typeof(List<OpenDsc.Contracts.Parameters.ValidationError>), TypeInfoPropertyName = "ParameterListValidationError")]
+[JsonSerializable(typeof(OpenDsc.Server.Services.ValidationResult), TypeInfoPropertyName = "ServerValidationResult")]
+[JsonSerializable(typeof(OpenDsc.Contracts.Configurations.CompatibilityReport), TypeInfoPropertyName = "ConfigurationCompatibilityReport")]
 [JsonSerializable(typeof(SchemaChange))]
-[JsonSerializable(typeof(ParameterFileMigrationStatus))]
+[JsonSerializable(typeof(OpenDsc.Contracts.Configurations.ParameterFileMigrationStatus), TypeInfoPropertyName = "ConfigurationParameterFileMigrationStatus")]
+[JsonSerializable(typeof(List<OpenDsc.Contracts.Configurations.ParameterFileMigrationStatus>), TypeInfoPropertyName = "ConfigurationListParameterFileMigrationStatus")]
+[JsonSerializable(typeof(List<OpenDsc.Contracts.Parameters.ParameterFileMigrationStatus>), TypeInfoPropertyName = "ParameterListParameterFileMigrationStatus")]
+[JsonSerializable(typeof(VersionUsageInfo))]
+[JsonSerializable(typeof(OpenDsc.Contracts.Configurations.PublishResult), TypeInfoPropertyName = "ConfigurationPublishResult")]
 // Schema types
 [JsonSerializable(typeof(DscResult))]
 [JsonSerializable(typeof(DscOperation))]
 // Enums
 [JsonSerializable(typeof(ScopeValueMode))]
+[JsonSerializable(typeof(AccountType), TypeInfoPropertyName = "AccountType")]
+[JsonSerializable(typeof(NodeStatus), TypeInfoPropertyName = "NodeStatus")]
+[JsonSerializable(typeof(ResourcePermission), TypeInfoPropertyName = "ResourcePermission")]
+[JsonSerializable(typeof(PrincipalType), TypeInfoPropertyName = "PrincipalType")]
 public partial class SourceGenerationContext : JsonSerializerContext
 {
 }

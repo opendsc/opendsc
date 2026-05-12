@@ -7,6 +7,8 @@ using Microsoft.Extensions.Options;
 
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
+using OpenDsc.Contracts.Parameters;
+using OpenDsc.Contracts.Configurations;
 
 namespace OpenDsc.Server.Services;
 
@@ -467,3 +469,4 @@ public sealed partial class VersionRetentionService(
     [LoggerMessage(EventId = EventIds.CleanupCompleted, Level = LogLevel.Information, Message = "Cleanup completed for {VersionType} versions: {Deleted} deleted, {Kept} kept (dry-run: {DryRun})")]
     private partial void LogCleanupCompleted(string versionType, int deleted, int kept, bool dryRun);
 }
+

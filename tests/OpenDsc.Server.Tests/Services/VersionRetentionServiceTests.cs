@@ -10,10 +10,13 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
-using OpenDsc.Lcm.Contracts;
+using OpenDsc.Contracts.Lcm;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
+using OpenDsc.Contracts.Configurations;
 using OpenDsc.Server.Services;
+
+using ParameterVersionStatus = OpenDsc.Contracts.Parameters.ParameterVersionStatus;
 
 using Xunit;
 

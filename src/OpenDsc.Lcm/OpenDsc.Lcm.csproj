@@ -28,7 +28,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\OpenDsc.Lcm.Contracts\OpenDsc.Lcm.Contracts.csproj" />
+    <ProjectReference Include="..\OpenDsc.Contracts\OpenDsc.Contracts.csproj" />
     <ProjectReference Include="..\OpenDsc.Schema\OpenDsc.Schema.csproj" />
   </ItemGroup>
 

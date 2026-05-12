@@ -6,7 +6,6 @@
 
 using AwesomeAssertions;
 
-using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -16,6 +15,7 @@ using Moq;
 
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
+using OpenDsc.Contracts.Configurations;
 using OpenDsc.Server.Services;
 
 using Xunit;
@@ -30,9 +30,10 @@ public class ConfigurationServiceTests : IDisposable
     private readonly Mock<IResourceAuthorizationService> _mockAuthService;
     private readonly Mock<IUserContextService> _mockUserContext;
     private readonly Mock<ILogger<ConfigurationService>> _mockLogger;
-    private readonly Mock<IHttpContextAccessor> _mockHttpContextAccessor;
     private readonly Mock<IParameterSchemaBuilder> _mockSchemaBuilder;
     private readonly Mock<IParameterCompatibilityService> _mockCompatibilityService;
+    private readonly Mock<IParameterSchemaService> _mockParameterSchemaService;
+    private readonly Mock<IParameterValidator> _mockParameterValidator;
     private readonly ConfigurationService _client;
 
     public ConfigurationServiceTests()
@@ -46,9 +47,10 @@ public class ConfigurationServiceTests : IDisposable
         _mockAuthService = new Mock<IResourceAuthorizationService>();
         _mockUserContext = new Mock<IUserContextService>();
         _mockLogger = new Mock<ILogger<ConfigurationService>>();
-        _mockHttpContextAccessor = new Mock<IHttpContextAccessor>();
         _mockSchemaBuilder = new Mock<IParameterSchemaBuilder>();
         _mockCompatibilityService = new Mock<IParameterCompatibilityService>();
+        _mockParameterSchemaService = new Mock<IParameterSchemaService>();
+        _mockParameterValidator = new Mock<IParameterValidator>();
 
         _client = new ConfigurationService(
             _dbContext,
@@ -56,20 +58,16 @@ public class ConfigurationServiceTests : IDisposable
             _mockAuthService.Object,
             _mockUserContext.Object,
             _mockLogger.Object,
-            _mockHttpContextAccessor.Object,
             _mockSchemaBuilder.Object,
-            _mockCompatibilityService.Object);
+            _mockCompatibilityService.Object,
+            _mockParameterSchemaService.Object,
+            _mockParameterValidator.Object);
     }
 
     [Fact]
     public async Task PublishVersionAsync_WithNoHttpContext_ReturnsFailure()
     {
-        _mockHttpContextAccessor.Setup(x => x.HttpContext).Returns((HttpContext?)null);
-
-        var result = await _client.PublishVersionAsync("test-config", "1.0.0");
-
-        result.Success.Should().BeFalse();
-        result.ErrorMessage.Should().Be("Unable to determine server URL");
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => _client.PublishVersionAsync("test-config", "1.0.0"));
     }
 
     [Fact]
@@ -83,15 +81,8 @@ public class ConfigurationServiceTests : IDisposable
         mockRequest.Setup(r => r.Host).Returns(new HostString("localhost", 5001));
         mockRequest.Setup(r => r.Headers).Returns(cookieCollection);
         mockHttpContext.Setup(c => c.Request).Returns(mockRequest.Object);
-        _mockHttpContextAccessor.Setup(x => x.HttpContext).Returns(mockHttpContext.Object);
 
-        // Note: This will fail because we can't actually make the HTTP call in a unit test
-        // But we can verify the URL construction logic is correct
-        var result = await _client.PublishVersionAsync("test-config", "1.0.0");
-
-        result.Success.Should().BeFalse();
-        mockRequest.Verify(r => r.Scheme, Times.Once);
-        mockRequest.Verify(r => r.Host, Times.Once);
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => _client.PublishVersionAsync("test-config", "1.0.0"));
     }
 
     [Fact]
@@ -108,12 +99,8 @@ public class ConfigurationServiceTests : IDisposable
         mockRequest.Setup(r => r.Host).Returns(new HostString("localhost", 5001));
         mockRequest.Setup(r => r.Headers).Returns(cookieCollection);
         mockHttpContext.Setup(c => c.Request).Returns(mockRequest.Object);
-        _mockHttpContextAccessor.Setup(x => x.HttpContext).Returns(mockHttpContext.Object);
 
-        var result = await _client.PublishVersionAsync("test-config", "1.0.0");
-
-        // Verify cookie header was accessed (implying it would be forwarded)
-        mockRequest.Verify(r => r.Headers, Times.AtLeastOnce);
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => _client.PublishVersionAsync("test-config", "1.0.0"));
     }
 
     [Fact]
@@ -127,12 +114,8 @@ public class ConfigurationServiceTests : IDisposable
         mockRequest.Setup(r => r.Host).Returns(new HostString("localhost", 5001));
         mockRequest.Setup(r => r.Headers).Returns(cookieCollection);
         mockHttpContext.Setup(c => c.Request).Returns(mockRequest.Object);
-        _mockHttpContextAccessor.Setup(x => x.HttpContext).Returns(mockHttpContext.Object);
 
-        var result = await _client.PublishVersionAsync("test config", "1.0.0");
-
-        // The method should handle URL escaping for config names with spaces
-        result.Success.Should().BeFalse();
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => _client.PublishVersionAsync("test config", "1.0.0"));
     }
 
     [Fact]
@@ -146,12 +129,8 @@ public class ConfigurationServiceTests : IDisposable
         mockRequest.Setup(r => r.Host).Returns(new HostString("localhost", 5001));
         mockRequest.Setup(r => r.Headers).Returns(cookieCollection);
         mockHttpContext.Setup(c => c.Request).Returns(mockRequest.Object);
-        _mockHttpContextAccessor.Setup(x => x.HttpContext).Returns(mockHttpContext.Object);
 
-        // Note: This unit test validates the parsing logic
-        // Full HTTP integration is tested in integration tests
-        var actualResult = await _client.PublishVersionAsync("test-config", "1.0.0");
-        actualResult.Should().NotBeNull();
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => _client.PublishVersionAsync("test-config", "1.0.0"));
     }
 
     [Fact]
@@ -165,10 +144,8 @@ public class ConfigurationServiceTests : IDisposable
         mockRequest.Setup(r => r.Host).Returns(new HostString("localhost", 5001));
         mockRequest.Setup(r => r.Headers).Returns(cookieCollection);
         mockHttpContext.Setup(c => c.Request).Returns(mockRequest.Object);
-        _mockHttpContextAccessor.Setup(x => x.HttpContext).Returns(mockHttpContext.Object);
 
-        var actualResult = await _client.PublishVersionAsync("test-config", "1.0.0");
-        actualResult.Should().NotBeNull();
+        await Assert.ThrowsAsync<KeyNotFoundException>(() => _client.PublishVersionAsync("test-config", "1.0.0"));
     }
 
     #region CreateConfigurationAsync Tests
@@ -179,11 +156,15 @@ public class ConfigurationServiceTests : IDisposable
         var name = "TestConfig";
         var files = CreateMockFiles(("main.dsc.yaml", "configuration {}"));
 
-        var result = await _client.CreateConfigurationAsync(
-            name, "Test config", "main.dsc.yaml", "1.0.0", isDraft: false,
-            useServerManagedParameters: false, files);
-
-        result.Should().Be(true);
+        await _client.CreateAsync(new CreateConfigurationAdminRequest
+        {
+            Name = name,
+            Description = "Test config",
+            EntryPoint = "main.dsc.yaml",
+            Version = "1.0.0",
+            UseServerManagedParameters = false,
+            Files = files
+        });
         (await _dbContext.Configurations.FirstOrDefaultAsync(c => c.Name == name)).Should().NotBeNull();
     }
 
@@ -192,19 +173,29 @@ public class ConfigurationServiceTests : IDisposable
     {
         var files = CreateMockFiles(("main.dsc.yaml", "config {}"));
 
-        var result = await _client.CreateConfigurationAsync(
-            string.Empty, "desc", "main.dsc.yaml", "1.0.0", false, false, files);
-
-        result.Should().Be(false);
+        await Assert.ThrowsAnyAsync<Exception>(() => _client.CreateAsync(new CreateConfigurationAdminRequest
+        {
+            Name = string.Empty,
+            Description = "desc",
+            EntryPoint = "main.dsc.yaml",
+            Version = "1.0.0",
+            UseServerManagedParameters = false,
+            Files = files
+        }));
     }
 
     [Fact]
     public async Task CreateConfigurationAsync_WithoutFiles_ReturnsFalse()
     {
-        var result = await _client.CreateConfigurationAsync(
-            "TestConfig", "desc", "main.dsc.yaml", "1.0.0", false, false, []);
-
-        result.Should().Be(false);
+        await Assert.ThrowsAnyAsync<Exception>(() => _client.CreateAsync(new CreateConfigurationAdminRequest
+        {
+            Name = "TestConfig",
+            Description = "desc",
+            EntryPoint = "main.dsc.yaml",
+            Version = "1.0.0",
+            UseServerManagedParameters = false,
+            Files = []
+        }));
     }
 
     [Fact]
@@ -213,14 +204,25 @@ public class ConfigurationServiceTests : IDisposable
         var name = "DuplicateConfig";
         var files = CreateMockFiles(("main.dsc.yaml", "config {}"));
 
-        await _client.CreateConfigurationAsync(
-            name, "First", "main.dsc.yaml", "1.0.0", false, false, files);
+        await _client.CreateAsync(new CreateConfigurationAdminRequest
+        {
+            Name = name,
+            Description = "First",
+            EntryPoint = "main.dsc.yaml",
+            Version = "1.0.0",
+            UseServerManagedParameters = false,
+            Files = files
+        });
 
-        var result = await _client.CreateConfigurationAsync(
-            name, "Second", "main.dsc.yaml", "1.0.1", false, false,
-            CreateMockFiles(("main.dsc.yaml", "config {}")));
-
-        result.Should().Be(false);
+        await Assert.ThrowsAnyAsync<Exception>(() => _client.CreateAsync(new CreateConfigurationAdminRequest
+        {
+            Name = name,
+            Description = "Second",
+            EntryPoint = "main.dsc.yaml",
+            Version = "1.0.1",
+            UseServerManagedParameters = false,
+            Files = CreateMockFiles(("main.dsc.yaml", "config {}"))
+        }));
     }
 
     [Fact]
@@ -228,10 +230,15 @@ public class ConfigurationServiceTests : IDisposable
     {
         var files = CreateMockFiles(("other.yaml", "content"));
 
-        var result = await _client.CreateConfigurationAsync(
-            "TestConfig", "desc", "main.dsc.yaml", "1.0.0", false, false, files);
-
-        result.Should().Be(false);
+        await Assert.ThrowsAnyAsync<Exception>(() => _client.CreateAsync(new CreateConfigurationAdminRequest
+        {
+            Name = "TestConfig",
+            Description = "desc",
+            EntryPoint = "main.dsc.yaml",
+            Version = "1.0.0",
+            UseServerManagedParameters = false,
+            Files = files
+        }));
     }
 
     [Fact]
@@ -240,8 +247,15 @@ public class ConfigurationServiceTests : IDisposable
         var name = "DraftConfig";
         var files = CreateMockFiles(("main.dsc.yaml", "config {}"));
 
-        await _client.CreateConfigurationAsync(
-            name, "desc", "main.dsc.yaml", "1.0.0", isDraft: true, false, files);
+        await _client.CreateAsync(new CreateConfigurationAdminRequest
+        {
+            Name = name,
+            Description = "desc",
+            EntryPoint = "main.dsc.yaml",
+            Version = "1.0.0",
+            UseServerManagedParameters = false,
+            Files = files
+        });
 
         var version = await _dbContext.ConfigurationVersions
             .FirstOrDefaultAsync(v => v.Version == "1.0.0");
@@ -250,18 +264,25 @@ public class ConfigurationServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task CreateConfigurationAsync_WithPublishedStatus_CreatesAsPublished()
+    public async Task CreateConfigurationAsync_AlwaysCreatesDraftVersion()
     {
         var name = "PublishedConfig";
         var files = CreateMockFiles(("main.dsc.yaml", "config {}"));
 
-        await _client.CreateConfigurationAsync(
-            name, "desc", "main.dsc.yaml", "1.0.0", isDraft: false, false, files);
+        await _client.CreateAsync(new CreateConfigurationAdminRequest
+        {
+            Name = name,
+            Description = "desc",
+            EntryPoint = "main.dsc.yaml",
+            Version = "1.0.0",
+            UseServerManagedParameters = false,
+            Files = files
+        });
 
         var version = await _dbContext.ConfigurationVersions
             .FirstOrDefaultAsync(v => v.Version == "1.0.0");
 
-        version?.Status.Should().Be(ConfigurationVersionStatus.Published);
+        version?.Status.Should().Be(ConfigurationVersionStatus.Draft);
     }
 
     [Fact]
@@ -270,9 +291,15 @@ public class ConfigurationServiceTests : IDisposable
         var name = "ServerManaged";
         var files = CreateMockFiles(("main.dsc.yaml", "config {}"));
 
-        await _client.CreateConfigurationAsync(
-            name, "desc", "main.dsc.yaml", "1.0.0", false,
-            useServerManagedParameters: true, files);
+        await _client.CreateAsync(new CreateConfigurationAdminRequest
+        {
+            Name = name,
+            Description = "desc",
+            EntryPoint = "main.dsc.yaml",
+            Version = "1.0.0",
+            UseServerManagedParameters = true,
+            Files = files
+        });
 
         var config = await _dbContext.Configurations.FirstOrDefaultAsync(c => c.Name == name);
 
@@ -284,10 +311,15 @@ public class ConfigurationServiceTests : IDisposable
     {
         var files = CreateMockFiles(("main.dsc.yaml", "config {}"));
 
-        var result = await _client.CreateConfigurationAsync(
-            "   ", "desc", "main.dsc.yaml", "1.0.0", false, false, files);
-
-        result.Should().Be(false);
+        await Assert.ThrowsAnyAsync<Exception>(() => _client.CreateAsync(new CreateConfigurationAdminRequest
+        {
+            Name = "   ",
+            Description = "desc",
+            EntryPoint = "main.dsc.yaml",
+            Version = "1.0.0",
+            UseServerManagedParameters = false,
+            Files = files
+        }));
     }
 
     [Fact]
@@ -298,10 +330,15 @@ public class ConfigurationServiceTests : IDisposable
             ("main.dsc.yaml", "configuration {}"),
             ("subdir/nested.yaml", "nested {}"));
 
-        var result = await _client.CreateConfigurationAsync(
-            name, "desc", "main.dsc.yaml", "1.0.0", false, false, files);
-
-        result.Should().Be(true);
+        await _client.CreateAsync(new CreateConfigurationAdminRequest
+        {
+            Name = name,
+            Description = "desc",
+            EntryPoint = "main.dsc.yaml",
+            Version = "1.0.0",
+            UseServerManagedParameters = false,
+            Files = files
+        });
         (await _dbContext.ConfigurationFiles
             .Where(f => f.RelativePath == "subdir/nested.yaml")
             .CountAsync())
@@ -321,9 +358,11 @@ public class ConfigurationServiceTests : IDisposable
 
         var files = CreateMockFiles(("main.dsc.yaml", "config {}"));
 
-        var result = await _client.CreateVersionAsync("TestConfig", "2.0.0", false, files);
-
-        result.Should().Be(true);
+        await _client.CreateVersionAsync("TestConfig", new CreateConfigurationVersionRequest
+        {
+            Version = "2.0.0",
+            Files = files
+        });
         (await _dbContext.ConfigurationVersions.FirstOrDefaultAsync(v => v.Version == "2.0.0"))
             .Should().NotBeNull();
     }
@@ -333,9 +372,11 @@ public class ConfigurationServiceTests : IDisposable
     {
         var files = CreateMockFiles(("main.dsc.yaml", "config {}"));
 
-        var result = await _client.CreateVersionAsync("NonexistentConfig", "1.0.0", false, files);
-
-        result.Should().Be(false);
+        await Assert.ThrowsAnyAsync<Exception>(() => _client.CreateVersionAsync("NonexistentConfig", new CreateConfigurationVersionRequest
+        {
+            Version = "1.0.0",
+            Files = files
+        }));
     }
 
     [Fact]
@@ -357,9 +398,11 @@ public class ConfigurationServiceTests : IDisposable
 
         var files = CreateMockFiles(("main.dsc.yaml", "config {}"));
 
-        var result = await _client.CreateVersionAsync("TestConfig", "1.0.0", false, files);
-
-        result.Should().Be(false);
+        await Assert.ThrowsAnyAsync<Exception>(() => _client.CreateVersionAsync("TestConfig", new CreateConfigurationVersionRequest
+        {
+            Version = "1.0.0",
+            Files = files
+        }));
     }
 
     [Fact]
@@ -371,7 +414,12 @@ public class ConfigurationServiceTests : IDisposable
 
         var files = CreateMockFiles(("custom.yaml", "config {}"));
 
-        await _client.CreateVersionAsync("TestConfig", "1.0.0", false, files, entryPoint: "custom.yaml");
+        await _client.CreateVersionAsync("TestConfig", new CreateConfigurationVersionRequest
+        {
+            Version = "1.0.0",
+            EntryPoint = "custom.yaml",
+            Files = files
+        });
 
         var createdVersion = await _dbContext.ConfigurationVersions.FirstOrDefaultAsync(v => v.Version == "1.0.0");
 
@@ -397,7 +445,11 @@ public class ConfigurationServiceTests : IDisposable
 
         var files = CreateMockFiles(("myentry.yaml", "config {}"));
 
-        await _client.CreateVersionAsync("TestConfig", "2.0.0", false, files);
+        await _client.CreateVersionAsync("TestConfig", new CreateConfigurationVersionRequest
+        {
+            Version = "2.0.0",
+            Files = files
+        });
 
         var createdVersion = await _dbContext.ConfigurationVersions.FirstOrDefaultAsync(v => v.Version == "2.0.0");
 
@@ -409,9 +461,11 @@ public class ConfigurationServiceTests : IDisposable
     {
         var files = CreateMockFiles(("main.dsc.yaml", "config {}"));
 
-        var result = await _client.CreateVersionAsync(string.Empty, "1.0.0", false, files);
-
-        result.Should().Be(false);
+        await Assert.ThrowsAnyAsync<Exception>(() => _client.CreateVersionAsync(string.Empty, new CreateConfigurationVersionRequest
+        {
+            Version = "1.0.0",
+            Files = files
+        }));
     }
 
     [Fact]
@@ -423,7 +477,11 @@ public class ConfigurationServiceTests : IDisposable
 
         var files = CreateMockFiles(("main.dsc.yaml", "config {}"));
 
-        await _client.CreateVersionAsync("TestConfig", "1.0.0", isDraft: true, files);
+        await _client.CreateVersionAsync("TestConfig", new CreateConfigurationVersionRequest
+        {
+            Version = "1.0.0",
+            Files = files
+        });
 
         var version = await _dbContext.ConfigurationVersions
             .FirstOrDefaultAsync(v => v.Version == "1.0.0");
@@ -442,9 +500,7 @@ public class ConfigurationServiceTests : IDisposable
         _dbContext.Configurations.Add(config);
         await _dbContext.SaveChangesAsync();
 
-        var result = await _client.DeleteConfigurationAsync("ToDelete");
-
-        result.Should().Be(true);
+        await _client.DeleteAsync("ToDelete");
         (await _dbContext.Configurations.FirstOrDefaultAsync(c => c.Name == "ToDelete"))
             .Should().BeNull();
     }
@@ -452,9 +508,7 @@ public class ConfigurationServiceTests : IDisposable
     [Fact]
     public async Task DeleteConfigurationAsync_WithNonexistentConfiguration_ReturnsFalse()
     {
-        var result = await _client.DeleteConfigurationAsync("NonexistentConfig");
-
-        result.Should().Be(false);
+        await Assert.ThrowsAnyAsync<Exception>(() => _client.DeleteAsync("NonexistentConfig"));
     }
 
     #endregion
@@ -512,16 +566,19 @@ public class ConfigurationServiceTests : IDisposable
             _mockAuthService.Object,
             _mockUserContext.Object,
             _mockLogger.Object,
-            _mockHttpContextAccessor.Object,
             _mockSchemaBuilder.Object,
-            _mockCompatibilityService.Object);
+            _mockCompatibilityService.Object,
+            _mockParameterSchemaService.Object,
+            _mockParameterValidator.Object);
 
         try
         {
-            var result = await testClient.CreateVersionFromExistingAsync(
-                "TestConfig", "1.0.0", "2.0.0", isDraft: false);
+            await testClient.CreateVersionFromExistingAsync("TestConfig", new CreateVersionFromExistingRequest
+            {
+                SourceVersion = "1.0.0",
+                NewVersion = "2.0.0",
+            });
 
-            result.Should().Be(true);
             (await _dbContext.ConfigurationVersions.FirstOrDefaultAsync(v => v.Version == "2.0.0"))
                 .Should().NotBeNull();
         }
@@ -538,10 +595,11 @@ public class ConfigurationServiceTests : IDisposable
     [Fact]
     public async Task CreateVersionFromExistingAsync_WithNonexistentConfiguration_ReturnsFalse()
     {
-        var result = await _client.CreateVersionFromExistingAsync(
-            "NonexistentConfig", "1.0.0", "2.0.0", isDraft: false);
-
-        result.Should().Be(false);
+        await Assert.ThrowsAnyAsync<Exception>(() => _client.CreateVersionFromExistingAsync("NonexistentConfig", new CreateVersionFromExistingRequest
+        {
+            SourceVersion = "1.0.0",
+            NewVersion = "2.0.0",
+        }));
     }
 
     [Fact]
@@ -556,10 +614,11 @@ public class ConfigurationServiceTests : IDisposable
         _dbContext.Configurations.Add(config);
         await _dbContext.SaveChangesAsync();
 
-        var result = await _client.CreateVersionFromExistingAsync(
-            "TestConfig", "1.0.0", "2.0.0", isDraft: false);
-
-        result.Should().Be(false);
+        await Assert.ThrowsAnyAsync<Exception>(() => _client.CreateVersionFromExistingAsync("TestConfig", new CreateVersionFromExistingRequest
+        {
+            SourceVersion = "1.0.0",
+            NewVersion = "2.0.0",
+        }));
     }
 
     [Fact]
@@ -595,10 +654,11 @@ public class ConfigurationServiceTests : IDisposable
         _dbContext.ConfigurationVersions.Add(existingVersion);
         await _dbContext.SaveChangesAsync();
 
-        var result = await _client.CreateVersionFromExistingAsync(
-            "TestConfig", "1.0.0", "2.0.0", isDraft: false);
-
-        result.Should().Be(false);
+        await Assert.ThrowsAnyAsync<Exception>(() => _client.CreateVersionFromExistingAsync("TestConfig", new CreateVersionFromExistingRequest
+        {
+            SourceVersion = "1.0.0",
+            NewVersion = "2.0.0",
+        }));
     }
 
     [Fact]
@@ -648,16 +708,18 @@ public class ConfigurationServiceTests : IDisposable
             _mockAuthService.Object,
             _mockUserContext.Object,
             _mockLogger.Object,
-            _mockHttpContextAccessor.Object,
             _mockSchemaBuilder.Object,
-            _mockCompatibilityService.Object);
+            _mockCompatibilityService.Object,
+            _mockParameterSchemaService.Object,
+            _mockParameterValidator.Object);
 
         try
         {
-            var result = await testClient.CreateVersionFromExistingAsync(
-                "TestConfig", "1.0.0", "2.0.0", isDraft: true);
-
-            result.Should().Be(true);
+            await testClient.CreateVersionFromExistingAsync("TestConfig", new CreateVersionFromExistingRequest
+            {
+                SourceVersion = "1.0.0",
+                NewVersion = "2.0.0",
+            });
 
             var newVersion = await _dbContext.ConfigurationVersions
                 .FirstOrDefaultAsync(v => v.Version == "2.0.0");
@@ -703,9 +765,7 @@ public class ConfigurationServiceTests : IDisposable
             ("additional.yaml", "additional content"),
             ("config.json", "{}"));
 
-        var result = await _client.AddFilesToVersionAsync("TestConfig", "1.0.0", newFiles);
-
-        result.Should().Be(true);
+        await _client.AddFilesAsync("TestConfig", "1.0.0", newFiles);
         (await _dbContext.ConfigurationFiles
             .Where(f => f.VersionId == version.Id)
             .CountAsync())
@@ -717,9 +777,7 @@ public class ConfigurationServiceTests : IDisposable
     {
         var files = CreateMockFiles(("file.yaml", "content"));
 
-        var result = await _client.AddFilesToVersionAsync("NonexistentConfig", "1.0.0", files);
-
-        result.Should().Be(false);
+        await Assert.ThrowsAnyAsync<Exception>(() => _client.AddFilesAsync("NonexistentConfig", "1.0.0", files));
     }
 
     [Fact]
@@ -736,9 +794,7 @@ public class ConfigurationServiceTests : IDisposable
 
         var files = CreateMockFiles(("file.yaml", "content"));
 
-        var result = await _client.AddFilesToVersionAsync("TestConfig", "1.0.0", files);
-
-        result.Should().Be(false);
+        await Assert.ThrowsAnyAsync<Exception>(() => _client.AddFilesAsync("TestConfig", "1.0.0", files));
     }
 
     [Fact]
@@ -765,9 +821,7 @@ public class ConfigurationServiceTests : IDisposable
 
         var newFiles = CreateMockFiles(("additional.yaml", "content"));
 
-        var result = await _client.AddFilesToVersionAsync("TestConfig", "1.0.0", newFiles);
-
-        result.Should().Be(false);
+        await Assert.ThrowsAnyAsync<Exception>(() => _client.AddFilesAsync("TestConfig", "1.0.0", newFiles));
     }
 
     [Fact]
@@ -806,9 +860,7 @@ public class ConfigurationServiceTests : IDisposable
             ("duplicate.yaml", "new content"),
             ("other.yaml", "other content"));
 
-        var result = await _client.AddFilesToVersionAsync("TestConfig", "1.0.0", newFiles);
-
-        result.Should().Be(true);
+        await _client.AddFilesAsync("TestConfig", "1.0.0", newFiles);
         // Should only add the non-duplicate file
         (await _dbContext.ConfigurationFiles
             .Where(f => f.VersionId == version.Id)
@@ -838,9 +890,7 @@ public class ConfigurationServiceTests : IDisposable
         _dbContext.ConfigurationVersions.Add(version);
         await _dbContext.SaveChangesAsync();
 
-        var result = await _client.AddFilesToVersionAsync("TestConfig", "1.0.0", []);
-
-        result.Should().Be(true);
+        await _client.AddFilesAsync("TestConfig", "1.0.0", []);
     }
 
     #endregion
@@ -869,9 +919,7 @@ public class ConfigurationServiceTests : IDisposable
         _dbContext.ConfigurationVersions.Add(version);
         await _dbContext.SaveChangesAsync();
 
-        var result = await _client.DeleteVersionAsync("TestConfig", "1.0.0");
-
-        result.Should().Be(true);
+        await _client.DeleteVersionAsync("TestConfig", "1.0.0");
         (await _dbContext.ConfigurationVersions.FirstOrDefaultAsync(v => v.Version == "1.0.0"))
             .Should().BeNull();
     }
@@ -879,9 +927,7 @@ public class ConfigurationServiceTests : IDisposable
     [Fact]
     public async Task DeleteVersionAsync_WithNonexistentConfiguration_ReturnsFalse()
     {
-        var result = await _client.DeleteVersionAsync("NonexistentConfig", "1.0.0");
-
-        result.Should().Be(false);
+        await Assert.ThrowsAnyAsync<Exception>(() => _client.DeleteVersionAsync("NonexistentConfig", "1.0.0"));
     }
 
     [Fact]
@@ -896,9 +942,7 @@ public class ConfigurationServiceTests : IDisposable
         _dbContext.Configurations.Add(config);
         await _dbContext.SaveChangesAsync();
 
-        var result = await _client.DeleteVersionAsync("TestConfig", "1.0.0");
-
-        result.Should().Be(false);
+        await Assert.ThrowsAnyAsync<Exception>(() => _client.DeleteVersionAsync("TestConfig", "1.0.0"));
     }
 
     #endregion
@@ -937,9 +981,7 @@ public class ConfigurationServiceTests : IDisposable
         _dbContext.ConfigurationFiles.Add(file);
         await _dbContext.SaveChangesAsync();
 
-        var result = await _client.DeleteFileAsync("TestConfig", "1.0.0", "extra.yaml");
-
-        result.Should().Be(true);
+        await _client.DeleteFileAsync("TestConfig", "1.0.0", "extra.yaml");
         (await _dbContext.ConfigurationFiles
             .FirstOrDefaultAsync(f => f.RelativePath == "extra.yaml"))
             .Should().BeNull();
@@ -948,9 +990,7 @@ public class ConfigurationServiceTests : IDisposable
     [Fact]
     public async Task DeleteFileAsync_WithNonexistentConfiguration_ReturnsFalse()
     {
-        var result = await _client.DeleteFileAsync("NonexistentConfig", "1.0.0", "file.yaml");
-
-        result.Should().Be(false);
+        await Assert.ThrowsAnyAsync<Exception>(() => _client.DeleteFileAsync("NonexistentConfig", "1.0.0", "file.yaml"));
     }
 
     [Fact]
@@ -965,9 +1005,7 @@ public class ConfigurationServiceTests : IDisposable
         _dbContext.Configurations.Add(config);
         await _dbContext.SaveChangesAsync();
 
-        var result = await _client.DeleteFileAsync("TestConfig", "1.0.0", "file.yaml");
-
-        result.Should().Be(false);
+        await Assert.ThrowsAnyAsync<Exception>(() => _client.DeleteFileAsync("TestConfig", "1.0.0", "file.yaml"));
     }
 
     [Fact]
@@ -992,9 +1030,7 @@ public class ConfigurationServiceTests : IDisposable
         _dbContext.ConfigurationVersions.Add(version);
         await _dbContext.SaveChangesAsync();
 
-        var result = await _client.DeleteFileAsync("TestConfig", "1.0.0", "nonexistent.yaml");
-
-        result.Should().Be(false);
+        await Assert.ThrowsAnyAsync<Exception>(() => _client.DeleteFileAsync("TestConfig", "1.0.0", "nonexistent.yaml"));
     }
 
     [Fact]
@@ -1029,9 +1065,7 @@ public class ConfigurationServiceTests : IDisposable
         _dbContext.ConfigurationFiles.Add(file);
         await _dbContext.SaveChangesAsync();
 
-        var result = await _client.DeleteFileAsync("TestConfig", "1.0.0", "only-file.yaml");
-
-        result.Should().Be(true);
+        await _client.DeleteFileAsync("TestConfig", "1.0.0", "only-file.yaml");
         (await _dbContext.ConfigurationFiles
             .Where(f => f.VersionId == version.Id)
             .CountAsync())
@@ -1074,9 +1108,7 @@ public class ConfigurationServiceTests : IDisposable
         _dbContext.ConfigurationFiles.Add(file);
         await _dbContext.SaveChangesAsync();
 
-        var result = await _client.ChangeVersionEntryPointAsync("TestConfig", "1.0.0", "secondary.dsc.yaml");
-
-        result.Should().Be(true);
+        await _client.ChangeEntryPointAsync("TestConfig", "1.0.0", "secondary.dsc.yaml");
         var updatedVersion = await _dbContext.ConfigurationVersions.FirstOrDefaultAsync(v => v.Version == "1.0.0");
         updatedVersion.Should().NotBeNull();
         updatedVersion!.EntryPoint.Should().Be("secondary.dsc.yaml");
@@ -1085,9 +1117,7 @@ public class ConfigurationServiceTests : IDisposable
     [Fact]
     public async Task ChangeVersionEntryPointAsync_WithNonexistentConfiguration_ReturnsFalse()
     {
-        var result = await _client.ChangeVersionEntryPointAsync("NonexistentConfig", "1.0.0", "new-entry.yaml");
-
-        result.Should().Be(false);
+        await Assert.ThrowsAnyAsync<Exception>(() => _client.ChangeEntryPointAsync("NonexistentConfig", "1.0.0", "new-entry.yaml"));
     }
 
     [Fact]
@@ -1102,9 +1132,7 @@ public class ConfigurationServiceTests : IDisposable
         _dbContext.Configurations.Add(config);
         await _dbContext.SaveChangesAsync();
 
-        var result = await _client.ChangeVersionEntryPointAsync("TestConfig", "1.0.0", "new-entry.yaml");
-
-        result.Should().Be(false);
+        await Assert.ThrowsAnyAsync<Exception>(() => _client.ChangeEntryPointAsync("TestConfig", "1.0.0", "new-entry.yaml"));
     }
 
     [Fact]
@@ -1129,9 +1157,7 @@ public class ConfigurationServiceTests : IDisposable
         _dbContext.ConfigurationVersions.Add(version);
         await _dbContext.SaveChangesAsync();
 
-        var result = await _client.ChangeVersionEntryPointAsync("TestConfig", "1.0.0", "nonexistent.yaml");
-
-        result.Should().Be(false);
+        await Assert.ThrowsAnyAsync<Exception>(() => _client.ChangeEntryPointAsync("TestConfig", "1.0.0", "nonexistent.yaml"));
     }
 
     [Fact]
@@ -1166,9 +1192,7 @@ public class ConfigurationServiceTests : IDisposable
         _dbContext.ConfigurationFiles.Add(file);
         await _dbContext.SaveChangesAsync();
 
-        var result = await _client.ChangeVersionEntryPointAsync("TestConfig", "1.0.0", "configs/nested.dsc.yaml");
-
-        result.Should().Be(true);
+        await _client.ChangeEntryPointAsync("TestConfig", "1.0.0", "configs/nested.dsc.yaml");
         var updatedVersion = await _dbContext.ConfigurationVersions.FirstOrDefaultAsync(v => v.Version == "1.0.0");
         updatedVersion!.EntryPoint.Should().Be("configs/nested.dsc.yaml");
     }
@@ -1237,16 +1261,15 @@ public class ConfigurationServiceTests : IDisposable
             _mockAuthService.Object,
             _mockUserContext.Object,
             _mockLogger.Object,
-            _mockHttpContextAccessor.Object,
             _mockSchemaBuilder.Object,
-            _mockCompatibilityService.Object);
+            _mockCompatibilityService.Object,
+            _mockParameterSchemaService.Object,
+            _mockParameterValidator.Object);
 
         try
         {
-            var result = await testClient.SaveFileAsync(
+            await testClient.SaveFileAsync(
                 "TestConfig", "1.0.0", "main.dsc.yaml", "new content");
-
-            result.Should().Be(true);
         }
         finally
         {
@@ -1261,9 +1284,7 @@ public class ConfigurationServiceTests : IDisposable
     [Fact]
     public async Task SaveFileAsync_WithNonexistentConfiguration_ReturnsFalse()
     {
-        var result = await _client.SaveFileAsync("NonexistentConfig", "1.0.0", "file.yaml", "content");
-
-        result.Should().Be(false);
+        await Assert.ThrowsAnyAsync<Exception>(() => _client.SaveFileAsync("NonexistentConfig", "1.0.0", "file.yaml", "content"));
     }
 
     [Fact]
@@ -1278,9 +1299,7 @@ public class ConfigurationServiceTests : IDisposable
         _dbContext.Configurations.Add(config);
         await _dbContext.SaveChangesAsync();
 
-        var result = await _client.SaveFileAsync("TestConfig", "1.0.0", "file.yaml", "content");
-
-        result.Should().Be(false);
+        await Assert.ThrowsAnyAsync<Exception>(() => _client.SaveFileAsync("TestConfig", "1.0.0", "file.yaml", "content"));
     }
 
     [Fact]
@@ -1317,17 +1336,15 @@ public class ConfigurationServiceTests : IDisposable
             _mockAuthService.Object,
             _mockUserContext.Object,
             _mockLogger.Object,
-            _mockHttpContextAccessor.Object,
             _mockSchemaBuilder.Object,
-            _mockCompatibilityService.Object);
+            _mockCompatibilityService.Object,
+            _mockParameterSchemaService.Object,
+            _mockParameterValidator.Object);
 
         try
         {
-            // Try to save a file that doesn't exist in the database
-            var result = await testClient.SaveFileAsync(
-                "TestConfig", "1.0.0", "nonexistent-file.yaml", "new file content");
-
-            result.Should().Be(false);
+            await Assert.ThrowsAnyAsync<Exception>(() => testClient.SaveFileAsync(
+                "TestConfig", "1.0.0", "nonexistent-file.yaml", "new file content"));
         }
         finally
         {
@@ -1384,16 +1401,15 @@ public class ConfigurationServiceTests : IDisposable
             _mockAuthService.Object,
             _mockUserContext.Object,
             _mockLogger.Object,
-            _mockHttpContextAccessor.Object,
             _mockSchemaBuilder.Object,
-            _mockCompatibilityService.Object);
+            _mockCompatibilityService.Object,
+            _mockParameterSchemaService.Object,
+            _mockParameterValidator.Object);
 
         try
         {
-            var result = await testClient.SaveFileAsync(
+            await testClient.SaveFileAsync(
                 "TestConfig", "1.0.0", "main.dsc.yaml", "   \n\t  ");
-
-            result.Should().Be(true);
         }
         finally
         {
@@ -1408,21 +1424,14 @@ public class ConfigurationServiceTests : IDisposable
 
     #region Helper Methods
 
-    private List<IBrowserFile> CreateMockFiles(params (string name, string content)[] files)
+    private List<FileUpload> CreateMockFiles(params (string name, string content)[] files)
     {
-        var mockFiles = new List<IBrowserFile>();
+        var mockFiles = new List<FileUpload>();
 
         foreach (var (name, content) in files)
         {
-            var mockFile = new Mock<IBrowserFile>();
-            mockFile.Setup(f => f.Name).Returns(name);
-            mockFile.Setup(f => f.Size).Returns(content.Length);
-
             var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(content));
-            mockFile.Setup(f => f.OpenReadStream(It.IsAny<long>(), It.IsAny<CancellationToken>()))
-                .Returns(stream);
-
-            mockFiles.Add(mockFile.Object);
+            mockFiles.Add(new FileUpload(name, stream, null, content.Length));
         }
 
         return mockFiles;

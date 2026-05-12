@@ -3,7 +3,7 @@
    terms of the MIT license. *@
 
 @namespace OpenDsc.Server.Components.Pages
-@using System.Text.Json
+@using OpenDsc.Contracts.Users
 @using OpenDsc.Server.Authorization
 @using MudBlazor
 
@@ -40,13 +40,10 @@
 
 @code {
     [Parameter]
-    public Role Role { get; set; } = default!;
+    public RoleSummary Role { get; set; } = default!;
 
     [CascadingParameter]
     private IMudDialogInstance MudDialog { get; set; } = default!;
-
-    [Inject]
-    private ServerDbContext Db { get; set; } = default!;
 
     private List<string> _rolePermissions = [];
     private List<TreeItemData<string>> _treeItems = [];
@@ -55,14 +52,7 @@
 
     protected override void OnParametersSet()
     {
-        try
-        {
-            _rolePermissions = JsonSerializer.Deserialize<List<string>>(Role.Permissions) ?? [];
-        }
-        catch
-        {
-            _rolePermissions = [];
-        }
+        _rolePermissions = Role.Permissions.ToList();
 
         _treeItems = PermissionHierarchyHelper.CreateTreeData(Permissions.AllScopes, _rolePermissions);
         _selectedPermissions = new HashSet<string>(_rolePermissions, StringComparer.Ordinal);

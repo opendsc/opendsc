@@ -1,33 +1,35 @@
-@using Microsoft.EntityFrameworkCore
 @using MudBlazor
 @using System.Text.RegularExpressions
-@inject ServerDbContext Db
+@using OpenDsc.Contracts.Users
+@inject IUserService UserService
 @inject ISnackbar Snackbar
-@inject IPasswordHasher PasswordHasher
 
 <MudDialog>
     <DialogContent>
         @if (user != null)
         {
-            <MudTextField @bind-Value="user.Username" Label="Username" Variant="Variant.Outlined" Disabled="true" Class="mb-3" />
-            <MudTextField @bind-Value="user.Email" Label="Email" Variant="Variant.Outlined" Required="true" Class="mb-3"
+            <MudTextField @bind-Value="user.Username" Label="Username" Variant="Variant.Outlined" Disabled="true"
+                          Class="mb-3" />
+            <MudTextField @bind-Value="email" Label="Email" Variant="Variant.Outlined" Required="true" Class="mb-3"
                           Immediate="true" Validation="@(new Func<string?, string?>(ValidateEmail))" />
-            <MudSelect @bind-Value="user.AccountType" Label="Account Type" Variant="Variant.Outlined" Class="mb-3" T="AccountType">
+            <MudSelect @bind-Value="accountType" Label="Account Type" Variant="Variant.Outlined" Class="mb-3"
+                       T="AccountType">
                 <MudSelectItem Value="@AccountType.User">User</MudSelectItem>
                 <MudSelectItem Value="@AccountType.ServiceAccount">Service Account</MudSelectItem>
             </MudSelect>
-            <MudTextField @bind-Value="user.Description" Label="Description" Variant="Variant.Outlined" Lines="2" Class="mb-3" />
+            <MudTextField @bind-Value="description" Label="Description" Variant="Variant.Outlined" Lines="2" Class="mb-3" />
 
             <MudDivider Class="my-3" />
             <MudText Typo="Typo.subtitle2" Class="mb-2">Status</MudText>
-            <MudCheckBox @bind-Value="user.IsActive" Label="Active" Class="mb-2" />
-            <MudCheckBox @bind-Value="user.RequirePasswordChange" Label="Require Password Change" Class="mb-2" />
+            <MudCheckBox @bind-Value="isActive" Label="Active" Class="mb-2" />
+            <MudCheckBox @bind-Value="requirePasswordChange" Label="Require Password Change" Class="mb-2" />
             <MudCheckBox @bind-Value="isLocked" Label="Locked Out" Class="mb-2" />
             <MudText Typo="Typo.caption" Class="mb-3">Failed login attempts: @user.AccessFailedCount</MudText>
 
             <MudDivider Class="my-3" />
             <MudText Typo="Typo.subtitle2" Class="mb-2">Change Password (optional)</MudText>
-            <MudTextField @bind-Value="newPassword" Label="New Password" Variant="Variant.Outlined" InputType="InputType.Password" />
+            <MudTextField @bind-Value="newPassword" Label="New Password" Variant="Variant.Outlined"
+                          InputType="InputType.Password" />
         }
         else
         {
@@ -36,9 +38,10 @@
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(user == null || ValidateEmail(user?.Email) != null)">Save</MudButton>
-    </DialogActions>
-</MudDialog>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(user == null || ValidateEmail(email) != null)">
+            Save</MudButton>
+        </DialogActions>
+    </MudDialog>
 
 @code {
     [Parameter]
@@ -50,11 +53,17 @@
     [CascadingParameter]
     private IMudDialogInstance MudDialog { get; set; } = default!;
 
-    private User? user;
+    private UserDetails? user;
     private string? newPassword;
     private bool isLocked;
+    private bool isActive;
+    private bool requirePasswordChange;
+    private string email = string.Empty;
+    private AccountType accountType = AccountType.User;
+    private string? description;
 
-    private static readonly Regex EmailRegex = new(@"^[^\s@]+@[^\s@]+\.[^\s@]+$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex EmailRegex = new(@"^[^\s@]+@[^\s@]+\.[^\s@]+$", RegexOptions.Compiled |
+RegexOptions.IgnoreCase);
 
     private string? ValidateEmail(string? value)
     {
@@ -67,10 +76,20 @@
 
     protected override async Task OnInitializedAsync()
     {
-        user = await Db.Users.FindAsync(UserId);
-        if (user != null)
+        try
         {
+            user = await UserService.GetUserAsync(UserId);
             isLocked = user.LockoutEnd.HasValue && user.LockoutEnd.Value > DateTimeOffset.UtcNow;
+            isActive = user.IsActive;
+            requirePasswordChange = user.RequirePasswordChange;
+            email = user.Email;
+            accountType = user.AccountType;
+            description = user.Description;
+        }
+        catch (KeyNotFoundException)
+        {
+            Snackbar.Add("User not found", Severity.Error);
+            MudDialog.Cancel();
         }
     }
 
@@ -81,36 +100,43 @@
 
     private async Task Submit()
     {
-        if (user == null)
-            return;
-
         try
         {
-            if (isLocked)
+            var updated = await UserService.UpdateUserAsync(UserId, new UpdateUserRequest
             {
-                user.LockoutEnd = DateTimeOffset.UtcNow.AddYears(100);
-            }
-            else
-            {
-                user.LockoutEnd = null;
-            }
+                Username = user!.Username,
+                Email = email,
+                IsActive = isActive,
+                RequirePasswordChange = requirePasswordChange,
+                AccountType = accountType,
+                Description = description,
+                IsLocked = isLocked
+            });
 
             if (!string.IsNullOrWhiteSpace(newPassword))
             {
-                var (hash, salt) = PasswordHasher.HashPassword(newPassword);
-                user.PasswordHash = hash;
-                user.PasswordSalt = salt;
+                await UserService.ResetPasswordAsync(UserId, new ResetPasswordRequest
+                {
+                    NewPassword = newPassword
+                });
             }
 
-            user.ModifiedAt = DateTimeOffset.UtcNow;
-            await Db.SaveChangesAsync();
-
-            Snackbar.Add($"User '{user.Username}' updated successfully", Severity.Success);
+            Snackbar.Add($"User '{updated.Username}' updated successfully", Severity.Success);
             await OnUserUpdated.InvokeAsync();
+            MudDialog.Close();
+        }
+        catch (KeyNotFoundException)
+        {
+            Snackbar.Add("User not found", Severity.Error);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
         }
         catch (Exception ex)
         {
             Snackbar.Add($"Error updating user: {ex.Message}", Severity.Error);
         }
     }
+}
 }

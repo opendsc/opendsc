@@ -3,10 +3,9 @@
 // terms of the MIT license.
 
 using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.EntityFrameworkCore;
 
+using OpenDsc.Contracts.Settings;
 using OpenDsc.Server.Authorization;
-using OpenDsc.Server.Data;
 
 namespace OpenDsc.Server.Endpoints;
 
@@ -29,128 +28,26 @@ internal static class RetentionSettingsEndpoints
         return group;
     }
 
-    private static async Task<Ok<RetentionSettingsDto>> GetRetentionSettings(ServerDbContext db)
+    private static async Task<Ok<RetentionSettingsResponse>> GetRetentionSettings(
+        ISettingsService settingsService,
+        CancellationToken cancellationToken)
     {
-        var settings = await db.ServerSettings.FirstOrDefaultAsync();
-        if (settings is null)
-        {
-            return TypedResults.Ok(new RetentionSettingsDto());
-        }
-
-        return TypedResults.Ok(new RetentionSettingsDto
-        {
-            Enabled = settings.RetentionEnabled,
-            KeepVersions = settings.RetentionKeepVersions,
-            KeepDays = settings.RetentionKeepDays,
-            KeepReleaseVersions = settings.RetentionKeepReleaseVersions,
-            ScheduleIntervalHours = (int)settings.RetentionScheduleInterval.TotalHours,
-            ReportKeepCount = settings.RetentionReportKeepCount,
-            ReportKeepDays = settings.RetentionReportKeepDays,
-            StatusEventKeepCount = settings.RetentionStatusEventKeepCount,
-            StatusEventKeepDays = settings.RetentionStatusEventKeepDays
-        });
+        return TypedResults.Ok(await settingsService.GetRetentionSettingsAsync(cancellationToken));
     }
 
-    private static async Task<Results<Ok<RetentionSettingsDto>, NotFound>> UpdateRetentionSettings(
+    private static async Task<Results<Ok<RetentionSettingsResponse>, NotFound>> UpdateRetentionSettings(
         UpdateRetentionSettingsRequest request,
-        ServerDbContext db)
+        ISettingsService settingsService,
+        CancellationToken cancellationToken)
     {
-        var settings = await db.ServerSettings.FirstOrDefaultAsync();
-        if (settings is null)
+        try
+        {
+            return TypedResults.Ok(
+                await settingsService.UpdateRetentionSettingsAsync(request, cancellationToken));
+        }
+        catch (KeyNotFoundException)
         {
             return TypedResults.NotFound();
         }
-
-        if (request.Enabled.HasValue)
-        {
-            settings.RetentionEnabled = request.Enabled.Value;
-        }
-
-        if (request.KeepVersions.HasValue)
-        {
-            settings.RetentionKeepVersions = request.KeepVersions.Value;
-        }
-
-        if (request.KeepDays.HasValue)
-        {
-            settings.RetentionKeepDays = request.KeepDays.Value;
-        }
-
-        if (request.KeepReleaseVersions.HasValue)
-        {
-            settings.RetentionKeepReleaseVersions = request.KeepReleaseVersions.Value;
-        }
-
-        if (request.ScheduleIntervalHours.HasValue)
-        {
-            settings.RetentionScheduleInterval = TimeSpan.FromHours(request.ScheduleIntervalHours.Value);
-        }
-
-        if (request.ReportKeepCount.HasValue)
-        {
-            settings.RetentionReportKeepCount = request.ReportKeepCount.Value;
-        }
-
-        if (request.ReportKeepDays.HasValue)
-        {
-            settings.RetentionReportKeepDays = request.ReportKeepDays.Value;
-        }
-
-        if (request.StatusEventKeepCount.HasValue)
-        {
-            settings.RetentionStatusEventKeepCount = request.StatusEventKeepCount.Value;
-        }
-
-        if (request.StatusEventKeepDays.HasValue)
-        {
-            settings.RetentionStatusEventKeepDays = request.StatusEventKeepDays.Value;
-        }
-
-        await db.SaveChangesAsync();
-
-        return TypedResults.Ok(new RetentionSettingsDto
-        {
-            Enabled = settings.RetentionEnabled,
-            KeepVersions = settings.RetentionKeepVersions,
-            KeepDays = settings.RetentionKeepDays,
-            KeepReleaseVersions = settings.RetentionKeepReleaseVersions,
-            ScheduleIntervalHours = (int)settings.RetentionScheduleInterval.TotalHours,
-            ReportKeepCount = settings.RetentionReportKeepCount,
-            ReportKeepDays = settings.RetentionReportKeepDays,
-            StatusEventKeepCount = settings.RetentionStatusEventKeepCount,
-            StatusEventKeepDays = settings.RetentionStatusEventKeepDays
-        });
     }
-}
-
-/// <summary>
-/// Global retention policy settings returned by the API.
-/// </summary>
-public sealed class RetentionSettingsDto
-{
-    public bool Enabled { get; init; } = false;
-    public int KeepVersions { get; init; } = 10;
-    public int KeepDays { get; init; } = 90;
-    public bool KeepReleaseVersions { get; init; } = true;
-    public int ScheduleIntervalHours { get; init; } = 24;
-    public int ReportKeepCount { get; init; } = 1000;
-    public int ReportKeepDays { get; init; } = 30;
-    public int StatusEventKeepCount { get; init; } = 200;
-    public int StatusEventKeepDays { get; init; } = 7;
-}
-
-/// <summary>
-/// Request to update global retention policy settings. Null fields leave the existing value unchanged.
-/// </summary>
-public sealed class UpdateRetentionSettingsRequest
-{
-    public bool? Enabled { get; init; }
-    public int? KeepVersions { get; init; }
-    public int? KeepDays { get; init; }
-    public bool? KeepReleaseVersions { get; init; }
-    public int? ScheduleIntervalHours { get; init; }
-    public int? ReportKeepCount { get; init; }
-    public int? ReportKeepDays { get; init; }
-    public int? StatusEventKeepCount { get; init; }
-    public int? StatusEventKeepDays { get; init; }
 }

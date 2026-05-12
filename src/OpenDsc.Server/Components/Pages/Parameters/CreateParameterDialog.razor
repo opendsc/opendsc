@@ -7,12 +7,13 @@
 @using MudBlazor
 @using BlazorMonaco
 @using BlazorMonaco.Editor
+@using OpenDsc.Contracts.Parameters
+@using OpenDsc.Contracts.Settings
 @using OpenDsc.Server.Services
-@using Microsoft.EntityFrameworkCore
 @using System.Text.Json
 @using NuGet.Versioning
-@inject IParameterService ParameterApiClient
-@inject ServerDbContext Db
+@inject IParameterService ParameterService
+@inject IScopeService ScopeService
 @inject ISnackbar Snackbar
 @inject ThemeService ThemeService
 @inject IJsonYamlConverter JsonYamlConverter
@@ -23,31 +24,22 @@
     <DialogContent>
         @if (LockScope && InitialMajorVersion.HasValue)
         {
-            <MudTextField @bind-Value="versionString"
-                          @bind-Value:after="OnVersionChanged"
-                          Label="Version"
-                          Variant="Variant.Outlined"
-                          Required="true"
-                          Immediate="true"
+            <MudTextField @bind-Value="versionString" @bind-Value:after="OnVersionChanged" Label="Version"
+                          Variant="Variant.Outlined" Required="true" Immediate="true"
                           HelperText="@($"Semantic version: {InitialMajorVersion}.minor.patch[-prerelease][+metadata]")"
-                          Error="@(versionError != null)"
-                          ErrorText="@versionError" />
+                          Error="@(versionError != null)" ErrorText="@versionError" />
         }
         else
         {
             <ScopeSelector @bind-SelectedConfigurationId="selectedConfigurationId"
-                           @bind-SelectedConfigurationId:after="OnConfigurationChanged"
-                           @bind-SelectedScopeTypeId="selectedScopeTypeId"
-                           @bind-SelectedScopeValue="selectedScopeValue"
-                           Locked="@LockScope" />
+                           @bind-SelectedConfigurationId:after="OnConfigurationChanged" @bind-SelectedScopeTypeId="selectedScopeTypeId"
+                           @bind-SelectedScopeTypeId:after="OnScopeTypeChanged"
+                           @bind-SelectedScopeValue="selectedScopeValue" Locked="@LockScope" />
 
             <MudGrid Class="mt-4">
                 <MudItem xs="12" sm="3">
-                    <MudSelect T="int?" @bind-Value="selectedMajor"
-                               @bind-Value:after="OnMajorVersionChanged"
-                               Label="Major Version"
-                               Variant="Variant.Outlined"
-                               Required="true"
+                    <MudSelect T="int?" @bind-Value="selectedMajor" @bind-Value:after="OnMajorVersionChanged"
+                               Label="Major Version" Variant="Variant.Outlined" Required="true"
                                Disabled="@(InitialMajorVersion.HasValue || !selectedConfigurationId.HasValue || availableMajors.Count == 0)"
                                HelperText="@(availableMajors.Count == 0 && selectedConfigurationId.HasValue ? "No schemas found" : "Select major")">
                         @foreach (var major in availableMajors)
@@ -57,10 +49,7 @@
                     </MudSelect>
                 </MudItem>
                 <MudItem xs="12" sm="6">
-                    <MudTextField @bind-Value="minorPatch"
-                                  Label="Minor.Patch"
-                                  Variant="Variant.Outlined"
-                                  Required="true"
+                    <MudTextField @bind-Value="minorPatch" Label="Minor.Patch" Variant="Variant.Outlined" Required="true"
                                   HelperText="e.g. 0.0" />
                 </MudItem>
             </MudGrid>
@@ -72,29 +61,22 @@
                 <MudText Typo="Typo.subtitle2">Parameter Content (YAML)</MudText>
                 @if (selectedConfigurationId.HasValue)
                 {
-                    <MudButton Size="Size.Small"
-                               Variant="Variant.Text"
-                               Color="Color.Primary"
-                               StartIcon="@Icons.Material.Filled.Schema"
-                               OnClick="OpenSchemaDialog"
+                    <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Schema" OnClick="OpenSchemaDialog"
                                Disabled="@(currentSchema == null)">
                         View Schema
                     </MudButton>
                 }
             </div>
             <div style="height: 400px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
-                <StandaloneCodeEditor @ref="_editor"
-                                      Id="parameter-create-editor"
-                                      ConstructionOptions="GetEditorOptions"
+                <StandaloneCodeEditor @ref="_editor" Id="parameter-create-editor" ConstructionOptions="GetEditorOptions"
                                       CssClass="monaco-editor-container" />
             </div>
         }
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary"
-                   Variant="Variant.Filled"
-                   OnClick="CreateParameter"
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="CreateParameter"
                    Disabled="@(!IsValid() || isCreating)">
             @if (isCreating)
             {
@@ -107,14 +89,16 @@
 
 @if (showSchemaDialog && currentSchema != null)
 {
-    <MudDialog @bind-Visible="showSchemaDialog" Options="@(new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.ExtraLarge, FullWidth = true })">
+    <MudDialog @bind-Visible="showSchemaDialog"
+               Options="@(new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.ExtraLarge, FullWidth = true })">
         <DialogContent>
             <MudText Typo="Typo.h6" Class="mb-3">Parameter Schema</MudText>
             <MudCard Outlined="true">
                 <MudCardContent>
-                    <MudText Typo="Typo.caption">Configuration: @currentConfiguration?.Name</MudText>
+                    <MudText Typo="Typo.caption">Configuration: @currentSchema?.ConfigurationName</MudText>
                     <br />
-                    <MudText Typo="Typo.caption" Class="mb-3">Schema Version: v@(currentSchema.SchemaVersion ?? "unknown")</MudText>
+                    <MudText Typo="Typo.caption" Class="mb-3">Schema Version: v@(currentSchema.SchemaVersion ?? "unknown")
+                    </MudText>
 
                     <div class="d-flex justify-end mb-2">
                         <MudButtonGroup>
@@ -133,10 +117,8 @@
                         </MudButtonGroup>
                     </div>
                     <div style="height: 500px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
-                        <StandaloneCodeEditor @ref="_schemaEditor"
-                                              Id="parameter-schema-viewer"
-                                              ConstructionOptions="GetSchemaEditorOptions"
-                                              CssClass="monaco-editor-container" />
+                        <StandaloneCodeEditor @ref="_schemaEditor" Id="parameter-schema-viewer"
+                                              ConstructionOptions="GetSchemaEditorOptions" CssClass="monaco-editor-container" />
                     </div>
                 </MudCardContent>
             </MudCard>
@@ -171,15 +153,14 @@
     private bool isPassthrough;
     private bool isCreating;
 
-    private List<ScopeType> scopeTypes = [];
     private string defaultEditorValue = "parameters:\n  setting1: value1\n  setting2: value2\n";
-    private ParameterSchema? currentSchema;
-    private Configuration? currentConfiguration;
+    private ParameterSchemaDetails? currentSchema;
     private bool showSchemaDialog;
     private StandaloneCodeEditor? _schemaEditor;
     private SchemaFormat schemaViewFormat = SchemaFormat.Yaml;
     private string _currentSchemaContent = string.Empty;
     private string _editorInitialValue = string.Empty;
+    private string? _selectedScopeTypeName;
 
     private enum SchemaFormat
     {
@@ -191,7 +172,6 @@
     {
         isPassthrough = InitialIsPassthrough;
         _editorInitialValue = InitialContent ?? defaultEditorValue;
-        await LoadScopeTypesAsync();
 
         if (InitialConfigurationId.HasValue)
         {
@@ -207,7 +187,6 @@
         if (!selectedConfigurationId.HasValue)
         {
             currentSchema = null;
-            currentConfiguration = null;
             availableMajors = [];
             selectedMajor = null;
             if (_editor != null)
@@ -217,7 +196,7 @@
             return;
         }
 
-        availableMajors = await ParameterApiClient.GetAvailableMajorVersionsAsync(selectedConfigurationId.Value);
+        availableMajors = (await ParameterService.GetAvailableMajorVersionsAsync(selectedConfigurationId.Value)).ToList();
         selectedMajor = InitialMajorVersion ?? (availableMajors.Count > 0 ? availableMajors[0] : null);
 
         await LoadSchemaForSelectedMajorAsync();
@@ -240,7 +219,7 @@
             return;
         }
 
-        var allVersions = await ParameterApiClient.GetParameterVersionsAsync(
+        var allVersions = await ParameterService.GetVersionsAsync(
             selectedScopeTypeId.Value,
             selectedConfigurationId.Value,
             selectedScopeValue);
@@ -287,7 +266,6 @@
         if (!selectedConfigurationId.HasValue || !selectedMajor.HasValue)
         {
             currentSchema = null;
-            currentConfiguration = null;
             var fallback = InitialContent ?? defaultEditorValue;
             _editorInitialValue = fallback;
             if (_editor != null)
@@ -295,23 +273,7 @@
             return;
         }
 
-        var allSchemas = await Db.ParameterSchemas
-            .Include(ps => ps.Configuration)
-            .Where(ps => ps.ConfigurationId == selectedConfigurationId.Value)
-            .ToListAsync();
-
-        currentSchema = allSchemas.FirstOrDefault(ps =>
-            !string.IsNullOrEmpty(ps.SchemaVersion) &&
-            NuGet.Versioning.SemanticVersion.TryParse(ps.SchemaVersion, out var sv) &&
-            sv.Major == selectedMajor.Value);
-
-        currentConfiguration = currentSchema?.Configuration
-            ?? allSchemas.FirstOrDefault()?.Configuration;
-
-        if (currentConfiguration == null)
-        {
-            currentConfiguration = await Db.Configurations.FindAsync(selectedConfigurationId.Value);
-        }
+        currentSchema = await ParameterService.GetSchemaAsync(selectedConfigurationId.Value, selectedMajor.Value);
 
         string newValue;
         if (currentSchema != null && !string.IsNullOrWhiteSpace(currentSchema.GeneratedJsonSchema) && InitialContent == null)
@@ -438,7 +400,26 @@
 
     private async Task LoadScopeTypesAsync()
     {
-        scopeTypes = await Db.ScopeTypes.ToListAsync();
+    }
+
+    private async Task OnScopeTypeChanged()
+    {
+        if (selectedScopeTypeId.HasValue)
+        {
+            try
+            {
+                var st = await ScopeService.GetScopeTypeAsync(selectedScopeTypeId.Value);
+                _selectedScopeTypeName = st.Name;
+            }
+            catch (KeyNotFoundException)
+            {
+                _selectedScopeTypeName = null;
+            }
+        }
+        else
+        {
+            _selectedScopeTypeName = null;
+        }
     }
 
     private StandaloneEditorConstructionOptions GetEditorOptions(StandaloneCodeEditor editor)
@@ -477,13 +458,12 @@
             return false;
         }
 
-        var currentScopeType = scopeTypes.FirstOrDefault(st => st.Id == selectedScopeTypeId.Value);
-        if (currentScopeType is null)
+        if (_selectedScopeTypeName == null)
         {
             return false;
         }
 
-        if (currentScopeType.Name == "Default")
+        if (_selectedScopeTypeName == "Default")
         {
             return true;
         }
@@ -519,23 +499,19 @@
                 ? versionString.Trim()
                 : $"{selectedMajor}.{minorPatch.Trim()}";
 
-            var (success, errorMessage) = await ParameterApiClient.CreateOrUpdateParameterAsync(
+            await ParameterService.CreateAsync(
                 selectedScopeTypeId!.Value,
                 selectedConfigurationId!.Value,
-                selectedScopeValue,
-                fullVersion,
-                content,
-                isPassthrough);
+                new CreateParameterRequest
+                {
+                    ScopeValue = selectedScopeValue,
+                    Version = fullVersion,
+                    Content = content,
+                    IsPassthrough = isPassthrough
+                });
 
-            if (success)
-            {
-                Snackbar.Add("Parameter created successfully", Severity.Success);
-                MudDialog.Close(DialogResult.Ok(true));
-            }
-            else
-            {
-                Snackbar.Add($"Failed to create parameter: {errorMessage}", Severity.Error);
-            }
+            Snackbar.Add("Parameter created successfully", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
         }
         catch (Exception ex)
         {
@@ -599,7 +575,11 @@
         try
         {
             var jsonObj = System.Text.Json.JsonSerializer.Deserialize<object>(json);
-            return System.Text.Json.JsonSerializer.Serialize(jsonObj, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+            return System.Text.Json.JsonSerializer.Serialize(jsonObj, new System.Text.Json.JsonSerializerOptions
+            {
+                WriteIndented =
+true
+            });
         }
         catch
         {

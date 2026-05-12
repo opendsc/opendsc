@@ -2,17 +2,12 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
-using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
-using OpenDsc.Server.Authentication;
-using OpenDsc.Server.Authorization;
-using OpenDsc.Server.Contracts;
-using OpenDsc.Server.Data;
-using OpenDsc.Server.Entities;
-using OpenDsc.Server.Services;
+using OpenDsc.Contracts.CompositeConfigurations;
+using OpenDsc.Contracts.Permissions;
+using OpenDsc.Contracts.Settings;
 
 namespace OpenDsc.Server.Endpoints;
 
@@ -85,723 +80,357 @@ public static class CompositeConfigurationEndpoints
             .WithDescription("Revoke a permission on a composite configuration");
     }
 
-    private static async Task<Ok<List<CompositeConfigurationSummaryDto>>> GetCompositeConfigurations(
-        ServerDbContext db,
-        IResourceAuthorizationService authService,
-        IUserContextService userContext)
+    private static async Task<Ok<List<CompositeConfigurationSummary>>> GetCompositeConfigurations(
+        ICompositeConfigurationService compositeService,
+        CancellationToken cancellationToken)
     {
-        var userId = userContext.GetCurrentUserId();
-        if (userId == null)
-        {
-            return TypedResults.Ok(new List<CompositeConfigurationSummaryDto>());
-        }
-
-        var readableIds = await authService.GetReadableCompositeConfigurationIdsAsync(userId.Value);
-
-        var composites = await db.CompositeConfigurations
-            .Where(c => readableIds.Contains(c.Id))
-            .Include(c => c.Versions)
-            .ToListAsync();
-
-        var result = composites.Select(c => new CompositeConfigurationSummaryDto
-        {
-            Id = c.Id,
-            Name = c.Name,
-            Description = c.Description,
-            EntryPoint = c.EntryPoint,
-            VersionCount = c.Versions.Count,
-            LatestVersion = VersionResolver.LatestSemver(c.Versions.Select(v => v.Version)),
-            CreatedAt = c.CreatedAt
-        }).ToList();
-
+        var result = await compositeService.GetCompositeConfigurationsAsync(cancellationToken);
         return TypedResults.Ok(result);
     }
 
-    private static async Task<Results<Created<CompositeConfigurationDetailsDto>, BadRequest<ErrorResponse>, Conflict<ErrorResponse>>> CreateCompositeConfiguration(
+    private static async Task<Results<Created<CompositeConfigurationDetails>, BadRequest<ErrorResponse>, Conflict<ErrorResponse>>> CreateCompositeConfiguration(
         CreateCompositeConfigurationRequest request,
-        ServerDbContext db,
-        IResourceAuthorizationService authService,
-        IUserContextService userContext)
+        ICompositeConfigurationService compositeService,
+        CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.Name))
         {
             return TypedResults.BadRequest(new ErrorResponse { Error = "Composite configuration name is required" });
         }
 
-        if (await db.CompositeConfigurations.AnyAsync(c => c.Name == request.Name))
+        try
         {
-            return TypedResults.Conflict(new ErrorResponse { Error = $"Composite configuration '{request.Name}' already exists" });
+            var details = await compositeService.CreateAsync(request, cancellationToken);
+            return TypedResults.Created($"/api/v1/composite-configurations/{details.Name}", details);
         }
-
-        var composite = new CompositeConfiguration
+        catch (InvalidOperationException ex)
         {
-            Id = Guid.NewGuid(),
-            Name = request.Name,
-            Description = request.Description,
-            EntryPoint = request.EntryPoint,
-            CreatedAt = DateTimeOffset.UtcNow
-        };
-
-        db.CompositeConfigurations.Add(composite);
-        await db.SaveChangesAsync();
-
-        var userId = userContext.GetCurrentUserId();
-        if (userId.HasValue && !await authService.HasGlobalPermissionAsync(userId.Value, CompositeConfigurationPermissions.AdminOverride))
-        {
-            await authService.GrantCompositeConfigurationPermissionAsync(
-                composite.Id,
-                userId.Value,
-                PrincipalType.User,
-                ResourcePermission.Manage,
-                userId.Value);
+            return TypedResults.Conflict(new ErrorResponse { Error = ex.Message });
         }
-
-        var details = new CompositeConfigurationDetailsDto
-        {
-            Id = composite.Id,
-            Name = composite.Name,
-            Description = composite.Description,
-            EntryPoint = composite.EntryPoint,
-            Versions = [],
-            CreatedAt = composite.CreatedAt,
-            UpdatedAt = composite.UpdatedAt
-        };
-
-        return TypedResults.Created($"/api/v1/composite-configurations/{composite.Name}", details);
     }
 
-    private static async Task<Results<Ok<CompositeConfigurationDetailsDto>, NotFound, ForbidHttpResult>> GetCompositeConfigurationDetails(
+    private static async Task<Results<Ok<CompositeConfigurationDetails>, NotFound, ForbidHttpResult>> GetCompositeConfigurationDetails(
         string name,
-        ServerDbContext db,
-        IResourceAuthorizationService authService,
-        IUserContextService userContext)
+        ICompositeConfigurationService compositeService,
+        CancellationToken cancellationToken)
     {
-        var composite = await db.CompositeConfigurations
-            .Include(c => c.Versions)
-            .ThenInclude(v => v.Items)
-            .ThenInclude(i => i.ChildConfiguration)
-            .FirstOrDefaultAsync(c => c.Name == name);
-
-        if (composite is null)
+        try
         {
-            return TypedResults.NotFound();
-        }
+            var details = await compositeService.GetCompositeConfigurationAsync(name, cancellationToken);
+            if (details is null)
+            {
+                return TypedResults.NotFound();
+            }
 
-        var userId = userContext.GetCurrentUserId();
-        if (userId == null || !await authService.CanReadCompositeConfigurationAsync(userId.Value, composite.Id))
+            return TypedResults.Ok(details);
+        }
+        catch (UnauthorizedAccessException)
         {
             return TypedResults.Forbid();
         }
-
-        var details = new CompositeConfigurationDetailsDto
-        {
-            Id = composite.Id,
-            Name = composite.Name,
-            Description = composite.Description,
-            EntryPoint = composite.EntryPoint,
-            Versions = composite.Versions.OrderByDescending(v => v.CreatedAt).Select(v => new CompositeConfigurationVersionDto
-            {
-                Id = v.Id,
-                Version = v.Version,
-                Status = v.Status,
-                PrereleaseChannel = v.PrereleaseChannel,
-                Items = v.Items.OrderBy(i => i.Order).Select(i => new CompositeConfigurationItemDto
-                {
-                    Id = i.Id,
-                    ChildConfigurationId = i.ChildConfigurationId,
-                    ChildConfigurationName = i.ChildConfiguration.Name,
-                    ActiveVersion = i.ActiveVersion,
-                    Order = i.Order
-                }).ToList(),
-                CreatedAt = v.CreatedAt,
-                CreatedBy = v.CreatedBy
-            }).ToList(),
-            CreatedAt = composite.CreatedAt,
-            UpdatedAt = composite.UpdatedAt
-        };
-
-        return TypedResults.Ok(details);
     }
 
     private static async Task<Results<NoContent, NotFound, BadRequest<ErrorResponse>, ForbidHttpResult>> DeleteCompositeConfiguration(
         string name,
-        ServerDbContext db,
-        IResourceAuthorizationService authService,
-        IUserContextService userContext)
+        ICompositeConfigurationService compositeService,
+        CancellationToken cancellationToken)
     {
-        var composite = await db.CompositeConfigurations
-            .Include(c => c.NodeConfigurations)
-            .FirstOrDefaultAsync(c => c.Name == name);
-
-        if (composite is null)
+        try
+        {
+            await compositeService.DeleteAsync(name, cancellationToken);
+            return TypedResults.NoContent();
+        }
+        catch (KeyNotFoundException)
         {
             return TypedResults.NotFound();
         }
-
-        var userId = userContext.GetCurrentUserId();
-        if (userId == null || !await authService.CanManageCompositeConfigurationAsync(userId.Value, composite.Id))
+        catch (UnauthorizedAccessException)
         {
             return TypedResults.Forbid();
         }
-
-        if (composite.NodeConfigurations.Count > 0)
+        catch (InvalidOperationException ex)
         {
-            return TypedResults.BadRequest(new ErrorResponse { Error = "Cannot delete composite configuration that is assigned to nodes" });
+            return TypedResults.BadRequest(new ErrorResponse { Error = ex.Message });
         }
-
-        db.CompositeConfigurations.Remove(composite);
-        await db.SaveChangesAsync();
-
-        return TypedResults.NoContent();
     }
 
-    private static async Task<Results<Created<CompositeConfigurationVersionDto>, NotFound, BadRequest<ErrorResponse>, Conflict<ErrorResponse>, ForbidHttpResult>> CreateCompositeConfigurationVersion(
+    private static async Task<Results<Created<CompositeConfigurationVersionDetails>, NotFound, BadRequest<ErrorResponse>, Conflict<ErrorResponse>, ForbidHttpResult>> CreateCompositeConfigurationVersion(
         string name,
         CreateCompositeConfigurationVersionRequest request,
-        ServerDbContext db,
-        IResourceAuthorizationService authService,
-        IUserContextService userContext)
+        ICompositeConfigurationService compositeService,
+        CancellationToken cancellationToken)
     {
-        var composite = await db.CompositeConfigurations
-            .Include(c => c.Versions)
-            .FirstOrDefaultAsync(c => c.Name == name);
-
-        if (composite is null)
-        {
-            return TypedResults.NotFound();
-        }
-
-        var userId = userContext.GetCurrentUserId();
-        if (userId == null || !await authService.CanModifyCompositeConfigurationAsync(userId.Value, composite.Id))
-        {
-            return TypedResults.Forbid();
-        }
-
         if (string.IsNullOrWhiteSpace(request.Version))
         {
             return TypedResults.BadRequest(new ErrorResponse { Error = "Version is required" });
         }
 
-        if (composite.Versions.Any(v => v.Version == request.Version))
+        try
         {
-            return TypedResults.Conflict(new ErrorResponse { Error = $"Version '{request.Version}' already exists for composite configuration '{name}'" });
+            var version = await compositeService.CreateVersionAsync(name, request, cancellationToken);
+            return TypedResults.Created($"/api/v1/composite-configurations/{name}/versions/{version.Version}", version);
         }
-
-        var version = new CompositeConfigurationVersion
-        {
-            Id = Guid.NewGuid(),
-            CompositeConfigurationId = composite.Id,
-            Version = request.Version,
-            PrereleaseChannel = request.PrereleaseChannel,
-            CreatedAt = DateTimeOffset.UtcNow
-        };
-
-        db.CompositeConfigurationVersions.Add(version);
-
-        composite.UpdatedAt = DateTimeOffset.UtcNow;
-
-        await db.SaveChangesAsync();
-
-        var dto = new CompositeConfigurationVersionDto
-        {
-            Id = version.Id,
-            Version = version.Version,
-            Status = version.Status,
-            PrereleaseChannel = version.PrereleaseChannel,
-            Items = [],
-            CreatedAt = version.CreatedAt,
-            CreatedBy = version.CreatedBy
-        };
-
-        return TypedResults.Created($"/api/v1/composite-configurations/{name}/versions/{version.Version}", dto);
-    }
-
-    private static async Task<Results<Ok<List<CompositeConfigurationVersionDto>>, NotFound, ForbidHttpResult>> GetCompositeConfigurationVersions(
-        string name,
-        ServerDbContext db,
-        IResourceAuthorizationService authService,
-        IUserContextService userContext)
-    {
-        var composite = await db.CompositeConfigurations
-            .Include(c => c.Versions)
-            .ThenInclude(v => v.Items)
-            .ThenInclude(i => i.ChildConfiguration)
-            .FirstOrDefaultAsync(c => c.Name == name);
-
-        if (composite is null)
+        catch (KeyNotFoundException)
         {
             return TypedResults.NotFound();
         }
-
-        var userId = userContext.GetCurrentUserId();
-        if (userId == null || !await authService.CanReadCompositeConfigurationAsync(userId.Value, composite.Id))
+        catch (UnauthorizedAccessException)
         {
             return TypedResults.Forbid();
         }
-
-        var versions = composite.Versions.OrderByDescending(v => v.CreatedAt).Select(v => new CompositeConfigurationVersionDto
+        catch (InvalidOperationException ex)
         {
-            Id = v.Id,
-            Version = v.Version,
-            Status = v.Status,
-            PrereleaseChannel = v.PrereleaseChannel,
-            Items = v.Items.OrderBy(i => i.Order).Select(i => new CompositeConfigurationItemDto
-            {
-                Id = i.Id,
-                ChildConfigurationId = i.ChildConfigurationId,
-                ChildConfigurationName = i.ChildConfiguration.Name,
-                ActiveVersion = i.ActiveVersion,
-                Order = i.Order
-            }).ToList(),
-            CreatedAt = v.CreatedAt,
-            CreatedBy = v.CreatedBy
-        }).ToList();
-
-        return TypedResults.Ok(versions);
+            return TypedResults.Conflict(new ErrorResponse { Error = ex.Message });
+        }
     }
 
-    private static async Task<Results<Ok<CompositeConfigurationVersionDto>, NotFound, ForbidHttpResult>> GetCompositeConfigurationVersionDetails(
+    private static async Task<Results<Ok<List<CompositeConfigurationVersionDetails>>, NotFound, ForbidHttpResult>> GetCompositeConfigurationVersions(
+        string name,
+        ICompositeConfigurationService compositeService,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var versions = await compositeService.GetVersionsAsync(name, cancellationToken);
+            if (versions is null)
+            {
+                return TypedResults.NotFound();
+            }
+
+            return TypedResults.Ok(versions);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return TypedResults.Forbid();
+        }
+    }
+
+    private static async Task<Results<Ok<CompositeConfigurationVersionDetails>, NotFound, ForbidHttpResult>> GetCompositeConfigurationVersionDetails(
         string name,
         string version,
-        ServerDbContext db,
-        IResourceAuthorizationService authService,
-        IUserContextService userContext)
+        ICompositeConfigurationService compositeService,
+        CancellationToken cancellationToken)
     {
-        var compositeVersion = await db.CompositeConfigurationVersions
-            .Include(v => v.CompositeConfiguration)
-            .Include(v => v.Items)
-            .ThenInclude(i => i.ChildConfiguration)
-            .FirstOrDefaultAsync(v => v.CompositeConfiguration.Name == name && v.Version == version);
-
-        if (compositeVersion is null)
+        try
         {
-            return TypedResults.NotFound();
-        }
+            var dto = await compositeService.GetVersionAsync(name, version, cancellationToken);
+            if (dto is null)
+            {
+                return TypedResults.NotFound();
+            }
 
-        var userId = userContext.GetCurrentUserId();
-        if (userId == null || !await authService.CanReadCompositeConfigurationAsync(userId.Value, compositeVersion.CompositeConfigurationId))
+            return TypedResults.Ok(dto);
+        }
+        catch (UnauthorizedAccessException)
         {
             return TypedResults.Forbid();
         }
-
-        var dto = new CompositeConfigurationVersionDto
-        {
-            Id = compositeVersion.Id,
-            Version = compositeVersion.Version,
-            Status = compositeVersion.Status,
-            PrereleaseChannel = compositeVersion.PrereleaseChannel,
-            Items = compositeVersion.Items.OrderBy(i => i.Order).Select(i => new CompositeConfigurationItemDto
-            {
-                Id = i.Id,
-                ChildConfigurationId = i.ChildConfigurationId,
-                ChildConfigurationName = i.ChildConfiguration.Name,
-                ActiveVersion = i.ActiveVersion,
-                Order = i.Order
-            }).ToList(),
-            CreatedAt = compositeVersion.CreatedAt,
-            CreatedBy = compositeVersion.CreatedBy
-        };
-
-        return TypedResults.Ok(dto);
     }
 
     private static async Task<Results<Ok, NotFound, BadRequest<ErrorResponse>, ForbidHttpResult>> PublishCompositeConfigurationVersion(
         string name,
         string version,
-        ServerDbContext db,
-        IResourceAuthorizationService authService,
-        IUserContextService userContext)
+        ICompositeConfigurationService compositeService,
+        CancellationToken cancellationToken)
     {
-        var compositeVersion = await db.CompositeConfigurationVersions
-            .Include(v => v.CompositeConfiguration)
-            .Include(v => v.Items)
-            .FirstOrDefaultAsync(v => v.CompositeConfiguration.Name == name && v.Version == version);
-
-        if (compositeVersion is null)
+        try
+        {
+            await compositeService.PublishVersionAsync(name, version, cancellationToken);
+            return TypedResults.Ok();
+        }
+        catch (KeyNotFoundException)
         {
             return TypedResults.NotFound();
         }
-
-        var userId = userContext.GetCurrentUserId();
-        if (userId == null || !await authService.CanModifyCompositeConfigurationAsync(userId.Value, compositeVersion.CompositeConfigurationId))
+        catch (UnauthorizedAccessException)
         {
             return TypedResults.Forbid();
         }
-
-        if (compositeVersion.Status != ConfigurationVersionStatus.Draft)
+        catch (InvalidOperationException ex)
         {
-            return TypedResults.BadRequest(new ErrorResponse { Error = "Version is already published" });
+            return TypedResults.BadRequest(new ErrorResponse { Error = ex.Message });
         }
-
-        if (!compositeVersion.Items.Any())
-        {
-            return TypedResults.BadRequest(new ErrorResponse { Error = "Cannot publish a composite configuration version with no child configurations" });
-        }
-
-        compositeVersion.Status = ConfigurationVersionStatus.Published;
-        compositeVersion.CompositeConfiguration.UpdatedAt = DateTimeOffset.UtcNow;
-
-        await db.SaveChangesAsync();
-
-        return TypedResults.Ok();
     }
 
     private static async Task<Results<NoContent, NotFound, BadRequest<ErrorResponse>, ForbidHttpResult>> DeleteCompositeConfigurationVersion(
         string name,
         string version,
-        ServerDbContext db,
-        IResourceAuthorizationService authService,
-        IUserContextService userContext)
+        ICompositeConfigurationService compositeService,
+        CancellationToken cancellationToken)
     {
-        var compositeVersion = await db.CompositeConfigurationVersions
-            .Include(v => v.CompositeConfiguration)
-            .Include(v => v.NodeConfigurations)
-            .FirstOrDefaultAsync(v => v.CompositeConfiguration.Name == name && v.Version == version);
-
-        if (compositeVersion is null)
+        try
+        {
+            await compositeService.DeleteVersionAsync(name, version, cancellationToken);
+            return TypedResults.NoContent();
+        }
+        catch (KeyNotFoundException)
         {
             return TypedResults.NotFound();
         }
-
-        var userId = userContext.GetCurrentUserId();
-        if (userId == null || !await authService.CanManageCompositeConfigurationAsync(userId.Value, compositeVersion.CompositeConfigurationId))
+        catch (UnauthorizedAccessException)
         {
             return TypedResults.Forbid();
         }
-
-        if (compositeVersion.Status != ConfigurationVersionStatus.Draft)
+        catch (InvalidOperationException ex)
         {
-            return TypedResults.BadRequest(new ErrorResponse { Error = "Cannot delete published version" });
+            return TypedResults.BadRequest(new ErrorResponse { Error = ex.Message });
         }
-
-        if (compositeVersion.NodeConfigurations.Count > 0)
-        {
-            return TypedResults.BadRequest(new ErrorResponse { Error = "Cannot delete version that is actively used by nodes" });
-        }
-
-        db.CompositeConfigurationVersions.Remove(compositeVersion);
-        await db.SaveChangesAsync();
-
-        return TypedResults.NoContent();
     }
 
-    private static async Task<Results<Created<CompositeConfigurationItemDto>, NotFound, BadRequest<ErrorResponse>, Conflict<ErrorResponse>, ForbidHttpResult>> AddChildConfiguration(
+    private static async Task<Results<Created<CompositeConfigurationItemDetails>, NotFound, BadRequest<ErrorResponse>, Conflict<ErrorResponse>, ForbidHttpResult>> AddChildConfiguration(
         string name,
         string version,
         AddChildConfigurationRequest request,
-        ServerDbContext db,
-        IResourceAuthorizationService authService,
-        IUserContextService userContext)
+        ICompositeConfigurationService compositeService,
+        CancellationToken cancellationToken)
     {
-        var compositeVersion = await db.CompositeConfigurationVersions
-            .Include(v => v.CompositeConfiguration)
-            .Include(v => v.Items)
-            .FirstOrDefaultAsync(v => v.CompositeConfiguration.Name == name && v.Version == version);
-
-        if (compositeVersion is null)
+        try
+        {
+            var item = await compositeService.AddChildAsync(name, version, request, cancellationToken);
+            return TypedResults.Created($"/api/v1/composite-configurations/{name}/versions/{version}/children/{item.Id}", item);
+        }
+        catch (KeyNotFoundException)
         {
             return TypedResults.NotFound();
         }
-
-        var userId = userContext.GetCurrentUserId();
-        if (userId == null || !await authService.CanModifyCompositeConfigurationAsync(userId.Value, compositeVersion.CompositeConfigurationId))
+        catch (UnauthorizedAccessException)
         {
             return TypedResults.Forbid();
         }
-
-        if (compositeVersion.Status != ConfigurationVersionStatus.Draft)
+        catch (InvalidOperationException ex)
         {
-            return TypedResults.BadRequest(new ErrorResponse { Error = "Cannot modify published version" });
-        }
-
-        // Check if child is actually a composite (prevent nesting)
-        var isComposite = await db.CompositeConfigurations
-            .AnyAsync(c => c.Name == request.ChildConfigurationName);
-
-        if (isComposite)
-        {
-            return TypedResults.BadRequest(new ErrorResponse { Error = "Cannot add a composite configuration as a child. Composite configurations can only contain regular configurations." });
-        }
-
-        var childConfig = await db.Configurations
-            .FirstOrDefaultAsync(c => c.Name == request.ChildConfigurationName);
-
-        if (childConfig is null)
-        {
-            return TypedResults.NotFound();
-        }
-
-        // Check if child already exists in this version
-        if (compositeVersion.Items.Any(i => i.ChildConfigurationId == childConfig.Id))
-        {
-            return TypedResults.Conflict(new ErrorResponse { Error = $"Child configuration '{request.ChildConfigurationName}' is already in this composite version" });
-        }
-
-        // Validate ActiveVersion if provided
-        if (!string.IsNullOrWhiteSpace(request.ActiveVersion))
-        {
-            var versionExists = await db.ConfigurationVersions
-                .AnyAsync(v => v.Version == request.ActiveVersion && v.ConfigurationId == childConfig.Id);
-
-            if (!versionExists)
+            if (ex.Message.Contains("already in"))
             {
-                return TypedResults.BadRequest(new ErrorResponse { Error = $"Invalid ActiveVersion for configuration '{request.ChildConfigurationName}'" });
+                return TypedResults.Conflict(new ErrorResponse { Error = ex.Message });
             }
+
+            return TypedResults.BadRequest(new ErrorResponse { Error = ex.Message });
         }
-
-        var item = new CompositeConfigurationItem
-        {
-            Id = Guid.NewGuid(),
-            CompositeConfigurationVersionId = compositeVersion.Id,
-            ChildConfigurationId = childConfig.Id,
-            ActiveVersion = request.ActiveVersion,
-            Order = request.Order
-        };
-
-        db.CompositeConfigurationItems.Add(item);
-        compositeVersion.CompositeConfiguration.UpdatedAt = DateTimeOffset.UtcNow;
-
-        await db.SaveChangesAsync();
-
-        // Reload to get navigation properties
-        await db.Entry(item).Reference(i => i.ChildConfiguration).LoadAsync();
-
-        var dto = new CompositeConfigurationItemDto
-        {
-            Id = item.Id,
-            ChildConfigurationId = item.ChildConfigurationId,
-            ChildConfigurationName = item.ChildConfiguration.Name,
-            ActiveVersion = item.ActiveVersion,
-            Order = item.Order
-        };
-
-        return TypedResults.Created($"/api/v1/composite-configurations/{name}/versions/{version}/children/{item.Id}", dto);
     }
 
-    private static async Task<Results<Ok<CompositeConfigurationItemDto>, NotFound, BadRequest<ErrorResponse>, ForbidHttpResult>> UpdateChildConfiguration(
+    private static async Task<Results<Ok<CompositeConfigurationItemDetails>, NotFound, BadRequest<ErrorResponse>, ForbidHttpResult>> UpdateChildConfiguration(
         string name,
         string version,
         Guid childId,
         UpdateChildConfigurationRequest request,
-        ServerDbContext db,
-        IResourceAuthorizationService authService,
-        IUserContextService userContext)
+        ICompositeConfigurationService compositeService,
+        CancellationToken cancellationToken)
     {
-        var item = await db.CompositeConfigurationItems
-            .Include(i => i.CompositeConfigurationVersion)
-            .ThenInclude(v => v.CompositeConfiguration)
-            .Include(i => i.ChildConfiguration)
-            .FirstOrDefaultAsync(i => i.Id == childId &&
-                                     i.CompositeConfigurationVersion.CompositeConfiguration.Name == name &&
-                                     i.CompositeConfigurationVersion.Version == version);
-
-        if (item is null)
+        try
+        {
+            var item = await compositeService.UpdateChildAsync(childId, request, cancellationToken);
+            return TypedResults.Ok(item);
+        }
+        catch (KeyNotFoundException)
         {
             return TypedResults.NotFound();
         }
-
-        var userId = userContext.GetCurrentUserId();
-        if (userId == null || !await authService.CanModifyCompositeConfigurationAsync(userId.Value, item.CompositeConfigurationVersion.CompositeConfigurationId))
+        catch (UnauthorizedAccessException)
         {
             return TypedResults.Forbid();
         }
-
-        if (item.CompositeConfigurationVersion.Status != ConfigurationVersionStatus.Draft)
+        catch (InvalidOperationException ex)
         {
-            return TypedResults.BadRequest(new ErrorResponse { Error = "Cannot modify published version" });
+            return TypedResults.BadRequest(new ErrorResponse { Error = ex.Message });
         }
-
-        // Validate ActiveVersion if provided
-        if (!string.IsNullOrWhiteSpace(request.ActiveVersion))
-        {
-            var versionExists = await db.ConfigurationVersions
-                .AnyAsync(v => v.Version == request.ActiveVersion && v.ConfigurationId == item.ChildConfigurationId);
-
-            if (!versionExists)
-            {
-                return TypedResults.BadRequest(new ErrorResponse { Error = "Invalid ActiveVersion for this configuration" });
-            }
-        }
-
-        item.ActiveVersion = request.ActiveVersion;
-        item.Order = request.Order;
-        item.CompositeConfigurationVersion.CompositeConfiguration.UpdatedAt = DateTimeOffset.UtcNow;
-
-        await db.SaveChangesAsync();
-
-        var dto = new CompositeConfigurationItemDto
-        {
-            Id = item.Id,
-            ChildConfigurationId = item.ChildConfigurationId,
-            ChildConfigurationName = item.ChildConfiguration.Name,
-            ActiveVersion = item.ActiveVersion,
-            Order = item.Order
-        };
-
-        return TypedResults.Ok(dto);
     }
 
     private static async Task<Results<NoContent, NotFound, BadRequest<ErrorResponse>, ForbidHttpResult>> RemoveChildConfiguration(
         string name,
         string version,
         Guid childId,
-        ServerDbContext db,
-        IResourceAuthorizationService authService,
-        IUserContextService userContext)
+        ICompositeConfigurationService compositeService,
+        CancellationToken cancellationToken)
     {
-        var item = await db.CompositeConfigurationItems
-            .Include(i => i.CompositeConfigurationVersion)
-            .ThenInclude(v => v.CompositeConfiguration)
-            .FirstOrDefaultAsync(i => i.Id == childId &&
-                                     i.CompositeConfigurationVersion.CompositeConfiguration.Name == name &&
-                                     i.CompositeConfigurationVersion.Version == version);
-
-        if (item is null)
+        try
+        {
+            await compositeService.RemoveChildAsync(childId, cancellationToken);
+            return TypedResults.NoContent();
+        }
+        catch (KeyNotFoundException)
         {
             return TypedResults.NotFound();
         }
-
-        var userId = userContext.GetCurrentUserId();
-        if (userId == null || !await authService.CanModifyCompositeConfigurationAsync(userId.Value, item.CompositeConfigurationVersion.CompositeConfigurationId))
+        catch (UnauthorizedAccessException)
         {
             return TypedResults.Forbid();
         }
-
-        if (item.CompositeConfigurationVersion.Status != ConfigurationVersionStatus.Draft)
+        catch (InvalidOperationException ex)
         {
-            return TypedResults.BadRequest(new ErrorResponse { Error = "Cannot modify published version" });
+            return TypedResults.BadRequest(new ErrorResponse { Error = ex.Message });
         }
-
-        db.CompositeConfigurationItems.Remove(item);
-        item.CompositeConfigurationVersion.CompositeConfiguration.UpdatedAt = DateTimeOffset.UtcNow;
-
-        await db.SaveChangesAsync();
-
-        return TypedResults.NoContent();
     }
 
-    private static async Task<Results<Ok<List<PermissionEntryDto>>, NotFound, ForbidHttpResult>> GetCompositeConfigurationPermissions(
+    private static async Task<Results<Ok<List<PermissionEntry>>, NotFound, ForbidHttpResult>> GetCompositeConfigurationPermissions(
         string name,
-        ServerDbContext db,
-        IResourceAuthorizationService authService,
-        IUserContextService userContext)
+        ICompositeConfigurationService compositeService,
+        CancellationToken cancellationToken)
     {
-        var composite = await db.CompositeConfigurations.FirstOrDefaultAsync(c => c.Name == name);
-        if (composite is null)
+        try
         {
-            return TypedResults.NotFound();
-        }
+            var permissions = await compositeService.GetPermissionsAsync(name, cancellationToken);
+            if (permissions is null)
+            {
+                return TypedResults.NotFound();
+            }
 
-        var userId = userContext.GetCurrentUserId();
-        if (userId == null || !await authService.CanManageCompositeConfigurationAsync(userId.Value, composite.Id))
+            return TypedResults.Ok(permissions);
+        }
+        catch (UnauthorizedAccessException)
         {
             return TypedResults.Forbid();
         }
-
-        var acl = await authService.GetCompositeConfigurationAclAsync(composite.Id);
-        var result = await BuildPermissionEntries(
-            acl.Select(p => (p.PrincipalType, p.PrincipalId, p.PermissionLevel, p.GrantedAt, p.GrantedByUserId)), db);
-        return TypedResults.Ok(result);
     }
 
     private static async Task<Results<Ok, BadRequest<string>, NotFound, ForbidHttpResult>> GrantCompositeConfigurationPermission(
         string name,
-        [FromBody] PermissionGrantRequest request,
-        ServerDbContext db,
-        IResourceAuthorizationService authService,
-        IUserContextService userContext)
+        [FromBody] GrantPermissionRequest request,
+        ICompositeConfigurationService compositeService,
+        CancellationToken cancellationToken)
     {
-        var composite = await db.CompositeConfigurations.FirstOrDefaultAsync(c => c.Name == name);
-        if (composite is null)
+        try
+        {
+            await compositeService.GrantPermissionAsync(name, request, cancellationToken);
+            return TypedResults.Ok();
+        }
+        catch (KeyNotFoundException)
         {
             return TypedResults.NotFound();
         }
-
-        var userId = userContext.GetCurrentUserId();
-        if (userId == null || !await authService.CanManageCompositeConfigurationAsync(userId.Value, composite.Id))
+        catch (UnauthorizedAccessException)
         {
             return TypedResults.Forbid();
         }
-
-        if (!Enum.TryParse<PrincipalType>(request.PrincipalType, ignoreCase: true, out var principalType))
+        catch (ArgumentException ex)
         {
-            return TypedResults.BadRequest($"Invalid principal type '{request.PrincipalType}'. Must be 'User' or 'Group'.");
+            return TypedResults.BadRequest(ex.Message);
         }
-
-        if (!Enum.TryParse<ResourcePermission>(request.Level, ignoreCase: true, out var level))
-        {
-            return TypedResults.BadRequest($"Invalid permission level '{request.Level}'. Must be 'Read', 'Modify', or 'Manage'.");
-        }
-
-        if (principalType == PrincipalType.User && !await db.Users.AnyAsync(u => u.Id == request.PrincipalId))
-        {
-            return TypedResults.NotFound();
-        }
-
-        if (principalType == PrincipalType.Group && !await db.Groups.AnyAsync(g => g.Id == request.PrincipalId))
-        {
-            return TypedResults.NotFound();
-        }
-
-        await authService.GrantCompositeConfigurationPermissionAsync(composite.Id, request.PrincipalId, principalType, level, userId.Value);
-        return TypedResults.Ok();
     }
 
     private static async Task<Results<NoContent, BadRequest<string>, NotFound, ForbidHttpResult>> RevokeCompositeConfigurationPermission(
         string name,
         string principalType,
         Guid principalId,
-        ServerDbContext db,
-        IResourceAuthorizationService authService,
-        IUserContextService userContext)
+        ICompositeConfigurationService compositeService,
+        CancellationToken cancellationToken)
     {
-        var composite = await db.CompositeConfigurations.FirstOrDefaultAsync(c => c.Name == name);
-        if (composite is null)
+        try
+        {
+            await compositeService.RevokePermissionAsync(name, new RevokePermissionRequest { PrincipalId = principalId, PrincipalType = principalType }, cancellationToken);
+            return TypedResults.NoContent();
+        }
+        catch (KeyNotFoundException)
         {
             return TypedResults.NotFound();
         }
-
-        var userId = userContext.GetCurrentUserId();
-        if (userId == null || !await authService.CanManageCompositeConfigurationAsync(userId.Value, composite.Id))
+        catch (UnauthorizedAccessException)
         {
             return TypedResults.Forbid();
         }
-
-        if (!Enum.TryParse<PrincipalType>(principalType, ignoreCase: true, out var parsedPrincipalType))
+        catch (ArgumentException ex)
         {
-            return TypedResults.BadRequest($"Invalid principal type '{principalType}'. Must be 'User' or 'Group'.");
+            return TypedResults.BadRequest(ex.Message);
         }
-
-        await authService.RevokeCompositeConfigurationPermissionAsync(composite.Id, principalId, parsedPrincipalType);
-        return TypedResults.NoContent();
-    }
-
-    private static async Task<List<PermissionEntryDto>> BuildPermissionEntries(
-        IEnumerable<(PrincipalType PrincipalType, Guid PrincipalId, ResourcePermission Level, DateTimeOffset GrantedAt, Guid? GrantedByUserId)> entries,
-        ServerDbContext db)
-    {
-        var list = entries.ToList();
-        var userIds = list.Where(e => e.PrincipalType == PrincipalType.User).Select(e => e.PrincipalId).ToList();
-        var groupIds = list.Where(e => e.PrincipalType == PrincipalType.Group).Select(e => e.PrincipalId).ToList();
-
-        var userNames = await db.Users
-            .Where(u => userIds.Contains(u.Id))
-            .ToDictionaryAsync(u => u.Id, u => u.Username);
-
-        var groupNames = await db.Groups
-            .Where(g => groupIds.Contains(g.Id))
-            .ToDictionaryAsync(g => g.Id, g => g.Name);
-
-        return list.Select(e => new PermissionEntryDto
-        {
-            PrincipalType = e.PrincipalType.ToString(),
-            PrincipalId = e.PrincipalId,
-            PrincipalName = e.PrincipalType == PrincipalType.User
-                ? userNames.GetValueOrDefault(e.PrincipalId, "Unknown")
-                : groupNames.GetValueOrDefault(e.PrincipalId, "Unknown"),
-            Level = e.Level.ToString(),
-            GrantedAt = e.GrantedAt,
-            GrantedByUserId = e.GrantedByUserId
-        }).ToList();
     }
 }
+

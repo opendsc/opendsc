@@ -1,10 +1,13 @@
 @page "/nodes/{id:guid}"
 @attribute [Authorize(Policy = NodePermissions.Read)]
-@inject ServerDbContext Db
+@inject INodeService NodeService
+@inject IReportService ReportService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
-@using OpenDsc.Lcm.Contracts
 @using NuGet.Versioning
+@using OpenDsc.Contracts.Nodes
+@using OpenDsc.Contracts.Reports
+@using OpenDsc.Contracts.Lcm
 @using OpenDsc.Server.Entities
 
 <PageTitle>Node Details</PageTitle>
@@ -93,7 +96,7 @@ else
                     @if (nodeConfig != null)
                     {
                         <MudAlert Severity="Severity.Info" Class="mb-4">
-                            Currently assigned (@(nodeConfig.CompositeConfigurationId.HasValue ? "Composite" : "Regular")):
+                            Currently assigned (@(nodeConfig.IsComposite ? "Composite" : "Regular")):
                             <strong>@node.ConfigurationName</strong>
                             @if (nodeConfig.MajorVersion.HasValue)
                             {
@@ -254,8 +257,8 @@ else
                                 <MudTh>Actions</MudTh>
                             </HeaderContent>
                             <RowTemplate>
-                                <MudTd>@context.ScopeValue.ScopeType.Name</MudTd>
-                                <MudTd>@context.ScopeValue.Value</MudTd>
+                                <MudTd>@context.ScopeTypeName</MudTd>
+                                <MudTd>@context.ScopeValue</MudTd>
                                 <MudTd>@context.AssignedAt.LocalDateTime.ToString("g")</MudTd>
                                 <MudTd>
                                     <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary"
@@ -387,9 +390,9 @@ else
                                 }
                                 else if (filteredReports.Any())
                                 {
-                                    <MudDataGrid T="Report" Items="@filteredReports" Hover="true" Dense="true" sortable="true"
-                                                 sort-by="@((Report r) => r.Timestamp)" sort-direction="SortDirection.Descending"
-                                                 @bind-RowsPerPage="_reportRowsPerPage">
+                                    <MudDataGrid T="OpenDsc.Contracts.Reports.ReportSummary" Items="@filteredReports" Hover="true"
+                                                 Dense="true" sortable="true" sort-by="@((OpenDsc.Contracts.Reports.ReportSummary r) => r.Timestamp)"
+                                                 sort-direction="SortDirection.Descending" @bind-RowsPerPage="_reportRowsPerPage">
                                         <Columns>
                                             <PropertyColumn Property="x => x.Timestamp" Title="Timestamp"
                                                             InitialDirection="SortDirection.Descending">
@@ -424,7 +427,8 @@ else
                                             </TemplateColumn>
                                         </Columns>
                                         <PagerContent>
-                                            <MudDataGridPager T="Report" PageSizeOptions="@(new int[] { 10, 25, 50, 100 })" />
+                                            <MudDataGridPager T="OpenDsc.Contracts.Reports.ReportSummary"
+                                                              PageSizeOptions="@(new int[] { 10, 25, 50, 100 })" />
                                         </PagerContent>
                                     </MudDataGrid>
                                 }
@@ -519,10 +523,10 @@ else
     [Parameter]
     public Guid Id { get; set; }
 
-    private Node? node;
-    private NodeConfiguration? nodeConfig;
-    private List<Report> reports = [];
-    private List<Report> filteredReports = [];
+    private NodeDetails? node;
+    private NodeAssignmentSummary? nodeConfig;
+    private List<ReportSummary> reports = [];
+    private List<ReportSummary> filteredReports = [];
     private MudBlazor.DateRange _reportDateRange = new(DateTime.Today.AddDays(-7), DateTime.Today);
     private string? _reportStatusFilter;
     private string? _reportOperationFilter;
@@ -532,18 +536,18 @@ else
     private MudBlazor.DateRange _statusDateRange = new(DateTime.Today.AddDays(-7), DateTime.Today);
     private string? _statusLcmFilter;
     private int _statusRowsPerPage = 25;
-    private List<Configuration> configurations = [];
-    private List<CompositeConfiguration> compositeConfigurations = [];
+    private List<ConfigurationAssignmentOption> configurations = [];
+    private List<ConfigurationAssignmentOption> compositeConfigurations = [];
     private string? selectedConfigurationName;
     private string? selectedCompositeConfigurationName;
     private string selectedConfigType = "Regular";
     private int? selectedMajorVersion;
     private string? selectedPrereleaseChannel;
     private List<int> availableMajorVersions = [];
-    private List<NodeTag> nodeTags = [];
-    private List<ScopeType> availableScopeTypes = [];
-    private List<ScopeValue> availableScopeValues = [];
-    private List<Node> nodesForType = [];
+    private List<NodeTagSummary> nodeTags = [];
+    private List<ScopeTypeSummary> availableScopeTypes = [];
+    private List<ScopeValueSummary> availableScopeValues = [];
+    private List<NodeSummary> nodesForType = [];
     private string? selectedScopeValueText;
 
     // LCM Configuration state
@@ -575,12 +579,12 @@ else
     private Guid? selectedScopeTypeId;
     private Guid? selectedScopeValueId;
 
-    private NodeTag? editingTag;
+    private NodeTagSummary? editingTag;
 
-    private IEnumerable<ScopeType> FilteredScopeTypes =>
+    private IEnumerable<ScopeTypeSummary> FilteredScopeTypes =>
         availableScopeTypes.Where(st =>
-            editingTag != null ? st.Id == editingTag.ScopeValue.ScopeTypeId
-            : !nodeTags.Any(nt => nt.ScopeValue.ScopeTypeId == st.Id));
+            editingTag != null ? st.Id == editingTag.ScopeTypeId
+            : !nodeTags.Any(nt => nt.ScopeTypeId == st.Id));
 
     private bool CanAddTag => editingTag != null || FilteredScopeTypes.Any();
 
@@ -601,7 +605,7 @@ else
     {
         try
         {
-            node = await Db.Nodes.FindAsync(Id);
+            node = await NodeService.GetNodeAsync(Id);
             if (node != null)
             {
                 selectedConfigurationName = node.ConfigurationName;
@@ -618,31 +622,22 @@ else
                     : node.ReportCompliance == false ? "No"
                     : "—";
 
-                nodeConfig = await Db.NodeConfigurations
-                    .FirstOrDefaultAsync(nc => nc.NodeId == Id);
+                nodeConfig = await NodeService.GetNodeAssignmentAsync(Id);
 
                 if (nodeConfig != null)
                 {
                     selectedMajorVersion = nodeConfig.MajorVersion;
                     selectedPrereleaseChannel = nodeConfig.PrereleaseChannel;
-                    if (nodeConfig.CompositeConfigurationId.HasValue)
+                    if (nodeConfig.IsComposite)
                     {
                         selectedConfigType = "Composite";
                         selectedCompositeConfigurationName = node.ConfigurationName;
                     }
                 }
 
-                configurations = await Db.Configurations
-                    .Include(c => c.Versions.Where(v => v.Status == ConfigurationVersionStatus.Published))
-                    .Where(c => c.Versions.Any(v => v.Status == ConfigurationVersionStatus.Published))
-                    .OrderBy(c => c.Name)
-                    .ToListAsync();
+                configurations = (await NodeService.GetAssignableConfigurationsAsync()).ToList();
 
-                compositeConfigurations = await Db.CompositeConfigurations
-                    .Include(c => c.Versions.Where(v => v.Status == ConfigurationVersionStatus.Published))
-                    .Where(c => c.Versions.Any(v => v.Status == ConfigurationVersionStatus.Published))
-                    .OrderBy(c => c.Name)
-                    .ToListAsync();
+                compositeConfigurations = (await NodeService.GetAssignableCompositeConfigurationsAsync()).ToList();
 
                 if (selectedConfigType == "Composite")
                 {
@@ -673,13 +668,7 @@ else
 
     private async Task LoadTagsAsync()
     {
-        nodeTags = await Db.NodeTags
-            .Where(nt => nt.NodeId == Id)
-            .Include(nt => nt.ScopeValue)
-                .ThenInclude(sv => sv.ScopeType)
-            .OrderBy(nt => nt.ScopeValue.ScopeType.Precedence)
-            .ThenBy(nt => nt.ScopeValue.Value)
-            .ToListAsync();
+        nodeTags = (await NodeService.GetNodeTagsAsync(Id)).ToList();
 
         // clear any in-progress editing when the list changes
         editingTag = null;
@@ -687,31 +676,17 @@ else
 
     private async Task LoadScopeDataAsync()
     {
-        availableScopeTypes = await Db.ScopeTypes
-            .Where(st => st.Name != "Node" && st.Name != "Default")
-            .OrderByDescending(st => st.Precedence)
-            .ToListAsync();
+        availableScopeTypes = (await NodeService.GetScopeTypesAsync()).ToList();
 
-        availableScopeValues = await Db.ScopeValues
-            .Include(sv => sv.ScopeType)
-            .OrderBy(sv => sv.Value)
-            .ToListAsync();
+        availableScopeValues = (await NodeService.GetScopeValuesAsync()).ToList();
 
         // preload nodes for node-scope dropdown
-        nodesForType = await Db.Nodes
-            .OrderBy(n => n.Fqdn)
-            .ToListAsync();
+        nodesForType = (await NodeService.GetNodesAsync(new NodeFilterRequest { Limit = 500 })).ToList();
     }
 
     private async Task LoadReportsAsync()
     {
-        var nodeReports = await Db.Reports
-            .Where(r => r.NodeId == Id)
-            .ToListAsync();
-
-        reports = nodeReports
-            .OrderByDescending(r => r.Timestamp)
-            .ToList();
+        reports = (await ReportService.GetReportsAsync(nodeId: Id)).ToList();
         ApplyReportFilter();
     }
 
@@ -742,12 +717,13 @@ else
 
     private async Task LoadStatusEventsAsync()
     {
-        statusEvents = (await Db.NodeStatusEvents
-            .Where(e => e.NodeId == Id)
-            .OrderByDescending(e => e.Id)
-            .ToListAsync())
-            .OrderByDescending(e => e.Timestamp)
-            .ToList();
+        statusEvents = (await NodeService.GetNodeStatusEventsAsync(Id)).Select(e => new NodeStatusEvent
+        {
+            Id = e.Id,
+            NodeId = e.NodeId,
+            LcmStatus = Enum.TryParse<LcmStatus>(e.LcmStatus, out var status) ? status : null,
+            Timestamp = e.Timestamp
+        }).ToList();
         ApplyStatusFilter();
     }
 
@@ -796,12 +772,7 @@ else
         if (!string.IsNullOrEmpty(selectedConfigurationName))
         {
             var config = configurations.FirstOrDefault(c => c.Name == selectedConfigurationName);
-            availableMajorVersions = config?.Versions
-                .Select(v => NuGet.Versioning.SemanticVersion.TryParse(v.Version, out var sv) ? sv.Major : -1)
-                .Where(m => m >= 0)
-                .Distinct()
-                .OrderBy(m => m)
-                .ToList() ?? [];
+            availableMajorVersions = config?.MajorVersions.ToList() ?? [];
         }
         else
         {
@@ -816,12 +787,7 @@ else
         if (!string.IsNullOrEmpty(selectedCompositeConfigurationName))
         {
             var cc = compositeConfigurations.FirstOrDefault(c => c.Name == selectedCompositeConfigurationName);
-            availableMajorVersions = cc?.Versions
-                .Select(v => NuGet.Versioning.SemanticVersion.TryParse(v.Version, out var sv) ? sv.Major : -1)
-                .Where(m => m >= 0)
-                .Distinct()
-                .OrderBy(m => m)
-                .ToList() ?? [];
+            availableMajorVersions = cc?.MajorVersions.ToList() ?? [];
         }
         else
         {
@@ -875,7 +841,6 @@ else
             node.DesiredConfigurationMode = desiredConfigMode;
             node.DesiredConfigurationModeInterval = interval;
             node.DesiredReportCompliance = desiredReportCompliance;
-            await Db.SaveChangesAsync();
 
             Snackbar.Add("LCM configuration saved", Severity.Success);
         }
@@ -909,50 +874,17 @@ else
 
         try
         {
-            var config = await Db.Configurations
-                .Include(c => c.Versions.Where(v => v.Status == ConfigurationVersionStatus.Published))
-                .FirstOrDefaultAsync(c => c.Name == selectedConfigurationName);
-
-            if (config is null)
-            {
-                Snackbar.Add("Configuration not found.", Severity.Error);
-                return;
-            }
-
             var channel = string.IsNullOrWhiteSpace(selectedPrereleaseChannel) ? null : selectedPrereleaseChannel;
-            var eligible = VersionResolver.ResolveVersion(config.Versions, v => v.Version, selectedMajorVersion, channel);
-
-            if (eligible is null)
+            await NodeService.AssignConfigurationAsync(Id, new AssignConfigurationRequest
             {
-                Snackbar.Add("No published version satisfies the specified major version and prerelease channel constraints.",
-Severity.Error);
-                return;
-            }
+                ConfigurationName = selectedConfigurationName,
+                IsComposite = false,
+                MajorVersion = selectedMajorVersion,
+                PrereleaseChannel = channel
+            });
 
-            nodeConfig = await Db.NodeConfigurations.FirstOrDefaultAsync(nc => nc.NodeId == Id);
-            if (nodeConfig is null)
-            {
-                nodeConfig = new NodeConfiguration
-                {
-                    NodeId = Id,
-                    ConfigurationId = config.Id,
-                    MajorVersion = selectedMajorVersion,
-                    PrereleaseChannel = channel
-                };
-                Db.NodeConfigurations.Add(nodeConfig);
-            }
-            else
-            {
-                nodeConfig.CompositeConfigurationId = null;
-                nodeConfig.ActiveCompositeVersion = null;
-                nodeConfig.ConfigurationId = config.Id;
-                nodeConfig.ActiveVersion = null;
-                nodeConfig.MajorVersion = selectedMajorVersion;
-                nodeConfig.PrereleaseChannel = channel;
-            }
-
+            nodeConfig = await NodeService.GetNodeAssignmentAsync(Id);
             node.ConfigurationName = selectedConfigurationName;
-            await Db.SaveChangesAsync();
 
             Snackbar.Add($"Configuration '{selectedConfigurationName}' assigned successfully", Severity.Success);
         }
@@ -968,50 +900,17 @@ Severity.Error);
 
         try
         {
-            var composite = await Db.CompositeConfigurations
-                .Include(c => c.Versions.Where(v => v.Status == ConfigurationVersionStatus.Published))
-                .FirstOrDefaultAsync(c => c.Name == selectedCompositeConfigurationName);
-
-            if (composite is null)
-            {
-                Snackbar.Add("Composite configuration not found.", Severity.Error);
-                return;
-            }
-
             var channel = string.IsNullOrWhiteSpace(selectedPrereleaseChannel) ? null : selectedPrereleaseChannel;
-            var eligible = VersionResolver.ResolveVersion(composite.Versions, v => v.Version, selectedMajorVersion, channel);
-
-            if (eligible is null)
+            await NodeService.AssignConfigurationAsync(Id, new AssignConfigurationRequest
             {
-                Snackbar.Add("No published version satisfies the specified major version and prerelease channel constraints.",
-Severity.Error);
-                return;
-            }
+                ConfigurationName = selectedCompositeConfigurationName,
+                IsComposite = true,
+                MajorVersion = selectedMajorVersion,
+                PrereleaseChannel = channel
+            });
 
-            nodeConfig = await Db.NodeConfigurations.FirstOrDefaultAsync(nc => nc.NodeId == Id);
-            if (nodeConfig is null)
-            {
-                nodeConfig = new NodeConfiguration
-                {
-                    NodeId = Id,
-                    CompositeConfigurationId = composite.Id,
-                    MajorVersion = selectedMajorVersion,
-                    PrereleaseChannel = channel
-                };
-                Db.NodeConfigurations.Add(nodeConfig);
-            }
-            else
-            {
-                nodeConfig.ConfigurationId = null;
-                nodeConfig.ActiveVersion = null;
-                nodeConfig.CompositeConfigurationId = composite.Id;
-                nodeConfig.ActiveCompositeVersion = null;
-                nodeConfig.MajorVersion = selectedMajorVersion;
-                nodeConfig.PrereleaseChannel = channel;
-            }
-
+            nodeConfig = await NodeService.GetNodeAssignmentAsync(Id);
             node.ConfigurationName = selectedCompositeConfigurationName;
-            await Db.SaveChangesAsync();
 
             Snackbar.Add($"Composite configuration '{selectedCompositeConfigurationName}' assigned successfully", Severity.Success);
         }
@@ -1027,18 +926,13 @@ Severity.Error);
 
         try
         {
-            if (nodeConfig is not null)
-            {
-                Db.NodeConfigurations.Remove(nodeConfig);
-                nodeConfig = null;
-            }
-
+            await NodeService.RemoveConfigurationAsync(Id);
+            nodeConfig = null;
             node.ConfigurationName = null;
             selectedConfigurationName = null;
             selectedMajorVersion = null;
             selectedPrereleaseChannel = null;
             availableMajorVersions = [];
-            await Db.SaveChangesAsync();
 
             Snackbar.Add("Configuration unassigned successfully", Severity.Success);
         }
@@ -1048,30 +942,32 @@ Severity.Error);
         }
     }
 
-    private Color GetStatusColor(NodeStatus status) => status switch
+    private Color GetStatusColor(string status) => status switch
     {
-        NodeStatus.Compliant => Color.Success,
-        NodeStatus.NonCompliant => Color.Warning,
-        NodeStatus.Error => Color.Error,
+        nameof(NodeStatus.Compliant) => Color.Success,
+        nameof(NodeStatus.NonCompliant) => Color.Warning,
+        nameof(NodeStatus.Error) => Color.Error,
         _ => Color.Default
     };
 
-    private Color GetLcmStatusColor(LcmStatus status) => status switch
+    private Color GetLcmStatusColor(string status) => status switch
     {
-        LcmStatus.Idle => Color.Success,
-        LcmStatus.Testing => Color.Info,
-        LcmStatus.Downloading => Color.Info,
-        LcmStatus.Remediating => Color.Info,
-        LcmStatus.Error => Color.Error,
+        nameof(LcmStatus.Idle) => Color.Success,
+        nameof(LcmStatus.Testing) => Color.Info,
+        nameof(LcmStatus.Downloading) => Color.Info,
+        nameof(LcmStatus.Remediating) => Color.Info,
+        nameof(LcmStatus.Error) => Color.Error,
         _ => Color.Default
     };
+
+    private Color GetLcmStatusColor(LcmStatus status) => GetLcmStatusColor(status.ToString());
 
     private void ViewReportDetails(Guid id)
     {
         Navigation.NavigateTo($"/reports/{id}");
     }
 
-    private List<ScopeValue> GetScopeValuesForType(Guid scopeTypeId)
+    private List<ScopeValueSummary> GetScopeValuesForType(Guid scopeTypeId)
     {
         return availableScopeValues
             .Where(sv => sv.ScopeTypeId == scopeTypeId)
@@ -1117,82 +1013,41 @@ Severity.Error);
 
         try
         {
-            // resolve the scope value identifier, creating a new ScopeValue record if necessary
-            Guid scopeValueId;
             if (isUnrestricted)
             {
-                var text = selectedScopeValueText!.Trim();
-                var existingValue = await Db.ScopeValues
-                    .FirstOrDefaultAsync(sv => sv.ScopeTypeId == selectedScopeTypeId.Value && sv.Value == text);
-                if (existingValue == null)
+                await NodeService.SetNodeScopeValueAsync(Id, new SetNodeScopeValueRequest
                 {
-                    existingValue = new ScopeValue
+                    ScopeTypeId = selectedScopeTypeId.Value,
+                    ScopeValue = selectedScopeValueText!.Trim()
+                });
+            }
+            else
+            {
+                var scopeValueId = selectedScopeValueId!.Value;
+
+                if (editingTag != null)
+                {
+                    if (editingTag.ScopeValueId == scopeValueId)
                     {
-                        Id = Guid.NewGuid(),
-                        ScopeTypeId = selectedScopeTypeId.Value,
-                        Value = text,
-                        CreatedAt = DateTimeOffset.UtcNow
-                    };
-                    Db.ScopeValues.Add(existingValue);
-                    await Db.SaveChangesAsync();
-                    availableScopeValues.Add(existingValue);
+                        CancelAddOrEdit();
+                        return;
+                    }
+
+                    await NodeService.RemoveNodeTagAsync(Id, new RemoveNodeTagRequest { ScopeValueId = editingTag.ScopeValueId });
+                    await NodeService.AddNodeTagAsync(Id, new AddNodeTagRequest { ScopeValueId = scopeValueId });
+                    Snackbar.Add("Tag updated successfully", Severity.Success);
                 }
-                scopeValueId = existingValue.Id;
-            }
-            else
-            {
-                scopeValueId = selectedScopeValueId!.Value;
-            }
-
-            if (editingTag != null)
-            {
-                // if the value didn't change, nothing to do
-                if (editingTag.ScopeValueId == scopeValueId)
+                else
                 {
-                    CancelAddOrEdit();
-                    return;
+                    if (selectedScopeTypeId.HasValue && nodeTags.Any(nt => nt.ScopeTypeId == selectedScopeTypeId.Value))
+                    {
+                        Snackbar.Add("A tag for that scope type already exists.", Severity.Warning);
+                        return;
+                    }
+
+                    await NodeService.AddNodeTagAsync(Id, new AddNodeTagRequest { ScopeValueId = scopeValueId });
+                    Snackbar.Add("Tag added successfully", Severity.Success);
                 }
-
-                Db.NodeTags.Remove(editingTag);
-                await Db.SaveChangesAsync();
-
-                var newTag = new NodeTag
-                {
-                    NodeId = Id,
-                    ScopeValueId = scopeValueId,
-                    AssignedAt = DateTimeOffset.UtcNow
-                };
-                Db.NodeTags.Add(newTag);
-                await Db.SaveChangesAsync();
-                Snackbar.Add("Tag updated successfully", Severity.Success);
-            }
-            else
-            {
-                if (selectedScopeTypeId.HasValue && nodeTags.Any(nt => nt.ScopeValue.ScopeTypeId == selectedScopeTypeId.Value))
-                {
-                    Snackbar.Add("A tag for that scope type already exists.", Severity.Warning);
-                    return;
-                }
-
-                var existingTag = await Db.NodeTags
-                    .FirstOrDefaultAsync(nt => nt.NodeId == Id && nt.ScopeValueId == scopeValueId);
-
-                if (existingTag != null)
-                {
-                    Snackbar.Add("This tag is already assigned to this node.", Severity.Warning);
-                    return;
-                }
-
-                var nodeTag = new NodeTag
-                {
-                    NodeId = Id,
-                    ScopeValueId = scopeValueId,
-                    AssignedAt = DateTimeOffset.UtcNow
-                };
-
-                Db.NodeTags.Add(nodeTag);
-                await Db.SaveChangesAsync();
-                Snackbar.Add("Tag added successfully", Severity.Success);
             }
 
             await LoadTagsAsync();
@@ -1209,12 +1064,11 @@ Severity.Error);
         }
     }
 
-    private async Task RemoveTag(NodeTag tag)
+    private async Task RemoveTag(NodeTagSummary tag)
     {
         try
         {
-            Db.NodeTags.Remove(tag);
-            await Db.SaveChangesAsync();
+            await NodeService.RemoveNodeTagAsync(Id, new RemoveNodeTagRequest { ScopeValueId = tag.ScopeValueId });
 
             await LoadTagsAsync();
 
@@ -1245,14 +1099,14 @@ Severity.Error);
         }
     }
 
-    private void StartEditTag(NodeTag tag)
+    private void StartEditTag(NodeTagSummary tag)
     {
         editingTag = tag;
         showAddTag = true;
-        selectedScopeTypeId = tag.ScopeValue.ScopeTypeId;
+        selectedScopeTypeId = tag.ScopeTypeId;
         if (IsUnrestrictedScopeType(selectedScopeTypeId.Value))
         {
-            selectedScopeValueText = tag.ScopeValue.Value;
+            selectedScopeValueText = tag.ScopeValue;
             selectedScopeValueId = null;
         }
         else

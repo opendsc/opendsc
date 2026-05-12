@@ -18,7 +18,7 @@ using Microsoft.Extensions.Options;
 using Moq;
 using Moq.Protected;
 
-using OpenDsc.Lcm.Contracts;
+using OpenDsc.Contracts.Lcm;
 using OpenDsc.Schema;
 
 using Xunit;

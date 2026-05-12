@@ -51,3 +51,4 @@ public class HealthEndpointsTests : IDisposable
         GC.SuppressFinalize(this);
     }
 }
+

@@ -1,6 +1,7 @@
 @using MudBlazor
-@inject ServerDbContext Db
+@inject IRegistrationKeyService RegistrationKeyService
 @inject ISnackbar Snackbar
+@using OpenDsc.Contracts.Settings
 
 <MudDialog>
     <DialogContent>
@@ -18,7 +19,7 @@
     private IMudDialogInstance MudDialog { get; set; } = default!;
 
     [Parameter]
-    public RegistrationKey Key { get; set; } = default!;
+    public RegistrationKeyResponse RegistrationKey { get; set; } = default!;
 
     [Parameter]
     public EventCallback OnUpdated { get; set; }
@@ -27,15 +28,16 @@
 
     protected override void OnParametersSet()
     {
-        description = Key.Description;
+        description = RegistrationKey.Description;
     }
 
     private async Task Save()
     {
         try
         {
-            Key.Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
-            await Db.SaveChangesAsync();
+            await RegistrationKeyService.UpdateKeyAsync(
+                RegistrationKey.Id,
+                new UpdateRegistrationKeyRequest { Description = description });
             Snackbar.Add("Description updated", Severity.Success);
             MudDialog.Close();
             await OnUpdated.InvokeAsync();

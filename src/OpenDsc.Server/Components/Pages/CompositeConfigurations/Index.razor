@@ -1,6 +1,8 @@
+@using OpenDsc.Contracts.CompositeConfigurations
 @page "/composite-configurations"
 @attribute [Authorize]
-@inject ServerDbContext Db
+@using OpenDsc.Server.Services
+@inject ICompositeConfigurationService CompositeConfigService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
@@ -9,9 +11,7 @@
 
 <div class="d-flex justify-space-between align-center mb-4">
     <MudText Typo="Typo.h4">Composite Configurations</MudText>
-    <MudButton Variant="Variant.Filled"
-               Color="Color.Primary"
-               StartIcon="@Icons.Material.Filled.Add"
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
                OnClick="OpenCreateDialog">
         Create Composite Configuration
     </MudButton>
@@ -20,19 +20,11 @@
 <MudCard>
     <MudCardContent>
         <div class="d-flex gap-4 mb-4">
-            <MudTextField @bind-Value="SearchText"
-                         Label="Search"
-                         Placeholder="Search by name or description"
-                         Adornment="Adornment.Start"
-                         AdornmentIcon="@Icons.Material.Filled.Search"
-                         Immediate="true"
-                         Clearable="true"
-                         Class="flex-grow-1" />
-            <MudSelect @bind-Value="SortBy"
-                      Label="Sort By"
-                      T="SortOption"
-                      Variant="Variant.Outlined"
-                      AnchorOrigin="Origin.BottomCenter">
+            <MudTextField @bind-Value="SearchText" Label="Search" Placeholder="Search by name or description"
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Immediate="true"
+                          Clearable="true" Class="flex-grow-1" />
+            <MudSelect @bind-Value="SortBy" Label="Sort By" T="SortOption" Variant="Variant.Outlined"
+                       AnchorOrigin="Origin.BottomCenter">
                 <MudSelectItem Value="SortOption.NameAsc">Name (A-Z)</MudSelectItem>
                 <MudSelectItem Value="SortOption.NameDesc">Name (Z-A)</MudSelectItem>
                 <MudSelectItem Value="SortOption.CreatedDesc">Newest First</MudSelectItem>
@@ -47,15 +39,14 @@
         }
         else
         {
-            <MudDataGrid T="CompositeConfiguration" Items="@filteredComposites" Hover="true" Dense="true">
+            <MudDataGrid T="CompositeConfigurationSummary" Items="@filteredComposites" Hover="true" Dense="true">
                 <Columns>
                     <PropertyColumn Property="x => x.Name" Title="Name" />
                     <TemplateColumn Title="Status" Sortable="false">
                         <CellTemplate>
                             @{
-                                var published = context.Item.Versions.Any(v => v.Status == ConfigurationVersionStatus.Published);
-                                var chipColor = published ? Color.Success : Color.Warning;
-                                var chipText = published ? "Published" : "Draft";
+                                var chipColor = context.Item.HasPublishedVersion ? Color.Success : Color.Warning;
+                                var chipText = context.Item.HasPublishedVersion ? "Published" : "Draft";
                             }
                             <MudChip Color="@chipColor" Size="Size.Small" Variant="Variant.Filled">@chipText</MudChip>
                         </CellTemplate>
@@ -63,12 +54,12 @@
                     <PropertyColumn Property="x => x.Description" Title="Description" />
                     <TemplateColumn Title="Versions">
                         <CellTemplate>
-                            <MudChip T="string" Size="Size.Small">@context.Item.Versions.Count</MudChip>
+                            <MudChip T="string" Size="Size.Small">@context.Item.VersionCount</MudChip>
                         </CellTemplate>
                     </TemplateColumn>
                     <TemplateColumn Title="Latest Version" Sortable="false">
                         <CellTemplate>
-                            @(VersionResolver.LatestSemver(context.Item.Versions.Where(v => v.Status == ConfigurationVersionStatus.Published).Select(v => v.Version)) ?? "-")
+                            @(context.Item.LatestVersion ?? "-")
                         </CellTemplate>
                     </TemplateColumn>
                     <PropertyColumn Property="x => x.CreatedAt" Title="Created">
@@ -84,15 +75,12 @@
                     <TemplateColumn Title="Actions" Sortable="false">
                         <CellTemplate>
                             <MudTooltip Text="View Details">
-                                <MudIconButton Icon="@Icons.Material.Filled.Visibility"
-                                             Size="Size.Small"
-                                             OnClick="@(() => ViewComposite(context.Item.Name))" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Visibility" Size="Size.Small"
+                                               OnClick="@(() => ViewComposite(context.Item.Name))" />
                             </MudTooltip>
                             <MudTooltip Text="Delete Composite Configuration">
-                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                             Size="Size.Small"
-                                             Color="Color.Error"
-                                             OnClick="@(() => DeleteComposite(context.Item))" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                               OnClick="@(() => DeleteComposite(context.Item))" />
                             </MudTooltip>
                         </CellTemplate>
                     </TemplateColumn>
@@ -103,8 +91,8 @@
 </MudCard>
 
 @code {
-    private List<CompositeConfiguration> composites = [];
-    private List<CompositeConfiguration> filteredComposites = [];
+    private List<CompositeConfigurationSummary> composites = [];
+    private List<CompositeConfigurationSummary> filteredComposites = [];
     private bool isLoading = true;
 
     private string _searchText = string.Empty;
@@ -154,10 +142,7 @@
         isLoading = true;
         try
         {
-            composites = await Db.CompositeConfigurations
-                .Include(c => c.Versions)
-                .ToListAsync();
-
+            composites = await CompositeConfigService.GetCompositeConfigurationsAsync();
             FilterComposites();
         }
         catch (Exception ex)
@@ -183,7 +168,8 @@
             FullWidth = true
         };
 
-        var dialog = await DialogService.ShowAsync<CreateCompositeConfigurationDialog>("Create Composite Configuration", options);
+        var dialog = await DialogService.ShowAsync<CreateCompositeConfigurationDialog>("Create Composite Configuration",
+options);
         var result = await dialog.Result;
 
         if (result is not null && !result.Canceled)
@@ -207,7 +193,7 @@
         filteredComposites = ApplySort(filtered).ToList();
     }
 
-    private IEnumerable<CompositeConfiguration> ApplySort(IEnumerable<CompositeConfiguration> items)
+    private IEnumerable<CompositeConfigurationSummary> ApplySort(IEnumerable<CompositeConfigurationSummary> items)
     {
         return _sortBy switch
         {
@@ -220,25 +206,8 @@
         };
     }
 
-    private async Task DeleteComposite(CompositeConfiguration composite)
+    private async Task DeleteComposite(CompositeConfigurationSummary composite)
     {
-        if (composite.NodeConfigurations.Count == 0)
-        {
-            // Reload to get current node assignment count
-            var fresh = await Db.CompositeConfigurations
-                .Include(c => c.NodeConfigurations)
-                .FirstOrDefaultAsync(c => c.Id == composite.Id);
-
-            if (fresh?.NodeConfigurations.Count > 0)
-            {
-                await DialogService.ShowMessageBox(
-                    "Cannot Delete",
-                    $"'{composite.Name}' is currently assigned to one or more nodes. Unassign it before deleting.",
-                    yesText: "OK");
-                return;
-            }
-        }
-
         var confirmed = await DialogService.ShowMessageBox(
             "Delete Composite Configuration",
             $"Are you sure you want to delete '{composite.Name}'? This will delete all versions and child references.",
@@ -249,20 +218,8 @@
         {
             try
             {
-                var toDelete = await Db.CompositeConfigurations
-                    .Include(c => c.NodeConfigurations)
-                    .FirstOrDefaultAsync(c => c.Id == composite.Id);
+                await CompositeConfigService.DeleteAsync(composite.Name);
 
-                if (toDelete == null) return;
-
-                if (toDelete.NodeConfigurations.Count > 0)
-                {
-                    Snackbar.Add($"'{composite.Name}' is currently assigned to one or more nodes.", Severity.Error);
-                    return;
-                }
-
-                Db.CompositeConfigurations.Remove(toDelete);
-                await Db.SaveChangesAsync();
                 Snackbar.Add($"'{composite.Name}' deleted successfully", Severity.Success);
                 await LoadCompositesAsync();
             }
@@ -273,3 +230,4 @@
         }
     }
 }
+

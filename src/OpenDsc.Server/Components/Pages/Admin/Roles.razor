@@ -1,8 +1,7 @@
-@using Microsoft.EntityFrameworkCore
-@using System.Text.Json
 @using OpenDsc.Server.Authorization
 @using MudBlazor
-@inject ServerDbContext Db
+@using OpenDsc.Contracts.Users
+@inject IRoleService RoleService
 @inject ISnackbar Snackbar
 @inject IDialogService Dialog
 
@@ -19,7 +18,8 @@
         </CardHeaderActions>
     </MudCardHeader>
     <MudCardContent>
-        <MudDataGrid T="Role" Items="@roles" Hover="true" Dense="true" Loading="@loading" SortMode="SortMode.Single">
+        <MudDataGrid T="RoleSummary" Items="@roles" Hover="true" Dense="true" Loading="@loading"
+                     SortMode="SortMode.Single">
             <Columns>
                 <PropertyColumn Property="x => x.Name" Title="Name" />
                 <PropertyColumn Property="x => x.Description" Title="Description" />
@@ -63,7 +63,7 @@
 </MudCard>
 
 @code {
-    private List<Role> roles = [];
+    private List<RoleSummary> roles = [];
     private Dictionary<Guid, int> roleUserCounts = new();
     private Dictionary<Guid, int> roleGroupCounts = new();
     private bool loading = true;
@@ -78,21 +78,9 @@
         loading = true;
         try
         {
-            roles = await Db.Roles
-                .OrderBy(r => r.Name)
-                .ToListAsync();
-
-            var userCountsQuery = await Db.Set<UserRole>()
-                .GroupBy(ur => ur.RoleId)
-                .Select(g => new { RoleId = g.Key, Count = g.Count() })
-                .ToListAsync();
-            roleUserCounts = userCountsQuery.ToDictionary(x => x.RoleId, x => x.Count);
-
-            var groupCountsQuery = await Db.Set<GroupRole>()
-                .GroupBy(gr => gr.RoleId)
-                .Select(g => new { RoleId = g.Key, Count = g.Count() })
-                .ToListAsync();
-            roleGroupCounts = groupCountsQuery.ToDictionary(x => x.RoleId, x => x.Count);
+            roles = (await RoleService.GetRolesAsync()).ToList();
+            roleUserCounts = new Dictionary<Guid, int>(await RoleService.GetRoleUserCountsAsync());
+            roleGroupCounts = new Dictionary<Guid, int>(await RoleService.GetRoleGroupCountsAsync());
         }
         finally
         {
@@ -100,18 +88,7 @@
         }
     }
 
-    private int GetPermissionCount(string permissionsJson)
-    {
-        try
-        {
-            var permissions = JsonSerializer.Deserialize<string[]>(permissionsJson);
-            return permissions?.Length ?? 0;
-        }
-        catch
-        {
-            return 0;
-        }
-    }
+    private static int GetPermissionCount(string[] permissions) => permissions.Length;
 
 
     private int GetRoleUserCount(Guid roleId)
@@ -124,7 +101,7 @@
         return roleGroupCounts.TryGetValue(roleId, out var count) ? count : 0;
     }
 
-    private async Task ViewRole(Role role)
+    private async Task ViewRole(RoleSummary role)
     {
         var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
         var parameters = new DialogParameters<ViewRoleDialog>
@@ -146,7 +123,7 @@
         await Dialog.ShowAsync<CreateRoleDialog>("Create Role", parameters, options);
     }
 
-    private async Task EditRole(Role role)
+    private async Task EditRole(RoleSummary role)
     {
         var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
         var parameters = new DialogParameters<EditRoleDialog>
@@ -158,7 +135,7 @@
         await Dialog.ShowAsync<EditRoleDialog>("Edit Role", parameters, options);
     }
 
-    private async Task DeleteRole(Role role)
+    private async Task DeleteRole(RoleSummary role)
     {
         if (role.IsSystemRole)
         {
@@ -182,8 +159,7 @@
         {
             try
             {
-                Db.Roles.Remove(role);
-                await Db.SaveChangesAsync();
+                await RoleService.DeleteRoleAsync(role.Id);
                 await LoadRolesAsync();
                 Snackbar.Add($"Role '{role.Name}' deleted successfully", Severity.Success);
             }

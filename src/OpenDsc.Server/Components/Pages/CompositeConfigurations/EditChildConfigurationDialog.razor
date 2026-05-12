@@ -1,20 +1,17 @@
+@using OpenDsc.Contracts.CompositeConfigurations
 @using NuGet.Versioning
-@inject ServerDbContext Db
+@using OpenDsc.Server.Services
+@inject ICompositeConfigurationService CompositeConfigService
 @inject ISnackbar Snackbar
 
 <MudDialog>
     <DialogContent>
         <MudText Typo="Typo.body1" Class="mb-3">
-            Editing <strong>@Item.ChildConfiguration.Name</strong> in version <strong>@VersionString</strong>
+            Editing <strong>@Item.ChildConfigurationName</strong> in version <strong>@VersionString</strong>
         </MudText>
 
-        <MudSelect @bind-Value="selectedMajorVersion"
-                   T="int?"
-                   Label="Major Version"
-                   Variant="Variant.Outlined"
-                   Class="mb-3"
-                   Required="true"
-                   HelperText="Select the major version to track">
+        <MudSelect @bind-Value="selectedMajorVersion" T="int?" Label="Major Version" Variant="Variant.Outlined"
+                   Class="mb-3" Required="true" HelperText="Select the major version to track">
             @foreach (var major in availableMajorVersions)
             {
                 <MudSelectItem T="int?" Value="@((int?)major)">v@(major)</MudSelectItem>
@@ -49,7 +46,7 @@
     public string VersionString { get; set; } = string.Empty;
 
     [Parameter]
-    public CompositeConfigurationItem Item { get; set; } = default!;
+    public CompositeConfigurationItemDetails Item { get; set; } = default!;
 
     [CascadingParameter]
     private IMudDialogInstance MudDialog { get; set; } = default!;
@@ -62,18 +59,7 @@
     protected override async Task OnInitializedAsync()
     {
         selectedMajorVersion = Item.MajorVersion;
-
-        var versions = await Db.ConfigurationVersions
-            .Where(v => v.ConfigurationId == Item.ChildConfigurationId && v.Status == ConfigurationVersionStatus.Published)
-            .Select(v => v.Version)
-            .ToListAsync();
-
-        availableMajorVersions = versions
-            .Select(v => SemanticVersion.TryParse(v, out var sv) ? sv.Major : -1)
-            .Where(m => m >= 0)
-            .Distinct()
-            .OrderBy(m => m)
-            .ToList();
+        availableMajorVersions = await CompositeConfigService.GetAvailableMajorVersionsAsync(Item.ChildConfigurationId);
     }
 
     private bool IsValid() => selectedMajorVersion.HasValue;
@@ -87,15 +73,11 @@
 
         try
         {
-            var item = await Db.CompositeConfigurationItems.FindAsync(Item.Id);
-            if (item is null)
+            await CompositeConfigService.UpdateChildAsync(Item.Id, new UpdateChildConfigurationRequest
             {
-                validationError = "Child configuration item not found.";
-                return;
-            }
-
-            item.MajorVersion = selectedMajorVersion;
-            await Db.SaveChangesAsync();
+                ActiveVersion = selectedMajorVersion.HasValue ? $"{selectedMajorVersion.Value}.0.0" : null,
+                Order = Item.Order
+            });
 
             Snackbar.Add("Major version updated", Severity.Success);
             MudDialog.Close(DialogResult.Ok(true));
@@ -110,3 +92,4 @@
         }
     }
 }
+

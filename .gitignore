@@ -4,6 +4,5 @@ artifacts/
 /dsc/
 *.db*
 TestResults/
-Data/
 site/
 .cache/

@@ -2,7 +2,10 @@
    You may use, distribute and modify this code under the
    terms of the MIT license. *@
 
-@inject ServerDbContext Db
+@using OpenDsc.Contracts.Permissions
+@using OpenDsc.Contracts.Users
+@inject IUserService UserService
+@inject IGroupService GroupService
 
 <MudDialog>
     <TitleContent>
@@ -16,9 +19,8 @@
             }
             else
             {
-                <MudSelect T="string" Value="@principalType" ValueChanged="OnPrincipalTypeChanged"
-                           Label="Principal Type" Variant="Variant.Outlined"
-                           HelperText="Grant permission to an individual user or a group">
+                <MudSelect T="string" Value="@principalType" ValueChanged="OnPrincipalTypeChanged" Label="Principal Type"
+                           Variant="Variant.Outlined" HelperText="Grant permission to an individual user or a group">
                     <MudSelectItem Value="@("User")">User</MudSelectItem>
                     <MudSelectItem Value="@("Group")">Group</MudSelectItem>
                 </MudSelect>
@@ -55,8 +57,7 @@
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary" OnClick="Submit"
-                   Disabled="@(!IsEditMode && !selectedPrincipalId.HasValue)">
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(!IsEditMode && !selectedPrincipalId.HasValue)">
             @(IsEditMode ? "Save" : "Grant")
         </MudButton>
     </DialogActions>
@@ -88,8 +89,8 @@
     private Guid? selectedPrincipalId;
     private string level = "Read";
 
-    private List<User> users = [];
-    private List<Group> groups = [];
+    private List<UserSummary> users = [];
+    private List<GroupSummary> groups = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -99,8 +100,8 @@
             principalType = EditPrincipalType;
         }
 
-        users = await Db.Users.OrderBy(u => u.Username).ToListAsync();
-        groups = await Db.Groups.OrderBy(g => g.Name).ToListAsync();
+        users = (await UserService.GetUsersAsync()).ToList();
+        groups = (await GroupService.GetGroupsAsync()).ToList();
     }
 
     private void OnPrincipalTypeChanged(string newType)
@@ -121,7 +122,7 @@
             return;
         }
 
-        MudDialog.Close(DialogResult.Ok(new PermissionGrantRequest
+        MudDialog.Close(DialogResult.Ok(new GrantPermissionRequest
         {
             PrincipalType = type,
             PrincipalId = principalId!.Value,

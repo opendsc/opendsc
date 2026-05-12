@@ -196,3 +196,4 @@ public class AuthenticationEndpointsTests : IAsyncLifetime
     private record TokenResponse(string Token, string Name, string[] Scopes, DateTimeOffset? ExpiresAt);
     private record TokenSummary(Guid Id, string Name, DateTimeOffset CreatedAt, DateTimeOffset? ExpiresAt, DateTimeOffset? LastUsedAt, bool IsRevoked);
 }
+

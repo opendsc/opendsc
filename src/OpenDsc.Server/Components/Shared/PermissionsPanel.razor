@@ -2,7 +2,10 @@
    You may use, distribute and modify this code under the
    terms of the MIT license. *@
 
-@inject ServerDbContext Db
+@using OpenDsc.Contracts.Permissions
+@using OpenDsc.Contracts.Users
+@inject IUserService UserService
+@inject IGroupService GroupService
 @inject IResourceAuthorizationService AuthService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IDialogService DialogService
@@ -22,11 +25,8 @@ else
             <CardHeaderActions>
                 @if (canManage)
                 {
-                    <MudButton Variant="Variant.Filled"
-                               Color="Color.Primary"
-                               Size="Size.Small"
-                               StartIcon="@Icons.Material.Filled.PersonAdd"
-                               OnClick="OpenGrantDialog">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.PersonAdd" OnClick="OpenGrantDialog">
                         Grant Permission
                     </MudButton>
                 }
@@ -44,8 +44,7 @@ else
                         <PropertyColumn Property="x => x.PrincipalName" Title="Principal" />
                         <PropertyColumn Property="x => x.PrincipalType" Title="Type">
                             <CellTemplate>
-                                <MudChip T="string"
-                                         Size="Size.Small"
+                                <MudChip T="string" Size="Size.Small"
                                          Color="@(context.Item.PrincipalType == PrincipalType.User ? Color.Primary : Color.Secondary)">
                                     @context.Item.PrincipalType
                                 </MudChip>
@@ -68,14 +67,11 @@ else
                             <TemplateColumn Title="Actions" Sortable="false">
                                 <CellTemplate>
                                     <MudTooltip Text="Edit Permission">
-                                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                                       Size="Size.Small"
+                                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
                                                        OnClick="@(() => EditPermission(context.Item))" />
                                     </MudTooltip>
                                     <MudTooltip Text="Revoke Permission">
-                                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                                       Size="Size.Small"
-                                                       Color="Color.Error"
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
                                                        OnClick="@(() => RevokePermission(context.Item))" />
                                     </MudTooltip>
                                 </CellTemplate>
@@ -173,13 +169,13 @@ else
                 .Distinct()
                 .ToList();
 
-            var userNames = await Db.Users
+            var userNames = (await UserService.GetUsersAsync())
                 .Where(u => userIds.Contains(u.Id))
-                .ToDictionaryAsync(u => u.Id, u => u.Username);
+                .ToDictionary(u => u.Id, u => u.Username);
 
-            var groupNames = await Db.Groups
+            var groupNames = (await GroupService.GetGroupsAsync())
                 .Where(g => groupIds.Contains(g.Id))
-                .ToDictionaryAsync(g => g.Id, g => g.Name);
+                .ToDictionary(g => g.Id, g => g.Name);
 
             rows = entries.Select(e => new PermissionRow(
                 e.PrincipalType,
@@ -207,14 +203,16 @@ else
 
         var parameters = new DialogParameters<GrantPermissionDialog>
         {
-            { x => x.ExistingUserIds, rows.Where(r => r.PrincipalType == PrincipalType.User).Select(r => r.PrincipalId).ToHashSet() },
-            { x => x.ExistingGroupIds, rows.Where(r => r.PrincipalType == PrincipalType.Group).Select(r => r.PrincipalId).ToHashSet() }
+            { x => x.ExistingUserIds, rows.Where(r => r.PrincipalType == PrincipalType.User).Select(r => r.PrincipalId).ToHashSet()
+},
+            { x => x.ExistingGroupIds, rows.Where(r => r.PrincipalType == PrincipalType.Group).Select(r =>
+r.PrincipalId).ToHashSet() }
         };
 
         var dialogRef = await DialogService.ShowAsync<GrantPermissionDialog>("Grant Permission", parameters);
         var dialogResult = await dialogRef.Result;
 
-        if (dialogResult is { Canceled: false, Data: PermissionGrantRequest req })
+        if (dialogResult is { Canceled: false, Data: GrantPermissionRequest req })
         {
             try
             {
@@ -228,10 +226,12 @@ else
                 switch (ResourceType)
                 {
                     case PermissionResource.Configuration:
-                        await AuthService.GrantConfigurationPermissionAsync(ResourceId, req.PrincipalId, principalType, level, currentUserId.Value);
+                        await AuthService.GrantConfigurationPermissionAsync(ResourceId, req.PrincipalId, principalType, level,
+currentUserId.Value);
                         break;
                     case PermissionResource.CompositeConfiguration:
-                        await AuthService.GrantCompositeConfigurationPermissionAsync(ResourceId, req.PrincipalId, principalType, level, currentUserId.Value);
+                        await AuthService.GrantCompositeConfigurationPermissionAsync(ResourceId, req.PrincipalId, principalType, level,
+currentUserId.Value);
                         break;
                     case PermissionResource.Parameter:
                         await AuthService.GrantParameterPermissionAsync(ResourceId, req.PrincipalId, principalType, level, currentUserId.Value);
@@ -266,7 +266,7 @@ else
         var dialogRef = await DialogService.ShowAsync<GrantPermissionDialog>("Edit Permission", parameters);
         var result = await dialogRef.Result;
 
-        if (result is { Canceled: false, Data: PermissionGrantRequest req })
+        if (result is { Canceled: false, Data: GrantPermissionRequest req })
         {
             try
             {
@@ -280,10 +280,12 @@ else
                 switch (ResourceType)
                 {
                     case PermissionResource.Configuration:
-                        await AuthService.GrantConfigurationPermissionAsync(ResourceId, req.PrincipalId, principalType, level, currentUserId.Value);
+                        await AuthService.GrantConfigurationPermissionAsync(ResourceId, req.PrincipalId, principalType, level,
+currentUserId.Value);
                         break;
                     case PermissionResource.CompositeConfiguration:
-                        await AuthService.GrantCompositeConfigurationPermissionAsync(ResourceId, req.PrincipalId, principalType, level, currentUserId.Value);
+                        await AuthService.GrantCompositeConfigurationPermissionAsync(ResourceId, req.PrincipalId, principalType, level,
+currentUserId.Value);
                         break;
                     case PermissionResource.Parameter:
                         await AuthService.GrantParameterPermissionAsync(ResourceId, req.PrincipalId, principalType, level, currentUserId.Value);

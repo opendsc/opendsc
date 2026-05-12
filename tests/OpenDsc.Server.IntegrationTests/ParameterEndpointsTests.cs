@@ -9,9 +9,10 @@ using AwesomeAssertions;
 
 using Microsoft.EntityFrameworkCore;
 
-using OpenDsc.Server.Contracts;
+using OpenDsc.Contracts.Nodes;
+using OpenDsc.Contracts.CompositeConfigurations;
+using OpenDsc.Contracts.Parameters;
 using OpenDsc.Server.Data;
-using OpenDsc.Server.Entities;
 
 using Xunit;
 
@@ -53,6 +54,42 @@ public class ParameterEndpointsTests : IDisposable
         {
             throw new InvalidOperationException($"Configuration '{name}' was not found after creation");
         }
+
+        // Upload a parameter schema with common parameters so tests can create parameter files
+        // Use supported parameter types: string, secureString, int, bool, object, secureObject, array, float, double
+        var schemaContent = @"{
+  ""parameters"": {
+    ""param1"": { ""type"": ""string"" },
+    ""param2"": { ""type"": ""string"" },
+    ""setting1"": { ""type"": ""string"" },
+    ""appName"": { ""type"": ""string"" },
+    ""port"": { ""type"": ""int"", ""minValue"": 1, ""maxValue"": 65535 }
+  }
+}";
+        using var schemaRequest = new MultipartFormDataContent();
+        schemaRequest.Add(new StringContent("1.0.0"), "version");
+        var schemaFile = new ByteArrayContent(System.Text.Encoding.UTF8.GetBytes(schemaContent));
+        schemaFile.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+        schemaRequest.Add(schemaFile, "parametersFile", "parameters.json");
+
+        var schemaResponse = await client.PutAsync($"/api/v1/configurations/{name}/parameters", schemaRequest);
+        if (!schemaResponse.IsSuccessStatusCode)
+        {
+            var errorContent = await schemaResponse.Content.ReadAsStringAsync();
+            throw new InvalidOperationException($"Parameter schema upload failed: {schemaResponse.StatusCode} - {errorContent}");
+        }
+
+        // Verify schema was created
+        await Task.Delay(100); // Small delay to ensure data is persisted
+        using var verifyScope = _factory.Services.CreateScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<ServerDbContext>();
+        var schema = await verifyDb.ParameterSchemas.FirstOrDefaultAsync(
+            ps => ps.ConfigurationId == config.Id && ps.SchemaVersion == "1.0.0");
+        if (schema is null)
+        {
+            throw new InvalidOperationException($"Parameter schema was not created for configuration '{name}'");
+        }
+
         return config.Id;
     }
 
@@ -81,7 +118,7 @@ public class ParameterEndpointsTests : IDisposable
         var result = await response.Content.ReadFromJsonAsync<ParameterFileDto>(TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
         result!.Version.Should().Be("1.0.0");
-        result.Status.Should().Be(ParameterVersionStatus.Draft);
+        result.Status.Should().Be("Draft");
     }
 
     [Fact]
@@ -143,7 +180,7 @@ public class ParameterEndpointsTests : IDisposable
         var result = await response.Content.ReadFromJsonAsync<ParameterFileDto>(TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
         result!.Version.Should().Be("1.0.0");
-        result.Status.Should().Be(ParameterVersionStatus.Published);
+        result.Status.Should().Be("Published");
     }
 
     [Fact]
@@ -351,15 +388,15 @@ public class ParameterEndpointsTests : IDisposable
         var scopeTypeRequest = new { name = scopeTypeName, valueMode = "Restricted" };
         var scopeTypeResponse = await client.PostAsJsonAsync("/api/v1/scope-types", scopeTypeRequest);
         scopeTypeResponse.EnsureSuccessStatusCode();
-        var scopeTypeDto = await scopeTypeResponse.Content.ReadFromJsonAsync<ScopeTypeSimpleDto>();
-        var scopeTypeId = scopeTypeDto!.Id;
+        var ScopeTypeDetails = await scopeTypeResponse.Content.ReadFromJsonAsync<ScopeTypeSimpleDto>();
+        var scopeTypeId = ScopeTypeDetails!.Id;
 
         // Create scope value
         var scopeValueRequest = new { value = scopeValue };
         var scopeValueResponse = await client.PostAsJsonAsync($"/api/v1/scope-types/{scopeTypeId}/values", scopeValueRequest);
         scopeValueResponse.EnsureSuccessStatusCode();
-        var scopeValueDto = await scopeValueResponse.Content.ReadFromJsonAsync<ScopeValueSimpleDto>();
-        var scopeValueId = scopeValueDto!.Id;
+        var ScopeValueDetails = await scopeValueResponse.Content.ReadFromJsonAsync<ScopeValueSimpleDto>();
+        var scopeValueId = ScopeValueDetails!.Id;
 
         return (scopeTypeId, scopeValueId);
     }
@@ -390,7 +427,7 @@ public class ParameterEndpointsTests : IDisposable
         var result = await response.Content.ReadFromJsonAsync<ParameterFileDto>(TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
         result!.ScopeValue.Should().Be("Development");
-        result.Status.Should().Be(ParameterVersionStatus.Draft);
+        result.Status.Should().Be("Draft");
     }
 
     [Fact]
@@ -535,7 +572,7 @@ public class ParameterEndpointsTests : IDisposable
         var result = await response.Content.ReadFromJsonAsync<ParameterFileDto>(TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
         result!.ScopeValue.Should().BeNullOrEmpty();
-        result.Status.Should().Be(ParameterVersionStatus.Draft);
+        result.Status.Should().Be("Draft");
     }
 
     // ── Unrestricted (user-created) scope type ───────────────────────────────
@@ -549,7 +586,7 @@ public class ParameterEndpointsTests : IDisposable
         var scopeTypeRequest = new { name = $"Region-{Guid.NewGuid()}", valueMode = "Unrestricted" };
         var scopeTypeResponse = await client.PostAsJsonAsync("/api/v1/scope-types", scopeTypeRequest, TestContext.Current.CancellationToken);
         scopeTypeResponse.EnsureSuccessStatusCode();
-        var scopeTypeDto = await scopeTypeResponse.Content.ReadFromJsonAsync<ScopeTypeSimpleDto>(TestContext.Current.CancellationToken);
+        var ScopeTypeDetails = await scopeTypeResponse.Content.ReadFromJsonAsync<ScopeTypeSimpleDto>(TestContext.Current.CancellationToken);
 
         var request = new
         {
@@ -560,7 +597,7 @@ public class ParameterEndpointsTests : IDisposable
             isDraft = true
         };
 
-        var response = await client.PutAsJsonAsync($"/api/v1/parameters/{scopeTypeDto!.Id}/{configId}", request, TestContext.Current.CancellationToken);
+        var response = await client.PutAsJsonAsync($"/api/v1/parameters/{ScopeTypeDetails!.Id}/{configId}", request, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -574,7 +611,7 @@ public class ParameterEndpointsTests : IDisposable
         var scopeTypeRequest = new { name = $"Region-{Guid.NewGuid()}", valueMode = "Unrestricted" };
         var scopeTypeResponse = await client.PostAsJsonAsync("/api/v1/scope-types", scopeTypeRequest, TestContext.Current.CancellationToken);
         scopeTypeResponse.EnsureSuccessStatusCode();
-        var scopeTypeDto = await scopeTypeResponse.Content.ReadFromJsonAsync<ScopeTypeSimpleDto>(TestContext.Current.CancellationToken);
+        var ScopeTypeDetails = await scopeTypeResponse.Content.ReadFromJsonAsync<ScopeTypeSimpleDto>(TestContext.Current.CancellationToken);
 
         var request = new
         {
@@ -585,13 +622,13 @@ public class ParameterEndpointsTests : IDisposable
             isDraft = true
         };
 
-        var response = await client.PutAsJsonAsync($"/api/v1/parameters/{scopeTypeDto!.Id}/{configId}", request, TestContext.Current.CancellationToken);
+        var response = await client.PutAsJsonAsync($"/api/v1/parameters/{ScopeTypeDetails!.Id}/{configId}", request, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var result = await response.Content.ReadFromJsonAsync<ParameterFileDto>(TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
         result!.ScopeValue.Should().Be("us-west");
-        result.Status.Should().Be(ParameterVersionStatus.Draft);
+        result.Status.Should().Be("Draft");
     }
 }
 
@@ -610,7 +647,7 @@ public sealed class ParameterFileDto
     public required string Version { get; init; }
     public required int MajorVersion { get; init; }
     public required string Checksum { get; init; }
-    public required ParameterVersionStatus Status { get; init; }
+    public required string Status { get; init; }
     public required bool IsPassthrough { get; init; }
     public required DateTimeOffset CreatedAt { get; init; }
 }
@@ -680,3 +717,4 @@ public sealed class ScopeValueSimpleDto
     public required Guid Id { get; init; }
     public required string Value { get; init; }
 }
+

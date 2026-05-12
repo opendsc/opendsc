@@ -1,7 +1,8 @@
 @using MudBlazor
-@inject ServerDbContext Db
+@inject IRegistrationKeyService RegistrationKeyService
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
+@using OpenDsc.Contracts.Settings
 
 <MudDialog>
     <DialogContent>
@@ -34,23 +35,14 @@
     {
         try
         {
-            var keyValue = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
-            var key = new RegistrationKey
+            var created = await RegistrationKeyService.CreateKeyAsync(new CreateRegistrationKeyRequest
             {
-                Id = Guid.NewGuid(),
-                Key = keyValue,
-                CreatedAt = DateTimeOffset.UtcNow,
                 ExpiresAt = new DateTimeOffset(
                     DateTime.SpecifyKind(expirationDate!.Value.Date.AddDays(1).AddTicks(-1), DateTimeKind.Local)
                         .ToUniversalTime()),
                 MaxUses = maxUses > 0 ? maxUses : null,
-                CurrentUses = 0,
-                IsRevoked = false,
-                Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim()
-            };
-
-            Db.RegistrationKeys.Add(key);
-            await Db.SaveChangesAsync();
+                Description = description
+            });
 
             MudDialog.Close();
 
@@ -58,7 +50,7 @@
             var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Medium };
             var parameters = new DialogParameters
             {
-                ["Key"] = keyValue
+                ["Key"] = created.Key
             };
             await DialogService.ShowAsync<ShowKeyDialog>("Registration Key Created", parameters, options);
 

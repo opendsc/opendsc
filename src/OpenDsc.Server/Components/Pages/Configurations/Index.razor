@@ -1,19 +1,18 @@
 @page "/configurations"
 @attribute [Authorize]
 @using OpenDsc.Server.Services
-@inject ServerDbContext Db
+@using OpenDsc.Contracts.Configurations
+@using ConfigurationSummary = OpenDsc.Contracts.Configurations.ConfigurationSummary
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
-@inject IConfigurationService ApiClient
+@inject IConfigurationService ConfigurationService
 
 <PageTitle>Configurations</PageTitle>
 
 <div class="d-flex justify-space-between align-center mb-4">
     <MudText Typo="Typo.h4">DSC Configurations</MudText>
-    <MudButton Variant="Variant.Filled"
-               Color="Color.Primary"
-               StartIcon="@Icons.Material.Filled.Add"
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
                OnClick="OpenCreateDialog">
         Create Configuration
     </MudButton>
@@ -22,19 +21,11 @@
 <MudCard>
     <MudCardContent>
         <div class="d-flex gap-4 mb-4">
-            <MudTextField @bind-Value="SearchText"
-                         Label="Search"
-                         Placeholder="Search by name or description"
-                         Adornment="Adornment.Start"
-                         AdornmentIcon="@Icons.Material.Filled.Search"
-                         Immediate="true"
-                         Clearable="true"
-                         Class="flex-grow-1" />
-            <MudSelect @bind-Value="SortBy"
-                      Label="Sort By"
-                      T="SortOption"
-                      Variant="Variant.Outlined"
-                      AnchorOrigin="Origin.BottomCenter">
+            <MudTextField @bind-Value="SearchText" Label="Search" Placeholder="Search by name or description"
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Immediate="true"
+                          Clearable="true" Class="flex-grow-1" />
+            <MudSelect @bind-Value="SortBy" Label="Sort By" T="SortOption" Variant="Variant.Outlined"
+                       AnchorOrigin="Origin.BottomCenter">
                 <MudSelectItem Value="SortOption.NameAsc">Name (A-Z)</MudSelectItem>
                 <MudSelectItem Value="SortOption.NameDesc">Name (Z-A)</MudSelectItem>
                 <MudSelectItem Value="SortOption.CreatedDesc">Newest First</MudSelectItem>
@@ -49,15 +40,14 @@
         }
         else
         {
-            <MudDataGrid T="Configuration" Items="@filteredConfigurations" Hover="true" Dense="true">
+            <MudDataGrid T="ConfigurationSummary" Items="@filteredConfigurations" Hover="true" Dense="true">
                 <Columns>
                     <PropertyColumn Property="x => x.Name" Title="Name" />
                     <TemplateColumn Title="Status" Sortable="false">
                         <CellTemplate>
                             @{
-                                var published = context.Item.Versions.Any(v => v.Status == ConfigurationVersionStatus.Published);
-                                var chipColor = published ? Color.Success : Color.Warning;
-                                var chipText = published ? "Published" : "Draft";
+                                var chipColor = context.Item.HasPublishedVersion ? Color.Success : Color.Warning;
+                                var chipText = context.Item.HasPublishedVersion ? "Published" : "Draft";
                             }
                             <MudChip Color="@chipColor" Size="Size.Small" Variant="Variant.Filled">@chipText</MudChip>
                         </CellTemplate>
@@ -65,7 +55,7 @@
                     <PropertyColumn Property="x => x.Description" Title="Description" />
                     <TemplateColumn Title="Versions">
                         <CellTemplate>
-                            <MudChip T="string" Size="Size.Small">@context.Item.Versions.Count</MudChip>
+                            <MudChip T="string" Size="Size.Small">@context.Item.VersionCount</MudChip>
                         </CellTemplate>
                     </TemplateColumn>
                     <PropertyColumn Property="x => x.CreatedAt" Title="Created">
@@ -73,23 +63,15 @@
                             @context.Item.CreatedAt.LocalDateTime.ToString("g")
                         </CellTemplate>
                     </PropertyColumn>
-                    <TemplateColumn Title="Updated">
-                        <CellTemplate>
-                            @(context.Item.UpdatedAt?.LocalDateTime.ToString("g") ?? "Never")
-                        </CellTemplate>
-                    </TemplateColumn>
                     <TemplateColumn Title="Actions" Sortable="false">
                         <CellTemplate>
                             <MudTooltip Text="View Details">
-                                <MudIconButton Icon="@Icons.Material.Filled.Visibility"
-                                             Size="Size.Small"
-                                             OnClick="@(() => ViewConfiguration(context.Item.Name))" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Visibility" Size="Size.Small"
+                                               OnClick="@(() => ViewConfiguration(context.Item.Name))" />
                             </MudTooltip>
                             <MudTooltip Text="Delete Configuration">
-                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                             Size="Size.Small"
-                                             Color="Color.Error"
-                                             OnClick="@(() => DeleteConfiguration(context.Item.Name))" />
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                               OnClick="@(() => DeleteConfiguration(context.Item.Name))" />
                             </MudTooltip>
                         </CellTemplate>
                     </TemplateColumn>
@@ -100,8 +82,8 @@
 </MudCard>
 
 @code {
-    private List<Configuration> configurations = [];
-    private List<Configuration> filteredConfigurations = [];
+    private List<ConfigurationSummary> configurations = [];
+    private List<ConfigurationSummary> filteredConfigurations = [];
     private bool isLoading = true;
 
     private string _searchText = string.Empty;
@@ -151,11 +133,7 @@
         isLoading = true;
         try
         {
-            var configs = await Db.Configurations
-                .Include(c => c.Versions)
-                .ToListAsync();
-
-            configurations = configs;
+            configurations = await ConfigurationService.GetConfigurationsAsync();
             FilterConfigurations();
         }
         catch (Exception ex)
@@ -205,7 +183,7 @@
         filteredConfigurations = ApplySort(filtered).ToList();
     }
 
-    private IEnumerable<Configuration> ApplySort(IEnumerable<Configuration> items)
+    private IEnumerable<ConfigurationSummary> ApplySort(IEnumerable<ConfigurationSummary> items)
     {
         return _sortBy switch
         {
@@ -213,7 +191,7 @@
             SortOption.NameDesc => items.OrderByDescending(c => c.Name),
             SortOption.CreatedAsc => items.OrderBy(c => c.CreatedAt),
             SortOption.CreatedDesc => items.OrderByDescending(c => c.CreatedAt),
-            SortOption.UpdatedDesc => items.OrderByDescending(c => c.UpdatedAt ?? c.CreatedAt),
+            SortOption.UpdatedDesc => items.OrderByDescending(c => c.CreatedAt),
             _ => items
         };
     }
@@ -228,17 +206,17 @@
 
         if (confirmed == true)
         {
-            var success = await ApiClient.DeleteConfigurationAsync(name);
-
-            if (success)
+            try
             {
+                await ConfigurationService.DeleteAsync(name);
                 Snackbar.Add($"Configuration '{name}' deleted successfully", Severity.Success);
                 await LoadConfigurationsAsync();
             }
-            else
+            catch (Exception ex)
             {
-                Snackbar.Add($"Failed to delete configuration '{name}'", Severity.Error);
+                Snackbar.Add($"Failed to delete configuration '{name}': {ex.Message}", Severity.Error);
             }
         }
     }
 }
+

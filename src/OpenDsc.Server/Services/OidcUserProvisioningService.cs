@@ -4,6 +4,7 @@
 
 using Microsoft.EntityFrameworkCore;
 
+using OpenDsc.Contracts.Users;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
 

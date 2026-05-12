@@ -2,14 +2,13 @@
 @attribute [Authorize]
 @rendermode InteractiveServer
 
-@using Microsoft.EntityFrameworkCore
 @using OpenDsc.Server.Services
-@using OpenDsc.Server.Entities
+@using OpenDsc.Contracts.Parameters
 @using MudBlazor
 @using BlazorMonaco
 @using BlazorMonaco.Editor
 @using NuGet.Versioning
-@inject ServerDbContext Db
+@inject IParameterService ParameterService
 @inject IJsonYamlConverter JsonYamlConverter
 @inject ThemeService ThemeService
 @inject IJSRuntime JSRuntime
@@ -43,20 +42,21 @@
                                 <TitleContent>
                                     <div class="d-flex align-center gap-2">
                                         <MudText Typo="Typo.h6">@group.ConfigurationName</MudText>
-                                        <MudChip T="string"
-                                                 Size="Size.Small">
+                                        <MudChip T="string" Size="Size.Small">
                                             @group.Schemas.Count
                                             @(group.Schemas.Count == 1 ? "schema" : "schemas")
                                         </MudChip>
                                     </div>
                                 </TitleContent>
                                 <ChildContent>
-                                    <MudDataGrid T="ParameterSchema" Items="@group.Schemas" Hover="true" Dense="true">
+                                    <MudDataGrid T="ParameterSchemaDetails" Items="@group.Schemas" Hover="true" Dense="true">
                                         <Columns>
-                                            <PropertyColumn Property="x => x.SchemaVersion" Title="Schema Version" InitialDirection="SortDirection.Descending" />
+                                            <PropertyColumn Property="x => x.SchemaVersion" Title="Schema Version"
+                                                            InitialDirection="SortDirection.Descending" />
                                             <TemplateColumn Title="Parameter Files" Sortable="false">
                                                 <CellTemplate>
-                                                    <MudChip T="string" Size="Size.Small">@context.Item.ParameterFiles.Count</MudChip>
+                                                    <MudChip T="string" Size="Size.Small">@context.Item.ParameterFileCount
+                                                    </MudChip>
                                                 </CellTemplate>
                                             </TemplateColumn>
                                             <PropertyColumn Property="x => x.CreatedAt" Title="Created">
@@ -66,10 +66,12 @@
                                             </PropertyColumn>
                                             <TemplateColumn Title="Actions" Sortable="false">
                                                 <CellTemplate>
-                                                    <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => ViewSchema(context.Item))">
+                                                    <MudButton Size="Size.Small" Variant="Variant.Text"
+                                                               OnClick="@(() => ViewSchema(context.Item))">
                                                         View Schema
                                                     </MudButton>
-                                                    <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => ViewFiles(context.Item))">
+                                                    <MudButton Size="Size.Small" Variant="Variant.Text"
+                                                               OnClick="@(() => ViewFiles(context.Item))">
                                                         View Files
                                                     </MudButton>
                                                 </CellTemplate>
@@ -100,14 +102,16 @@
 
 @if (selectedSchema != null && showSchemaDialog)
 {
-    <MudDialog @bind-Visible="showSchemaDialog" Options="@(new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.ExtraLarge, FullWidth = true })">
+    <MudDialog @bind-Visible="showSchemaDialog"
+               Options="@(new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.ExtraLarge, FullWidth = true })">
         <DialogContent>
             <MudText Typo="Typo.h6" Class="mb-3">Schema Definition</MudText>
             <MudCard Outlined="true">
                 <MudCardContent>
-                    <MudText Typo="Typo.caption">Configuration: @selectedConfiguration?.Name</MudText>
+                    <MudText Typo="Typo.caption">Configuration: @selectedSchema?.ConfigurationName</MudText>
                     <br />
-                    <MudText Typo="Typo.caption" Class="mb-3">Schema Version: v@(selectedSchema.SchemaVersion ?? "unknown")</MudText>
+                    <MudText Typo="Typo.caption" Class="mb-3">Schema Version: v@(selectedSchema.SchemaVersion ?? "unknown")
+                    </MudText>
                     @if (!string.IsNullOrWhiteSpace(selectedSchema.GeneratedJsonSchema))
                     {
                         <div class="d-flex justify-end mb-2">
@@ -127,10 +131,8 @@
                             </MudButtonGroup>
                         </div>
                         <div style="height: 500px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
-                            <StandaloneCodeEditor @ref="_schemaEditor"
-                                                  Id="schema-viewer-editor"
-                                                  ConstructionOptions="GetSchemaEditorOptions"
-                                                  CssClass="monaco-editor-container" />
+                            <StandaloneCodeEditor @ref="_schemaEditor" Id="schema-viewer-editor"
+                                                  ConstructionOptions="GetSchemaEditorOptions" CssClass="monaco-editor-container" />
                         </div>
                     }
                     else
@@ -147,18 +149,19 @@
 
 @if (selectedSchema != null && showFilesDialog)
 {
-    <MudDialog @bind-Visible="showFilesDialog" Options="new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Large, FullWidth = true }">
+    <MudDialog @bind-Visible="showFilesDialog"
+               Options="new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Large, FullWidth = true }">
         <DialogContent>
             <MudText Typo="Typo.h6" Class="mb-3">Parameter Files</MudText>
-            <MudText Typo="Typo.caption" Class="mb-3">Configuration: @selectedConfiguration?.Name</MudText>
+            <MudText Typo="Typo.caption" Class="mb-3">Configuration: @selectedSchema.ConfigurationName</MudText>
 
             @if (selectedSchemaFiles.Any())
             {
-                <MudDataGrid T="ParameterFile" Items="@selectedSchemaFiles" Hover="true" Dense="true">
+                <MudDataGrid T="ParameterFileDetails" Items="@selectedSchemaFiles" Hover="true" Dense="true">
                     <Columns>
                         <TemplateColumn Title="Scope Type">
                             <CellTemplate>
-                                @context.Item.ScopeType.Name
+                                @context.Item.ScopeTypeName
                             </CellTemplate>
                         </TemplateColumn>
                         <TemplateColumn Title="Scope Value">
@@ -197,9 +200,8 @@
 
 @code {
     private List<SchemaGroup> groupedSchemas = [];
-    private ParameterSchema? selectedSchema;
-    private Configuration? selectedConfiguration;
-    private List<ParameterFile> selectedSchemaFiles = [];
+    private ParameterSchemaDetails? selectedSchema;
+    private List<ParameterFileDetails> selectedSchemaFiles = [];
     private bool showSchemaDialog;
     private bool showFilesDialog;
     private bool loading = true;
@@ -216,7 +218,7 @@
     public class SchemaGroup
     {
         public string ConfigurationName { get; set; } = string.Empty;
-        public List<ParameterSchema> Schemas { get; set; } = [];
+        public List<ParameterSchemaDetails> Schemas { get; set; } = [];
     }
 
     protected override async Task OnInitializedAsync()
@@ -229,31 +231,20 @@
         loading = true;
         try
         {
-            var schemas = await Db.ParameterSchemas
-                .Include(ps => ps.Configuration)
-                .Include(ps => ps.ParameterFiles)
-                .ToListAsync();
+            var schemas = await ParameterService.GetSchemasAsync();
 
-            schemas = schemas
-                .OrderBy(ps => ps.Configuration.Name)
-                .ThenBy(ps => ps.CreatedAt)
-                .ToList();
-
-            // after grouping we'll sort each list by schema version descending
-            // this ensures tables default to highest version first
             groupedSchemas = schemas
-                .GroupBy(ps => ps.Configuration.Name)
+                .GroupBy(ps => ps.ConfigurationName)
                 .Select(g => new SchemaGroup
                 {
                     ConfigurationName = g.Key,
-                    Schemas = g.OrderByDescending(s => {
+                    Schemas = g.OrderByDescending(s =>
+                    {
                         var ver = s.SchemaVersion ?? string.Empty;
-                        return SemanticVersion.TryParse(ver, out var sv) ? sv : new SemanticVersion(0,0,0);
+                        return SemanticVersion.TryParse(ver, out var sv) ? sv : new SemanticVersion(0, 0, 0);
                     }).ToList()
                 })
                 .ToList();
-            // skip the previous grouping below since replaced
-            return;
         }
         finally
         {
@@ -261,10 +252,9 @@
         }
     }
 
-    private async Task ViewSchema(ParameterSchema schema)
+    private async Task ViewSchema(ParameterSchemaDetails schema)
     {
         selectedSchema = schema;
-        selectedConfiguration = schema.Configuration;
         schemaViewFormat = SchemaFormat.Yaml;
         showSchemaDialog = true;
 
@@ -305,7 +295,11 @@
         try
         {
             var jsonObj = System.Text.Json.JsonSerializer.Deserialize(json, typeof(object));
-            return System.Text.Json.JsonSerializer.Serialize(jsonObj, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+            return System.Text.Json.JsonSerializer.Serialize(jsonObj, new System.Text.Json.JsonSerializerOptions
+            {
+                WriteIndented =
+true
+            });
         }
         catch
         {
@@ -333,18 +327,11 @@
         };
     }
 
-    private async Task ViewFiles(ParameterSchema schema)
+    private async Task ViewFiles(ParameterSchemaDetails schema)
     {
         selectedSchema = schema;
-        selectedConfiguration = schema.Configuration;
 
-        selectedSchemaFiles = await Db.ParameterFiles
-            .Where(pf => pf.ParameterSchemaId == schema.Id)
-            .Include(pf => pf.ScopeType)
-            .OrderBy(pf => pf.ScopeType.Precedence)
-            .ThenBy(pf => pf.ScopeValue)
-            .ThenBy(pf => pf.Version)
-            .ToListAsync();
+        selectedSchemaFiles = (await ParameterService.GetSchemaFilesAsync(schema.Id)).ToList();
 
         showFilesDialog = true;
     }

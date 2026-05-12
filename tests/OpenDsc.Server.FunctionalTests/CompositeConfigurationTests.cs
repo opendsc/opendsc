@@ -7,9 +7,14 @@ using System.Net;
 
 using AwesomeAssertions;
 
-using OpenDsc.Lcm.Contracts;
-using OpenDsc.Server.Contracts;
+using OpenDsc.Contracts.Lcm;
+using OpenDsc.Contracts.Nodes;
+using OpenDsc.Contracts.CompositeConfigurations;
+using OpenDsc.Contracts.Reports;
+using OpenDsc.Contracts.Settings;
+using OpenDsc.Contracts.Permissions;
 using OpenDsc.Server.Entities;
+using OpenDsc.Contracts.Configurations;
 using OpenDsc.Server.FunctionalTests.DatabaseProviders;
 
 using Xunit;
@@ -57,7 +62,7 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
         var getResponse = await AuthClient.GetAsync($"/api/v1/composite-configurations/{compositeName}", TestContext.Current.CancellationToken);
         getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var composite = await getResponse.Content.ReadFromJsonAsync<CompositeConfigurationDetailsDto>(TestContext.Current.CancellationToken);
+        var composite = await getResponse.Content.ReadFromJsonAsync<CompositeConfigurationDetails>(TestContext.Current.CancellationToken);
         composite.Should().NotBeNull();
         composite!.Name.Should().Be(compositeName);
         composite.Description.Should().Be("Test composite configuration");
@@ -76,6 +81,7 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
         childFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         childContent.Add(childFile, "files", "main.dsc.yaml");
         await AuthClient.PostAsync("/api/v1/configurations", childContent, TestContext.Current.CancellationToken);
+        await AuthClient.PutAsync($"/api/v1/configurations/{childName}/versions/1.0.0/publish", null, TestContext.Current.CancellationToken);
 
         var createRequest = new CreateCompositeConfigurationRequest
         {
@@ -90,12 +96,13 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
         var versionResponse = await AuthClient.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions", versionRequest, TestContext.Current.CancellationToken);
         versionResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var versionDto = await versionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDto>(TestContext.Current.CancellationToken);
+        var versionDto = await versionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDetails>(TestContext.Current.CancellationToken);
         versionDto!.Status.Should().Be(ConfigurationVersionStatus.Draft);
 
         var addChildRequest = new AddChildConfigurationRequest
         {
-            ChildConfigurationName = childName
+            ChildConfigurationName = childName,
+            MajorVersion = 1
         };
         await AuthClient.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto!.Version}/children", addChildRequest, TestContext.Current.CancellationToken);
 
@@ -103,7 +110,7 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
         publishResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var getVersionResponse = await AuthClient.GetAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto.Version}", TestContext.Current.CancellationToken);
-        var publishedVersion = await getVersionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDto>(TestContext.Current.CancellationToken);
+        var publishedVersion = await getVersionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDetails>(TestContext.Current.CancellationToken);
         publishedVersion!.Status.Should().Be(ConfigurationVersionStatus.Published);
     }
 
@@ -120,6 +127,7 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
         childFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         childContent.Add(childFile, "files", "main.dsc.yaml");
         await AuthClient.PostAsync("/api/v1/configurations", childContent, TestContext.Current.CancellationToken);
+        await AuthClient.PutAsync($"/api/v1/configurations/{childName}/versions/1.0.0/publish", null, TestContext.Current.CancellationToken);
 
         var createCompositeRequest = new CreateCompositeConfigurationRequest
         {
@@ -132,16 +140,17 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
             Version = "1.0.0"
         };
         var versionResponse = await AuthClient.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions", versionRequest, TestContext.Current.CancellationToken);
-        var versionDto = await versionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDto>(TestContext.Current.CancellationToken);
+        var versionDto = await versionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDetails>(TestContext.Current.CancellationToken);
 
         var addChildRequest = new AddChildConfigurationRequest
         {
-            ChildConfigurationName = childName
+            ChildConfigurationName = childName,
+            MajorVersion = 1
         };
         var addChildResponse = await AuthClient.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto!.Version}/children", addChildRequest, TestContext.Current.CancellationToken);
         addChildResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var childDto = await addChildResponse.Content.ReadFromJsonAsync<CompositeConfigurationItemDto>(TestContext.Current.CancellationToken);
+        var childDto = await addChildResponse.Content.ReadFromJsonAsync<CompositeConfigurationItemDetails>(TestContext.Current.CancellationToken);
         childDto.Should().NotBeNull();
         childDto!.ChildConfigurationName.Should().Be(childName);
     }
@@ -182,11 +191,12 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
             Version = "1.0.0"
         };
         var versionResponse = await AuthClient.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions", versionRequest, TestContext.Current.CancellationToken);
-        var versionDto = await versionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDto>(TestContext.Current.CancellationToken);
+        var versionDto = await versionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDetails>(TestContext.Current.CancellationToken);
 
         var addChild1Request = new AddChildConfigurationRequest
         {
             ChildConfigurationName = childName1,
+            MajorVersion = 1,
             Order = 0
         };
         await AuthClient.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto!.Version}/children", addChild1Request, TestContext.Current.CancellationToken);
@@ -194,6 +204,7 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
         var addChild2Request = new AddChildConfigurationRequest
         {
             ChildConfigurationName = childName2,
+            MajorVersion = 1,
             Order = 1
         };
         await AuthClient.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto.Version}/children", addChild2Request, TestContext.Current.CancellationToken);
@@ -254,6 +265,7 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
         childFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         childContent.Add(childFile, "files", "main.dsc.yaml");
         await AuthClient.PostAsync("/api/v1/configurations", childContent, TestContext.Current.CancellationToken);
+        await AuthClient.PutAsync($"/api/v1/configurations/{childName}/versions/1.0.0/publish", null, TestContext.Current.CancellationToken);
 
         var createCompositeRequest = new CreateCompositeConfigurationRequest
         {
@@ -266,11 +278,12 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
             Version = "1.0.0"
         };
         var versionResponse = await AuthClient.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions", versionRequest, TestContext.Current.CancellationToken);
-        var versionDto = await versionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDto>(TestContext.Current.CancellationToken);
+        var versionDto = await versionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDetails>(TestContext.Current.CancellationToken);
 
         var addChildRequest = new AddChildConfigurationRequest
         {
-            ChildConfigurationName = childName
+            ChildConfigurationName = childName,
+            MajorVersion = 1
         };
         await AuthClient.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto!.Version}/children", addChildRequest, TestContext.Current.CancellationToken);
 
@@ -327,11 +340,12 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
             Version = "1.0.0"
         };
         var versionResponse = await AuthClient.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions", versionRequest, TestContext.Current.CancellationToken);
-        var versionDto = await versionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDto>(TestContext.Current.CancellationToken);
+        var versionDto = await versionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDetails>(TestContext.Current.CancellationToken);
 
         var addChildRequest = new AddChildConfigurationRequest
         {
-            ChildConfigurationName = childName
+            ChildConfigurationName = childName,
+            MajorVersion = 1
         };
         await AuthClient.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto!.Version}/children", addChildRequest, TestContext.Current.CancellationToken);
 

@@ -18,6 +18,8 @@ using Moq;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
 using OpenDsc.Server.Services;
+using OpenDsc.Contracts.Configurations;
+using OpenDsc.Contracts.Parameters;
 
 using Xunit;
 

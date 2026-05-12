@@ -2,6 +2,8 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
+using OpenDsc.Contracts.Users;
+
 namespace OpenDsc.Server.Entities;
 
 /// <summary>

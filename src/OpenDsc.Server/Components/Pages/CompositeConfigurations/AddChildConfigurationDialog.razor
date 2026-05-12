@@ -1,5 +1,7 @@
+@using OpenDsc.Contracts.CompositeConfigurations
 @using NuGet.Versioning
-@inject ServerDbContext Db
+@using OpenDsc.Server.Services
+@inject ICompositeConfigurationService CompositeConfigService
 @inject ISnackbar Snackbar
 
 <MudDialog>
@@ -8,26 +10,16 @@
             Add a child configuration to <strong>@CompositeName</strong> v<strong>@VersionString</strong>
         </MudText>
 
-        <MudSelect @bind-Value="selectedConfigId"
-                   @bind-Value:after="OnConfigurationSelected"
-                   T="Guid?"
-                   Label="Configuration"
-                   Variant="Variant.Outlined"
-                   Class="mb-3"
-                   Required="true">
+        <MudSelect @bind-Value="selectedConfigId" @bind-Value:after="OnConfigurationSelected" T="Guid?"
+                   Label="Configuration" Variant="Variant.Outlined" Class="mb-3" Required="true">
             @foreach (var config in availableConfigurations)
             {
                 <MudSelectItem T="Guid?" Value="@((Guid?)config.Id)">@config.Name</MudSelectItem>
             }
         </MudSelect>
 
-        <MudSelect @bind-Value="selectedMajorVersion"
-                   T="int?"
-                   Label="Major Version"
-                   Variant="Variant.Outlined"
-                   Class="mb-3"
-                   Required="true"
-                   Disabled="@(!selectedConfigId.HasValue || !availableMajorVersions.Any())"
+        <MudSelect @bind-Value="selectedMajorVersion" T="int?" Label="Major Version" Variant="Variant.Outlined"
+                   Class="mb-3" Required="true" Disabled="@(!selectedConfigId.HasValue || !availableMajorVersions.Any())"
                    HelperText="Select the major version to track">
             @foreach (var major in availableMajorVersions)
             {
@@ -68,7 +60,7 @@
     [CascadingParameter]
     private IMudDialogInstance MudDialog { get; set; } = default!;
 
-    private List<Configuration> availableConfigurations = [];
+    private List<ChildConfigurationOption> availableConfigurations = [];
     private List<int> availableMajorVersions = [];
     private Guid? selectedConfigId;
     private int? selectedMajorVersion;
@@ -77,11 +69,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        availableConfigurations = await Db.Configurations
-            .Include(c => c.Versions.Where(v => v.Status == ConfigurationVersionStatus.Published))
-            .Where(c => !ExistingChildConfigIds.Contains(c.Id) && c.Versions.Any(v => v.Status == ConfigurationVersionStatus.Published))
-            .OrderBy(c => c.Name)
-            .ToListAsync();
+        availableConfigurations = await CompositeConfigService.GetAvailableChildConfigurationsAsync(ExistingChildConfigIds);
     }
 
     private void OnConfigurationSelected()
@@ -94,12 +82,7 @@
         var config = availableConfigurations.FirstOrDefault(c => c.Id == selectedConfigId.Value);
         if (config is null) return;
 
-        availableMajorVersions = config.Versions
-            .Select(v => SemanticVersion.TryParse(v.Version, out var sv) ? sv.Major : -1)
-            .Where(m => m >= 0)
-            .Distinct()
-            .OrderBy(m => m)
-            .ToList();
+        availableMajorVersions = config.AvailableMajorVersions;
     }
 
     private bool IsValid() => selectedConfigId.HasValue && selectedMajorVersion.HasValue;
@@ -113,40 +96,21 @@
 
         try
         {
-            var compositeVersion = await Db.CompositeConfigurationVersions
-                .Include(v => v.CompositeConfiguration)
-                .Include(v => v.Items)
-                .FirstOrDefaultAsync(v =>
-                    v.CompositeConfiguration.Name == CompositeName &&
-                    v.Version == VersionString);
-
-            if (compositeVersion is null)
+            var nextOrder = 1;
+            var currentVersion = await CompositeConfigService.GetVersionAsync(CompositeName, VersionString);
+            if (currentVersion != null && currentVersion.Items.Any())
             {
-                validationError = "Composite configuration version not found.";
-                return;
+                nextOrder = currentVersion.Items.Max(i => i.Order) + 1;
             }
 
-            if (compositeVersion.Status != ConfigurationVersionStatus.Draft)
-            {
-                validationError = "Cannot add children to a published version.";
-                return;
-            }
+            var selectedConfiguration = availableConfigurations.First(c => c.Id == selectedConfigId!.Value);
 
-            var nextOrder = compositeVersion.Items.Any()
-                ? compositeVersion.Items.Max(i => i.Order) + 1
-                : 1;
-
-            var item = new CompositeConfigurationItem
+            await CompositeConfigService.AddChildAsync(CompositeName, VersionString, new AddChildConfigurationRequest
             {
-                Id = Guid.NewGuid(),
-                CompositeConfigurationVersionId = compositeVersion.Id,
-                ChildConfigurationId = selectedConfigId!.Value,
-                MajorVersion = selectedMajorVersion,
+                ChildConfigurationName = selectedConfiguration.Name,
+                MajorVersion = selectedMajorVersion!.Value,
                 Order = nextOrder
-            };
-
-            Db.CompositeConfigurationItems.Add(item);
-            await Db.SaveChangesAsync();
+            });
 
             Snackbar.Add("Child configuration added", Severity.Success);
             MudDialog.Close(DialogResult.Ok(true));
@@ -161,3 +125,4 @@
         }
     }
 }
+

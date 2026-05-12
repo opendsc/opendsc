@@ -2,11 +2,10 @@
 @* You may use, distribute and modify this code under the *@
 @* terms of the MIT license. *@
 
-@using Microsoft.EntityFrameworkCore
 @using NuGet.Versioning
+@using OpenDsc.Contracts.Configurations
 @using OpenDsc.Server.Services
-@inject ServerDbContext Db
-@inject IConfigurationService ApiClient
+@inject IConfigurationService ConfigurationService
 @inject ISnackbar Snackbar
 
 <MudDialog>
@@ -15,13 +14,8 @@
             Create a new version from an existing version for <strong>@ConfigurationName</strong>
         </MudText>
 
-        <MudSelect T="string"
-                   @bind-Value="sourceVersion"
-                   Label="Source Version"
-                   Variant="Variant.Outlined"
-                   Required="true"
-                   Class="mb-3"
-                   HelperText="Select the version to copy files from">
+        <MudSelect T="string" @bind-Value="sourceVersion" Label="Source Version" Variant="Variant.Outlined"
+                   Required="true" Class="mb-3" HelperText="Select the version to copy files from">
             @foreach (var version in availableVersions)
             {
                 <MudSelectItem Value="@version.Version">
@@ -35,29 +29,17 @@
                         {
                             <MudChip T="string" Size="Size.Small" Color="Color.Success">Published</MudChip>
                         }
-                        <MudChip T="string" Size="Size.Small">@version.Files.Count files</MudChip>
+                        <MudChip T="string" Size="Size.Small">@version.FileCount files</MudChip>
                     </div>
                 </MudSelectItem>
             }
         </MudSelect>
 
-        <MudTextField @bind-Value="newVersion"
-                      Label="New Version"
-                      Variant="Variant.Outlined"
-                      Required="true"
-                      Class="mb-3"
-                      Immediate="true"
+        <MudTextField @bind-Value="newVersion" Label="New Version" Variant="Variant.Outlined" Required="true"
+                      Class="mb-3" Immediate="true"
                       Error="@(!string.IsNullOrWhiteSpace(newVersion) && !SemanticVersion.TryParse(newVersion, out _))"
                       ErrorText="Version must follow semantic versioning (e.g., 1.0.0, 2.1.3-alpha, 1.0.0-beta+001)"
                       HelperText="Semantic version: major.minor.patch[-prerelease][+metadata]" />
-
-        <MudSwitch @bind-Value="isDraft"
-                   Label="Save as Draft"
-                   Color="Color.Info"
-                   Class="mb-3" />
-        <MudText Typo="Typo.caption" Class="mb-3" Color="Color.Secondary">
-            When unchecked, the version will be published immediately and become immutable.
-        </MudText>
 
         @if (!string.IsNullOrWhiteSpace(validationError))
         {
@@ -97,11 +79,10 @@
 
     private string sourceVersion = string.Empty;
     private string newVersion = string.Empty;
-    private bool isDraft = true;
     private bool isSubmitting = false;
     private bool isLoading = true;
     private string? validationError;
-    private List<ConfigurationVersion> availableVersions = new();
+    private List<ConfigurationVersionDetails> availableVersions = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -112,18 +93,12 @@
     {
         try
         {
-            var config = await Db.Configurations
-                .Include(c => c.Versions)
-                .ThenInclude(v => v.Files)
-                .FirstOrDefaultAsync(c => c.Name == ConfigurationName);
+            var versions = await ConfigurationService.GetVersionsAsync(ConfigurationName);
 
-            if (config != null)
+            if (versions != null)
             {
-                availableVersions = config.Versions
-                    .OrderByDescending(v => v.CreatedAt)
-                    .ToList();
+                availableVersions = versions;
 
-                // Select the most recent version by default
                 if (availableVersions.Any())
                 {
                     sourceVersion = availableVersions.First().Version;
@@ -170,22 +145,17 @@
 
         try
         {
-            var success = await ApiClient.CreateVersionFromExistingAsync(
+            await ConfigurationService.CreateVersionFromExistingAsync(
                 ConfigurationName,
-                sourceVersion,
-                newVersion,
-                isDraft);
+                new CreateVersionFromExistingRequest
+                {
+                    SourceVersion = sourceVersion,
+                    NewVersion = newVersion
+                });
 
-            if (success)
-            {
-                Snackbar.Add($"Version {newVersion} created from {sourceVersion}", Severity.Success);
-                MudDialog.Close(DialogResult.Ok(true));
-                await OnVersionCreated.InvokeAsync();
-            }
-            else
-            {
-                validationError = "Failed to create version. Please check server logs.";
-            }
+            Snackbar.Add($"Version {newVersion} created from {sourceVersion}", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+            await OnVersionCreated.InvokeAsync();
         }
         catch (Exception ex)
         {
@@ -197,3 +167,4 @@
         }
     }
 }
+

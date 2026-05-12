@@ -8,10 +8,10 @@ using AwesomeAssertions;
 
 using Microsoft.EntityFrameworkCore;
 
-using OpenDsc.Server.Contracts;
+using OpenDsc.Contracts.Nodes;
+using OpenDsc.Contracts.Configurations;
+using OpenDsc.Contracts.Settings;
 using OpenDsc.Server.Data;
-using OpenDsc.Server.Endpoints;
-using OpenDsc.Server.Entities;
 
 using Xunit;
 
@@ -37,7 +37,7 @@ public sealed class ScopeTypeEndpointsTests : IDisposable
     {
         var request = new CreateScopeTypeRequest { Name = name, ValueMode = ScopeValueMode.Restricted };
         var response = await client.PostAsJsonAsync("/api/v1/scope-types", request, SourceGenerationContext.Default.Options);
-        var result = await response.Content.ReadFromJsonAsync<ScopeTypeDto>(SourceGenerationContext.Default.Options);
+        var result = await response.Content.ReadFromJsonAsync<ScopeTypeDetails>(SourceGenerationContext.Default.Options);
         return result!.Id;
     }
 
@@ -45,7 +45,7 @@ public sealed class ScopeTypeEndpointsTests : IDisposable
     {
         var request = new CreateScopeValueRequest { Value = value };
         var response = await client.PostAsJsonAsync($"/api/v1/scope-types/{scopeTypeId}/values", request);
-        var result = await response.Content.ReadFromJsonAsync<ScopeValueDto>();
+        var result = await response.Content.ReadFromJsonAsync<ScopeValueDetails>();
         return result!.Id;
     }
 
@@ -78,7 +78,7 @@ public sealed class ScopeTypeEndpointsTests : IDisposable
         var response = await client.GetAsync("/api/v1/scope-types", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var result = await response.Content.ReadFromJsonAsync<List<ScopeTypeDto>>(SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
+        var result = await response.Content.ReadFromJsonAsync<List<ScopeTypeDetails>>(SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
         result!.Should().Contain(st => st.Name == "Default");
         result.Should().Contain(st => st.Name == "Node");
     }
@@ -92,7 +92,7 @@ public sealed class ScopeTypeEndpointsTests : IDisposable
         var response = await client.PostAsJsonAsync("/api/v1/scope-types", request, SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
-        var result = await response.Content.ReadFromJsonAsync<ScopeTypeDto>(SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
+        var result = await response.Content.ReadFromJsonAsync<ScopeTypeDetails>(SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
         result!.Name.Should().Be("Environment");
     }
 
@@ -114,13 +114,13 @@ public sealed class ScopeTypeEndpointsTests : IDisposable
         using var client = CreateAuthenticatedClient();
         var createRequest = new CreateScopeTypeRequest { Name = "TestScope2", ValueMode = ScopeValueMode.Restricted };
         var createResponse = await client.PostAsJsonAsync("/api/v1/scope-types", createRequest, SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
-        var created = await createResponse.Content.ReadFromJsonAsync<ScopeTypeDto>(SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
+        var created = await createResponse.Content.ReadFromJsonAsync<ScopeTypeDetails>(SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
 
         var updateRequest = new UpdateScopeTypeRequest { Description = "Updated description" };
         var response = await client.PutAsJsonAsync($"/api/v1/scope-types/{created!.Id}", updateRequest, SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var result = await response.Content.ReadFromJsonAsync<ScopeTypeDto>(SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
+        var result = await response.Content.ReadFromJsonAsync<ScopeTypeDetails>(SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
         result!.Description.Should().Be("Updated description");
     }
 
@@ -130,7 +130,7 @@ public sealed class ScopeTypeEndpointsTests : IDisposable
         using var client = CreateAuthenticatedClient();
         var createRequest = new CreateScopeTypeRequest { Name = "TestScope3", ValueMode = ScopeValueMode.Restricted };
         var createResponse = await client.PostAsJsonAsync("/api/v1/scope-types", createRequest, SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
-        var created = await createResponse.Content.ReadFromJsonAsync<ScopeTypeDto>(SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
+        var created = await createResponse.Content.ReadFromJsonAsync<ScopeTypeDetails>(SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
 
         var response = await client.DeleteAsync($"/api/v1/scope-types/{created!.Id}", TestContext.Current.CancellationToken);
 
@@ -141,7 +141,7 @@ public sealed class ScopeTypeEndpointsTests : IDisposable
     public async Task DeleteScopeType_SystemScope_ReturnsConflict()
     {
         using var client = CreateAuthenticatedClient();
-        var allScopes = await client.GetFromJsonAsync<List<ScopeTypeDto>>("/api/v1/scope-types", SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
+        var allScopes = await client.GetFromJsonAsync<List<ScopeTypeDetails>>("/api/v1/scope-types", SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
         var defaultScope = allScopes!.First(s => s.Name == "Default");
 
         var response = await client.DeleteAsync($"/api/v1/scope-types/{defaultScope.Id}", TestContext.Current.CancellationToken);
@@ -157,7 +157,7 @@ public sealed class ScopeTypeEndpointsTests : IDisposable
         await client.PostAsJsonAsync("/api/v1/scope-types", new CreateScopeTypeRequest { Name = "Custom1", ValueMode = ScopeValueMode.Restricted }, SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
         await client.PostAsJsonAsync("/api/v1/scope-types", new CreateScopeTypeRequest { Name = "Custom2", ValueMode = ScopeValueMode.Restricted }, SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
 
-        var allScopes = await client.GetFromJsonAsync<List<ScopeTypeDto>>("/api/v1/scope-types", SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
+        var allScopes = await client.GetFromJsonAsync<List<ScopeTypeDetails>>("/api/v1/scope-types", SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
 
         var defaultScope = allScopes!.First(s => s.Name == "Default");
         var nodeScope = allScopes!.First(s => s.Name == "Node");
@@ -170,7 +170,7 @@ public sealed class ScopeTypeEndpointsTests : IDisposable
         var response = await client.PutAsJsonAsync("/api/v1/scope-types/reorder", request, SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var result = await response.Content.ReadFromJsonAsync<List<ScopeTypeDto>>(SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
+        var result = await response.Content.ReadFromJsonAsync<List<ScopeTypeDetails>>(SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
         result!.Count.Should().Be(4);
         result[0].Name.Should().Be("Default");
         result[1].Name.Should().Be("Custom2");
@@ -182,13 +182,13 @@ public sealed class ScopeTypeEndpointsTests : IDisposable
     public async Task GetScopeType_WithValidId_ReturnsOk()
     {
         using var client = CreateAuthenticatedClient();
-        var allScopes = await client.GetFromJsonAsync<List<ScopeTypeDto>>("/api/v1/scope-types", SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
+        var allScopes = await client.GetFromJsonAsync<List<ScopeTypeDetails>>("/api/v1/scope-types", SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
         var defaultScope = allScopes!.First(s => s.Name == "Default");
 
         var response = await client.GetAsync($"/api/v1/scope-types/{defaultScope.Id}", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var result = await response.Content.ReadFromJsonAsync<ScopeTypeDto>(SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
+        var result = await response.Content.ReadFromJsonAsync<ScopeTypeDetails>(SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
         result!.Name.Should().Be("Default");
     }
 
@@ -238,7 +238,7 @@ public sealed class ScopeTypeEndpointsTests : IDisposable
     public async Task UpdateScopeType_SystemScope_ReturnsBadRequest()
     {
         using var client = CreateAuthenticatedClient();
-        var allScopes = await client.GetFromJsonAsync<List<ScopeTypeDto>>("/api/v1/scope-types", SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
+        var allScopes = await client.GetFromJsonAsync<List<ScopeTypeDetails>>("/api/v1/scope-types", SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
         var defaultScope = allScopes!.First(s => s.Name == "Default");
 
         var updateRequest = new UpdateScopeTypeRequest { Description = "Cannot update" };
@@ -254,7 +254,7 @@ public sealed class ScopeTypeEndpointsTests : IDisposable
         using var client = CreateAuthenticatedClient();
         var createRequest = new CreateScopeTypeRequest { Name = "WithValues", ValueMode = ScopeValueMode.Restricted };
         var createResponse = await client.PostAsJsonAsync("/api/v1/scope-types", createRequest, SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
-        var scopeType = await createResponse.Content.ReadFromJsonAsync<ScopeTypeDto>(SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
+        var scopeType = await createResponse.Content.ReadFromJsonAsync<ScopeTypeDetails>(SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
 
         await client.PostAsJsonAsync($"/api/v1/scope-types/{scopeType!.Id}/values", new CreateScopeValueRequest { Value = "TestValue" }, SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
 
@@ -269,10 +269,10 @@ public sealed class ScopeTypeEndpointsTests : IDisposable
         using var client = CreateAuthenticatedClient();
         var createRequest = new CreateScopeTypeRequest { Name = "WithNode", ValueMode = ScopeValueMode.Restricted };
         var createResponse = await client.PostAsJsonAsync("/api/v1/scope-types", createRequest, SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
-        var scopeType = await createResponse.Content.ReadFromJsonAsync<ScopeTypeDto>(SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
+        var scopeType = await createResponse.Content.ReadFromJsonAsync<ScopeTypeDetails>(SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
 
         var valueResponse = await client.PostAsJsonAsync($"/api/v1/scope-types/{scopeType!.Id}/values", new CreateScopeValueRequest { Value = "Used" }, SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
-        var scopeValue = await valueResponse.Content.ReadFromJsonAsync<ScopeValueDto>(TestContext.Current.CancellationToken);
+        var scopeValue = await valueResponse.Content.ReadFromJsonAsync<ScopeValueDetails>(TestContext.Current.CancellationToken);
 
         // assign a node tag so the value becomes "used"
         var regKeyRequest = new CreateRegistrationKeyRequest();
@@ -282,7 +282,7 @@ public sealed class ScopeTypeEndpointsTests : IDisposable
 
         var registerResponse = await client.PostAsJsonAsync("/api/v1/nodes/register", new RegisterNodeRequest { Fqdn = "delete-node.local", RegistrationKey = keyValue }, TestContext.Current.CancellationToken);
         var nodeId = (await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>(TestContext.Current.CancellationToken))!.NodeId;
-        await client.PostAsJsonAsync($"/api/v1/nodes/{nodeId}/tags", new AssignNodeTagRequest { ScopeValueId = scopeValue!.Id }, TestContext.Current.CancellationToken);
+        await client.PostAsJsonAsync($"/api/v1/nodes/{nodeId}/tags", new AddNodeTagRequest { ScopeValueId = scopeValue!.Id }, TestContext.Current.CancellationToken);
 
         var response = await client.DeleteAsync($"/api/v1/scope-types/{scopeType.Id}", TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
@@ -333,38 +333,83 @@ public sealed class ScopeTypeEndpointsTests : IDisposable
     }
 
     [Fact]
-    public async Task ReorderScopeTypes_DefaultNotFirst_ReturnsBadRequest()
+    public async Task ReorderScopeTypes_DefaultNotFirst_AutomaticallyCorrects()
     {
         using var client = CreateAuthenticatedClient();
-        var allScopes = await client.GetFromJsonAsync<List<ScopeTypeDto>>("/api/v1/scope-types", SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
+        var allScopes = await client.GetFromJsonAsync<List<ScopeTypeDetails>>("/api/v1/scope-types", SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
         var defaultScope = allScopes!.First(s => s.Name == "Default");
         var nodeScope = allScopes!.First(s => s.Name == "Node");
 
+        // Try to put Node first, but service should automatically correct
         var orderedIds = new List<Guid> { nodeScope.Id, defaultScope.Id };
         var request = new ReorderScopeTypesRequest { ScopeTypeIds = orderedIds };
 
         var response = await client.PutAsJsonAsync("/api/v1/scope-types/reorder", request, SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<List<ScopeTypeDetails>>(SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
+        // Service should have corrected: Default should be first, Node last
+        result!.First().Name.Should().Be("Default");
+        result!.Last().Name.Should().Be("Node");
     }
 
     [Fact]
-    public async Task ReorderScopeTypes_NodeNotLast_ReturnsBadRequest()
+    public async Task ReorderScopeTypes_NodeNotLast_AutomaticallyCorrects()
     {
         using var client = CreateAuthenticatedClient();
         await client.PostAsJsonAsync("/api/v1/scope-types", new CreateScopeTypeRequest { Name = "Custom3", ValueMode = ScopeValueMode.Restricted }, SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
 
-        var allScopes = await client.GetFromJsonAsync<List<ScopeTypeDto>>("/api/v1/scope-types", SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
+        var allScopes = await client.GetFromJsonAsync<List<ScopeTypeDetails>>("/api/v1/scope-types", SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
         var defaultScope = allScopes!.First(s => s.Name == "Default");
         var nodeScope = allScopes!.First(s => s.Name == "Node");
         var custom3 = allScopes!.First(s => s.Name == "Custom3");
 
+        // Try to put Custom3 last, but service should automatically correct
         var orderedIds = new List<Guid> { defaultScope.Id, nodeScope.Id, custom3.Id };
         var request = new ReorderScopeTypesRequest { ScopeTypeIds = orderedIds };
 
         var response = await client.PutAsJsonAsync("/api/v1/scope-types/reorder", request, SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<List<ScopeTypeDetails>>(SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
+        // Service should have corrected: Default first, Node last, Custom3 in middle
+        result!.First().Name.Should().Be("Default");
+        result!.Last().Name.Should().Be("Node");
+        result!.Should().Contain(s => s.Name == "Custom3");
+    }
+
+    [Fact]
+    public async Task ReorderScopeTypes_MultipleCustomScopes_MaintainsUserOrder()
+    {
+        using var client = CreateAuthenticatedClient();
+
+        await client.PostAsJsonAsync("/api/v1/scope-types", new CreateScopeTypeRequest { Name = "First", ValueMode = ScopeValueMode.Restricted }, SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
+        await client.PostAsJsonAsync("/api/v1/scope-types", new CreateScopeTypeRequest { Name = "Second", ValueMode = ScopeValueMode.Restricted }, SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
+        await client.PostAsJsonAsync("/api/v1/scope-types", new CreateScopeTypeRequest { Name = "Third", ValueMode = ScopeValueMode.Restricted }, SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
+
+        var allScopes = await client.GetFromJsonAsync<List<ScopeTypeDetails>>("/api/v1/scope-types", SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
+        var defaultScope = allScopes!.First(s => s.Name == "Default");
+        var nodeScope = allScopes!.First(s => s.Name == "Node");
+        var first = allScopes!.First(s => s.Name == "First");
+        var second = allScopes!.First(s => s.Name == "Second");
+        var third = allScopes!.First(s => s.Name == "Third");
+
+        // Request: Default, Third, First, Second, Node
+        var orderedIds = new List<Guid> { defaultScope.Id, third.Id, first.Id, second.Id, nodeScope.Id };
+        var request = new ReorderScopeTypesRequest { ScopeTypeIds = orderedIds };
+
+        var response = await client.PutAsJsonAsync("/api/v1/scope-types/reorder", request, SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<List<ScopeTypeDetails>>(SourceGenerationContext.Default.Options, TestContext.Current.CancellationToken);
+
+        // Verify order: Default first, then custom in requested order, Node last
+        result!.Count.Should().Be(5);
+        result![0].Name.Should().Be("Default");
+        result![1].Name.Should().Be("Third");
+        result![2].Name.Should().Be("First");
+        result![3].Name.Should().Be("Second");
+        result![4].Name.Should().Be("Node");
     }
 
     [Fact]
@@ -378,3 +423,4 @@ public sealed class ScopeTypeEndpointsTests : IDisposable
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 }
+

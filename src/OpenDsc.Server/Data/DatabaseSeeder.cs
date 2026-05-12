@@ -6,6 +6,8 @@ using System.Text.Json;
 
 using Microsoft.EntityFrameworkCore;
 
+using OpenDsc.Contracts.Configurations;
+using OpenDsc.Contracts.Users;
 using OpenDsc.Server.Authorization;
 using OpenDsc.Server.Entities;
 using OpenDsc.Server.Services;

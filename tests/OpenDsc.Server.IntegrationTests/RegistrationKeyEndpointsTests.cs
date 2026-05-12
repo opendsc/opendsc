@@ -8,7 +8,11 @@ using System.Text.Json.Serialization;
 
 using AwesomeAssertions;
 
-using OpenDsc.Server.Contracts;
+using OpenDsc.Contracts.Nodes;
+using OpenDsc.Contracts.CompositeConfigurations;
+using OpenDsc.Contracts.Reports;
+using OpenDsc.Contracts.Settings;
+using OpenDsc.Contracts.Permissions;
 
 using Xunit;
 
@@ -225,3 +229,4 @@ public class RegistrationKeyEndpointsTests : IDisposable
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 }
+

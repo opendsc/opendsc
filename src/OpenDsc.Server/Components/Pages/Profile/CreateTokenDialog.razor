@@ -5,8 +5,9 @@
 @namespace OpenDsc.Server.Components.Pages
 @using System.Text.Json
 @using OpenDsc.Server.Authorization
+@using OpenDsc.Contracts.Users
 @using MudBlazor
-@inject ServerDbContext Db
+@inject IUserService UserService
 @inject IPersonalAccessTokenService PatService
 @inject IUserContextService UserContext
 @inject ISnackbar Snackbar
@@ -88,7 +89,7 @@
 
         try
         {
-            _userAccessiblePermissions = await RbacPermissionResolver.ResolveUserAndInternalGroupPermissionsAsync(Db, userId.Value);
+            _userAccessiblePermissions = await UserService.GetEffectivePermissionsAsync(userId.Value);
             // Only show scopes the user actually has access to
             var accessibleScopes = Permissions.AllScopes.Intersect(_userAccessiblePermissions, StringComparer.Ordinal).ToArray();
             _treeItems = PermissionHierarchyHelper.CreateTreeData(accessibleScopes, []);

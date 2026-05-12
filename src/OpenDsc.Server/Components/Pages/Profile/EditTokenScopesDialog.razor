@@ -4,10 +4,12 @@
 
 @namespace OpenDsc.Server.Components.Pages
 @using System.Text.Json
+@using OpenDsc.Contracts.Users
 @using OpenDsc.Server.Authorization
 @using MudBlazor
-@inject ServerDbContext Db
 @inject IUserContextService UserContext
+@inject IUserService UserService
+@inject IPersonalAccessTokenService PatService
 @inject ISnackbar Snackbar
 
 <MudDialog>
@@ -67,11 +69,12 @@
     private HashSet<string> _expandedItems = [];
     private bool _isLoading;
     private bool _isLoadingPermissions = true;
+    private Guid? _userId;
 
     protected override async Task OnInitializedAsync()
     {
-        var userId = UserContext.GetCurrentUserId();
-        if (userId == null)
+        _userId = UserContext.GetCurrentUserId();
+        if (_userId == null)
         {
             Snackbar.Add("Not authenticated", Severity.Error);
             MudDialog.Cancel();
@@ -80,7 +83,7 @@
 
         try
         {
-            _userAccessiblePermissions = await RbacPermissionResolver.ResolveUserAndInternalGroupPermissionsAsync(Db, userId.Value);
+            _userAccessiblePermissions = await UserService.GetEffectivePermissionsAsync(_userId.Value);
 
             var currentScopes = new List<string>();
             try
@@ -152,17 +155,16 @@
 
         try
         {
-            var token = await Db.PersonalAccessTokens.FindAsync(Token.Id);
-            if (token == null)
+            await PatService.UpdateScopesAsync(Token.Id, _userId!.Value, new UpdateTokenScopesRequest
             {
-                Snackbar.Add("Token not found.", Severity.Error);
-                return;
-            }
-
-            token.Scopes = JsonSerializer.Serialize(_selectedScopes.OrderBy(s => s).ToArray());
-            await Db.SaveChangesAsync();
+                Scopes = _selectedScopes.OrderBy(s => s).ToArray()
+            });
 
             MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (KeyNotFoundException)
+        {
+            Snackbar.Add("Token not found.", Severity.Error);
         }
         catch (Exception ex)
         {

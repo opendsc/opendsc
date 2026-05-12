@@ -1,5 +1,5 @@
-@using Microsoft.EntityFrameworkCore
-@inject ServerDbContext Db
+@using OpenDsc.Contracts.Users
+@inject IUserService UserService
 @inject ISnackbar Snackbar
 @inject IDialogService Dialog
 
@@ -9,13 +9,15 @@
             <MudText Typo="Typo.h6">Users</MudText>
         </CardHeaderContent>
         <CardHeaderActions>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateUser" StartIcon="@Icons.Material.Filled.Add">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateUser"
+                       StartIcon="@Icons.Material.Filled.Add">
                 Create User
             </MudButton>
         </CardHeaderActions>
     </MudCardHeader>
     <MudCardContent>
-        <MudDataGrid T="User" Items="@users" Hover="true" Dense="true" Loading="@loading" SortMode="SortMode.Single">
+        <MudDataGrid T="UserSummary" Items="@users" Hover="true" Dense="true" Loading="@loading"
+                     SortMode="SortMode.Single">
             <Columns>
                 <PropertyColumn Property="x => x.Username" Title="Username" />
                 <PropertyColumn Property="x => x.Email" Title="Email" />
@@ -26,7 +28,8 @@
                         {
                             <MudChip T="string" Size="Size.Small" Color="Color.Default">Inactive</MudChip>
                         }
-                        else if (context.Item.LockoutEnd.HasValue && context.Item.LockoutEnd.Value > DateTimeOffset.UtcNow)
+                        else if (context.Item.LockoutEnd.HasValue && context.Item.LockoutEnd.Value >
+                        DateTimeOffset.UtcNow)
                         {
                             <MudChip T="string" Size="Size.Small" Color="Color.Error">Locked</MudChip>
                         }
@@ -51,12 +54,9 @@
                 </PropertyColumn>
                 <TemplateColumn Title="Actions" Sortable="false">
                     <CellTemplate>
-                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                       Size="Size.Small"
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small"
                                        OnClick="@(() => EditUser(context.Item))" />
-                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                       Size="Size.Small"
-                                       Color="Color.Error"
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
                                        OnClick="@(() => DeleteUser(context.Item))"
                                        Disabled="@context.Item.Username.Equals("admin", StringComparison.OrdinalIgnoreCase)" />
                     </CellTemplate>
@@ -67,7 +67,7 @@
 </MudCard>
 
 @code {
-    private List<User> users = [];
+    private List<UserSummary> users = [];
     private Dictionary<Guid, int> userRoleCounts = new();
     private Dictionary<Guid, int> userGroupCounts = new();
     private bool loading = true;
@@ -82,21 +82,9 @@
         loading = true;
         try
         {
-            users = await Db.Users
-                .OrderBy(u => u.Username)
-                .ToListAsync();
-
-            var roleCountsQuery = await Db.Set<UserRole>()
-                .GroupBy(ur => ur.UserId)
-                .Select(g => new { UserId = g.Key, Count = g.Count() })
-                .ToListAsync();
-            userRoleCounts = roleCountsQuery.ToDictionary(x => x.UserId, x => x.Count);
-
-            var groupCountsQuery = await Db.Set<UserGroup>()
-                .GroupBy(ug => ug.UserId)
-                .Select(g => new { UserId = g.Key, Count = g.Count() })
-                .ToListAsync();
-            userGroupCounts = groupCountsQuery.ToDictionary(x => x.UserId, x => x.Count);
+            users = (await UserService.GetUsersAsync()).ToList();
+            userRoleCounts = new Dictionary<Guid, int>(await UserService.GetUserRoleCountsAsync());
+            userGroupCounts = new Dictionary<Guid, int>(await UserService.GetUserGroupCountsAsync());
         }
         finally
         {
@@ -104,7 +92,7 @@
         }
     }
 
-    private int GetStatusSortKey(User u)
+    private int GetStatusSortKey(UserSummary u)
     {
         if (!u.IsActive) return 3;
         if (u.LockoutEnd.HasValue && u.LockoutEnd.Value > DateTimeOffset.UtcNow) return 2;
@@ -133,7 +121,7 @@
         await Dialog.ShowAsync<CreateUserDialog>("Create User", parameters, options);
     }
 
-    private async Task EditUser(User user)
+    private async Task EditUser(UserSummary user)
     {
         var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
         var parameters = new DialogParameters<EditUserDialog>
@@ -145,7 +133,7 @@
         await Dialog.ShowAsync<EditUserDialog>("Edit User", parameters, options);
     }
 
-    private async Task DeleteUser(User user)
+    private async Task DeleteUser(UserSummary user)
     {
         if (user.Username.Equals("admin", StringComparison.OrdinalIgnoreCase))
         {
@@ -163,8 +151,7 @@
         {
             try
             {
-                Db.Users.Remove(user);
-                await Db.SaveChangesAsync();
+                await UserService.DeleteUserAsync(user.Id);
                 await LoadUsersAsync();
                 Snackbar.Add($"User '{user.Username}' deleted successfully", Severity.Success);
             }

@@ -6,7 +6,7 @@ using System.Net;
 
 using AwesomeAssertions;
 
-using OpenDsc.Server.Endpoints;
+using OpenDsc.Contracts.Users;
 
 using Xunit;
 
@@ -30,7 +30,7 @@ public class UserEndpointsTests : IClassFixture<ServerWebApplicationFactory>
         var response = await _client.GetAsync("/api/v1/users", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var users = await response.Content.ReadFromJsonAsync<List<UserDto>>(TestContext.Current.CancellationToken);
+        var users = await response.Content.ReadFromJsonAsync<List<UserEndpointUserResponse>>(TestContext.Current.CancellationToken);
         users.Should().NotBeNull();
         users!.Should().Contain(u => u.Username == "admin");
     }
@@ -40,13 +40,13 @@ public class UserEndpointsTests : IClassFixture<ServerWebApplicationFactory>
     {
         // Get the admin user
         var listResponse = await _client.GetAsync("/api/v1/users", TestContext.Current.CancellationToken);
-        var users = await listResponse.Content.ReadFromJsonAsync<List<UserDto>>(TestContext.Current.CancellationToken);
+        var users = await listResponse.Content.ReadFromJsonAsync<List<UserEndpointUserResponse>>(TestContext.Current.CancellationToken);
         var adminUser = users!.First(u => u.Username == "admin");
 
         var response = await _client.GetAsync($"/api/v1/users/{adminUser.Id}", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var user = await response.Content.ReadFromJsonAsync<UserDetailDto>(TestContext.Current.CancellationToken);
+        var user = await response.Content.ReadFromJsonAsync<UserEndpointUserDetailResponse>(TestContext.Current.CancellationToken);
         user.Should().NotBeNull();
         user!.Username.Should().Be("admin");
         user.Email.Should().NotBeNullOrEmpty();
@@ -65,7 +65,7 @@ public class UserEndpointsTests : IClassFixture<ServerWebApplicationFactory>
         var response = await _client.PostAsJsonAsync("/api/v1/users", createRequest, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
-        var user = await response.Content.ReadFromJsonAsync<UserDto>(TestContext.Current.CancellationToken);
+        var user = await response.Content.ReadFromJsonAsync<UserEndpointUserResponse>(TestContext.Current.CancellationToken);
         user.Should().NotBeNull();
         user!.Username.Should().Be("testuser");
         user.Email.Should().Be("test@example.com");
@@ -82,7 +82,7 @@ public class UserEndpointsTests : IClassFixture<ServerWebApplicationFactory>
             Password = "TestPassword123!"
         };
         var createResponse = await _client.PostAsJsonAsync("/api/v1/users", createRequest, TestContext.Current.CancellationToken);
-        var createdUser = await createResponse.Content.ReadFromJsonAsync<UserDto>(TestContext.Current.CancellationToken);
+        var createdUser = await createResponse.Content.ReadFromJsonAsync<UserEndpointUserResponse>(TestContext.Current.CancellationToken);
         createdUser.Should().NotBeNull();
 
         // Update the user
@@ -96,7 +96,7 @@ public class UserEndpointsTests : IClassFixture<ServerWebApplicationFactory>
         var updateResponse = await _client.PutAsJsonAsync($"/api/v1/users/{createdUser.Id}", updateRequest, TestContext.Current.CancellationToken);
 
         updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var updatedUser = await updateResponse.Content.ReadFromJsonAsync<UserDto>(TestContext.Current.CancellationToken);
+        var updatedUser = await updateResponse.Content.ReadFromJsonAsync<UserEndpointUserResponse>(TestContext.Current.CancellationToken);
         updatedUser.Should().NotBeNull();
         updatedUser!.Email.Should().Be("updated@example.com");
     }
@@ -112,7 +112,7 @@ public class UserEndpointsTests : IClassFixture<ServerWebApplicationFactory>
             Password = "TestPassword123!"
         };
         var createResponse = await _client.PostAsJsonAsync("/api/v1/users", createRequest, TestContext.Current.CancellationToken);
-        var createdUser = await createResponse.Content.ReadFromJsonAsync<UserDto>(TestContext.Current.CancellationToken);
+        var createdUser = await createResponse.Content.ReadFromJsonAsync<UserEndpointUserResponse>(TestContext.Current.CancellationToken);
 
         // Delete the user
         var deleteResponse = await _client.DeleteAsync($"/api/v1/users/{createdUser!.Id}", TestContext.Current.CancellationToken);
@@ -135,7 +135,7 @@ public class UserEndpointsTests : IClassFixture<ServerWebApplicationFactory>
             Password = "TestPassword123!"
         };
         var createResponse = await _client.PostAsJsonAsync("/api/v1/users", createRequest, TestContext.Current.CancellationToken);
-        var createdUser = await createResponse.Content.ReadFromJsonAsync<UserDto>(TestContext.Current.CancellationToken);
+        var createdUser = await createResponse.Content.ReadFromJsonAsync<UserEndpointUserResponse>(TestContext.Current.CancellationToken);
 
         // Reset password
         var resetRequest = new { NewPassword = "NewTestPassword123!" };
@@ -155,7 +155,7 @@ public class UserEndpointsTests : IClassFixture<ServerWebApplicationFactory>
             Password = "TestPassword123!"
         };
         var createResponse = await _client.PostAsJsonAsync("/api/v1/users", createRequest, TestContext.Current.CancellationToken);
-        var createdUser = await createResponse.Content.ReadFromJsonAsync<UserDto>(TestContext.Current.CancellationToken);
+        var createdUser = await createResponse.Content.ReadFromJsonAsync<UserEndpointUserResponse>(TestContext.Current.CancellationToken);
 
         // Unlock user (should work even if not locked)
         var unlockResponse = await _client.PostAsync($"/api/v1/users/{createdUser!.Id}/unlock", null, TestContext.Current.CancellationToken);
@@ -168,13 +168,13 @@ public class UserEndpointsTests : IClassFixture<ServerWebApplicationFactory>
     {
         // Get the admin user
         var listResponse = await _client.GetAsync("/api/v1/users", TestContext.Current.CancellationToken);
-        var users = await listResponse.Content.ReadFromJsonAsync<List<UserDto>>(TestContext.Current.CancellationToken);
+        var users = await listResponse.Content.ReadFromJsonAsync<List<UserEndpointUserResponse>>(TestContext.Current.CancellationToken);
         var adminUser = users!.First(u => u.Username == "admin");
 
         var response = await _client.GetAsync($"/api/v1/users/{adminUser.Id}/roles", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var roles = await response.Content.ReadFromJsonAsync<List<RoleDto>>(TestContext.Current.CancellationToken);
+        var roles = await response.Content.ReadFromJsonAsync<List<UserEndpointRoleResponse>>(TestContext.Current.CancellationToken);
         roles.Should().NotBeNull();
         roles!.Should().Contain(r => r.Name == "Administrator");
     }
@@ -190,15 +190,15 @@ public class UserEndpointsTests : IClassFixture<ServerWebApplicationFactory>
             Password = "TestPassword123!"
         };
         var createResponse = await _client.PostAsJsonAsync("/api/v1/users", createRequest, TestContext.Current.CancellationToken);
-        var createdUser = await createResponse.Content.ReadFromJsonAsync<UserDto>(TestContext.Current.CancellationToken);
+        var createdUser = await createResponse.Content.ReadFromJsonAsync<UserEndpointUserResponse>(TestContext.Current.CancellationToken);
 
         // Get a role to assign
         var rolesResponse = await _client.GetAsync("/api/v1/roles", TestContext.Current.CancellationToken);
-        var roles = await rolesResponse.Content.ReadFromJsonAsync<List<RoleSummaryDto>>(TestContext.Current.CancellationToken);
+        var roles = await rolesResponse.Content.ReadFromJsonAsync<List<UserEndpointRoleResponse>>(TestContext.Current.CancellationToken);
         var viewerRole = roles!.First(r => r.Name == "Viewer");
 
         // Set user roles
-        var setRolesRequest = new SetRolesRequest
+        var setRolesRequest = new SetUserRolesRequest
         {
             RoleIds = [viewerRole.Id]
         };
@@ -208,8 +208,29 @@ public class UserEndpointsTests : IClassFixture<ServerWebApplicationFactory>
 
         // Verify roles were set
         var getRolesResponse = await _client.GetAsync($"/api/v1/users/{createdUser.Id}/roles", TestContext.Current.CancellationToken);
-        var userRoles = await getRolesResponse.Content.ReadFromJsonAsync<List<RoleDto>>(TestContext.Current.CancellationToken);
+        var userRoles = await getRolesResponse.Content.ReadFromJsonAsync<List<UserEndpointRoleResponse>>(TestContext.Current.CancellationToken);
         userRoles.Should().NotBeNull();
         userRoles!.Should().Contain(r => r.Name == "Viewer");
     }
 }
+
+public sealed class UserEndpointUserResponse
+{
+    public required Guid Id { get; init; }
+    public required string Username { get; init; }
+    public required string Email { get; init; }
+}
+
+public sealed class UserEndpointUserDetailResponse
+{
+    public required Guid Id { get; init; }
+    public required string Username { get; init; }
+    public required string Email { get; init; }
+}
+
+public sealed class UserEndpointRoleResponse
+{
+    public required Guid Id { get; init; }
+    public required string Name { get; init; }
+}
+

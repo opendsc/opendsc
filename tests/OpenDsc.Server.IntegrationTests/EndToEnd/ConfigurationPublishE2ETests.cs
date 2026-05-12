@@ -6,8 +6,7 @@ using System.Net;
 
 using AwesomeAssertions;
 
-using OpenDsc.Server.Endpoints;
-using OpenDsc.Server.Entities;
+using OpenDsc.Contracts.Configurations;
 
 using Xunit;
 
@@ -36,7 +35,6 @@ public class ConfigurationPublishE2ETests : IDisposable
         configContent.Add(new StringContent(configName), "name");
         configContent.Add(new StringContent("Test E2E Configuration"), "description");
         configContent.Add(new StringContent("main.dsc.yaml"), "entryPoint");
-        configContent.Add(new StringContent("true"), "isDraft");
 
         var configFileContent = @"
 $schema: https://raw.githubusercontent.com/PowerShell/DSC/main/schemas/2024/04/config/document.json
@@ -58,13 +56,13 @@ resources:
         // Step 2: Verify configuration was created as draft
         var getResponse = await client.GetAsync($"/api/v1/configurations/{configName}", TestContext.Current.CancellationToken);
         getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var configDto = await getResponse.Content.ReadFromJsonAsync<ConfigurationDetailsDto>(TestContext.Current.CancellationToken);
+        var configDto = await getResponse.Content.ReadFromJsonAsync<ConfigurationDetails>(TestContext.Current.CancellationToken);
         configDto.Should().NotBeNull();
         configDto!.LatestVersion.Should().Be("1.0.0");
 
         var versionResponse = await client.GetAsync($"/api/v1/configurations/{configName}/versions", TestContext.Current.CancellationToken);
         versionResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var versions = await versionResponse.Content.ReadFromJsonAsync<List<ConfigurationVersionDto>>(TestContext.Current.CancellationToken);
+        var versions = await versionResponse.Content.ReadFromJsonAsync<List<ConfigurationVersionDetails>>(TestContext.Current.CancellationToken);
         versions.Should().NotBeNull();
         versions.Should().HaveCount(1);
         versions![0].Status.Should().Be(ConfigurationVersionStatus.Draft);
@@ -76,7 +74,7 @@ resources:
         // Step 4: Verify the version is now published
         var verifyVersionResponse = await client.GetAsync($"/api/v1/configurations/{configName}/versions", TestContext.Current.CancellationToken);
         verifyVersionResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var publishedVersions = await verifyVersionResponse.Content.ReadFromJsonAsync<List<ConfigurationVersionDto>>(TestContext.Current.CancellationToken);
+        var publishedVersions = await verifyVersionResponse.Content.ReadFromJsonAsync<List<ConfigurationVersionDetails>>(TestContext.Current.CancellationToken);
         publishedVersions.Should().NotBeNull();
         publishedVersions.Should().HaveCount(1);
         publishedVersions![0].Status.Should().Be(ConfigurationVersionStatus.Published);
@@ -84,7 +82,7 @@ resources:
         // Step 5: Verify configuration details show published version
         var finalGetResponse = await client.GetAsync($"/api/v1/configurations/{configName}", TestContext.Current.CancellationToken);
         finalGetResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var finalConfigDto = await finalGetResponse.Content.ReadFromJsonAsync<ConfigurationDetailsDto>(TestContext.Current.CancellationToken);
+        var finalConfigDto = await finalGetResponse.Content.ReadFromJsonAsync<ConfigurationDetails>(TestContext.Current.CancellationToken);
         finalConfigDto.Should().NotBeNull();
         finalConfigDto!.LatestVersion.Should().Be("1.0.0");
     }
@@ -99,7 +97,6 @@ resources:
         using var configContent = new MultipartFormDataContent();
         configContent.Add(new StringContent(configName), "name");
         configContent.Add(new StringContent("main.dsc.yaml"), "entryPoint");
-        configContent.Add(new StringContent("true"), "isDraft");
         var configFile = new ByteArrayContent("content"u8.ToArray());
         configFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         configContent.Add(configFile, "files", "main.dsc.yaml");
@@ -124,7 +121,6 @@ resources:
         using var initialContent = new MultipartFormDataContent();
         initialContent.Add(new StringContent(configName), "name");
         initialContent.Add(new StringContent("main.dsc.yaml"), "entryPoint");
-        initialContent.Add(new StringContent("true"), "isDraft");
         var initialFile = new ByteArrayContent("v1"u8.ToArray());
         initialFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         initialContent.Add(initialFile, "files", "main.dsc.yaml");
@@ -137,7 +133,6 @@ resources:
         // Create version 2.0.0 as draft
         using var v2Content = new MultipartFormDataContent();
         v2Content.Add(new StringContent("2.0.0"), "version");
-        v2Content.Add(new StringContent("true"), "isDraft");
         var v2File = new ByteArrayContent("v2"u8.ToArray());
         v2File.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         v2Content.Add(v2File, "files", "main.dsc.yaml");
@@ -149,7 +144,7 @@ resources:
 
         // Verify both versions are published
         var versionsResponse = await client.GetAsync($"/api/v1/configurations/{configName}/versions", TestContext.Current.CancellationToken);
-        var versions = await versionsResponse.Content.ReadFromJsonAsync<List<ConfigurationVersionDto>>(TestContext.Current.CancellationToken);
+        var versions = await versionsResponse.Content.ReadFromJsonAsync<List<ConfigurationVersionDetails>>(TestContext.Current.CancellationToken);
         versions.Should().NotBeNull();
         versions.Should().HaveCount(2);
         versions!.All(v => v.Status == ConfigurationVersionStatus.Published).Should().BeTrue();

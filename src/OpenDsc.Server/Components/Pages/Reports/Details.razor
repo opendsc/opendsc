@@ -1,7 +1,7 @@
 @page "/reports/{id:guid}"
 @attribute [Authorize(Policy = ReportPermissions.Read)]
 @implements IDisposable
-@inject ServerDbContext Db
+@inject IReportService ReportService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 @using BlazorMonaco
@@ -10,6 +10,7 @@
 @inject ThemeService ThemeService
 @inject IJsonYamlConverter JsonYamlConverter
 @inject JsonSerializerOptions JsonOptions
+@using OpenDsc.Contracts.Reports
 @using OpenDsc.Schema
 @using System.Text.Json
 
@@ -36,7 +37,7 @@ else
                         <tbody>
                             <tr>
                                 <td><strong>Node:</strong></td>
-                                <td>@nodeFqdn</td>
+                                <td>@report.NodeFqdn</td>
                             </tr>
                             <tr>
                                 <td><strong>Operation:</strong></td>
@@ -337,8 +338,7 @@ else
     [Parameter]
     public Guid Id { get; set; }
 
-    private Report? report;
-    private string nodeFqdn = string.Empty;
+    private ReportDetails? report;
 
     private StandaloneCodeEditor? _editorYaml;
     private StandaloneCodeEditor? _editorJson;
@@ -381,12 +381,12 @@ else
     {
         try
         {
-            report = await Db.Reports.FindAsync(Id);
+            report = await ReportService.GetReportAsync(Id);
             if (report != null)
             {
-                var node = await Db.Nodes.FindAsync(report.NodeId);
-                nodeFqdn = node?.Fqdn ?? "Unknown";
-                rawJson = report.ResultJson ?? string.Empty;
+                rawJson = report.Result is null
+                    ? "{}"
+                    : JsonSerializer.Serialize(report.Result, JsonOptions);
                 ParseReport();
                 yamlContent = JsonYamlConverter.ConvertJsonToYaml(rawJson);
                 jsonContent = FormatJson(rawJson);

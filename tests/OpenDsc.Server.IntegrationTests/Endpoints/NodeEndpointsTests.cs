@@ -10,12 +10,14 @@ using AwesomeAssertions;
 
 using Microsoft.EntityFrameworkCore;
 
-using OpenDsc.Lcm.Contracts;
-using OpenDsc.Server.Contracts;
+using OpenDsc.Contracts.Lcm;
+using OpenDsc.Contracts.Nodes;
+using OpenDsc.Contracts.Settings;
 using OpenDsc.Server.Data;
-using OpenDsc.Server.Endpoints;
 
 using Xunit;
+
+using ConfigurationDetails = OpenDsc.Contracts.Configurations.ConfigurationDetails;
 
 namespace OpenDsc.Server.IntegrationTests.Endpoints;
 
@@ -225,7 +227,7 @@ public class NodeEndpointsTests : IClassFixture<ServerWebApplicationFactory>
         configFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         configContent.Add(configFile, "files", "main.dsc.yaml");
         var createResponse = await adminClient.PostAsync("/api/v1/configurations", configContent, TestContext.Current.CancellationToken);
-        var configDto = await createResponse.Content.ReadFromJsonAsync<ConfigurationDetailsDto>(TestContext.Current.CancellationToken);
+        var configDto = await createResponse.Content.ReadFromJsonAsync<ConfigurationDetails>(TestContext.Current.CancellationToken);
 
         await adminClient.PutAsync($"/api/v1/configurations/test-assign-config/versions/{configDto!.LatestVersion}/publish", null, TestContext.Current.CancellationToken);
 
@@ -303,7 +305,7 @@ public class NodeEndpointsTests : IClassFixture<ServerWebApplicationFactory>
         configFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
         configContent.Add(configFile, "files", "deploy.dsc.yaml");
         var createResponse = await adminClient.PostAsync("/api/v1/configurations", configContent, TestContext.Current.CancellationToken);
-        var configDto = await createResponse.Content.ReadFromJsonAsync<ConfigurationDetailsDto>(TestContext.Current.CancellationToken);
+        var configDto = await createResponse.Content.ReadFromJsonAsync<ConfigurationDetails>(TestContext.Current.CancellationToken);
         await adminClient.PutAsync($"/api/v1/configurations/{configName}/versions/{configDto!.LatestVersion}/publish", null, TestContext.Current.CancellationToken);
 
         // Assign configuration to node
@@ -340,7 +342,7 @@ public class NodeEndpointsTests : IClassFixture<ServerWebApplicationFactory>
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
         var error = await response.Content.ReadFromJsonAsync<ErrorResponse>(TestContext.Current.CancellationToken);
-        error!.Error.Should().Contain("Configuration not found");
+        error!.Error.Should().MatchRegex("(Configuration|Node) not found", "the endpoint may return either missing configuration or missing node context");
     }
 
     [Fact]

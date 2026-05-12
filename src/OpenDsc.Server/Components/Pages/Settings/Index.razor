@@ -1,8 +1,7 @@
 @page "/settings"
 @attribute [Authorize(Policy = ServerPermissions.SettingsRead)]
-@inject ServerDbContext Db
+@inject ISettingsService SettingsService
 @inject ISnackbar Snackbar
-@using OpenDsc.Lcm.Contracts
 
 <PageTitle>Settings</PageTitle>
 
@@ -143,15 +142,14 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var settings = await Db.ServerSettings.FirstOrDefaultAsync();
-        if (settings is not null)
-        {
-            certificateRotationDays = (int)settings.CertificateRotationInterval.TotalDays;
-            stalenessMultiplier = settings.StalenessMultiplier;
-            defaultConfigMode = settings.DefaultConfigurationMode;
-            defaultIntervalText = settings.DefaultConfigurationModeInterval?.ToString(@"hh\:mm\:ss");
-            defaultReportCompliance = settings.DefaultReportCompliance;
-        }
+        var settings = await SettingsService.GetServerSettingsAsync();
+        certificateRotationDays = (int)settings.CertificateRotationInterval.TotalDays;
+        stalenessMultiplier = settings.StalenessMultiplier;
+
+        var lcmDefaults = await SettingsService.GetServerLcmDefaultsAsync();
+        defaultConfigMode = lcmDefaults.DefaultConfigurationMode;
+        defaultIntervalText = lcmDefaults.DefaultConfigurationModeInterval?.ToString(@"hh\:mm\:ss");
+        defaultReportCompliance = lcmDefaults.DefaultReportCompliance;
 
         serverSettingsLoading = false;
         lcmDefaultsLoading = false;
@@ -165,16 +163,11 @@
 
         try
         {
-            var settings = await Db.ServerSettings.FirstOrDefaultAsync();
-            if (settings is null)
+            await SettingsService.UpdateServerSettingsAsync(new UpdateServerSettingsRequest
             {
-                Snackbar.Add("Server settings not found.", Severity.Error);
-                return;
-            }
-
-            settings.CertificateRotationInterval = TimeSpan.FromDays(certificateRotationDays);
-            settings.StalenessMultiplier = stalenessMultiplier;
-            await Db.SaveChangesAsync();
+                CertificateRotationInterval = TimeSpan.FromDays(certificateRotationDays),
+                StalenessMultiplier = stalenessMultiplier
+            });
             Snackbar.Add("Server settings saved.", Severity.Success);
         }
         catch (Exception ex)
@@ -206,17 +199,12 @@
                 interval = parsed;
             }
 
-            var settings = await Db.ServerSettings.FirstOrDefaultAsync();
-            if (settings is null)
+            await SettingsService.UpdateServerLcmDefaultsAsync(new UpdateServerLcmDefaultsRequest
             {
-                Snackbar.Add("Server settings not found.", Severity.Error);
-                return;
-            }
-
-            settings.DefaultConfigurationMode = defaultConfigMode;
-            settings.DefaultConfigurationModeInterval = interval;
-            settings.DefaultReportCompliance = defaultReportCompliance;
-            await Db.SaveChangesAsync();
+                DefaultConfigurationMode = defaultConfigMode,
+                DefaultConfigurationModeInterval = interval,
+                DefaultReportCompliance = defaultReportCompliance
+            });
             Snackbar.Add("LCM defaults saved.", Severity.Success);
         }
         catch (Exception ex)

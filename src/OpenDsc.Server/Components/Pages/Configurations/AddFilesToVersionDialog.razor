@@ -3,8 +3,9 @@
 @* terms of the MIT license. *@
 
 @using Microsoft.AspNetCore.Components.Forms
+@using OpenDsc.Contracts.Configurations
 @using OpenDsc.Server.Services
-@inject IConfigurationService ApiClient
+@inject IConfigurationService ConfigurationService
 @inject ISnackbar Snackbar
 
 <MudDialog>
@@ -123,21 +124,14 @@
 
         try
         {
-            var success = await ApiClient.AddFilesToVersionAsync(
+            await ConfigurationService.AddFilesAsync(
                 ConfigurationName,
                 Version,
-                selectedFiles);
+                selectedFiles.Select(ToFileUpload).ToList());
 
-            if (success)
-            {
-                Snackbar.Add($"Added {selectedFiles.Count} file(s) to version {Version}", Severity.Success);
-                MudDialog.Close(DialogResult.Ok(true));
-                await OnFilesAdded.InvokeAsync();
-            }
-            else
-            {
-                validationError = "Failed to add files. Please check server logs.";
-            }
+            Snackbar.Add($"Added {selectedFiles.Count} file(s) to version {Version}", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+            await OnFilesAdded.InvokeAsync();
         }
         catch (Exception ex)
         {
@@ -148,6 +142,9 @@
             isSubmitting = false;
         }
     }
+
+    private static FileUpload ToFileUpload(IBrowserFile file) =>
+        new(file.Name, file.OpenReadStream(10 * 1024 * 1024), file.ContentType, file.Size);
 }
 
 <style>
