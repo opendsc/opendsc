@@ -10,13 +10,7 @@ using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 
 using OpenDsc.Contracts.Nodes;
-using OpenDsc.Contracts.CompositeConfigurations;
-using OpenDsc.Contracts.Reports;
-using OpenDsc.Contracts.Settings;
-using OpenDsc.Contracts.Permissions;
-using OpenDsc.Contracts.Parameters;
 using OpenDsc.Server.Data;
-using OpenDsc.Server.Entities;
 
 using Xunit;
 
@@ -58,6 +52,42 @@ public class ParameterEndpointsTests : IDisposable
         {
             throw new InvalidOperationException($"Configuration '{name}' was not found after creation");
         }
+
+        // Upload a parameter schema with common parameters so tests can create parameter files
+        // Use supported parameter types: string, secureString, int, bool, object, secureObject, array, float, double
+        var schemaContent = @"{
+  ""parameters"": {
+    ""param1"": { ""type"": ""string"" },
+    ""param2"": { ""type"": ""string"" },
+    ""setting1"": { ""type"": ""string"" },
+    ""appName"": { ""type"": ""string"" },
+    ""port"": { ""type"": ""int"", ""minValue"": 1, ""maxValue"": 65535 }
+  }
+}";
+        using var schemaRequest = new MultipartFormDataContent();
+        schemaRequest.Add(new StringContent("1.0.0"), "version");
+        var schemaFile = new ByteArrayContent(System.Text.Encoding.UTF8.GetBytes(schemaContent));
+        schemaFile.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+        schemaRequest.Add(schemaFile, "parametersFile", "parameters.json");
+
+        var schemaResponse = await client.PutAsync($"/api/v1/configurations/{name}/parameters", schemaRequest);
+        if (!schemaResponse.IsSuccessStatusCode)
+        {
+            var errorContent = await schemaResponse.Content.ReadAsStringAsync();
+            throw new InvalidOperationException($"Parameter schema upload failed: {schemaResponse.StatusCode} - {errorContent}");
+        }
+
+        // Verify schema was created
+        await Task.Delay(100); // Small delay to ensure data is persisted
+        using var verifyScope = _factory.Services.CreateScope();
+        var verifyDb = verifyScope.ServiceProvider.GetRequiredService<ServerDbContext>();
+        var schema = await verifyDb.ParameterSchemas.FirstOrDefaultAsync(
+            ps => ps.ConfigurationId == config.Id && ps.SchemaVersion == "1.0.0");
+        if (schema is null)
+        {
+            throw new InvalidOperationException($"Parameter schema was not created for configuration '{name}'");
+        }
+
         return config.Id;
     }
 
