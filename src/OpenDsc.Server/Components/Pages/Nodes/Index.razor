@@ -1,6 +1,6 @@
 @page "/nodes"
 @attribute [Authorize(Policy = NodePermissions.Read)]
-@inject INodeReader NodeService
+@inject INodeService NodeService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 @using OpenDsc.Contracts.Nodes

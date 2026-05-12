@@ -31,6 +31,8 @@ public class ParameterServiceTests : IDisposable
     private readonly Mock<IResourceAuthorizationService> _mockAuthService;
     private readonly Mock<IParameterMergeService> _mockMergeService;
     private readonly Mock<IParameterValidator> _mockValidator;
+    private readonly Mock<IParameterSchemaBuilder> _mockSchemaBuilder;
+    private readonly Mock<IParameterCompatibilityService> _mockCompatibilityService;
     private readonly IOptions<ServerConfig> _serverConfig;
     private readonly ParameterService _service;
     private readonly Guid _testUserId;
@@ -56,6 +58,8 @@ public class ParameterServiceTests : IDisposable
 
         _mockMergeService = new Mock<IParameterMergeService>();
         _mockValidator = new Mock<IParameterValidator>();
+        _mockSchemaBuilder = new Mock<IParameterSchemaBuilder>();
+        _mockCompatibilityService = new Mock<IParameterCompatibilityService>();
 
         _tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         Directory.CreateDirectory(_tempDir);
@@ -70,6 +74,8 @@ public class ParameterServiceTests : IDisposable
             _mockUserContext.Object,
             _mockMergeService.Object,
             _mockValidator.Object,
+            _mockSchemaBuilder.Object,
+            _mockCompatibilityService.Object,
             new NullLogger<ParameterService>()
         );
     }
@@ -971,6 +977,8 @@ public class ParameterServiceTests : IDisposable
             _mockUserContext.Object,
             _mockMergeService.Object,
             _mockValidator.Object,
+            _mockSchemaBuilder.Object,
+            _mockCompatibilityService.Object,
             new NullLogger<ParameterService>()
         );
 

@@ -256,3 +256,45 @@ public sealed class ParameterFileMigrationStatus
 
     public List<ValidationError> Errors { get; set; } = [];
 }
+
+/// <summary>
+/// Details about a parameter schema.
+/// </summary>
+public sealed class ParameterSchemaDetails
+{
+    public Guid Id { get; set; }
+
+    public Guid ConfigurationId { get; set; }
+
+    public string ConfigurationName { get; set; } = string.Empty;
+
+    public string? SchemaVersion { get; set; }
+
+    public string? GeneratedJsonSchema { get; set; }
+
+    public int ParameterFileCount { get; set; }
+
+    public DateTimeOffset CreatedAt { get; set; }
+}
+
+/// <summary>
+/// Details about a parameter file entry.
+/// </summary>
+public sealed class ParameterFileDetails
+{
+    public Guid Id { get; set; }
+
+    public Guid ParameterSchemaId { get; set; }
+
+    public string ScopeTypeName { get; set; } = string.Empty;
+
+    public string? ScopeValue { get; set; }
+
+    public string Version { get; set; } = string.Empty;
+
+    public ParameterVersionStatus Status { get; set; }
+
+    public string Checksum { get; set; } = string.Empty;
+
+    public DateTimeOffset CreatedAt { get; set; }
+}

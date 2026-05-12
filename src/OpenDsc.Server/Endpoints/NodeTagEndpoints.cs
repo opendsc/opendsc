@@ -35,12 +35,12 @@ public static class NodeTagEndpoints
 
     private static async Task<Results<Ok<List<NodeTagSummary>>, NotFound>> GetNodeTags(
         Guid nodeId,
-        INodeReader nodeReader,
+        INodeService nodeService,
         CancellationToken cancellationToken)
     {
         try
         {
-            var tags = await nodeReader.GetNodeTagsAsync(nodeId, cancellationToken);
+            var tags = await nodeService.GetNodeTagsAsync(nodeId, cancellationToken);
             return TypedResults.Ok(tags.ToList());
         }
         catch (KeyNotFoundException)
@@ -52,12 +52,12 @@ public static class NodeTagEndpoints
     private static async Task<Results<Created<NodeTagSummary>, BadRequest<string>, NotFound, Conflict<string>>> AssignNodeTag(
         Guid nodeId,
         [FromBody] AddNodeTagRequest request,
-        INodeTagManager nodeTagManager,
+        INodeService nodeService,
         CancellationToken cancellationToken)
     {
         try
         {
-            var tag = await nodeTagManager.AddNodeTagAsync(nodeId, request, cancellationToken);
+            var tag = await nodeService.AddNodeTagAsync(nodeId, request, cancellationToken);
             return TypedResults.Created($"/api/v1/nodes/{nodeId}/tags/{tag.ScopeValueId}", tag);
         }
         catch (ArgumentException ex)
@@ -77,12 +77,12 @@ public static class NodeTagEndpoints
     private static async Task<Results<NoContent, NotFound>> RemoveNodeTag(
         Guid nodeId,
         Guid scopeValueId,
-        INodeTagManager nodeTagManager,
+        INodeService nodeService,
         CancellationToken cancellationToken)
     {
         try
         {
-            await nodeTagManager.RemoveNodeTagAsync(
+            await nodeService.RemoveNodeTagAsync(
                 nodeId,
                 new RemoveNodeTagRequest { ScopeValueId = scopeValueId },
                 cancellationToken);

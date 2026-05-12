@@ -1,9 +1,6 @@
 @page "/nodes/{id:guid}"
 @attribute [Authorize(Policy = NodePermissions.Read)]
-@inject INodeReader NodeReader
-@inject INodeConfigurationManager NodeConfigurationManager
-@inject INodeTagManager NodeTagManager
-@inject INodeLcmManager NodeLcmManager
+@inject INodeService NodeService
 @inject IReportService ReportService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
@@ -608,7 +605,7 @@ else
     {
         try
         {
-            node = await NodeReader.GetNodeAsync(Id);
+            node = await NodeService.GetNodeAsync(Id);
             if (node != null)
             {
                 selectedConfigurationName = node.ConfigurationName;
@@ -625,7 +622,7 @@ else
                     : node.ReportCompliance == false ? "No"
                     : "—";
 
-                nodeConfig = await NodeReader.GetNodeAssignmentAsync(Id);
+                nodeConfig = await NodeService.GetNodeAssignmentAsync(Id);
 
                 if (nodeConfig != null)
                 {
@@ -638,9 +635,9 @@ else
                     }
                 }
 
-                configurations = (await NodeReader.GetAssignableConfigurationsAsync()).ToList();
+                configurations = (await NodeService.GetAssignableConfigurationsAsync()).ToList();
 
-                compositeConfigurations = (await NodeReader.GetAssignableCompositeConfigurationsAsync()).ToList();
+                compositeConfigurations = (await NodeService.GetAssignableCompositeConfigurationsAsync()).ToList();
 
                 if (selectedConfigType == "Composite")
                 {
@@ -671,7 +668,7 @@ else
 
     private async Task LoadTagsAsync()
     {
-        nodeTags = (await NodeTagManager.GetNodeTagsAsync(Id)).ToList();
+        nodeTags = (await NodeService.GetNodeTagsAsync(Id)).ToList();
 
         // clear any in-progress editing when the list changes
         editingTag = null;
@@ -679,12 +676,12 @@ else
 
     private async Task LoadScopeDataAsync()
     {
-        availableScopeTypes = (await NodeReader.GetScopeTypesAsync()).ToList();
+        availableScopeTypes = (await NodeService.GetScopeTypesAsync()).ToList();
 
-        availableScopeValues = (await NodeReader.GetScopeValuesAsync()).ToList();
+        availableScopeValues = (await NodeService.GetScopeValuesAsync()).ToList();
 
         // preload nodes for node-scope dropdown
-        nodesForType = (await NodeReader.GetNodesAsync(new NodeFilterRequest { Limit = 500 })).ToList();
+        nodesForType = (await NodeService.GetNodesAsync(new NodeFilterRequest { Limit = 500 })).ToList();
     }
 
     private async Task LoadReportsAsync()
@@ -720,7 +717,7 @@ else
 
     private async Task LoadStatusEventsAsync()
     {
-        statusEvents = (await NodeReader.GetNodeStatusEventsAsync(Id)).Select(e => new NodeStatusEvent
+        statusEvents = (await NodeService.GetNodeStatusEventsAsync(Id)).Select(e => new NodeStatusEvent
         {
             Id = e.Id,
             NodeId = e.NodeId,
@@ -878,7 +875,7 @@ else
         try
         {
             var channel = string.IsNullOrWhiteSpace(selectedPrereleaseChannel) ? null : selectedPrereleaseChannel;
-            await NodeConfigurationManager.AssignConfigurationAsync(Id, new AssignConfigurationRequest
+            await NodeService.AssignConfigurationAsync(Id, new AssignConfigurationRequest
             {
                 ConfigurationName = selectedConfigurationName,
                 IsComposite = false,
@@ -886,7 +883,7 @@ else
                 PrereleaseChannel = channel
             });
 
-            nodeConfig = await NodeReader.GetNodeAssignmentAsync(Id);
+            nodeConfig = await NodeService.GetNodeAssignmentAsync(Id);
             node.ConfigurationName = selectedConfigurationName;
 
             Snackbar.Add($"Configuration '{selectedConfigurationName}' assigned successfully", Severity.Success);
@@ -904,7 +901,7 @@ else
         try
         {
             var channel = string.IsNullOrWhiteSpace(selectedPrereleaseChannel) ? null : selectedPrereleaseChannel;
-            await NodeConfigurationManager.AssignConfigurationAsync(Id, new AssignConfigurationRequest
+            await NodeService.AssignConfigurationAsync(Id, new AssignConfigurationRequest
             {
                 ConfigurationName = selectedCompositeConfigurationName,
                 IsComposite = true,
@@ -912,7 +909,7 @@ else
                 PrereleaseChannel = channel
             });
 
-            nodeConfig = await NodeReader.GetNodeAssignmentAsync(Id);
+            nodeConfig = await NodeService.GetNodeAssignmentAsync(Id);
             node.ConfigurationName = selectedCompositeConfigurationName;
 
             Snackbar.Add($"Composite configuration '{selectedCompositeConfigurationName}' assigned successfully", Severity.Success);
@@ -929,7 +926,7 @@ else
 
         try
         {
-            await NodeConfigurationManager.RemoveConfigurationAsync(Id);
+            await NodeService.RemoveConfigurationAsync(Id);
             nodeConfig = null;
             node.ConfigurationName = null;
             selectedConfigurationName = null;
@@ -1018,7 +1015,7 @@ else
         {
             if (isUnrestricted)
             {
-                await NodeReader.SetNodeScopeValueAsync(Id, new SetNodeScopeValueRequest
+                await NodeService.SetNodeScopeValueAsync(Id, new SetNodeScopeValueRequest
                 {
                     ScopeTypeId = selectedScopeTypeId.Value,
                     ScopeValue = selectedScopeValueText!.Trim()
@@ -1036,8 +1033,8 @@ else
                         return;
                     }
 
-                    await NodeTagManager.RemoveNodeTagAsync(Id, new RemoveNodeTagRequest { ScopeValueId = editingTag.ScopeValueId });
-                    await NodeTagManager.AddNodeTagAsync(Id, new AddNodeTagRequest { ScopeValueId = scopeValueId });
+                    await NodeService.RemoveNodeTagAsync(Id, new RemoveNodeTagRequest { ScopeValueId = editingTag.ScopeValueId });
+                    await NodeService.AddNodeTagAsync(Id, new AddNodeTagRequest { ScopeValueId = scopeValueId });
                     Snackbar.Add("Tag updated successfully", Severity.Success);
                 }
                 else
@@ -1048,7 +1045,7 @@ else
                         return;
                     }
 
-                    await NodeTagManager.AddNodeTagAsync(Id, new AddNodeTagRequest { ScopeValueId = scopeValueId });
+                    await NodeService.AddNodeTagAsync(Id, new AddNodeTagRequest { ScopeValueId = scopeValueId });
                     Snackbar.Add("Tag added successfully", Severity.Success);
                 }
             }
@@ -1071,7 +1068,7 @@ else
     {
         try
         {
-            await NodeTagManager.RemoveNodeTagAsync(Id, new RemoveNodeTagRequest { ScopeValueId = tag.ScopeValueId });
+            await NodeService.RemoveNodeTagAsync(Id, new RemoveNodeTagRequest { ScopeValueId = tag.ScopeValueId });
 
             await LoadTagsAsync();
 

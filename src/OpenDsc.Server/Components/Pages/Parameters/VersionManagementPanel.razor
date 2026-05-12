@@ -6,16 +6,16 @@
 
 @using MudBlazor
 @using NuGet.Versioning
-@using Microsoft.EntityFrameworkCore
 @using OpenDsc.Contracts.Parameters
+@using OpenDsc.Contracts.Settings
+@using OpenDsc.Contracts.Configurations
 @using OpenDsc.Server.Services
-@using OpenDsc.Server.Entities
-@using static OpenDsc.Server.Endpoints.ParameterEndpoints
 @using ParameterVersionStatusContract = OpenDsc.Contracts.Parameters.ParameterVersionStatus
 @inject IParameterService ParameterService
+@inject IScopeService ScopeService
+@inject IConfigurationService ConfigurationService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
-@inject ServerDbContext Db
 
 <MudCard>
     <MudCardContent>
@@ -264,11 +264,15 @@
 
         if (selectedScopeTypeId.HasValue)
         {
-            var scopeTypeName = await Db.ScopeTypes
-                .Where(st => st.Id == selectedScopeTypeId.Value)
-                .Select(st => st.Name)
-                .FirstOrDefaultAsync();
-            isDefaultScopeType = scopeTypeName == "Default";
+            try
+            {
+                var scopeType = await ScopeService.GetScopeTypeAsync(selectedScopeTypeId.Value);
+                isDefaultScopeType = scopeType.Name == "Default";
+            }
+            catch (KeyNotFoundException)
+            {
+                isDefaultScopeType = false;
+            }
         }
         else
         {
@@ -277,15 +281,20 @@
 
         availableConfigMajors = await ParameterService.GetAvailableMajorVersionsAsync(selectedConfigurationId.Value);
 
-        var publishedVersionStrings = await Db.ConfigurationVersions
-            .Where(cv => cv.ConfigurationId == selectedConfigurationId.Value && cv.Status == ConfigurationVersionStatus.Published)
-            .Select(cv => cv.Version)
-            .ToListAsync();
-
-        publishedConfigMajors = publishedVersionStrings
-            .Where(v => SemanticVersion.TryParse(v, out _))
-            .Select(v => SemanticVersion.Parse(v).Major)
-            .ToHashSet();
+        var allConfigs = await ConfigurationService.GetConfigurationsAsync();
+        var config = allConfigs.Find(c => c.Id == selectedConfigurationId.Value);
+        if (config is not null)
+        {
+            var configVersions = await ConfigurationService.GetVersionsAsync(config.Name) ?? [];
+            publishedConfigMajors = configVersions
+                .Where(v => v.Status == ConfigurationVersionStatus.Published && SemanticVersion.TryParse(v.Version, out _))
+                .Select(v => SemanticVersion.Parse(v.Version).Major)
+                .ToHashSet();
+        }
+        else
+        {
+            publishedConfigMajors = [];
+        }
     }
 
     private async Task ViewParameter(ParameterVersionDetails parameter)

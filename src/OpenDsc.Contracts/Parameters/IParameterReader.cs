@@ -32,4 +32,17 @@ public interface IParameterReader
         Guid nodeId,
         Guid? configurationId = null,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<MajorVersionSummary>> GetMajorVersionSummariesAsync(
+        Guid scopeTypeId,
+        Guid configurationId,
+        string? scopeValue = null,
+        CancellationToken cancellationToken = default);
+
+    Task<ParameterVersionDetails?> GetActiveParameterForMajorAsync(
+        Guid scopeTypeId,
+        Guid configurationId,
+        int majorVersion,
+        string? scopeValue = null,
+        CancellationToken cancellationToken = default);
 }

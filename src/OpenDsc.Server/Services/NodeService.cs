@@ -18,7 +18,7 @@ using NuGet.Versioning;
 
 namespace OpenDsc.Server.Services;
 
-public sealed class NodeService : INodeReader, INodeTagManager, INodeConfigurationManager, INodeRegistrationManager, INodeLcmManager, INodeManager
+public sealed class NodeService : INodeService
 {
     private readonly ServerDbContext _db;
     private readonly IParameterMergeService _parameterMergeService;

@@ -101,7 +101,7 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
         RegisterNodeRequest request,
         HttpContext httpContext,
         IWebHostEnvironment env,
-        INodeRegistrationManager registrationManager,
+        INodeService nodeService,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.Fqdn))
@@ -144,7 +144,7 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
 
         try
         {
-            var response = await registrationManager.RegisterNodeAsync(
+            var response = await nodeService.RegisterNodeAsync(
                 request,
                 thumbprint,
                 subject,
@@ -166,19 +166,19 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
     }
 
     private async Task<Ok<List<NodeSummary>>> GetNodes(
-        INodeReader nodeReader,
+        INodeService nodeService,
         CancellationToken cancellationToken)
     {
-        var nodes = await nodeReader.GetNodesAsync(cancellationToken: cancellationToken);
+        var nodes = await nodeService.GetNodesAsync(cancellationToken: cancellationToken);
         return TypedResults.Ok(nodes.ToList());
     }
 
     private async Task<Results<Ok<NodeDetails>, NotFound<ErrorResponse>>> GetNode(
         Guid nodeId,
-        INodeReader nodeReader,
+        INodeService nodeService,
         CancellationToken cancellationToken)
     {
-        var node = await nodeReader.GetNodeAsync(nodeId, cancellationToken);
+        var node = await nodeService.GetNodeAsync(nodeId, cancellationToken);
         if (node is null)
         {
             return TypedResults.NotFound(new ErrorResponse { Error = "Node not found." });
@@ -189,12 +189,12 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
 
     private async Task<Results<NoContent, NotFound<ErrorResponse>>> DeleteNode(
         Guid nodeId,
-        INodeManager nodeManager,
+        INodeService nodeService,
         CancellationToken cancellationToken)
     {
         try
         {
-            await nodeManager.DeleteNodeAsync(nodeId, cancellationToken);
+            await nodeService.DeleteNodeAsync(nodeId, cancellationToken);
             return TypedResults.NoContent();
         }
         catch (KeyNotFoundException)
@@ -207,7 +207,7 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
         Guid nodeId,
         ClaimsPrincipal user,
         IWebHostEnvironment env,
-        INodeConfigurationManager configurationManager,
+        INodeService nodeService,
         CancellationToken cancellationToken)
     {
         LogGettingNodeConfiguration(nodeId);
@@ -222,7 +222,7 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
                 }
             }
 
-            var manifest = await configurationManager.GetNodeConfigurationManifestAsync(nodeId, cancellationToken);
+            var manifest = await nodeService.GetNodeConfigurationManifestAsync(nodeId, cancellationToken);
             if (manifest is null)
             {
                 LogNoConfigurationFoundForNode(nodeId);
@@ -240,10 +240,10 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
 
     private async Task<Results<FileStreamHttpResult, NotFound<ErrorResponse>>> GetConfigurationBundle(
         Guid nodeId,
-        INodeConfigurationManager configurationManager,
+        INodeService nodeService,
         CancellationToken cancellationToken)
     {
-        var bundle = await configurationManager.GetNodeConfigurationBundleAsync(nodeId, cancellationToken);
+        var bundle = await nodeService.GetNodeConfigurationBundleAsync(nodeId, cancellationToken);
         if (bundle is null)
         {
             return TypedResults.NotFound(new ErrorResponse { Error = "No configuration assigned." });
@@ -255,7 +255,7 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
     private async Task<Results<NoContent, NotFound<ErrorResponse>, BadRequest<ErrorResponse>>> AssignConfiguration(
         Guid nodeId,
         AssignConfigurationRequest request,
-        INodeConfigurationManager configurationManager,
+        INodeService nodeService,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.ConfigurationName))
@@ -265,7 +265,7 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
 
         try
         {
-            await configurationManager.AssignConfigurationAsync(nodeId, request, cancellationToken);
+            await nodeService.AssignConfigurationAsync(nodeId, request, cancellationToken);
             return TypedResults.NoContent();
         }
         catch (KeyNotFoundException)
@@ -280,12 +280,12 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
 
     private async Task<Results<NoContent, NotFound<ErrorResponse>>> UnassignConfiguration(
         Guid nodeId,
-        INodeConfigurationManager configurationManager,
+        INodeService nodeService,
         CancellationToken cancellationToken)
     {
         try
         {
-            await configurationManager.RemoveConfigurationAsync(nodeId, cancellationToken);
+            await nodeService.RemoveConfigurationAsync(nodeId, cancellationToken);
             return TypedResults.NoContent();
         }
         catch (KeyNotFoundException)
@@ -297,7 +297,7 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
     private async Task<Results<Ok<ConfigurationChecksumResponse>, NotFound<ErrorResponse>, ForbidHttpResult>> GetConfigurationChecksum(
         Guid nodeId,
         ClaimsPrincipal user,
-        INodeConfigurationManager configurationManager,
+        INodeService nodeService,
         CancellationToken cancellationToken)
     {
         var authenticatedNodeId = user.FindFirst("node_id")?.Value;
@@ -306,7 +306,7 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
             return TypedResults.Forbid();
         }
 
-        var response = await configurationManager.GetConfigurationChecksumAsync(nodeId, cancellationToken);
+        var response = await nodeService.GetConfigurationChecksumAsync(nodeId, cancellationToken);
         if (response is null)
         {
             return TypedResults.NotFound(new ErrorResponse { Error = "Node not found." });
@@ -318,7 +318,7 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
         Guid nodeId,
         UpdateLcmStatusRequest request,
         ClaimsPrincipal user,
-        INodeLcmManager lcmManager,
+        INodeService nodeService,
         CancellationToken cancellationToken)
     {
         var authenticatedNodeId = user.FindFirst("node_id")?.Value;
@@ -329,7 +329,7 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
 
         try
         {
-            await lcmManager.UpdateLcmStatusAsync(nodeId, request, cancellationToken);
+            await nodeService.UpdateLcmStatusAsync(nodeId, request, cancellationToken);
             return TypedResults.NoContent();
         }
         catch (KeyNotFoundException)
@@ -340,7 +340,7 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
 
     private async Task<Results<Ok<List<NodeStatusEventSummary>>, NotFound<ErrorResponse>>> GetNodeStatusHistory(
         Guid nodeId,
-        INodeReader nodeReader,
+        INodeService nodeService,
         int? skip,
         int? take,
         DateTimeOffset? from,
@@ -349,7 +349,7 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
     {
         try
         {
-            var events = await nodeReader.GetNodeStatusEventsAsync(nodeId, cancellationToken);
+            var events = await nodeService.GetNodeStatusEventsAsync(nodeId, cancellationToken);
             var filtered = events
                 .Where(e => from == null || e.Timestamp >= from)
                 .Where(e => to == null || e.Timestamp <= to)
@@ -369,7 +369,7 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
         Guid nodeId,
         RotateCertificateRequest request,
         ClaimsPrincipal user,
-        INodeLcmManager lcmManager,
+        INodeService nodeService,
         CancellationToken cancellationToken)
     {
         var authenticatedNodeId = user.FindFirst("node_id")?.Value;
@@ -390,7 +390,7 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
 
         try
         {
-            var response = await lcmManager.RotateCertificateAsync(nodeId, request, cancellationToken);
+            var response = await nodeService.RotateCertificateAsync(nodeId, request, cancellationToken);
             return TypedResults.Ok(response);
         }
         catch (KeyNotFoundException)
@@ -403,7 +403,7 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
         Guid nodeId,
         ClaimsPrincipal user,
         IWebHostEnvironment env,
-        INodeLcmManager lcmManager,
+        INodeService nodeService,
         CancellationToken cancellationToken)
     {
         if (!env.IsEnvironment("Testing"))
@@ -417,7 +417,7 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
 
         try
         {
-            var response = await lcmManager.GetNodeLcmConfigAsync(nodeId, cancellationToken);
+            var response = await nodeService.GetNodeLcmConfigAsync(nodeId, cancellationToken);
             if (response is null)
             {
                 return TypedResults.NotFound(new ErrorResponse { Error = "Node not found." });
@@ -434,12 +434,12 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
     private async Task<Results<Ok<NodeLcmConfigResponse>, NotFound<ErrorResponse>>> UpdateNodeLcmConfig(
         Guid nodeId,
         UpdateNodeLcmConfigRequest request,
-        INodeLcmManager lcmManager,
+        INodeService nodeService,
         CancellationToken cancellationToken)
     {
         try
         {
-            var response = await lcmManager.UpdateNodeLcmConfigAsync(nodeId, request, cancellationToken);
+            var response = await nodeService.UpdateNodeLcmConfigAsync(nodeId, request, cancellationToken);
             if (response is null)
             {
                 return TypedResults.NotFound(new ErrorResponse { Error = "Node not found." });
@@ -458,7 +458,7 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
         ReportNodeLcmConfigRequest request,
         ClaimsPrincipal user,
         IWebHostEnvironment env,
-        INodeLcmManager lcmManager,
+        INodeService nodeService,
         CancellationToken cancellationToken)
     {
         if (!env.IsEnvironment("Testing"))
@@ -472,7 +472,7 @@ public sealed partial class NodeEndpoints(ILogger<NodeEndpoints> logger)
 
         try
         {
-            await lcmManager.ReportNodeLcmConfigAsync(nodeId, request, cancellationToken);
+            await nodeService.ReportNodeLcmConfigAsync(nodeId, request, cancellationToken);
             return TypedResults.NoContent();
         }
         catch (KeyNotFoundException)

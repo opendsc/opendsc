@@ -5,33 +5,31 @@
 namespace OpenDsc.Contracts.Parameters;
 
 /// <summary>
-/// Parameter version lifecycle operations.
+/// Schema and parameter file operations.
 /// </summary>
-public interface IParameterManager
+public interface IParameterSchemaManager
 {
-    Task<ParameterVersionDetails> CreateAsync(
-        Guid scopeTypeId,
-        Guid configurationId,
-        CreateParameterRequest request,
+    Task<IReadOnlyList<ParameterSchemaDetails>> GetSchemasAsync(
         CancellationToken cancellationToken = default);
 
-    Task UpdateAsync(
-        Guid parameterId,
-        UpdateParameterRequest request,
+    Task<ParameterSchemaDetails?> GetSchemaAsync(
+        Guid configurationId,
+        int? majorVersion = null,
         CancellationToken cancellationToken = default);
 
-    Task PublishAsync(
-        Guid scopeTypeId,
+    Task<IReadOnlyList<ParameterFileDetails>> GetSchemaFilesAsync(
+        Guid schemaId,
+        CancellationToken cancellationToken = default);
+
+    Task<PublishResult> UploadSchemaAsync(
         Guid configurationId,
-        string? scopeValue,
         string version,
+        Stream content,
         CancellationToken cancellationToken = default);
 
-    Task DeleteAsync(
-        Guid scopeTypeId,
+    Task<ValidationResult> ValidateAsync(
         Guid configurationId,
-        string? scopeValue,
         string version,
+        string parameterContent,
         CancellationToken cancellationToken = default);
-
 }

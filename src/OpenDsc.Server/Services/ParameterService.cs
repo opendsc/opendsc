@@ -4,6 +4,7 @@
 
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -12,8 +13,13 @@ using NuGet.Versioning;
 
 using OpenDsc.Contracts.Configurations;
 using OpenDsc.Contracts.Parameters;
+using ParametersFileMigrationStatus = OpenDsc.Contracts.Parameters.ParameterFileMigrationStatus;
+using OpenDsc.Contracts.Permissions;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
+
+using ParametersPublishResult = OpenDsc.Contracts.Parameters.PublishResult;
+using ParametersValidationResult = OpenDsc.Contracts.Parameters.ValidationResult;
 
 namespace OpenDsc.Server.Services;
 
@@ -25,6 +31,8 @@ public sealed partial class ParameterService : IParameterService
     private readonly IUserContextService _userContext;
     private readonly IParameterMergeService _parameterMergeService;
     private readonly IParameterValidator _validator;
+    private readonly IParameterSchemaBuilder _schemaBuilder;
+    private readonly IParameterCompatibilityService _compatibilityService;
     private readonly ILogger<ParameterService> _logger;
 
     public ParameterService(
@@ -34,6 +42,8 @@ public sealed partial class ParameterService : IParameterService
         IUserContextService userContext,
         IParameterMergeService parameterMergeService,
         IParameterValidator validator,
+        IParameterSchemaBuilder schemaBuilder,
+        IParameterCompatibilityService compatibilityService,
         ILogger<ParameterService> logger)
     {
         _db = db;
@@ -42,6 +52,8 @@ public sealed partial class ParameterService : IParameterService
         _userContext = userContext;
         _parameterMergeService = parameterMergeService;
         _validator = validator;
+        _schemaBuilder = schemaBuilder;
+        _compatibilityService = compatibilityService;
         _logger = logger;
     }
 
@@ -521,6 +533,443 @@ public sealed partial class ParameterService : IParameterService
             .Distinct()
             .OrderBy(m => m)
             .ToList();
+    }
+
+    public async Task<IReadOnlyList<MajorVersionSummary>> GetMajorVersionSummariesAsync(
+        Guid scopeTypeId,
+        Guid configurationId,
+        string? scopeValue = null,
+        CancellationToken cancellationToken = default)
+    {
+        var parameterSchema = await _db.ParameterSchemas
+            .FirstOrDefaultAsync(ps => ps.ConfigurationId == configurationId, cancellationToken)
+            ?? throw new KeyNotFoundException("Parameter schema not found.");
+
+        var userId = _userContext.GetCurrentUserId()
+            ?? throw new UnauthorizedAccessException("User not authenticated.");
+
+        if (!await _authService.CanReadParameterAsync(userId, parameterSchema.Id))
+            throw new UnauthorizedAccessException("Access denied.");
+
+        var allFiles = await _db.ParameterFiles
+            .Where(pf =>
+                pf.ScopeTypeId == scopeTypeId &&
+                pf.ParameterSchema!.ConfigurationId == configurationId &&
+                pf.ScopeValue == scopeValue)
+            .Select(pf => new { pf.MajorVersion, pf.Version, pf.CreatedAt, pf.Status, pf.NeedsMigration })
+            .ToListAsync(cancellationToken);
+
+        return allFiles
+            .GroupBy(pf => pf.MajorVersion)
+            .Select(g => new MajorVersionSummary
+            {
+                MajorVersion = g.Key,
+                VersionCount = g.Count(),
+                HasActive = g.Any(pf => pf.Status == ParameterVersionStatus.Published),
+                LatestVersion = g.OrderByDescending(pf => pf.CreatedAt).First().Version,
+                HasMigrationNeeded = g.Any(pf => pf.NeedsMigration)
+            })
+            .OrderByDescending(m => m.MajorVersion)
+            .ToList();
+    }
+
+    public async Task<ParameterVersionDetails?> GetActiveParameterForMajorAsync(
+        Guid scopeTypeId,
+        Guid configurationId,
+        int majorVersion,
+        string? scopeValue = null,
+        CancellationToken cancellationToken = default)
+    {
+        var parameterSchema = await _db.ParameterSchemas
+            .FirstOrDefaultAsync(ps => ps.ConfigurationId == configurationId, cancellationToken)
+            ?? throw new KeyNotFoundException("Parameter schema not found.");
+
+        var userId = _userContext.GetCurrentUserId()
+            ?? throw new UnauthorizedAccessException("User not authenticated.");
+
+        if (!await _authService.CanReadParameterAsync(userId, parameterSchema.Id))
+            throw new UnauthorizedAccessException("Access denied.");
+
+        var file = await _db.ParameterFiles
+            .FirstOrDefaultAsync(pf =>
+                pf.ScopeTypeId == scopeTypeId &&
+                pf.ParameterSchema!.ConfigurationId == configurationId &&
+                pf.ScopeValue == scopeValue &&
+                pf.MajorVersion == majorVersion &&
+                pf.Status == ParameterVersionStatus.Published, cancellationToken);
+
+        if (file is null)
+            return null;
+
+        return new ParameterVersionDetails
+        {
+            Id = file.Id,
+            ScopeTypeId = file.ScopeTypeId,
+            ConfigurationId = configurationId,
+            ScopeValue = file.ScopeValue,
+            Version = file.Version,
+            MajorVersion = file.MajorVersion,
+            Checksum = file.Checksum,
+            Status = file.Status,
+            IsPassthrough = file.IsPassthrough,
+            CreatedAt = file.CreatedAt
+        };
+    }
+
+    public async Task<List<PermissionEntry>?> GetPermissionsAsync(
+        Guid configurationId,
+        CancellationToken cancellationToken = default)
+    {
+        var configuration = await _db.Configurations
+            .FirstOrDefaultAsync(c => c.Id == configurationId, cancellationToken);
+
+        if (configuration is null)
+            return null;
+
+        var parameterSchema = await _db.ParameterSchemas
+            .FirstOrDefaultAsync(ps => ps.ConfigurationId == configuration.Id, cancellationToken);
+
+        if (parameterSchema is null)
+            return null;
+
+        var userId = _userContext.GetCurrentUserId()
+            ?? throw new UnauthorizedAccessException("User not authenticated.");
+
+        if (!await _authService.CanManageParameterAsync(userId, parameterSchema.Id) &&
+            !await _authService.CanManageConfigurationAsync(userId, configuration.Id))
+            throw new UnauthorizedAccessException("Access denied.");
+
+        var acl = await _authService.GetParameterAclAsync(parameterSchema.Id);
+        return await BuildPermissionEntriesAsync(
+            acl.Select(p => (p.PrincipalType, p.PrincipalId, p.PermissionLevel, p.GrantedAt, p.GrantedByUserId)),
+            cancellationToken);
+    }
+
+    public async Task GrantPermissionAsync(
+        Guid configurationId,
+        GrantPermissionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var configuration = await _db.Configurations
+            .FirstOrDefaultAsync(c => c.Id == configurationId, cancellationToken)
+            ?? throw new KeyNotFoundException("Configuration not found.");
+
+        var parameterSchema = await _db.ParameterSchemas
+            .FirstOrDefaultAsync(ps => ps.ConfigurationId == configuration.Id, cancellationToken)
+            ?? throw new KeyNotFoundException("Parameter schema not found.");
+
+        var userId = _userContext.GetCurrentUserId()
+            ?? throw new UnauthorizedAccessException("User not authenticated.");
+
+        if (!await _authService.CanManageParameterAsync(userId, parameterSchema.Id) &&
+            !await _authService.CanManageConfigurationAsync(userId, configuration.Id))
+            throw new UnauthorizedAccessException("Access denied.");
+
+        if (!Enum.TryParse<PrincipalType>(request.PrincipalType, ignoreCase: true, out var principalType))
+            throw new ArgumentException($"Invalid principal type '{request.PrincipalType}'. Must be 'User' or 'Group'.");
+
+        if (!Enum.TryParse<ResourcePermission>(request.Level, ignoreCase: true, out var level))
+            throw new ArgumentException($"Invalid permission level '{request.Level}'. Must be 'Read', 'Modify', or 'Manage'.");
+
+        if (principalType == PrincipalType.User && !await _db.Users.AnyAsync(u => u.Id == request.PrincipalId, cancellationToken))
+            throw new KeyNotFoundException("User not found.");
+
+        if (principalType == PrincipalType.Group && !await _db.Groups.AnyAsync(g => g.Id == request.PrincipalId, cancellationToken))
+            throw new KeyNotFoundException("Group not found.");
+
+        await _authService.GrantParameterPermissionAsync(parameterSchema.Id, request.PrincipalId, principalType, level, userId);
+    }
+
+    public async Task RevokePermissionAsync(
+        Guid configurationId,
+        RevokePermissionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var configuration = await _db.Configurations
+            .FirstOrDefaultAsync(c => c.Id == configurationId, cancellationToken)
+            ?? throw new KeyNotFoundException("Configuration not found.");
+
+        var parameterSchema = await _db.ParameterSchemas
+            .FirstOrDefaultAsync(ps => ps.ConfigurationId == configuration.Id, cancellationToken)
+            ?? throw new KeyNotFoundException("Parameter schema not found.");
+
+        var userId = _userContext.GetCurrentUserId()
+            ?? throw new UnauthorizedAccessException("User not authenticated.");
+
+        if (!await _authService.CanManageParameterAsync(userId, parameterSchema.Id) &&
+            !await _authService.CanManageConfigurationAsync(userId, configuration.Id))
+            throw new UnauthorizedAccessException("Access denied.");
+
+        if (!Enum.TryParse<PrincipalType>(request.PrincipalType, ignoreCase: true, out var principalType))
+            throw new ArgumentException($"Invalid principal type '{request.PrincipalType}'. Must be 'User' or 'Group'.");
+
+        await _authService.RevokeParameterPermissionAsync(parameterSchema.Id, request.PrincipalId, principalType);
+    }
+
+    public async Task<ParametersPublishResult> UploadSchemaAsync(
+        Guid configurationId,
+        string version,
+        Stream content,
+        CancellationToken cancellationToken = default)
+    {
+        var configuration = await _db.Configurations
+            .FirstOrDefaultAsync(c => c.Id == configurationId, cancellationToken)
+            ?? throw new KeyNotFoundException("Configuration not found.");
+
+        var userId = _userContext.GetCurrentUserId()
+            ?? throw new UnauthorizedAccessException("User not authenticated.");
+
+        if (!await _authService.CanModifyConfigurationAsync(userId, configuration.Id))
+            throw new UnauthorizedAccessException("Access denied.");
+
+        if (!SemanticVersion.TryParse(version, out var semVer))
+            throw new ArgumentException($"Version '{version}' is not a valid semantic version.");
+
+        using var reader = new StreamReader(content);
+        var schemaContent = await reader.ReadToEndAsync(cancellationToken);
+
+        var existingForVersion = await _db.ParameterSchemas
+            .FirstOrDefaultAsync(ps => ps.ConfigurationId == configuration.Id && ps.SchemaVersion == version, cancellationToken);
+
+        if (existingForVersion is not null)
+            throw new InvalidOperationException($"Parameter schema version '{version}' already exists.");
+
+        var parametersBlock = JsonSerializer.Deserialize<Dictionary<string, object>>(schemaContent);
+        if (parametersBlock is null || !parametersBlock.TryGetValue("parameters", out var paramsObj))
+            throw new ArgumentException("Parameter schema must contain a 'parameters' object.");
+
+        var paramsJson = JsonSerializer.Serialize(paramsObj);
+        var paramDefinitions = JsonSerializer.Deserialize<Dictionary<string, ParameterDefinition>>(paramsJson)
+            ?? throw new ArgumentException("Failed to parse parameter definitions.");
+
+        var jsonSchemaObj = _schemaBuilder.BuildJsonSchema(paramDefinitions);
+        var jsonSchema = _schemaBuilder.SerializeSchema(jsonSchemaObj);
+
+        var previousSchema = await _db.ParameterSchemas
+            .Where(ps => ps.ConfigurationId == configuration.Id)
+            .OrderByDescending(ps => ps.UpdatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (previousSchema is not null && !string.IsNullOrWhiteSpace(previousSchema.GeneratedJsonSchema))
+        {
+            if (string.IsNullOrWhiteSpace(previousSchema.SchemaVersion))
+                throw new InvalidOperationException("Previous schema version is missing.");
+
+            var compatibilityReport = _compatibilityService.CompareSchemas(
+                previousSchema.GeneratedJsonSchema,
+                jsonSchema,
+                previousSchema.SchemaVersion,
+                version);
+
+            var previousSemVer = SemanticVersion.Parse(previousSchema.SchemaVersion);
+            var isMajorVersionBump = semVer.Major > previousSemVer.Major;
+
+            if (compatibilityReport.HasBreakingChanges && !isMajorVersionBump)
+            {
+                var parameterFiles = await _db.ParameterFiles
+                    .Include(pf => pf.ScopeType)
+                    .Where(pf => pf.ParameterSchemaId == previousSchema.Id)
+                    .ToListAsync(cancellationToken);
+
+                var migrationRequirements = parameterFiles.Select(pf => new ParametersFileMigrationStatus
+                {
+                    ScopeTypeName = pf.ScopeType?.Name ?? string.Empty,
+                    ScopeValue = pf.ScopeValue ?? "Global",
+                    Version = pf.Version,
+                    MajorVersion = pf.MajorVersion,
+                    NeedsMigration = true,
+                    Errors = []
+                }).ToList();
+
+                return new ParametersPublishResult
+                {
+                    Success = false,
+                    CompatibilityReport = new Contracts.Parameters.CompatibilityReport
+                    {
+                        HasBreakingChanges = compatibilityReport.HasBreakingChanges,
+                        BreakingChanges = compatibilityReport.BreakingChanges?.Select(c => new ParameterChange
+                        {
+                            ParameterName = c.ParameterName,
+                            ChangeType = c.ChangeType,
+                            Details = c.Description ?? string.Empty
+                        }).ToList(),
+                        NonBreakingChanges = compatibilityReport.NonBreakingChanges?.Select(c => new ParameterChange
+                        {
+                            ParameterName = c.ParameterName,
+                            ChangeType = c.ChangeType,
+                            Details = c.Description ?? string.Empty
+                        }).ToList()
+                    },
+                    MigrationRequirements = migrationRequirements
+                };
+            }
+        }
+
+        var newSchema = new ParameterSchema
+        {
+            Id = Guid.NewGuid(),
+            ConfigurationId = configuration.Id,
+            SchemaVersion = version,
+            GeneratedJsonSchema = jsonSchema,
+            UpdatedAt = DateTimeOffset.UtcNow
+        };
+
+        _db.ParameterSchemas.Add(newSchema);
+        await _db.SaveChangesAsync(cancellationToken);
+
+        return new ParametersPublishResult { Success = true };
+    }
+
+    public async Task<ParametersValidationResult> ValidateAsync(
+        Guid configurationId,
+        string version,
+        string parameterContent,
+        CancellationToken cancellationToken = default)
+    {
+        var configuration = await _db.Configurations
+            .FirstOrDefaultAsync(c => c.Id == configurationId, cancellationToken)
+            ?? throw new KeyNotFoundException("Configuration not found.");
+
+        var userId = _userContext.GetCurrentUserId()
+            ?? throw new UnauthorizedAccessException("User not authenticated.");
+
+        if (!await _authService.CanReadConfigurationAsync(userId, configuration.Id))
+            throw new UnauthorizedAccessException("Access denied.");
+
+        var parameterSchema = await _db.ParameterSchemas
+            .FirstOrDefaultAsync(ps => ps.ConfigurationId == configuration.Id && ps.SchemaVersion == version, cancellationToken)
+            ?? throw new KeyNotFoundException("Parameter schema not found.");
+
+        if (string.IsNullOrWhiteSpace(parameterSchema.GeneratedJsonSchema))
+            throw new InvalidOperationException("No JSON schema available for this configuration version.");
+
+        var serverResult = _validator.Validate(parameterSchema.GeneratedJsonSchema, parameterContent);
+        return new ParametersValidationResult
+        {
+            IsValid = serverResult.IsValid,
+            Errors = serverResult.Errors?.Select(e => new OpenDsc.Contracts.Parameters.ValidationError
+            {
+                Path = e.Path,
+                Message = e.Message,
+                Code = e.Code
+            }).ToList()
+        };
+    }
+
+    public async Task<IReadOnlyList<ParameterSchemaDetails>> GetSchemasAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var schemas = await _db.ParameterSchemas
+            .Include(ps => ps.Configuration)
+            .Include(ps => ps.ParameterFiles)
+            .Select(ps => new ParameterSchemaDetails
+            {
+                Id = ps.Id,
+                ConfigurationId = ps.ConfigurationId,
+                ConfigurationName = ps.Configuration.Name,
+                SchemaVersion = ps.SchemaVersion,
+                GeneratedJsonSchema = ps.GeneratedJsonSchema,
+                ParameterFileCount = ps.ParameterFiles.Count,
+                CreatedAt = ps.CreatedAt
+            })
+            .ToListAsync(cancellationToken);
+
+        return schemas
+            .OrderBy(ps => ps.ConfigurationName)
+            .ThenBy(ps => ps.CreatedAt)
+            .ToList();
+    }
+
+    public async Task<ParameterSchemaDetails?> GetSchemaAsync(
+        Guid configurationId,
+        int? majorVersion = null,
+        CancellationToken cancellationToken = default)
+    {
+        var schemas = await _db.ParameterSchemas
+            .Include(ps => ps.Configuration)
+            .Include(ps => ps.ParameterFiles)
+            .Where(ps => ps.ConfigurationId == configurationId)
+            .ToListAsync(cancellationToken);
+
+        ParameterSchema? schema;
+        if (majorVersion.HasValue)
+        {
+            schema = schemas.FirstOrDefault(ps =>
+                !string.IsNullOrEmpty(ps.SchemaVersion) &&
+                SemanticVersion.TryParse(ps.SchemaVersion, out var sv) &&
+                sv.Major == majorVersion.Value);
+        }
+        else
+        {
+            schema = schemas.FirstOrDefault();
+        }
+
+        if (schema is null)
+            return null;
+
+        return new ParameterSchemaDetails
+        {
+            Id = schema.Id,
+            ConfigurationId = schema.ConfigurationId,
+            ConfigurationName = schema.Configuration?.Name ?? string.Empty,
+            SchemaVersion = schema.SchemaVersion,
+            GeneratedJsonSchema = schema.GeneratedJsonSchema,
+            ParameterFileCount = schema.ParameterFiles?.Count ?? 0,
+            CreatedAt = schema.CreatedAt
+        };
+    }
+
+    public async Task<IReadOnlyList<ParameterFileDetails>> GetSchemaFilesAsync(
+        Guid schemaId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _db.ParameterFiles
+            .Include(pf => pf.ScopeType)
+            .Where(pf => pf.ParameterSchemaId == schemaId)
+            .OrderBy(pf => pf.ScopeType.Precedence)
+            .ThenBy(pf => pf.ScopeValue)
+            .ThenBy(pf => pf.Version)
+            .Select(pf => new ParameterFileDetails
+            {
+                Id = pf.Id,
+                ParameterSchemaId = pf.ParameterSchemaId,
+                ScopeTypeName = pf.ScopeType.Name,
+                ScopeValue = pf.ScopeValue,
+                Version = pf.Version,
+                Status = pf.Status,
+                Checksum = pf.Checksum,
+                CreatedAt = pf.CreatedAt
+            })
+            .ToListAsync(cancellationToken);
+    }
+
+    private async Task<List<PermissionEntry>> BuildPermissionEntriesAsync(
+        IEnumerable<(PrincipalType PrincipalType, Guid PrincipalId, ResourcePermission Level, DateTimeOffset GrantedAt, Guid? GrantedByUserId)> entries,
+        CancellationToken cancellationToken)
+    {
+        var list = entries.ToList();
+        var userIds = list.Where(e => e.PrincipalType == PrincipalType.User).Select(e => e.PrincipalId).ToList();
+        var groupIds = list.Where(e => e.PrincipalType == PrincipalType.Group).Select(e => e.PrincipalId).ToList();
+
+        var userNames = await _db.Users
+            .Where(u => userIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, u => u.Username, cancellationToken);
+
+        var groupNames = await _db.Groups
+            .Where(g => groupIds.Contains(g.Id))
+            .ToDictionaryAsync(g => g.Id, g => g.Name, cancellationToken);
+
+        return list.Select(e => new PermissionEntry
+        {
+            PrincipalType = e.PrincipalType.ToString(),
+            PrincipalId = e.PrincipalId,
+            PrincipalName = e.PrincipalType == PrincipalType.User
+                ? userNames.GetValueOrDefault(e.PrincipalId, "Unknown")
+                : groupNames.GetValueOrDefault(e.PrincipalId, "Unknown"),
+            Level = e.Level.ToString(),
+            GrantedAt = e.GrantedAt,
+            GrantedByUserId = e.GrantedByUserId
+        }).ToList();
     }
 
     private static string ComputeChecksum(string content)

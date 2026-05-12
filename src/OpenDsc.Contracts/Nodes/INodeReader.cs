@@ -54,9 +54,4 @@ public interface INodeReader
 
     Task<IReadOnlyList<ScopeValueSummary>> GetScopeValuesAsync(
         CancellationToken cancellationToken = default);
-
-    Task SetNodeScopeValueAsync(
-        Guid nodeId,
-        SetNodeScopeValueRequest request,
-        CancellationToken cancellationToken = default);
 }

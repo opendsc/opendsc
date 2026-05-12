@@ -5,17 +5,17 @@
 @rendermode InteractiveServer
 @implements IDisposable
 
-@using Microsoft.EntityFrameworkCore
 @using MudBlazor
 @using BlazorMonaco
 @using BlazorMonaco.Editor
 @using OpenDsc.Contracts.Parameters
-@using OpenDsc.Server.Entities
+@using OpenDsc.Contracts.Nodes
+@using OpenDsc.Contracts.Configurations
 @using OpenDsc.Server.Services
 @using NuGet.Versioning
-@using static OpenDsc.Server.Endpoints.ParameterEndpoints
 @inject IParameterService ParameterService
-@inject ServerDbContext Db
+@inject INodeService NodeService
+@inject IConfigurationService ConfigurationService
 @inject ThemeService ThemeService
 @inject IJSRuntime JSRuntime
 
@@ -23,8 +23,8 @@
     <MudCardContent>
         <MudGrid Class="mb-2">
             <MudItem xs="12" sm="6">
-                <MudAutocomplete T="Node" @bind-Value="selectedNode" @bind-Value:after="OnNodeChanged" Label="Node"
-                                 Variant="Variant.Outlined" SearchFunc="SearchNodesAsync"
+                <MudAutocomplete T="NodeSummary" @bind-Value="selectedNode" @bind-Value:after="OnNodeChanged"
+                                 Label="Node" Variant="Variant.Outlined" SearchFunc="SearchNodesAsync"
                                  ToStringFunc="@(n => n?.Fqdn ?? string.Empty)" Clearable="true" ResetValueOnEmptyText="true"
                                  CoerceText="true" />
             </MudItem>
@@ -124,8 +124,8 @@
                         </MudCard>
 
 @code {
-    private List<Node> nodes = [];
-    private Node? selectedNode;
+    private IReadOnlyList<NodeSummary> nodes = [];
+    private NodeSummary? selectedNode;
     private Guid? selectedConfigurationId;
     private string? configurationName;
     private bool isLoading;
@@ -136,12 +136,11 @@
 
     protected override async Task OnInitializedAsync()
     {
-        Db.ChangeTracker.Clear();
-        nodes = await Db.Nodes.AsNoTracking().OrderBy(n => n.Fqdn).ToListAsync();
+        nodes = await NodeService.GetNodesAsync();
         ThemeService.OnThemeChanged += OnThemeChanged;
     }
 
-    private async Task<IEnumerable<Node>> SearchNodesAsync(string value, CancellationToken ct)
+    private async Task<IEnumerable<NodeSummary>> SearchNodesAsync(string value, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
@@ -166,18 +165,24 @@
         isLoading = true;
         StateHasChanged();
 
-        var nodeConfig = await Db.NodeConfigurations
-            .Include(nc => nc.Configuration)
-            .FirstOrDefaultAsync(nc => nc.NodeId == selectedNode.Id);
-
-        if (nodeConfig?.ConfigurationId == null)
+        var assignment = await NodeService.GetNodeAssignmentAsync(selectedNode.Id);
+        if (assignment?.ConfigurationName is null)
         {
             isLoading = false;
             return;
         }
 
-        selectedConfigurationId = nodeConfig.ConfigurationId;
-        configurationName = nodeConfig.Configuration?.Name;
+        configurationName = assignment.ConfigurationName;
+
+        var allConfigs = await ConfigurationService.GetConfigurationsAsync();
+        var config = allConfigs.Find(c => c.Name == configurationName);
+        if (config is null)
+        {
+            isLoading = false;
+            return;
+        }
+
+        selectedConfigurationId = config.Id;
 
         provenanceData = await ParameterService.GetNodeProvenanceAsync(
             selectedNode.Id, selectedConfigurationId.Value);

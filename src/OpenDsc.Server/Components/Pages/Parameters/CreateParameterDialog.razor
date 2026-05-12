@@ -8,12 +8,12 @@
 @using BlazorMonaco
 @using BlazorMonaco.Editor
 @using OpenDsc.Contracts.Parameters
+@using OpenDsc.Contracts.Settings
 @using OpenDsc.Server.Services
-@using Microsoft.EntityFrameworkCore
 @using System.Text.Json
 @using NuGet.Versioning
 @inject IParameterService ParameterService
-@inject ServerDbContext Db
+@inject IScopeService ScopeService
 @inject ISnackbar Snackbar
 @inject ThemeService ThemeService
 @inject IJsonYamlConverter JsonYamlConverter
@@ -33,6 +33,7 @@
         {
             <ScopeSelector @bind-SelectedConfigurationId="selectedConfigurationId"
                            @bind-SelectedConfigurationId:after="OnConfigurationChanged" @bind-SelectedScopeTypeId="selectedScopeTypeId"
+                           @bind-SelectedScopeTypeId:after="OnScopeTypeChanged"
                            @bind-SelectedScopeValue="selectedScopeValue" Locked="@LockScope" />
 
             <MudGrid Class="mt-4">
@@ -94,7 +95,7 @@
             <MudText Typo="Typo.h6" Class="mb-3">Parameter Schema</MudText>
             <MudCard Outlined="true">
                 <MudCardContent>
-                    <MudText Typo="Typo.caption">Configuration: @currentConfiguration?.Name</MudText>
+                    <MudText Typo="Typo.caption">Configuration: @currentSchema?.ConfigurationName</MudText>
                     <br />
                     <MudText Typo="Typo.caption" Class="mb-3">Schema Version: v@(currentSchema.SchemaVersion ?? "unknown")
                     </MudText>
@@ -152,15 +153,14 @@
     private bool isPassthrough;
     private bool isCreating;
 
-    private List<ScopeType> scopeTypes = [];
     private string defaultEditorValue = "parameters:\n  setting1: value1\n  setting2: value2\n";
-    private ParameterSchema? currentSchema;
-    private Configuration? currentConfiguration;
+    private ParameterSchemaDetails? currentSchema;
     private bool showSchemaDialog;
     private StandaloneCodeEditor? _schemaEditor;
     private SchemaFormat schemaViewFormat = SchemaFormat.Yaml;
     private string _currentSchemaContent = string.Empty;
     private string _editorInitialValue = string.Empty;
+    private string? _selectedScopeTypeName;
 
     private enum SchemaFormat
     {
@@ -172,7 +172,6 @@
     {
         isPassthrough = InitialIsPassthrough;
         _editorInitialValue = InitialContent ?? defaultEditorValue;
-        await LoadScopeTypesAsync();
 
         if (InitialConfigurationId.HasValue)
         {
@@ -188,7 +187,6 @@
         if (!selectedConfigurationId.HasValue)
         {
             currentSchema = null;
-            currentConfiguration = null;
             availableMajors = [];
             selectedMajor = null;
             if (_editor != null)
@@ -268,7 +266,6 @@
         if (!selectedConfigurationId.HasValue || !selectedMajor.HasValue)
         {
             currentSchema = null;
-            currentConfiguration = null;
             var fallback = InitialContent ?? defaultEditorValue;
             _editorInitialValue = fallback;
             if (_editor != null)
@@ -276,23 +273,7 @@
             return;
         }
 
-        var allSchemas = await Db.ParameterSchemas
-            .Include(ps => ps.Configuration)
-            .Where(ps => ps.ConfigurationId == selectedConfigurationId.Value)
-            .ToListAsync();
-
-        currentSchema = allSchemas.FirstOrDefault(ps =>
-            !string.IsNullOrEmpty(ps.SchemaVersion) &&
-            NuGet.Versioning.SemanticVersion.TryParse(ps.SchemaVersion, out var sv) &&
-            sv.Major == selectedMajor.Value);
-
-        currentConfiguration = currentSchema?.Configuration
-            ?? allSchemas.FirstOrDefault()?.Configuration;
-
-        if (currentConfiguration == null)
-        {
-            currentConfiguration = await Db.Configurations.FindAsync(selectedConfigurationId.Value);
-        }
+        currentSchema = await ParameterService.GetSchemaAsync(selectedConfigurationId.Value, selectedMajor.Value);
 
         string newValue;
         if (currentSchema != null && !string.IsNullOrWhiteSpace(currentSchema.GeneratedJsonSchema) && InitialContent == null)
@@ -419,7 +400,26 @@
 
     private async Task LoadScopeTypesAsync()
     {
-        scopeTypes = await Db.ScopeTypes.ToListAsync();
+    }
+
+    private async Task OnScopeTypeChanged()
+    {
+        if (selectedScopeTypeId.HasValue)
+        {
+            try
+            {
+                var st = await ScopeService.GetScopeTypeAsync(selectedScopeTypeId.Value);
+                _selectedScopeTypeName = st.Name;
+            }
+            catch (KeyNotFoundException)
+            {
+                _selectedScopeTypeName = null;
+            }
+        }
+        else
+        {
+            _selectedScopeTypeName = null;
+        }
     }
 
     private StandaloneEditorConstructionOptions GetEditorOptions(StandaloneCodeEditor editor)
@@ -458,13 +458,12 @@
             return false;
         }
 
-        var currentScopeType = scopeTypes.FirstOrDefault(st => st.Id == selectedScopeTypeId.Value);
-        if (currentScopeType is null)
+        if (_selectedScopeTypeName == null)
         {
             return false;
         }
 
-        if (currentScopeType.Name == "Default")
+        if (_selectedScopeTypeName == "Default")
         {
             return true;
         }

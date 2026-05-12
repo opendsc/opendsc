@@ -9,10 +9,6 @@ namespace OpenDsc.Contracts.Nodes;
 /// </summary>
 public interface INodeTagManager
 {
-    Task<IReadOnlyList<NodeTagSummary>> GetNodeTagsAsync(
-        Guid nodeId,
-        CancellationToken cancellationToken = default);
-
     Task<NodeTagSummary> AddNodeTagAsync(
         Guid nodeId,
         AddNodeTagRequest request,

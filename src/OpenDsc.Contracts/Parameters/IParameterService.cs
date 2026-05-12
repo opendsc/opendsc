@@ -10,6 +10,8 @@ namespace OpenDsc.Contracts.Parameters;
 /// </summary>
 public interface IParameterService
         : IParameterReader,
-          IParameterManager
+          IParameterManager,
+          IParameterSchemaManager,
+          IParameterPermissions
 {
 }

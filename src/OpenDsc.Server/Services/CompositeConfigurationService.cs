@@ -80,7 +80,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
             throw new UnauthorizedAccessException($"Access denied to composite configuration '{name}'.");
         }
 
-        return MapToDetailsDto(composite);
+        return MapToDetails(composite);
     }
 
     public async Task<List<CompositeConfigurationVersionDetails>?> GetVersionsAsync(string name, CancellationToken cancellationToken = default)
@@ -104,7 +104,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
 
         return composite.Versions
             .OrderByDescending(v => v.CreatedAt)
-            .Select(MapToVersionDto)
+            .Select(MapToVersion)
             .ToList();
     }
 
@@ -127,7 +127,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
             throw new UnauthorizedAccessException($"Access denied to composite configuration '{name}'.");
         }
 
-        return MapToVersionDto(compositeVersion);
+        return MapToVersion(compositeVersion);
     }
 
     public async Task<List<ChildConfigurationOption>> GetAvailableChildConfigurationsAsync(IEnumerable<Guid> excludeIds, CancellationToken cancellationToken = default)
@@ -654,7 +654,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
         }).ToList();
     }
 
-    private static CompositeConfigurationDetails MapToDetailsDto(CompositeConfiguration composite) =>
+    private static CompositeConfigurationDetails MapToDetails(CompositeConfiguration composite) =>
         new()
         {
             Id = composite.Id,
@@ -663,13 +663,13 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
             EntryPoint = composite.EntryPoint,
             Versions = composite.Versions
                 .OrderByDescending(v => v.CreatedAt)
-                .Select(MapToVersionDto)
+                .Select(MapToVersion)
                 .ToList(),
             CreatedAt = composite.CreatedAt,
             UpdatedAt = composite.UpdatedAt
         };
 
-    private static CompositeConfigurationVersionDetails MapToVersionDto(CompositeConfigurationVersion v) =>
+    private static CompositeConfigurationVersionDetails MapToVersion(CompositeConfigurationVersion v) =>
         new()
         {
             Id = v.Id,
