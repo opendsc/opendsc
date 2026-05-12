@@ -745,10 +745,13 @@ public sealed partial class ParameterService : IParameterService
         var jsonSchemaObj = _schemaBuilder.BuildJsonSchema(paramDefinitions);
         var jsonSchema = _schemaBuilder.SerializeSchema(jsonSchemaObj);
 
-        var previousSchema = await _db.ParameterSchemas
+        var schemas = await _db.ParameterSchemas
             .Where(ps => ps.ConfigurationId == configuration.Id)
+            .ToListAsync(cancellationToken);
+
+        var previousSchema = schemas
             .OrderByDescending(ps => ps.UpdatedAt)
-            .FirstOrDefaultAsync(cancellationToken);
+            .FirstOrDefault();
 
         if (previousSchema is not null && !string.IsNullOrWhiteSpace(previousSchema.GeneratedJsonSchema))
         {

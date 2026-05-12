@@ -18,7 +18,7 @@ public sealed class RegistrationKeyService(ServerDbContext db) : IRegistrationKe
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
-        return keys.OrderByDescending(k => k.CreatedAt).Select(ToResponse).ToList();
+        return keys.OrderByDescending(k => k.CreatedAt).Select(ToResponseWithoutSecret).ToList();
     }
 
     public async Task<RegistrationKeyResponse> CreateKeyAsync(
