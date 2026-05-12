@@ -10,6 +10,8 @@ using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 
 using OpenDsc.Contracts.Nodes;
+using OpenDsc.Contracts.CompositeConfigurations;
+using OpenDsc.Contracts.Parameters;
 using OpenDsc.Server.Data;
 
 using Xunit;
