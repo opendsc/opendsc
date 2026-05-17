@@ -275,6 +275,9 @@ public sealed partial class ParameterService : IParameterService
         if (!await _authService.CanManageParameterAsync(userId, parameterFile.ParameterSchemaId))
             throw new UnauthorizedAccessException("Access denied.");
 
+        if (parameterFile.Status == ParameterVersionStatus.Published)
+            throw new InvalidOperationException("Cannot delete a published parameter version.");
+
         _db.ParameterFiles.Remove(parameterFile);
         await _db.SaveChangesAsync(cancellationToken);
     }

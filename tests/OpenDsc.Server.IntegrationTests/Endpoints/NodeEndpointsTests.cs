@@ -617,8 +617,7 @@ public class NodeEndpointsTests : IClassFixture<ServerWebApplicationFactory>
         {
             version = "1.0.0",
             content = "parameters:\n  setting: value\n",
-            contentType = "application/x-yaml",
-            isDraft = false
+            contentType = "application/x-yaml"
         };
         var uploadResponse = await adminClient.PutAsJsonAsync(
             $"/api/v1/parameters/{defaultScopeTypeId}/{configId}", paramRequest, TestContext.Current.CancellationToken);
@@ -626,7 +625,7 @@ public class NodeEndpointsTests : IClassFixture<ServerWebApplicationFactory>
 
         // Publish the parameter file
         var activateResponse = await adminClient.PutAsync(
-            $"/api/v1/parameters/{defaultScopeTypeId}/{configId}/versions/1.0.0/publish", null, TestContext.Current.CancellationToken);
+            $"/api/v1/parameters/{defaultScopeTypeId}/{configId}/versions/1.0.0/publish?scopeValue=", null, TestContext.Current.CancellationToken);
         activateResponse.EnsureSuccessStatusCode();
 
         // Assign configuration to node

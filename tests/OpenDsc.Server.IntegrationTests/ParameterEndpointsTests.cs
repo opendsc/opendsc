@@ -105,9 +105,8 @@ public class ParameterEndpointsTests : IDisposable
         var request = new
         {
             version = "1.0.0",
-            content = "param1: value1\nparam2: value2",
-            contentType = "application/x-yaml",
-            isDraft = false
+            content = "parameters:\n  param1: value1\n  param2: value2\n  setting1: test\n  appName: TestApp\n  port: 8080",
+            contentType = "application/x-yaml"
         };
 
         // Act
@@ -134,9 +133,8 @@ public class ParameterEndpointsTests : IDisposable
         var createRequest = new
         {
             version = "1.0.0",
-            content = "param1: value1",
-            contentType = "application/x-yaml",
-            isDraft = false
+            content = "parameters:\n  param1: value1\n  param2: value2\n  setting1: test\n  appName: TestApp\n  port: 8080",
+            contentType = "application/x-yaml"
         };
 
         await client.PutAsJsonAsync($"/api/v1/parameters/{scopeTypeId}/{configId}", createRequest, TestContext.Current.CancellationToken);
@@ -165,9 +163,8 @@ public class ParameterEndpointsTests : IDisposable
         var createRequest = new
         {
             version = "1.0.0",
-            content = "param1: value1",
-            contentType = "application/x-yaml",
-            isDraft = false
+            content = "parameters:\n  param1: value1\n  param2: value2\n  setting1: test\n  appName: TestApp\n  port: 8080",
+            contentType = "application/x-yaml"
         };
 
         await client.PutAsJsonAsync($"/api/v1/parameters/{scopeTypeId}/{configId}", createRequest, TestContext.Current.CancellationToken);
@@ -196,9 +193,8 @@ public class ParameterEndpointsTests : IDisposable
         var createRequest = new
         {
             version = "1.0.0",
-            content = "param1: value1",
-            contentType = "application/x-yaml",
-            isDraft = false
+            content = "parameters:\n  param1: value1\n  param2: value2\n  setting1: test\n  appName: TestApp\n  port: 8080",
+            contentType = "application/x-yaml"
         };
 
         await client.PutAsJsonAsync($"/api/v1/parameters/{scopeTypeId}/{configId}", createRequest, TestContext.Current.CancellationToken);
@@ -223,13 +219,17 @@ public class ParameterEndpointsTests : IDisposable
         var createRequest = new
         {
             version = "1.0.0",
-            content = "param1: value1",
-            contentType = "application/x-yaml",
-            isDraft = false
+            content = "parameters:\n  param1: value1\n  param2: value2\n  setting1: test\n  appName: TestApp\n  port: 8080",
+            contentType = "application/x-yaml"
         };
 
         await client.PutAsJsonAsync($"/api/v1/parameters/{scopeTypeId}/{configId}", createRequest, TestContext.Current.CancellationToken);
-        await client.PutAsync($"/api/v1/parameters/{scopeTypeId}/{configId}/versions/1.0.0/publish", null, TestContext.Current.CancellationToken);
+        var publishResponse = await client.PutAsync($"/api/v1/parameters/{scopeTypeId}/{configId}/versions/1.0.0/publish", null, TestContext.Current.CancellationToken);
+        if (!publishResponse.IsSuccessStatusCode)
+        {
+            var errorContent = await publishResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+            throw new InvalidOperationException($"Publish failed with {publishResponse.StatusCode}: {errorContent}");
+        }
 
         // Act
         var response = await client.DeleteAsync($"/api/v1/parameters/{scopeTypeId}/{configId}/versions/1.0.0", TestContext.Current.CancellationToken);
@@ -414,9 +414,8 @@ public class ParameterEndpointsTests : IDisposable
         {
             scopeValue = "Development",
             version = "1.0.0",
-            content = "parameters:\n  setting1: value1\n",
-            contentType = "application/x-yaml",
-            isDraft = true
+            content = "parameters:\n  param1: value1\n  param2: value2\n  setting1: test\n  appName: TestApp\n  port: 8080",
+            contentType = "application/x-yaml"
         };
 
         // Act
@@ -443,9 +442,8 @@ public class ParameterEndpointsTests : IDisposable
         {
             // scopeValue intentionally omitted — scope type is Restricted so this should fail
             version = "1.0.0",
-            content = "parameters:\n  setting1: value1\n",
-            contentType = "application/x-yaml",
-            isDraft = true
+            content = "parameters:\n  param1: value1\n  param2: value2\n  setting1: test\n  appName: TestApp\n  port: 8080",
+            contentType = "application/x-yaml"
         };
 
         // Act
@@ -468,9 +466,8 @@ public class ParameterEndpointsTests : IDisposable
         {
             scopeValue = "NonExistentValue",
             version = "1.0.0",
-            content = "parameters:\n  setting1: value1\n",
-            contentType = "application/x-yaml",
-            isDraft = true
+            content = "parameters:\n  param1: value1\n  param2: value2\n  setting1: test\n  appName: TestApp\n  port: 8080",
+            contentType = "application/x-yaml"
         };
 
         // Act
@@ -494,9 +491,8 @@ public class ParameterEndpointsTests : IDisposable
         {
             // scopeValue intentionally omitted
             version = "1.0.0",
-            content = "parameters:\n  setting1: value1\n",
-            contentType = "application/x-yaml",
-            isDraft = true
+            content = "parameters:\n  param1: value1\n  param2: value2\n  setting1: test\n  appName: TestApp\n  port: 8080",
+            contentType = "application/x-yaml"
         };
 
         var response = await client.PutAsJsonAsync($"/api/v1/parameters/{nodeScopeTypeId}/{configId}", request, TestContext.Current.CancellationToken);
@@ -516,9 +512,8 @@ public class ParameterEndpointsTests : IDisposable
         {
             scopeValue = "not-registered.example.com",
             version = "1.0.0",
-            content = "parameters:\n  setting1: value1\n",
-            contentType = "application/x-yaml",
-            isDraft = true
+            content = "parameters:\n  param1: value1\n  param2: value2\n  setting1: test\n  appName: TestApp\n  port: 8080",
+            contentType = "application/x-yaml"
         };
 
         var response = await client.PutAsJsonAsync($"/api/v1/parameters/{nodeScopeTypeId}/{configId}", request, TestContext.Current.CancellationToken);
@@ -540,9 +535,8 @@ public class ParameterEndpointsTests : IDisposable
         {
             scopeValue = "should-not-be-allowed",
             version = "1.0.0",
-            content = "parameters:\n  setting1: value1\n",
-            contentType = "application/x-yaml",
-            isDraft = true
+            content = "parameters:\n  param1: value1\n  param2: value2\n  setting1: test\n  appName: TestApp\n  port: 8080",
+            contentType = "application/x-yaml"
         };
 
         var response = await client.PutAsJsonAsync($"/api/v1/parameters/{defaultScopeTypeId}/{configId}", request, TestContext.Current.CancellationToken);
@@ -561,9 +555,8 @@ public class ParameterEndpointsTests : IDisposable
         var request = new
         {
             version = "1.0.0",
-            content = "parameters:\n  setting1: value1\n",
-            contentType = "application/x-yaml",
-            isDraft = true
+            content = "parameters:\n  param1: value1\n  param2: value2\n  setting1: test\n  appName: TestApp\n  port: 8080",
+            contentType = "application/x-yaml"
         };
 
         var response = await client.PutAsJsonAsync($"/api/v1/parameters/{defaultScopeTypeId}/{configId}", request, TestContext.Current.CancellationToken);
@@ -592,9 +585,8 @@ public class ParameterEndpointsTests : IDisposable
         {
             // scopeValue intentionally omitted
             version = "1.0.0",
-            content = "parameters:\n  setting1: value1\n",
-            contentType = "application/x-yaml",
-            isDraft = true
+            content = "parameters:\n  param1: value1\n  param2: value2\n  setting1: test\n  appName: TestApp\n  port: 8080",
+            contentType = "application/x-yaml"
         };
 
         var response = await client.PutAsJsonAsync($"/api/v1/parameters/{ScopeTypeDetails!.Id}/{configId}", request, TestContext.Current.CancellationToken);
@@ -617,9 +609,8 @@ public class ParameterEndpointsTests : IDisposable
         {
             scopeValue = "us-west",
             version = "1.0.0",
-            content = "parameters:\n  setting1: value1\n",
-            contentType = "application/x-yaml",
-            isDraft = true
+            content = "parameters:\n  param1: value1\n  param2: value2\n  setting1: test\n  appName: TestApp\n  port: 8080",
+            contentType = "application/x-yaml"
         };
 
         var response = await client.PutAsJsonAsync($"/api/v1/parameters/{ScopeTypeDetails!.Id}/{configId}", request, TestContext.Current.CancellationToken);

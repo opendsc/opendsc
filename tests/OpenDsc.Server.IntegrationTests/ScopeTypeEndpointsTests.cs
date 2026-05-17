@@ -302,8 +302,7 @@ public sealed class ScopeTypeEndpointsTests : IDisposable
             scopeValue = "PFValue",
             version = "1.0.0",
             content = "param: value",
-            contentType = "application/x-yaml",
-            isDraft = false
+            contentType = "application/x-yaml"
         };
         var response1 = await client.PutAsJsonAsync($"/api/v1/parameters/{scopeTypeId}/{configId}", request, TestContext.Current.CancellationToken);
         response1.EnsureSuccessStatusCode();
