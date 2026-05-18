@@ -5,6 +5,7 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 
+using OpenDsc.Contracts.Retention;
 using OpenDsc.Server.Authorization;
 using OpenDsc.Server.Services;
 
@@ -123,68 +124,22 @@ public static class RetentionEndpoints
     }
 }
 
-/// <summary>
-/// Request to cleanup old versions.
-/// </summary>
-public sealed class CleanupRequest
+internal static class RetentionRequestExtensions
 {
-    /// <summary>Number of recent versions to keep.</summary>
-    public int KeepVersions { get; init; } = 10;
-
-    /// <summary>Number of days to keep versions.</summary>
-    public int KeepDays { get; init; } = 90;
-
-    /// <summary>When true, release (non-prerelease) versions are never deleted.</summary>
-    public bool KeepReleaseVersions { get; init; } = true;
-
-    /// <summary>If true, returns what would be deleted without actually deleting.</summary>
-    public bool DryRun { get; init; } = true;
-
-    internal RetentionPolicy ToPolicy() => new()
+    internal static RetentionPolicy ToPolicy(this CleanupRequest request) => new()
     {
-        KeepVersions = KeepVersions,
-        KeepDays = KeepDays,
-        KeepReleaseVersions = KeepReleaseVersions,
-        DryRun = DryRun,
+        KeepVersions = request.KeepVersions,
+        KeepDays = request.KeepDays,
+        KeepReleaseVersions = request.KeepReleaseVersions,
+        DryRun = request.DryRun,
         IsScheduled = false
     };
-}
 
-/// <summary>
-/// Request to cleanup old records (compliance reports or LCM status events).
-/// </summary>
-public sealed class RecordCleanupRequest
-{
-    /// <summary>Maximum number of records to keep per node.</summary>
-    public int KeepCount { get; init; } = 1000;
-
-    /// <summary>Number of days to keep records.</summary>
-    public int KeepDays { get; init; } = 30;
-
-    /// <summary>If true, returns what would be deleted without actually deleting.</summary>
-    public bool DryRun { get; init; } = true;
-
-    internal RecordRetentionPolicy ToPolicy() => new()
+    internal static RecordRetentionPolicy ToPolicy(this RecordCleanupRequest request) => new()
     {
-        KeepCount = KeepCount,
-        KeepDays = KeepDays,
-        DryRun = DryRun,
+        KeepCount = request.KeepCount,
+        KeepDays = request.KeepDays,
+        DryRun = request.DryRun,
         IsScheduled = false
     };
-}
-
-/// <summary>
-/// Summary of a single retention cleanup run.
-/// </summary>
-public sealed class RetentionRun
-{
-    public required Guid Id { get; init; }
-    public required DateTimeOffset StartedAt { get; init; }
-    public DateTimeOffset? CompletedAt { get; init; }
-    public required string VersionType { get; init; }
-    public required bool IsScheduled { get; init; }
-    public required bool IsDryRun { get; init; }
-    public required int DeletedCount { get; init; }
-    public required int KeptCount { get; init; }
-    public string? Error { get; init; }
 }

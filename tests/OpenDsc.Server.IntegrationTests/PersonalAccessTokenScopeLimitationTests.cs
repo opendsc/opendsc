@@ -4,12 +4,11 @@
 
 using System.Net;
 using System.Net.Http.Headers;
-using System.Text.Json;
 
 using AwesomeAssertions;
 
+using OpenDsc.Contracts.Users;
 using OpenDsc.Server.Authorization;
-using OpenDsc.Server.Endpoints;
 
 using Xunit;
 
@@ -49,7 +48,7 @@ public class PersonalAccessTokenScopeLimitationTests : IClassFixture<ServerWebAp
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Created);
-        var token = await response.Content.ReadFromJsonAsync<CreateTokenResponse>(TestContext.Current.CancellationToken);
+        var token = await response.Content.ReadFromJsonAsync<TokenCreationResult>(TestContext.Current.CancellationToken);
         token.Should().NotBeNull();
         token!.Scopes.Should().HaveCount(5);
         token.Scopes.Should().ContainInOrder(
@@ -120,7 +119,7 @@ public class PersonalAccessTokenScopeLimitationTests : IClassFixture<ServerWebAp
 
         // Assert: Should deduplicate to 2 scopes
         response.StatusCode.Should().Be(HttpStatusCode.Created);
-        var token = await response.Content.ReadFromJsonAsync<CreateTokenResponse>(TestContext.Current.CancellationToken);
+        var token = await response.Content.ReadFromJsonAsync<TokenCreationResult>(TestContext.Current.CancellationToken);
         token.Should().NotBeNull();
         token!.Scopes.Should().HaveCount(2);
         token.Scopes.Should().Contain(NodePermissions.Read);
@@ -145,7 +144,7 @@ public class PersonalAccessTokenScopeLimitationTests : IClassFixture<ServerWebAp
 
         // Assert: Should succeed but token has no scopes (effectively useless)
         response.StatusCode.Should().Be(HttpStatusCode.Created);
-        var token = await response.Content.ReadFromJsonAsync<CreateTokenResponse>(TestContext.Current.CancellationToken);
+        var token = await response.Content.ReadFromJsonAsync<TokenCreationResult>(TestContext.Current.CancellationToken);
         token.Should().NotBeNull();
         token!.Scopes.Should().BeEmpty();
     }
@@ -168,7 +167,7 @@ public class PersonalAccessTokenScopeLimitationTests : IClassFixture<ServerWebAp
 
         // Assert: Should filter out whitespace-only strings
         response.StatusCode.Should().Be(HttpStatusCode.Created);
-        var token = await response.Content.ReadFromJsonAsync<CreateTokenResponse>(TestContext.Current.CancellationToken);
+        var token = await response.Content.ReadFromJsonAsync<TokenCreationResult>(TestContext.Current.CancellationToken);
         token.Should().NotBeNull();
         token!.Scopes.Should().HaveCount(2);
     }
@@ -191,7 +190,7 @@ public class PersonalAccessTokenScopeLimitationTests : IClassFixture<ServerWebAp
 
         var createResponse = await limitedClient.PostAsJsonAsync("/api/v1/auth/tokens", createRequest, TestContext.Current.CancellationToken);
         createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
-        var token = await createResponse.Content.ReadFromJsonAsync<CreateTokenResponse>(TestContext.Current.CancellationToken);
+        var token = await createResponse.Content.ReadFromJsonAsync<TokenCreationResult>(TestContext.Current.CancellationToken);
 
         // Act: Use PAT to try to delete (which user doesn't have permission for)
         using var patClient = _factory.CreateClient();
@@ -222,7 +221,7 @@ public class PersonalAccessTokenScopeLimitationTests : IClassFixture<ServerWebAp
 
         var createResponse = await multiPermissionClient.PostAsJsonAsync("/api/v1/auth/tokens", createRequest, TestContext.Current.CancellationToken);
         createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
-        var token = await createResponse.Content.ReadFromJsonAsync<CreateTokenResponse>(TestContext.Current.CancellationToken);
+        var token = await createResponse.Content.ReadFromJsonAsync<TokenCreationResult>(TestContext.Current.CancellationToken);
 
         // Act & Assert: Verify token has both scopes
         token.Should().NotBeNull();
@@ -253,7 +252,7 @@ public class PersonalAccessTokenScopeLimitationTests : IClassFixture<ServerWebAp
         };
 
         var createResponse = await fullPermissionClient.PostAsJsonAsync("/api/v1/auth/tokens", createRequest, TestContext.Current.CancellationToken);
-        var token = await createResponse.Content.ReadFromJsonAsync<CreateTokenResponse>(TestContext.Current.CancellationToken);
+        var token = await createResponse.Content.ReadFromJsonAsync<TokenCreationResult>(TestContext.Current.CancellationToken);
 
         // Act: Try to delete using PAT (user has delete permission, but PAT only has read)
         using var patClient = _factory.CreateClient();
@@ -280,7 +279,7 @@ public class PersonalAccessTokenScopeLimitationTests : IClassFixture<ServerWebAp
         };
 
         var createResponse = await adminClient.PostAsJsonAsync("/api/v1/auth/tokens", createRequest, TestContext.Current.CancellationToken);
-        var token = await createResponse.Content.ReadFromJsonAsync<CreateTokenResponse>(TestContext.Current.CancellationToken);
+        var token = await createResponse.Content.ReadFromJsonAsync<TokenCreationResult>(TestContext.Current.CancellationToken);
 
         // Act: Use PAT to try to read nodes
         using var patClient = _factory.CreateClient();
@@ -309,7 +308,7 @@ public class PersonalAccessTokenScopeLimitationTests : IClassFixture<ServerWebAp
         };
 
         var createResponse = await userClient.PostAsJsonAsync("/api/v1/auth/tokens", createRequest, TestContext.Current.CancellationToken);
-        var token = await createResponse.Content.ReadFromJsonAsync<CreateTokenResponse>(TestContext.Current.CancellationToken);
+        var token = await createResponse.Content.ReadFromJsonAsync<TokenCreationResult>(TestContext.Current.CancellationToken);
 
         // Act & Assert: Verify scope limitations are enforced
         using var patClient = _factory.CreateClient();
@@ -367,7 +366,7 @@ public class PersonalAccessTokenScopeLimitationTests : IClassFixture<ServerWebAp
         };
 
         var createResponse = await mixedClient.PostAsJsonAsync("/api/v1/auth/tokens", createRequest, TestContext.Current.CancellationToken);
-        var token = await createResponse.Content.ReadFromJsonAsync<CreateTokenResponse>(TestContext.Current.CancellationToken);
+        var token = await createResponse.Content.ReadFromJsonAsync<TokenCreationResult>(TestContext.Current.CancellationToken);
 
         // Act & Assert: Verify the token was created with correct scopes
         token.Should().NotBeNull();
@@ -376,4 +375,5 @@ public class PersonalAccessTokenScopeLimitationTests : IClassFixture<ServerWebAp
         token.Scopes.Should().Contain(ServerPermissions.SettingsWrite);
     }
 }
+
 

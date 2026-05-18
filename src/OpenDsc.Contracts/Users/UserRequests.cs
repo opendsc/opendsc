@@ -124,3 +124,16 @@ public sealed class UpdateTokenScopesRequest
 {
     public string[] Scopes { get; set; } = [];
 }
+
+public sealed class LoginRequest
+{
+    public string Username { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+}
+
+public sealed class CreateTokenRequest
+{
+    public string Name { get; set; } = string.Empty;
+    public string[] Scopes { get; set; } = [];
+    public DateTimeOffset? ExpiresAt { get; set; }
+}

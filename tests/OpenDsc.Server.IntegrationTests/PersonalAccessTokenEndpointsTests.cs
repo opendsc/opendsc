@@ -7,8 +7,8 @@ using System.Net.Http.Headers;
 
 using AwesomeAssertions;
 
+using OpenDsc.Contracts.Users;
 using OpenDsc.Server.Authorization;
-using OpenDsc.Server.Endpoints;
 
 using Xunit;
 
@@ -51,7 +51,7 @@ public class PersonalAccessTokenEndpointsTests : IClassFixture<ServerWebApplicat
         var response = await _client.PostAsJsonAsync("/api/v1/auth/tokens", createRequest, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
-        var token = await response.Content.ReadFromJsonAsync<CreateTokenResponse>(TestContext.Current.CancellationToken);
+        var token = await response.Content.ReadFromJsonAsync<TokenCreationResult>(TestContext.Current.CancellationToken);
         token.Should().NotBeNull();
         token!.Name.Should().Be("TestToken");
         token.Token.Should().NotBeNullOrEmpty(); // The actual token value
@@ -70,7 +70,7 @@ public class PersonalAccessTokenEndpointsTests : IClassFixture<ServerWebApplicat
             ExpiresAt = DateTimeOffset.UtcNow.AddDays(30)
         };
         var createResponse = await _client.PostAsJsonAsync("/api/v1/auth/tokens", createRequest, TestContext.Current.CancellationToken);
-        var createdToken = await createResponse.Content.ReadFromJsonAsync<CreateTokenResponse>(TestContext.Current.CancellationToken);
+        var createdToken = await createResponse.Content.ReadFromJsonAsync<TokenCreationResult>(TestContext.Current.CancellationToken);
 
         var response = await _client.GetAsync("/api/v1/auth/tokens", TestContext.Current.CancellationToken);
 
@@ -93,7 +93,7 @@ public class PersonalAccessTokenEndpointsTests : IClassFixture<ServerWebApplicat
             ExpiresAt = DateTimeOffset.UtcNow.AddDays(30)
         };
         var createResponse = await _client.PostAsJsonAsync("/api/v1/auth/tokens", createRequest, TestContext.Current.CancellationToken);
-        var createdToken = await createResponse.Content.ReadFromJsonAsync<CreateTokenResponse>(TestContext.Current.CancellationToken);
+        var createdToken = await createResponse.Content.ReadFromJsonAsync<TokenCreationResult>(TestContext.Current.CancellationToken);
 
         // Delete the token
         var deleteResponse = await _client.DeleteAsync($"/api/v1/auth/tokens/{createdToken!.TokenId}", TestContext.Current.CancellationToken);
@@ -120,7 +120,7 @@ public class PersonalAccessTokenEndpointsTests : IClassFixture<ServerWebApplicat
             ExpiresAt = DateTimeOffset.UtcNow.AddDays(30)
         };
         var createResponse = await _client.PostAsJsonAsync("/api/v1/auth/tokens", createRequest, TestContext.Current.CancellationToken);
-        var createdToken = await createResponse.Content.ReadFromJsonAsync<CreateTokenResponse>(TestContext.Current.CancellationToken);
+        var createdToken = await createResponse.Content.ReadFromJsonAsync<TokenCreationResult>(TestContext.Current.CancellationToken);
 
         // Revoke the token
         var revokeResponse = await _client.DeleteAsync($"/api/v1/auth/tokens/{createdToken!.TokenId}", TestContext.Current.CancellationToken);
@@ -151,7 +151,7 @@ public class PersonalAccessTokenEndpointsTests : IClassFixture<ServerWebApplicat
 
         var createResponse = await roleClient.PostAsJsonAsync("/api/v1/auth/tokens", createRequest, TestContext.Current.CancellationToken);
         createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
-        var createdToken = await createResponse.Content.ReadFromJsonAsync<CreateTokenResponse>(TestContext.Current.CancellationToken);
+        var createdToken = await createResponse.Content.ReadFromJsonAsync<TokenCreationResult>(TestContext.Current.CancellationToken);
         createdToken.Should().NotBeNull();
 
         using var patClient = _factory.CreateClient();
@@ -161,4 +161,5 @@ public class PersonalAccessTokenEndpointsTests : IClassFixture<ServerWebApplicat
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 }
+
 

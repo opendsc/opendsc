@@ -4,8 +4,8 @@
 
 using Microsoft.AspNetCore.Mvc.Testing;
 
+using OpenDsc.Contracts.Users;
 using OpenDsc.Server.Authorization;
-using OpenDsc.Server.Endpoints;
 
 namespace OpenDsc.Server.FunctionalTests;
 
@@ -54,7 +54,7 @@ public static class AuthenticationHelper
             throw new InvalidOperationException($"Token creation failed with status {tokenResponse.StatusCode}: {errorContent}");
         }
 
-        var tokenResult = await tokenResponse.Content.ReadFromJsonAsync<CreateTokenResponse>();
+        var tokenResult = await tokenResponse.Content.ReadFromJsonAsync<TokenCreationResult>();
         return tokenResult!.Token;
     }
 
@@ -66,3 +66,4 @@ public static class AuthenticationHelper
         return client;
     }
 }
+

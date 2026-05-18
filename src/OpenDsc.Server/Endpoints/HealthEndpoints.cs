@@ -4,6 +4,7 @@
 
 using Microsoft.AspNetCore.Http.HttpResults;
 
+using OpenDsc.Contracts.Health;
 using OpenDsc.Contracts.Settings;
 
 namespace OpenDsc.Server.Endpoints;
@@ -56,17 +57,4 @@ public static class HealthEndpoints
             return TypedResults.StatusCode(503);
         }
     }
-}
-
-public sealed class HealthStatus
-{
-    public string Status { get; set; } = string.Empty;
-    public DateTimeOffset Timestamp { get; set; }
-}
-
-public sealed class ReadinessStatus
-{
-    public string Status { get; set; } = string.Empty;
-    public string Database { get; set; } = string.Empty;
-    public DateTimeOffset Timestamp { get; set; }
 }

@@ -3,7 +3,6 @@
 // terms of the MIT license.
 
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
 
 using OpenDsc.Server.Authentication;
 
