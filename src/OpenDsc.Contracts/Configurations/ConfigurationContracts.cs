@@ -134,7 +134,7 @@ public sealed class ConfigurationVersionDetails
     /// <summary>
     /// Files contained in the version package.
     /// </summary>
-    public List<ConfigurationFileDetails> Files { get; set; } = [];
+    public IReadOnlyList<ConfigurationFileDetails> Files { get; internal set; } = [];
 }
 
 /// <summary>
@@ -213,12 +213,12 @@ public sealed class VersionUsageInfo
     /// <summary>
     /// Whether the version is currently in use by any node or composite configuration.
     /// </summary>
-    public bool IsInUse { get; init; }
+    public bool IsInUse { get; set; }
 
     /// <summary>
     /// Human-readable details about where the version is in use.
     /// </summary>
-    public IReadOnlyList<string> Details { get; init; } = [];
+    public IReadOnlyList<string> Details { get; set; } = [];
 }
 
 /// <summary>
@@ -229,30 +229,30 @@ public sealed class PublishResult
     /// <summary>
     /// Whether the publish succeeded.
     /// </summary>
-    public bool Success { get; init; }
+    public bool Success { get; set; }
 
     /// <summary>
     /// Compatibility report if the publish was blocked due to breaking schema changes.
     /// </summary>
-    public CompatibilityReport? CompatibilityReport { get; init; }
+    public CompatibilityReport? CompatibilityReport { get; set; }
 
     /// <summary>
     /// Error message if the publish failed for a non-compatibility reason.
     /// </summary>
-    public string? ErrorMessage { get; init; }
+    public string? ErrorMessage { get; set; }
 
     /// <summary>
     /// The updated status after a successful publish.
     /// </summary>
-    public ConfigurationVersionStatus? UpdatedStatus { get; init; }
+    public ConfigurationVersionStatus? UpdatedStatus { get; set; }
 
     /// <summary>
     /// The published version string.
     /// </summary>
-    public string? UpdatedVersion { get; init; }
+    public string? UpdatedVersion { get; set; }
 
     /// <summary>
     /// The prerelease channel of the published version.
     /// </summary>
-    public string? UpdatedPrereleaseChannel { get; init; }
+    public string? UpdatedPrereleaseChannel { get; set; }
 }

@@ -282,7 +282,7 @@
         availableConfigMajors = await ParameterService.GetAvailableMajorVersionsAsync(selectedConfigurationId.Value);
 
         var allConfigs = await ConfigurationService.GetConfigurationsAsync();
-        var config = allConfigs.Find(c => c.Id == selectedConfigurationId.Value);
+        var config = allConfigs.FirstOrDefault(c => c.Id == selectedConfigurationId.Value);
         if (config is not null)
         {
             var configVersions = await ConfigurationService.GetVersionsAsync(config.Name) ?? [];

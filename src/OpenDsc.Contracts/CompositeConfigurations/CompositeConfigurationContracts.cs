@@ -27,7 +27,7 @@ public sealed class CreateCompositeConfigurationRequest
     /// <summary>
     /// Entry point filename for the generated orchestrator configuration.
     /// </summary>
-    public string EntryPoint { get; set; } = "main.dsc.yaml";
+    public required string EntryPoint { get; set; }
 }
 
 /// <summary>
@@ -169,7 +169,7 @@ public sealed class CompositeConfigurationDetails
     /// <summary>
     /// All versions of this composite configuration.
     /// </summary>
-    public List<CompositeConfigurationVersionDetails> Versions { get; set; } = [];
+    public IReadOnlyList<CompositeConfigurationVersionDetails> Versions { get; internal set; } = [];
 
     /// <summary>
     /// When the composite configuration was created.
@@ -210,7 +210,7 @@ public sealed class CompositeConfigurationVersionDetails
     /// <summary>
     /// Child configurations in this version.
     /// </summary>
-    public List<CompositeConfigurationItemDetails> Items { get; set; } = [];
+    public IReadOnlyList<CompositeConfigurationItemDetails> Items { get; internal set; } = [];
 
     /// <summary>
     /// When the version was created.
@@ -265,7 +265,18 @@ public sealed class CompositeConfigurationItemDetails
 /// </summary>
 public sealed class ChildConfigurationOption
 {
+    /// <summary>
+    /// The child configuration's unique identifier.
+    /// </summary>
     public Guid Id { get; set; }
+
+    /// <summary>
+    /// The child configuration's name.
+    /// </summary>
     public string Name { get; set; } = string.Empty;
-    public List<int> AvailableMajorVersions { get; set; } = [];
+
+    /// <summary>
+    /// Available major versions of the child configuration that can be selected.
+    /// </summary>
+    public IReadOnlyList<int> AvailableMajorVersions { get; internal set; } = [];
 }

@@ -9,8 +9,23 @@ namespace OpenDsc.Contracts.Nodes;
 /// </summary>
 public enum NodeStatus
 {
+    /// <summary>
+    /// The node's compliance status is unknown (not yet evaluated).
+    /// </summary>
     Unknown,
+
+    /// <summary>
+    /// The node is in the desired state (compliant).
+    /// </summary>
     Compliant,
+
+    /// <summary>
+    /// The node is not in the desired state (non-compliant).
+    /// </summary>
     NonCompliant,
+
+    /// <summary>
+    /// An error occurred while evaluating the node's compliance.
+    /// </summary>
     Error
 }

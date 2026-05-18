@@ -9,7 +9,6 @@ using OpenDsc.Contracts.CompositeConfigurations;
 using OpenDsc.Contracts.Health;
 using OpenDsc.Contracts.Lcm;
 using OpenDsc.Contracts.Nodes;
-using OpenDsc.Contracts.Parameters;
 using OpenDsc.Contracts.Permissions;
 using OpenDsc.Contracts.Reports;
 using OpenDsc.Contracts.Retention;
@@ -169,14 +168,14 @@ namespace OpenDsc.Server;
 [JsonSerializable(typeof(UpdateRetentionSettingsRequest))]
 // Parameter validation
 [JsonSerializable(typeof(OpenDsc.Contracts.Configurations.ValidationError), TypeInfoPropertyName = "ConfigurationValidationError")]
-[JsonSerializable(typeof(List<OpenDsc.Contracts.Configurations.ValidationError>), TypeInfoPropertyName = "ConfigurationListValidationError")]
-[JsonSerializable(typeof(List<OpenDsc.Contracts.Parameters.ValidationError>), TypeInfoPropertyName = "ParameterListValidationError")]
+[JsonSerializable(typeof(IReadOnlyList<OpenDsc.Contracts.Configurations.ValidationError>), TypeInfoPropertyName = "ConfigurationListValidationError")]
+[JsonSerializable(typeof(IReadOnlyList<OpenDsc.Contracts.Parameters.ValidationError>), TypeInfoPropertyName = "ParameterListValidationError")]
 [JsonSerializable(typeof(OpenDsc.Server.Services.ValidationResult), TypeInfoPropertyName = "ServerValidationResult")]
 [JsonSerializable(typeof(OpenDsc.Contracts.Configurations.CompatibilityReport), TypeInfoPropertyName = "ConfigurationCompatibilityReport")]
 [JsonSerializable(typeof(SchemaChange))]
 [JsonSerializable(typeof(OpenDsc.Contracts.Configurations.ParameterFileMigrationStatus), TypeInfoPropertyName = "ConfigurationParameterFileMigrationStatus")]
-[JsonSerializable(typeof(List<OpenDsc.Contracts.Configurations.ParameterFileMigrationStatus>), TypeInfoPropertyName = "ConfigurationListParameterFileMigrationStatus")]
-[JsonSerializable(typeof(List<OpenDsc.Contracts.Parameters.ParameterFileMigrationStatus>), TypeInfoPropertyName = "ParameterListParameterFileMigrationStatus")]
+[JsonSerializable(typeof(IReadOnlyList<OpenDsc.Contracts.Configurations.ParameterFileMigrationStatus>), TypeInfoPropertyName = "ConfigurationListParameterFileMigrationStatus")]
+[JsonSerializable(typeof(IReadOnlyList<OpenDsc.Contracts.Parameters.ParameterFileMigrationStatus>), TypeInfoPropertyName = "ParameterListParameterFileMigrationStatus")]
 [JsonSerializable(typeof(VersionUsageInfo))]
 [JsonSerializable(typeof(OpenDsc.Contracts.Configurations.PublishResult), TypeInfoPropertyName = "ConfigurationPublishResult")]
 // Schema types

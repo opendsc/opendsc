@@ -133,7 +133,8 @@
         isLoading = true;
         try
         {
-            configurations = await ConfigurationService.GetConfigurationsAsync();
+            var result = await ConfigurationService.GetConfigurationsAsync();
+            configurations = [.. result];
             FilterConfigurations();
         }
         catch (Exception ex)

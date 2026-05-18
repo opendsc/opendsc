@@ -15,12 +15,12 @@ public sealed class ServerSettingsSummary
     /// <summary>
     /// How often nodes should rotate their certificates (informational).
     /// </summary>
-    public TimeSpan CertificateRotationInterval { get; set; }
+    public TimeSpan CertificateRotationInterval { get; internal set; }
 
     /// <summary>
     /// Multiplier applied to a node's ConfigurationModeInterval to determine staleness threshold.
     /// </summary>
-    public double StalenessMultiplier { get; set; }
+    public double StalenessMultiplier { get; internal set; }
 }
 
 /// <summary>
@@ -47,17 +47,17 @@ public sealed class ServerLcmDefaultsSummary
     /// <summary>
     /// Server-wide default LCM operating mode. Null means no server default is set.
     /// </summary>
-    public ConfigurationMode? DefaultConfigurationMode { get; set; }
+    public ConfigurationMode? DefaultConfigurationMode { get; internal set; }
 
     /// <summary>
     /// Server-wide default LCM configuration mode interval. Null means no server default is set.
     /// </summary>
-    public TimeSpan? DefaultConfigurationModeInterval { get; set; }
+    public TimeSpan? DefaultConfigurationModeInterval { get; internal set; }
 
     /// <summary>
     /// Server-wide default compliance reporting setting. Null means no server default is set.
     /// </summary>
-    public bool? DefaultReportCompliance { get; set; }
+    public bool? DefaultReportCompliance { get; internal set; }
 }
 
 /// <summary>
@@ -86,10 +86,10 @@ public sealed class UpdateServerLcmDefaultsRequest
 /// </summary>
 public sealed class ValidationSettingsSummary
 {
-    public required bool RequireSemVer { get; init; }
-    public required ParameterValidationMode DefaultParameterValidationMode { get; init; }
-    public required bool AllowConfigurationOverride { get; init; }
-    public required bool AllowParameterValidationOverride { get; init; }
+    public bool RequireSemVer { get; internal set; }
+    public ParameterValidationMode DefaultParameterValidationMode { get; internal set; }
+    public bool AllowConfigurationOverride { get; internal set; }
+    public bool AllowParameterValidationOverride { get; internal set; }
 }
 
 /// <summary>
@@ -97,10 +97,10 @@ public sealed class ValidationSettingsSummary
 /// </summary>
 public sealed class UpdateValidationSettingsRequest
 {
-    public bool? RequireSemVer { get; init; }
-    public ParameterValidationMode? DefaultParameterValidationMode { get; init; }
-    public bool? AllowConfigurationOverride { get; init; }
-    public bool? AllowParameterValidationOverride { get; init; }
+    public bool? RequireSemVer { get; set; }
+    public ParameterValidationMode? DefaultParameterValidationMode { get; set; }
+    public bool? AllowConfigurationOverride { get; set; }
+    public bool? AllowParameterValidationOverride { get; set; }
 }
 
 /// <summary>
@@ -108,15 +108,15 @@ public sealed class UpdateValidationSettingsRequest
 /// </summary>
 public sealed class RetentionSettingsSummary
 {
-    public required bool Enabled { get; init; }
-    public required int KeepVersions { get; init; }
-    public required int KeepDays { get; init; }
-    public required bool KeepReleaseVersions { get; init; }
-    public required int ScheduleIntervalHours { get; init; }
-    public required int ReportKeepCount { get; init; }
-    public required int ReportKeepDays { get; init; }
-    public required int StatusEventKeepCount { get; init; }
-    public required int StatusEventKeepDays { get; init; }
+    public bool Enabled { get; internal set; }
+    public int KeepVersions { get; internal set; }
+    public int KeepDays { get; internal set; }
+    public bool KeepReleaseVersions { get; internal set; }
+    public int ScheduleIntervalHours { get; internal set; }
+    public int ReportKeepCount { get; internal set; }
+    public int ReportKeepDays { get; internal set; }
+    public int StatusEventKeepCount { get; internal set; }
+    public int StatusEventKeepDays { get; internal set; }
 }
 
 /// <summary>
@@ -124,15 +124,15 @@ public sealed class RetentionSettingsSummary
 /// </summary>
 public sealed class UpdateRetentionSettingsRequest
 {
-    public bool? Enabled { get; init; }
-    public int? KeepVersions { get; init; }
-    public int? KeepDays { get; init; }
-    public bool? KeepReleaseVersions { get; init; }
-    public int? ScheduleIntervalHours { get; init; }
-    public int? ReportKeepCount { get; init; }
-    public int? ReportKeepDays { get; init; }
-    public int? StatusEventKeepCount { get; init; }
-    public int? StatusEventKeepDays { get; init; }
+    public bool? Enabled { get; set; }
+    public int? KeepVersions { get; set; }
+    public int? KeepDays { get; set; }
+    public bool? KeepReleaseVersions { get; set; }
+    public int? ScheduleIntervalHours { get; set; }
+    public int? ReportKeepCount { get; set; }
+    public int? ReportKeepDays { get; set; }
+    public int? StatusEventKeepCount { get; set; }
+    public int? StatusEventKeepDays { get; set; }
 }
 
 /// <summary>
@@ -140,15 +140,15 @@ public sealed class UpdateRetentionSettingsRequest
 /// </summary>
 public sealed class RetentionRunSummary
 {
-    public required Guid Id { get; init; }
-    public required DateTimeOffset StartedAt { get; init; }
-    public DateTimeOffset? CompletedAt { get; init; }
-    public required string VersionType { get; init; }
-    public required bool IsScheduled { get; init; }
-    public required bool IsDryRun { get; init; }
-    public required int DeletedCount { get; init; }
-    public required int KeptCount { get; init; }
-    public string? Error { get; init; }
+    public Guid Id { get; internal set; }
+    public DateTimeOffset StartedAt { get; internal set; }
+    public DateTimeOffset? CompletedAt { get; internal set; }
+    public string VersionType { get; internal set; } = string.Empty;
+    public bool IsScheduled { get; internal set; }
+    public bool IsDryRun { get; internal set; }
+    public int DeletedCount { get; internal set; }
+    public int KeptCount { get; internal set; }
+    public string? Error { get; internal set; }
 }
 
 /// <summary>
@@ -159,5 +159,5 @@ public sealed class ErrorResponse
     /// <summary>
     /// Error message.
     /// </summary>
-    public string Error { get; set; } = string.Empty;
+    public string Error { get; internal set; } = string.Empty;
 }

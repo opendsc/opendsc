@@ -114,7 +114,7 @@ public sealed class ParameterSourceInfo
 
     public object? Value { get; set; }
 
-    public List<ScopeInfo>? OverriddenBy { get; set; }
+    public IReadOnlyList<ScopeInfo>? OverriddenBy { get; set; }
 
     public string? ResolvedVersion { get; set; }
 
@@ -162,7 +162,7 @@ public sealed class ParameterResolutionDetails
 
     public string? PrereleaseChannel { get; set; }
 
-    public List<ScopeResolutionDetails> Scopes { get; set; } = [];
+    public IReadOnlyList<ScopeResolutionDetails> Scopes { get; set; } = [];
 }
 
 /// <summary>
@@ -188,7 +188,7 @@ public sealed class ValidationResult
 {
     public bool IsValid { get; set; }
 
-    public List<ValidationError>? Errors { get; set; }
+    public IReadOnlyList<ValidationError>? Errors { get; set; }
 }
 
 /// <summary>
@@ -212,7 +212,7 @@ public sealed class PublishResult
 
     public CompatibilityReport? CompatibilityReport { get; set; }
 
-    public List<ParameterFileMigrationStatus>? MigrationRequirements { get; set; }
+    public IReadOnlyList<ParameterFileMigrationStatus>? MigrationRequirements { get; set; }
 }
 
 /// <summary>
@@ -222,9 +222,9 @@ public sealed class CompatibilityReport
 {
     public bool HasBreakingChanges { get; set; }
 
-    public List<ParameterChange>? BreakingChanges { get; set; }
+    public IReadOnlyList<ParameterChange>? BreakingChanges { get; set; }
 
-    public List<ParameterChange>? NonBreakingChanges { get; set; }
+    public IReadOnlyList<ParameterChange>? NonBreakingChanges { get; set; }
 }
 
 /// <summary>

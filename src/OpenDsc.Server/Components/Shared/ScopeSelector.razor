@@ -191,8 +191,8 @@
 
     private async Task LoadConfigurationsAsync()
     {
-        configurations = await ConfigurationService.GetConfigurationsAsync();
-        configurations = [.. configurations.OrderBy(c => c.Name)];
+        var result = await ConfigurationService.GetConfigurationsAsync();
+        configurations = [.. result.OrderBy(c => c.Name)];
     }
 
     private async Task LoadScopeTypesAsync()

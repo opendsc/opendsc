@@ -82,12 +82,12 @@
                                                     @if (majorVersions.Any())
                                                     {
                                                         <MudChip T="string" Size="Size.Small">@majorVersions.Count @(majorVersions.Count == 1 ?
-                                                                                                                                                   "version" : "versions")</MudChip>
+                                                                                                                                                                                                               "version" : "versions")</MudChip>
                                                         }
                                                         @if (draftCount > 0)
                                                         {
                                                             <MudChip T="string" Size="Size.Small" Color="Color.Info">@draftCount @(draftCount == 1 ?
-                                                                                                                                                            "draft" : "drafts")</MudChip>
+                                                                                                                                                                                                                            "draft" : "drafts")</MudChip>
                                                             }
                                                         </div>
                                                     </TitleContent>
@@ -421,7 +421,8 @@ else if (loading)
 
             if (configuration != null)
             {
-                versions = await ConfigurationService.GetVersionsAsync(Name) ?? [];
+                var versionResult = await ConfigurationService.GetVersionsAsync(Name);
+                versions = versionResult == null ? [] : [.. versionResult];
 
                 UpdateMajors();
                 await LoadRetentionSettings();

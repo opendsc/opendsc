@@ -104,7 +104,13 @@
             await ConfigurationService.AddFilesAsync(
                 ConfigurationName,
                 Version,
-                [new FileUpload(fileName, stream, GetContentType(fileName), bytes.Length)]);
+                [new FileUpload
+                {
+                    FileName = fileName,
+                    Content = stream,
+                    ContentType = GetContentType(fileName),
+                    Size = bytes.Length
+                }]);
 
             Snackbar.Add($"File '{fileName}' created successfully", Severity.Success);
             MudDialog.Close(DialogResult.Ok(true));

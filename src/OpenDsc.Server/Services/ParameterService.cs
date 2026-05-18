@@ -619,7 +619,7 @@ public sealed partial class ParameterService : IParameterService
         };
     }
 
-    public async Task<List<PermissionEntry>?> GetPermissionsAsync(
+    public async Task<IReadOnlyList<PermissionEntry>?> GetPermissionsAsync(
         Guid configurationId,
         CancellationToken cancellationToken = default)
     {

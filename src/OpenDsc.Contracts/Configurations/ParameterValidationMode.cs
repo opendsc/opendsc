@@ -4,9 +4,23 @@
 
 namespace OpenDsc.Contracts.Configurations;
 
+/// <summary>
+/// Parameter validation behavior for configurations.
+/// </summary>
 public enum ParameterValidationMode
 {
+    /// <summary>
+    /// No validation is performed on configuration parameters.
+    /// </summary>
     None,
+
+    /// <summary>
+    /// Parameter validation issues are logged as warnings but do not prevent execution.
+    /// </summary>
     Warn,
+
+    /// <summary>
+    /// Parameter validation issues cause configuration execution to fail.
+    /// </summary>
     Strict
 }

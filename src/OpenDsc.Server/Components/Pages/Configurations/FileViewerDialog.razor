@@ -22,7 +22,7 @@
     <DialogContent>
         <div class="d-flex align-center justify-space-between mb-2">
             <MudText Typo="Typo.body2" Color="Color.Secondary">Version @Version @(IsEditMode ? "(Editing)" :
-                                                         "(Read-only)")</MudText>
+                                                                         "(Read-only)")</MudText>
                 @if (!IsEditMode)
                 {
                     <MudButtonGroup Size="Size.Small">
@@ -222,7 +222,7 @@
 
             if (versionList.Count > 0)
             {
-                availableVersions = versionList;
+                availableVersions = [.. versionList];
 
                 if (availableVersions.Count > 1)
                 {

@@ -75,7 +75,7 @@ public static class ConfigurationEndpoints
             .WithDescription("Revoke a permission on a configuration");
     }
 
-    private static async Task<Ok<List<ConfigurationSummary>>> GetConfigurations(
+    private static async Task<Ok<IReadOnlyList<ConfigurationSummary>>> GetConfigurations(
         IConfigurationService configService,
         CancellationToken cancellationToken)
     {
@@ -110,7 +110,13 @@ public static class ConfigurationEndpoints
         }
 
         var version = string.IsNullOrWhiteSpace(request.Version) ? "1.0.0" : request.Version;
-        var fileUploads = files.Select(f => new FileUpload(f.FileName, f.OpenReadStream(), f.ContentType, f.Length)).ToList();
+        var fileUploads = files.Select(f => new FileUpload
+        {
+            FileName = f.FileName,
+            Content = f.OpenReadStream(),
+            ContentType = f.ContentType,
+            Size = f.Length
+        }).ToList();
 
         try
         {
@@ -159,7 +165,7 @@ public static class ConfigurationEndpoints
         }
     }
 
-    private static async Task<Results<Ok<List<ConfigurationVersionDetails>>, NotFound, ForbidHttpResult>> GetConfigurationVersions(
+    private static async Task<Results<Ok<IReadOnlyList<ConfigurationVersionDetails>>, NotFound, ForbidHttpResult>> GetConfigurationVersions(
         string name,
         IConfigurationService configService,
         CancellationToken cancellationToken)
@@ -195,7 +201,13 @@ public static class ConfigurationEndpoints
             return TypedResults.BadRequest("At least one file is required");
         }
 
-        var fileUploads = files.Select(f => new FileUpload(f.FileName, f.OpenReadStream(), f.ContentType, f.Length)).ToList();
+        var fileUploads = files.Select(f => new FileUpload
+        {
+            FileName = f.FileName,
+            Content = f.OpenReadStream(),
+            ContentType = f.ContentType,
+            Size = f.Length
+        }).ToList();
 
         try
         {
@@ -437,7 +449,7 @@ public static class ConfigurationEndpoints
         return bool.TryParse(value, out var result) && result;
     }
 
-    private static async Task<Results<Ok<List<PermissionEntry>>, NotFound, ForbidHttpResult>> GetConfigurationPermissions(
+    private static async Task<Results<Ok<IReadOnlyList<PermissionEntry>>, NotFound, ForbidHttpResult>> GetConfigurationPermissions(
         string name,
         IConfigurationService configService,
         CancellationToken cancellationToken)

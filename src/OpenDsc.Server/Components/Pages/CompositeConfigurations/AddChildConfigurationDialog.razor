@@ -69,7 +69,8 @@
 
     protected override async Task OnInitializedAsync()
     {
-        availableConfigurations = await CompositeConfigService.GetAvailableChildConfigurationsAsync(ExistingChildConfigIds);
+        var result = await CompositeConfigService.GetAvailableChildConfigurationsAsync(ExistingChildConfigIds);
+        availableConfigurations = [.. result];
     }
 
     private void OnConfigurationSelected()
@@ -82,7 +83,7 @@
         var config = availableConfigurations.FirstOrDefault(c => c.Id == selectedConfigId.Value);
         if (config is null) return;
 
-        availableMajorVersions = config.AvailableMajorVersions;
+        availableMajorVersions = [.. config.AvailableMajorVersions];
     }
 
     private bool IsValid() => selectedConfigId.HasValue && selectedMajorVersion.HasValue;

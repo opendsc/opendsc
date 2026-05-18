@@ -31,7 +31,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
         _userContext = userContext;
     }
 
-    public async Task<List<CompositeConfigurationSummary>> GetCompositeConfigurationsAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<CompositeConfigurationSummary>> GetCompositeConfigurationsAsync(CancellationToken cancellationToken = default)
     {
         var userId = _userContext.GetCurrentUserId();
         if (userId == null)
@@ -83,7 +83,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
         return MapToDetails(composite);
     }
 
-    public async Task<List<CompositeConfigurationVersionDetails>?> GetVersionsAsync(string name, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<CompositeConfigurationVersionDetails>?> GetVersionsAsync(string name, CancellationToken cancellationToken = default)
     {
         var composite = await _db.CompositeConfigurations
             .Include(c => c.Versions)
@@ -130,7 +130,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
         return MapToVersion(compositeVersion);
     }
 
-    public async Task<List<ChildConfigurationOption>> GetAvailableChildConfigurationsAsync(IEnumerable<Guid> excludeIds, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<ChildConfigurationOption>> GetAvailableChildConfigurationsAsync(IEnumerable<Guid> excludeIds, CancellationToken cancellationToken = default)
     {
         var excludeList = excludeIds.ToList();
 
@@ -153,7 +153,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
         }).ToList();
     }
 
-    public async Task<List<int>> GetAvailableMajorVersionsAsync(Guid configurationId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<int>> GetAvailableMajorVersionsAsync(Guid configurationId, CancellationToken cancellationToken = default)
     {
         var versions = await _db.ConfigurationVersions
             .Where(v => v.ConfigurationId == configurationId && v.Status == ConfigurationVersionStatus.Published)
@@ -554,7 +554,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
         await _db.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task<List<PermissionEntry>?> GetPermissionsAsync(string name, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<PermissionEntry>?> GetPermissionsAsync(string name, CancellationToken cancellationToken = default)
     {
         var composite = await _db.CompositeConfigurations.FirstOrDefaultAsync(c => c.Name == name, cancellationToken);
         if (composite is null)

@@ -59,7 +59,8 @@
     protected override async Task OnInitializedAsync()
     {
         selectedMajorVersion = Item.MajorVersion;
-        availableMajorVersions = await CompositeConfigService.GetAvailableMajorVersionsAsync(Item.ChildConfigurationId);
+        var result = await CompositeConfigService.GetAvailableMajorVersionsAsync(Item.ChildConfigurationId);
+        availableMajorVersions = [.. result];
     }
 
     private bool IsValid() => selectedMajorVersion.HasValue;

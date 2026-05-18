@@ -53,7 +53,8 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
         var createRequest = new CreateCompositeConfigurationRequest
         {
             Name = compositeName,
-            Description = "Test composite configuration"
+            Description = "Test composite configuration",
+            EntryPoint = "main.dsc.yaml"
         };
 
         var createResponse = await AuthClient.PostAsJsonAsync("/api/v1/composite-configurations", createRequest, TestContext.Current.CancellationToken);
@@ -85,7 +86,8 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
 
         var createRequest = new CreateCompositeConfigurationRequest
         {
-            Name = compositeName
+            Name = compositeName,
+            EntryPoint = "main.dsc.yaml"
         };
         await AuthClient.PostAsJsonAsync("/api/v1/composite-configurations", createRequest, TestContext.Current.CancellationToken);
 
@@ -131,7 +133,8 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
 
         var createCompositeRequest = new CreateCompositeConfigurationRequest
         {
-            Name = compositeName
+            Name = compositeName,
+            EntryPoint = "main.dsc.yaml"
         };
         await AuthClient.PostAsJsonAsync("/api/v1/composite-configurations", createCompositeRequest, TestContext.Current.CancellationToken);
 
@@ -182,7 +185,8 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
 
         var createCompositeRequest = new CreateCompositeConfigurationRequest
         {
-            Name = compositeName
+            Name = compositeName,
+            EntryPoint = "main.dsc.yaml"
         };
         await AuthClient.PostAsJsonAsync("/api/v1/composite-configurations", createCompositeRequest, TestContext.Current.CancellationToken);
 
@@ -269,7 +273,8 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
 
         var createCompositeRequest = new CreateCompositeConfigurationRequest
         {
-            Name = compositeName
+            Name = compositeName,
+            EntryPoint = "main.dsc.yaml"
         };
         await AuthClient.PostAsJsonAsync("/api/v1/composite-configurations", createCompositeRequest, TestContext.Current.CancellationToken);
 
@@ -331,7 +336,8 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
 
         var createCompositeRequest = new CreateCompositeConfigurationRequest
         {
-            Name = compositeName
+            Name = compositeName,
+            EntryPoint = "main.dsc.yaml"
         };
         await AuthClient.PostAsJsonAsync("/api/v1/composite-configurations", createCompositeRequest, TestContext.Current.CancellationToken);
 

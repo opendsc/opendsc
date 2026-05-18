@@ -9,6 +9,13 @@ namespace OpenDsc.Contracts.Configurations;
 /// </summary>
 public enum ScopeValueMode
 {
+    /// <summary>
+    /// Unrestricted mode allows any value for this scope type.
+    /// </summary>
     Unrestricted = 0,
+
+    /// <summary>
+    /// Restricted mode only allows predefined scope values for this scope type.
+    /// </summary>
     Restricted = 1
 }

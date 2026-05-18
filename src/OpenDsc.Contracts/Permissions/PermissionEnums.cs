@@ -9,7 +9,14 @@ namespace OpenDsc.Contracts.Permissions;
 /// </summary>
 public enum PrincipalType
 {
+    /// <summary>
+    /// The principal is a user account.
+    /// </summary>
     User,
+
+    /// <summary>
+    /// The principal is a group.
+    /// </summary>
     Group
 }
 
@@ -18,7 +25,18 @@ public enum PrincipalType
 /// </summary>
 public enum ResourcePermission
 {
+    /// <summary>
+    /// Read-only access to the resource.
+    /// </summary>
     Read = 0,
+
+    /// <summary>
+    /// Read and modify access to the resource.
+    /// </summary>
     Modify = 1,
+
+    /// <summary>
+    /// Full access to manage the resource, including permissions.
+    /// </summary>
     Manage = 2
 }

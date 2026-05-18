@@ -11,16 +11,16 @@ namespace OpenDsc.Contracts.Settings;
 /// </summary>
 public sealed class ScopeTypeDetails
 {
-    public required Guid Id { get; init; }
-    public required string Name { get; init; }
-    public string? Description { get; init; }
-    public required int Precedence { get; init; }
-    public required bool IsSystem { get; init; }
-    public required bool IsEnabled { get; init; }
-    public required ScopeValueMode ValueMode { get; init; }
-    public required DateTimeOffset CreatedAt { get; init; }
-    public DateTimeOffset? UpdatedAt { get; init; }
-    public int ParameterFileCount { get; init; }
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public int Precedence { get; set; }
+    public bool IsSystem { get; set; }
+    public bool IsEnabled { get; set; }
+    public ScopeValueMode ValueMode { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset? UpdatedAt { get; set; }
+    public int ParameterFileCount { get; set; }
 }
 
 /// <summary>
@@ -28,9 +28,9 @@ public sealed class ScopeTypeDetails
 /// </summary>
 public sealed class CreateScopeTypeRequest
 {
-    public required string Name { get; init; }
-    public string? Description { get; init; }
-    public ScopeValueMode? ValueMode { get; init; }
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public ScopeValueMode? ValueMode { get; set; }
 }
 
 /// <summary>
@@ -38,7 +38,7 @@ public sealed class CreateScopeTypeRequest
 /// </summary>
 public sealed class UpdateScopeTypeRequest
 {
-    public string? Description { get; init; }
+    public string? Description { get; set; }
 }
 
 /// <summary>
@@ -46,7 +46,7 @@ public sealed class UpdateScopeTypeRequest
 /// </summary>
 public sealed class ReorderScopeTypesRequest
 {
-    public required List<Guid> ScopeTypeIds { get; init; }
+    public List<Guid> ScopeTypeIds { get; set; } = [];
 }
 
 /// <summary>
@@ -54,14 +54,14 @@ public sealed class ReorderScopeTypesRequest
 /// </summary>
 public sealed class ScopeValueDetails
 {
-    public required Guid Id { get; init; }
-    public required Guid ScopeTypeId { get; init; }
-    public required string Value { get; init; }
-    public string? Description { get; init; }
-    public required DateTimeOffset CreatedAt { get; init; }
-    public DateTimeOffset? UpdatedAt { get; init; }
-    public int NodeTagCount { get; init; }
-    public int ParameterFileCount { get; init; }
+    public Guid Id { get; set; }
+    public Guid ScopeTypeId { get; set; }
+    public string Value { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset? UpdatedAt { get; set; }
+    public int NodeTagCount { get; set; }
+    public int ParameterFileCount { get; set; }
 }
 
 /// <summary>
@@ -69,8 +69,8 @@ public sealed class ScopeValueDetails
 /// </summary>
 public sealed class CreateScopeValueRequest
 {
-    public required string Value { get; init; }
-    public string? Description { get; init; }
+    public string Value { get; set; } = string.Empty;
+    public string? Description { get; set; }
 }
 
 /// <summary>
@@ -78,7 +78,7 @@ public sealed class CreateScopeValueRequest
 /// </summary>
 public sealed class UpdateScopeValueRequest
 {
-    public string? Description { get; init; }
+    public string? Description { get; set; }
 }
 
 /// <summary>
@@ -86,8 +86,8 @@ public sealed class UpdateScopeValueRequest
 /// </summary>
 public sealed class ScopeNodeInfo
 {
-    public required Guid Id { get; init; }
-    public required string Fqdn { get; init; }
+    public Guid Id { get; set; }
+    public string Fqdn { get; set; } = string.Empty;
 }
 
 /// <summary>
@@ -95,7 +95,7 @@ public sealed class ScopeNodeInfo
 /// </summary>
 public sealed class ScopeParameterInfo
 {
-    public required string ScopeValue { get; init; }
+    public string ScopeValue { get; set; } = string.Empty;
 }
 
 /// <summary>
@@ -103,8 +103,8 @@ public sealed class ScopeParameterInfo
 /// </summary>
 public sealed class ScopeTypeWithValuesDetails
 {
-    public required ScopeTypeDetails ScopeType { get; init; }
-    public required IReadOnlyList<ScopeValueDetails> Values { get; init; }
+    public ScopeTypeDetails ScopeType { get; set; } = null!;
+    public IReadOnlyList<ScopeValueDetails> Values { get; set; } = [];
 }
 
 /// <summary>
@@ -112,7 +112,7 @@ public sealed class ScopeTypeWithValuesDetails
 /// </summary>
 public sealed class ScopeSummaryResponse
 {
-    public required IReadOnlyList<ScopeTypeDetails> ScopeTypes { get; init; }
-    public required IReadOnlyList<ScopeValueDetails> ScopeValues { get; init; }
-    public required int NodeCount { get; init; }
+    public IReadOnlyList<ScopeTypeDetails> ScopeTypes { get; set; } = [];
+    public IReadOnlyList<ScopeValueDetails> ScopeValues { get; set; } = [];
+    public int NodeCount { get; set; }
 }

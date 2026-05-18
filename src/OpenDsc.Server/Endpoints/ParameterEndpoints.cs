@@ -428,7 +428,7 @@ public static class ParameterEndpoints
         }
     }
 
-    private static async Task<Results<Ok<List<PermissionEntry>>, NotFound, ForbidHttpResult>> GetParameterPermissions(
+    private static async Task<Results<Ok<IReadOnlyList<PermissionEntry>>, NotFound, ForbidHttpResult>> GetParameterPermissions(
         string configurationName,
         IParameterService parameterService,
         IConfigurationService configurationService)

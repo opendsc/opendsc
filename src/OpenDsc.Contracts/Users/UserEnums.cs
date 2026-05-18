@@ -9,6 +9,13 @@ namespace OpenDsc.Contracts.Users;
 /// </summary>
 public enum AccountType
 {
+    /// <summary>
+    /// A regular user account.
+    /// </summary>
     User,
+
+    /// <summary>
+    /// A service account for programmatic access.
+    /// </summary>
     ServiceAccount
 }

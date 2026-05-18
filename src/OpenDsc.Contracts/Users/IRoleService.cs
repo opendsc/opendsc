@@ -4,6 +4,9 @@
 
 namespace OpenDsc.Contracts.Users;
 
+/// <summary>
+/// Combined service interface for reading and managing roles and their permissions.
+/// </summary>
 public interface IRoleService : IRoleReader, IRoleManager
 {
 }

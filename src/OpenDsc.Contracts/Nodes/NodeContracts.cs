@@ -299,7 +299,7 @@ public sealed class NodeConfigurationManifest
     /// <summary>
     /// Entry point path.
     /// </summary>
-    public string EntryPoint { get; set; } = "main.dsc.yaml";
+    public required string EntryPoint { get; set; }
 
     /// <summary>
     /// Optional parameters file path.

@@ -142,7 +142,8 @@
         isLoading = true;
         try
         {
-            composites = await CompositeConfigService.GetCompositeConfigurationsAsync();
+            var result = await CompositeConfigService.GetCompositeConfigurationsAsync();
+            composites = [.. result];
             FilterComposites();
         }
         catch (Exception ex)

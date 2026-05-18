@@ -56,7 +56,8 @@
             var result = await CompositeConfigService.CreateAsync(new CreateCompositeConfigurationRequest
             {
                 Name = name,
-                Description = string.IsNullOrWhiteSpace(description) ? null : description
+                Description = string.IsNullOrWhiteSpace(description) ? null : description,
+                EntryPoint = "main.dsc.yaml"
             });
 
             Snackbar.Add($"Composite configuration '{name}' created", Severity.Success);

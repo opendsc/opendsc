@@ -4,6 +4,9 @@
 
 namespace OpenDsc.Contracts.Users;
 
+/// <summary>
+/// Combined service interface for reading and managing user accounts, passwords, and role assignments.
+/// </summary>
 public interface IUserService : IUserReader, IUserManager
 {
 }

@@ -175,7 +175,7 @@
         configurationName = assignment.ConfigurationName;
 
         var allConfigs = await ConfigurationService.GetConfigurationsAsync();
-        var config = allConfigs.Find(c => c.Name == configurationName);
+        var config = allConfigs.FirstOrDefault(c => c.Name == configurationName);
         if (config is null)
         {
             isLoading = false;
@@ -283,7 +283,7 @@
             <div style="@rowGrid cursor-pointer; border-radius: 4px;" @onclick="() => node.IsExpanded = !node.IsExpanded">
                 <div class="d-flex align-center py-1">
                     <span style="width: @(indentPx)px; flex-shrink: 0; display: inline-block;"></span>
-                    <MudIcon Icon="@(node.IsExpanded? Icons.Material.Filled.ExpandMore : Icons.Material.Filled.ChevronRight)"
+                    <MudIcon Icon="@(node.IsExpanded ? Icons.Material.Filled.ExpandMore : Icons.Material.Filled.ChevronRight)"
                              Size="Size.Small" Style="color: var(--mud-palette-text-secondary); flex-shrink: 0;" />
                     <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Small" Class="mx-1"
                              Style="color: var(--mud-palette-warning-default); flex-shrink: 0;" />
@@ -330,7 +330,7 @@
                     @if (!string.IsNullOrEmpty(info.ResolvedVersion))
                     {
                         <MudTooltip Text="@($"Resolved from v{info.ResolvedVersion}")">
-                            <MudChip T="string" Size="Size.Small" Color="@(info.IsPrerelease? Color.Warning: Color.Default)"
+                            <MudChip T="string" Size="Size.Small" Color="@(info.IsPrerelease ? Color.Warning : Color.Default)"
                                      Variant="Variant.Outlined" Class="ml-1">v@info.ResolvedVersion</MudChip>
                         </MudTooltip>
                     }

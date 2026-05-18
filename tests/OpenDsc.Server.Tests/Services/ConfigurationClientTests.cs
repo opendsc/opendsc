@@ -1431,7 +1431,13 @@ public class ConfigurationServiceTests : IDisposable
         foreach (var (name, content) in files)
         {
             var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(content));
-            mockFiles.Add(new FileUpload(name, stream, null, content.Length));
+            mockFiles.Add(new FileUpload
+            {
+                FileName = name,
+                Content = stream,
+                ContentType = null,
+                Size = content.Length
+            });
         }
 
         return mockFiles;

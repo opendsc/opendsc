@@ -212,7 +212,13 @@
     }
 
     private static FileUpload ToFileUpload(IBrowserFile file) =>
-        new(file.Name, file.OpenReadStream(10 * 1024 * 1024), file.ContentType, file.Size);
+        new()
+        {
+            FileName = file.Name,
+            Content = file.OpenReadStream(10 * 1024 * 1024),
+            ContentType = file.ContentType,
+            Size = file.Size
+        };
 }
 
 <style>

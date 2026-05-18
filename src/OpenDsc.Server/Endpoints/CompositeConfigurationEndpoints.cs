@@ -80,7 +80,7 @@ public static class CompositeConfigurationEndpoints
             .WithDescription("Revoke a permission on a composite configuration");
     }
 
-    private static async Task<Ok<List<CompositeConfigurationSummary>>> GetCompositeConfigurations(
+    private static async Task<Ok<IReadOnlyList<CompositeConfigurationSummary>>> GetCompositeConfigurations(
         ICompositeConfigurationService compositeService,
         CancellationToken cancellationToken)
     {
@@ -184,7 +184,7 @@ public static class CompositeConfigurationEndpoints
         }
     }
 
-    private static async Task<Results<Ok<List<CompositeConfigurationVersionDetails>>, NotFound, ForbidHttpResult>> GetCompositeConfigurationVersions(
+    private static async Task<Results<Ok<IReadOnlyList<CompositeConfigurationVersionDetails>>, NotFound, ForbidHttpResult>> GetCompositeConfigurationVersions(
         string name,
         ICompositeConfigurationService compositeService,
         CancellationToken cancellationToken)
@@ -361,7 +361,7 @@ public static class CompositeConfigurationEndpoints
         }
     }
 
-    private static async Task<Results<Ok<List<PermissionEntry>>, NotFound, ForbidHttpResult>> GetCompositeConfigurationPermissions(
+    private static async Task<Results<Ok<IReadOnlyList<PermissionEntry>>, NotFound, ForbidHttpResult>> GetCompositeConfigurationPermissions(
         string name,
         ICompositeConfigurationService compositeService,
         CancellationToken cancellationToken)

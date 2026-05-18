@@ -1036,7 +1036,7 @@ public sealed partial class ConfigurationService : IConfigurationService
         }
     }
 
-    public async Task<List<ConfigurationSummary>> GetConfigurationsAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<ConfigurationSummary>> GetConfigurationsAsync(CancellationToken cancellationToken = default)
     {
         var userId = _userContext.GetCurrentUserId();
         if (userId == null)
@@ -1101,7 +1101,7 @@ public sealed partial class ConfigurationService : IConfigurationService
         };
     }
 
-    public async Task<List<ConfigurationVersionDetails>?> GetVersionsAsync(string name, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<ConfigurationVersionDetails>?> GetVersionsAsync(string name, CancellationToken cancellationToken = default)
     {
         var config = await _db.Configurations
             .Include(c => c.Versions)
@@ -1422,7 +1422,7 @@ public sealed partial class ConfigurationService : IConfigurationService
         return schema?.Id;
     }
 
-    public async Task<List<string>> GetConfigurationVersionListAsync(string configName, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<string>> GetConfigurationVersionListAsync(string configName, CancellationToken cancellationToken = default)
     {
         var config = await _db.Configurations
             .Include(c => c.Versions)
@@ -1439,7 +1439,7 @@ public sealed partial class ConfigurationService : IConfigurationService
             .ToList();
     }
 
-    public async Task<List<PermissionEntry>?> GetPermissionsAsync(string configName, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<PermissionEntry>?> GetPermissionsAsync(string configName, CancellationToken cancellationToken = default)
     {
         var config = await _db.Configurations.FirstOrDefaultAsync(c => c.Name == configName, cancellationToken);
         if (config is null)
