@@ -8,8 +8,6 @@ using AwesomeAssertions;
 
 using OpenDsc.Contracts.Users;
 
-using OpenDsc.Server.Endpoints;
-
 using Xunit;
 
 namespace OpenDsc.Server.IntegrationTests;
