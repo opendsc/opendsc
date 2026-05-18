@@ -26,14 +26,14 @@ internal static class ValidationSettingsEndpoints
         return group;
     }
 
-    private static async Task<Ok<ValidationSettingsResponse>> GetValidationSettings(
+    private static async Task<Ok<ValidationSettingsSummary>> GetValidationSettings(
         ISettingsService settingsService,
         CancellationToken cancellationToken)
     {
         return TypedResults.Ok(await settingsService.GetValidationSettingsAsync(cancellationToken));
     }
 
-    private static async Task<Ok<ValidationSettingsResponse>> UpdateValidationSettings(
+    private static async Task<Ok<ValidationSettingsSummary>> UpdateValidationSettings(
         UpdateValidationSettingsRequest request,
         ISettingsService settingsService,
         CancellationToken cancellationToken)

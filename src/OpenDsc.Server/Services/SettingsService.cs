@@ -14,18 +14,18 @@ namespace OpenDsc.Server.Services;
 
 public sealed class SettingsService(ServerDbContext db) : ISettingsService
 {
-    public async Task<ServerSettingsResponse> GetServerSettingsAsync(CancellationToken cancellationToken = default)
+    public async Task<ServerSettingsSummary> GetServerSettingsAsync(CancellationToken cancellationToken = default)
     {
         var settings = await GetServerSettingsEntityAsync(cancellationToken);
 
-        return new ServerSettingsResponse
+        return new ServerSettingsSummary
         {
             CertificateRotationInterval = settings.CertificateRotationInterval,
             StalenessMultiplier = settings.StalenessMultiplier
         };
     }
 
-    public async Task<ServerSettingsResponse> UpdateServerSettingsAsync(
+    public async Task<ServerSettingsSummary> UpdateServerSettingsAsync(
         UpdateServerSettingsRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -43,18 +43,18 @@ public sealed class SettingsService(ServerDbContext db) : ISettingsService
 
         await db.SaveChangesAsync(cancellationToken);
 
-        return new ServerSettingsResponse
+        return new ServerSettingsSummary
         {
             CertificateRotationInterval = settings.CertificateRotationInterval,
             StalenessMultiplier = settings.StalenessMultiplier
         };
     }
 
-    public async Task<ServerLcmDefaultsResponse> GetServerLcmDefaultsAsync(CancellationToken cancellationToken = default)
+    public async Task<ServerLcmDefaultsSummary> GetServerLcmDefaultsAsync(CancellationToken cancellationToken = default)
     {
         var settings = await GetServerSettingsEntityAsync(cancellationToken);
 
-        return new ServerLcmDefaultsResponse
+        return new ServerLcmDefaultsSummary
         {
             DefaultConfigurationMode = settings.DefaultConfigurationMode,
             DefaultConfigurationModeInterval = settings.DefaultConfigurationModeInterval,
@@ -62,7 +62,7 @@ public sealed class SettingsService(ServerDbContext db) : ISettingsService
         };
     }
 
-    public async Task<ServerLcmDefaultsResponse> UpdateServerLcmDefaultsAsync(
+    public async Task<ServerLcmDefaultsSummary> UpdateServerLcmDefaultsAsync(
         UpdateServerLcmDefaultsRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -74,7 +74,7 @@ public sealed class SettingsService(ServerDbContext db) : ISettingsService
 
         await db.SaveChangesAsync(cancellationToken);
 
-        return new ServerLcmDefaultsResponse
+        return new ServerLcmDefaultsSummary
         {
             DefaultConfigurationMode = settings.DefaultConfigurationMode,
             DefaultConfigurationModeInterval = settings.DefaultConfigurationModeInterval,
@@ -92,7 +92,7 @@ public sealed class SettingsService(ServerDbContext db) : ISettingsService
         };
     }
 
-    public async Task<ValidationSettingsResponse> GetValidationSettingsAsync(CancellationToken cancellationToken = default)
+    public async Task<ValidationSettingsSummary> GetValidationSettingsAsync(CancellationToken cancellationToken = default)
     {
         var settings = await db.Set<ValidationSettings>().FirstOrDefaultAsync(cancellationToken)
                        ?? new ValidationSettings();
@@ -100,7 +100,7 @@ public sealed class SettingsService(ServerDbContext db) : ISettingsService
         return ToValidationResponse(settings);
     }
 
-    public async Task<ValidationSettingsResponse> UpdateValidationSettingsAsync(
+    public async Task<ValidationSettingsSummary> UpdateValidationSettingsAsync(
         UpdateValidationSettingsRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -146,13 +146,13 @@ public sealed class SettingsService(ServerDbContext db) : ISettingsService
         return ToValidationResponse(settings);
     }
 
-    public async Task<RetentionSettingsResponse> GetRetentionSettingsAsync(CancellationToken cancellationToken = default)
+    public async Task<RetentionSettingsSummary> GetRetentionSettingsAsync(CancellationToken cancellationToken = default)
     {
         var settings = await db.ServerSettings.AsNoTracking().FirstOrDefaultAsync(cancellationToken);
         return settings is null ? GetDefaultRetentionResponse() : ToRetentionResponse(settings);
     }
 
-    public async Task<RetentionSettingsResponse> UpdateRetentionSettingsAsync(
+    public async Task<RetentionSettingsSummary> UpdateRetentionSettingsAsync(
         UpdateRetentionSettingsRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -246,9 +246,9 @@ public sealed class SettingsService(ServerDbContext db) : ISettingsService
         return settings;
     }
 
-    private static ValidationSettingsResponse ToValidationResponse(ValidationSettings settings)
+    private static ValidationSettingsSummary ToValidationResponse(ValidationSettings settings)
     {
-        return new ValidationSettingsResponse
+        return new ValidationSettingsSummary
         {
             RequireSemVer = settings.EnforceSemverCompliance,
             DefaultParameterValidationMode = settings.DefaultParameterValidation,
@@ -257,9 +257,9 @@ public sealed class SettingsService(ServerDbContext db) : ISettingsService
         };
     }
 
-    private static RetentionSettingsResponse GetDefaultRetentionResponse()
+    private static RetentionSettingsSummary GetDefaultRetentionResponse()
     {
-        return new RetentionSettingsResponse
+        return new RetentionSettingsSummary
         {
             Enabled = false,
             KeepVersions = 10,
@@ -273,9 +273,9 @@ public sealed class SettingsService(ServerDbContext db) : ISettingsService
         };
     }
 
-    private static RetentionSettingsResponse ToRetentionResponse(ServerSettings settings)
+    private static RetentionSettingsSummary ToRetentionResponse(ServerSettings settings)
     {
-        return new RetentionSettingsResponse
+        return new RetentionSettingsSummary
         {
             Enabled = settings.RetentionEnabled,
             KeepVersions = settings.RetentionKeepVersions,

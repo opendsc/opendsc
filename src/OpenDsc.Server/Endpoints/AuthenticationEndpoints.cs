@@ -67,7 +67,7 @@ public static class AuthenticationEndpoints
             .RequireAuthorization();
     }
 
-    private static async Task<Results<Ok<LoginResponse>, UnauthorizedHttpResult>> Login(
+    private static async Task<Results<Ok<LoginResult>, UnauthorizedHttpResult>> Login(
         [FromBody] LoginRequest request,
         IUserService userService,
         HttpContext httpContext)
@@ -99,7 +99,7 @@ public static class AuthenticationEndpoints
                 ExpiresUtc = DateTimeOffset.UtcNow.AddHours(8)
             });
 
-        return TypedResults.Ok(new LoginResponse
+        return TypedResults.Ok(new LoginResult
         {
             UserId = user.Id,
             Username = user.Username,
@@ -120,7 +120,7 @@ public static class AuthenticationEndpoints
         return Results.Redirect("/login");
     }
 
-    private static async Task<Results<Ok<CurrentUserResponse>, UnauthorizedHttpResult>> GetCurrentUser(
+    private static async Task<Results<Ok<CurrentUserDetails>, UnauthorizedHttpResult>> GetCurrentUser(
         IUserService userService,
         IUserContextService userContext)
     {
@@ -136,15 +136,7 @@ public static class AuthenticationEndpoints
             return TypedResults.Unauthorized();
         }
 
-        return TypedResults.Ok(new CurrentUserResponse
-        {
-            UserId = user.UserId,
-            Username = user.Username,
-            Email = user.Email,
-            AccountType = user.AccountType.ToString(),
-            Roles = user.Roles,
-            AuthProvider = user.AuthProvider
-        });
+        return TypedResults.Ok(user);
     }
 
     private static async Task<Results<NoContent, BadRequest<string>, UnauthorizedHttpResult>> ChangePassword(
@@ -177,7 +169,7 @@ public static class AuthenticationEndpoints
         return TypedResults.NoContent();
     }
 
-    private static async Task<Results<Created<CreateTokenResponse>, ValidationProblem, UnauthorizedHttpResult>> CreateToken(
+    private static async Task<Results<Created<TokenCreationResult>, ValidationProblem, UnauthorizedHttpResult>> CreateToken(
         [FromBody] CreateTokenRequest request,
         IPersonalAccessTokenService patService,
         IUserContextService userContext)
@@ -211,7 +203,7 @@ public static class AuthenticationEndpoints
             scopes,
             request.ExpiresAt);
 
-        return TypedResults.Created($"/api/v1/auth/tokens/{metadata.Id}", new CreateTokenResponse
+        return TypedResults.Created($"/api/v1/auth/tokens/{metadata.Id}", new TokenCreationResult
         {
             Token = token,
             TokenId = metadata.Id,
@@ -278,7 +270,7 @@ public sealed class LoginRequest
     public string Password { get; set; } = string.Empty;
 }
 
-public sealed class LoginResponse
+public sealed class LoginResult
 {
     public Guid UserId { get; set; }
     public string Username { get; set; } = string.Empty;
@@ -286,15 +278,6 @@ public sealed class LoginResponse
     public bool RequirePasswordChange { get; set; }
 }
 
-public sealed class CurrentUserResponse
-{
-    public Guid UserId { get; set; }
-    public string Username { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-    public string AccountType { get; set; } = string.Empty;
-    public List<string> Roles { get; set; } = [];
-    public string? AuthProvider { get; set; }
-}
 
 public sealed class CreateTokenRequest
 {
@@ -303,7 +286,7 @@ public sealed class CreateTokenRequest
     public DateTimeOffset? ExpiresAt { get; set; }
 }
 
-public sealed class CreateTokenResponse
+public sealed class TokenCreationResult
 {
     public string Token { get; set; } = string.Empty;
     public Guid TokenId { get; set; }

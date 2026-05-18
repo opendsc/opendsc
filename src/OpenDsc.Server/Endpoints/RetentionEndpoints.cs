@@ -97,7 +97,7 @@ public static class RetentionEndpoints
         return TypedResults.Ok(result);
     }
 
-    private static async Task<Ok<List<RetentionRunDto>>> GetRunHistory(
+    private static async Task<Ok<List<RetentionRun>>> GetRunHistory(
         IVersionRetentionService retentionService,
         [FromQuery] int limit = 50,
         [FromQuery] DateTimeOffset? from = null,
@@ -106,7 +106,7 @@ public static class RetentionEndpoints
     {
         var runs = await retentionService.GetRunHistoryAsync(limit, from, to, cancellationToken);
 
-        var dtos = runs.Select(r => new RetentionRunDto
+        var dtos = runs.Select(r => new RetentionRun
         {
             Id = r.Id,
             StartedAt = r.StartedAt,
@@ -176,7 +176,7 @@ public sealed class RecordCleanupRequest
 /// <summary>
 /// Summary of a single retention cleanup run.
 /// </summary>
-public sealed class RetentionRunDto
+public sealed class RetentionRun
 {
     public required Guid Id { get; init; }
     public required DateTimeOffset StartedAt { get; init; }

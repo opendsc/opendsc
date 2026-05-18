@@ -11,15 +11,15 @@ namespace OpenDsc.Contracts.Settings;
 /// </summary>
 public interface ISettingsReader
 {
-    Task<ServerSettingsResponse> GetServerSettingsAsync(CancellationToken cancellationToken = default);
+    Task<ServerSettingsSummary> GetServerSettingsAsync(CancellationToken cancellationToken = default);
 
-    Task<ServerLcmDefaultsResponse> GetServerLcmDefaultsAsync(CancellationToken cancellationToken = default);
+    Task<ServerLcmDefaultsSummary> GetServerLcmDefaultsAsync(CancellationToken cancellationToken = default);
 
     Task<PublicSettingsResponse> GetPublicSettingsAsync(CancellationToken cancellationToken = default);
 
-    Task<ValidationSettingsResponse> GetValidationSettingsAsync(CancellationToken cancellationToken = default);
+    Task<ValidationSettingsSummary> GetValidationSettingsAsync(CancellationToken cancellationToken = default);
 
-    Task<RetentionSettingsResponse> GetRetentionSettingsAsync(CancellationToken cancellationToken = default);
+    Task<RetentionSettingsSummary> GetRetentionSettingsAsync(CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<RetentionRunSummary>> GetRetentionHistoryAsync(CancellationToken cancellationToken = default);
 }
@@ -29,19 +29,19 @@ public interface ISettingsReader
 /// </summary>
 public interface ISettingsManager
 {
-    Task<ServerSettingsResponse> UpdateServerSettingsAsync(
+    Task<ServerSettingsSummary> UpdateServerSettingsAsync(
         UpdateServerSettingsRequest request,
         CancellationToken cancellationToken = default);
 
-    Task<ServerLcmDefaultsResponse> UpdateServerLcmDefaultsAsync(
+    Task<ServerLcmDefaultsSummary> UpdateServerLcmDefaultsAsync(
         UpdateServerLcmDefaultsRequest request,
         CancellationToken cancellationToken = default);
 
-    Task<ValidationSettingsResponse> UpdateValidationSettingsAsync(
+    Task<ValidationSettingsSummary> UpdateValidationSettingsAsync(
         UpdateValidationSettingsRequest request,
         CancellationToken cancellationToken = default);
 
-    Task<RetentionSettingsResponse> UpdateRetentionSettingsAsync(
+    Task<RetentionSettingsSummary> UpdateRetentionSettingsAsync(
         UpdateRetentionSettingsRequest request,
         CancellationToken cancellationToken = default);
 }

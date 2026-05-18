@@ -24,16 +24,16 @@ public static class HealthEndpoints
             .WithDescription("Checks if the server is ready to accept requests, including database connectivity.");
     }
 
-    private static Ok<HealthResponse> GetHealth()
+    private static Ok<HealthStatus> GetHealth()
     {
-        return TypedResults.Ok(new HealthResponse
+        return TypedResults.Ok(new HealthStatus
         {
             Status = "Healthy",
             Timestamp = DateTimeOffset.UtcNow
         });
     }
 
-    private static async Task<Results<Ok<ReadinessResponse>, StatusCodeHttpResult>> GetReadiness(
+    private static async Task<Results<Ok<ReadinessStatus>, StatusCodeHttpResult>> GetReadiness(
         IHealthService healthService,
         CancellationToken cancellationToken)
     {
@@ -44,7 +44,7 @@ public static class HealthEndpoints
                 return TypedResults.StatusCode(503);
             }
 
-            return TypedResults.Ok(new ReadinessResponse
+            return TypedResults.Ok(new ReadinessStatus
             {
                 Status = "Ready",
                 Database = "Connected",
@@ -58,13 +58,13 @@ public static class HealthEndpoints
     }
 }
 
-public sealed class HealthResponse
+public sealed class HealthStatus
 {
     public string Status { get; set; } = string.Empty;
     public DateTimeOffset Timestamp { get; set; }
 }
 
-public sealed class ReadinessResponse
+public sealed class ReadinessStatus
 {
     public string Status { get; set; } = string.Empty;
     public string Database { get; set; } = string.Empty;

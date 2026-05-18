@@ -59,7 +59,7 @@ public static class SettingsEndpoints
         }
     }
 
-    private static async Task<Results<Ok<ServerSettingsResponse>, NotFound<ErrorResponse>>> GetSettings(
+    private static async Task<Results<Ok<ServerSettingsSummary>, NotFound<ErrorResponse>>> GetSettings(
         ISettingsService settingsService,
         CancellationToken cancellationToken)
     {
@@ -73,7 +73,7 @@ public static class SettingsEndpoints
         }
     }
 
-    private static async Task<Results<Ok<ServerSettingsResponse>, NotFound<ErrorResponse>>> UpdateSettings(
+    private static async Task<Results<Ok<ServerSettingsSummary>, NotFound<ErrorResponse>>> UpdateSettings(
         UpdateServerSettingsRequest request,
         ISettingsService settingsService,
         CancellationToken cancellationToken)
@@ -96,7 +96,7 @@ public static class SettingsEndpoints
         return TypedResults.Ok(await registrationKeyService.RotateKeyAsync(cancellationToken));
     }
 
-    private static async Task<Results<Ok<ServerLcmDefaultsResponse>, NotFound<ErrorResponse>>> GetLcmDefaults(
+    private static async Task<Results<Ok<ServerLcmDefaultsSummary>, NotFound<ErrorResponse>>> GetLcmDefaults(
         ISettingsService settingsService,
         CancellationToken cancellationToken)
     {
@@ -110,7 +110,7 @@ public static class SettingsEndpoints
         }
     }
 
-    private static async Task<Results<Ok<ServerLcmDefaultsResponse>, NotFound<ErrorResponse>>> UpdateLcmDefaults(
+    private static async Task<Results<Ok<ServerLcmDefaultsSummary>, NotFound<ErrorResponse>>> UpdateLcmDefaults(
         UpdateServerLcmDefaultsRequest request,
         ISettingsService settingsService,
         CancellationToken cancellationToken)

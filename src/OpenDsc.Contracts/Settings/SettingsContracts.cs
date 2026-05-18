@@ -8,9 +8,9 @@ using OpenDsc.Contracts.Configurations;
 namespace OpenDsc.Contracts.Settings;
 
 /// <summary>
-/// Server settings response.
+/// Server settings summary.
 /// </summary>
-public sealed class ServerSettingsResponse
+public sealed class ServerSettingsSummary
 {
     /// <summary>
     /// How often nodes should rotate their certificates (informational).
@@ -40,9 +40,9 @@ public sealed class UpdateServerSettingsRequest
 }
 
 /// <summary>
-/// Server-wide LCM default settings response.
+/// Server-wide LCM default settings summary.
 /// </summary>
-public sealed class ServerLcmDefaultsResponse
+public sealed class ServerLcmDefaultsSummary
 {
     /// <summary>
     /// Server-wide default LCM operating mode. Null means no server default is set.
@@ -82,9 +82,9 @@ public sealed class UpdateServerLcmDefaultsRequest
 }
 
 /// <summary>
-/// Validation settings response.
+/// Validation settings summary.
 /// </summary>
-public sealed class ValidationSettingsResponse
+public sealed class ValidationSettingsSummary
 {
     public required bool RequireSemVer { get; init; }
     public required ParameterValidationMode DefaultParameterValidationMode { get; init; }
@@ -106,7 +106,7 @@ public sealed class UpdateValidationSettingsRequest
 /// <summary>
 /// Global retention policy settings.
 /// </summary>
-public sealed class RetentionSettingsResponse
+public sealed class RetentionSettingsSummary
 {
     public required bool Enabled { get; init; }
     public required int KeepVersions { get; init; }

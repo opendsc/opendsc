@@ -28,14 +28,14 @@ internal static class RetentionSettingsEndpoints
         return group;
     }
 
-    private static async Task<Ok<RetentionSettingsResponse>> GetRetentionSettings(
+    private static async Task<Ok<RetentionSettingsSummary>> GetRetentionSettings(
         ISettingsService settingsService,
         CancellationToken cancellationToken)
     {
         return TypedResults.Ok(await settingsService.GetRetentionSettingsAsync(cancellationToken));
     }
 
-    private static async Task<Results<Ok<RetentionSettingsResponse>, NotFound>> UpdateRetentionSettings(
+    private static async Task<Results<Ok<RetentionSettingsSummary>, NotFound>> UpdateRetentionSettings(
         UpdateRetentionSettingsRequest request,
         ISettingsService settingsService,
         CancellationToken cancellationToken)
