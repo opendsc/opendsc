@@ -602,6 +602,24 @@ public class NodeEndpointsTests : IClassFixture<ServerWebApplicationFactory>
         await adminClient.PostAsync("/api/v1/configurations", createContent, TestContext.Current.CancellationToken);
         await adminClient.PutAsync($"/api/v1/configurations/{configName}/versions/1.0.0/publish", null, TestContext.Current.CancellationToken);
 
+        // Upload parameter schema for the configuration
+        var schemaContent = @"{
+  ""parameters"": {
+    ""setting"": { ""type"": ""string"" }
+  }
+}";
+        using var schemaRequest = new MultipartFormDataContent();
+        schemaRequest.Add(new StringContent("1.0.0"), "version");
+        var schemaFile = new ByteArrayContent(System.Text.Encoding.UTF8.GetBytes(schemaContent));
+        schemaFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+        schemaRequest.Add(schemaFile, "parametersFile", "parameters.json");
+        var schemaResponse = await adminClient.PutAsync($"/api/v1/configurations/{configName}/parameters", schemaRequest, TestContext.Current.CancellationToken);
+        if (!schemaResponse.IsSuccessStatusCode)
+        {
+            var errorBody = await schemaResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+            throw new InvalidOperationException($"Schema upload failed with {schemaResponse.StatusCode}: {errorBody}");
+        }
+
         // Get configuration ID from the database
         Guid configId;
         using (var scope = _factory.Services.CreateScope())
@@ -615,18 +633,27 @@ public class NodeEndpointsTests : IClassFixture<ServerWebApplicationFactory>
         var defaultScopeTypeId = Guid.Parse("00000000-0000-0000-0000-000000000001");
         var paramRequest = new
         {
+            scopeValue = "",
             version = "1.0.0",
             content = "parameters:\n  setting: value\n",
             contentType = "application/x-yaml"
         };
         var uploadResponse = await adminClient.PutAsJsonAsync(
             $"/api/v1/parameters/{defaultScopeTypeId}/{configId}", paramRequest, TestContext.Current.CancellationToken);
-        uploadResponse.EnsureSuccessStatusCode();
+        if (!uploadResponse.IsSuccessStatusCode)
+        {
+            var errorBody = await uploadResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+            throw new InvalidOperationException($"Parameter file upload failed with {uploadResponse.StatusCode}: {errorBody}");
+        }
 
         // Publish the parameter file
         var activateResponse = await adminClient.PutAsync(
             $"/api/v1/parameters/{defaultScopeTypeId}/{configId}/versions/1.0.0/publish?scopeValue=", null, TestContext.Current.CancellationToken);
-        activateResponse.EnsureSuccessStatusCode();
+        if (!activateResponse.IsSuccessStatusCode)
+        {
+            var errorBody = await activateResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+            throw new InvalidOperationException($"Parameter publish failed with {activateResponse.StatusCode}: {errorBody}");
+        }
 
         // Assign configuration to node
         await adminClient.PutAsJsonAsync($"/api/v1/nodes/{registerResult!.NodeId}/configuration",

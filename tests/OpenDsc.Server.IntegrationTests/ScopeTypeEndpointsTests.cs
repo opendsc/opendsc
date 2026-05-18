@@ -296,16 +296,35 @@ public sealed class ScopeTypeEndpointsTests : IDisposable
         var scopeValueId = await CreateScopeValueAsync(client, scopeTypeId, "PFValue");
 
         // create a configuration and add a parameter file scoped to the value
-        var configId = await CreateTestConfigurationAsync(client, $"config-{Guid.NewGuid()}");
+        var configName = $"config-{Guid.NewGuid()}";
+        var configId = await CreateTestConfigurationAsync(client, configName);
+
+        // Upload parameter schema
+        var schemaContent = @"{
+  ""parameters"": {
+    ""param"": { ""type"": ""string"" }
+  }
+}";
+        using var schemaRequest = new MultipartFormDataContent();
+        schemaRequest.Add(new StringContent("1.0.0"), "version");
+        var schemaFile = new ByteArrayContent(System.Text.Encoding.UTF8.GetBytes(schemaContent));
+        schemaFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+        schemaRequest.Add(schemaFile, "parametersFile", "parameters.json");
+        await client.PutAsync($"/api/v1/configurations/{configName}/parameters", schemaRequest, TestContext.Current.CancellationToken);
+
         var request = new
         {
             scopeValue = "PFValue",
             version = "1.0.0",
-            content = "param: value",
+            content = "parameters:\n  param: value\n",
             contentType = "application/x-yaml"
         };
         var response1 = await client.PutAsJsonAsync($"/api/v1/parameters/{scopeTypeId}/{configId}", request, TestContext.Current.CancellationToken);
-        response1.EnsureSuccessStatusCode();
+        if (!response1.IsSuccessStatusCode)
+        {
+            var errorBody = await response1.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+            throw new InvalidOperationException($"Parameter file creation failed with {response1.StatusCode}: {errorBody}");
+        }
 
         var response = await client.DeleteAsync($"/api/v1/scope-types/{scopeTypeId}", TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);

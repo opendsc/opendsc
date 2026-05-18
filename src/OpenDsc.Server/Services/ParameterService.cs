@@ -86,7 +86,7 @@ public sealed partial class ParameterService : IParameterService
 
             var nodeExists = await _db.Nodes.AnyAsync(n => n.Fqdn == scopeValue, cancellationToken);
             if (!nodeExists)
-                throw new KeyNotFoundException($"Node '{scopeValue}' is not registered.");
+                throw new ArgumentException($"Node '{scopeValue}' is not registered.");
         }
         else if (scopeType.ValueMode == ScopeValueMode.Restricted)
         {
@@ -97,7 +97,7 @@ public sealed partial class ParameterService : IParameterService
                 .AnyAsync(sv => sv.ScopeTypeId == scopeTypeId && sv.Value == scopeValue, cancellationToken);
 
             if (!scopeValueExists)
-                throw new KeyNotFoundException($"Scope value '{scopeValue}' does not exist for scope type '{scopeType.Name}'.");
+                throw new ArgumentException($"Scope value '{scopeValue}' does not exist for scope type '{scopeType.Name}'.");
         }
         else
         {
