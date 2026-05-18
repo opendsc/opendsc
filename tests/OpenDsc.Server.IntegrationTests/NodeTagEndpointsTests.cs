@@ -7,9 +7,9 @@ using System.Net;
 using AwesomeAssertions;
 
 using OpenDsc.Contracts.Nodes;
+using OpenDsc.Contracts.Lcm;
 using OpenDsc.Contracts.Configurations;
 using OpenDsc.Contracts.Settings;
-using OpenDsc.Server.Endpoints;
 
 using Xunit;
 

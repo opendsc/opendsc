@@ -10,8 +10,9 @@ using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 
 using OpenDsc.Contracts.Nodes;
-using OpenDsc.Contracts.CompositeConfigurations;
+using OpenDsc.Contracts.Lcm;
 using OpenDsc.Contracts.Parameters;
+using OpenDsc.Contracts.Settings;
 using OpenDsc.Server.Data;
 
 using Xunit;
@@ -114,10 +115,10 @@ public class ParameterEndpointsTests : IDisposable
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var result = await response.Content.ReadFromJsonAsync<ParameterFileDto>(TestContext.Current.CancellationToken);
+        var result = await response.Content.ReadFromJsonAsync<ParameterVersionDetails>(TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
         result!.Version.Should().Be("1.0.0");
-        result.Status.Should().Be("Draft");
+        result.Status.Should().Be(ParameterVersionStatus.Draft);
     }
 
     [Fact]
@@ -144,7 +145,7 @@ public class ParameterEndpointsTests : IDisposable
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var versions = await response.Content.ReadFromJsonAsync<List<ParameterFileDto>>(TestContext.Current.CancellationToken);
+        var versions = await response.Content.ReadFromJsonAsync<List<ParameterVersionDetails>>(TestContext.Current.CancellationToken);
         versions.Should().NotBeNull();
         versions.Should().HaveCount(1);
         versions![0].Version.Should().Be("1.0.0");
@@ -174,10 +175,10 @@ public class ParameterEndpointsTests : IDisposable
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var result = await response.Content.ReadFromJsonAsync<ParameterFileDto>(TestContext.Current.CancellationToken);
+        var result = await response.Content.ReadFromJsonAsync<ParameterVersionDetails>(TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
         result!.Version.Should().Be("1.0.0");
-        result.Status.Should().Be("Published");
+        result.Status.Should().Be(ParameterVersionStatus.Published);
     }
 
     [Fact]
@@ -309,7 +310,7 @@ public class ParameterEndpointsTests : IDisposable
             var errorContent = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
             throw new InvalidOperationException($"Provenance request failed: {response.StatusCode} - {errorContent}");
         }
-        var result = await response.Content.ReadFromJsonAsync<ParameterProvenanceDto>(TestContext.Current.CancellationToken);
+        var result = await response.Content.ReadFromJsonAsync<ParameterProvenanceDetails>(TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
         result!.NodeId.Should().Be(nodeId);
         result.ConfigurationId.Should().Be(configId);
@@ -325,14 +326,14 @@ public class ParameterEndpointsTests : IDisposable
         var scopeTypeRequest = new { name = scopeTypeName, valueMode = "Restricted" };
         var scopeTypeResponse = await client.PostAsJsonAsync("/api/v1/scope-types", scopeTypeRequest);
         scopeTypeResponse.EnsureSuccessStatusCode();
-        var ScopeTypeDetails = await scopeTypeResponse.Content.ReadFromJsonAsync<ScopeTypeSimpleDto>();
+        var ScopeTypeDetails = await scopeTypeResponse.Content.ReadFromJsonAsync<ScopeTypeDetails>();
         var scopeTypeId = ScopeTypeDetails!.Id;
 
         // Create scope value
         var scopeValueRequest = new { value = scopeValue };
         var scopeValueResponse = await client.PostAsJsonAsync($"/api/v1/scope-types/{scopeTypeId}/values", scopeValueRequest);
         scopeValueResponse.EnsureSuccessStatusCode();
-        var ScopeValueDetails = await scopeValueResponse.Content.ReadFromJsonAsync<ScopeValueSimpleDto>();
+        var ScopeValueDetails = await scopeValueResponse.Content.ReadFromJsonAsync<ScopeValueDetails>();
         var scopeValueId = ScopeValueDetails!.Id;
 
         return (scopeTypeId, scopeValueId);
@@ -342,7 +343,7 @@ public class ParameterEndpointsTests : IDisposable
     {
         var response = await client.GetAsync("/api/v1/scope-types", TestContext.Current.CancellationToken);
         response.EnsureSuccessStatusCode();
-        var scopeTypes = await response.Content.ReadFromJsonAsync<List<ScopeTypeSimpleDto>>(TestContext.Current.CancellationToken);
+        var scopeTypes = await response.Content.ReadFromJsonAsync<List<ScopeTypeDetails>>(TestContext.Current.CancellationToken);
         var nodeScope = scopeTypes?.FirstOrDefault(st => st.Name == "Node");
         if (nodeScope is null)
         {
@@ -373,10 +374,10 @@ public class ParameterEndpointsTests : IDisposable
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var result = await response.Content.ReadFromJsonAsync<ParameterFileDto>(TestContext.Current.CancellationToken);
+        var result = await response.Content.ReadFromJsonAsync<ParameterVersionDetails>(TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
         result!.ScopeValue.Should().Be("Development");
-        result.Status.Should().Be("Draft");
+        result.Status.Should().Be(ParameterVersionStatus.Draft);
     }
 
     [Fact]
@@ -512,10 +513,10 @@ public class ParameterEndpointsTests : IDisposable
         var response = await client.PutAsJsonAsync($"/api/v1/parameters/{defaultScopeTypeId}/{configId}", request, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var result = await response.Content.ReadFromJsonAsync<ParameterFileDto>(TestContext.Current.CancellationToken);
+        var result = await response.Content.ReadFromJsonAsync<ParameterVersionDetails>(TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
         result!.ScopeValue.Should().BeNullOrEmpty();
-        result.Status.Should().Be("Draft");
+        result.Status.Should().Be(ParameterVersionStatus.Draft);
     }
 
     // ── Unrestricted (user-created) scope type ───────────────────────────────
@@ -529,7 +530,7 @@ public class ParameterEndpointsTests : IDisposable
         var scopeTypeRequest = new { name = $"Region-{Guid.NewGuid()}", valueMode = "Unrestricted" };
         var scopeTypeResponse = await client.PostAsJsonAsync("/api/v1/scope-types", scopeTypeRequest, TestContext.Current.CancellationToken);
         scopeTypeResponse.EnsureSuccessStatusCode();
-        var ScopeTypeDetails = await scopeTypeResponse.Content.ReadFromJsonAsync<ScopeTypeSimpleDto>(TestContext.Current.CancellationToken);
+        var ScopeTypeDetails = await scopeTypeResponse.Content.ReadFromJsonAsync<ScopeTypeDetails>(TestContext.Current.CancellationToken);
 
         var request = new
         {
@@ -553,7 +554,7 @@ public class ParameterEndpointsTests : IDisposable
         var scopeTypeRequest = new { name = $"Region-{Guid.NewGuid()}", valueMode = "Unrestricted" };
         var scopeTypeResponse = await client.PostAsJsonAsync("/api/v1/scope-types", scopeTypeRequest, TestContext.Current.CancellationToken);
         scopeTypeResponse.EnsureSuccessStatusCode();
-        var ScopeTypeDetails = await scopeTypeResponse.Content.ReadFromJsonAsync<ScopeTypeSimpleDto>(TestContext.Current.CancellationToken);
+        var ScopeTypeDetails = await scopeTypeResponse.Content.ReadFromJsonAsync<ScopeTypeDetails>(TestContext.Current.CancellationToken);
 
         var request = new
         {
@@ -566,96 +567,10 @@ public class ParameterEndpointsTests : IDisposable
         var response = await client.PutAsJsonAsync($"/api/v1/parameters/{ScopeTypeDetails!.Id}/{configId}", request, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var result = await response.Content.ReadFromJsonAsync<ParameterFileDto>(TestContext.Current.CancellationToken);
+        var result = await response.Content.ReadFromJsonAsync<ParameterVersionDetails>(TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
         result!.ScopeValue.Should().Be("us-west");
-        result.Status.Should().Be("Draft");
+        result.Status.Should().Be(ParameterVersionStatus.Draft);
     }
-}
-
-public sealed class ValidationResultDto
-{
-    public required bool IsValid { get; init; }
-    public ValidationErrorDto[]? Errors { get; init; }
-}
-
-public sealed class ParameterFileDto
-{
-    public required Guid Id { get; init; }
-    public required Guid ScopeTypeId { get; init; }
-    public required Guid ConfigurationId { get; init; }
-    public string? ScopeValue { get; init; }
-    public required string Version { get; init; }
-    public required int MajorVersion { get; init; }
-    public required string Checksum { get; init; }
-    public required string Status { get; init; }
-    public required bool IsPassthrough { get; init; }
-    public required DateTimeOffset CreatedAt { get; init; }
-}
-
-public sealed class ConfigurationSummaryDto
-{
-    public required string Name { get; init; }
-    public string? Description { get; init; }
-    public required bool UseServerManagedParameters { get; init; }
-    public required int VersionCount { get; init; }
-    public string? LatestVersion { get; init; }
-    public required DateTimeOffset CreatedAt { get; init; }
-}
-
-public sealed class NodeDto
-{
-    public required Guid Id { get; init; }
-    public required string Fqdn { get; init; }
-    public required DateTimeOffset CreatedAt { get; init; }
-    public required DateTimeOffset UpdatedAt { get; init; }
-}
-
-public sealed class RegisterNodeRequest
-{
-    public required string RegistrationKey { get; set; }
-    public required string Fqdn { get; set; }
-}
-
-public sealed class RegisterNodeResponse
-{
-    public required Guid NodeId { get; set; }
-}
-
-public sealed class ParameterProvenanceDto
-{
-    public required Guid NodeId { get; init; }
-    public required Guid ConfigurationId { get; init; }
-    public required string MergedParameters { get; init; }
-    public required Dictionary<string, ParameterSourceInfo> Provenance { get; init; }
-}
-
-public sealed class ParameterSourceInfo
-{
-    public required string ScopeTypeName { get; init; }
-    public string? ScopeValue { get; init; }
-    public required int Precedence { get; init; }
-    public required object? Value { get; init; }
-    public List<ScopeInfo>? OverriddenBy { get; init; }
-}
-
-public sealed class ScopeInfo
-{
-    public required string ScopeTypeName { get; init; }
-    public string? ScopeValue { get; init; }
-    public required int Precedence { get; init; }
-    public required object? Value { get; init; }
-}
-
-public sealed class ScopeTypeSimpleDto
-{
-    public required Guid Id { get; init; }
-    public required string Name { get; init; }
-}
-
-public sealed class ScopeValueSimpleDto
-{
-    public required Guid Id { get; init; }
-    public required string Value { get; init; }
 }
 

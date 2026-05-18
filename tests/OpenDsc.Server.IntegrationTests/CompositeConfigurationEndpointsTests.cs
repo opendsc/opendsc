@@ -9,11 +9,9 @@ using AwesomeAssertions;
 
 using OpenDsc.Contracts.Nodes;
 using OpenDsc.Contracts.CompositeConfigurations;
-using OpenDsc.Contracts.Reports;
 using OpenDsc.Contracts.Settings;
-using OpenDsc.Contracts.Permissions;
-using OpenDsc.Server.Entities;
 using OpenDsc.Contracts.Configurations;
+using OpenDsc.Contracts.Lcm;
 
 using Xunit;
 
@@ -49,7 +47,7 @@ public class CompositeConfigurationEndpointsTests : IDisposable
         var response = await client.PostAsync("/api/v1/configurations", content);
         response.EnsureSuccessStatusCode();
 
-        var created = await response.Content.ReadFromJsonAsync<ConfigurationDetails>(TestContext.Current.CancellationToken);
+        var created = await response.Content.ReadFromJsonAsync<Contracts.Configurations.ConfigurationDetails>(TestContext.Current.CancellationToken);
         created.Should().NotBeNull();
         created!.LatestVersion.Should().NotBeNullOrWhiteSpace();
 

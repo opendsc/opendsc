@@ -48,7 +48,7 @@ public class ConfigurationEndpointsTests : IDisposable
         var response = await client.GetAsync("/api/v1/configurations", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var configs = await response.Content.ReadFromJsonAsync<List<ConfigurationSummaryDto>>(TestContext.Current.CancellationToken);
+        var configs = await response.Content.ReadFromJsonAsync<List<ConfigurationSummary>>(TestContext.Current.CancellationToken);
         configs.Should().NotBeNull();
         configs.Should().HaveCount(1);
         configs![0].Name.Should().Be("test-config");
@@ -187,7 +187,7 @@ public class ConfigurationEndpointsTests : IDisposable
         var response = await client.GetAsync("/api/v1/configurations", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var configs = await response.Content.ReadFromJsonAsync<List<ConfigurationSummaryDto>>(TestContext.Current.CancellationToken);
+        var configs = await response.Content.ReadFromJsonAsync<List<ConfigurationSummary>>(TestContext.Current.CancellationToken);
         configs.Should().NotBeNull();
         configs!.Count.Should().BeGreaterThanOrEqualTo(2);
         configs.Should().Contain(c => c.Name == "config1");
@@ -458,11 +458,9 @@ resources: []
 
         // Attempt to publish - should fail due to breaking changes
         schemaResponse.StatusCode.Should().Be(HttpStatusCode.Conflict);
-        var publishResult = await schemaResponse.Content.ReadFromJsonAsync<PublishResultDto>(TestContext.Current.CancellationToken);
-        publishResult.Should().NotBeNull();
-        publishResult!.Success.Should().BeFalse();
-        publishResult.CompatibilityReport.Should().NotBeNull();
-        publishResult.CompatibilityReport!.HasBreakingChanges.Should().BeTrue();
+        var compatibilityReport = await schemaResponse.Content.ReadFromJsonAsync<CompatibilityReport>(TestContext.Current.CancellationToken);
+        compatibilityReport.Should().NotBeNull();
+        compatibilityReport!.HasBreakingChanges.Should().BeTrue();
     }
 
     [Fact]
@@ -766,43 +764,5 @@ parameters:
         schemas[1].GeneratedJsonSchema.Should().Contain("appName");
         schemas[1].GeneratedJsonSchema.Should().Contain("environment");
     }
-}
-
-public sealed class PublishResultDto
-{
-    public required bool Success { get; init; }
-    public CompatibilityReportDto? CompatibilityReport { get; init; }
-    public List<ParameterFileMigrationStatusDto>? MigrationRequirements { get; init; }
-}
-
-public sealed class CompatibilityReportDto
-{
-    public required bool HasBreakingChanges { get; init; }
-    public required List<ParameterChangeDto> BreakingChanges { get; init; }
-    public required List<ParameterChangeDto> NonBreakingChanges { get; init; }
-}
-
-public sealed class ParameterChangeDto
-{
-    public required string ParameterName { get; init; }
-    public required string ChangeType { get; init; }
-    public required string Details { get; init; }
-}
-
-public sealed class ParameterFileMigrationStatusDto
-{
-    public required string ScopeTypeName { get; init; }
-    public string? ScopeValue { get; init; }
-    public required string Version { get; init; }
-    public required int MajorVersion { get; init; }
-    public required bool NeedsMigration { get; init; }
-    public List<ValidationErrorDto>? Errors { get; init; }
-}
-
-public sealed class ValidationErrorDto
-{
-    public required string Path { get; init; }
-    public required string Message { get; init; }
-    public required string Code { get; init; }
 }
 

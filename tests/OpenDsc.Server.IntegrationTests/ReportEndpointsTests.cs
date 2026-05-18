@@ -8,10 +8,8 @@ using AwesomeAssertions;
 
 using OpenDsc.Schema;
 using OpenDsc.Contracts.Nodes;
-using OpenDsc.Contracts.CompositeConfigurations;
+using OpenDsc.Contracts.Lcm;
 using OpenDsc.Contracts.Reports;
-using OpenDsc.Contracts.Settings;
-using OpenDsc.Contracts.Permissions;
 
 using Xunit;
 

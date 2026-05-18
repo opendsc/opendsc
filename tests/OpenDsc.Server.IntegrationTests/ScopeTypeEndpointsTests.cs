@@ -9,6 +9,7 @@ using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 
 using OpenDsc.Contracts.Nodes;
+using OpenDsc.Contracts.Lcm;
 using OpenDsc.Contracts.Configurations;
 using OpenDsc.Contracts.Settings;
 using OpenDsc.Server.Data;
