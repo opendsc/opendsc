@@ -10,10 +10,6 @@ using AwesomeAssertions;
 
 using OpenDsc.Contracts.Lcm;
 using OpenDsc.Contracts.Nodes;
-using OpenDsc.Contracts.CompositeConfigurations;
-using OpenDsc.Contracts.Reports;
-using OpenDsc.Contracts.Settings;
-using OpenDsc.Contracts.Permissions;
 
 using Xunit;
 
@@ -46,7 +42,7 @@ public class NodeStatusEndpointsTests : IDisposable
         });
 
         registerResponse.EnsureSuccessStatusCode();
-        var registration = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>();
+        var registration = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>(TestJsonOptions.Default);
         return registration!.NodeId;
     }
 
@@ -129,7 +125,7 @@ public class NodeStatusEndpointsTests : IDisposable
         using var adminClient = _factory.CreateAuthenticatedClient();
         var historyResponse = await adminClient.GetAsync($"/api/v1/nodes/{nodeId}/status-history", TestContext.Current.CancellationToken);
         historyResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var events = await historyResponse.Content.ReadFromJsonAsync<List<NodeStatusEventSummary>>(TestContext.Current.CancellationToken);
+        var events = await historyResponse.Content.ReadFromJsonAsync<List<NodeStatusEventSummary>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         events.Should().NotBeNull();
         events!.Should().ContainSingle(e => e.LcmStatus == LcmStatus.Idle.ToString());
     }
@@ -153,7 +149,7 @@ public class NodeStatusEndpointsTests : IDisposable
         var response = await adminClient.GetAsync($"/api/v1/nodes/{nodeId}/status-history", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var events = await response.Content.ReadFromJsonAsync<List<NodeStatusEventSummary>>(TestContext.Current.CancellationToken);
+        var events = await response.Content.ReadFromJsonAsync<List<NodeStatusEventSummary>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         events.Should().NotBeNull();
         events!.Should().BeEmpty();
     }
@@ -182,7 +178,7 @@ public class NodeStatusEndpointsTests : IDisposable
         using var adminClient = _factory.CreateAuthenticatedClient();
         var response = await adminClient.GetAsync($"/api/v1/nodes/{nodeId}/status-history", TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var events = await response.Content.ReadFromJsonAsync<List<NodeStatusEventSummary>>(TestContext.Current.CancellationToken);
+        var events = await response.Content.ReadFromJsonAsync<List<NodeStatusEventSummary>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         events.Should().NotBeNull();
         events!.Should().HaveCount(3);
     }

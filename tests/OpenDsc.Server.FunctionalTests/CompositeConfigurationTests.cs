@@ -63,7 +63,7 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
         var getResponse = await AuthClient.GetAsync($"/api/v1/composite-configurations/{compositeName}", TestContext.Current.CancellationToken);
         getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var composite = await getResponse.Content.ReadFromJsonAsync<CompositeConfigurationDetails>(TestContext.Current.CancellationToken);
+        var composite = await getResponse.Content.ReadFromJsonAsync<CompositeConfigurationDetails>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         composite.Should().NotBeNull();
         composite!.Name.Should().Be(compositeName);
         composite.Description.Should().Be("Test composite configuration");
@@ -98,7 +98,7 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
         var versionResponse = await AuthClient.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions", versionRequest, TestContext.Current.CancellationToken);
         versionResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var versionDto = await versionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDetails>(TestContext.Current.CancellationToken);
+        var versionDto = await versionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDetails>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         versionDto!.Status.Should().Be(ConfigurationVersionStatus.Draft);
 
         var addChildRequest = new AddChildConfigurationRequest
@@ -112,7 +112,7 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
         publishResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var getVersionResponse = await AuthClient.GetAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto.Version}", TestContext.Current.CancellationToken);
-        var publishedVersion = await getVersionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDetails>(TestContext.Current.CancellationToken);
+        var publishedVersion = await getVersionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDetails>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         publishedVersion!.Status.Should().Be(ConfigurationVersionStatus.Published);
     }
 
@@ -143,7 +143,7 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
             Version = "1.0.0"
         };
         var versionResponse = await AuthClient.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions", versionRequest, TestContext.Current.CancellationToken);
-        var versionDto = await versionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDetails>(TestContext.Current.CancellationToken);
+        var versionDto = await versionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDetails>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
 
         var addChildRequest = new AddChildConfigurationRequest
         {
@@ -153,7 +153,7 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
         var addChildResponse = await AuthClient.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions/{versionDto!.Version}/children", addChildRequest, TestContext.Current.CancellationToken);
         addChildResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var childDto = await addChildResponse.Content.ReadFromJsonAsync<CompositeConfigurationItemDetails>(TestContext.Current.CancellationToken);
+        var childDto = await addChildResponse.Content.ReadFromJsonAsync<CompositeConfigurationItemDetails>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         childDto.Should().NotBeNull();
         childDto!.ChildConfigurationName.Should().Be(childName);
     }
@@ -195,7 +195,7 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
             Version = "1.0.0"
         };
         var versionResponse = await AuthClient.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions", versionRequest, TestContext.Current.CancellationToken);
-        var versionDto = await versionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDetails>(TestContext.Current.CancellationToken);
+        var versionDto = await versionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDetails>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
 
         var addChild1Request = new AddChildConfigurationRequest
         {
@@ -222,7 +222,7 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
             RegistrationKey = "test-registration-key"
         };
         var registerResponse = await AuthClient.PostAsJsonAsync("/api/v1/nodes/register", registerRequest, TestContext.Current.CancellationToken);
-        var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>(TestContext.Current.CancellationToken);
+        var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
 
         var assignRequest = new AssignConfigurationRequest
         {
@@ -283,7 +283,7 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
             Version = "1.0.0"
         };
         var versionResponse = await AuthClient.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions", versionRequest, TestContext.Current.CancellationToken);
-        var versionDto = await versionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDetails>(TestContext.Current.CancellationToken);
+        var versionDto = await versionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDetails>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
 
         var addChildRequest = new AddChildConfigurationRequest
         {
@@ -301,7 +301,7 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
             RegistrationKey = "test-registration-key"
         };
         var registerResponse = await AuthClient.PostAsJsonAsync("/api/v1/nodes/register", registerRequest, TestContext.Current.CancellationToken);
-        var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>(TestContext.Current.CancellationToken);
+        var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
 
         var assignRequest = new AssignConfigurationRequest
         {
@@ -314,7 +314,7 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
         var checksumResponse = await nodeClient.GetAsync($"/api/v1/nodes/{registerResult.NodeId}/configuration/checksum", TestContext.Current.CancellationToken);
         checksumResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var checksumResult = await checksumResponse.Content.ReadFromJsonAsync<ConfigurationChecksumResponse>(TestContext.Current.CancellationToken);
+        var checksumResult = await checksumResponse.Content.ReadFromJsonAsync<ConfigurationChecksumResponse>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         checksumResult.Should().NotBeNull();
         checksumResult!.Checksum.Should().NotBeNullOrEmpty();
         checksumResult.Checksum.Length.Should().Be(64);
@@ -346,7 +346,7 @@ public abstract class CompositeConfigurationTests : IAsyncLifetime
             Version = "1.0.0"
         };
         var versionResponse = await AuthClient.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions", versionRequest, TestContext.Current.CancellationToken);
-        var versionDto = await versionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDetails>(TestContext.Current.CancellationToken);
+        var versionDto = await versionResponse.Content.ReadFromJsonAsync<CompositeConfigurationVersionDetails>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
 
         var addChildRequest = new AddChildConfigurationRequest
         {

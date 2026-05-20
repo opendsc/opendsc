@@ -195,12 +195,12 @@ public sealed class UserDetails
     /// <summary>
     /// The list of roles assigned to the user.
     /// </summary>
-    public IReadOnlyList<RoleSummary> Roles { get; internal set; } = [];
+    public IReadOnlyList<RoleSummary> Roles { get; set; } = [];
 
     /// <summary>
     /// The list of groups the user belongs to.
     /// </summary>
-    public IReadOnlyList<GroupSummary> Groups { get; internal set; } = [];
+    public IReadOnlyList<GroupSummary> Groups { get; set; } = [];
 }
 
 /// <summary>
@@ -282,12 +282,12 @@ public sealed class GroupDetails
     /// <summary>
     /// The list of users who are members of the group.
     /// </summary>
-    public IReadOnlyList<UserSummary> Members { get; internal set; } = [];
+    public IReadOnlyList<UserSummary> Members { get; set; } = [];
 
     /// <summary>
     /// The list of roles assigned to the group.
     /// </summary>
-    public IReadOnlyList<RoleSummary> Roles { get; internal set; } = [];
+    public IReadOnlyList<RoleSummary> Roles { get; set; } = [];
 }
 
 /// <summary>

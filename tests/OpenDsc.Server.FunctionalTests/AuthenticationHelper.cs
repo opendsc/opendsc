@@ -54,7 +54,7 @@ public static class AuthenticationHelper
             throw new InvalidOperationException($"Token creation failed with status {tokenResponse.StatusCode}: {errorContent}");
         }
 
-        var tokenResult = await tokenResponse.Content.ReadFromJsonAsync<TokenCreationResult>();
+        var tokenResult = await tokenResponse.Content.ReadFromJsonAsync<TokenCreationResult>(TestJsonOptions.Default);
         return tokenResult!.Token;
     }
 

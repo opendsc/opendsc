@@ -30,7 +30,7 @@ public class GroupEndpointsTests : IClassFixture<ServerWebApplicationFactory>
         var response = await _client.GetAsync("/api/v1/groups", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var groups = await response.Content.ReadFromJsonAsync<List<GroupSummary>>(TestContext.Current.CancellationToken);
+        var groups = await response.Content.ReadFromJsonAsync<List<GroupSummary>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         groups.Should().NotBeNull();
         groups!.Should().Contain(g => g.Name == "Administrators");
         groups.Should().Contain(g => g.Name == "Operators");
@@ -41,13 +41,13 @@ public class GroupEndpointsTests : IClassFixture<ServerWebApplicationFactory>
     {
         // Get the admin group
         var listResponse = await _client.GetAsync("/api/v1/groups", TestContext.Current.CancellationToken);
-        var groups = await listResponse.Content.ReadFromJsonAsync<List<GroupSummary>>(TestContext.Current.CancellationToken);
+        var groups = await listResponse.Content.ReadFromJsonAsync<List<GroupSummary>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         var adminGroup = groups!.First(g => g.Name == "Administrators");
 
         var response = await _client.GetAsync($"/api/v1/groups/{adminGroup.Id}", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var group = await response.Content.ReadFromJsonAsync<GroupDetails>(TestContext.Current.CancellationToken);
+        var group = await response.Content.ReadFromJsonAsync<GroupDetails>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         group.Should().NotBeNull();
         group!.Name.Should().Be("Administrators");
         group.Description.Should().NotBeNullOrEmpty();
@@ -65,7 +65,7 @@ public class GroupEndpointsTests : IClassFixture<ServerWebApplicationFactory>
         var response = await _client.PostAsJsonAsync("/api/v1/groups", createRequest, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
-        var group = await response.Content.ReadFromJsonAsync<GroupSummary>(TestContext.Current.CancellationToken);
+        var group = await response.Content.ReadFromJsonAsync<GroupSummary>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         group.Should().NotBeNull();
         group!.Name.Should().Be("TestGroup");
         group.Description.Should().Be("A test group");
@@ -81,7 +81,7 @@ public class GroupEndpointsTests : IClassFixture<ServerWebApplicationFactory>
             Description = "Group to update"
         };
         var createResponse = await _client.PostAsJsonAsync("/api/v1/groups", createRequest, TestContext.Current.CancellationToken);
-        var createdGroup = await createResponse.Content.ReadFromJsonAsync<GroupSummary>(TestContext.Current.CancellationToken);
+        var createdGroup = await createResponse.Content.ReadFromJsonAsync<GroupSummary>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         createdGroup.Should().NotBeNull();
 
         // Update the group
@@ -94,7 +94,7 @@ public class GroupEndpointsTests : IClassFixture<ServerWebApplicationFactory>
         var updateResponse = await _client.PutAsJsonAsync($"/api/v1/groups/{createdGroup.Id}", updateRequest, TestContext.Current.CancellationToken);
 
         updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var updatedGroup = await updateResponse.Content.ReadFromJsonAsync<GroupSummary>(TestContext.Current.CancellationToken);
+        var updatedGroup = await updateResponse.Content.ReadFromJsonAsync<GroupSummary>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         updatedGroup.Should().NotBeNull();
         updatedGroup!.Description.Should().Be("Updated group description");
     }
@@ -109,7 +109,7 @@ public class GroupEndpointsTests : IClassFixture<ServerWebApplicationFactory>
             Description = "Group to delete"
         };
         var createResponse = await _client.PostAsJsonAsync("/api/v1/groups", createRequest, TestContext.Current.CancellationToken);
-        var createdGroup = await createResponse.Content.ReadFromJsonAsync<GroupSummary>(TestContext.Current.CancellationToken);
+        var createdGroup = await createResponse.Content.ReadFromJsonAsync<GroupSummary>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
 
         // Delete the group
         var deleteResponse = await _client.DeleteAsync($"/api/v1/groups/{createdGroup!.Id}", TestContext.Current.CancellationToken);
@@ -126,13 +126,13 @@ public class GroupEndpointsTests : IClassFixture<ServerWebApplicationFactory>
     {
         // Get the admin group
         var listResponse = await _client.GetAsync("/api/v1/groups", TestContext.Current.CancellationToken);
-        var groups = await listResponse.Content.ReadFromJsonAsync<List<GroupSummary>>(TestContext.Current.CancellationToken);
+        var groups = await listResponse.Content.ReadFromJsonAsync<List<GroupSummary>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         var adminGroup = groups!.First(g => g.Name == "Administrators");
 
         var response = await _client.GetAsync($"/api/v1/groups/{adminGroup.Id}/members", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var members = await response.Content.ReadFromJsonAsync<List<UserSummary>>(TestContext.Current.CancellationToken);
+        var members = await response.Content.ReadFromJsonAsync<List<UserSummary>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         members.Should().NotBeNull();
         members!.Should().Contain(u => u.Username == "admin");
     }
@@ -147,7 +147,7 @@ public class GroupEndpointsTests : IClassFixture<ServerWebApplicationFactory>
             Description = "Group for member testing"
         };
         var createGroupResponse = await _client.PostAsJsonAsync("/api/v1/groups", createGroupRequest, TestContext.Current.CancellationToken);
-        var createdGroup = await createGroupResponse.Content.ReadFromJsonAsync<GroupSummary>(TestContext.Current.CancellationToken);
+        var createdGroup = await createGroupResponse.Content.ReadFromJsonAsync<GroupSummary>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
 
         // Create a test user
         var createUserRequest = new CreateUserRequest
@@ -157,7 +157,7 @@ public class GroupEndpointsTests : IClassFixture<ServerWebApplicationFactory>
             Password = "TestPassword123!"
         };
         var createUserResponse = await _client.PostAsJsonAsync("/api/v1/users", createUserRequest, TestContext.Current.CancellationToken);
-        var createdUser = await createUserResponse.Content.ReadFromJsonAsync<UserSummary>(TestContext.Current.CancellationToken);
+        var createdUser = await createUserResponse.Content.ReadFromJsonAsync<UserSummary>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
 
         // Set group members
         var setMembersRequest = new SetGroupMembersRequest
@@ -170,7 +170,7 @@ public class GroupEndpointsTests : IClassFixture<ServerWebApplicationFactory>
 
         // Verify members were set
         var getMembersResponse = await _client.GetAsync($"/api/v1/groups/{createdGroup.Id}/members", TestContext.Current.CancellationToken);
-        var members = await getMembersResponse.Content.ReadFromJsonAsync<List<UserSummary>>(TestContext.Current.CancellationToken);
+        var members = await getMembersResponse.Content.ReadFromJsonAsync<List<UserSummary>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         members.Should().NotBeNull();
         members!.Should().Contain(u => u.Username == "memberuser");
     }
@@ -180,13 +180,13 @@ public class GroupEndpointsTests : IClassFixture<ServerWebApplicationFactory>
     {
         // Get the admin group
         var listResponse = await _client.GetAsync("/api/v1/groups", TestContext.Current.CancellationToken);
-        var groups = await listResponse.Content.ReadFromJsonAsync<List<GroupSummary>>(TestContext.Current.CancellationToken);
+        var groups = await listResponse.Content.ReadFromJsonAsync<List<GroupSummary>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         var adminGroup = groups!.First(g => g.Name == "Administrators");
 
         var response = await _client.GetAsync($"/api/v1/groups/{adminGroup.Id}/roles", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var roles = await response.Content.ReadFromJsonAsync<List<RoleSummary>>(TestContext.Current.CancellationToken);
+        var roles = await response.Content.ReadFromJsonAsync<List<RoleSummary>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         roles.Should().NotBeNull();
         roles!.Should().Contain(r => r.Name == "Administrator");
     }
@@ -201,11 +201,11 @@ public class GroupEndpointsTests : IClassFixture<ServerWebApplicationFactory>
             Description = "Group for role testing"
         };
         var createGroupResponse = await _client.PostAsJsonAsync("/api/v1/groups", createGroupRequest, TestContext.Current.CancellationToken);
-        var createdGroup = await createGroupResponse.Content.ReadFromJsonAsync<GroupSummary>(TestContext.Current.CancellationToken);
+        var createdGroup = await createGroupResponse.Content.ReadFromJsonAsync<GroupSummary>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
 
         // Get a role to assign
         var rolesResponse = await _client.GetAsync("/api/v1/roles", TestContext.Current.CancellationToken);
-        var roles = await rolesResponse.Content.ReadFromJsonAsync<List<RoleSummary>>(TestContext.Current.CancellationToken);
+        var roles = await rolesResponse.Content.ReadFromJsonAsync<List<RoleSummary>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         var viewerRole = roles!.First(r => r.Name == "Viewer");
 
         // Set group roles
@@ -219,7 +219,7 @@ public class GroupEndpointsTests : IClassFixture<ServerWebApplicationFactory>
 
         // Verify roles were set
         var getRolesResponse = await _client.GetAsync($"/api/v1/groups/{createdGroup.Id}/roles", TestContext.Current.CancellationToken);
-        var groupRoles = await getRolesResponse.Content.ReadFromJsonAsync<List<RoleSummary>>(TestContext.Current.CancellationToken);
+        var groupRoles = await getRolesResponse.Content.ReadFromJsonAsync<List<RoleSummary>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         groupRoles.Should().NotBeNull();
         groupRoles!.Should().Contain(r => r.Name == "Viewer");
     }
@@ -230,7 +230,7 @@ public class GroupEndpointsTests : IClassFixture<ServerWebApplicationFactory>
         var response = await _client.GetAsync("/api/v1/groups/external-mappings", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var mappings = await response.Content.ReadFromJsonAsync<List<ExternalGroupMappingInfo>>(TestContext.Current.CancellationToken);
+        var mappings = await response.Content.ReadFromJsonAsync<List<ExternalGroupMappingInfo>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         mappings.Should().NotBeNull();
     }
 
@@ -244,7 +244,7 @@ public class GroupEndpointsTests : IClassFixture<ServerWebApplicationFactory>
             Description = "Group for external mapping"
         };
         var createGroupResponse = await _client.PostAsJsonAsync("/api/v1/groups", createGroupRequest, TestContext.Current.CancellationToken);
-        var createdGroup = await createGroupResponse.Content.ReadFromJsonAsync<GroupSummary>(TestContext.Current.CancellationToken);
+        var createdGroup = await createGroupResponse.Content.ReadFromJsonAsync<GroupSummary>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
 
         var createMappingRequest = new CreateExternalGroupMappingRequest
         {
@@ -257,7 +257,7 @@ public class GroupEndpointsTests : IClassFixture<ServerWebApplicationFactory>
         var response = await _client.PostAsJsonAsync("/api/v1/groups/external-mappings", createMappingRequest, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
-        var mapping = await response.Content.ReadFromJsonAsync<ExternalGroupMappingInfo>(TestContext.Current.CancellationToken);
+        var mapping = await response.Content.ReadFromJsonAsync<ExternalGroupMappingInfo>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         mapping.Should().NotBeNull();
         mapping!.ExternalGroupId.Should().Be("external-group-123");
         mapping.GroupId.Should().Be(createdGroup.Id);
@@ -273,7 +273,7 @@ public class GroupEndpointsTests : IClassFixture<ServerWebApplicationFactory>
             Description = "Group for external mapping deletion"
         };
         var createGroupResponse = await _client.PostAsJsonAsync("/api/v1/groups", createGroupRequest, TestContext.Current.CancellationToken);
-        var createdGroup = await createGroupResponse.Content.ReadFromJsonAsync<GroupSummary>(TestContext.Current.CancellationToken);
+        var createdGroup = await createGroupResponse.Content.ReadFromJsonAsync<GroupSummary>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
 
         // Create external mapping
         var createMappingRequest = new CreateExternalGroupMappingRequest
@@ -284,7 +284,7 @@ public class GroupEndpointsTests : IClassFixture<ServerWebApplicationFactory>
             GroupId = createdGroup!.Id
         };
         var createMappingResponse = await _client.PostAsJsonAsync("/api/v1/groups/external-mappings", createMappingRequest, TestContext.Current.CancellationToken);
-        var createdMapping = await createMappingResponse.Content.ReadFromJsonAsync<ExternalGroupMappingInfo>(TestContext.Current.CancellationToken);
+        var createdMapping = await createMappingResponse.Content.ReadFromJsonAsync<ExternalGroupMappingInfo>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
 
         // Delete the mapping
         var deleteResponse = await _client.DeleteAsync($"/api/v1/groups/external-mappings/{createdMapping!.Id}", TestContext.Current.CancellationToken);

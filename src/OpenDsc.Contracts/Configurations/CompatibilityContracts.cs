@@ -99,7 +99,7 @@ public sealed class ParameterFileMigrationStatus
     /// <summary>
     /// Validation errors encountered if the parameter doesn't conform to the new schema.
     /// </summary>
-    public IReadOnlyList<ValidationError>? Errors { get; internal set; }
+    public IReadOnlyList<ValidationError>? Errors { get; set; }
 }
 
 /// <summary>
@@ -130,15 +130,15 @@ public sealed class CompatibilityReport
     /// <summary>
     /// The list of breaking schema changes (changes that may break parameter compatibility).
     /// </summary>
-    public IReadOnlyList<SchemaChange> BreakingChanges { get; internal set; } = [];
+    public IReadOnlyList<SchemaChange> BreakingChanges { get; set; } = [];
 
     /// <summary>
     /// The list of non-breaking schema changes (additions and non-breaking modifications).
     /// </summary>
-    public IReadOnlyList<SchemaChange> NonBreakingChanges { get; internal set; } = [];
+    public IReadOnlyList<SchemaChange> NonBreakingChanges { get; set; } = [];
 
     /// <summary>
     /// Parameter files affected by the schema change and their migration status.
     /// </summary>
-    public IReadOnlyList<ParameterFileMigrationStatus> AffectedParameterFiles { get; internal set; } = [];
+    public IReadOnlyList<ParameterFileMigrationStatus> AffectedParameterFiles { get; set; } = [];
 }

@@ -134,7 +134,7 @@ public sealed class ConfigurationVersionDetails
     /// <summary>
     /// Files contained in the version package.
     /// </summary>
-    public IReadOnlyList<ConfigurationFileDetails> Files { get; internal set; } = [];
+    public IReadOnlyList<ConfigurationFileDetails> Files { get; set; } = [];
 }
 
 /// <summary>

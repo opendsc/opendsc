@@ -56,7 +56,7 @@ resources:
         var getResponse = await adminClient.GetAsync($"/api/v1/configurations/{configName}", TestContext.Current.CancellationToken);
         getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var configDetails = await getResponse.Content.ReadFromJsonAsync<ConfigurationDetails>(TestContext.Current.CancellationToken);
+        var configDetails = await getResponse.Content.ReadFromJsonAsync<ConfigurationDetails>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         configDetails.Should().NotBeNull();
         configDetails!.LatestVersion.Should().Be("1.0.0");
     }
@@ -72,7 +72,7 @@ resources:
         };
 
         var registerResponse = await Client.PostAsJsonAsync("/api/v1/nodes/register", registerRequest, TestContext.Current.CancellationToken);
-        var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>(TestContext.Current.CancellationToken);
+        var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
 
         using var adminClient = await AuthenticationHelper.CreateAuthenticatedClientAsync(Fixture);
 
@@ -100,7 +100,7 @@ resources: []
         assignResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         var nodeResponse = await adminClient.GetAsync($"/api/v1/nodes/{registerResult.NodeId}", TestContext.Current.CancellationToken);
-        var node = await nodeResponse.Content.ReadFromJsonAsync<NodeSummary>(TestContext.Current.CancellationToken);
+        var node = await nodeResponse.Content.ReadFromJsonAsync<NodeSummary>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         node!.ConfigurationName.Should().Be(configName);
     }
 
@@ -133,7 +133,7 @@ resources: []
             RegistrationKey = "test-registration-key"
         };
         var registerResponse = await Client.PostAsJsonAsync("/api/v1/nodes/register", registerRequest, TestContext.Current.CancellationToken);
-        var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>(TestContext.Current.CancellationToken);
+        var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
 
         var assignRequest = new AssignConfigurationRequest
         {
@@ -167,7 +167,7 @@ resources: []
         createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
         var getResponse = await adminClient.GetAsync($"/api/v1/configurations/{configName}", TestContext.Current.CancellationToken);
-        var configDetails = await getResponse.Content.ReadFromJsonAsync<ConfigurationDetails>(TestContext.Current.CancellationToken);
+        var configDetails = await getResponse.Content.ReadFromJsonAsync<ConfigurationDetails>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         configDetails.Should().NotBeNull();
         configDetails!.LatestVersion.Should().Be("1.0.0");
 
@@ -176,7 +176,7 @@ resources: []
         publishResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var verifyResponse = await adminClient.GetAsync($"/api/v1/configurations/{configName}", TestContext.Current.CancellationToken);
-        var verifiedConfig = await verifyResponse.Content.ReadFromJsonAsync<ConfigurationDetails>(TestContext.Current.CancellationToken);
+        var verifiedConfig = await verifyResponse.Content.ReadFromJsonAsync<ConfigurationDetails>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         verifiedConfig.Should().NotBeNull();
     }
 }

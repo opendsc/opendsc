@@ -8,10 +8,6 @@ using AwesomeAssertions;
 
 using Microsoft.EntityFrameworkCore;
 
-using OpenDsc.Contracts.Nodes;
-using OpenDsc.Contracts.CompositeConfigurations;
-using OpenDsc.Contracts.Reports;
-using OpenDsc.Contracts.Settings;
 using OpenDsc.Contracts.Permissions;
 using OpenDsc.Server.Data;
 
@@ -184,7 +180,7 @@ public class ResourcePermissionTests : IAsyncLifetime
         var response = await _adminClient.GetAsync($"/api/v1/configurations/{configName}/permissions", TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var permissions = await response.Content.ReadFromJsonAsync<List<PermissionEntry>>(TestContext.Current.CancellationToken);
+        var permissions = await response.Content.ReadFromJsonAsync<List<PermissionEntry>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         permissions.Should().NotBeNullOrEmpty();
         permissions!.Should().ContainSingle(p => p.PrincipalId == granteeId && p.Level == "Read");
     }
@@ -294,7 +290,7 @@ public class ResourcePermissionTests : IAsyncLifetime
         var response = await _adminClient.GetAsync($"/api/v1/composite-configurations/{name}/permissions", TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var permissions = await response.Content.ReadFromJsonAsync<List<PermissionEntry>>(TestContext.Current.CancellationToken);
+        var permissions = await response.Content.ReadFromJsonAsync<List<PermissionEntry>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         permissions.Should().NotBeNullOrEmpty();
         permissions!.Should().ContainSingle(p => p.PrincipalId == granteeId && p.Level == "Modify");
     }

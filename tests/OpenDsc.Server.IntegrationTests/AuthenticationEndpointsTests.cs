@@ -41,7 +41,7 @@ public class AuthenticationEndpointsTests : IAsyncLifetime
         var response = await client.PostAsJsonAsync("/api/v1/auth/login", loginRequest, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var result = await response.Content.ReadFromJsonAsync<LoginResponse>(TestContext.Current.CancellationToken);
+        var result = await response.Content.ReadFromJsonAsync<LoginResponse>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
         result!.Username.Should().Be("admin");
         result.RequirePasswordChange.Should().BeTrue();
@@ -65,7 +65,7 @@ public class AuthenticationEndpointsTests : IAsyncLifetime
         var response = await _client.PostAsJsonAsync("/api/v1/auth/tokens", tokenRequest, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
-        var result = await response.Content.ReadFromJsonAsync<TokenResponse>(TestContext.Current.CancellationToken);
+        var result = await response.Content.ReadFromJsonAsync<TokenResponse>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
         result!.Token.Should().StartWith("pat_");
         result.Token.Length.Should().Be(44);
@@ -79,7 +79,7 @@ public class AuthenticationEndpointsTests : IAsyncLifetime
         var response = await _client.PostAsJsonAsync("/api/v1/auth/tokens", tokenRequest, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(TestContext.Current.CancellationToken);
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         problem.Should().NotBeNull();
         problem!.Errors.Should().ContainKey("scopes");
         problem.Errors["scopes"].Should().ContainSingle().Which.Should().Contain("fake.scope").And.Contain("another.invalid");
@@ -92,7 +92,7 @@ public class AuthenticationEndpointsTests : IAsyncLifetime
         var response = await _client.PostAsJsonAsync("/api/v1/auth/tokens", tokenRequest, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
-        var result = await response.Content.ReadFromJsonAsync<TokenResponse>(TestContext.Current.CancellationToken);
+        var result = await response.Content.ReadFromJsonAsync<TokenResponse>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
         result!.Name.Should().Be("Valid Scopes Token");
     }
@@ -104,7 +104,7 @@ public class AuthenticationEndpointsTests : IAsyncLifetime
         var response = await _client.PostAsJsonAsync("/api/v1/auth/tokens", tokenRequest, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
-        var result = await response.Content.ReadFromJsonAsync<TokenResponse>(TestContext.Current.CancellationToken);
+        var result = await response.Content.ReadFromJsonAsync<TokenResponse>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
         result!.Scopes.Should().BeEquivalentTo(["nodes.read", "nodes.write"]);
     }
@@ -118,7 +118,7 @@ public class AuthenticationEndpointsTests : IAsyncLifetime
         var response = await _client.GetAsync("/api/v1/auth/tokens", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var tokens = await response.Content.ReadFromJsonAsync<List<TokenSummary>>(TestContext.Current.CancellationToken);
+        var tokens = await response.Content.ReadFromJsonAsync<List<TokenSummary>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         tokens.Should().NotBeNull();
         tokens!.Should().Contain(t => t.Name == "List Test Token");
     }
@@ -132,7 +132,7 @@ public class AuthenticationEndpointsTests : IAsyncLifetime
 
         // Get tokens to find the ID
         var listResponse = await _client.GetAsync("/api/v1/auth/tokens", TestContext.Current.CancellationToken);
-        var tokens = await listResponse.Content.ReadFromJsonAsync<List<TokenSummary>>(TestContext.Current.CancellationToken);
+        var tokens = await listResponse.Content.ReadFromJsonAsync<List<TokenSummary>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         var tokenToRevoke = tokens!.First(t => t.Name == "Revoke Test Token");
 
         // Revoke the token
@@ -142,7 +142,7 @@ public class AuthenticationEndpointsTests : IAsyncLifetime
 
         // Verify token is revoked (should still exist but be marked as revoked)
         var verifyResponse = await _client.GetAsync("/api/v1/auth/tokens", TestContext.Current.CancellationToken);
-        var remainingTokens = await verifyResponse.Content.ReadFromJsonAsync<List<TokenSummary>>(TestContext.Current.CancellationToken);
+        var remainingTokens = await verifyResponse.Content.ReadFromJsonAsync<List<TokenSummary>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         var revokedToken = remainingTokens!.FirstOrDefault(t => t.Id == tokenToRevoke.Id);
         revokedToken.Should().NotBeNull();
         revokedToken!.IsRevoked.Should().BeTrue();

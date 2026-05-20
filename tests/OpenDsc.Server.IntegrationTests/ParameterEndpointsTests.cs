@@ -115,7 +115,7 @@ public class ParameterEndpointsTests : IDisposable
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var result = await response.Content.ReadFromJsonAsync<ParameterVersionDetails>(TestContext.Current.CancellationToken);
+        var result = await response.Content.ReadFromJsonAsync<ParameterVersionDetails>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
         result!.Version.Should().Be("1.0.0");
         result.Status.Should().Be(ParameterVersionStatus.Draft);
@@ -145,7 +145,7 @@ public class ParameterEndpointsTests : IDisposable
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var versions = await response.Content.ReadFromJsonAsync<List<ParameterVersionDetails>>(TestContext.Current.CancellationToken);
+        var versions = await response.Content.ReadFromJsonAsync<List<ParameterVersionDetails>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         versions.Should().NotBeNull();
         versions.Should().HaveCount(1);
         versions![0].Version.Should().Be("1.0.0");
@@ -175,7 +175,7 @@ public class ParameterEndpointsTests : IDisposable
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var result = await response.Content.ReadFromJsonAsync<ParameterVersionDetails>(TestContext.Current.CancellationToken);
+        var result = await response.Content.ReadFromJsonAsync<ParameterVersionDetails>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
         result!.Version.Should().Be("1.0.0");
         result.Status.Should().Be(ParameterVersionStatus.Published);
@@ -264,7 +264,7 @@ public class ParameterEndpointsTests : IDisposable
             var errorContent = await registerResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
             throw new InvalidOperationException($"Node registration failed: {registerResponse.StatusCode} - {errorContent}");
         }
-        var registration = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>(TestContext.Current.CancellationToken);
+        var registration = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         var nodeId = registration!.NodeId;
 
         // Assign configuration to node
@@ -310,7 +310,7 @@ public class ParameterEndpointsTests : IDisposable
             var errorContent = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
             throw new InvalidOperationException($"Provenance request failed: {response.StatusCode} - {errorContent}");
         }
-        var result = await response.Content.ReadFromJsonAsync<ParameterProvenanceDetails>(TestContext.Current.CancellationToken);
+        var result = await response.Content.ReadFromJsonAsync<ParameterProvenanceDetails>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
         result!.NodeId.Should().Be(nodeId);
         result.ConfigurationId.Should().Be(configId);
@@ -326,14 +326,14 @@ public class ParameterEndpointsTests : IDisposable
         var scopeTypeRequest = new { name = scopeTypeName, valueMode = "Restricted" };
         var scopeTypeResponse = await client.PostAsJsonAsync("/api/v1/scope-types", scopeTypeRequest);
         scopeTypeResponse.EnsureSuccessStatusCode();
-        var ScopeTypeDetails = await scopeTypeResponse.Content.ReadFromJsonAsync<ScopeTypeDetails>();
+        var ScopeTypeDetails = await scopeTypeResponse.Content.ReadFromJsonAsync<ScopeTypeDetails>(TestJsonOptions.Default);
         var scopeTypeId = ScopeTypeDetails!.Id;
 
         // Create scope value
         var scopeValueRequest = new { value = scopeValue };
         var scopeValueResponse = await client.PostAsJsonAsync($"/api/v1/scope-types/{scopeTypeId}/values", scopeValueRequest);
         scopeValueResponse.EnsureSuccessStatusCode();
-        var ScopeValueDetails = await scopeValueResponse.Content.ReadFromJsonAsync<ScopeValueDetails>();
+        var ScopeValueDetails = await scopeValueResponse.Content.ReadFromJsonAsync<ScopeValueDetails>(TestJsonOptions.Default);
         var scopeValueId = ScopeValueDetails!.Id;
 
         return (scopeTypeId, scopeValueId);
@@ -343,7 +343,7 @@ public class ParameterEndpointsTests : IDisposable
     {
         var response = await client.GetAsync("/api/v1/scope-types", TestContext.Current.CancellationToken);
         response.EnsureSuccessStatusCode();
-        var scopeTypes = await response.Content.ReadFromJsonAsync<List<ScopeTypeDetails>>(TestContext.Current.CancellationToken);
+        var scopeTypes = await response.Content.ReadFromJsonAsync<List<ScopeTypeDetails>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         var nodeScope = scopeTypes?.FirstOrDefault(st => st.Name == "Node");
         if (nodeScope is null)
         {
@@ -374,7 +374,7 @@ public class ParameterEndpointsTests : IDisposable
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var result = await response.Content.ReadFromJsonAsync<ParameterVersionDetails>(TestContext.Current.CancellationToken);
+        var result = await response.Content.ReadFromJsonAsync<ParameterVersionDetails>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
         result!.ScopeValue.Should().Be("Development");
         result.Status.Should().Be(ParameterVersionStatus.Draft);
@@ -513,7 +513,7 @@ public class ParameterEndpointsTests : IDisposable
         var response = await client.PutAsJsonAsync($"/api/v1/parameters/{defaultScopeTypeId}/{configId}", request, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var result = await response.Content.ReadFromJsonAsync<ParameterVersionDetails>(TestContext.Current.CancellationToken);
+        var result = await response.Content.ReadFromJsonAsync<ParameterVersionDetails>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
         result!.ScopeValue.Should().BeNullOrEmpty();
         result.Status.Should().Be(ParameterVersionStatus.Draft);
@@ -530,7 +530,7 @@ public class ParameterEndpointsTests : IDisposable
         var scopeTypeRequest = new { name = $"Region-{Guid.NewGuid()}", valueMode = "Unrestricted" };
         var scopeTypeResponse = await client.PostAsJsonAsync("/api/v1/scope-types", scopeTypeRequest, TestContext.Current.CancellationToken);
         scopeTypeResponse.EnsureSuccessStatusCode();
-        var ScopeTypeDetails = await scopeTypeResponse.Content.ReadFromJsonAsync<ScopeTypeDetails>(TestContext.Current.CancellationToken);
+        var ScopeTypeDetails = await scopeTypeResponse.Content.ReadFromJsonAsync<ScopeTypeDetails>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
 
         var request = new
         {
@@ -554,7 +554,7 @@ public class ParameterEndpointsTests : IDisposable
         var scopeTypeRequest = new { name = $"Region-{Guid.NewGuid()}", valueMode = "Unrestricted" };
         var scopeTypeResponse = await client.PostAsJsonAsync("/api/v1/scope-types", scopeTypeRequest, TestContext.Current.CancellationToken);
         scopeTypeResponse.EnsureSuccessStatusCode();
-        var ScopeTypeDetails = await scopeTypeResponse.Content.ReadFromJsonAsync<ScopeTypeDetails>(TestContext.Current.CancellationToken);
+        var ScopeTypeDetails = await scopeTypeResponse.Content.ReadFromJsonAsync<ScopeTypeDetails>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
 
         var request = new
         {
@@ -567,7 +567,7 @@ public class ParameterEndpointsTests : IDisposable
         var response = await client.PutAsJsonAsync($"/api/v1/parameters/{ScopeTypeDetails!.Id}/{configId}", request, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var result = await response.Content.ReadFromJsonAsync<ParameterVersionDetails>(TestContext.Current.CancellationToken);
+        var result = await response.Content.ReadFromJsonAsync<ParameterVersionDetails>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
         result!.ScopeValue.Should().Be("us-west");
         result.Status.Should().Be(ParameterVersionStatus.Draft);

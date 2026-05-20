@@ -27,7 +27,7 @@ public sealed class CreateCompositeConfigurationRequest
     /// <summary>
     /// Entry point filename for the generated orchestrator configuration.
     /// </summary>
-    public required string EntryPoint { get; set; }
+    public string EntryPoint { get; set; } = "main.dsc.yaml";
 }
 
 /// <summary>
@@ -169,7 +169,7 @@ public sealed class CompositeConfigurationDetails
     /// <summary>
     /// All versions of this composite configuration.
     /// </summary>
-    public IReadOnlyList<CompositeConfigurationVersionDetails> Versions { get; internal set; } = [];
+    public IReadOnlyList<CompositeConfigurationVersionDetails> Versions { get; set; } = [];
 
     /// <summary>
     /// When the composite configuration was created.
@@ -210,7 +210,7 @@ public sealed class CompositeConfigurationVersionDetails
     /// <summary>
     /// Child configurations in this version.
     /// </summary>
-    public IReadOnlyList<CompositeConfigurationItemDetails> Items { get; internal set; } = [];
+    public IReadOnlyList<CompositeConfigurationItemDetails> Items { get; set; } = [];
 
     /// <summary>
     /// When the version was created.
@@ -278,5 +278,5 @@ public sealed class ChildConfigurationOption
     /// <summary>
     /// Available major versions of the child configuration that can be selected.
     /// </summary>
-    public IReadOnlyList<int> AvailableMajorVersions { get; internal set; } = [];
+    public IReadOnlyList<int> AvailableMajorVersions { get; set; } = [];
 }

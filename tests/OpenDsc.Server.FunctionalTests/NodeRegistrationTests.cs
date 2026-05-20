@@ -42,7 +42,7 @@ public abstract class NodeRegistrationTests
         var response = await Client.PostAsJsonAsync("/api/v1/nodes/register", request, TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var result = await response.Content.ReadFromJsonAsync<RegisterNodeResponse>(TestContext.Current.CancellationToken);
+        var result = await response.Content.ReadFromJsonAsync<RegisterNodeResponse>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         result.Should().NotBeNull();
         result!.NodeId.Should().NotBeEmpty();
     }
@@ -72,10 +72,10 @@ public abstract class NodeRegistrationTests
         };
 
         var firstResponse = await Client.PostAsJsonAsync("/api/v1/nodes/register", request, TestContext.Current.CancellationToken);
-        var firstResult = await firstResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>(TestContext.Current.CancellationToken);
+        var firstResult = await firstResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
 
         var secondResponse = await Client.PostAsJsonAsync("/api/v1/nodes/register", request, TestContext.Current.CancellationToken);
-        var secondResult = await secondResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>(TestContext.Current.CancellationToken);
+        var secondResult = await secondResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
 
         secondResult.Should().NotBeNull();
         secondResult!.NodeId.Should().Be(firstResult!.NodeId);
@@ -96,7 +96,7 @@ public abstract class NodeRegistrationTests
         var response = await adminClient.GetAsync("/api/v1/nodes/", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var nodes = await response.Content.ReadFromJsonAsync<List<NodeSummary>>(TestContext.Current.CancellationToken);
+        var nodes = await response.Content.ReadFromJsonAsync<List<NodeSummary>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         nodes.Should().NotBeNull();
         nodes!.Should().NotBeEmpty();
         nodes.Should().Contain(n => n.Fqdn == registerRequest.Fqdn);

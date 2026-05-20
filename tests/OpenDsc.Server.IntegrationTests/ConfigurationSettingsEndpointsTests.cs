@@ -38,7 +38,7 @@ public sealed class ConfigurationSettingsEndpointsTests : IDisposable
         var response = await client.GetAsync("/api/v1/configurations/test-config/settings/retention", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var dto = await response.Content.ReadFromJsonAsync<ConfigurationRetentionSummary>(TestContext.Current.CancellationToken);
+        var dto = await response.Content.ReadFromJsonAsync<ConfigurationRetentionSummary>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         dto.Should().NotBeNull();
         dto!.IsOverridden.Should().BeFalse();
         dto.KeepVersions.Should().BeNull();
@@ -85,7 +85,7 @@ public sealed class ConfigurationSettingsEndpointsTests : IDisposable
 
         var getResponse = await client.GetAsync("/api/v1/configurations/test-config/settings/retention", TestContext.Current.CancellationToken);
         getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var dto = await getResponse.Content.ReadFromJsonAsync<ConfigurationRetentionSummary>(TestContext.Current.CancellationToken);
+        var dto = await getResponse.Content.ReadFromJsonAsync<ConfigurationRetentionSummary>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         dto.Should().NotBeNull();
         dto!.IsOverridden.Should().BeTrue();
         dto.KeepVersions.Should().Be(5);
@@ -107,7 +107,7 @@ public sealed class ConfigurationSettingsEndpointsTests : IDisposable
             new SaveRetentionSettingsRequest { KeepVersions = 3 }, TestContext.Current.CancellationToken);
         putResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var dto = await putResponse.Content.ReadFromJsonAsync<ConfigurationRetentionSummary>(TestContext.Current.CancellationToken);
+        var dto = await putResponse.Content.ReadFromJsonAsync<ConfigurationRetentionSummary>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         dto.Should().NotBeNull();
         dto!.KeepVersions.Should().Be(3);
         dto.KeepDays.Should().Be(60);
@@ -153,7 +153,7 @@ public sealed class ConfigurationSettingsEndpointsTests : IDisposable
         // Confirm they're gone
         var getResponse = await client.GetAsync("/api/v1/configurations/test-config/settings/retention", TestContext.Current.CancellationToken);
         getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var dto = await getResponse.Content.ReadFromJsonAsync<ConfigurationRetentionSummary>(TestContext.Current.CancellationToken);
+        var dto = await getResponse.Content.ReadFromJsonAsync<ConfigurationRetentionSummary>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         dto.Should().NotBeNull();
         dto!.IsOverridden.Should().BeFalse();
         dto.KeepVersions.Should().BeNull();
