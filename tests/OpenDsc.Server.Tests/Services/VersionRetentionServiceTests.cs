@@ -6,6 +6,7 @@
 
 using AwesomeAssertions;
 
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -25,6 +26,7 @@ namespace OpenDsc.Server.Tests.Services;
 [Trait("Category", "Unit")]
 public class VersionRetentionServiceTests : IDisposable
 {
+    private readonly SqliteConnection _connection;
     private readonly ServerDbContext _db;
     private readonly IOptions<ServerConfig> _serverConfig;
     private readonly VersionRetentionService _service;
@@ -32,11 +34,16 @@ public class VersionRetentionServiceTests : IDisposable
 
     public VersionRetentionServiceTests()
     {
+        _connection = new SqliteConnection("DataSource=:memory:");
+        _connection.Open();
+
         var options = new DbContextOptionsBuilder<ServerDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .UseSqlite(_connection)
             .Options;
 
         _db = new ServerDbContext(options);
+        _db.Database.EnsureCreated();
+
         _tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         Directory.CreateDirectory(_tempDir);
 
@@ -53,6 +60,7 @@ public class VersionRetentionServiceTests : IDisposable
     public void Dispose()
     {
         _db?.Dispose();
+        _connection?.Dispose();
         if (Directory.Exists(_tempDir))
         {
             Directory.Delete(_tempDir, recursive: true);
@@ -95,13 +103,13 @@ public class VersionRetentionServiceTests : IDisposable
         config.Versions.Should().HaveCount(5);
     }
 
-    [Fact(Skip = "In-Memory DB Include() issue - debugging")]
+    [Fact]
     public async Task CleanupConfigurationVersionsAsync_ExceedsVersionCount_DeletesOldest()
     {
         // Arrange
         var configId = Guid.NewGuid();
         var versions = CreateConfiguration(configId, "MyConfig", versionCount: 15);
-        var policy = new RetentionPolicy { KeepVersions = 10, KeepDays = 90 };
+        var policy = new RetentionPolicy { KeepVersions = 10, KeepDays = 0, KeepReleaseVersions = false };
 
         // Act
         var result = await _service.CleanupConfigurationVersionsAsync(policy);
@@ -113,7 +121,7 @@ public class VersionRetentionServiceTests : IDisposable
         config.Versions.Should().HaveCount(10);
     }
 
-    [Fact(Skip = "In-Memory DB Include() issue")]
+    [Fact]
     public async Task CleanupConfigurationVersionsAsync_WithOldVersions_DeletesByAge()
     {
         // Arrange
@@ -151,7 +159,7 @@ public class VersionRetentionServiceTests : IDisposable
 
         _db.SaveChanges();
 
-        var policy = new RetentionPolicy { KeepVersions = 100, KeepDays = 30 };
+        var policy = new RetentionPolicy { KeepVersions = 0, KeepDays = 30, KeepReleaseVersions = false };
 
         // Act
         var result = await _service.CleanupConfigurationVersionsAsync(policy);
@@ -163,7 +171,7 @@ public class VersionRetentionServiceTests : IDisposable
         remaining.Should().HaveCount(3);
     }
 
-    [Fact(Skip = "In-Memory DB Include() issue")]
+    [Fact]
     public async Task CleanupConfigurationVersionsAsync_ProtectsActiveVersions()
     {
         // Arrange
@@ -203,7 +211,7 @@ public class VersionRetentionServiceTests : IDisposable
         _db.NodeConfigurations.Add(nodeConfig);
         _db.SaveChanges();
 
-        var policy = new RetentionPolicy { KeepVersions = 0, KeepDays = 90 };
+        var policy = new RetentionPolicy { KeepVersions = 0, KeepDays = 90, KeepReleaseVersions = false };
 
         // Act
         var result = await _service.CleanupConfigurationVersionsAsync(policy);
@@ -215,7 +223,7 @@ public class VersionRetentionServiceTests : IDisposable
         remaining.Single().Version.Should().Be("5.0.0");
     }
 
-    [Fact(Skip = "In-Memory DB Include() issue")]
+    [Fact]
     public async Task CleanupConfigurationVersionsAsync_ProtectsReleaseVersions()
     {
         // Arrange
@@ -267,13 +275,13 @@ public class VersionRetentionServiceTests : IDisposable
         remaining.Should().AllSatisfy(v => v.PrereleaseChannel.Should().BeNull());
     }
 
-    [Fact(Skip = "In-Memory DB Include() issue")]
+    [Fact]
     public async Task CleanupConfigurationVersionsAsync_DryRun_DoesNotDelete()
     {
         // Arrange
         var configId = Guid.NewGuid();
         CreateConfiguration(configId, "MyConfig", versionCount: 15);
-        var policy = new RetentionPolicy { KeepVersions = 5, KeepDays = 90, DryRun = true };
+        var policy = new RetentionPolicy { KeepVersions = 5, KeepDays = 0, DryRun = true, KeepReleaseVersions = false };
 
         // Act
         var result = await _service.CleanupConfigurationVersionsAsync(policy);
@@ -305,7 +313,7 @@ public class VersionRetentionServiceTests : IDisposable
         run.KeptCount.Should().Be(result.KeptCount);
     }
 
-    [Fact(Skip = "In-Memory DB Include() issue")]
+    [Fact]
     public async Task CleanupConfigurationVersionsAsync_WithPerConfigOverrides_UsesOverrides()
     {
         // Arrange
@@ -317,13 +325,13 @@ public class VersionRetentionServiceTests : IDisposable
         {
             ConfigurationId = configId,
             RetentionKeepVersions = 3,
-            RetentionKeepDays = 90,
+            RetentionKeepDays = 0,
             RetentionKeepReleaseVersions = false
         };
         _db.Set<ConfigurationSettings>().Add(settings);
         _db.SaveChanges();
 
-        var policy = new RetentionPolicy { KeepVersions = 20, KeepDays = 90 };
+        var policy = new RetentionPolicy { KeepVersions = 20, KeepDays = 0 };
 
         // Act
         var result = await _service.CleanupConfigurationVersionsAsync(policy);
@@ -365,7 +373,7 @@ public class VersionRetentionServiceTests : IDisposable
         var schema = new ParameterSchema { Id = schemaId, ConfigurationId = configId };
         _db.Set<ParameterSchema>().Add(schema);
 
-        var scopeType = new ScopeType { Id = scopeTypeId, Name = "Environment" };
+        var scopeType = new ScopeType { Id = scopeTypeId, Name = "Environment", Precedence = 100 };
         _db.ScopeTypes.Add(scopeType);
         _db.SaveChanges();
 
@@ -433,7 +441,7 @@ public class VersionRetentionServiceTests : IDisposable
         var schema = new ParameterSchema { Id = schemaId, ConfigurationId = configId };
         _db.Set<ParameterSchema>().Add(schema);
 
-        var scopeType = new ScopeType { Id = scopeTypeId, Name = "Environment" };
+        var scopeType = new ScopeType { Id = scopeTypeId, Name = "Environment", Precedence = 100 };
         _db.ScopeTypes.Add(scopeType);
 
         // 5 versions for Production scope
@@ -502,7 +510,7 @@ public class VersionRetentionServiceTests : IDisposable
         result.KeptCount.Should().Be(0);
     }
 
-    [Fact(Skip = "In-Memory DB Include() issue")]
+    [Fact]
     public async Task CleanupCompositeConfigurationVersionsAsync_ExceedsVersionCount_DeletesOldest()
     {
         // Arrange
@@ -525,7 +533,7 @@ public class VersionRetentionServiceTests : IDisposable
 
         _db.SaveChanges();
 
-        var policy = new RetentionPolicy { KeepVersions = 5, KeepDays = 90 };
+        var policy = new RetentionPolicy { KeepVersions = 5, KeepDays = 0, KeepReleaseVersions = false };
 
         // Act
         var result = await _service.CleanupCompositeConfigurationVersionsAsync(policy);
@@ -535,7 +543,7 @@ public class VersionRetentionServiceTests : IDisposable
         result.KeptCount.Should().Be(5);
     }
 
-    [Fact(Skip = "In-Memory DB Include() issue")]
+    [Fact]
     public async Task CleanupCompositeConfigurationVersionsAsync_ProtectsActiveVersions()
     {
         // Arrange
@@ -574,7 +582,7 @@ public class VersionRetentionServiceTests : IDisposable
         _db.NodeConfigurations.Add(nodeConfig);
         _db.SaveChanges();
 
-        var policy = new RetentionPolicy { KeepVersions = 0, KeepDays = 90 };
+        var policy = new RetentionPolicy { KeepVersions = 0, KeepDays = 90, KeepReleaseVersions = false };
 
         // Act
         var result = await _service.CleanupCompositeConfigurationVersionsAsync(policy);
@@ -602,7 +610,7 @@ public class VersionRetentionServiceTests : IDisposable
         result.KeptCount.Should().Be(0);
     }
 
-    [Fact(Skip = "In-Memory DB ExecuteDelete not supported")]
+    [Fact]
     public async Task CleanupReportsAsync_ExceedsKeepCount_DeletesOldest()
     {
         // Arrange
@@ -635,7 +643,7 @@ public class VersionRetentionServiceTests : IDisposable
         result.KeptCount.Should().Be(100);
     }
 
-    [Fact(Skip = "In-Memory DB ExecuteDelete not supported")]
+    [Fact]
     public async Task CleanupReportsAsync_ByAge_DeletesOldRecords()
     {
         // Arrange
@@ -670,7 +678,7 @@ public class VersionRetentionServiceTests : IDisposable
 
         _db.SaveChanges();
 
-        var policy = new RecordRetentionPolicy { KeepCount = 1000, KeepDays = 30 };
+        var policy = new RecordRetentionPolicy { KeepCount = 0, KeepDays = 30 };
 
         // Act
         var result = await _service.CleanupReportsAsync(policy);
@@ -680,14 +688,14 @@ public class VersionRetentionServiceTests : IDisposable
         result.KeptCount.Should().Be(20);
     }
 
-    [Fact(Skip = "In-Memory DB ExecuteDelete not supported")]
+    [Fact]
     public async Task CleanupReportsAsync_PerNode_KeepsCountPerNode()
     {
         // Arrange
         var node1Id = Guid.NewGuid();
         var node2Id = Guid.NewGuid();
-        _db.Nodes.Add(new Node { Id = node1Id, Fqdn = "node1.contoso.com" });
-        _db.Nodes.Add(new Node { Id = node2Id, Fqdn = "node2.contoso.com" });
+        _db.Nodes.Add(new Node { Id = node1Id, Fqdn = "node1.contoso.com", CertificateThumbprint = "thumbprint1" });
+        _db.Nodes.Add(new Node { Id = node2Id, Fqdn = "node2.contoso.com", CertificateThumbprint = "thumbprint2" });
         _db.SaveChanges();
 
         // 100 reports for node1
@@ -714,7 +722,7 @@ public class VersionRetentionServiceTests : IDisposable
 
         _db.SaveChanges();
 
-        var policy = new RecordRetentionPolicy { KeepCount = 50, KeepDays = 90 };
+        var policy = new RecordRetentionPolicy { KeepCount = 50, KeepDays = 50 };
 
         // Act
         var result = await _service.CleanupReportsAsync(policy);
@@ -776,7 +784,7 @@ public class VersionRetentionServiceTests : IDisposable
         result.KeptCount.Should().Be(0);
     }
 
-    [Fact(Skip = "In-Memory DB Include() issue")]
+    [Fact]
     public async Task CleanupNodeStatusEventsAsync_ExceedsKeepCount_DeletesOldest()
     {
         // Arrange
@@ -785,12 +793,11 @@ public class VersionRetentionServiceTests : IDisposable
         _db.Nodes.Add(node);
         _db.SaveChanges();
 
-        // Add 150 events for the node
-        for (int i = 1; i <= 150; i++)
+        // Add 150 events oldest-first so auto-increment IDs ascend with age
+        for (int i = 150; i >= 1; i--)
         {
             var evt = new NodeStatusEvent
             {
-                Id = i,
                 NodeId = nodeId,
                 LcmStatus = LcmStatus.Idle,
                 Timestamp = DateTimeOffset.UtcNow.AddDays(-i)
@@ -810,43 +817,41 @@ public class VersionRetentionServiceTests : IDisposable
         result.KeptCount.Should().Be(100);
     }
 
-    [Fact(Skip = "In-Memory DB Include() issue")]
+    [Fact]
     public async Task CleanupNodeStatusEventsAsync_PerNode_KeepsCountPerNode()
     {
         // Arrange
         var node1Id = Guid.NewGuid();
         var node2Id = Guid.NewGuid();
-        _db.Nodes.Add(new Node { Id = node1Id, Fqdn = "node1.contoso.com" });
-        _db.Nodes.Add(new Node { Id = node2Id, Fqdn = "node2.contoso.com" });
+        _db.Nodes.Add(new Node { Id = node1Id, Fqdn = "node1.contoso.com", CertificateThumbprint = "thumbprint1" });
+        _db.Nodes.Add(new Node { Id = node2Id, Fqdn = "node2.contoso.com", CertificateThumbprint = "thumbprint2" });
         _db.SaveChanges();
 
-        // 100 events for node1
-        for (int i = 1; i <= 100; i++)
+        // 100 events for node1, oldest-first so auto-increment IDs ascend with age
+        for (int i = 100; i >= 1; i--)
         {
             _db.NodeStatusEvents.Add(new NodeStatusEvent
             {
-                Id = i,
                 NodeId = node1Id,
                 LcmStatus = LcmStatus.Idle,
                 Timestamp = DateTimeOffset.UtcNow.AddDays(-i)
             });
         }
 
-        // 100 events for node2
-        for (int i = 101; i <= 200; i++)
+        // 100 events for node2, oldest-first
+        for (int i = 100; i >= 1; i--)
         {
             _db.NodeStatusEvents.Add(new NodeStatusEvent
             {
-                Id = i,
                 NodeId = node2Id,
                 LcmStatus = LcmStatus.Idle,
-                Timestamp = DateTimeOffset.UtcNow.AddDays(-(i - 100))
+                Timestamp = DateTimeOffset.UtcNow.AddDays(-i)
             });
         }
 
         _db.SaveChanges();
 
-        var policy = new RecordRetentionPolicy { KeepCount = 50, KeepDays = 90 };
+        var policy = new RecordRetentionPolicy { KeepCount = 50, KeepDays = 50 };
 
         // Act
         var result = await _service.CleanupNodeStatusEventsAsync(policy);
