@@ -11,8 +11,15 @@ namespace OpenDsc.Contracts.Parameters;
 /// </summary>
 public enum ParameterVersionStatus
 {
-    Draft,
-    Published
+    /// <summary>
+    /// The parameter version is a draft and has not been published.
+    /// </summary>
+    Draft = 0,
+
+    /// <summary>
+    /// The parameter version has been published and is available for use.
+    /// </summary>
+    Published = 1
 }
 
 /// <summary>
@@ -96,7 +103,7 @@ public sealed class ParameterProvenanceDetails
 
     public string MergedParameters { get; set; } = string.Empty;
 
-    public Dictionary<string, ParameterSourceInfo> Provenance { get; set; } = [];
+    public IReadOnlyDictionary<string, ParameterSourceInfo> Provenance { get; set; } = new Dictionary<string, ParameterSourceInfo>();
 
     public string? PrereleaseChannel { get; set; }
 }

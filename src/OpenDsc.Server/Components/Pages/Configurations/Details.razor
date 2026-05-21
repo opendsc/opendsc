@@ -273,11 +273,11 @@
                                                         <td><strong>Created</strong></td>
                                                         <td>@configuration.CreatedAt.LocalDateTime.ToString("g")</td>
                                                     </tr>
-                                                    @if (configuration.UpdatedAt.HasValue)
+                                                    @if (configuration.ModifiedAt.HasValue)
                                                     {
                                                         <tr>
                                                             <td><strong>Updated</strong></td>
-                                                            <td>@configuration.UpdatedAt.Value.LocalDateTime.ToString("g")</td>
+                                                            <td>@configuration.ModifiedAt.Value.LocalDateTime.ToString("g")</td>
                                                         </tr>
                                                     }
                                                 </tbody>

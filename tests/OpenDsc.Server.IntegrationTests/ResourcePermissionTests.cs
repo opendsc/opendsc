@@ -182,7 +182,7 @@ public class ResourcePermissionTests : IAsyncLifetime
 
         var permissions = await response.Content.ReadFromJsonAsync<List<PermissionEntry>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         permissions.Should().NotBeNullOrEmpty();
-        permissions!.Should().ContainSingle(p => p.PrincipalId == granteeId && p.Level == "Read");
+        permissions!.Should().ContainSingle(p => p.PrincipalId == granteeId && p.Level == ResourcePermission.Read);
     }
 
     [Fact]
@@ -292,7 +292,7 @@ public class ResourcePermissionTests : IAsyncLifetime
 
         var permissions = await response.Content.ReadFromJsonAsync<List<PermissionEntry>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         permissions.Should().NotBeNullOrEmpty();
-        permissions!.Should().ContainSingle(p => p.PrincipalId == granteeId && p.Level == "Modify");
+        permissions!.Should().ContainSingle(p => p.PrincipalId == granteeId && p.Level == ResourcePermission.Modify);
     }
 
     [Fact]

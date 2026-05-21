@@ -11,7 +11,7 @@ public sealed class ParameterSchema
     public string? GeneratedJsonSchema { get; set; }
     public string? SchemaVersion { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
-    public DateTimeOffset? UpdatedAt { get; set; }
+    public DateTimeOffset? ModifiedAt { get; set; }
 
     public Configuration Configuration { get; set; } = null!;
     public ICollection<ConfigurationVersion> ConfigurationVersions { get; set; } = [];

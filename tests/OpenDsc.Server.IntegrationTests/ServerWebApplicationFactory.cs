@@ -132,38 +132,41 @@ public class ServerWebApplicationFactory : WebApplicationFactory<Program>
     /// </summary>
     public async Task<HttpClient> CreateUserWithPermissionsAsync(string username, string[] permissions)
     {
-        using var scope = Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
-        var hasher = new PasswordHasher();
-
         var password = "Password123!";
-        var (hash, salt) = hasher.HashPassword(password);
 
-        var user = new User
+        using (var scope = Services.CreateScope())
         {
-            Id = Guid.NewGuid(),
-            Username = username,
-            Email = $"{username}@test.local",
-            PasswordHash = hash,
-            PasswordSalt = salt,
-            IsActive = true,
-            CreatedAt = DateTimeOffset.UtcNow
-        };
-        db.Users.Add(user);
+            var db = scope.ServiceProvider.GetRequiredService<ServerDbContext>();
+            var hasher = new PasswordHasher();
 
-        var role = new Role
-        {
-            Id = Guid.NewGuid(),
-            Name = $"TestRole_{username}",
-            IsSystemRole = false,
-            Permissions = JsonSerializer.Serialize(permissions),
-            CreatedAt = DateTimeOffset.UtcNow
-        };
-        db.Roles.Add(role);
+            var (hash, salt) = hasher.HashPassword(password);
 
-        db.UserRoles.Add(new UserRole { UserId = user.Id, RoleId = role.Id });
+            var user = new User
+            {
+                Id = Guid.NewGuid(),
+                Username = username,
+                Email = $"{username}@test.local",
+                PasswordHash = hash,
+                PasswordSalt = salt,
+                IsActive = true,
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+            db.Users.Add(user);
 
-        await db.SaveChangesAsync();
+            var role = new Role
+            {
+                Id = Guid.NewGuid(),
+                Name = $"TestRole_{username}",
+                IsSystemRole = false,
+                Permissions = JsonSerializer.Serialize(permissions),
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+            db.Roles.Add(role);
+
+            db.UserRoles.Add(new UserRole { UserId = user.Id, RoleId = role.Id });
+
+            await db.SaveChangesAsync();
+        }
 
         var client = CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = true });
         var loginResponse = await client.PostAsJsonAsync("/api/v1/auth/login", new { username, password });

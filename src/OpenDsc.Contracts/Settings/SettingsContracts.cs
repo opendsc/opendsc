@@ -86,9 +86,24 @@ public sealed class UpdateServerLcmDefaultsRequest
 /// </summary>
 public sealed class ValidationSettingsSummary
 {
+    /// <summary>
+    /// Whether configuration versions must use semantic versioning.
+    /// </summary>
     public bool RequireSemVer { get; set; }
+
+    /// <summary>
+    /// Default parameter validation mode applied to configurations.
+    /// </summary>
     public ParameterValidationMode DefaultParameterValidationMode { get; set; }
+
+    /// <summary>
+    /// Whether individual configurations are allowed to override the default validation mode.
+    /// </summary>
     public bool AllowConfigurationOverride { get; set; }
+
+    /// <summary>
+    /// Whether individual parameters are allowed to override the default validation mode.
+    /// </summary>
     public bool AllowParameterValidationOverride { get; set; }
 }
 
@@ -97,9 +112,24 @@ public sealed class ValidationSettingsSummary
 /// </summary>
 public sealed class UpdateValidationSettingsRequest
 {
+    /// <summary>
+    /// Whether configuration versions must use semantic versioning. Null leaves the existing value unchanged.
+    /// </summary>
     public bool? RequireSemVer { get; set; }
+
+    /// <summary>
+    /// Default parameter validation mode. Null leaves the existing value unchanged.
+    /// </summary>
     public ParameterValidationMode? DefaultParameterValidationMode { get; set; }
+
+    /// <summary>
+    /// Whether individual configurations may override the default validation mode. Null leaves the existing value unchanged.
+    /// </summary>
     public bool? AllowConfigurationOverride { get; set; }
+
+    /// <summary>
+    /// Whether individual parameters may override the default validation mode. Null leaves the existing value unchanged.
+    /// </summary>
     public bool? AllowParameterValidationOverride { get; set; }
 }
 
@@ -108,14 +138,49 @@ public sealed class UpdateValidationSettingsRequest
 /// </summary>
 public sealed class RetentionSettingsSummary
 {
+    /// <summary>
+    /// Whether automatic retention policy enforcement is enabled.
+    /// </summary>
     public bool Enabled { get; set; }
+
+    /// <summary>
+    /// Maximum number of non-release versions to retain per configuration.
+    /// </summary>
     public int KeepVersions { get; set; }
+
+    /// <summary>
+    /// Maximum age in days for non-release versions.
+    /// </summary>
     public int KeepDays { get; set; }
+
+    /// <summary>
+    /// Whether release versions are exempt from retention pruning.
+    /// </summary>
     public bool KeepReleaseVersions { get; set; }
+
+    /// <summary>
+    /// How often (in hours) the scheduled retention job runs.
+    /// </summary>
     public int ScheduleIntervalHours { get; set; }
+
+    /// <summary>
+    /// Maximum number of compliance reports to retain per node.
+    /// </summary>
     public int ReportKeepCount { get; set; }
+
+    /// <summary>
+    /// Maximum age in days for compliance reports.
+    /// </summary>
     public int ReportKeepDays { get; set; }
+
+    /// <summary>
+    /// Maximum number of LCM status events to retain per node.
+    /// </summary>
     public int StatusEventKeepCount { get; set; }
+
+    /// <summary>
+    /// Maximum age in days for LCM status events.
+    /// </summary>
     public int StatusEventKeepDays { get; set; }
 }
 
@@ -124,31 +189,50 @@ public sealed class RetentionSettingsSummary
 /// </summary>
 public sealed class UpdateRetentionSettingsRequest
 {
+    /// <summary>
+    /// Whether automatic retention policy enforcement is enabled. Null leaves the existing value unchanged.
+    /// </summary>
     public bool? Enabled { get; set; }
-    public int? KeepVersions { get; set; }
-    public int? KeepDays { get; set; }
-    public bool? KeepReleaseVersions { get; set; }
-    public int? ScheduleIntervalHours { get; set; }
-    public int? ReportKeepCount { get; set; }
-    public int? ReportKeepDays { get; set; }
-    public int? StatusEventKeepCount { get; set; }
-    public int? StatusEventKeepDays { get; set; }
-}
 
-/// <summary>
-/// Summary of a retention cleanup run.
-/// </summary>
-public sealed class RetentionRunSummary
-{
-    public Guid Id { get; set; }
-    public DateTimeOffset StartedAt { get; set; }
-    public DateTimeOffset? CompletedAt { get; set; }
-    public string VersionType { get; set; } = string.Empty;
-    public bool IsScheduled { get; set; }
-    public bool IsDryRun { get; set; }
-    public int DeletedCount { get; set; }
-    public int KeptCount { get; set; }
-    public string? Error { get; set; }
+    /// <summary>
+    /// Maximum number of non-release versions to retain per configuration. Null leaves the existing value unchanged.
+    /// </summary>
+    public int? KeepVersions { get; set; }
+
+    /// <summary>
+    /// Maximum age in days for non-release versions. Null leaves the existing value unchanged.
+    /// </summary>
+    public int? KeepDays { get; set; }
+
+    /// <summary>
+    /// Whether release versions are exempt from retention pruning. Null leaves the existing value unchanged.
+    /// </summary>
+    public bool? KeepReleaseVersions { get; set; }
+
+    /// <summary>
+    /// How often (in hours) the scheduled retention job runs. Null leaves the existing value unchanged.
+    /// </summary>
+    public int? ScheduleIntervalHours { get; set; }
+
+    /// <summary>
+    /// Maximum number of compliance reports to retain per node. Null leaves the existing value unchanged.
+    /// </summary>
+    public int? ReportKeepCount { get; set; }
+
+    /// <summary>
+    /// Maximum age in days for compliance reports. Null leaves the existing value unchanged.
+    /// </summary>
+    public int? ReportKeepDays { get; set; }
+
+    /// <summary>
+    /// Maximum number of LCM status events to retain per node. Null leaves the existing value unchanged.
+    /// </summary>
+    public int? StatusEventKeepCount { get; set; }
+
+    /// <summary>
+    /// Maximum age in days for LCM status events. Null leaves the existing value unchanged.
+    /// </summary>
+    public int? StatusEventKeepDays { get; set; }
 }
 
 /// <summary>

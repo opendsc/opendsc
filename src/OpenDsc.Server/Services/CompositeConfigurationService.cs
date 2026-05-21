@@ -56,7 +56,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
             LatestVersion = VersionResolver.LatestSemver(c.Versions.Select(v => v.Version)),
             HasPublishedVersion = c.Versions.Any(v => v.Status == ConfigurationVersionStatus.Published),
             CreatedAt = c.CreatedAt,
-            UpdatedAt = c.UpdatedAt
+            ModifiedAt = c.ModifiedAt
         }).ToList();
     }
 
@@ -213,7 +213,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
             EntryPoint = composite.EntryPoint,
             Versions = [],
             CreatedAt = composite.CreatedAt,
-            UpdatedAt = composite.UpdatedAt
+            ModifiedAt = composite.ModifiedAt
         };
     }
 
@@ -247,7 +247,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
         };
 
         _db.CompositeConfigurationVersions.Add(newVersion);
-        composite.UpdatedAt = DateTimeOffset.UtcNow;
+        composite.ModifiedAt = DateTimeOffset.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
 
         return new CompositeConfigurationVersionDetails
@@ -310,7 +310,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
             });
         }
 
-        composite.UpdatedAt = DateTimeOffset.UtcNow;
+        composite.ModifiedAt = DateTimeOffset.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
     }
 
@@ -333,7 +333,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
         }
 
         compositeVersion.Status = ConfigurationVersionStatus.Published;
-        compositeVersion.CompositeConfiguration.UpdatedAt = DateTimeOffset.UtcNow;
+        compositeVersion.CompositeConfiguration.ModifiedAt = DateTimeOffset.UtcNow;
 
         await _db.SaveChangesAsync(cancellationToken);
     }
@@ -444,7 +444,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
         };
 
         _db.CompositeConfigurationItems.Add(item);
-        compositeVersion.CompositeConfiguration.UpdatedAt = DateTimeOffset.UtcNow;
+        compositeVersion.CompositeConfiguration.ModifiedAt = DateTimeOffset.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
 
         return new CompositeConfigurationItemDetails
@@ -496,7 +496,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
 
         item.ActiveVersion = request.ActiveVersion;
         item.Order = request.Order;
-        item.CompositeConfigurationVersion.CompositeConfiguration.UpdatedAt = DateTimeOffset.UtcNow;
+        item.CompositeConfigurationVersion.CompositeConfiguration.ModifiedAt = DateTimeOffset.UtcNow;
 
         await _db.SaveChangesAsync(cancellationToken);
 
@@ -531,7 +531,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
         }
 
         _db.CompositeConfigurationItems.Remove(item);
-        item.CompositeConfigurationVersion.CompositeConfiguration.UpdatedAt = DateTimeOffset.UtcNow;
+        item.CompositeConfigurationVersion.CompositeConfiguration.ModifiedAt = DateTimeOffset.UtcNow;
 
         await _db.SaveChangesAsync(cancellationToken);
     }
@@ -550,7 +550,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
         }
 
         item.Order = newOrder;
-        item.CompositeConfigurationVersion.CompositeConfiguration.UpdatedAt = DateTimeOffset.UtcNow;
+        item.CompositeConfigurationVersion.CompositeConfiguration.ModifiedAt = DateTimeOffset.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
     }
 
@@ -583,27 +583,17 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
             throw new UnauthorizedAccessException($"Access denied to composite configuration '{name}'.");
         }
 
-        if (!Enum.TryParse<PrincipalType>(request.PrincipalType, ignoreCase: true, out var parsedPrincipalType))
-        {
-            throw new ArgumentException($"Invalid principal type '{request.PrincipalType}'. Must be 'User' or 'Group'.", nameof(request));
-        }
-
-        if (!Enum.TryParse<ResourcePermission>(request.Level, ignoreCase: true, out var parsedLevel))
-        {
-            throw new ArgumentException($"Invalid permission level '{request.Level}'. Must be 'Read', 'Modify', or 'Manage'.", nameof(request));
-        }
-
-        if (parsedPrincipalType == PrincipalType.User && !await _db.Users.AnyAsync(u => u.Id == request.PrincipalId, cancellationToken))
+        if (request.PrincipalType == PrincipalType.User && !await _db.Users.AnyAsync(u => u.Id == request.PrincipalId, cancellationToken))
         {
             throw new KeyNotFoundException($"User '{request.PrincipalId}' not found.");
         }
 
-        if (parsedPrincipalType == PrincipalType.Group && !await _db.Groups.AnyAsync(g => g.Id == request.PrincipalId, cancellationToken))
+        if (request.PrincipalType == PrincipalType.Group && !await _db.Groups.AnyAsync(g => g.Id == request.PrincipalId, cancellationToken))
         {
             throw new KeyNotFoundException($"Group '{request.PrincipalId}' not found.");
         }
 
-        await _authService.GrantCompositeConfigurationPermissionAsync(composite.Id, request.PrincipalId, parsedPrincipalType, parsedLevel, userId.Value);
+        await _authService.GrantCompositeConfigurationPermissionAsync(composite.Id, request.PrincipalId, request.PrincipalType, request.Level, userId.Value);
     }
 
     public async Task RevokePermissionAsync(string name, RevokePermissionRequest request, CancellationToken cancellationToken = default)
@@ -617,12 +607,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
             throw new UnauthorizedAccessException($"Access denied to composite configuration '{name}'.");
         }
 
-        if (!Enum.TryParse<PrincipalType>(request.PrincipalType, ignoreCase: true, out var parsedPrincipalType))
-        {
-            throw new ArgumentException($"Invalid principal type '{request.PrincipalType}'. Must be 'User' or 'Group'.", nameof(request));
-        }
-
-        await _authService.RevokeCompositeConfigurationPermissionAsync(composite.Id, request.PrincipalId, parsedPrincipalType);
+        await _authService.RevokeCompositeConfigurationPermissionAsync(composite.Id, request.PrincipalId, request.PrincipalType);
     }
 
     private async Task<List<PermissionEntry>> BuildPermissionEntriesAsync(
@@ -643,12 +628,12 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
 
         return list.Select(e => new PermissionEntry
         {
-            PrincipalType = e.PrincipalType.ToString(),
+            PrincipalType = e.PrincipalType,
             PrincipalId = e.PrincipalId,
             PrincipalName = e.PrincipalType == PrincipalType.User
                 ? userNames.GetValueOrDefault(e.PrincipalId, "Unknown")
                 : groupNames.GetValueOrDefault(e.PrincipalId, "Unknown"),
-            Level = e.Level.ToString(),
+            Level = e.Level,
             GrantedAt = e.GrantedAt,
             GrantedByUserId = e.GrantedByUserId
         }).ToList();
@@ -666,7 +651,7 @@ public sealed class CompositeConfigurationService : ICompositeConfigurationServi
                 .Select(MapToVersion)
                 .ToList(),
             CreatedAt = composite.CreatedAt,
-            UpdatedAt = composite.UpdatedAt
+            ModifiedAt = composite.ModifiedAt
         };
 
     private static CompositeConfigurationVersionDetails MapToVersion(CompositeConfigurationVersion v) =>

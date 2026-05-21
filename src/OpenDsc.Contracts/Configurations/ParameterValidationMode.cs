@@ -12,15 +12,15 @@ public enum ParameterValidationMode
     /// <summary>
     /// No validation is performed on configuration parameters.
     /// </summary>
-    None,
+    None = 0,
 
     /// <summary>
     /// Parameter validation issues are logged as warnings but do not prevent execution.
     /// </summary>
-    Warn,
+    Warn = 1,
 
     /// <summary>
     /// Parameter validation issues cause configuration execution to fail.
     /// </summary>
-    Strict
+    Strict = 2
 }

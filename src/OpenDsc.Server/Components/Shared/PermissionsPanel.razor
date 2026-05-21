@@ -216,25 +216,19 @@ r.PrincipalId).ToHashSet() }
         {
             try
             {
-                if (!Enum.TryParse<PrincipalType>(req.PrincipalType, ignoreCase: true, out var principalType) ||
-                    !Enum.TryParse<ResourcePermission>(req.Level, ignoreCase: true, out var level))
-                {
-                    Snackbar.Add("Invalid principal type or permission level.", Severity.Error);
-                    return;
-                }
-
                 switch (ResourceType)
                 {
                     case PermissionResource.Configuration:
-                        await AuthService.GrantConfigurationPermissionAsync(ResourceId, req.PrincipalId, principalType, level,
+                        await AuthService.GrantConfigurationPermissionAsync(ResourceId, req.PrincipalId, req.PrincipalType, req.Level,
 currentUserId.Value);
                         break;
                     case PermissionResource.CompositeConfiguration:
-                        await AuthService.GrantCompositeConfigurationPermissionAsync(ResourceId, req.PrincipalId, principalType, level,
+                        await AuthService.GrantCompositeConfigurationPermissionAsync(ResourceId, req.PrincipalId, req.PrincipalType, req.Level,
 currentUserId.Value);
                         break;
                     case PermissionResource.Parameter:
-                        await AuthService.GrantParameterPermissionAsync(ResourceId, req.PrincipalId, principalType, level, currentUserId.Value);
+                        await AuthService.GrantParameterPermissionAsync(ResourceId, req.PrincipalId, req.PrincipalType, req.Level,
+currentUserId.Value);
                         break;
                 }
 
@@ -270,25 +264,19 @@ currentUserId.Value);
         {
             try
             {
-                if (!Enum.TryParse<PrincipalType>(req.PrincipalType, ignoreCase: true, out var principalType) ||
-                    !Enum.TryParse<ResourcePermission>(req.Level, ignoreCase: true, out var level))
-                {
-                    Snackbar.Add("Invalid permission level.", Severity.Error);
-                    return;
-                }
-
                 switch (ResourceType)
                 {
                     case PermissionResource.Configuration:
-                        await AuthService.GrantConfigurationPermissionAsync(ResourceId, req.PrincipalId, principalType, level,
+                        await AuthService.GrantConfigurationPermissionAsync(ResourceId, req.PrincipalId, req.PrincipalType, req.Level,
 currentUserId.Value);
                         break;
                     case PermissionResource.CompositeConfiguration:
-                        await AuthService.GrantCompositeConfigurationPermissionAsync(ResourceId, req.PrincipalId, principalType, level,
+                        await AuthService.GrantCompositeConfigurationPermissionAsync(ResourceId, req.PrincipalId, req.PrincipalType, req.Level,
 currentUserId.Value);
                         break;
                     case PermissionResource.Parameter:
-                        await AuthService.GrantParameterPermissionAsync(ResourceId, req.PrincipalId, principalType, level, currentUserId.Value);
+                        await AuthService.GrantParameterPermissionAsync(ResourceId, req.PrincipalId, req.PrincipalType, req.Level,
+currentUserId.Value);
                         break;
                 }
 

@@ -11,7 +11,7 @@ public sealed class CompositeConfiguration
     public string? Description { get; set; }
     public string EntryPoint { get; set; } = "main.dsc.yaml";
     public DateTimeOffset CreatedAt { get; set; }
-    public DateTimeOffset? UpdatedAt { get; set; }
+    public DateTimeOffset? ModifiedAt { get; set; }
 
     public ICollection<CompositeConfigurationVersion> Versions { get; set; } = [];
     public ICollection<NodeConfiguration> NodeConfigurations { get; set; } = [];

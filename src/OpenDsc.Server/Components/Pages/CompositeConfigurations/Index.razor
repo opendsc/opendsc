@@ -69,7 +69,7 @@
                     </PropertyColumn>
                     <TemplateColumn Title="Updated">
                         <CellTemplate>
-                            @(context.Item.UpdatedAt?.LocalDateTime.ToString("g") ?? "Never")
+                            @(context.Item.ModifiedAt?.LocalDateTime.ToString("g") ?? "Never")
                         </CellTemplate>
                     </TemplateColumn>
                     <TemplateColumn Title="Actions" Sortable="false">
@@ -202,7 +202,7 @@ options);
             SortOption.NameDesc => items.OrderByDescending(c => c.Name),
             SortOption.CreatedAsc => items.OrderBy(c => c.CreatedAt),
             SortOption.CreatedDesc => items.OrderByDescending(c => c.CreatedAt),
-            SortOption.UpdatedDesc => items.OrderByDescending(c => c.UpdatedAt ?? c.CreatedAt),
+            SortOption.UpdatedDesc => items.OrderByDescending(c => c.ModifiedAt ?? c.CreatedAt),
             _ => items
         };
     }

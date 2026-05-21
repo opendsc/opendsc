@@ -481,7 +481,7 @@ public static class ParameterEndpoints
 
     private static async Task<Results<NoContent, BadRequest<string>, NotFound, ForbidHttpResult>> RevokeParameterPermission(
         string configurationName,
-        string principalType,
+        PrincipalType principalType,
         Guid principalId,
         IParameterService parameterService,
         IConfigurationService configurationService)

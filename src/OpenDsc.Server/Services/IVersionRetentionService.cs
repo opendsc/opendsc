@@ -2,7 +2,7 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
-using OpenDsc.Server.Entities;
+using OpenDsc.Contracts.Retention;
 
 namespace OpenDsc.Server.Services;
 
@@ -92,7 +92,7 @@ public interface IVersionRetentionService
     /// <summary>
     /// Returns the most recent retention run history records.
     /// </summary>
-    Task<IReadOnlyList<RetentionRun>> GetRunHistoryAsync(
+    Task<IReadOnlyList<RetentionRunSummary>> GetRunHistoryAsync(
         int limit = 100,
         DateTimeOffset? from = null,
         DateTimeOffset? to = null,

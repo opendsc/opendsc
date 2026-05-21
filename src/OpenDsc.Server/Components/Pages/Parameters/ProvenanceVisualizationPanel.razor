@@ -235,7 +235,7 @@
         ThemeService.OnThemeChanged -= OnThemeChanged;
     }
 
-    private static List<ProvenanceTreeNode> BuildTree(Dictionary<string, ParameterSourceInfo> provenance)
+    private static List<ProvenanceTreeNode> BuildTree(IReadOnlyDictionary<string, ParameterSourceInfo> provenance)
     {
         var root = new ProvenanceTreeNode("__root__", "", false);
 

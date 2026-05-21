@@ -15,10 +15,10 @@ public enum ConfigurationMode
     /// <summary>
     /// Monitor mode: run 'dsc config test' periodically and report drift.
     /// </summary>
-    Monitor,
+    Monitor = 0,
 
     /// <summary>
     /// Remediate mode: run 'dsc config test' and apply corrections as needed.
     /// </summary>
-    Remediate
+    Remediate = 1
 }

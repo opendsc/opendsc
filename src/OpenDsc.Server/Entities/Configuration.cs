@@ -11,7 +11,7 @@ public sealed class Configuration
     public string? Description { get; set; }
     public bool UseServerManagedParameters { get; set; } = true;
     public DateTimeOffset CreatedAt { get; set; }
-    public DateTimeOffset? UpdatedAt { get; set; }
+    public DateTimeOffset? ModifiedAt { get; set; }
 
     public ICollection<ConfigurationVersion> Versions { get; set; } = [];
     public ICollection<ParameterFile> ParameterFiles { get; set; } = [];

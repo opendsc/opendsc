@@ -12,10 +12,9 @@ namespace OpenDsc.Contracts.Permissions;
 public sealed class GrantPermissionRequest
 {
     /// <summary>
-    /// The type of principal. Must be "User" or "Group".
+    /// The type of principal.
     /// </summary>
-    [JsonRequired]
-    public string PrincipalType { get; set; } = string.Empty;
+    public PrincipalType PrincipalType { get; set; }
 
     /// <summary>
     /// The unique identifier of the user or group.
@@ -24,10 +23,9 @@ public sealed class GrantPermissionRequest
     public Guid PrincipalId { get; set; }
 
     /// <summary>
-    /// The permission level to grant. Must be "Read", "Modify", or "Manage".
+    /// The permission level to grant.
     /// </summary>
-    [JsonRequired]
-    public string Level { get; set; } = string.Empty;
+    public ResourcePermission Level { get; set; }
 }
 
 /// <summary>
@@ -36,9 +34,9 @@ public sealed class GrantPermissionRequest
 public sealed class PermissionEntry
 {
     /// <summary>
-    /// The type of principal ("User" or "Group").
+    /// The type of principal.
     /// </summary>
-    public string PrincipalType { get; set; } = string.Empty;
+    public PrincipalType PrincipalType { get; set; }
 
     /// <summary>
     /// The unique identifier of the user or group.
@@ -51,9 +49,9 @@ public sealed class PermissionEntry
     public string PrincipalName { get; set; } = string.Empty;
 
     /// <summary>
-    /// The permission level ("Read", "Modify", or "Manage").
+    /// The permission level.
     /// </summary>
-    public string Level { get; set; } = string.Empty;
+    public ResourcePermission Level { get; set; }
 
     /// <summary>
     /// When this permission was granted.
@@ -78,8 +76,7 @@ public sealed class RevokePermissionRequest
     public Guid PrincipalId { get; set; }
 
     /// <summary>
-    /// The type of principal. Must be "User" or "Group".
+    /// The type of principal.
     /// </summary>
-    [JsonRequired]
-    public string PrincipalType { get; set; } = string.Empty;
+    public PrincipalType PrincipalType { get; set; }
 }

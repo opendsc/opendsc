@@ -36,8 +36,8 @@ public sealed class DashboardService : IDashboardService
                 Id = n.Id,
                 Fqdn = n.Fqdn,
                 ConfigurationName = n.ConfigurationName,
-                Status = n.Status.ToString(),
-                LcmStatus = n.LcmStatus.ToString(),
+                Status = n.Status,
+                LcmStatus = n.LcmStatus,
                 IsStale = n.LastCheckIn.HasValue
                     && n.ConfigurationModeInterval.HasValue
                     && (now - n.LastCheckIn.Value) > n.ConfigurationModeInterval.Value * staleness,
@@ -102,7 +102,7 @@ public sealed class DashboardService : IDashboardService
                 Id = e.Id,
                 NodeId = e.NodeId,
                 NodeFqdn = e.Node.Fqdn,
-                LcmStatus = e.LcmStatus.HasValue ? e.LcmStatus.Value.ToString() : null,
+                LcmStatus = e.LcmStatus,
                 Timestamp = e.Timestamp
             })
             .ToListAsync(cancellationToken);

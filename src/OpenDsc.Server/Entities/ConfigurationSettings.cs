@@ -27,7 +27,7 @@ public sealed class ConfigurationSettings
     public int? RetentionKeepDays { get; set; }
     public bool? RetentionKeepReleaseVersions { get; set; }
 
-    public DateTimeOffset UpdatedAt { get; set; }
+    public DateTimeOffset ModifiedAt { get; set; }
     public string? UpdatedBy { get; set; }
 
     public Configuration Configuration { get; set; } = null!;

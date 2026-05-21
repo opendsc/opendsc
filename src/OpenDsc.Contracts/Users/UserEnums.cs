@@ -12,10 +12,10 @@ public enum AccountType
     /// <summary>
     /// A regular user account.
     /// </summary>
-    User,
+    User = 0,
 
     /// <summary>
     /// A service account for programmatic access.
     /// </summary>
-    ServiceAccount
+    ServiceAccount = 1
 }

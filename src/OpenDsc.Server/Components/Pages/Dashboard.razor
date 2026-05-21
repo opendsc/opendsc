@@ -304,13 +304,13 @@ else
         }
     }
 
-    private static Color GetLcmStatusColor(string? status) => status switch
+    private static Color GetLcmStatusColor(LcmStatus? status) => status switch
     {
-        nameof(LcmStatus.Idle) => Color.Success,
-        nameof(LcmStatus.Testing) => Color.Info,
-        nameof(LcmStatus.Downloading) => Color.Info,
-        nameof(LcmStatus.Remediating) => Color.Info,
-        nameof(LcmStatus.Error) => Color.Error,
+        LcmStatus.Idle => Color.Success,
+        LcmStatus.Testing => Color.Info,
+        LcmStatus.Downloading => Color.Info,
+        LcmStatus.Remediating => Color.Info,
+        LcmStatus.Error => Color.Error,
         _ => Color.Default
     };
 }

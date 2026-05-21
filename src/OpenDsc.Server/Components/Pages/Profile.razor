@@ -123,8 +123,8 @@
                         </MudAlert>
                     }
 
-                    <MudDataGrid T="PersonalAccessToken" Items="@_tokens" Hover="true" Dense="true" sortable="true"
-                                 sort-by="@((PersonalAccessToken x) => x.CreatedAt)" sort-direction="SortDirection.Descending">
+                    <MudDataGrid T="TokenMetadata" Items="@_tokens" Hover="true" Dense="true" sortable="true"
+                                 sort-by="@((TokenMetadata x) => x.CreatedAt)" sort-direction="SortDirection.Descending">
                         <Columns>
                             <PropertyColumn Property="x => x.Name" Title="Name" />
                             <PropertyColumn Property="x => x.TokenPrefix" Title="Prefix">
@@ -134,14 +134,14 @@
                                 <CellTemplate>@context.Item.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd")</CellTemplate>
                             </PropertyColumn>
                             <PropertyColumn Property="x => x.LastUsedAt" Title="Last Used">
-                                <CellTemplate>@(context.Item.LastUsedAt.HasValue ?
-                                                            context.Item.LastUsedAt.Value.ToLocalTime().ToString("yyyy-MM-dd") : "—")</CellTemplate>
+                                <CellTemplate>@(context.Item.LastUsedAt.HasValue?
+                                                                                                                            context.Item.LastUsedAt.Value.ToLocalTime().ToString("yyyy-MM-dd") : "—")</CellTemplate>
                                 </PropertyColumn>
                                 <PropertyColumn Property="x => x.ExpiresAt" Title="Expires">
-                                    <CellTemplate>@(context.Item.ExpiresAt.HasValue ?
-                                                                context.Item.ExpiresAt.Value.ToLocalTime().ToString("yyyy-MM-dd") : "Never")</CellTemplate>
+                                    <CellTemplate>@(context.Item.ExpiresAt.HasValue?
+                                                                                                                                        context.Item.ExpiresAt.Value.ToLocalTime().ToString("yyyy-MM-dd") : "Never")</CellTemplate>
                                     </PropertyColumn>
-                                    <TemplateColumn Title="Status" SortBy="@((PersonalAccessToken x) => TokenStatusSortKey(x))">
+                                    <TemplateColumn Title="Status" SortBy="@((TokenMetadata x) => TokenStatusSortKey(x))">
                                         <CellTemplate>
                                             @if (context.Item.IsRevoked)
                                             {
@@ -214,7 +214,7 @@ RegexOptions.IgnoreCase);
         return null;
     }
 
-    private List<PersonalAccessToken> _tokens = [];
+    private List<TokenMetadata> _tokens = [];
     private CreateTokenDialog.CreateTokenResult? _newToken;
 
     protected override async Task OnInitializedAsync()
@@ -336,21 +336,21 @@ RegexOptions.IgnoreCase);
         }
     }
 
-    private async Task RevokeToken(PersonalAccessToken token)
+    private async Task RevokeToken(TokenMetadata token)
     {
         await PatService.RevokeTokenAsync(token.Id);
         _tokens = await PatService.GetUserTokensAsync(_userId);
         Snackbar.Add($"Token '{token.Name}' revoked.", Severity.Info);
     }
 
-    private async Task ViewTokenScopes(PersonalAccessToken token)
+    private async Task ViewTokenScopes(TokenMetadata token)
     {
         var parameters = new DialogParameters<ViewTokenScopesDialog> { { x => x.Token, token } };
         var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
         await Dialog.ShowAsync<ViewTokenScopesDialog>($"Scopes: {token.Name}", parameters, options);
     }
 
-    private async Task EditTokenScopes(PersonalAccessToken token)
+    private async Task EditTokenScopes(TokenMetadata token)
     {
         var parameters = new DialogParameters<EditTokenScopesDialog> { { x => x.Token, token } };
         var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
@@ -362,7 +362,7 @@ RegexOptions.IgnoreCase);
         }
     }
 
-    private static int TokenStatusSortKey(PersonalAccessToken t) =>
+    private static int TokenStatusSortKey(TokenMetadata t) =>
         t.IsRevoked ? 2 : (t.ExpiresAt.HasValue && t.ExpiresAt.Value <= DateTimeOffset.UtcNow) ? 1 : 0;
 
     private void DismissNewToken() => _newToken = null;

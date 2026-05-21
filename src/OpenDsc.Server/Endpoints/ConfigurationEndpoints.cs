@@ -497,7 +497,7 @@ public static class ConfigurationEndpoints
 
     private static async Task<Results<NoContent, BadRequest<string>, NotFound, ForbidHttpResult>> RevokeConfigurationPermission(
         string name,
-        string principalType,
+        PrincipalType principalType,
         Guid principalId,
         IConfigurationService configService,
         CancellationToken cancellationToken)

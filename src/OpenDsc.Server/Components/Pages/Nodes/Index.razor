@@ -3,6 +3,7 @@
 @inject INodeService NodeService
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
+@using OpenDsc.Contracts.Lcm
 @using OpenDsc.Contracts.Nodes
 
 <PageTitle>Nodes</PageTitle>
@@ -128,7 +129,7 @@
                 !n.Fqdn.Contains(searchFqdn, StringComparison.OrdinalIgnoreCase))
                 return false;
 
-            if (!string.IsNullOrWhiteSpace(selectedStatus) && !string.Equals(n.Status, selectedStatus, StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrWhiteSpace(selectedStatus) && !string.Equals(n.Status.ToString(), selectedStatus, StringComparison.OrdinalIgnoreCase))
                 return false;
 
             if (!string.IsNullOrWhiteSpace(searchConfiguration) &&
@@ -163,21 +164,21 @@
         Navigation.NavigateTo($"/nodes/{id}");
     }
 
-    private Color GetStatusColor(string status) => status switch
+    private Color GetStatusColor(NodeStatus status) => status switch
     {
-        "Compliant" => Color.Success,
-        "NonCompliant" => Color.Warning,
-        "Error" => Color.Error,
+        NodeStatus.Compliant => Color.Success,
+        NodeStatus.NonCompliant => Color.Warning,
+        NodeStatus.Error => Color.Error,
         _ => Color.Default
     };
 
-    private Color GetLcmStatusColor(string status) => status switch
+    private Color GetLcmStatusColor(LcmStatus status) => status switch
     {
-        "Idle" => Color.Success,
-        "Testing" => Color.Info,
-        "Downloading" => Color.Info,
-        "Remediating" => Color.Info,
-        "Error" => Color.Error,
+        LcmStatus.Idle => Color.Success,
+        LcmStatus.Testing => Color.Info,
+        LcmStatus.Downloading => Color.Info,
+        LcmStatus.Remediating => Color.Info,
+        LcmStatus.Error => Color.Error,
         _ => Color.Default
     };
 

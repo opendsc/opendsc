@@ -5,10 +5,11 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
-using OpenDsc.Server.Data;
-using OpenDsc.Server.Entities;
 using OpenDsc.Contracts.Parameters;
 using OpenDsc.Contracts.Configurations;
+using OpenDsc.Contracts.Retention;
+using OpenDsc.Server.Data;
+using OpenDsc.Server.Entities;
 
 namespace OpenDsc.Server.Services;
 
@@ -97,8 +98,8 @@ public sealed partial class VersionRetentionService(
             await db.SaveChangesAsync(cancellationToken);
         }
 
-        LogCleanupCompleted("Configuration", deletedVersions.Count, keptCount, policy.DryRun);
-        return await PersistRunAsync("Configuration", deletedVersions, keptCount, startedAt, policy, null, cancellationToken);
+        LogCleanupCompleted(RetentionVersionType.Configuration, deletedVersions.Count, keptCount, policy.DryRun);
+        return await PersistRunAsync(RetentionVersionType.Configuration, deletedVersions, keptCount, startedAt, policy, null, cancellationToken);
     }
 
     public async Task<VersionRetentionResult> CleanupParameterVersionsAsync(
@@ -167,8 +168,8 @@ public sealed partial class VersionRetentionService(
             await db.SaveChangesAsync(cancellationToken);
         }
 
-        LogCleanupCompleted("Parameter", deletedVersions.Count, keptCount, policy.DryRun);
-        return await PersistRunAsync("Parameter", deletedVersions, keptCount, startedAt, policy, null, cancellationToken);
+        LogCleanupCompleted(RetentionVersionType.Parameter, deletedVersions.Count, keptCount, policy.DryRun);
+        return await PersistRunAsync(RetentionVersionType.Parameter, deletedVersions, keptCount, startedAt, policy, null, cancellationToken);
     }
 
     public async Task<VersionRetentionResult> CleanupCompositeConfigurationVersionsAsync(
@@ -235,8 +236,8 @@ public sealed partial class VersionRetentionService(
             await db.SaveChangesAsync(cancellationToken);
         }
 
-        LogCleanupCompleted("CompositeConfiguration", deletedVersions.Count, keptCount, policy.DryRun);
-        return await PersistRunAsync("CompositeConfiguration", deletedVersions, keptCount, startedAt, policy, null, cancellationToken);
+        LogCleanupCompleted(RetentionVersionType.CompositeConfiguration, deletedVersions.Count, keptCount, policy.DryRun);
+        return await PersistRunAsync(RetentionVersionType.CompositeConfiguration, deletedVersions, keptCount, startedAt, policy, null, cancellationToken);
     }
 
     public async Task<VersionRetentionResult> CleanupReportsAsync(
@@ -277,8 +278,8 @@ public sealed partial class VersionRetentionService(
             }
         }
 
-        LogCleanupCompleted("Report", deletedCount, keptCount, policy.DryRun);
-        return await PersistRecordRunAsync("Report", deletedCount, keptCount, startedAt, policy, null, cancellationToken);
+        LogCleanupCompleted(RetentionVersionType.Report, deletedCount, keptCount, policy.DryRun);
+        return await PersistRecordRunAsync(RetentionVersionType.Report, deletedCount, keptCount, startedAt, policy, null, cancellationToken);
     }
 
     public async Task<VersionRetentionResult> CleanupNodeStatusEventsAsync(
@@ -320,22 +321,35 @@ public sealed partial class VersionRetentionService(
             }
         }
 
-        LogCleanupCompleted("NodeStatusEvent", deletedCount, keptCount, policy.DryRun);
-        return await PersistRecordRunAsync("NodeStatusEvent", deletedCount, keptCount, startedAt, policy, null, cancellationToken);
+        LogCleanupCompleted(RetentionVersionType.NodeStatusEvent, deletedCount, keptCount, policy.DryRun);
+        return await PersistRecordRunAsync(RetentionVersionType.NodeStatusEvent, deletedCount, keptCount, startedAt, policy, null, cancellationToken);
     }
 
-    public async Task<IReadOnlyList<RetentionRun>> GetRunHistoryAsync(
+    public async Task<IReadOnlyList<RetentionRunSummary>> GetRunHistoryAsync(
         int limit = 100,
         DateTimeOffset? from = null,
         DateTimeOffset? to = null,
         CancellationToken cancellationToken = default)
     {
-        return await db.RetentionRuns
+        return (await db.RetentionRuns
             .Where(r => from == null || r.StartedAt >= from)
             .Where(r => to == null || r.StartedAt <= to)
             .OrderByDescending(r => r.StartedAt)
             .Take(limit)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(cancellationToken))
+            .Select(r => new RetentionRunSummary
+            {
+                Id = r.Id,
+                StartedAt = r.StartedAt,
+                CompletedAt = r.CompletedAt,
+                VersionType = r.VersionType,
+                IsScheduled = r.IsScheduled,
+                IsDryRun = r.IsDryRun,
+                DeletedCount = r.DeletedCount,
+                KeptCount = r.KeptCount,
+                Error = r.Error
+            })
+            .ToList();
     }
 
     private async Task<RetentionPolicy> ResolvePolicyForConfigAsync(
@@ -392,7 +406,7 @@ public sealed partial class VersionRetentionService(
     }
 
     private async Task<VersionRetentionResult> PersistRunAsync(
-        string versionType,
+        RetentionVersionType versionType,
         List<VersionDeletionInfo> deleted,
         int kept,
         DateTimeOffset startedAt,
@@ -425,7 +439,7 @@ public sealed partial class VersionRetentionService(
     }
 
     private async Task<VersionRetentionResult> PersistRecordRunAsync(
-        string versionType,
+        RetentionVersionType versionType,
         int deleted,
         int kept,
         DateTimeOffset startedAt,
@@ -467,6 +481,6 @@ public sealed partial class VersionRetentionService(
     private partial void LogParameterVersionDeleted(string configurationName, string scopeLabel, string version);
 
     [LoggerMessage(EventId = EventIds.CleanupCompleted, Level = LogLevel.Information, Message = "Cleanup completed for {VersionType} versions: {Deleted} deleted, {Kept} kept (dry-run: {DryRun})")]
-    private partial void LogCleanupCompleted(string versionType, int deleted, int kept, bool dryRun);
+    private partial void LogCleanupCompleted(RetentionVersionType versionType, int deleted, int kept, bool dryRun);
 }
 

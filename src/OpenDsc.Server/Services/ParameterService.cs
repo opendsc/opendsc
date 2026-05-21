@@ -668,19 +668,13 @@ public sealed partial class ParameterService : IParameterService
             !await _authService.CanManageConfigurationAsync(userId, configuration.Id))
             throw new UnauthorizedAccessException("Access denied.");
 
-        if (!Enum.TryParse<PrincipalType>(request.PrincipalType, ignoreCase: true, out var principalType))
-            throw new ArgumentException($"Invalid principal type '{request.PrincipalType}'. Must be 'User' or 'Group'.");
-
-        if (!Enum.TryParse<ResourcePermission>(request.Level, ignoreCase: true, out var level))
-            throw new ArgumentException($"Invalid permission level '{request.Level}'. Must be 'Read', 'Modify', or 'Manage'.");
-
-        if (principalType == PrincipalType.User && !await _db.Users.AnyAsync(u => u.Id == request.PrincipalId, cancellationToken))
+        if (request.PrincipalType == PrincipalType.User && !await _db.Users.AnyAsync(u => u.Id == request.PrincipalId, cancellationToken))
             throw new KeyNotFoundException("User not found.");
 
-        if (principalType == PrincipalType.Group && !await _db.Groups.AnyAsync(g => g.Id == request.PrincipalId, cancellationToken))
+        if (request.PrincipalType == PrincipalType.Group && !await _db.Groups.AnyAsync(g => g.Id == request.PrincipalId, cancellationToken))
             throw new KeyNotFoundException("Group not found.");
 
-        await _authService.GrantParameterPermissionAsync(parameterSchema.Id, request.PrincipalId, principalType, level, userId);
+        await _authService.GrantParameterPermissionAsync(parameterSchema.Id, request.PrincipalId, request.PrincipalType, request.Level, userId);
     }
 
     public async Task RevokePermissionAsync(
@@ -703,10 +697,7 @@ public sealed partial class ParameterService : IParameterService
             !await _authService.CanManageConfigurationAsync(userId, configuration.Id))
             throw new UnauthorizedAccessException("Access denied.");
 
-        if (!Enum.TryParse<PrincipalType>(request.PrincipalType, ignoreCase: true, out var principalType))
-            throw new ArgumentException($"Invalid principal type '{request.PrincipalType}'. Must be 'User' or 'Group'.");
-
-        await _authService.RevokeParameterPermissionAsync(parameterSchema.Id, request.PrincipalId, principalType);
+        await _authService.RevokeParameterPermissionAsync(parameterSchema.Id, request.PrincipalId, request.PrincipalType);
     }
 
     public async Task<ParametersPublishResult> UploadSchemaAsync(
@@ -753,7 +744,7 @@ public sealed partial class ParameterService : IParameterService
             .ToListAsync(cancellationToken);
 
         var previousSchema = schemas
-            .OrderByDescending(ps => ps.UpdatedAt)
+            .OrderByDescending(ps => ps.ModifiedAt)
             .FirstOrDefault();
 
         if (previousSchema is not null && !string.IsNullOrWhiteSpace(previousSchema.GeneratedJsonSchema))
@@ -817,7 +808,7 @@ public sealed partial class ParameterService : IParameterService
             ConfigurationId = configuration.Id,
             SchemaVersion = version,
             GeneratedJsonSchema = jsonSchema,
-            UpdatedAt = DateTimeOffset.UtcNow
+            ModifiedAt = DateTimeOffset.UtcNow
         };
 
         _db.ParameterSchemas.Add(newSchema);
@@ -967,12 +958,12 @@ public sealed partial class ParameterService : IParameterService
 
         return list.Select(e => new PermissionEntry
         {
-            PrincipalType = e.PrincipalType.ToString(),
+            PrincipalType = e.PrincipalType,
             PrincipalId = e.PrincipalId,
             PrincipalName = e.PrincipalType == PrincipalType.User
                 ? userNames.GetValueOrDefault(e.PrincipalId, "Unknown")
                 : groupNames.GetValueOrDefault(e.PrincipalId, "Unknown"),
-            Level = e.Level.ToString(),
+            Level = e.Level,
             GrantedAt = e.GrantedAt,
             GrantedByUserId = e.GrantedByUserId
         }).ToList();

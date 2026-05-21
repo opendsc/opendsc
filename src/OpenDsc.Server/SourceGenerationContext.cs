@@ -162,8 +162,8 @@ namespace OpenDsc.Server;
 [JsonSerializable(typeof(RecordCleanupRequest))]
 [JsonSerializable(typeof(VersionRetentionResult))]
 [JsonSerializable(typeof(List<VersionDeletionInfo>))]
-[JsonSerializable(typeof(RetentionRun))]
-[JsonSerializable(typeof(List<RetentionRun>))]
+[JsonSerializable(typeof(RetentionRunSummary))]
+[JsonSerializable(typeof(List<RetentionRunSummary>))]
 [JsonSerializable(typeof(RetentionSettingsSummary))]
 [JsonSerializable(typeof(UpdateRetentionSettingsRequest))]
 // Parameter validation

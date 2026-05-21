@@ -15,10 +15,10 @@ public enum ConfigurationSource
     /// <summary>
     /// Use a local configuration file.
     /// </summary>
-    Local,
+    Local = 0,
 
     /// <summary>
     /// Pull configuration from a remote server.
     /// </summary>
-    Pull
+    Pull = 1
 }

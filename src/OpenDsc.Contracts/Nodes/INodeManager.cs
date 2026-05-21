@@ -9,6 +9,11 @@ namespace OpenDsc.Contracts.Nodes;
 /// </summary>
 public interface INodeManager
 {
+    /// <summary>
+    /// Permanently deletes a node and all its associated data.
+    /// </summary>
+    /// <param name="nodeId">The node's unique identifier.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
     Task DeleteNodeAsync(
         Guid nodeId,
         CancellationToken cancellationToken = default);

@@ -26,7 +26,7 @@ public interface IPersonalAccessTokenService
     /// <param name="scopes">Permissions scoped to this token.</param>
     /// <param name="expiresAt">Optional expiration date.</param>
     /// <returns>Plaintext token (shown only once) and token metadata.</returns>
-    Task<(string Token, PersonalAccessToken Metadata)> CreateTokenAsync(
+    Task<(string Token, TokenMetadata Metadata)> CreateTokenAsync(
         Guid userId,
         string name,
         string[] scopes,
@@ -50,7 +50,7 @@ public interface IPersonalAccessTokenService
     /// </summary>
     /// <param name="userId">User ID.</param>
     /// <returns>List of token metadata.</returns>
-    Task<List<PersonalAccessToken>> GetUserTokensAsync(Guid userId);
+    Task<List<TokenMetadata>> GetUserTokensAsync(Guid userId);
 
     /// <summary>
     /// Updates last used timestamp and IP address asynchronously.
@@ -84,7 +84,7 @@ public sealed partial class PersonalAccessTokenService(
     private const int TokenBodyLength = 40;
     private const string TokenPrefix = "pat_";
 
-    public async Task<(string Token, PersonalAccessToken Metadata)> CreateTokenAsync(
+    public async Task<(string Token, TokenMetadata Metadata)> CreateTokenAsync(
         Guid userId,
         string name,
         string[] scopes,
@@ -131,7 +131,16 @@ public sealed partial class PersonalAccessTokenService(
         await db.SaveChangesAsync();
 
         LogPatCreated(userId);
-        return (token, patEntity);
+        return (token, new TokenMetadata
+        {
+            Id = patEntity.Id,
+            Name = patEntity.Name,
+            TokenPrefix = patEntity.TokenPrefix,
+            Scopes = scopes,
+            ExpiresAt = patEntity.ExpiresAt,
+            IsRevoked = false,
+            CreatedAt = patEntity.CreatedAt
+        });
     }
 
     public async Task<(Guid TokenId, Guid UserId, string[] Scopes)?> ValidateTokenAsync(string token)
@@ -185,12 +194,23 @@ public sealed partial class PersonalAccessTokenService(
         }
     }
 
-    public async Task<List<PersonalAccessToken>> GetUserTokensAsync(Guid userId)
+    public async Task<List<TokenMetadata>> GetUserTokensAsync(Guid userId)
     {
         return (await db.PersonalAccessTokens
             .Where(t => t.UserId == userId)
             .ToListAsync())
             .OrderByDescending(t => t.CreatedAt)
+            .Select(t => new TokenMetadata
+            {
+                Id = t.Id,
+                Name = t.Name,
+                TokenPrefix = t.TokenPrefix,
+                Scopes = JsonSerializer.Deserialize<IReadOnlyList<string>>(t.Scopes) ?? [],
+                ExpiresAt = t.ExpiresAt,
+                LastUsedAt = t.LastUsedAt,
+                IsRevoked = t.IsRevoked,
+                CreatedAt = t.CreatedAt
+            })
             .ToList();
     }
 

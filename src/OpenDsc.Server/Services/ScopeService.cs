@@ -76,7 +76,7 @@ public sealed partial class ScopeService(ServerDbContext db) : IScopeService
             foreach (var scopeType in allScopeTypes.Where(st => st.Precedence >= newPrecedence))
             {
                 scopeType.Precedence++;
-                scopeType.UpdatedAt = DateTimeOffset.UtcNow;
+                scopeType.ModifiedAt = DateTimeOffset.UtcNow;
             }
         }
         else
@@ -118,7 +118,7 @@ public sealed partial class ScopeService(ServerDbContext db) : IScopeService
         }
 
         scopeType.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
-        scopeType.UpdatedAt = DateTimeOffset.UtcNow;
+        scopeType.ModifiedAt = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
 
         var count = await db.ParameterFiles.CountAsync(pf => pf.ScopeTypeId == id, cancellationToken);
@@ -175,7 +175,7 @@ public sealed partial class ScopeService(ServerDbContext db) : IScopeService
         {
             var scopeType = scopeTypes.First(st => st.Id == orderedIds[i]);
             scopeType.Precedence = -(i + 1);
-            scopeType.UpdatedAt = now;
+            scopeType.ModifiedAt = now;
         }
         await db.SaveChangesAsync(cancellationToken);
 
@@ -252,7 +252,7 @@ public sealed partial class ScopeService(ServerDbContext db) : IScopeService
         foreach (var current in allScopeTypes.Where(st => st.Precedence > deletedPrecedence))
         {
             current.Precedence--;
-            current.UpdatedAt = DateTimeOffset.UtcNow;
+            current.ModifiedAt = DateTimeOffset.UtcNow;
         }
 
         await db.SaveChangesAsync(cancellationToken);
@@ -272,7 +272,7 @@ public sealed partial class ScopeService(ServerDbContext db) : IScopeService
         }
 
         scopeType.IsEnabled = true;
-        scopeType.UpdatedAt = DateTimeOffset.UtcNow;
+        scopeType.ModifiedAt = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
 
         var count = await db.ParameterFiles.CountAsync(pf => pf.ScopeTypeId == id, cancellationToken);
@@ -302,7 +302,7 @@ public sealed partial class ScopeService(ServerDbContext db) : IScopeService
         }
 
         scopeType.IsEnabled = false;
-        scopeType.UpdatedAt = DateTimeOffset.UtcNow;
+        scopeType.ModifiedAt = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
 
         var count = await db.ParameterFiles.CountAsync(pf => pf.ScopeTypeId == id, cancellationToken);
@@ -399,7 +399,7 @@ public sealed partial class ScopeService(ServerDbContext db) : IScopeService
             Value = scopeValue.Value,
             Description = scopeValue.Description,
             CreatedAt = scopeValue.CreatedAt,
-            UpdatedAt = scopeValue.UpdatedAt,
+            ModifiedAt = scopeValue.ModifiedAt,
             NodeTagCount = 0,
             ParameterFileCount = 0
         };
@@ -420,7 +420,7 @@ public sealed partial class ScopeService(ServerDbContext db) : IScopeService
         }
 
         scopeValue.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
-        scopeValue.UpdatedAt = DateTimeOffset.UtcNow;
+        scopeValue.ModifiedAt = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync(cancellationToken);
 
         var result = await AddScopeValueUsageAsync([scopeValue], cancellationToken);
@@ -618,7 +618,7 @@ public sealed partial class ScopeService(ServerDbContext db) : IScopeService
             Value = value.Value,
             Description = value.Description,
             CreatedAt = value.CreatedAt,
-            UpdatedAt = value.UpdatedAt,
+            ModifiedAt = value.ModifiedAt,
             NodeTagCount = nodeTagCounts.GetValueOrDefault(value.Id, 0),
             ParameterFileCount = parameterCountLookup.GetValueOrDefault(value.Id, 0)
         }).ToList();
@@ -636,7 +636,7 @@ public sealed partial class ScopeService(ServerDbContext db) : IScopeService
             IsEnabled = scopeType.IsEnabled,
             ValueMode = scopeType.ValueMode,
             CreatedAt = scopeType.CreatedAt,
-            UpdatedAt = scopeType.UpdatedAt,
+            ModifiedAt = scopeType.ModifiedAt,
             ParameterFileCount = parameterFileCount
         };
     }

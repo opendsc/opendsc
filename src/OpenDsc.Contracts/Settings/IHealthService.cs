@@ -9,6 +9,11 @@ namespace OpenDsc.Contracts.Settings;
 /// </summary>
 public interface IHealthReader
 {
+    /// <summary>
+    /// Checks whether the server can connect to its backing data store.
+    /// </summary>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
+    /// <returns><see langword="true"/> if the connection is available; otherwise <see langword="false"/>.</returns>
     Task<bool> CanConnectAsync(CancellationToken cancellationToken = default);
 }
 

@@ -32,12 +32,12 @@ public sealed class NodeSummary
     /// <summary>
     /// The node's compliance status.
     /// </summary>
-    public string Status { get; set; } = string.Empty;
+    public NodeStatus Status { get; set; }
 
     /// <summary>
     /// The node's LCM operational status.
     /// </summary>
-    public string LcmStatus { get; set; } = string.Empty;
+    public LcmStatus LcmStatus { get; set; }
 
     /// <summary>
     /// Whether the node is considered stale (no check-in within ConfigurationModeInterval × StalenessMultiplier).
@@ -113,7 +113,7 @@ public sealed class NodeStatusEventSummary
     /// <summary>
     /// The new LCM operational state.
     /// </summary>
-    public string? LcmStatus { get; set; }
+    public LcmStatus? LcmStatus { get; set; }
 
     /// <summary>
     /// When this event was recorded.
@@ -191,12 +191,12 @@ public sealed class NodeFilterRequest
     /// <summary>
     /// Optional compliance status filter.
     /// </summary>
-    public string? Status { get; set; }
+    public NodeStatus? Status { get; set; }
 
     /// <summary>
     /// Optional LCM status filter.
     /// </summary>
-    public string? LcmStatus { get; set; }
+    public LcmStatus? LcmStatus { get; set; }
 
     /// <summary>
     /// Optional result size cap.
@@ -214,34 +214,79 @@ public sealed class NodeDetails
     /// </summary>
     public required NodeSummary Summary { get; set; }
 
+    /// <summary>
+    /// The node's unique identifier.
+    /// </summary>
     public Guid Id { get; set; }
 
+    /// <summary>
+    /// The node's fully qualified domain name.
+    /// </summary>
     public string Fqdn { get; set; } = string.Empty;
 
+    /// <summary>
+    /// The name of the assigned configuration.
+    /// </summary>
     public string? ConfigurationName { get; set; }
 
-    public string Status { get; set; } = string.Empty;
+    /// <summary>
+    /// The node's compliance status.
+    /// </summary>
+    public NodeStatus Status { get; set; }
 
-    public string LcmStatus { get; set; } = string.Empty;
+    /// <summary>
+    /// The node's LCM operational status.
+    /// </summary>
+    public LcmStatus LcmStatus { get; set; }
 
+    /// <summary>
+    /// Whether the node is considered stale.
+    /// </summary>
     public bool IsStale { get; set; }
 
+    /// <summary>
+    /// When the node last checked in.
+    /// </summary>
     public DateTimeOffset? LastCheckIn { get; set; }
 
+    /// <summary>
+    /// When the node was registered.
+    /// </summary>
     public DateTimeOffset CreatedAt { get; set; }
 
+    /// <summary>
+    /// Whether the node pulls its configuration from the server or manages it locally.
+    /// </summary>
     public ConfigurationSource ConfigurationSource { get; set; }
 
+    /// <summary>
+    /// The LCM operating mode reported by the node.
+    /// </summary>
     public ConfigurationMode? ConfigurationMode { get; set; }
 
+    /// <summary>
+    /// The LCM configuration mode interval reported by the node.
+    /// </summary>
     public TimeSpan? ConfigurationModeInterval { get; set; }
 
+    /// <summary>
+    /// Whether the node submits compliance reports to the server.
+    /// </summary>
     public bool? ReportCompliance { get; set; }
 
+    /// <summary>
+    /// The desired LCM operating mode set by the server administrator.
+    /// </summary>
     public ConfigurationMode? DesiredConfigurationMode { get; set; }
 
+    /// <summary>
+    /// The desired LCM configuration mode interval set by the server administrator.
+    /// </summary>
     public TimeSpan? DesiredConfigurationModeInterval { get; set; }
 
+    /// <summary>
+    /// Whether compliance reporting should be enabled, as set by the server administrator.
+    /// </summary>
     public bool? DesiredReportCompliance { get; set; }
 
     /// <summary>

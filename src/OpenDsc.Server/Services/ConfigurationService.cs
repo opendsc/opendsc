@@ -200,7 +200,7 @@ public sealed partial class ConfigurationService : IConfigurationService
             UseServerManagedParameters = configuration.UseServerManagedParameters,
             LatestVersion = version,
             CreatedAt = configuration.CreatedAt,
-            UpdatedAt = configuration.UpdatedAt
+            ModifiedAt = configuration.ModifiedAt
         };
     }
 
@@ -281,7 +281,7 @@ public sealed partial class ConfigurationService : IConfigurationService
             _db.ConfigurationFiles.Add(configFile);
         }
 
-        configuration.UpdatedAt = DateTimeOffset.UtcNow;
+        configuration.ModifiedAt = DateTimeOffset.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
 
         // Extract and generate parameter schema from entry point file
@@ -309,7 +309,7 @@ public sealed partial class ConfigurationService : IConfigurationService
                         SchemaVersion = version,
                         GeneratedJsonSchema = jsonSchema,
                         CreatedAt = DateTimeOffset.UtcNow,
-                        UpdatedAt = DateTimeOffset.UtcNow
+                        ModifiedAt = DateTimeOffset.UtcNow
                     };
                     _db.ParameterSchemas.Add(paramSchema);
                     configVersion.ParameterSchemaId = paramSchema.Id;
@@ -317,7 +317,7 @@ public sealed partial class ConfigurationService : IConfigurationService
                 else
                 {
                     configVersion.ParameterSchemaId = existingSchema.Id;
-                    existingSchema.UpdatedAt = DateTimeOffset.UtcNow;
+                    existingSchema.ModifiedAt = DateTimeOffset.UtcNow;
                 }
 
                 await _db.SaveChangesAsync(cancellationToken);
@@ -418,7 +418,7 @@ public sealed partial class ConfigurationService : IConfigurationService
             _db.ConfigurationFiles.Add(configFile);
         }
 
-        configuration.UpdatedAt = DateTimeOffset.UtcNow;
+        configuration.ModifiedAt = DateTimeOffset.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
 
         var entryPointPath = Path.Combine(newVersionDir, configVersion.EntryPoint);
@@ -445,7 +445,7 @@ public sealed partial class ConfigurationService : IConfigurationService
                         SchemaVersion = newVersion,
                         GeneratedJsonSchema = jsonSchema,
                         CreatedAt = DateTimeOffset.UtcNow,
-                        UpdatedAt = DateTimeOffset.UtcNow
+                        ModifiedAt = DateTimeOffset.UtcNow
                     };
                     _db.ParameterSchemas.Add(paramSchema);
                     configVersion.ParameterSchemaId = paramSchema.Id;
@@ -453,7 +453,7 @@ public sealed partial class ConfigurationService : IConfigurationService
                 else
                 {
                     configVersion.ParameterSchemaId = existingSchema.Id;
-                    existingSchema.UpdatedAt = DateTimeOffset.UtcNow;
+                    existingSchema.ModifiedAt = DateTimeOffset.UtcNow;
                 }
 
                 await _db.SaveChangesAsync(cancellationToken);
@@ -535,7 +535,7 @@ public sealed partial class ConfigurationService : IConfigurationService
             _db.ConfigurationFiles.Add(configFile);
         }
 
-        configuration.UpdatedAt = DateTimeOffset.UtcNow;
+        configuration.ModifiedAt = DateTimeOffset.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
     }
 
@@ -748,7 +748,7 @@ public sealed partial class ConfigurationService : IConfigurationService
             configuration.UseServerManagedParameters = useServerManagedParameters.Value;
         }
 
-        configuration.UpdatedAt = DateTimeOffset.UtcNow;
+        configuration.ModifiedAt = DateTimeOffset.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
 
         var latestVersion = configuration.Versions
@@ -764,7 +764,7 @@ public sealed partial class ConfigurationService : IConfigurationService
             UseServerManagedParameters = configuration.UseServerManagedParameters,
             LatestVersion = latestVersion,
             CreatedAt = configuration.CreatedAt,
-            UpdatedAt = configuration.UpdatedAt
+            ModifiedAt = configuration.ModifiedAt
         };
     }
 
@@ -877,7 +877,7 @@ public sealed partial class ConfigurationService : IConfigurationService
         }
 
         _db.ConfigurationVersions.Remove(configVersion);
-        configuration.UpdatedAt = DateTimeOffset.UtcNow;
+        configuration.ModifiedAt = DateTimeOffset.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
     }
 
@@ -921,7 +921,7 @@ public sealed partial class ConfigurationService : IConfigurationService
         }
 
         _db.ConfigurationFiles.Remove(configFile);
-        configuration.UpdatedAt = DateTimeOffset.UtcNow;
+        configuration.ModifiedAt = DateTimeOffset.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
     }
 
@@ -1019,7 +1019,7 @@ public sealed partial class ConfigurationService : IConfigurationService
                         SchemaVersion = version,
                         GeneratedJsonSchema = jsonSchema,
                         CreatedAt = DateTimeOffset.UtcNow,
-                        UpdatedAt = DateTimeOffset.UtcNow
+                        ModifiedAt = DateTimeOffset.UtcNow
                     };
                     _db.ParameterSchemas.Add(paramSchema);
                     configVersion.ParameterSchemaId = paramSchema.Id;
@@ -1027,7 +1027,7 @@ public sealed partial class ConfigurationService : IConfigurationService
                 else
                 {
                     existingSchema.GeneratedJsonSchema = jsonSchema;
-                    existingSchema.UpdatedAt = DateTimeOffset.UtcNow;
+                    existingSchema.ModifiedAt = DateTimeOffset.UtcNow;
                     configVersion.ParameterSchemaId = existingSchema.Id;
                 }
 
@@ -1097,7 +1097,7 @@ public sealed partial class ConfigurationService : IConfigurationService
             UseServerManagedParameters = config.UseServerManagedParameters,
             LatestVersion = latestVersion,
             CreatedAt = config.CreatedAt,
-            UpdatedAt = config.UpdatedAt
+            ModifiedAt = config.ModifiedAt
         };
     }
 
@@ -1267,7 +1267,7 @@ public sealed partial class ConfigurationService : IConfigurationService
                 ConfigurationId = configuration.Id,
                 EnforceSemverCompliance = requireSemVer ?? globalSettings.EnforceSemverCompliance,
                 ParameterValidation = paramValidation ?? globalSettings.DefaultParameterValidation,
-                UpdatedAt = DateTimeOffset.UtcNow
+                ModifiedAt = DateTimeOffset.UtcNow
             };
             _db.Add(settings);
         }
@@ -1283,7 +1283,7 @@ public sealed partial class ConfigurationService : IConfigurationService
                 settings.ParameterValidation = paramValidation.Value;
             }
 
-            settings.UpdatedAt = DateTimeOffset.UtcNow;
+            settings.ModifiedAt = DateTimeOffset.UtcNow;
         }
 
         await _db.SaveChangesAsync(cancellationToken);
@@ -1355,7 +1355,7 @@ public sealed partial class ConfigurationService : IConfigurationService
             settings = new ConfigurationSettings
             {
                 ConfigurationId = config.Id,
-                UpdatedAt = DateTimeOffset.UtcNow
+                ModifiedAt = DateTimeOffset.UtcNow
             };
             _db.Add(settings);
         }
@@ -1364,7 +1364,7 @@ public sealed partial class ConfigurationService : IConfigurationService
         if (request.KeepVersions.HasValue) settings.RetentionKeepVersions = request.KeepVersions.Value;
         if (request.KeepDays.HasValue) settings.RetentionKeepDays = request.KeepDays.Value;
         if (request.KeepReleaseVersions.HasValue) settings.RetentionKeepReleaseVersions = request.KeepReleaseVersions.Value;
-        settings.UpdatedAt = DateTimeOffset.UtcNow;
+        settings.ModifiedAt = DateTimeOffset.UtcNow;
 
         await _db.SaveChangesAsync(cancellationToken);
     }
@@ -1383,7 +1383,7 @@ public sealed partial class ConfigurationService : IConfigurationService
             settings.RetentionKeepVersions = null;
             settings.RetentionKeepDays = null;
             settings.RetentionKeepReleaseVersions = null;
-            settings.UpdatedAt = DateTimeOffset.UtcNow;
+            settings.ModifiedAt = DateTimeOffset.UtcNow;
             await _db.SaveChangesAsync(cancellationToken);
         }
     }
@@ -1472,27 +1472,17 @@ public sealed partial class ConfigurationService : IConfigurationService
             throw new UnauthorizedAccessException($"Access denied to configuration '{configName}'.");
         }
 
-        if (!Enum.TryParse<PrincipalType>(principalType, ignoreCase: true, out var parsedPrincipalType))
-        {
-            throw new ArgumentException($"Invalid principal type '{principalType}'. Must be 'User' or 'Group'.", nameof(principalType));
-        }
-
-        if (!Enum.TryParse<ResourcePermission>(level, ignoreCase: true, out var parsedLevel))
-        {
-            throw new ArgumentException($"Invalid permission level '{level}'. Must be 'Read', 'Modify', or 'Manage'.", nameof(level));
-        }
-
-        if (parsedPrincipalType == PrincipalType.User && !await _db.Users.AnyAsync(u => u.Id == principalId, cancellationToken))
+        if (principalType == PrincipalType.User && !await _db.Users.AnyAsync(u => u.Id == principalId, cancellationToken))
         {
             throw new KeyNotFoundException($"User '{principalId}' not found.");
         }
 
-        if (parsedPrincipalType == PrincipalType.Group && !await _db.Groups.AnyAsync(g => g.Id == principalId, cancellationToken))
+        if (principalType == PrincipalType.Group && !await _db.Groups.AnyAsync(g => g.Id == principalId, cancellationToken))
         {
             throw new KeyNotFoundException($"Group '{principalId}' not found.");
         }
 
-        await _authService.GrantConfigurationPermissionAsync(config.Id, principalId, parsedPrincipalType, parsedLevel, userId.Value);
+        await _authService.GrantConfigurationPermissionAsync(config.Id, principalId, principalType, level, userId.Value);
     }
 
     public async Task RevokePermissionAsync(string configName, RevokePermissionRequest request, CancellationToken cancellationToken = default)
@@ -1509,12 +1499,7 @@ public sealed partial class ConfigurationService : IConfigurationService
             throw new UnauthorizedAccessException($"Access denied to configuration '{configName}'.");
         }
 
-        if (!Enum.TryParse<PrincipalType>(principalType, ignoreCase: true, out var parsedPrincipalType))
-        {
-            throw new ArgumentException($"Invalid principal type '{principalType}'. Must be 'User' or 'Group'.", nameof(principalType));
-        }
-
-        await _authService.RevokeConfigurationPermissionAsync(config.Id, principalId, parsedPrincipalType);
+        await _authService.RevokeConfigurationPermissionAsync(config.Id, principalId, principalType);
     }
 
     private async Task<List<PermissionEntry>> BuildPermissionEntriesAsync(
@@ -1534,12 +1519,12 @@ public sealed partial class ConfigurationService : IConfigurationService
 
         return list.Select(e => new PermissionEntry
         {
-            PrincipalType = e.PrincipalType.ToString(),
+            PrincipalType = e.PrincipalType,
             PrincipalId = e.PrincipalId,
             PrincipalName = e.PrincipalType == PrincipalType.User
                 ? userNames.GetValueOrDefault(e.PrincipalId, "Unknown")
                 : groupNames.GetValueOrDefault(e.PrincipalId, "Unknown"),
-            Level = e.Level.ToString(),
+            Level = e.Level,
             GrantedAt = e.GrantedAt,
             GrantedByUserId = e.GrantedByUserId
         }).ToList();

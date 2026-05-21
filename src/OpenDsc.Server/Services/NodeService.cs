@@ -60,14 +60,14 @@ public sealed partial class NodeService : INodeService
             query = query.Where(n => n.ConfigurationName != null && n.ConfigurationName.Contains(filter.ConfigurationContains));
         }
 
-        if (!string.IsNullOrWhiteSpace(filter?.Status) && Enum.TryParse<NodeStatus>(filter.Status, true, out var status))
+        if (filter?.Status.HasValue == true)
         {
-            query = query.Where(n => n.Status == status);
+            query = query.Where(n => n.Status == filter.Status.Value);
         }
 
-        if (!string.IsNullOrWhiteSpace(filter?.LcmStatus) && Enum.TryParse<OpenDsc.Contracts.Lcm.LcmStatus>(filter.LcmStatus, true, out var lcmStatus))
+        if (filter?.LcmStatus.HasValue == true)
         {
-            query = query.Where(n => n.LcmStatus == lcmStatus);
+            query = query.Where(n => n.LcmStatus == filter.LcmStatus.Value);
         }
 
         var nodes = await query
@@ -105,8 +105,8 @@ public sealed partial class NodeService : INodeService
             Id = node.Id,
             Fqdn = node.Fqdn,
             ConfigurationName = node.ConfigurationName,
-            Status = node.Status.ToString(),
-            LcmStatus = node.LcmStatus.ToString(),
+            Status = node.Status,
+            LcmStatus = node.LcmStatus,
             IsStale = node.LastCheckIn.HasValue
                 && node.ConfigurationModeInterval.HasValue
                 && (now - node.LastCheckIn.Value) > node.ConfigurationModeInterval.Value * staleness,
@@ -422,7 +422,7 @@ public sealed partial class NodeService : INodeService
                 Id = e.Id,
                 NodeId = e.NodeId,
                 NodeFqdn = e.Node.Fqdn,
-                LcmStatus = e.LcmStatus.HasValue ? e.LcmStatus.Value.ToString() : null,
+                LcmStatus = e.LcmStatus,
                 Timestamp = e.Timestamp
             })
             .ToListAsync(cancellationToken);
@@ -1045,8 +1045,8 @@ public sealed partial class NodeService : INodeService
             Id = node.Id,
             Fqdn = node.Fqdn,
             ConfigurationName = node.ConfigurationName,
-            Status = node.Status.ToString(),
-            LcmStatus = node.LcmStatus.ToString(),
+            Status = node.Status,
+            LcmStatus = node.LcmStatus,
             IsStale = node.LastCheckIn.HasValue
                 && node.ConfigurationModeInterval.HasValue
                 && (now - node.LastCheckIn.Value) > node.ConfigurationModeInterval.Value * stalenessMultiplier,

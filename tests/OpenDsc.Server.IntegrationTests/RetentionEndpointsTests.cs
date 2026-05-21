@@ -169,7 +169,7 @@ public sealed class RetentionEndpointsTests : IDisposable
         var response = await client.GetAsync("/api/v1/retention/runs", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var runs = await response.Content.ReadFromJsonAsync<List<RetentionRun>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
+        var runs = await response.Content.ReadFromJsonAsync<List<RetentionRunSummary>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         runs.Should().NotBeNull();
         runs!.Should().BeEmpty();
     }
@@ -185,7 +185,7 @@ public sealed class RetentionEndpointsTests : IDisposable
         var response = await client.GetAsync("/api/v1/retention/runs?limit=10", TestContext.Current.CancellationToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var runs = await response.Content.ReadFromJsonAsync<List<RetentionRun>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
+        var runs = await response.Content.ReadFromJsonAsync<List<RetentionRunSummary>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         runs.Should().NotBeNull();
         runs!.Should().HaveCountGreaterThanOrEqualTo(1);
     }

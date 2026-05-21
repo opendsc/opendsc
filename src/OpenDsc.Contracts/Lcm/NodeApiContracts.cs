@@ -58,37 +58,38 @@ public sealed class RegisterNodeResponse
 /// <summary>
 /// The operational state of the LCM agent.
 /// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter<LcmStatus>))]
 public enum LcmStatus
 {
     /// <summary>
     /// Status is unknown (node has not reported operational state).
     /// </summary>
-    Unknown,
+    Unknown = 0,
 
     /// <summary>
     /// LCM is idle, waiting for the next cycle.
     /// </summary>
-    Idle,
+    Idle = 1,
 
     /// <summary>
     /// LCM is downloading configuration from the pull server.
     /// </summary>
-    Downloading,
+    Downloading = 2,
 
     /// <summary>
     /// LCM is running a DSC test operation.
     /// </summary>
-    Testing,
+    Testing = 3,
 
     /// <summary>
     /// LCM is running a DSC set operation to remediate drift.
     /// </summary>
-    Remediating,
+    Remediating = 4,
 
     /// <summary>
     /// LCM encountered an unhandled error during the last cycle.
     /// </summary>
-    Error
+    Error = 5
 }
 
 /// <summary>

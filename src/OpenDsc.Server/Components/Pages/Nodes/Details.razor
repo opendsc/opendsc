@@ -8,7 +8,6 @@
 @using OpenDsc.Contracts.Nodes
 @using OpenDsc.Contracts.Reports
 @using OpenDsc.Contracts.Lcm
-@using OpenDsc.Server.Entities
 
 <PageTitle>Node Details</PageTitle>
 
@@ -474,9 +473,9 @@ else
                                 }
                                 else if (filteredStatusEvents.Any())
                                 {
-                                    <MudDataGrid T="NodeStatusEvent" Items="@filteredStatusEvents" Hover="true" Dense="true" sortable="true"
-                                                 sort-by="@((NodeStatusEvent e) => e.Timestamp)" sort-direction="SortDirection.Descending"
-                                                 @bind-RowsPerPage="_statusRowsPerPage">
+                                    <MudDataGrid T="NodeStatusEventSummary" Items="@filteredStatusEvents" Hover="true" Dense="true"
+                                                 sortable="true" sort-by="@((NodeStatusEventSummary e) => e.Timestamp)"
+                                                 sort-direction="SortDirection.Descending" @bind-RowsPerPage="_statusRowsPerPage">
                                         <Columns>
                                             <PropertyColumn Property="x => x.Timestamp" Title="Timestamp">
                                                 <CellTemplate>
@@ -500,7 +499,8 @@ else
                                             </TemplateColumn>
                                         </Columns>
                                         <PagerContent>
-                                            <MudDataGridPager T="NodeStatusEvent" PageSizeOptions="@(new int[] { 10, 25, 50, 100 })" />
+                                            <MudDataGridPager T="NodeStatusEventSummary"
+                                                              PageSizeOptions="@(new int[] { 10, 25, 50, 100 })" />
                                         </PagerContent>
                                     </MudDataGrid>
                                 }
@@ -531,8 +531,8 @@ else
     private string? _reportStatusFilter;
     private string? _reportOperationFilter;
     private int _reportRowsPerPage = 25;
-    private List<NodeStatusEvent> statusEvents = [];
-    private List<NodeStatusEvent> filteredStatusEvents = [];
+    private List<NodeStatusEventSummary> statusEvents = [];
+    private List<NodeStatusEventSummary> filteredStatusEvents = [];
     private MudBlazor.DateRange _statusDateRange = new(DateTime.Today.AddDays(-7), DateTime.Today);
     private string? _statusLcmFilter;
     private int _statusRowsPerPage = 25;
@@ -717,13 +717,7 @@ else
 
     private async Task LoadStatusEventsAsync()
     {
-        statusEvents = (await NodeService.GetNodeStatusEventsAsync(Id)).Select(e => new NodeStatusEvent
-        {
-            Id = e.Id,
-            NodeId = e.NodeId,
-            LcmStatus = Enum.TryParse<LcmStatus>(e.LcmStatus, out var status) ? status : null,
-            Timestamp = e.Timestamp
-        }).ToList();
+        statusEvents = (await NodeService.GetNodeStatusEventsAsync(Id)).ToList();
         ApplyStatusFilter();
     }
 
@@ -942,25 +936,23 @@ else
         }
     }
 
-    private Color GetStatusColor(string status) => status switch
+    private Color GetStatusColor(NodeStatus status) => status switch
     {
-        nameof(NodeStatus.Compliant) => Color.Success,
-        nameof(NodeStatus.NonCompliant) => Color.Warning,
-        nameof(NodeStatus.Error) => Color.Error,
+        NodeStatus.Compliant => Color.Success,
+        NodeStatus.NonCompliant => Color.Warning,
+        NodeStatus.Error => Color.Error,
         _ => Color.Default
     };
 
-    private Color GetLcmStatusColor(string status) => status switch
+    private Color GetLcmStatusColor(LcmStatus status) => status switch
     {
-        nameof(LcmStatus.Idle) => Color.Success,
-        nameof(LcmStatus.Testing) => Color.Info,
-        nameof(LcmStatus.Downloading) => Color.Info,
-        nameof(LcmStatus.Remediating) => Color.Info,
-        nameof(LcmStatus.Error) => Color.Error,
+        LcmStatus.Idle => Color.Success,
+        LcmStatus.Testing => Color.Info,
+        LcmStatus.Downloading => Color.Info,
+        LcmStatus.Remediating => Color.Info,
+        LcmStatus.Error => Color.Error,
         _ => Color.Default
     };
-
-    private Color GetLcmStatusColor(LcmStatus status) => GetLcmStatusColor(status.ToString());
 
     private void ViewReportDetails(Guid id)
     {

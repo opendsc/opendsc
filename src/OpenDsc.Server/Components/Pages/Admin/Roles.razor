@@ -88,7 +88,7 @@
         }
     }
 
-    private static int GetPermissionCount(string[] permissions) => permissions.Length;
+    private static int GetPermissionCount(IReadOnlyList<string> permissions) => permissions.Count;
 
 
     private int GetRoleUserCount(Guid roleId)

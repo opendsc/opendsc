@@ -83,7 +83,7 @@ public sealed class RoleSummary
     /// <summary>
     /// The list of permission identifiers granted by this role.
     /// </summary>
-    public string[] Permissions { get; set; } = [];
+    public IReadOnlyList<string> Permissions { get; set; } = [];
 
     /// <summary>
     /// The timestamp when the role was created.
@@ -226,7 +226,7 @@ public sealed class RoleDetails
     /// <summary>
     /// The list of permission identifiers granted by this role.
     /// </summary>
-    public string[] Permissions { get; set; } = [];
+    public IReadOnlyList<string> Permissions { get; set; } = [];
 
     /// <summary>
     /// Whether this is a system-defined role that cannot be deleted.
@@ -359,7 +359,7 @@ public sealed class CurrentUserDetails
     /// <summary>
     /// The list of role names assigned to the authenticated user.
     /// </summary>
-    public List<string> Roles { get; set; } = [];
+    public IReadOnlyList<string> Roles { get; set; } = [];
 
     /// <summary>
     /// The authentication provider used to authenticate the user (e.g., "local", "oidc").

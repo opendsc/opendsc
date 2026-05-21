@@ -2,27 +2,31 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
+using System.Text.Json.Serialization;
+
 namespace OpenDsc.Contracts.Permissions;
 
 /// <summary>
 /// Type of principal for ACL entries.
 /// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter<PrincipalType>))]
 public enum PrincipalType
 {
     /// <summary>
     /// The principal is a user account.
     /// </summary>
-    User,
+    User = 0,
 
     /// <summary>
     /// The principal is a group.
     /// </summary>
-    Group
+    Group = 1
 }
 
 /// <summary>
 /// Permission level for resource access.
 /// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter<ResourcePermission>))]
 public enum ResourcePermission
 {
     /// <summary>

@@ -121,8 +121,8 @@ public sealed class ReportService : IReportService
             Id = reportNode.Id,
             Fqdn = reportNode.Fqdn,
             ConfigurationName = reportNode.ConfigurationName,
-            Status = reportNode.Status.ToString(),
-            LcmStatus = reportNode.LcmStatus.ToString(),
+            Status = reportNode.Status,
+            LcmStatus = reportNode.LcmStatus,
             IsStale = reportNode.LastCheckIn.HasValue
                 && reportNode.ConfigurationModeInterval.HasValue
                 && (now - reportNode.LastCheckIn.Value) > reportNode.ConfigurationModeInterval.Value * staleness,

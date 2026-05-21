@@ -108,7 +108,7 @@ public class NodeStatusEndpointsTests : IDisposable
         var nodeResponse = await adminClient.GetAsync($"/api/v1/nodes/{nodeId}", TestContext.Current.CancellationToken);
         nodeResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         var nodeSummary = await nodeResponse.Content.ReadFromJsonAsync<NodeSummary>(JsonOptions, TestContext.Current.CancellationToken);
-        nodeSummary!.LcmStatus.Should().Be(LcmStatus.Remediating.ToString());
+        nodeSummary!.LcmStatus.Should().Be(LcmStatus.Remediating);
     }
 
     [Fact]
@@ -127,7 +127,7 @@ public class NodeStatusEndpointsTests : IDisposable
         historyResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         var events = await historyResponse.Content.ReadFromJsonAsync<List<NodeStatusEventSummary>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
         events.Should().NotBeNull();
-        events!.Should().ContainSingle(e => e.LcmStatus == LcmStatus.Idle.ToString());
+        events!.Should().ContainSingle(e => e.LcmStatus == LcmStatus.Idle);
     }
 
     // ── GET /{nodeId}/status-history ──────────────────────────────────────────

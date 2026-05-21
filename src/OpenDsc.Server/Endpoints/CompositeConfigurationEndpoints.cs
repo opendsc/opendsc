@@ -409,7 +409,7 @@ public static class CompositeConfigurationEndpoints
 
     private static async Task<Results<NoContent, BadRequest<string>, NotFound, ForbidHttpResult>> RevokeCompositeConfigurationPermission(
         string name,
-        string principalType,
+        PrincipalType principalType,
         Guid principalId,
         ICompositeConfigurationService compositeService,
         CancellationToken cancellationToken)

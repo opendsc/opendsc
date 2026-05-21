@@ -2,7 +2,7 @@
 @inject ISettingsService SettingsService
 @inject ISnackbar Snackbar
 @inject IVersionRetentionService RetentionService
-@using OpenDsc.Contracts.Settings
+@using OpenDsc.Contracts.Retention
 @using OpenDsc.Server.Services
 
 <MudCard Class="mt-2">
@@ -92,115 +92,119 @@
     <MudCardContent>
         <MudGrid Class="mb-3">
             <MudItem xs="12" md="4">
-                <MudSelect T="string" Label="Filter by Type" @bind-Value="selectedRunType"
+                <MudSelect T="RetentionVersionType?" Label="Filter by Type" @bind-Value="selectedRunType"
                            @bind-Value:after="ApplyHistoryFilter" Clearable="true">
-                    <MudSelectItem Value="@("Configuration")">Configuration</MudSelectItem>
-                    <MudSelectItem Value="@("Parameter")">Parameter</MudSelectItem>
-                    <MudSelectItem Value="@("CompositeConfiguration")">Composite Configuration</MudSelectItem>
-                    <MudSelectItem Value="@("Report")">Report</MudSelectItem>
-                    <MudSelectItem Value="@("StatusEvent")">Status Event</MudSelectItem>
-                </MudSelect>
-            </MudItem>
-            <MudItem xs="12" md="4">
-                <MudSelect T="string" Label="Filter by Trigger" @bind-Value="selectedRunTrigger"
-                           @bind-Value:after="ApplyHistoryFilter" Clearable="true">
-                    <MudSelectItem Value="@("Scheduled")">Scheduled</MudSelectItem>
-                    <MudSelectItem Value="@("Manual")">Manual</MudSelectItem>
-                </MudSelect>
-            </MudItem>
-            <MudItem xs="12" md="4">
-                <MudSelect T="string" Label="Filter by Mode" @bind-Value="selectedRunMode"
-                           @bind-Value:after="ApplyHistoryFilter" Clearable="true">
-                    <MudSelectItem Value="@("DryRun")">Dry Run</MudSelectItem>
-                    <MudSelectItem Value="@("Applied")">Applied</MudSelectItem>
-                </MudSelect>
-            </MudItem>
-            <MudItem xs="12" md="6">
-                <MudDateRangePicker @bind-DateRange="_historyDateRange" @bind-DateRange:after="ApplyHistoryFilter"
-                                    Label="Date range" Variant="Variant.Outlined" DateFormat="yyyy-MM-dd" />
-            </MudItem>
-        </MudGrid>
+                    <MudSelectItem T="RetentionVersionType?" Value="RetentionVersionType.Configuration">Configuration
+                    </MudSelectItem>
+                    <MudSelectItem T="RetentionVersionType?" Value="RetentionVersionType.Parameter">Parameter
+                    </MudSelectItem>
+                    <MudSelectItem T="RetentionVersionType?" Value="RetentionVersionType.CompositeConfiguration">
+                        Composite Configuration</MudSelectItem>
+                        <MudSelectItem T="RetentionVersionType?" Value="RetentionVersionType.Report">Report</MudSelectItem>
+                        <MudSelectItem T="RetentionVersionType?" Value="RetentionVersionType.NodeStatusEvent">Status Event
+                        </MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudSelect T="string" Label="Filter by Trigger" @bind-Value="selectedRunTrigger"
+                               @bind-Value:after="ApplyHistoryFilter" Clearable="true">
+                        <MudSelectItem Value="@("Scheduled")">Scheduled</MudSelectItem>
+                        <MudSelectItem Value="@("Manual")">Manual</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudSelect T="string" Label="Filter by Mode" @bind-Value="selectedRunMode"
+                               @bind-Value:after="ApplyHistoryFilter" Clearable="true">
+                        <MudSelectItem Value="@("DryRun")">Dry Run</MudSelectItem>
+                        <MudSelectItem Value="@("Applied")">Applied</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudDateRangePicker @bind-DateRange="_historyDateRange" @bind-DateRange:after="ApplyHistoryFilter"
+                                        Label="Date range" Variant="Variant.Outlined" DateFormat="yyyy-MM-dd" />
+                </MudItem>
+            </MudGrid>
 
-        @if (historyLoading)
-        {
-            <MudProgressLinear Indeterminate="true" />
-        }
-        else if (!runHistory.Any())
-        {
-            <MudText Typo="Typo.body2" Color="Color.Secondary">No retention runs recorded yet.</MudText>
-        }
-        else if (!filteredHistory.Any())
-        {
-            <MudText Typo="Typo.body2" Color="Color.Secondary">No retention runs match the selected date range.</MudText>
-        }
-        else
-        {
-            <MudTable Items="filteredHistory" Dense="true" Striped="true" Hover="true"
-                      @bind-RowsPerPage="_historyRowsPerPage">
-                <HeaderContent>
-                    <MudTh>Started</MudTh>
-                    <MudTh>Type</MudTh>
-                    <MudTh>Trigger</MudTh>
-                    <MudTh>Mode</MudTh>
-                    <MudTh>Deleted</MudTh>
-                    <MudTh>Kept</MudTh>
-                    <MudTh>Duration</MudTh>
-                    <MudTh>Status</MudTh>
-                </HeaderContent>
-                <RowTemplate>
-                    <MudTd>@context.StartedAt.ToString("yyyy-MM-dd HH:mm")</MudTd>
-                    <MudTd>@context.VersionType</MudTd>
-                    <MudTd>
-                        <MudChip T="string" Size="Size.Small"
-                                 Color="@(context.IsScheduled ? Color.Default : Color.Primary)">
-                            @(context.IsScheduled ? "Scheduled" : "Manual")
-                        </MudChip>
-                    </MudTd>
-                    <MudTd>
-                        <MudChip T="string" Size="Size.Small" Color="@(context.IsDryRun? Color.Info: Color.Warning)">
-                            @(context.IsDryRun ? "Dry Run" : "Applied")
-                        </MudChip>
-                    </MudTd>
-                    <MudTd>@context.DeletedCount</MudTd>
-                    <MudTd>@context.KeptCount</MudTd>
-                    <MudTd>
-                        @if (context.CompletedAt.HasValue)
-                        {
-                            var duration = context.CompletedAt.Value - context.StartedAt;
-                            @($"{duration.TotalSeconds:F1}s")
-                        }
-                        else
-                        {
-                            @("—")
-                        }
-                    </MudTd>
-                    <MudTd>
-                        @if (context.Error is not null)
-                        {
-                            <MudTooltip Text="@context.Error">
-                                <MudChip T="string" Size="Size.Small" Color="Color.Error">Error</MudChip>
-                            </MudTooltip>
-                        }
-                        else
-                        {
-                            <MudChip T="string" Size="Size.Small" Color="Color.Success">OK</MudChip>
-                        }
-                    </MudTd>
-                </RowTemplate>
-                <PagerContent>
-                    <MudTablePager PageSizeOptions="@(new int[] { 10, 25, 50, 100 })" />
-                </PagerContent>
-            </MudTable>
-        }
-    </MudCardContent>
-</MudCard>
+            @if (historyLoading)
+            {
+                <MudProgressLinear Indeterminate="true" />
+            }
+            else if (!runHistory.Any())
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">No retention runs recorded yet.</MudText>
+            }
+            else if (!filteredHistory.Any())
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">No retention runs match the selected date range.</MudText>
+            }
+            else
+            {
+                <MudTable Items="filteredHistory" Dense="true" Striped="true" Hover="true"
+                          @bind-RowsPerPage="_historyRowsPerPage">
+                    <HeaderContent>
+                        <MudTh>Started</MudTh>
+                        <MudTh>Type</MudTh>
+                        <MudTh>Trigger</MudTh>
+                        <MudTh>Mode</MudTh>
+                        <MudTh>Deleted</MudTh>
+                        <MudTh>Kept</MudTh>
+                        <MudTh>Duration</MudTh>
+                        <MudTh>Status</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.StartedAt.ToString("yyyy-MM-dd HH:mm")</MudTd>
+                        <MudTd>@context.VersionType</MudTd>
+                        <MudTd>
+                            <MudChip T="string" Size="Size.Small"
+                                     Color="@(context.IsScheduled ? Color.Default : Color.Primary)">
+                                @(context.IsScheduled ? "Scheduled" : "Manual")
+                            </MudChip>
+                        </MudTd>
+                        <MudTd>
+                            <MudChip T="string" Size="Size.Small" Color="@(context.IsDryRun ? Color.Info : Color.Warning)">
+                                @(context.IsDryRun ? "Dry Run" : "Applied")
+                            </MudChip>
+                        </MudTd>
+                        <MudTd>@context.DeletedCount</MudTd>
+                        <MudTd>@context.KeptCount</MudTd>
+                        <MudTd>
+                            @if (context.CompletedAt.HasValue)
+                            {
+                                var duration = context.CompletedAt.Value - context.StartedAt;
+                                @($"{duration.TotalSeconds:F1}s")
+                            }
+                            else
+                            {
+                                @("—")
+                            }
+                        </MudTd>
+                        <MudTd>
+                            @if (context.Error is not null)
+                            {
+                                <MudTooltip Text="@context.Error">
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Error">Error</MudChip>
+                                </MudTooltip>
+                            }
+                            else
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Success">OK</MudChip>
+                            }
+                        </MudTd>
+                    </RowTemplate>
+                    <PagerContent>
+                        <MudTablePager PageSizeOptions="@(new int[] { 10, 25, 50, 100 })" />
+                    </PagerContent>
+                </MudTable>
+            }
+        </MudCardContent>
+    </MudCard>
 
 @code {
     private bool historyLoading = true;
     private List<RetentionRunSummary> runHistory = [];
     private List<RetentionRunSummary> filteredHistory = [];
     private MudBlazor.DateRange _historyDateRange = new(DateTime.Today.AddDays(-7), DateTime.Today);
-    private string? selectedRunType;
+    private RetentionVersionType? selectedRunType;
     private string? selectedRunTrigger;
     private string? selectedRunMode;
     private int _historyRowsPerPage = 25;
@@ -250,7 +254,7 @@
                 return false;
             if (_historyDateRange?.End.HasValue == true && r.StartedAt.LocalDateTime.Date > _historyDateRange.End.Value.Date)
                 return false;
-            if (!string.IsNullOrEmpty(selectedRunType) && r.VersionType != selectedRunType)
+            if (selectedRunType.HasValue && r.VersionType != selectedRunType.Value)
                 return false;
             if (selectedRunTrigger == "Scheduled" && !r.IsScheduled)
                 return false;

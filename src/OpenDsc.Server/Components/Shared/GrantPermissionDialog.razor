@@ -124,9 +124,9 @@
 
         MudDialog.Close(DialogResult.Ok(new GrantPermissionRequest
         {
-            PrincipalType = type,
+            PrincipalType = Enum.Parse<PrincipalType>(type, ignoreCase: true),
             PrincipalId = principalId!.Value,
-            Level = level
+            Level = Enum.Parse<ResourcePermission>(level, ignoreCase: true)
         }));
     }
 }

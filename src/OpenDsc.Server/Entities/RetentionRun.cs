@@ -2,6 +2,8 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
+using OpenDsc.Contracts.Retention;
+
 namespace OpenDsc.Server.Entities;
 
 /// <summary>
@@ -14,9 +16,9 @@ public sealed class RetentionRun
     public DateTimeOffset? CompletedAt { get; set; }
 
     /// <summary>
-    /// The type of versions cleaned up: "Configuration", "Parameter", or "CompositeConfiguration".
+    /// The type of versions cleaned up.
     /// </summary>
-    public required string VersionType { get; set; }
+    public required RetentionVersionType VersionType { get; set; }
 
     /// <summary>
     /// True when triggered by the background scheduler; false when triggered manually via the API.

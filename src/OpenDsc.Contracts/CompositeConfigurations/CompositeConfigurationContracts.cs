@@ -138,7 +138,7 @@ public sealed class CompositeConfigurationSummary
     /// <summary>
     /// When the composite configuration was last updated.
     /// </summary>
-    public DateTimeOffset? UpdatedAt { get; set; }
+    public DateTimeOffset? ModifiedAt { get; set; }
 }
 
 /// <summary>
@@ -179,7 +179,7 @@ public sealed class CompositeConfigurationDetails
     /// <summary>
     /// When the composite configuration was last updated.
     /// </summary>
-    public DateTimeOffset? UpdatedAt { get; set; }
+    public DateTimeOffset? ModifiedAt { get; set; }
 }
 
 /// <summary>

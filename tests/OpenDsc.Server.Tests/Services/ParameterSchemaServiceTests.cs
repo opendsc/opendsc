@@ -463,7 +463,7 @@ this is: not: valid: yaml: syntax:::
             GeneratedJsonSchema = "{\"old\": \"schema\"}",
             SchemaVersion = "1.0.0",
             CreatedAt = DateTimeOffset.UtcNow.AddDays(-1),
-            UpdatedAt = DateTimeOffset.UtcNow.AddDays(-1)
+            ModifiedAt = DateTimeOffset.UtcNow.AddDays(-1)
         };
 
         _dbContext.ParameterSchemas.Add(existingSchema);
@@ -575,7 +575,7 @@ this is: not: valid: yaml: syntax:::
             GeneratedJsonSchema = "{\"existing\": \"schema\"}",
             SchemaVersion = "1.0.0",
             CreatedAt = DateTimeOffset.UtcNow,
-            UpdatedAt = DateTimeOffset.UtcNow
+            ModifiedAt = DateTimeOffset.UtcNow
         };
 
         _dbContext.ParameterSchemas.Add(existingSchema);

@@ -3,6 +3,7 @@
 // terms of the MIT license.
 
 using OpenDsc.Contracts.Lcm;
+using OpenDsc.Contracts.Retention;
 
 namespace OpenDsc.Contracts.Settings;
 

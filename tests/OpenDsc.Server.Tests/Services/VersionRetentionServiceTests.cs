@@ -13,8 +13,11 @@ using Microsoft.Extensions.Options;
 
 using OpenDsc.Contracts.Lcm;
 using OpenDsc.Server.Data;
+using OpenDsc.Contracts.Retention;
 using OpenDsc.Server.Entities;
 using OpenDsc.Contracts.Configurations;
+
+using RetentionRunEntity = OpenDsc.Server.Entities.RetentionRun;
 using OpenDsc.Server.Services;
 
 using ParameterVersionStatus = OpenDsc.Contracts.Parameters.ParameterVersionStatus;
@@ -307,7 +310,7 @@ public class VersionRetentionServiceTests : IDisposable
         // Assert
         var run = _db.RetentionRuns.FirstOrDefault();
         run.Should().NotBeNull();
-        run!.VersionType.Should().Be("Configuration");
+        run!.VersionType.Should().Be(RetentionVersionType.Configuration);
         run.IsScheduled.Should().BeTrue();
         run.DeletedCount.Should().Be(result.DeletedCount);
         run.KeptCount.Should().Be(result.KeptCount);
@@ -883,12 +886,12 @@ public class VersionRetentionServiceTests : IDisposable
         // Arrange
         for (int i = 1; i <= 5; i++)
         {
-            _db.RetentionRuns.Add(new RetentionRun
+            _db.RetentionRuns.Add(new RetentionRunEntity
             {
                 Id = Guid.NewGuid(),
                 StartedAt = DateTimeOffset.UtcNow.AddHours(-i),
                 CompletedAt = DateTimeOffset.UtcNow.AddHours(-i).AddMinutes(5),
-                VersionType = "Configuration",
+                VersionType = RetentionVersionType.Configuration,
                 IsScheduled = false,
                 IsDryRun = false,
                 DeletedCount = i,
@@ -913,12 +916,12 @@ public class VersionRetentionServiceTests : IDisposable
         // Arrange
         for (int i = 1; i <= 20; i++)
         {
-            _db.RetentionRuns.Add(new RetentionRun
+            _db.RetentionRuns.Add(new RetentionRunEntity
             {
                 Id = Guid.NewGuid(),
                 StartedAt = DateTimeOffset.UtcNow.AddHours(-i),
                 CompletedAt = DateTimeOffset.UtcNow.AddHours(-i).AddMinutes(5),
-                VersionType = "Configuration",
+                VersionType = RetentionVersionType.Configuration,
                 IsScheduled = false,
                 IsDryRun = false,
                 DeletedCount = i,
@@ -946,12 +949,12 @@ public class VersionRetentionServiceTests : IDisposable
         // Add 10 runs, some inside and some outside the range
         for (int i = 0; i < 10; i++)
         {
-            _db.RetentionRuns.Add(new RetentionRun
+            _db.RetentionRuns.Add(new RetentionRunEntity
             {
                 Id = Guid.NewGuid(),
                 StartedAt = from.AddDays(i),
                 CompletedAt = from.AddDays(i).AddMinutes(5),
-                VersionType = "Configuration",
+                VersionType = RetentionVersionType.Configuration,
                 IsScheduled = false,
                 IsDryRun = false,
                 DeletedCount = i,

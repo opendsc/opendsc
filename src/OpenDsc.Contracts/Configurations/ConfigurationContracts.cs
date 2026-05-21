@@ -88,7 +88,7 @@ public sealed class ConfigurationDetails
     /// <summary>
     /// When the configuration was last updated.
     /// </summary>
-    public DateTimeOffset? UpdatedAt { get; set; }
+    public DateTimeOffset? ModifiedAt { get; set; }
 }
 
 /// <summary>

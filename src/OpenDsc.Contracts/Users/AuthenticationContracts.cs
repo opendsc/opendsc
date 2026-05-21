@@ -107,6 +107,11 @@ public sealed class TokenMetadata
     public bool IsRevoked { get; set; }
 
     /// <summary>
+    /// The scopes/permissions granted to the token.
+    /// </summary>
+    public IReadOnlyList<string> Scopes { get; set; } = [];
+
+    /// <summary>
     /// The timestamp when the token was created.
     /// </summary>
     public DateTimeOffset CreatedAt { get; set; }

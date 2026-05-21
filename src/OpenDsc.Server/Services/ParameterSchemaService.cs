@@ -194,7 +194,7 @@ public partial class ParameterSchemaService(
             // Update existing schema
             existingSchema.GeneratedJsonSchema = schemaString;
             existingSchema.SchemaVersion = version;
-            existingSchema.UpdatedAt = DateTimeOffset.UtcNow;
+            existingSchema.ModifiedAt = DateTimeOffset.UtcNow;
         }
         else
         {
@@ -206,7 +206,7 @@ public partial class ParameterSchemaService(
                 GeneratedJsonSchema = schemaString,
                 SchemaVersion = version,
                 CreatedAt = DateTimeOffset.UtcNow,
-                UpdatedAt = DateTimeOffset.UtcNow
+                ModifiedAt = DateTimeOffset.UtcNow
             };
 
             dbContext.ParameterSchemas.Add(existingSchema);

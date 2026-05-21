@@ -227,18 +227,7 @@ public static class AuthenticationEndpoints
 
         var tokens = await patService.GetUserTokensAsync(userId.Value);
 
-        var metadata = tokens.Select(t => new TokenMetadata
-        {
-            Id = t.Id,
-            Name = t.Name,
-            TokenPrefix = t.TokenPrefix,
-            ExpiresAt = t.ExpiresAt,
-            LastUsedAt = t.LastUsedAt,
-            IsRevoked = t.IsRevoked,
-            CreatedAt = t.CreatedAt
-        }).ToList();
-
-        return TypedResults.Ok(metadata);
+        return TypedResults.Ok(tokens);
     }
 
     private static async Task<Results<NoContent, UnauthorizedHttpResult, NotFound>> RevokeToken(

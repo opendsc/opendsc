@@ -3,7 +3,6 @@
    terms of the MIT license. *@
 
 @namespace OpenDsc.Server.Components.Pages
-@using System.Text.Json
 @using OpenDsc.Contracts.Users
 @using OpenDsc.Server.Authorization
 @using MudBlazor
@@ -58,7 +57,7 @@
 
 @code {
     [Parameter]
-    public PersonalAccessToken Token { get; set; } = default!;
+    public TokenMetadata Token { get; set; } = default!;
 
     [CascadingParameter]
     private IMudDialogInstance MudDialog { get; set; } = default!;
@@ -85,12 +84,7 @@
         {
             _userAccessiblePermissions = await UserService.GetEffectivePermissionsAsync(_userId.Value);
 
-            var currentScopes = new List<string>();
-            try
-            {
-                currentScopes = JsonSerializer.Deserialize<List<string>>(Token.Scopes) ?? [];
-            }
-            catch { }
+            var currentScopes = Token.Scopes?.ToList() ?? [];
 
             // Only show scopes the user actually has access to
             var accessibleScopes = Permissions.AllScopes.Intersect(_userAccessiblePermissions, StringComparer.Ordinal).ToArray();
