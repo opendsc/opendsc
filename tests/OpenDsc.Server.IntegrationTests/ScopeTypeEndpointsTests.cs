@@ -180,6 +180,48 @@ public sealed class ScopeTypeEndpointsTests : IDisposable
     }
 
     [Fact]
+    public async Task GetScopeTypeUsageCount_WithValidId_ReturnsOk()
+    {
+        using var client = CreateAuthenticatedClient();
+        var allScopes = await client.GetFromJsonAsync<List<ScopeTypeDetails>>("/api/v1/scope-types", TestJsonOptions.Default, TestContext.Current.CancellationToken);
+        var defaultScope = allScopes!.First(s => s.Name == "Default");
+
+        var response = await client.GetAsync($"/api/v1/scope-types/{defaultScope.Id}/usage-count", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var usage = await response.Content.ReadFromJsonAsync<int>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
+        usage.Should().BeGreaterThanOrEqualTo(0);
+    }
+
+    [Fact]
+    public async Task GetScopeValueUsageCount_WithValidId_ReturnsOk()
+    {
+        using var client = CreateAuthenticatedClient();
+        var scopeTypeId = await CreateScopeTypeAsync(client, "UsageCountScope");
+        var scopeValueId = await CreateScopeValueAsync(client, scopeTypeId, "UsageValue");
+
+        var response = await client.GetAsync($"/api/v1/scope-types/values/{scopeValueId}/usage-count", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var usage = await response.Content.ReadFromJsonAsync<int>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
+        usage.Should().BeGreaterThanOrEqualTo(0);
+    }
+
+    [Fact]
+    public async Task GetScopeNodes_ForNodeScope_ReturnsOk()
+    {
+        using var client = CreateAuthenticatedClient();
+        var allScopes = await client.GetFromJsonAsync<List<ScopeTypeDetails>>("/api/v1/scope-types", TestJsonOptions.Default, TestContext.Current.CancellationToken);
+        var nodeScope = allScopes!.First(s => s.Name == "Node");
+
+        var response = await client.GetAsync($"/api/v1/scope-types/{nodeScope.Id}/nodes", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var nodes = await response.Content.ReadFromJsonAsync<List<ScopeNodeInfo>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
+        nodes.Should().NotBeNull();
+    }
+
+    [Fact]
     public async Task GetScopeType_WithValidId_ReturnsOk()
     {
         using var client = CreateAuthenticatedClient();

@@ -293,5 +293,84 @@ public class GroupEndpointsTests : IClassFixture<ServerWebApplicationFactory>
 
         // Verify mapping is gone (would need to check the list or specific endpoint if available)
     }
+
+    [Fact]
+    public async Task GetGroupMemberCounts_ReturnsOk()
+    {
+        var response = await _client.GetAsync("/api/v1/groups/counts/members", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var counts = await response.Content.ReadFromJsonAsync<Dictionary<Guid, int>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
+        counts.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task GetGroupRoleCounts_ReturnsOk()
+    {
+        var response = await _client.GetAsync("/api/v1/groups/counts/roles", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var counts = await response.Content.ReadFromJsonAsync<Dictionary<Guid, int>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
+        counts.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task AddAndRemoveMember_WithValidData_Succeeds()
+    {
+        var createGroupRequest = new CreateGroupRequest
+        {
+            Name = "AddRemoveMemberGroup",
+            Description = "Group for add/remove member"
+        };
+        var createGroupResponse = await _client.PostAsJsonAsync("/api/v1/groups", createGroupRequest, TestContext.Current.CancellationToken);
+        var createdGroup = await createGroupResponse.Content.ReadFromJsonAsync<GroupSummary>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
+
+        var createUserRequest = new CreateUserRequest
+        {
+            Username = "addremovememberuser",
+            Email = "addremovemember@example.com",
+            Password = "TestPassword123!"
+        };
+        var createUserResponse = await _client.PostAsJsonAsync("/api/v1/users", createUserRequest, TestContext.Current.CancellationToken);
+        var createdUser = await createUserResponse.Content.ReadFromJsonAsync<UserSummary>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
+
+        var addResponse = await _client.PostAsJsonAsync(
+            $"/api/v1/groups/{createdGroup!.Id}/members",
+            new AddGroupMemberRequest { UserId = createdUser!.Id },
+            TestContext.Current.CancellationToken);
+        addResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var removeResponse = await _client.DeleteAsync(
+            $"/api/v1/groups/{createdGroup.Id}/members/{createdUser.Id}",
+            TestContext.Current.CancellationToken);
+        removeResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task AssignAndRemoveRole_WithValidData_Succeeds()
+    {
+        var createGroupRequest = new CreateGroupRequest
+        {
+            Name = "AddRemoveRoleGroup",
+            Description = "Group for add/remove role"
+        };
+        var createGroupResponse = await _client.PostAsJsonAsync("/api/v1/groups", createGroupRequest, TestContext.Current.CancellationToken);
+        var createdGroup = await createGroupResponse.Content.ReadFromJsonAsync<GroupSummary>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
+
+        var rolesResponse = await _client.GetAsync("/api/v1/roles", TestContext.Current.CancellationToken);
+        var roles = await rolesResponse.Content.ReadFromJsonAsync<List<RoleSummary>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
+        var viewerRole = roles!.First(r => r.Name == "Viewer");
+
+        var assignResponse = await _client.PostAsJsonAsync(
+            $"/api/v1/groups/{createdGroup!.Id}/roles",
+            new AssignGroupRoleRequest { RoleId = viewerRole.Id },
+            TestContext.Current.CancellationToken);
+        assignResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var removeResponse = await _client.DeleteAsync(
+            $"/api/v1/groups/{createdGroup.Id}/roles/{viewerRole.Id}",
+            TestContext.Current.CancellationToken);
+        removeResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
 }
 

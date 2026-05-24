@@ -212,5 +212,84 @@ public class UserEndpointsTests : IClassFixture<ServerWebApplicationFactory>
         userRoles.Should().NotBeNull();
         userRoles!.Should().Contain(r => r.Name == "Viewer");
     }
+
+    [Fact]
+    public async Task GetExternalLogin_ForLocalUser_ReturnsNotFound()
+    {
+        var createRequest = new CreateUserRequest
+        {
+            Username = "externalcheckuser",
+            Email = "externalcheck@example.com",
+            Password = "TestPassword123!"
+        };
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/users", createRequest, TestContext.Current.CancellationToken);
+        var createdUser = await createResponse.Content.ReadFromJsonAsync<UserSummary>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
+
+        var response = await _client.GetAsync($"/api/v1/users/{createdUser!.Id}/external-login", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task GetEffectivePermissions_ReturnsOk()
+    {
+        var listResponse = await _client.GetAsync("/api/v1/users", TestContext.Current.CancellationToken);
+        var users = await listResponse.Content.ReadFromJsonAsync<List<UserSummary>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
+        var adminUser = users!.First(u => u.Username == "admin");
+
+        var response = await _client.GetAsync($"/api/v1/users/{adminUser.Id}/effective-permissions", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var permissions = await response.Content.ReadFromJsonAsync<HashSet<string>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
+        permissions.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task GetUserRoleCounts_ReturnsOk()
+    {
+        var response = await _client.GetAsync("/api/v1/users/counts/roles", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var counts = await response.Content.ReadFromJsonAsync<Dictionary<Guid, int>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
+        counts.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task GetUserGroupCounts_ReturnsOk()
+    {
+        var response = await _client.GetAsync("/api/v1/users/counts/groups", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var counts = await response.Content.ReadFromJsonAsync<Dictionary<Guid, int>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
+        counts.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task AssignAndRemoveRole_WithValidData_Succeeds()
+    {
+        var createRequest = new CreateUserRequest
+        {
+            Username = "assignremoveuser",
+            Email = "assignremove@example.com",
+            Password = "TestPassword123!"
+        };
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/users", createRequest, TestContext.Current.CancellationToken);
+        var createdUser = await createResponse.Content.ReadFromJsonAsync<UserSummary>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
+
+        var rolesResponse = await _client.GetAsync("/api/v1/roles", TestContext.Current.CancellationToken);
+        var roles = await rolesResponse.Content.ReadFromJsonAsync<List<RoleSummary>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
+        var viewerRole = roles!.First(r => r.Name == "Viewer");
+
+        var assignResponse = await _client.PostAsJsonAsync(
+            $"/api/v1/users/{createdUser!.Id}/roles",
+            new AssignRoleRequest { RoleId = viewerRole.Id },
+            TestContext.Current.CancellationToken);
+        assignResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var removeResponse = await _client.DeleteAsync(
+            $"/api/v1/users/{createdUser.Id}/roles/{viewerRole.Id}",
+            TestContext.Current.CancellationToken);
+        removeResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
 }
 

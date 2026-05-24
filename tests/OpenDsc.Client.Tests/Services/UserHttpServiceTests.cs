@@ -3,6 +3,7 @@
 // terms of the MIT license.
 
 using System.Net;
+using System.Text;
 
 using AwesomeAssertions;
 
@@ -184,6 +185,26 @@ public sealed class UserHttpServiceTests
         var act = async () => await service.DeleteUserAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<KeyNotFoundException>();
+    }
+
+    [Fact]
+    [Trait("Category", "Unit")]
+    public async Task GetUsersAsync_Throws_DscApiException_On_Unexpected_Status_Code()
+    {
+        var response = new HttpResponseMessage(HttpStatusCode.InternalServerError)
+        {
+            ReasonPhrase = "ServerError",
+            Content = new StringContent("server exploded", Encoding.UTF8, "text/plain")
+        };
+        var handler = new FakeHttpMessageHandler().Respond(response);
+        var service = CreateService(handler);
+
+        var act = async () => await service.GetUsersAsync(TestContext.Current.CancellationToken);
+
+        var exception = await act.Should().ThrowAsync<OpenDsc.Client.Http.DscApiException>();
+        exception.Which.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+        exception.Which.ResponseBody.Should().Be("server exploded");
+        exception.Which.Message.Should().Contain("500");
     }
 
     // ── GetCurrentUserAsync ───────────────────────────────────────────────────

@@ -124,5 +124,67 @@ public class RoleEndpointsTests : IClassFixture<ServerWebApplicationFactory>
         var getResponse = await _client.GetAsync($"/api/v1/roles/{createdRole.Id}", TestContext.Current.CancellationToken);
         getResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
+
+    [Fact]
+    public async Task GetRole_WithInvalidId_ReturnsNotFound()
+    {
+        var response = await _client.GetAsync($"/api/v1/roles/{Guid.NewGuid()}", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task GetRoleUserCounts_ReturnsOk()
+    {
+        var response = await _client.GetAsync("/api/v1/roles/counts/users", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var counts = await response.Content.ReadFromJsonAsync<Dictionary<Guid, int>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
+        counts.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task GetRoleGroupCounts_ReturnsOk()
+    {
+        var response = await _client.GetAsync("/api/v1/roles/counts/groups", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var counts = await response.Content.ReadFromJsonAsync<Dictionary<Guid, int>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
+        counts.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task SetGroupsForRole_WithValidData_Succeeds()
+    {
+        var createRoleRequest = new CreateRoleRequest
+        {
+            Name = "RoleForGroups",
+            Description = "Role for group assignment test",
+            Permissions = ["read"]
+        };
+        var createRoleResponse = await _client.PostAsJsonAsync("/api/v1/roles", createRoleRequest, TestContext.Current.CancellationToken);
+        var createdRole = await createRoleResponse.Content.ReadFromJsonAsync<RoleSummary>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
+
+        var createGroupRequest = new CreateGroupRequest
+        {
+            Name = "RoleAssignedGroup",
+            Description = "Group assigned to role"
+        };
+        var createGroupResponse = await _client.PostAsJsonAsync("/api/v1/groups", createGroupRequest, TestContext.Current.CancellationToken);
+        var createdGroup = await createGroupResponse.Content.ReadFromJsonAsync<GroupSummary>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
+
+        var setResponse = await _client.PutAsJsonAsync(
+            $"/api/v1/roles/{createdRole!.Id}/groups",
+            new SetRoleGroupsRequest { GroupIds = [createdGroup!.Id] },
+            TestContext.Current.CancellationToken);
+
+        setResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var groupsResponse = await _client.GetAsync($"/api/v1/roles/{createdRole.Id}/groups", TestContext.Current.CancellationToken);
+        groupsResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var groups = await groupsResponse.Content.ReadFromJsonAsync<List<GroupSummary>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
+        groups.Should().NotBeNull();
+        groups!.Should().Contain(g => g.Id == createdGroup.Id);
+    }
 }
 
