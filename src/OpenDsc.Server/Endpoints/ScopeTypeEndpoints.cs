@@ -26,6 +26,34 @@ public static class ScopeTypeEndpoints
             .WithName("GetScopeType")
             .WithDescription("Get a specific scope type by ID");
 
+        group.MapGet("/{id:guid}/usage-count", GetScopeTypeUsageCount)
+            .WithName("GetScopeTypeUsageCount")
+            .WithDescription("Get parameter file usage count for a scope type");
+
+        group.MapGet("/values/{scopeValueId:guid}/usage-count", GetScopeValueUsageCount)
+            .WithName("GetScopeValueUsageCount")
+            .WithDescription("Get parameter file usage count for a scope value");
+
+        group.MapGet("/summary", GetScopeSummary)
+            .WithName("GetScopeSummary")
+            .WithDescription("Get complete scope summary including scope types and scope values");
+
+        group.MapGet("/with-values", GetAllScopeTypesWithValues)
+            .WithName("GetAllScopeTypesWithValues")
+            .WithDescription("Get all scope types with their scope values grouped together");
+
+        group.MapGet("/{id:guid}/nodes", GetScopeNodes)
+            .WithName("GetScopeNodes")
+            .WithDescription("Get nodes associated with a scope type");
+
+        group.MapGet("/parameters/{schemaId:guid}/{id:guid}", GetScopeParameters)
+            .WithName("GetScopeParameters")
+            .WithDescription("Get scope parameter values for a schema and scope type");
+
+        group.MapGet("/{id:guid}/unrestricted-values", GetUnrestrictedScopeValues)
+            .WithName("GetUnrestrictedScopeValues")
+            .WithDescription("Get unrestricted scope values from parameter files for a scope type");
+
         group.MapPost("/", CreateScopeType)
             .WithName("CreateScopeType")
             .WithDescription("Create a new scope type (auto-assigns precedence before Node scope)");
@@ -74,6 +102,90 @@ public static class ScopeTypeEndpoints
         {
             return TypedResults.NotFound();
         }
+    }
+
+    private static async Task<Results<Ok<int>, NotFound>> GetScopeTypeUsageCount(
+        Guid id,
+        IScopeService scopeService,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var usage = await scopeService.GetScopeTypeUsageCountAsync(id, cancellationToken);
+            return TypedResults.Ok(usage);
+        }
+        catch (KeyNotFoundException)
+        {
+            return TypedResults.NotFound();
+        }
+    }
+
+    private static async Task<Results<Ok<int>, NotFound>> GetScopeValueUsageCount(
+        Guid scopeValueId,
+        IScopeService scopeService,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var usage = await scopeService.GetScopeValueUsageCountAsync(scopeValueId, cancellationToken);
+            return TypedResults.Ok(usage);
+        }
+        catch (KeyNotFoundException)
+        {
+            return TypedResults.NotFound();
+        }
+    }
+
+    private static async Task<Ok<ScopeSummaryResponse>> GetScopeSummary(
+        IScopeService scopeService,
+        CancellationToken cancellationToken)
+    {
+        var summary = await scopeService.GetScopeSummaryAsync(cancellationToken);
+        return TypedResults.Ok(summary);
+    }
+
+    private static async Task<Ok<IReadOnlyList<ScopeTypeWithValuesDetails>>> GetAllScopeTypesWithValues(
+        IScopeService scopeService,
+        CancellationToken cancellationToken)
+    {
+        var result = await scopeService.GetAllScopeTypesWithValuesAsync(cancellationToken);
+        return TypedResults.Ok(result);
+    }
+
+    private static async Task<Results<Ok<IReadOnlyList<ScopeNodeInfo>>, NotFound>> GetScopeNodes(
+        Guid id,
+        IScopeService scopeService,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var nodes = await scopeService.GetScopeNodesAsync(id, cancellationToken);
+            return TypedResults.Ok(nodes);
+        }
+        catch (KeyNotFoundException)
+        {
+            return TypedResults.NotFound();
+        }
+    }
+
+    private static async Task<Ok<IReadOnlyList<ScopeParameterInfo>>> GetScopeParameters(
+        Guid schemaId,
+        Guid id,
+        [FromQuery] string? scopeValue,
+        IScopeService scopeService,
+        CancellationToken cancellationToken)
+    {
+        var result = await scopeService.GetScopeParametersAsync(schemaId, id, scopeValue, cancellationToken);
+        return TypedResults.Ok(result);
+    }
+
+    private static async Task<Ok<IReadOnlyList<string>>> GetUnrestrictedScopeValues(
+        Guid id,
+        IScopeService scopeService,
+        CancellationToken cancellationToken)
+    {
+        var result = await scopeService.GetUnrestrictedScopeValuesAsync(id, cancellationToken);
+        return TypedResults.Ok(result);
     }
 
     private static async Task<Results<Created<ScopeTypeDetails>, BadRequest<string>, Conflict<string>>> CreateScopeType(

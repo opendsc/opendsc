@@ -130,6 +130,16 @@ public class ReportEndpointsTests : IDisposable
     }
 
     [Fact]
+    public async Task GetReportNode_NotFound_ReturnsNotFound()
+    {
+        using var client = _factory.CreateAuthenticatedClient();
+
+        var response = await client.GetAsync($"/api/v1/reports/{Guid.NewGuid()}/node", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
     public async Task GetNodeReports_WithoutSubmit_ReturnsEmptyList()
     {
         // Note: Nodes now use mTLS for authentication, this tests admin access

@@ -1070,5 +1070,50 @@ public class CompositeConfigurationEndpointsTests : IDisposable
         var response = await client.DeleteAsync("/api/v1/composite-configurations/non-existent/versions/1.0.0/children/00000000-0000-0000-0000-000000000000", TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
+
+    [Fact]
+    public async Task CreateVersionFromExisting_ReturnsNoContent()
+    {
+        using var client = CreateAuthenticatedClient();
+        var compositeName = $"copy-comp-{Guid.NewGuid():N}";
+
+        var createResponse = await client.PostAsJsonAsync("/api/v1/composite-configurations", new CreateCompositeConfigurationRequest
+        {
+            Name = compositeName,
+            EntryPoint = "main.dsc.yaml"
+        }, TestContext.Current.CancellationToken);
+        createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var versionResponse = await client.PostAsJsonAsync($"/api/v1/composite-configurations/{compositeName}/versions", new CreateCompositeConfigurationVersionRequest
+        {
+            Version = "1.0.0"
+        }, TestContext.Current.CancellationToken);
+        versionResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        var copyResponse = await client.PostAsJsonAsync(
+            $"/api/v1/composite-configurations/{compositeName}/versions/from-existing",
+            new CreateCompositeVersionFromExistingRequest { SourceVersion = "1.0.0", NewVersion = "2.0.0" },
+            TestContext.Current.CancellationToken);
+
+        copyResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task GetAvailableChildConfigurations_ReturnsOk()
+    {
+        using var client = CreateAuthenticatedClient();
+        var childName = $"available-child-{Guid.NewGuid():N}";
+
+        var child = await CreateTestConfigurationAsync(client, childName);
+
+        var response = await client.GetAsync(
+            $"/api/v1/composite-configurations/children/available?excludeIds={Guid.NewGuid()}",
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var options = await response.Content.ReadFromJsonAsync<List<ChildConfigurationOption>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
+        options.Should().NotBeNull();
+        options.Should().Contain(o => o.Name == child.Name);
+    }
 }
 

@@ -7,8 +7,8 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 using OpenDsc.Contracts.Lcm;
-using OpenDsc.Server.Authorization;
 using OpenDsc.Contracts.Nodes;
+using OpenDsc.Server.Authorization;
 using OpenDsc.Contracts.Settings;
 
 namespace OpenDsc.Server.Endpoints;
@@ -46,6 +46,36 @@ public static class NodeEndpoints
             .WithSummary("Get assigned configuration")
             .WithDescription("Downloads the configuration assigned to the node.");
 
+        group.MapGet("/{nodeId:guid}/configuration/manifest", GetNodeConfigurationManifest)
+            .RequireAuthorization(NodePermissions.Read)
+            .WithSummary("Get node configuration manifest")
+            .WithDescription("Returns manifest metadata and content for the node's assigned configuration.");
+
+        group.MapGet("/{nodeId:guid}/assignment", GetNodeAssignment)
+            .RequireAuthorization(NodePermissions.Read)
+            .WithSummary("Get node assignment")
+            .WithDescription("Returns the current configuration assignment summary for a node.");
+
+        group.MapGet("/available-configurations", GetAvailableConfigurations)
+            .RequireAuthorization(NodePermissions.Read)
+            .WithSummary("Get available configurations")
+            .WithDescription("Returns configurations that can be assigned to a node.");
+
+        group.MapGet("/available-composite-configurations", GetAvailableCompositeConfigurations)
+            .RequireAuthorization(NodePermissions.Read)
+            .WithSummary("Get available composite configurations")
+            .WithDescription("Returns composite configurations that can be assigned to a node.");
+
+        group.MapGet("/assignable-configurations", GetAssignableConfigurations)
+            .RequireAuthorization(NodePermissions.Read)
+            .WithSummary("Get assignable configurations")
+            .WithDescription("Returns regular configurations with available major versions.");
+
+        group.MapGet("/assignable-composite-configurations", GetAssignableCompositeConfigurations)
+            .RequireAuthorization(NodePermissions.Read)
+            .WithSummary("Get assignable composite configurations")
+            .WithDescription("Returns composite configurations with available major versions.");
+
         group.MapPut("/{nodeId:guid}/configuration", AssignConfiguration)
             .RequireAuthorization(NodePermissions.AssignConfiguration)
             .WithSummary("Assign configuration")
@@ -66,6 +96,11 @@ public static class NodeEndpoints
             .WithSummary("Download configuration bundle")
             .WithDescription("Downloads a ZIP bundle containing the configuration files and merged parameters.");
 
+        group.MapGet("/{nodeId:guid}/configuration/bundle/download", DownloadConfigurationBundle)
+            .RequireAuthorization(NodePermissions.Read)
+            .WithSummary("Download node configuration bundle")
+            .WithDescription("Downloads a ZIP bundle containing the configuration files and merged parameters for admin/read clients.");
+
         group.MapPost("/{nodeId:guid}/rotate-certificate", RotateCertificate)
             .RequireAuthorization("Node")
             .WithSummary("Rotate certificate")
@@ -81,6 +116,11 @@ public static class NodeEndpoints
             .WithSummary("Get node status history")
             .WithDescription("Returns the LCM and compliance status event history for a node.");
 
+        group.MapGet("/{nodeId:guid}/scope-values", GetNodeScopeValues)
+            .RequireAuthorization(NodePermissions.Read)
+            .WithSummary("Get node scope values")
+            .WithDescription("Returns the scope values currently associated with a node.");
+
         group.MapGet("/{nodeId:guid}/lcm-config", GetNodeLcmConfig)
             .RequireAuthorization("Node")
             .WithSummary("Get desired LCM configuration")
@@ -90,6 +130,11 @@ public static class NodeEndpoints
             .RequireAuthorization(NodePermissions.Write)
             .WithSummary("Update desired LCM configuration")
             .WithDescription("Updates the server-managed desired LCM configuration for the node.");
+
+        group.MapPut("/{nodeId:guid}/scope-values", SetNodeScopeValue)
+            .RequireAuthorization(NodePermissions.Write)
+            .WithSummary("Set node scope value")
+            .WithDescription("Creates or updates the scope value associated with a node for a scope type.");
 
         group.MapPut("/{nodeId:guid}/reported-config", ReportNodeLcmConfig)
             .RequireAuthorization("Node")
@@ -228,7 +273,76 @@ public static class NodeEndpoints
         return TypedResults.Ok(manifest.Content);
     }
 
+    private static async Task<Ok<NodeAssignmentSummary?>> GetNodeAssignment(
+        Guid nodeId,
+        INodeService nodeService,
+        CancellationToken cancellationToken)
+    {
+        NodeAssignmentSummary? assignment = await nodeService.GetNodeAssignmentAsync(nodeId, cancellationToken);
+        return TypedResults.Ok<NodeAssignmentSummary?>(assignment);
+    }
+
+    private static async Task<Results<Ok<NodeConfigurationManifest>, NotFound<ErrorResponse>>> GetNodeConfigurationManifest(
+        Guid nodeId,
+        INodeService nodeService,
+        CancellationToken cancellationToken)
+    {
+        var manifest = await nodeService.GetNodeConfigurationManifestAsync(nodeId, cancellationToken);
+        if (manifest is null)
+        {
+            return TypedResults.NotFound(new ErrorResponse { Error = "No configuration assigned." });
+        }
+
+        return TypedResults.Ok(manifest);
+    }
+
+    private static async Task<Ok<List<ConfigurationOption>>> GetAvailableConfigurations(
+        INodeService nodeService,
+        CancellationToken cancellationToken)
+    {
+        var configurations = await nodeService.GetAvailableConfigurationsAsync(cancellationToken);
+        return TypedResults.Ok(configurations.ToList());
+    }
+
+    private static async Task<Ok<List<ConfigurationOption>>> GetAvailableCompositeConfigurations(
+        INodeService nodeService,
+        CancellationToken cancellationToken)
+    {
+        var configurations = await nodeService.GetAvailableCompositeConfigurationsAsync(cancellationToken);
+        return TypedResults.Ok(configurations.ToList());
+    }
+
+    private static async Task<Ok<List<ConfigurationAssignmentOption>>> GetAssignableConfigurations(
+        INodeService nodeService,
+        CancellationToken cancellationToken)
+    {
+        var configurations = await nodeService.GetAssignableConfigurationsAsync(cancellationToken);
+        return TypedResults.Ok(configurations.ToList());
+    }
+
+    private static async Task<Ok<List<ConfigurationAssignmentOption>>> GetAssignableCompositeConfigurations(
+        INodeService nodeService,
+        CancellationToken cancellationToken)
+    {
+        var configurations = await nodeService.GetAssignableCompositeConfigurationsAsync(cancellationToken);
+        return TypedResults.Ok(configurations.ToList());
+    }
+
     private static async Task<Results<FileStreamHttpResult, NotFound<ErrorResponse>>> GetConfigurationBundle(
+        Guid nodeId,
+        INodeService nodeService,
+        CancellationToken cancellationToken)
+    {
+        var bundle = await nodeService.GetNodeConfigurationBundleAsync(nodeId, cancellationToken);
+        if (bundle is null)
+        {
+            return TypedResults.NotFound(new ErrorResponse { Error = "No configuration assigned." });
+        }
+
+        return TypedResults.File(new MemoryStream(bundle.Content), bundle.ContentType, bundle.FileName);
+    }
+
+    private static async Task<Results<FileStreamHttpResult, NotFound<ErrorResponse>>> DownloadConfigurationBundle(
         Guid nodeId,
         INodeService nodeService,
         CancellationToken cancellationToken)
@@ -352,6 +466,43 @@ public static class NodeEndpoints
         catch (KeyNotFoundException)
         {
             return TypedResults.NotFound(new ErrorResponse { Error = "Node not found." });
+        }
+    }
+
+    private static async Task<Results<Ok<List<NodeScopeValueSummary>>, NotFound<ErrorResponse>>> GetNodeScopeValues(
+        Guid nodeId,
+        INodeService nodeService,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var scopeValues = await nodeService.GetNodeScopeValuesAsync(nodeId, cancellationToken);
+            return TypedResults.Ok(scopeValues.ToList());
+        }
+        catch (KeyNotFoundException)
+        {
+            return TypedResults.NotFound(new ErrorResponse { Error = "Node not found." });
+        }
+    }
+
+    private static async Task<Results<NoContent, BadRequest<ErrorResponse>, NotFound<ErrorResponse>>> SetNodeScopeValue(
+        Guid nodeId,
+        SetNodeScopeValueRequest request,
+        INodeService nodeService,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await nodeService.SetNodeScopeValueAsync(nodeId, request, cancellationToken);
+            return TypedResults.NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return TypedResults.NotFound(new ErrorResponse { Error = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            return TypedResults.BadRequest(new ErrorResponse { Error = ex.Message });
         }
     }
 

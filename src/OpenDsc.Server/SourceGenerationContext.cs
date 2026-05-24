@@ -33,6 +33,10 @@ namespace OpenDsc.Server;
 [JsonSerializable(typeof(UpdateLcmStatusRequest))]
 [JsonSerializable(typeof(NodeSummary))]
 [JsonSerializable(typeof(List<NodeSummary>))]
+[JsonSerializable(typeof(NodeAssignmentSummary))]
+[JsonSerializable(typeof(List<NodeScopeValueSummary>))]
+[JsonSerializable(typeof(List<ConfigurationOption>))]
+[JsonSerializable(typeof(List<ConfigurationAssignmentOption>))]
 [JsonSerializable(typeof(NodeStatusEventSummary))]
 [JsonSerializable(typeof(List<NodeStatusEventSummary>))]
 [JsonSerializable(typeof(AssignConfigurationRequest))]
@@ -92,6 +96,8 @@ namespace OpenDsc.Server;
 // Scope Value contracts
 [JsonSerializable(typeof(ScopeValueDetails))]
 [JsonSerializable(typeof(List<ScopeValueDetails>))]
+[JsonSerializable(typeof(ScopeValueSummary))]
+[JsonSerializable(typeof(List<ScopeValueSummary>))]
 [JsonSerializable(typeof(CreateScopeValueRequest))]
 [JsonSerializable(typeof(UpdateScopeValueRequest))]
 // Node Tag contracts

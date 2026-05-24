@@ -48,6 +48,30 @@ public static class ParameterEndpoints
             .WithName("GetActiveParameterForMajor")
             .WithDescription("Get active parameter file for a specific major version");
 
+        group.MapPut("/versions/{parameterId:guid}", UpdateParameterVersion)
+            .WithName("UpdateParameterVersion")
+            .WithDescription("Update the content of a draft parameter version by parameter ID");
+
+        group.MapGet("/versions/{parameterId:guid}/content", GetParameterContent)
+            .WithName("GetParameterContent")
+            .WithDescription("Get raw content for a parameter version by parameter ID");
+
+        group.MapGet("/configurations/{configurationId:guid}/available-majors", GetAvailableMajorVersionsForConfiguration)
+            .WithName("GetAvailableMajorVersionsForConfiguration")
+            .WithDescription("Get available parameter schema major versions for a configuration");
+
+        group.MapGet("/configurations/{configurationId:guid}/permissions", GetParameterPermissionsByConfigurationId)
+            .WithName("GetParameterPermissionsByConfigurationId")
+            .WithDescription("List all permission grants on a configuration's parameter schema by configuration ID");
+
+        group.MapPut("/configurations/{configurationId:guid}/permissions", GrantParameterPermissionByConfigurationId)
+            .WithName("GrantParameterPermissionByConfigurationId")
+            .WithDescription("Grant or update a permission on a configuration's parameter schema by configuration ID");
+
+        group.MapDelete("/configurations/{configurationId:guid}/permissions/{principalType}/{principalId:guid}", RevokeParameterPermissionByConfigurationId)
+            .WithName("RevokeParameterPermissionByConfigurationId")
+            .WithDescription("Revoke a permission on a configuration's parameter schema by configuration ID");
+
         var nodeGroup = app.MapGroup("/api/v1/nodes/{nodeId:guid}/parameters")
             .WithTags("Parameters")
             .RequireAuthorization(NodePermissions.Read);
@@ -299,6 +323,128 @@ public static class ParameterEndpoints
         catch (KeyNotFoundException)
         {
             return TypedResults.NotFound();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return TypedResults.Forbid();
+        }
+    }
+
+    private static async Task<Results<NoContent, NotFound, BadRequest<string>, ForbidHttpResult>> UpdateParameterVersion(
+        Guid parameterId,
+        [FromBody] UpdateParameterRequest request,
+        IParameterService parameterService)
+    {
+        try
+        {
+            await parameterService.UpdateAsync(parameterId, request);
+            return TypedResults.NoContent();
+        }
+        catch (KeyNotFoundException)
+        {
+            return TypedResults.NotFound();
+        }
+        catch (ArgumentException ex)
+        {
+            return TypedResults.BadRequest(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return TypedResults.BadRequest(ex.Message);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return TypedResults.Forbid();
+        }
+    }
+
+    private static async Task<Results<Ok<string>, NotFound>> GetParameterContent(
+        Guid parameterId,
+        IParameterService parameterService,
+        CancellationToken cancellationToken)
+    {
+        var content = await parameterService.GetContentAsync(parameterId, cancellationToken);
+        if (content is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        return TypedResults.Ok(content);
+    }
+
+    private static async Task<Ok<IReadOnlyList<int>>> GetAvailableMajorVersionsForConfiguration(
+        Guid configurationId,
+        IParameterService parameterService,
+        CancellationToken cancellationToken)
+    {
+        var result = await parameterService.GetAvailableMajorVersionsAsync(configurationId, cancellationToken);
+        return TypedResults.Ok(result);
+    }
+
+    private static async Task<Results<Ok<IReadOnlyList<PermissionEntry>>, NotFound, ForbidHttpResult>> GetParameterPermissionsByConfigurationId(
+        Guid configurationId,
+        IParameterService parameterService)
+    {
+        try
+        {
+            var permissions = await parameterService.GetPermissionsAsync(configurationId);
+            if (permissions is null)
+                return TypedResults.NotFound();
+
+            return TypedResults.Ok(permissions);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return TypedResults.Forbid();
+        }
+    }
+
+    private static async Task<Results<Ok, BadRequest<string>, NotFound, ForbidHttpResult>> GrantParameterPermissionByConfigurationId(
+        Guid configurationId,
+        [FromBody] GrantPermissionRequest request,
+        IParameterService parameterService)
+    {
+        try
+        {
+            await parameterService.GrantPermissionAsync(configurationId, request);
+            return TypedResults.Ok();
+        }
+        catch (KeyNotFoundException)
+        {
+            return TypedResults.NotFound();
+        }
+        catch (ArgumentException ex)
+        {
+            return TypedResults.BadRequest(ex.Message);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return TypedResults.Forbid();
+        }
+    }
+
+    private static async Task<Results<NoContent, BadRequest<string>, NotFound, ForbidHttpResult>> RevokeParameterPermissionByConfigurationId(
+        Guid configurationId,
+        PrincipalType principalType,
+        Guid principalId,
+        IParameterService parameterService)
+    {
+        try
+        {
+            await parameterService.RevokePermissionAsync(configurationId, new RevokePermissionRequest
+            {
+                PrincipalType = principalType,
+                PrincipalId = principalId
+            });
+            return TypedResults.NoContent();
+        }
+        catch (KeyNotFoundException)
+        {
+            return TypedResults.NotFound();
+        }
+        catch (ArgumentException ex)
+        {
+            return TypedResults.BadRequest(ex.Message);
         }
         catch (UnauthorizedAccessException)
         {

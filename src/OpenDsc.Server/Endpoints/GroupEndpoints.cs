@@ -45,6 +45,22 @@ public static class GroupEndpoints
             .WithSummary("Get group members")
             .WithDescription("Returns the users who are members of this group.");
 
+        group.MapGet("/counts/members", GetGroupMemberCounts)
+            .WithSummary("Get group member counts")
+            .WithDescription("Returns a map of group IDs to member counts.");
+
+        group.MapGet("/counts/roles", GetGroupRoleCounts)
+            .WithSummary("Get group role counts")
+            .WithDescription("Returns a map of group IDs to role counts.");
+
+        group.MapPost("/{id:guid}/members", AddMember)
+            .WithSummary("Add group member")
+            .WithDescription("Adds a single user to a group.");
+
+        group.MapDelete("/{id:guid}/members/{userId:guid}", RemoveMember)
+            .WithSummary("Remove group member")
+            .WithDescription("Removes a single user from a group.");
+
         group.MapPut("/{id:guid}/members", SetGroupMembers)
             .WithSummary("Set group members")
             .WithDescription("Sets the members of a group, replacing existing memberships.");
@@ -52,6 +68,14 @@ public static class GroupEndpoints
         group.MapGet("/{id:guid}/roles", GetGroupRoles)
             .WithSummary("Get group roles")
             .WithDescription("Returns the roles assigned to a group.");
+
+        group.MapPost("/{id:guid}/roles", AssignRole)
+            .WithSummary("Assign role to group")
+            .WithDescription("Assigns a single role to a group.");
+
+        group.MapDelete("/{id:guid}/roles/{roleId:guid}", RemoveRole)
+            .WithSummary("Remove role from group")
+            .WithDescription("Removes a single role from a group.");
 
         group.MapPut("/{id:guid}/roles", SetGroupRoles)
             .WithSummary("Set group roles")
@@ -164,6 +188,56 @@ public static class GroupEndpoints
         return TypedResults.Ok(users.ToList());
     }
 
+    private static async Task<Ok<IReadOnlyDictionary<Guid, int>>> GetGroupMemberCounts(
+        IGroupService service,
+        CancellationToken cancellationToken)
+    {
+        var counts = await service.GetGroupMemberCountsAsync(cancellationToken);
+        return TypedResults.Ok(counts);
+    }
+
+    private static async Task<Ok<IReadOnlyDictionary<Guid, int>>> GetGroupRoleCounts(
+        IGroupService service,
+        CancellationToken cancellationToken)
+    {
+        var counts = await service.GetGroupRoleCountsAsync(cancellationToken);
+        return TypedResults.Ok(counts);
+    }
+
+    private static async Task<Results<Ok, NotFound>> AddMember(
+        Guid id,
+        [FromBody] AddGroupMemberRequest request,
+        IGroupService service,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await service.AddMemberAsync(id, request, cancellationToken);
+            return TypedResults.Ok();
+        }
+        catch (KeyNotFoundException)
+        {
+            return TypedResults.NotFound();
+        }
+    }
+
+    private static async Task<Results<NoContent, NotFound>> RemoveMember(
+        Guid id,
+        Guid userId,
+        IGroupService service,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await service.RemoveMemberAsync(id, new RemoveGroupMemberRequest { UserId = userId }, cancellationToken);
+            return TypedResults.NoContent();
+        }
+        catch (KeyNotFoundException)
+        {
+            return TypedResults.NotFound();
+        }
+    }
+
     private static async Task<Results<Ok, NotFound>> SetGroupMembers(
         Guid id,
         [FromBody] SetGroupMembersRequest request,
@@ -193,6 +267,40 @@ public static class GroupEndpoints
         }
 
         return TypedResults.Ok(roles.ToList());
+    }
+
+    private static async Task<Results<Ok, NotFound>> AssignRole(
+        Guid id,
+        [FromBody] AssignGroupRoleRequest request,
+        IGroupService service,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await service.AssignRoleAsync(id, request, cancellationToken);
+            return TypedResults.Ok();
+        }
+        catch (KeyNotFoundException)
+        {
+            return TypedResults.NotFound();
+        }
+    }
+
+    private static async Task<Results<NoContent, NotFound>> RemoveRole(
+        Guid id,
+        Guid roleId,
+        IGroupService service,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await service.RemoveRoleAsync(id, new RemoveGroupRoleRequest { RoleId = roleId }, cancellationToken);
+            return TypedResults.NoContent();
+        }
+        catch (KeyNotFoundException)
+        {
+            return TypedResults.NotFound();
+        }
     }
 
     private static async Task<Results<Ok, NotFound>> SetGroupRoles(

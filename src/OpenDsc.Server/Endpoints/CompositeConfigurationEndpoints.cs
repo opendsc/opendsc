@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 
 using OpenDsc.Contracts.CompositeConfigurations;
+using OpenDsc.Contracts.Configurations;
 using OpenDsc.Contracts.Permissions;
 using OpenDsc.Contracts.Settings;
 
@@ -39,6 +40,10 @@ public static class CompositeConfigurationEndpoints
             .WithName("CreateCompositeConfigurationVersion")
             .WithDescription("Create a new version of a composite configuration (draft)");
 
+        group.MapPost("/{name}/versions/from-existing", CreateCompositeConfigurationVersionFromExisting)
+            .WithName("CreateCompositeConfigurationVersionFromExisting")
+            .WithDescription("Create a new composite configuration version by copying an existing version");
+
         group.MapGet("/{name}/versions", GetCompositeConfigurationVersions)
             .WithName("GetCompositeConfigurationVersions")
             .WithDescription("Get all versions of a composite configuration");
@@ -59,6 +64,14 @@ public static class CompositeConfigurationEndpoints
             .WithName("AddChildConfiguration")
             .WithDescription("Add a child configuration to a draft composite version");
 
+        group.MapGet("/children/available", GetAvailableChildConfigurations)
+            .WithName("GetAvailableChildConfigurations")
+            .WithDescription("Get available child configurations that can be added to a composite");
+
+        group.MapGet("/children/{configurationId:guid}/major-versions", GetAvailableMajorVersions)
+            .WithName("GetAvailableMajorVersions")
+            .WithDescription("Get available published major versions for a child configuration");
+
         group.MapPut("/{name}/versions/{version}/children/{childId}", UpdateChildConfiguration)
             .WithName("UpdateChildConfiguration")
             .WithDescription("Update a child configuration in a draft composite version");
@@ -66,6 +79,18 @@ public static class CompositeConfigurationEndpoints
         group.MapDelete("/{name}/versions/{version}/children/{childId}", RemoveChildConfiguration)
             .WithName("RemoveChildConfiguration")
             .WithDescription("Remove a child configuration from a draft composite version");
+
+        group.MapPut("/children/{itemId:guid}", UpdateChildConfigurationByItemId)
+            .WithName("UpdateChildConfigurationByItemId")
+            .WithDescription("Update a child configuration item by item identifier");
+
+        group.MapDelete("/children/{itemId:guid}", RemoveChildConfigurationByItemId)
+            .WithName("RemoveChildConfigurationByItemId")
+            .WithDescription("Remove a child configuration item by item identifier");
+
+        group.MapPut("/children/{itemId:guid}/order/{newOrder:int}", ReorderChildConfigurationByItemId)
+            .WithName("ReorderChildConfigurationByItemId")
+            .WithDescription("Reorder a child configuration item by item identifier");
 
         group.MapGet("/{name}/permissions", GetCompositeConfigurationPermissions)
             .WithName("GetCompositeConfigurationPermissions")
@@ -182,6 +207,53 @@ public static class CompositeConfigurationEndpoints
         {
             return TypedResults.Conflict(new ErrorResponse { Error = ex.Message });
         }
+    }
+
+    private static async Task<Results<NoContent, NotFound, BadRequest<ErrorResponse>, Conflict<ErrorResponse>, ForbidHttpResult>> CreateCompositeConfigurationVersionFromExisting(
+        string name,
+        CreateCompositeVersionFromExistingRequest request,
+        ICompositeConfigurationService compositeService,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await compositeService.CreateVersionFromExistingAsync(name, request, cancellationToken);
+            return TypedResults.NoContent();
+        }
+        catch (KeyNotFoundException)
+        {
+            return TypedResults.NotFound();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return TypedResults.Forbid();
+        }
+        catch (ArgumentException ex)
+        {
+            return TypedResults.BadRequest(new ErrorResponse { Error = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return TypedResults.Conflict(new ErrorResponse { Error = ex.Message });
+        }
+    }
+
+    private static async Task<Ok<IReadOnlyList<ChildConfigurationOption>>> GetAvailableChildConfigurations(
+        [FromQuery] Guid[]? excludeIds,
+        ICompositeConfigurationService compositeService,
+        CancellationToken cancellationToken)
+    {
+        var result = await compositeService.GetAvailableChildConfigurationsAsync(excludeIds ?? [], cancellationToken);
+        return TypedResults.Ok(result);
+    }
+
+    private static async Task<Ok<IReadOnlyList<int>>> GetAvailableMajorVersions(
+        Guid configurationId,
+        ICompositeConfigurationService compositeService,
+        CancellationToken cancellationToken)
+    {
+        var result = await compositeService.GetAvailableMajorVersionsAsync(configurationId, cancellationToken);
+        return TypedResults.Ok(result);
     }
 
     private static async Task<Results<Ok<IReadOnlyList<CompositeConfigurationVersionDetails>>, NotFound, ForbidHttpResult>> GetCompositeConfigurationVersions(
@@ -354,6 +426,76 @@ public static class CompositeConfigurationEndpoints
         catch (UnauthorizedAccessException)
         {
             return TypedResults.Forbid();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return TypedResults.BadRequest(new ErrorResponse { Error = ex.Message });
+        }
+    }
+
+    private static async Task<Results<Ok<CompositeConfigurationItemDetails>, NotFound, BadRequest<ErrorResponse>, ForbidHttpResult>> UpdateChildConfigurationByItemId(
+        Guid itemId,
+        UpdateChildConfigurationRequest request,
+        ICompositeConfigurationService compositeService,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var item = await compositeService.UpdateChildAsync(itemId, request, cancellationToken);
+            return TypedResults.Ok(item);
+        }
+        catch (KeyNotFoundException)
+        {
+            return TypedResults.NotFound();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return TypedResults.Forbid();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return TypedResults.BadRequest(new ErrorResponse { Error = ex.Message });
+        }
+    }
+
+    private static async Task<Results<NoContent, NotFound, BadRequest<ErrorResponse>, ForbidHttpResult>> RemoveChildConfigurationByItemId(
+        Guid itemId,
+        ICompositeConfigurationService compositeService,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await compositeService.RemoveChildAsync(itemId, cancellationToken);
+            return TypedResults.NoContent();
+        }
+        catch (KeyNotFoundException)
+        {
+            return TypedResults.NotFound();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return TypedResults.Forbid();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return TypedResults.BadRequest(new ErrorResponse { Error = ex.Message });
+        }
+    }
+
+    private static async Task<Results<NoContent, NotFound, BadRequest<ErrorResponse>>> ReorderChildConfigurationByItemId(
+        Guid itemId,
+        int newOrder,
+        ICompositeConfigurationService compositeService,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await compositeService.ReorderChildAsync(itemId, newOrder, cancellationToken);
+            return TypedResults.NoContent();
+        }
+        catch (KeyNotFoundException)
+        {
+            return TypedResults.NotFound();
         }
         catch (InvalidOperationException ex)
         {

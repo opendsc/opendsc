@@ -18,6 +18,7 @@
     <Project Path="src/OpenDsc.Resource.Windows/OpenDsc.Resource.Windows.csproj" />
     <Project Path="src/OpenDsc.Resource.SqlServer/OpenDsc.Resource.SqlServer.csproj" />
     <Project Path="src/OpenDsc.Resource.Xml/OpenDsc.Resource.Xml.csproj" />
+    <Project Path="src/OpenDsc.Client/OpenDsc.Client.csproj" />
     <Project Path="src/OpenDsc.Contracts/OpenDsc.Contracts.csproj" />
     <Project Path="src/OpenDsc.Lcm/OpenDsc.Lcm.csproj" />
     <Project Path="src/OpenDsc.Server/OpenDsc.Server.csproj" />
@@ -33,6 +34,7 @@
     <Project Path="tests/TestService/TestService.csproj" />
     <Project Path="tests/OpenDsc.Lcm.Tests/OpenDsc.Lcm.Tests.csproj" />
     <Project Path="tests/OpenDsc.Lcm.IntegrationTests/OpenDsc.Lcm.IntegrationTests.csproj" />
+    <Project Path="tests/OpenDsc.Client.Tests/OpenDsc.Client.Tests.csproj" />
     <Project Path="tests/OpenDsc.Server.Tests/OpenDsc.Server.Tests.csproj" />
     <Project Path="tests/OpenDsc.Server.IntegrationTests/OpenDsc.Server.IntegrationTests.csproj" />
     <Project Path="tests/OpenDsc.Server.FunctionalTests/OpenDsc.Server.FunctionalTests.csproj" />

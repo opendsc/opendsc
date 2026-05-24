@@ -766,5 +766,79 @@ parameters:
         schemas[1].GeneratedJsonSchema.Should().Contain("appName");
         schemas[1].GeneratedJsonSchema.Should().Contain("environment");
     }
+
+    [Fact]
+    public async Task CreateConfigurationVersionFromExisting_ReturnsCreated()
+    {
+        using var client = CreateAuthenticatedClient();
+        var configName = $"from-existing-{Guid.NewGuid():N}";
+
+        using (var createContent = new MultipartFormDataContent())
+        {
+            createContent.Add(new StringContent(configName), "name");
+            createContent.Add(new StringContent("main.dsc.yaml"), "entryPoint");
+            createContent.Add(new StringContent("1.0.0"), "version");
+            var mainFile = new ByteArrayContent("resources: []"u8.ToArray());
+            mainFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+            createContent.Add(mainFile, "files", "main.dsc.yaml");
+
+            var createResponse = await client.PostAsync("/api/v1/configurations", createContent, TestContext.Current.CancellationToken);
+            createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        }
+
+        var copyResponse = await client.PostAsJsonAsync(
+            $"/api/v1/configurations/{configName}/versions/from-existing",
+            new CreateVersionFromExistingRequest { SourceVersion = "1.0.0", NewVersion = "2.0.0" },
+            TestContext.Current.CancellationToken);
+
+        copyResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var copied = await copyResponse.Content.ReadFromJsonAsync<ConfigurationVersionDetails>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
+        copied.Should().NotBeNull();
+        copied!.Version.Should().Be("2.0.0");
+    }
+
+    [Fact]
+    public async Task ConfigurationFileManagementEndpoints_ReturnNoContentForDraftVersion()
+    {
+        using var client = CreateAuthenticatedClient();
+        var configName = $"file-mgmt-{Guid.NewGuid():N}";
+
+        using (var createContent = new MultipartFormDataContent())
+        {
+            createContent.Add(new StringContent(configName), "name");
+            createContent.Add(new StringContent("main.dsc.yaml"), "entryPoint");
+            var mainFile = new ByteArrayContent("resources: []"u8.ToArray());
+            mainFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+            createContent.Add(mainFile, "files", "main.dsc.yaml");
+
+            var createResponse = await client.PostAsync("/api/v1/configurations", createContent, TestContext.Current.CancellationToken);
+            createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        }
+
+        using (var addFilesContent = new MultipartFormDataContent())
+        {
+            var extraFile = new ByteArrayContent("key: value"u8.ToArray());
+            extraFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+            addFilesContent.Add(extraFile, "files", "vars.yaml");
+
+            var addResponse = await client.PostAsync($"/api/v1/configurations/{configName}/versions/1.0.0/files", addFilesContent, TestContext.Current.CancellationToken);
+            addResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        }
+
+        var saveResponse = await client.PutAsJsonAsync(
+            $"/api/v1/configurations/{configName}/versions/1.0.0/files/main.dsc.yaml",
+            "resources:\n  - name: updated",
+            TestContext.Current.CancellationToken);
+        saveResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var entryPointResponse = await client.PutAsJsonAsync(
+            $"/api/v1/configurations/{configName}/versions/1.0.0/entry-point",
+            new { entryPoint = "vars.yaml" },
+            TestContext.Current.CancellationToken);
+        entryPointResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var deleteResponse = await client.DeleteAsync($"/api/v1/configurations/{configName}/versions/1.0.0/files/vars.yaml", TestContext.Current.CancellationToken);
+        deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
 }
 

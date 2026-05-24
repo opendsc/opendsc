@@ -267,6 +267,77 @@ public class NodeEndpointsTests : IClassFixture<ServerWebApplicationFactory>
     }
 
     [Fact]
+    public async Task GetNodeAssignment_WithAssignedNode_ReturnsSummary()
+    {
+        var registerResponse = await _client.PostAsJsonAsync("/api/v1/nodes/register",
+            new RegisterNodeRequest { Fqdn = $"assignment-test-{Guid.NewGuid():N}.example.com", RegistrationKey = "test-registration-key" }, TestContext.Current.CancellationToken);
+        var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>(TestContext.Current.CancellationToken);
+
+        using var adminClient = _factory.CreateAuthenticatedClient();
+
+        var configName = $"assignment-config-{Guid.NewGuid():N}";
+        await CreateAndPublishConfigVersion(adminClient, configName, "1.0.0", "main.dsc.yaml");
+        await adminClient.PutAsJsonAsync($"/api/v1/nodes/{registerResult!.NodeId}/configuration",
+            new AssignConfigurationRequest { ConfigurationName = configName, MajorVersion = 1 }, TestContext.Current.CancellationToken);
+
+        var response = await adminClient.GetAsync($"/api/v1/nodes/{registerResult.NodeId}/assignment", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var assignment = await response.Content.ReadFromJsonAsync<NodeAssignmentSummary>(JsonOptions, TestContext.Current.CancellationToken);
+        assignment.Should().NotBeNull();
+        assignment!.ConfigurationName.Should().Be(configName);
+    }
+
+    [Fact]
+    public async Task GetAvailableConfigurations_ReturnsConfigurations()
+    {
+        using var adminClient = _factory.CreateAuthenticatedClient();
+
+        var response = await adminClient.GetAsync("/api/v1/nodes/available-configurations", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var configurations = await response.Content.ReadFromJsonAsync<List<ConfigurationOption>>(JsonOptions, TestContext.Current.CancellationToken);
+        configurations.Should().NotBeNull();
+        configurations!.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task GetAssignableConfigurations_ReturnsConfigurationsWithMajorVersions()
+    {
+        using var adminClient = _factory.CreateAuthenticatedClient();
+
+        var response = await adminClient.GetAsync("/api/v1/nodes/assignable-configurations", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var configurations = await response.Content.ReadFromJsonAsync<List<ConfigurationAssignmentOption>>(JsonOptions, TestContext.Current.CancellationToken);
+        configurations.Should().NotBeNull();
+        configurations!.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task SetNodeScopeValue_WithValidData_Succeeds()
+    {
+        var registerResponse = await _client.PostAsJsonAsync("/api/v1/nodes/register",
+            new RegisterNodeRequest { Fqdn = $"set-scope-value-{Guid.NewGuid():N}.example.com", RegistrationKey = "test-registration-key" }, TestContext.Current.CancellationToken);
+        var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>(TestContext.Current.CancellationToken);
+
+        using var adminClient = _factory.CreateAuthenticatedClient();
+
+        var scopeTypeResponse = await adminClient.GetAsync("/api/v1/scope-types", TestContext.Current.CancellationToken);
+        var scopeTypes = await scopeTypeResponse.Content.ReadFromJsonAsync<List<ScopeTypeSummary>>(JsonOptions, TestContext.Current.CancellationToken);
+        scopeTypes.Should().NotBeNull();
+        scopeTypes!.Should().NotBeEmpty();
+        var scopeTypeId = scopeTypes[0].Id;
+
+        var response = await adminClient.PutAsJsonAsync(
+            $"/api/v1/nodes/{registerResult!.NodeId}/scope-values",
+            new SetNodeScopeValueRequest { ScopeTypeId = scopeTypeId, ScopeValue = $"test-{Guid.NewGuid():N}" },
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
     public async Task AssignConfiguration_WithNonExistentNode_ReturnsNotFound()
     {
         using var adminClient = _factory.CreateAuthenticatedClient();
@@ -667,4 +738,39 @@ public class NodeEndpointsTests : IClassFixture<ServerWebApplicationFactory>
         checksum!.ParametersFile.Should().Be("parameters.yaml");
     }
 
+    [Fact]
+    public async Task GetNodeConfigurationManifest_WithoutAssignment_ReturnsNotFound()
+    {
+        var registerResponse = await _client.PostAsJsonAsync(
+            "/api/v1/nodes/register",
+            new RegisterNodeRequest { Fqdn = $"manifest-test-{Guid.NewGuid():N}.example.com", RegistrationKey = "test-registration-key" },
+            TestContext.Current.CancellationToken);
+        registerResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>(TestContext.Current.CancellationToken);
+        registerResult.Should().NotBeNull();
+
+        using var adminClient = _factory.CreateAuthenticatedClient();
+        var response = await adminClient.GetAsync($"/api/v1/nodes/{registerResult!.NodeId}/configuration/manifest", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task DownloadConfigurationBundle_WithoutAssignment_ReturnsNotFound()
+    {
+        var registerResponse = await _client.PostAsJsonAsync(
+            "/api/v1/nodes/register",
+            new RegisterNodeRequest { Fqdn = $"bundle-test-{Guid.NewGuid():N}.example.com", RegistrationKey = "test-registration-key" },
+            TestContext.Current.CancellationToken);
+        registerResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var registerResult = await registerResponse.Content.ReadFromJsonAsync<RegisterNodeResponse>(TestContext.Current.CancellationToken);
+        registerResult.Should().NotBeNull();
+
+        using var adminClient = _factory.CreateAuthenticatedClient();
+        var response = await adminClient.GetAsync($"/api/v1/nodes/{registerResult!.NodeId}/configuration/bundle/download", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
 }

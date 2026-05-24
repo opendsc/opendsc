@@ -111,6 +111,17 @@ if (-not $SkipBuild) {
 
     $version = ([xml](Get-Content (Join-Path $PSScriptRoot 'Directory.Build.props'))).Project.PropertyGroup.Version
 
+    $clientBuilds = @(
+        @{ Name = 'OpenDsc.Client'; BuildParams = @('build', (Join-Path $PSScriptRoot 'src\OpenDsc.Client\OpenDsc.Client.csproj'), '-c', $Configuration) }
+        @{ Name = 'OpenDsc.Client.Tests'; BuildParams = @('build', (Join-Path $PSScriptRoot 'tests\OpenDsc.Client.Tests\OpenDsc.Client.Tests.csproj'), '-c', $Configuration) }
+    )
+
+    foreach ($b in $clientBuilds) {
+        Write-Host "  Building $($b.Name)..." -ForegroundColor Cyan
+        dotnet @($b.BuildParams)
+        if ($LASTEXITCODE -ne 0) { throw "Build failed for $($b.Name) with exit code $LASTEXITCODE" }
+    }
+
     if ($IsWindows) {
         $resourcesProj = Join-Path $PSScriptRoot 'src\OpenDsc.Resources\OpenDsc.Resources.csproj'
         $lcmProj = Join-Path $PSScriptRoot 'src\OpenDsc.Lcm\OpenDsc.Lcm.csproj'

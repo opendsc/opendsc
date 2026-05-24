@@ -37,10 +37,30 @@ public static class ConfigurationEndpoints
             .WithName("GetConfigurationVersions")
             .WithDescription("Get all versions of a configuration");
 
+        group.MapGet("/{name}/versions/list", GetConfigurationVersionList)
+            .WithName("GetConfigurationVersionList")
+            .WithDescription("Get the version identifiers for a configuration");
+
+        group.MapGet("/{name}/assignment", IsConfigurationAssigned)
+            .WithName("IsConfigurationAssigned")
+            .WithDescription("Check whether a configuration is assigned to any node or composite configuration");
+
+        group.MapGet("/{name}/versions/{version}/usage", IsVersionInUse)
+            .WithName("IsVersionInUse")
+            .WithDescription("Check whether a configuration version is currently in use");
+
+        group.MapGet("/{name}/parameter-schema-id", GetParameterSchemaId)
+            .WithName("GetParameterSchemaId")
+            .WithDescription("Get the parameter schema identifier for a configuration");
+
         group.MapPost("/{name}/versions", CreateConfigurationVersion)
             .WithName("CreateConfigurationVersion")
             .WithDescription("Create a new version of a configuration")
             .DisableAntiforgery();
+
+        group.MapPost("/{name}/versions/from-existing", CreateConfigurationVersionFromExisting)
+            .WithName("CreateConfigurationVersionFromExisting")
+            .WithDescription("Create a new version by copying files from an existing version");
 
         group.MapPut("/{name}/versions/{version}/publish", PublishConfigurationVersion)
             .WithName("PublishConfigurationVersion")
@@ -61,6 +81,23 @@ public static class ConfigurationEndpoints
         group.MapGet("/{name}/versions/{version}/files/{*filePath}", DownloadConfigurationFile)
             .WithName("DownloadConfigurationFile")
             .WithDescription("Download a specific file from a configuration version");
+
+        group.MapPost("/{name}/versions/{version}/files", AddConfigurationFiles)
+            .WithName("AddConfigurationFiles")
+            .WithDescription("Add files to an existing draft configuration version")
+            .DisableAntiforgery();
+
+        group.MapPut("/{name}/versions/{version}/files/{*filePath}", SaveConfigurationFile)
+            .WithName("SaveConfigurationFile")
+            .WithDescription("Save file content for a configuration version");
+
+        group.MapDelete("/{name}/versions/{version}/files/{*filePath}", DeleteConfigurationFile)
+            .WithName("DeleteConfigurationFile")
+            .WithDescription("Delete a file from a configuration version");
+
+        group.MapPut("/{name}/versions/{version}/entry-point", ChangeConfigurationEntryPoint)
+            .WithName("ChangeConfigurationEntryPoint")
+            .WithDescription("Change the entry point file for a draft configuration version");
 
         group.MapGet("/{name}/permissions", GetConfigurationPermissions)
             .WithName("GetConfigurationPermissions")
@@ -186,6 +223,71 @@ public static class ConfigurationEndpoints
         }
     }
 
+    private static async Task<Results<Ok<IReadOnlyList<string>>, ForbidHttpResult>> GetConfigurationVersionList(
+        string name,
+        IConfigurationService configService,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var versions = await configService.GetConfigurationVersionListAsync(name, cancellationToken);
+            return TypedResults.Ok(versions);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return TypedResults.Forbid();
+        }
+    }
+
+    private static async Task<Results<Ok<bool>, ForbidHttpResult>> IsConfigurationAssigned(
+        string name,
+        IConfigurationService configService,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var isAssigned = await configService.IsConfigurationAssignedAsync(name, cancellationToken);
+            return TypedResults.Ok(isAssigned);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return TypedResults.Forbid();
+        }
+    }
+
+    private static async Task<Results<Ok<VersionUsageInfo>, ForbidHttpResult>> IsVersionInUse(
+        string name,
+        string version,
+        IConfigurationService configService,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var usage = await configService.IsVersionInUseAsync(name, version, cancellationToken);
+            return TypedResults.Ok(usage);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return TypedResults.Forbid();
+        }
+    }
+
+    private static async Task<Results<Ok<Guid?>, ForbidHttpResult>> GetParameterSchemaId(
+        string name,
+        IConfigurationService configService,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var schemaId = await configService.GetParameterSchemaIdAsync(name, cancellationToken);
+            return TypedResults.Ok(schemaId);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return TypedResults.Forbid();
+        }
+    }
+
     private static async Task<Results<Created<ConfigurationVersionDetails>, NotFound, BadRequest<string>, ForbidHttpResult>> CreateConfigurationVersion(
         string name,
         HttpRequest httpRequest,
@@ -242,6 +344,35 @@ public static class ConfigurationEndpoints
         }
 
         return TypedResults.Created($"/api/v1/configurations/{name}/versions/{created.Version}", created);
+    }
+
+    private static async Task<Results<Created<ConfigurationVersionDetails>, NotFound, BadRequest<string>, Conflict<string>, ForbidHttpResult>> CreateConfigurationVersionFromExisting(
+        string name,
+        [FromBody] CreateVersionFromExistingRequest request,
+        IConfigurationService configService,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var created = await configService.CreateVersionFromExistingAsync(name, request, cancellationToken);
+            return TypedResults.Created($"/api/v1/configurations/{name}/versions/{created.Version}", created);
+        }
+        catch (KeyNotFoundException)
+        {
+            return TypedResults.NotFound();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return TypedResults.Forbid();
+        }
+        catch (ArgumentException ex)
+        {
+            return TypedResults.BadRequest(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return TypedResults.Conflict(ex.Message);
+        }
     }
 
     private static async Task<Results<Ok<ConfigurationVersionDetails>, NotFound, BadRequest<string>, Conflict<CompatibilityReport>, ForbidHttpResult>> PublishConfigurationVersion(
@@ -395,6 +526,141 @@ public static class ConfigurationEndpoints
         return TypedResults.File(stream, contentType, fileName);
     }
 
+    private static async Task<Results<NoContent, NotFound, BadRequest<string>, Conflict<string>, ForbidHttpResult>> AddConfigurationFiles(
+        string name,
+        string version,
+        HttpRequest httpRequest,
+        IConfigurationService configService,
+        CancellationToken cancellationToken)
+    {
+        var form = await httpRequest.ReadFormAsync(cancellationToken);
+        if (form.Files.Count == 0)
+        {
+            return TypedResults.BadRequest("At least one file is required");
+        }
+
+        var files = form.Files.Select(f => new FileUpload
+        {
+            FileName = f.FileName,
+            Content = f.OpenReadStream(),
+            ContentType = f.ContentType,
+            Size = f.Length
+        }).ToList();
+
+        try
+        {
+            await configService.AddFilesAsync(name, version, files, cancellationToken);
+            return TypedResults.NoContent();
+        }
+        catch (KeyNotFoundException)
+        {
+            return TypedResults.NotFound();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return TypedResults.Forbid();
+        }
+        catch (ArgumentException ex)
+        {
+            return TypedResults.BadRequest(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return TypedResults.Conflict(ex.Message);
+        }
+    }
+
+    private static async Task<Results<NoContent, NotFound, BadRequest<string>, Conflict<string>, ForbidHttpResult>> DeleteConfigurationFile(
+        string name,
+        string version,
+        string filePath,
+        IConfigurationService configService,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await configService.DeleteFileAsync(name, version, filePath, cancellationToken);
+            return TypedResults.NoContent();
+        }
+        catch (KeyNotFoundException)
+        {
+            return TypedResults.NotFound();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return TypedResults.Forbid();
+        }
+        catch (ArgumentException ex)
+        {
+            return TypedResults.BadRequest(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return TypedResults.Conflict(ex.Message);
+        }
+    }
+
+    private static async Task<Results<NoContent, NotFound, BadRequest<string>, Conflict<string>, ForbidHttpResult>> SaveConfigurationFile(
+        string name,
+        string version,
+        string filePath,
+        [FromBody] string content,
+        IConfigurationService configService,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await configService.SaveFileAsync(name, version, filePath, content ?? string.Empty, cancellationToken);
+            return TypedResults.NoContent();
+        }
+        catch (KeyNotFoundException)
+        {
+            return TypedResults.NotFound();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return TypedResults.Forbid();
+        }
+        catch (ArgumentException ex)
+        {
+            return TypedResults.BadRequest(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return TypedResults.Conflict(ex.Message);
+        }
+    }
+
+    private static async Task<Results<NoContent, NotFound, BadRequest<string>, Conflict<string>, ForbidHttpResult>> ChangeConfigurationEntryPoint(
+        string name,
+        string version,
+        [FromBody] ChangeEntryPointRequest request,
+        IConfigurationService configService,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await configService.ChangeEntryPointAsync(name, version, request.EntryPoint, cancellationToken);
+            return TypedResults.NoContent();
+        }
+        catch (KeyNotFoundException)
+        {
+            return TypedResults.NotFound();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return TypedResults.Forbid();
+        }
+        catch (ArgumentException ex)
+        {
+            return TypedResults.BadRequest(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return TypedResults.Conflict(ex.Message);
+        }
+    }
+
     private static CreateConfigurationAdminRequest BindCreateConfigurationRequest(IFormCollection form)
     {
         return new CreateConfigurationAdminRequest
@@ -447,6 +713,11 @@ public static class ConfigurationEndpoints
     {
         var value = GetOptionalFormValue(form, fieldName);
         return bool.TryParse(value, out var result) && result;
+    }
+
+    private sealed class ChangeEntryPointRequest
+    {
+        public string EntryPoint { get; set; } = string.Empty;
     }
 
     private static async Task<Results<Ok<IReadOnlyList<PermissionEntry>>, NotFound, ForbidHttpResult>> GetConfigurationPermissions(

@@ -6,6 +6,7 @@ using System.Security.Claims;
 
 using Microsoft.AspNetCore.Http.HttpResults;
 
+using OpenDsc.Contracts.Nodes;
 using OpenDsc.Contracts.Reports;
 using OpenDsc.Contracts.Settings;
 using OpenDsc.Server.Authorization;
@@ -40,6 +41,10 @@ public static class ReportEndpoints
         reportGroup.MapGet("/{reportId:guid}", GetReport)
             .WithSummary("Get report details")
             .WithDescription("Returns the full details of a specific compliance report.");
+
+        reportGroup.MapGet("/{reportId:guid}/node", GetReportNode)
+            .WithSummary("Get report node")
+            .WithDescription("Returns summary information for the node that submitted a specific compliance report.");
     }
 
     private static async Task<Results<Created<ReportSummary>, NotFound<ErrorResponse>, BadRequest<ErrorResponse>, ForbidHttpResult>> SubmitReport(
@@ -114,5 +119,19 @@ public static class ReportEndpoints
         }
 
         return TypedResults.Ok(details);
+    }
+
+    private static async Task<Results<Ok<NodeSummary>, NotFound<ErrorResponse>>> GetReportNode(
+        Guid reportId,
+        IReportService reportService,
+        CancellationToken cancellationToken)
+    {
+        var node = await reportService.GetReportNodeAsync(reportId, cancellationToken);
+        if (node is null)
+        {
+            return TypedResults.NotFound(new ErrorResponse { Error = "Report node not found." });
+        }
+
+        return TypedResults.Ok(node);
     }
 }

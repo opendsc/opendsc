@@ -5,6 +5,7 @@
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 
+using OpenDsc.Contracts.Nodes;
 using OpenDsc.Contracts.Settings;
 using OpenDsc.Server.Authorization;
 
@@ -14,6 +15,12 @@ public static class ScopeValueEndpoints
 {
     public static IEndpointRouteBuilder MapScopeValueEndpoints(this IEndpointRouteBuilder app)
     {
+        app.MapGet("/api/v1/scope-values", GetAllScopeValues)
+            .WithTags("Scope Values")
+            .RequireAuthorization(ScopePermissions.AdminOverride)
+            .WithName("GetAllScopeValues")
+            .WithDescription("Get all scope values across all scope types");
+
         var group = app.MapGroup("/api/v1/scope-types/{scopeTypeId:guid}/values")
             .WithTags("Scope Values")
             .RequireAuthorization(ScopePermissions.AdminOverride);
@@ -39,6 +46,13 @@ public static class ScopeValueEndpoints
             .WithDescription("Delete a scope value (blocked if nodes are tagged with it or parameters exist)");
 
         return app;
+    }
+
+    private static async Task<Ok<List<ScopeValueSummary>>> GetAllScopeValues(
+        [FromServices] INodeReader nodeReader,
+        CancellationToken cancellationToken)
+    {
+        return TypedResults.Ok((await nodeReader.GetScopeValuesAsync(cancellationToken)).ToList());
     }
 
     private static async Task<Results<Ok<List<ScopeValueDetails>>, NotFound>> GetScopeValues(

@@ -29,6 +29,18 @@ public static class RoleEndpoints
             .WithSummary("Get role details")
             .WithDescription("Returns details for a specific role.");
 
+        group.MapGet("/{id:guid}/groups", GetGroupsForRole)
+            .WithSummary("Get groups for role")
+            .WithDescription("Returns groups assigned to a role.");
+
+        group.MapGet("/counts/users", GetRoleUserCounts)
+            .WithSummary("Get role user counts")
+            .WithDescription("Returns a map of role IDs to assigned user counts.");
+
+        group.MapGet("/counts/groups", GetRoleGroupCounts)
+            .WithSummary("Get role group counts")
+            .WithDescription("Returns a map of role IDs to assigned group counts.");
+
         group.MapPost("/", CreateRole)
             .WithSummary("Create role")
             .WithDescription("Creates a new custom role.");
@@ -40,6 +52,10 @@ public static class RoleEndpoints
         group.MapDelete("/{id:guid}", DeleteRole)
             .WithSummary("Delete role")
             .WithDescription("Deletes a custom role (system roles cannot be deleted).");
+
+        group.MapPut("/{id:guid}/groups", SetGroupsForRole)
+            .WithSummary("Set groups for role")
+            .WithDescription("Sets the groups for a role, replacing existing group assignments.");
     }
 
     private static async Task<Ok<List<RoleSummary>>> GetRoles(
@@ -63,6 +79,36 @@ public static class RoleEndpoints
         {
             return TypedResults.NotFound();
         }
+    }
+
+    private static async Task<Results<Ok<List<GroupSummary>>, NotFound>> GetGroupsForRole(
+        Guid id,
+        IRoleService service,
+        CancellationToken cancellationToken)
+    {
+        var groups = await service.GetGroupsForRoleAsync(id, cancellationToken);
+        if (groups is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        return TypedResults.Ok(groups.ToList());
+    }
+
+    private static async Task<Ok<IReadOnlyDictionary<Guid, int>>> GetRoleUserCounts(
+        IRoleService service,
+        CancellationToken cancellationToken)
+    {
+        var counts = await service.GetRoleUserCountsAsync(cancellationToken);
+        return TypedResults.Ok(counts);
+    }
+
+    private static async Task<Ok<IReadOnlyDictionary<Guid, int>>> GetRoleGroupCounts(
+        IRoleService service,
+        CancellationToken cancellationToken)
+    {
+        var counts = await service.GetRoleGroupCountsAsync(cancellationToken);
+        return TypedResults.Ok(counts);
     }
 
     private static async Task<Results<Created<RoleSummary>, BadRequest<string>>> CreateRole(
@@ -119,6 +165,23 @@ public static class RoleEndpoints
         catch (InvalidOperationException ex)
         {
             return TypedResults.BadRequest(ex.Message);
+        }
+    }
+
+    private static async Task<Results<Ok, NotFound>> SetGroupsForRole(
+        Guid id,
+        [FromBody] SetRoleGroupsRequest request,
+        IRoleService service,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await service.SetGroupsForRoleAsync(id, request, cancellationToken);
+            return TypedResults.Ok();
+        }
+        catch (KeyNotFoundException)
+        {
+            return TypedResults.NotFound();
         }
     }
 }

@@ -53,9 +53,33 @@ public static class UserEndpoints
             .WithSummary("Get user roles")
             .WithDescription("Returns the roles assigned to a user.");
 
+        group.MapGet("/{id:guid}/external-login", GetExternalLogin)
+            .WithSummary("Get user external login")
+            .WithDescription("Returns the external login provider configured for a user, if any.");
+
+        group.MapGet("/{id:guid}/effective-permissions", GetEffectivePermissions)
+            .WithSummary("Get user effective permissions")
+            .WithDescription("Returns the effective permission set for a user.");
+
+        group.MapGet("/counts/roles", GetUserRoleCounts)
+            .WithSummary("Get user role counts")
+            .WithDescription("Returns a map of user IDs to assigned role counts.");
+
+        group.MapGet("/counts/groups", GetUserGroupCounts)
+            .WithSummary("Get user group counts")
+            .WithDescription("Returns a map of user IDs to assigned group counts.");
+
         group.MapPut("/{id:guid}/roles", SetUserRoles)
             .WithSummary("Set user roles")
             .WithDescription("Sets the roles for a user, replacing existing role assignments.");
+
+        group.MapPost("/{id:guid}/roles", AssignRole)
+            .WithSummary("Assign role to user")
+            .WithDescription("Assigns a single role to a user.");
+
+        group.MapDelete("/{id:guid}/roles/{roleId:guid}", RemoveRole)
+            .WithSummary("Remove role from user")
+            .WithDescription("Removes a single role from a user.");
     }
 
     private static async Task<Ok<List<UserSummary>>> GetUsers(
@@ -182,6 +206,45 @@ public static class UserEndpoints
         return TypedResults.Ok(roles.ToList());
     }
 
+    private static async Task<Results<Ok<string>, NotFound>> GetExternalLogin(
+        Guid id,
+        IUserService service,
+        CancellationToken cancellationToken)
+    {
+        var provider = await service.GetExternalLoginAsync(id, cancellationToken);
+        if (provider is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        return TypedResults.Ok(provider);
+    }
+
+    private static async Task<Ok<HashSet<string>>> GetEffectivePermissions(
+        Guid id,
+        IUserService service,
+        CancellationToken cancellationToken)
+    {
+        var permissions = await service.GetEffectivePermissionsAsync(id, cancellationToken);
+        return TypedResults.Ok(permissions);
+    }
+
+    private static async Task<Ok<IReadOnlyDictionary<Guid, int>>> GetUserRoleCounts(
+        IUserService service,
+        CancellationToken cancellationToken)
+    {
+        var counts = await service.GetUserRoleCountsAsync(cancellationToken);
+        return TypedResults.Ok(counts);
+    }
+
+    private static async Task<Ok<IReadOnlyDictionary<Guid, int>>> GetUserGroupCounts(
+        IUserService service,
+        CancellationToken cancellationToken)
+    {
+        var counts = await service.GetUserGroupCountsAsync(cancellationToken);
+        return TypedResults.Ok(counts);
+    }
+
     private static async Task<Results<Ok, NotFound>> SetUserRoles(
         Guid id,
         [FromBody] SetUserRolesRequest request,
@@ -192,6 +255,40 @@ public static class UserEndpoints
         {
             await service.SetUserRolesAsync(id, request, cancellationToken);
             return TypedResults.Ok();
+        }
+        catch (KeyNotFoundException)
+        {
+            return TypedResults.NotFound();
+        }
+    }
+
+    private static async Task<Results<Ok, NotFound>> AssignRole(
+        Guid id,
+        [FromBody] AssignRoleRequest request,
+        IUserService service,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await service.AssignRoleAsync(id, request, cancellationToken);
+            return TypedResults.Ok();
+        }
+        catch (KeyNotFoundException)
+        {
+            return TypedResults.NotFound();
+        }
+    }
+
+    private static async Task<Results<NoContent, NotFound>> RemoveRole(
+        Guid id,
+        Guid roleId,
+        IUserService service,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await service.RemoveRoleAsync(id, new RemoveRoleRequest { RoleId = roleId }, cancellationToken);
+            return TypedResults.NoContent();
         }
         catch (KeyNotFoundException)
         {

@@ -572,5 +572,64 @@ public class ParameterEndpointsTests : IDisposable
         result!.ScopeValue.Should().Be("us-west");
         result.Status.Should().Be(ParameterVersionStatus.Draft);
     }
+
+    [Fact]
+    public async Task GetAvailableMajorVersions_ForConfiguration_ReturnsMajors()
+    {
+        using var client = CreateAuthenticatedClient();
+        var configId = await CreateTestConfigurationAsync(client, $"test-config-{Guid.NewGuid()}");
+
+        var response = await client.GetAsync($"/api/v1/parameters/configurations/{configId}/available-majors", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<List<int>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
+        result.Should().Contain(1);
+    }
+
+    [Fact]
+    public async Task UpdateParameterVersion_And_GetParameterContent_ByParameterId_Works()
+    {
+        using var client = CreateAuthenticatedClient();
+        var configId = await CreateTestConfigurationAsync(client, $"test-config-{Guid.NewGuid()}");
+        var scopeTypeId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+
+        var createRequest = new
+        {
+            version = "1.0.0",
+            content = "parameters:\n  param1: value1\n  param2: value2\n  setting1: test\n  appName: Original\n  port: 8080",
+            contentType = "application/x-yaml"
+        };
+
+        var createResponse = await client.PutAsJsonAsync($"/api/v1/parameters/{scopeTypeId}/{configId}", createRequest, TestContext.Current.CancellationToken);
+        createResponse.EnsureSuccessStatusCode();
+
+        var created = await createResponse.Content.ReadFromJsonAsync<ParameterVersionDetails>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
+        created.Should().NotBeNull();
+
+        var updateResponse = await client.PutAsJsonAsync(
+            $"/api/v1/parameters/versions/{created!.Id}",
+            new UpdateParameterRequest { Content = "parameters:\n  param1: value1\n  param2: value2\n  setting1: test\n  appName: Updated\n  port: 9090" },
+            TestContext.Current.CancellationToken);
+
+        updateResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var contentResponse = await client.GetAsync($"/api/v1/parameters/versions/{created.Id}/content", TestContext.Current.CancellationToken);
+        contentResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var content = await contentResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().Contain("Updated");
+    }
+
+    [Fact]
+    public async Task GetParameterPermissions_ByConfigurationId_ReturnsOk()
+    {
+        using var client = CreateAuthenticatedClient();
+        var configId = await CreateTestConfigurationAsync(client, $"test-config-{Guid.NewGuid()}");
+
+        var response = await client.GetAsync($"/api/v1/parameters/configurations/{configId}/permissions", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<List<OpenDsc.Contracts.Permissions.PermissionEntry>>(TestJsonOptions.Default, TestContext.Current.CancellationToken);
+        result.Should().NotBeNull();
+    }
 }
 
