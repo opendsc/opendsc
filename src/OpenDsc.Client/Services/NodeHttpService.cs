@@ -28,17 +28,14 @@ public sealed class NodeHttpService(HttpClient client)
     /// <inheritdoc />
     public async Task<IReadOnlyList<NodeSummary>> GetNodesAsync(NodeFilterRequest? filter = null, CancellationToken cancellationToken = default)
     {
-        var url = "api/v1/nodes";
-        if (filter is not null)
-        {
-            var query = new List<string>();
-            if (filter.FqdnContains is not null) query.Add($"fqdnContains={Uri.EscapeDataString(filter.FqdnContains)}");
-            if (filter.ConfigurationContains is not null) query.Add($"configurationContains={Uri.EscapeDataString(filter.ConfigurationContains)}");
-            if (filter.Status is not null) query.Add($"status={filter.Status}");
-            if (filter.LcmStatus is not null) query.Add($"lcmStatus={filter.LcmStatus}");
-            if (filter.Limit is not null) query.Add($"limit={filter.Limit}");
-            if (query.Count > 0) url = $"{url}?{string.Join("&", query)}";
-        }
+        var url = BuildUrlWithQuery(
+            "api/v1/nodes",
+            ("fqdnContains", filter?.FqdnContains),
+            ("configurationContains", filter?.ConfigurationContains),
+            ("status", filter?.Status?.ToString()),
+            ("lcmStatus", filter?.LcmStatus?.ToString()),
+            ("limit", filter?.Limit?.ToString()));
+
         return await GetAsync(url, Ctx.NodeSummaryList, cancellationToken).ConfigureAwait(false);
     }
 

@@ -152,4 +152,18 @@ public abstract class HttpServiceBase(HttpClient client)
         var response = await Client.DeleteAsync(url, cancellationToken).ConfigureAwait(false);
         await EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
     }
+
+    /// <summary>Builds a URL with query string parameters, omitting null values.</summary>
+    protected static string BuildUrlWithQuery(string baseUrl, params (string Name, string? Value)[] parameters)
+    {
+        var query = string.Join(
+            "&",
+            parameters
+                .Where(parameter => parameter.Value is not null)
+                .Select(parameter => $"{parameter.Name}={Uri.EscapeDataString(parameter.Value!)}"));
+
+        return query.Length == 0
+            ? baseUrl
+            : $"{baseUrl}?{query}";
+    }
 }

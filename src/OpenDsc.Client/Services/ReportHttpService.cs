@@ -27,18 +27,13 @@ public sealed class ReportHttpService(HttpClient client)
         DateTimeOffset? to = null,
         CancellationToken cancellationToken = default)
     {
-        var query = new List<string>();
-        if (nodeId is not null) query.Add($"nodeId={nodeId}");
-        if (skip is not null) query.Add($"skip={skip}");
-        if (take is not null) query.Add($"take={take}");
-        if (from is not null) query.Add($"from={Uri.EscapeDataString(from.Value.ToString("O", CultureInfo.InvariantCulture))}");
-        if (to is not null) query.Add($"to={Uri.EscapeDataString(to.Value.ToString("O", CultureInfo.InvariantCulture))}");
-
-        var url = "api/v1/reports";
-        if (query.Count > 0)
-        {
-            url += $"?{string.Join("&", query)}";
-        }
+        var url = BuildUrlWithQuery(
+            "api/v1/reports",
+            ("nodeId", nodeId?.ToString()),
+            ("skip", skip?.ToString()),
+            ("take", take?.ToString()),
+            ("from", from?.ToString("O", CultureInfo.InvariantCulture)),
+            ("to", to?.ToString("O", CultureInfo.InvariantCulture)));
 
         return await GetAsync(url, Ctx.ReportSummaryList, cancellationToken).ConfigureAwait(false);
     }
