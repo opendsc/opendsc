@@ -233,5 +233,5 @@ public sealed class ConfigurationHttpService(HttpClient client)
 
     /// <inheritdoc />
     public Task ChangeEntryPointAsync(string name, string version, string entryPoint, CancellationToken cancellationToken = default)
-        => PutAsync($"api/v1/configurations/{Uri.EscapeDataString(name)}/versions/{Uri.EscapeDataString(version)}/entry-point", Ctx.PublishResult, cancellationToken);
+        => PutAsync($"api/v1/configurations/{Uri.EscapeDataString(name)}/versions/{Uri.EscapeDataString(version)}/entry-point", cancellationToken);
 }
