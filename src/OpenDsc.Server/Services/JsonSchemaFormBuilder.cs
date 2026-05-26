@@ -212,5 +212,4 @@ public sealed class JsonSchemaFormBuilder : IJsonSchemaFormBuilder
             _ => SchemaFieldKind.Unsupported
         };
     }
-
 }

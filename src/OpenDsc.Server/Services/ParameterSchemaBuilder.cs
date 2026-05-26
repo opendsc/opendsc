@@ -82,6 +82,16 @@ public sealed class ParameterSchemaBuilder : IParameterSchemaBuilder
         var builder = new JsonSchemaBuilder();
         var normalizedType = param.Type.ToLowerInvariant();
 
+        ApplyType(builder, normalizedType, param.Type);
+        ApplyDescription(builder, param.Description);
+        ApplyAllowedValues(builder, param.AllowedValues);
+        ApplyTypeConstraints(builder, normalizedType, param);
+
+        return builder;
+    }
+
+    private static void ApplyType(JsonSchemaBuilder builder, string normalizedType, string originalType)
+    {
         // Map DSC parameter type to JSON Schema type (case-insensitive to match spec)
         builder.Type(normalizedType switch
         {
@@ -90,48 +100,63 @@ public sealed class ParameterSchemaBuilder : IParameterSchemaBuilder
             "bool" => SchemaValueType.Boolean,
             "object" or "secureobject" => SchemaValueType.Object,
             "array" => SchemaValueType.Array,
-            _ => throw new ArgumentException($"Unknown parameter type: {param.Type}")
+            _ => throw new ArgumentException($"Unknown parameter type: {originalType}")
         });
+    }
 
-        // Add description if present
-        if (!string.IsNullOrWhiteSpace(param.Description))
+    private static void ApplyDescription(JsonSchemaBuilder builder, string? description)
+    {
+        if (!string.IsNullOrWhiteSpace(description))
         {
-            builder.Description(param.Description);
+            builder.Description(description);
         }
+    }
 
-        // Apply constraints based on type
-        if (param.AllowedValues != null && param.AllowedValues.Length > 0)
+    private static void ApplyAllowedValues(JsonSchemaBuilder builder, object[]? allowedValues)
+    {
+        if (allowedValues != null && allowedValues.Length > 0)
         {
-            builder.Enum(param.AllowedValues.Select(v => JsonSerializer.SerializeToNode(v)).ToArray()!);
+            builder.Enum(allowedValues.Select(v => JsonSerializer.SerializeToNode(v)).ToArray()!);
         }
+    }
 
+    private static void ApplyTypeConstraints(JsonSchemaBuilder builder, string normalizedType, ParameterDefinition param)
+    {
         if (normalizedType is "string" or "securestring" or "array")
         {
-            if (param.MinLength.HasValue)
-            {
-                builder.MinLength((uint)param.MinLength.Value);
-            }
-
-            if (param.MaxLength.HasValue)
-            {
-                builder.MaxLength((uint)param.MaxLength.Value);
-            }
+            ApplyLengthConstraints(builder, param.MinLength, param.MaxLength);
         }
 
         if (normalizedType == "int")
         {
-            if (param.MinValue.HasValue)
-            {
-                builder.Minimum(param.MinValue.Value);
-            }
+            ApplyNumericConstraints(builder, param.MinValue, param.MaxValue);
+        }
+    }
 
-            if (param.MaxValue.HasValue)
-            {
-                builder.Maximum(param.MaxValue.Value);
-            }
+    private static void ApplyLengthConstraints(JsonSchemaBuilder builder, int? minLength, int? maxLength)
+    {
+        if (minLength.HasValue)
+        {
+            builder.MinLength((uint)minLength.Value);
         }
 
-        return builder;
+        if (maxLength.HasValue)
+        {
+            builder.MaxLength((uint)maxLength.Value);
+        }
+    }
+
+    private static void ApplyNumericConstraints(JsonSchemaBuilder builder, int? minValue, int? maxValue)
+    {
+        if (minValue.HasValue)
+        {
+            builder.Minimum(minValue.Value);
+        }
+
+        if (maxValue.HasValue)
+        {
+            builder.Maximum(maxValue.Value);
+        }
     }
 }
 
