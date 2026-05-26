@@ -80,18 +80,16 @@ public sealed class ParameterSchemaBuilder : IParameterSchemaBuilder
     private static JsonSchemaBuilder BuildParameterSchemaBuilder(ParameterDefinition param)
     {
         var builder = new JsonSchemaBuilder();
+        var normalizedType = param.Type.ToLowerInvariant();
 
-        // Map DSC parameter type to JSON Schema type
-        builder.Type(param.Type switch
+        // Map DSC parameter type to JSON Schema type (case-insensitive to match spec)
+        builder.Type(normalizedType switch
         {
-            "string" => SchemaValueType.String,
-            "secureString" => SchemaValueType.String,
+            "string" or "securestring" => SchemaValueType.String,
             "int" => SchemaValueType.Integer,
             "bool" => SchemaValueType.Boolean,
-            "object" => SchemaValueType.Object,
-            "secureObject" => SchemaValueType.Object,
+            "object" or "secureobject" => SchemaValueType.Object,
             "array" => SchemaValueType.Array,
-            "float" or "double" => SchemaValueType.Number,
             _ => throw new ArgumentException($"Unknown parameter type: {param.Type}")
         });
 
@@ -107,7 +105,7 @@ public sealed class ParameterSchemaBuilder : IParameterSchemaBuilder
             builder.Enum(param.AllowedValues.Select(v => JsonSerializer.SerializeToNode(v)).ToArray()!);
         }
 
-        if (param.Type is "string" or "secureString" or "array")
+        if (normalizedType is "string" or "securestring" or "array")
         {
             if (param.MinLength.HasValue)
             {
@@ -120,7 +118,7 @@ public sealed class ParameterSchemaBuilder : IParameterSchemaBuilder
             }
         }
 
-        if (param.Type == "int")
+        if (normalizedType == "int")
         {
             if (param.MinValue.HasValue)
             {

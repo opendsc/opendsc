@@ -7,6 +7,7 @@
 @using MudBlazor
 @using BlazorMonaco
 @using BlazorMonaco.Editor
+@using NuGet.Versioning
 @using OpenDsc.Contracts.Parameters
 @using OpenDsc.Server.Services
 @inject IParameterService ParameterService
@@ -27,16 +28,44 @@
         }
         else
         {
-            <div style="height: 500px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
-                <StandaloneCodeEditor @ref="_editor" Id="parameter-edit-editor" ConstructionOptions="GetEditorOptions"
-                                      CssClass="monaco-editor-container" />
-            </div>
+            @if (!string.IsNullOrWhiteSpace(_tabSwitchError))
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-3">@_tabSwitchError</MudAlert>
+            }
+
+            @if (currentSchema == null || string.IsNullOrWhiteSpace(currentSchema.GeneratedJsonSchema))
+            {
+                <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">
+                    No parameter schema found for this version. YAML mode is used for editing.
+                </MudAlert>
+
+                <div style="height: 500px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
+                    <StandaloneCodeEditor @ref="_editor" Id="parameter-edit-editor" ConstructionOptions="GetEditorOptions"
+                                          CssClass="monaco-editor-container" />
+                </div>
+            }
+            else
+            {
+                <MudTabs Elevation="0" Rounded="false" @bind-ActivePanelIndex="activeEditorTab"
+                         @bind-ActivePanelIndex:after="OnEditorTabChanged">
+                    <MudTabPanel Text="Form" Icon="@Icons.Material.Filled.Tune">
+                        <ParameterFormEditor @ref="_formEditor" SchemaJson="@(currentSchema?.GeneratedJsonSchema)"
+                                             YamlContent="@_formSourceYaml" FormStateChanged="OnFormStateChanged" />
+                    </MudTabPanel>
+                    <MudTabPanel Text="YAML" Icon="@Icons.Material.Filled.Code">
+                        <div style="height: 500px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
+                            <StandaloneCodeEditor @ref="_editor" Id="parameter-edit-editor"
+                                                  ConstructionOptions="GetEditorOptions" CssClass="monaco-editor-container" />
+                        </div>
+                    </MudTabPanel>
+                </MudTabs>
+            }
         }
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Cancel</MudButton>
         <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveParameter"
-                   Disabled="@(isLoading || isSaving)">
+                   Disabled="@(isLoading || isSaving || _formHasValidationErrors)">
             @if (isSaving)
             {
                 <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
@@ -66,13 +95,44 @@
     public string ParameterVersion { get; set; } = string.Empty;
 
     private StandaloneCodeEditor? _editor;
+    private ParameterFormEditor? _formEditor;
     private string? initialContent;
+    private ParameterSchemaDetails? currentSchema;
     private bool isLoading = true;
     private bool isSaving;
+    private int activeEditorTab;
+    private bool _formHasValidationErrors;
+    private string? _tabSwitchError;
+    private string? _formSourceYaml;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadParameterContent();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (isLoading || activeEditorTab != 0)
+        {
+            return;
+        }
+
+        if (_formEditor == null ||
+            _formEditor.IsLoaded ||
+            currentSchema == null ||
+            string.IsNullOrWhiteSpace(currentSchema.GeneratedJsonSchema))
+        {
+            return;
+        }
+
+        var yaml = _editor == null ? initialContent ?? string.Empty : await _editor.GetValue();
+        await _formEditor.LoadAsync(currentSchema.GeneratedJsonSchema, yaml);
+        _formHasValidationErrors = _formEditor.HasValidationErrors;
+
+        if (!_formEditor.IsLoaded)
+        {
+            await InvokeAsync(StateHasChanged);
+        }
     }
 
     private async Task LoadParameterContent()
@@ -88,11 +148,68 @@
                 Snackbar.Add("Failed to load parameter content", Severity.Error);
                 initialContent = "# Failed to load content";
             }
+
+            _formSourceYaml = initialContent;
+
+            await LoadSchemaForCurrentVersion();
         }
         finally
         {
             isLoading = false;
         }
+    }
+
+    private async Task LoadSchemaForCurrentVersion()
+    {
+        currentSchema = null;
+
+        if (!SemanticVersion.TryParse(ParameterVersion, out var semVer))
+        {
+            activeEditorTab = 1;
+            return;
+        }
+
+        currentSchema = await ParameterService.GetSchemaAsync(ConfigurationId, semVer.Major);
+        activeEditorTab = currentSchema != null && !string.IsNullOrWhiteSpace(currentSchema.GeneratedJsonSchema) ? 0 : 1;
+    }
+
+    private async Task OnEditorTabChanged()
+    {
+        _tabSwitchError = null;
+
+        if (activeEditorTab == 0)
+        {
+            if (currentSchema == null || string.IsNullOrWhiteSpace(currentSchema.GeneratedJsonSchema))
+            {
+                _tabSwitchError = "Form editor requires a parameter schema for this parameter version.";
+                activeEditorTab = 1;
+                return;
+            }
+
+            if (_formEditor != null)
+            {
+                var yaml = _editor == null ? initialContent ?? string.Empty : await _editor.GetValue();
+                _formSourceYaml = yaml;
+                await _formEditor.LoadAsync(currentSchema.GeneratedJsonSchema, yaml);
+                _formHasValidationErrors = _formEditor.HasValidationErrors;
+            }
+
+            return;
+        }
+
+        if (_formEditor is { IsLoaded: true } && _editor != null)
+        {
+            var yaml = _formEditor.BuildYaml();
+            initialContent = yaml;
+            _formSourceYaml = yaml;
+            await _editor.SetValue(yaml);
+        }
+    }
+
+    private async Task OnFormStateChanged(bool hasValidationErrors)
+    {
+        _formHasValidationErrors = hasValidationErrors;
+        await InvokeAsync(StateHasChanged);
     }
 
     private StandaloneEditorConstructionOptions GetEditorOptions(StandaloneCodeEditor editor)
@@ -116,7 +233,7 @@
 
     private async Task SaveParameter()
     {
-        if (_editor == null)
+        if (_formHasValidationErrors)
         {
             return;
         }
@@ -125,7 +242,20 @@
 
         try
         {
-            var content = await _editor.GetValue();
+            string? content;
+            if (activeEditorTab == 0 && _formEditor is { IsLoaded: true })
+            {
+                content = _formEditor.BuildYaml();
+            }
+            else
+            {
+                if (_editor == null)
+                {
+                    return;
+                }
+
+                content = await _editor.GetValue();
+            }
 
             if (string.IsNullOrWhiteSpace(content))
             {

@@ -272,7 +272,7 @@ version: 1.0.0";
         using var doc = JsonDocument.Parse(result);
         var root = doc.RootElement;
         root.GetProperty("database").GetProperty("host").GetString().Should().Be("localhost");
-        root.GetProperty("database").GetProperty("port").GetString().Should().Be("5432");
+        root.GetProperty("database").GetProperty("port").GetInt32().Should().Be(5432);
         root.GetProperty("database").GetProperty("credentials").GetProperty("user").GetString().Should().Be("admin");
     }
 
@@ -303,8 +303,8 @@ disabled: false";
 
         using var doc = JsonDocument.Parse(result);
         var root = doc.RootElement;
-        root.GetProperty("enabled").GetString().Should().Be("true");
-        root.GetProperty("disabled").GetString().Should().Be("false");
+        root.GetProperty("enabled").GetBoolean().Should().BeTrue();
+        root.GetProperty("disabled").GetBoolean().Should().BeFalse();
     }
 
     [Fact]
@@ -318,8 +318,9 @@ negative: -100";
 
         using var doc = JsonDocument.Parse(result);
         var root = doc.RootElement;
-        root.GetProperty("int").GetString().Should().Be("42");
-        root.GetProperty("float").GetString().Should().Be("3.14");
+        root.GetProperty("int").GetInt32().Should().Be(42);
+        root.GetProperty("float").GetDouble().Should().Be(3.14);
+        root.GetProperty("negative").GetInt32().Should().Be(-100);
     }
 
     [Fact]
@@ -339,7 +340,7 @@ nullKey: null";
     [Fact]
     public void ConvertYamlToJson_WithInvalidYaml_ReturnsEmpty()
     {
-        var invalidYaml = ": invalid yaml";
+        var invalidYaml = "[unclosed array";
 
         var result = _converter.ConvertYamlToJson(invalidYaml);
 
@@ -537,8 +538,8 @@ features:
 
         using var doc = JsonDocument.Parse(json);
         doc.RootElement.GetProperty("database").GetProperty("host").GetString().Should().Be("db.prod.local");
-        doc.RootElement.GetProperty("database").GetProperty("port").GetString().Should().Be("5432");
-        doc.RootElement.GetProperty("app").GetProperty("debug").GetString().Should().Be("false");
+        doc.RootElement.GetProperty("database").GetProperty("port").GetInt32().Should().Be(5432);
+        doc.RootElement.GetProperty("app").GetProperty("debug").GetBoolean().Should().BeFalse();
     }
 
     [Fact]

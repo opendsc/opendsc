@@ -12,21 +12,14 @@ using NuGet.Versioning;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
 
-using YamlDotNet.Serialization;
-using YamlDotNet.Serialization.NamingConventions;
-
 namespace OpenDsc.Server.Services;
 
 public partial class ParameterSchemaService(
     ServerDbContext dbContext,
     IParameterSchemaBuilder schemaBuilder,
+    IJsonYamlConverter jsonYamlConverter,
     ILogger<ParameterSchemaService> logger) : IParameterSchemaService
 {
-    private static readonly IDeserializer YamlDeserializer = new DeserializerBuilder()
-        .WithNamingConvention(CamelCaseNamingConvention.Instance)
-        .IgnoreUnmatchedProperties()
-        .Build();
-
     [GeneratedRegex(@"^(?<major>0|[1-9]\d*)\.(?<minor>0|[1-9]\d*)\.(?<patch>0|[1-9]\d*)(?:-(?<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$")]
     private static partial Regex SemVerRegex();
 
@@ -39,15 +32,19 @@ public partial class ParameterSchemaService(
 
         try
         {
-            var configDocument = YamlDeserializer.Deserialize<Dictionary<string, object>>(configurationContent);
-
-            if (configDocument == null || !configDocument.TryGetValue("parameters", out var parametersObj))
+            var json = jsonYamlConverter.ConvertYamlToJson(configurationContent);
+            if (string.IsNullOrEmpty(json))
             {
                 return Task.FromResult<string?>(null);
             }
 
-            var parametersJson = JsonSerializer.Serialize(parametersObj);
-            return Task.FromResult<string?>(parametersJson);
+            using var doc = JsonDocument.Parse(json);
+            if (!doc.RootElement.TryGetProperty("parameters", out var parametersElement))
+            {
+                return Task.FromResult<string?>(null);
+            }
+
+            return Task.FromResult<string?>(parametersElement.GetRawText());
         }
         catch (Exception)
         {

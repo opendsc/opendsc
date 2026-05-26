@@ -1557,7 +1557,7 @@ public sealed partial class ConfigurationService : IConfigurationService
         return null;
     }
 
-    private static Dictionary<string, ParameterDefinition> ConvertToParameterDefinitions(Dictionary<string, object> parametersBlock)
+    internal static Dictionary<string, ParameterDefinition> ConvertToParameterDefinitions(Dictionary<string, object> parametersBlock)
     {
         var result = new Dictionary<string, ParameterDefinition>();
 
@@ -1571,16 +1571,27 @@ public sealed partial class ConfigurationService : IConfigurationService
                     Description = paramObj.ContainsKey("description") ? paramObj["description"]?.ToString() : null,
                     DefaultValue = paramObj.ContainsKey("defaultValue") ? paramObj["defaultValue"] : null,
                     AllowedValues = paramObj.ContainsKey("allowedValues") && paramObj["allowedValues"] is List<object> list ? list.ToArray() : null,
-                    MinLength = paramObj.ContainsKey("minLength") ? paramObj["minLength"] as int? : null,
-                    MaxLength = paramObj.ContainsKey("maxLength") ? paramObj["maxLength"] as int? : null,
-                    MinValue = paramObj.ContainsKey("minValue") ? paramObj["minValue"] as int? : null,
-                    MaxValue = paramObj.ContainsKey("maxValue") ? paramObj["maxValue"] as int? : null
+                    MinLength = paramObj.ContainsKey("minLength") ? ParseIntValue(paramObj["minLength"]) : null,
+                    MaxLength = paramObj.ContainsKey("maxLength") ? ParseIntValue(paramObj["maxLength"]) : null,
+                    MinValue = paramObj.ContainsKey("minValue") ? ParseIntValue(paramObj["minValue"]) : null,
+                    MaxValue = paramObj.ContainsKey("maxValue") ? ParseIntValue(paramObj["maxValue"]) : null
                 };
                 result[param.Key] = def;
             }
         }
 
         return result;
+    }
+
+    internal static int? ParseIntValue(object? value)
+    {
+        return value switch
+        {
+            null => null,
+            int i => i,
+            long l => (int)l,
+            _ => int.TryParse(value.ToString(), out var result) ? result : null
+        };
     }
 
     [LoggerMessage(EventId = EventIds.ConfigurationNameRequired, Level = LogLevel.Warning, Message = "Configuration name is required")]

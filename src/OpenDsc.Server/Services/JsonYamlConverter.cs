@@ -2,10 +2,13 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
+using System.Globalization;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
+using YamlDotNet.Core;
+using YamlDotNet.RepresentationModel;
 using YamlDotNet.Serialization;
-using YamlDotNet.Serialization.NamingConventions;
 
 namespace OpenDsc.Server.Services;
 
@@ -31,7 +34,6 @@ public sealed class JsonYamlConverter : IJsonYamlConverter
             }
 
             var serializer = new SerializerBuilder()
-                .WithNamingConvention(CamelCaseNamingConvention.Instance)
                 .ConfigureDefaultValuesHandling(DefaultValuesHandling.OmitNull)
                 .Build();
 
@@ -65,18 +67,15 @@ public sealed class JsonYamlConverter : IJsonYamlConverter
     {
         try
         {
-            var deserializer = new DeserializerBuilder()
-                .WithNamingConvention(CamelCaseNamingConvention.Instance)
-                .Build();
-
-            var yamlObj = deserializer.Deserialize<Dictionary<object, object>>(yaml);
-            if (yamlObj == null)
+            var stream = new YamlStream();
+            stream.Load(new StringReader(yaml));
+            if (stream.Documents.Count == 0)
             {
                 return string.Empty;
             }
 
-            var converted = ConvertYamlObject(yamlObj);
-            return JsonSerializer.Serialize(converted, new JsonSerializerOptions { WriteIndented = true });
+            var jsonNode = ConvertYamlNodeToJsonNode(stream.Documents[0].RootNode);
+            return jsonNode?.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) ?? string.Empty;
         }
         catch
         {
@@ -84,15 +83,41 @@ public sealed class JsonYamlConverter : IJsonYamlConverter
         }
     }
 
-    private static object? ConvertYamlObject(object? obj)
+    private static JsonNode? ConvertYamlNodeToJsonNode(YamlNode node)
     {
-        return obj switch
+        switch (node)
         {
-            Dictionary<object, object> dict => dict.ToDictionary(
-                kvp => kvp.Key?.ToString() ?? string.Empty,
-                kvp => ConvertYamlObject(kvp.Value)),
-            List<object> list => list.Select(ConvertYamlObject).ToList(),
-            _ => obj
-        };
+            case YamlMappingNode mapping:
+                var obj = new JsonObject();
+                foreach (var entry in mapping.Children)
+                {
+                    var key = ((YamlScalarNode)entry.Key).Value ?? string.Empty;
+                    obj[key] = ConvertYamlNodeToJsonNode(entry.Value);
+                }
+                return obj;
+            case YamlSequenceNode sequence:
+                var array = new JsonArray();
+                foreach (var item in sequence.Children)
+                {
+                    array.Add(ConvertYamlNodeToJsonNode(item));
+                }
+                return array;
+            case YamlScalarNode scalar:
+                return ConvertYamlScalarToJsonNode(scalar);
+            default:
+                return null;
+        }
+    }
+
+    private static JsonNode? ConvertYamlScalarToJsonNode(YamlScalarNode scalar)
+    {
+        var value = scalar.Value;
+        if (scalar.Style is ScalarStyle.SingleQuoted or ScalarStyle.DoubleQuoted) return JsonValue.Create(value);
+        if (value is null or "" or "~" or "null") return null;
+        if (value is "true" or "True" or "TRUE") return JsonValue.Create(true);
+        if (value is "false" or "False" or "FALSE") return JsonValue.Create(false);
+        if (long.TryParse(value, out var l)) return JsonValue.Create(l);
+        if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var d)) return JsonValue.Create(d);
+        return JsonValue.Create(value);
     }
 }

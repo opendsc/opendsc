@@ -38,7 +38,7 @@ public class ParameterSchemaServiceTests : IDisposable
 
         _schemaBuilderMock = new Mock<IParameterSchemaBuilder>();
 
-        _service = new ParameterSchemaService(_dbContext, _schemaBuilderMock.Object, NullLogger<ParameterSchemaService>.Instance);
+        _service = new ParameterSchemaService(_dbContext, _schemaBuilderMock.Object, new JsonYamlConverter(), NullLogger<ParameterSchemaService>.Instance);
     }
 
     public void Dispose()
@@ -125,6 +125,40 @@ this is: not: valid: yaml: syntax:::
         root.TryGetProperty("str", out _).Should().BeTrue();
         root.TryGetProperty("num", out _).Should().BeTrue();
         root.TryGetProperty("flag", out _).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ParseParameterBlockAsync_WithFullDscParameterDefinition_PreservesMinValueMaxValue()
+    {
+        // Arrange: full DSC config YAML with a parameter that has minValue/maxValue constraints
+        var yaml = @"
+$schema: https://aka.ms/dsc/schemas/v3/bundled/config/document.json
+parameters:
+  myIntTest:
+    type: int
+    description: The integer value
+    defaultValue: 0
+    minValue: 0
+    maxValue: 10
+resources: []
+";
+
+        // Act
+        var result = await _service.ParseParameterBlockAsync(yaml);
+
+        // Assert: the JSON must contain the nested parameter definition with minValue/maxValue
+        result.Should().NotBeNull();
+
+        using var doc = JsonDocument.Parse(result!);
+        var root = doc.RootElement;
+
+        root.TryGetProperty("myIntTest", out var paramDef).Should().BeTrue();
+        paramDef.TryGetProperty("type", out var type).Should().BeTrue();
+        type.GetString().Should().Be("int");
+        paramDef.TryGetProperty("minValue", out var minValue).Should().BeTrue();
+        minValue.GetInt32().Should().Be(0);
+        paramDef.TryGetProperty("maxValue", out var maxValue).Should().BeTrue();
+        maxValue.GetInt32().Should().Be(10);
     }
 
     #endregion
@@ -664,6 +698,119 @@ this is: not: valid: yaml: syntax:::
         var invalidBumpResult = _service.ValidateSemVerCompliance("1.0.1", "1.0.0", changes);
         invalidBumpResult.IsValid.Should().BeFalse();
         invalidBumpResult.ExpectedVersionComponent.Should().Be("MAJOR");
+    }
+
+    #endregion
+
+    #region Full Pipeline Tests
+
+    [Fact]
+    public async Task FullPipeline_DscYamlIntConstraints_SchemaHasMinimumAndMaximum()
+    {
+        var realService = new ParameterSchemaService(
+            _dbContext,
+            new ParameterSchemaBuilder(),
+            new JsonYamlConverter(),
+            NullLogger<ParameterSchemaService>.Instance);
+
+        var yaml = @"$schema: https://aka.ms/dsc/schemas/v3/bundled/config/document.json
+parameters:
+  myIntTest:
+    type: int
+    description: The integer value
+    defaultValue: 0
+    minValue: 0
+    maxValue: 10
+resources: []
+";
+
+        var parametersJson = await realService.ParseParameterBlockAsync(yaml);
+
+        parametersJson.Should().NotBeNull();
+
+        var schema = await realService.GenerateAndStoreSchemaAsync(Guid.NewGuid(), parametersJson!, "1.0.0");
+
+        using var doc = JsonDocument.Parse(schema.GeneratedJsonSchema!);
+        var paramSchema = doc.RootElement
+            .GetProperty("properties")
+            .GetProperty("parameters")
+            .GetProperty("properties")
+            .GetProperty("myIntTest");
+
+        paramSchema.GetProperty("minimum").GetInt32().Should().Be(0);
+        paramSchema.GetProperty("maximum").GetInt32().Should().Be(10);
+    }
+
+    [Fact]
+    public async Task FullPipeline_ParamsDscYaml_AllConstraintsPreservedInSchema()
+    {
+        var realService = new ParameterSchemaService(
+            _dbContext,
+            new ParameterSchemaBuilder(),
+            new JsonYamlConverter(),
+            NullLogger<ParameterSchemaService>.Instance);
+
+        var yaml = @"$schema: https://aka.ms/dsc/schemas/v3/bundled/config/document.json
+parameters:
+  myTest:
+    type: string
+    description: The reg key value
+    defaultValue: config doc default
+  myIntTest:
+    type: int
+    description: The integer value
+    defaultValue: 0
+    minValue: 0
+    maxValue: 10
+  myEnumTest:
+    type: string
+    description: The enum value
+    defaultValue: Option1
+    allowedValues:
+      - Option1
+      - Option2
+      - Option3
+  myBoolTest:
+    type: bool
+    description: A boolean parameter
+  myNewTest:
+    type: secureString
+    description: A secure string parameter
+    defaultValue: my secure default
+resources: []
+";
+
+        var parametersJson = await realService.ParseParameterBlockAsync(yaml);
+        parametersJson.Should().NotBeNull();
+
+        var schema = await realService.GenerateAndStoreSchemaAsync(Guid.NewGuid(), parametersJson!, "1.0.0");
+
+        using var doc = JsonDocument.Parse(schema.GeneratedJsonSchema!);
+        var props = doc.RootElement
+            .GetProperty("properties")
+            .GetProperty("parameters")
+            .GetProperty("properties");
+
+        // int constraints: minValue/maxValue → minimum/maximum
+        var intParam = props.GetProperty("myIntTest");
+        intParam.GetProperty("minimum").GetInt32().Should().Be(0);
+        intParam.GetProperty("maximum").GetInt32().Should().Be(10);
+
+        // enum constraints: allowedValues → enum
+        var enumParam = props.GetProperty("myEnumTest");
+        var enumValues = enumParam.GetProperty("enum").EnumerateArray().Select(e => e.GetString()).ToArray();
+        enumValues.Should().BeEquivalentTo(["Option1", "Option2", "Option3"]);
+
+        // required: myBoolTest has no defaultValue, must be required
+        var required = doc.RootElement
+            .GetProperty("properties")
+            .GetProperty("parameters")
+            .GetProperty("required")
+            .EnumerateArray()
+            .Select(e => e.GetString())
+            .ToArray();
+        required.Should().Contain("myBoolTest");
+        required.Should().NotContain("myIntTest");
     }
 
     #endregion

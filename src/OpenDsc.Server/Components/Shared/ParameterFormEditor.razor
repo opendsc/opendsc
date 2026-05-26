@@ -1,0 +1,718 @@
+@* Copyright (c) Thomas Nieto - All Rights Reserved *@
+@* You may use, distribute and modify this code under the *@
+@* terms of the MIT license. *@
+
+@using System.Globalization
+@using System.Text.Json
+@using System.Text.Json.Nodes
+
+@inject IJsonSchemaFormBuilder SchemaFormBuilder
+@inject IJsonYamlConverter JsonYamlConverter
+
+@if (!_isLoaded)
+{
+    <MudAlert Severity="Severity.Info" Dense="true">Form editor is loading...</MudAlert>
+}
+else if (_definition == null || !_definition.Fields.Any())
+{
+    <MudAlert Severity="Severity.Warning" Dense="true">
+        No schema-backed parameter fields are available for this version.
+    </MudAlert>
+}
+else
+{
+    @if (_definition.HasUnsupportedFields)
+    {
+        <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">
+            Some complex fields are available only in YAML mode for this first release.
+        </MudAlert>
+    }
+
+    <MudStack Row="true" Class="mb-3" AlignItems="AlignItems.Center" Spacing="2">
+        <MudSelect T="string" Label="Add optional parameter" Variant="Variant.Outlined" Value="_selectedOptionalFieldName"
+                   ValueChanged="OnSelectedOptionalFieldChanged" Disabled="@(_availableOptionalFieldNames.Count == 0)">
+            @foreach (var optionalName in _availableOptionalFieldNames)
+            {
+                <MudSelectItem T="string" Value="@optionalName">@optionalName</MudSelectItem>
+            }
+        </MudSelect>
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+                   Disabled="@(string.IsNullOrWhiteSpace(_selectedOptionalFieldName))" OnClick="AddOptionalField">
+            Add
+        </MudButton>
+    </MudStack>
+
+    @foreach (var field in VisibleSupportedFields)
+    {
+        <MudCard Outlined="true" Class="mb-3">
+            <MudCardContent>
+                <div class="d-flex justify-space-between align-center">
+                    <MudText Typo="Typo.subtitle2">
+                        @field.Name
+                        @if (field.IsRequired)
+                        {
+                            <span style="color: var(--mud-palette-error);">*</span>
+                        }
+                    </MudText>
+                    @if (!field.IsRequired)
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Default" Size="Size.Small"
+                                       OnClick="@(() => RemoveOptionalField(field.Name))" />
+                    }
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(field.Description))
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-2">@field.Description</MudText>
+                }
+
+                @switch (field.Kind)
+                {
+                    case SchemaFieldKind.Boolean:
+                        <MudSelect T="bool?" Label="Value" Variant="Variant.Outlined" Value="@GetBooleanValue(field.Name)"
+                                   ValueChanged="@(value => OnBooleanChanged(field.Name, value))">
+                            <MudSelectItem T="bool?" Value="@true">true</MudSelectItem>
+                            <MudSelectItem T="bool?" Value="@false">false</MudSelectItem>
+                        </MudSelect>
+                        break;
+
+                    case SchemaFieldKind.Integer:
+                        <MudNumericField T="decimal?" Label="Value" Variant="Variant.Outlined" Step="1" Immediate="true"
+                                         HelperText="@GetRangeHelperText(field)"
+                                         Error="@(!string.IsNullOrWhiteSpace(GetValidationError(field.Name)))"
+                                         ErrorText="@GetValidationError(field.Name)" Value="@GetNumericValue(field.Name)"
+                                         ValueChanged="@(value => OnIntegerChanged(field.Name, value))" />
+                        break;
+
+                    case SchemaFieldKind.Number:
+                        <MudNumericField T="decimal?" Label="Value" Variant="Variant.Outlined" Immediate="true"
+                                         HelperText="@GetRangeHelperText(field)"
+                                         Error="@(!string.IsNullOrWhiteSpace(GetValidationError(field.Name)))"
+                                         ErrorText="@GetValidationError(field.Name)" Value="@GetNumericValue(field.Name)"
+                                         ValueChanged="@(value => OnNumberChanged(field.Name, value))" />
+                        break;
+
+                    case SchemaFieldKind.String:
+                        <MudTextField T="string" Label="Value" Variant="Variant.Outlined" Value="@GetStringValue(field.Name)"
+                                      ValueChanged="@(value => OnStringChanged(field.Name, value))" />
+                        break;
+
+                    case SchemaFieldKind.Enum:
+                        <MudSelect T="string" Label="Value" Variant="Variant.Outlined" Value="@GetEnumRawValue(field.Name)"
+                                   ValueChanged="@(value => OnEnumChanged(field.Name, value))">
+                            @foreach (var option in BuildEnumOptions(field))
+                            {
+                                <MudSelectItem T="string" Value="@option.RawJson">@option.Display</MudSelectItem>
+                            }
+                        </MudSelect>
+                        break;
+
+                    default:
+                        <MudAlert Severity="Severity.Info" Dense="true">This field is editable in YAML mode only.</MudAlert>
+                        break;
+                }
+            </MudCardContent>
+        </MudCard>
+    }
+}
+
+@code {
+    [Parameter]
+    public EventCallback<bool> FormStateChanged { get; set; }
+
+    [Parameter]
+    public string? SchemaJson { get; set; }
+
+    [Parameter]
+    public string? YamlContent { get; set; }
+
+    private SchemaFormDefinition? _definition;
+    private readonly Dictionary<string, JsonNode?> _parameterValues = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _visibleFieldNames = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, string> _validationErrors = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, string> _enumRawCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<string> _availableOptionalFieldNames = [];
+    private bool _isLoaded;
+    private string _selectedOptionalFieldName = string.Empty;
+    private string? _lastSchemaJson;
+    private string? _lastYamlContent;
+    private bool _afterRenderInitAttempted;
+
+    public bool IsLoaded => _isLoaded;
+
+    public bool HasValidationErrors => _validationErrors.Count > 0;
+
+    public bool HasSupportedFields => _definition?.HasSupportedFields == true;
+
+    public bool HasUnsupportedFields => _definition?.HasUnsupportedFields == true;
+
+    private IEnumerable<SchemaFormField> VisibleSupportedFields =>
+        _definition?.Fields.Where(f => f.Kind != SchemaFieldKind.Unsupported && _visibleFieldNames.Contains(f.Name)) ?? [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _afterRenderInitAttempted = false;
+
+        if (string.IsNullOrWhiteSpace(SchemaJson))
+        {
+            _parameterValues.Clear();
+            _visibleFieldNames.Clear();
+            _validationErrors.Clear();
+            _enumRawCache.Clear();
+            _availableOptionalFieldNames.Clear();
+            _definition = new SchemaFormDefinition { Fields = [] };
+            _isLoaded = true;
+            _lastSchemaJson = null;
+            _lastYamlContent = null;
+            await NotifyStateChangedAsync();
+            return;
+        }
+
+        if (string.Equals(SchemaJson, _lastSchemaJson, StringComparison.Ordinal) &&
+            string.Equals(YamlContent, _lastYamlContent, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _isLoaded = false;
+        await LoadAsync(SchemaJson, YamlContent);
+        _lastSchemaJson = SchemaJson;
+        _lastYamlContent = YamlContent;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_isLoaded ||
+            _afterRenderInitAttempted ||
+            string.IsNullOrWhiteSpace(SchemaJson))
+        {
+            return;
+        }
+
+        _afterRenderInitAttempted = true;
+        await LoadAsync(SchemaJson, YamlContent);
+        _lastSchemaJson = SchemaJson;
+        _lastYamlContent = YamlContent;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public async Task LoadAsync(string schemaJson, string? yamlContent)
+    {
+        _definition = SchemaFormBuilder.BuildParameterForm(schemaJson);
+
+        _parameterValues.Clear();
+        _visibleFieldNames.Clear();
+        _validationErrors.Clear();
+        _enumRawCache.Clear();
+
+        LoadValuesFromYaml(yamlContent);
+        InitializeVisibleFields();
+        RefreshOptionalFields();
+
+        _isLoaded = true;
+        await NotifyStateChangedAsync();
+    }
+
+    public string BuildYaml()
+    {
+        var parametersObject = new JsonObject();
+
+        foreach (var (name, value) in _parameterValues)
+        {
+            parametersObject[name] = value?.DeepClone();
+        }
+
+        var root = new JsonObject
+        {
+            ["parameters"] = parametersObject
+        };
+
+        var json = root.ToJsonString(new JsonSerializerOptions
+        {
+            WriteIndented = false
+        });
+
+        return JsonYamlConverter.ConvertJsonToYaml(json);
+    }
+
+    private void LoadValuesFromYaml(string? yamlContent)
+    {
+        if (string.IsNullOrWhiteSpace(yamlContent))
+        {
+            return;
+        }
+
+        var json = JsonYamlConverter.ConvertYamlToJson(yamlContent);
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return;
+        }
+
+        JsonNode? rootNode;
+        try
+        {
+            rootNode = JsonNode.Parse(json);
+        }
+        catch
+        {
+            return;
+        }
+
+        if (rootNode is not JsonObject rootObject)
+        {
+            return;
+        }
+
+        if (rootObject["parameters"] is not JsonObject parameters)
+        {
+            return;
+        }
+
+        foreach (var entry in parameters)
+        {
+            if (entry.Value != null)
+            {
+                _parameterValues[entry.Key] = entry.Value.DeepClone();
+            }
+            else
+            {
+                _parameterValues[entry.Key] = null;
+            }
+        }
+    }
+
+    private void InitializeVisibleFields()
+    {
+        if (_definition == null)
+        {
+            return;
+        }
+
+        foreach (var field in _definition.Fields.Where(f => f.Kind != SchemaFieldKind.Unsupported))
+        {
+            var hasExistingValue = _parameterValues.ContainsKey(field.Name);
+            if (field.IsRequired || hasExistingValue)
+            {
+                _visibleFieldNames.Add(field.Name);
+
+                if (!hasExistingValue)
+                {
+                    _parameterValues[field.Name] = DefaultForField(field);
+                }
+
+                ValidateFieldValue(field);
+            }
+        }
+    }
+
+    private void RefreshOptionalFields()
+    {
+        _availableOptionalFieldNames.Clear();
+        _selectedOptionalFieldName = string.Empty;
+
+        if (_definition == null)
+        {
+            return;
+        }
+
+        var optional = _definition.Fields
+            .Where(f => f.Kind != SchemaFieldKind.Unsupported && !f.IsRequired && !_visibleFieldNames.Contains(f.Name))
+            .Select(f => f.Name)
+            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        _availableOptionalFieldNames.AddRange(optional);
+    }
+
+    private static JsonNode? DefaultForField(SchemaFormField field)
+    {
+        if (field.DefaultValue != null)
+        {
+            return field.DefaultValue.DeepClone();
+        }
+
+        if (field.Kind == SchemaFieldKind.Enum)
+        {
+            return field.EnumValues.FirstOrDefault()?.DeepClone();
+        }
+
+        return field.Kind switch
+        {
+            SchemaFieldKind.Boolean => JsonValue.Create(false),
+            SchemaFieldKind.Integer => JsonValue.Create(0),
+            SchemaFieldKind.Number => JsonValue.Create(0.0m),
+            SchemaFieldKind.String => JsonValue.Create(string.Empty),
+            _ => null,
+        };
+    }
+
+    private static string? GetRangeHelperText(SchemaFormField field)
+    {
+        return (field.Minimum, field.Maximum) switch
+        {
+            (null, null) => null,
+            (not null, null) => $">= {field.Minimum.Value.ToString(CultureInfo.InvariantCulture)}",
+            (null, not null) => $"<= {field.Maximum.Value.ToString(CultureInfo.InvariantCulture)}",
+            _ => $"Range: {field.Minimum.Value.ToString(CultureInfo.InvariantCulture)} to {field.Maximum.Value.ToString(CultureInfo.InvariantCulture)}"
+        };
+    }
+
+    private string? GetValidationError(string fieldName)
+        => _validationErrors.TryGetValue(fieldName, out var error) ? error : null;
+
+    private bool? GetBooleanValue(string fieldName)
+    {
+        if (!_parameterValues.TryGetValue(fieldName, out var node) || node == null)
+        {
+            return null;
+        }
+
+        if (node is JsonValue value && value.TryGetValue<bool>(out var boolValue))
+        {
+            return boolValue;
+        }
+
+        return null;
+    }
+
+    private decimal? GetNumericValue(string fieldName)
+    {
+        if (!_parameterValues.TryGetValue(fieldName, out var node) || node == null)
+        {
+            return null;
+        }
+
+        if (node is JsonValue value)
+        {
+            if (value.TryGetValue<decimal>(out var asDecimal))
+            {
+                return asDecimal;
+            }
+
+            if (value.TryGetValue<double>(out var asDouble))
+            {
+                return (decimal)asDouble;
+            }
+
+            if (value.TryGetValue<long>(out var asLong))
+            {
+                return asLong;
+            }
+        }
+
+        return null;
+    }
+
+    private string GetStringValue(string fieldName)
+    {
+        if (!_parameterValues.TryGetValue(fieldName, out var node) || node == null)
+        {
+            return string.Empty;
+        }
+
+        if (node is JsonValue value && value.TryGetValue<string>(out var stringValue))
+        {
+            return stringValue ?? string.Empty;
+        }
+
+        return string.Empty;
+    }
+
+    private string GetEnumRawValue(string fieldName)
+    {
+        if (_parameterValues.TryGetValue(fieldName, out var node) && node != null)
+        {
+            return node.ToJsonString();
+        }
+
+        return _enumRawCache.TryGetValue(fieldName, out var cached) ? cached : string.Empty;
+    }
+
+    private static IReadOnlyList<EnumOption> BuildEnumOptions(SchemaFormField field)
+    {
+        return field.EnumValues
+            .Select(value => new EnumOption
+            {
+                RawJson = value?.ToJsonString() ?? "null",
+                Display = FormatNode(value)
+            })
+            .ToList();
+    }
+
+    private async Task OnSelectedOptionalFieldChanged(string value)
+    {
+        _selectedOptionalFieldName = value;
+        await Task.CompletedTask;
+    }
+
+    private async Task AddOptionalField()
+    {
+        if (string.IsNullOrWhiteSpace(_selectedOptionalFieldName) || _definition == null)
+        {
+            return;
+        }
+
+        var field = _definition.Fields.FirstOrDefault(f => string.Equals(f.Name, _selectedOptionalFieldName,
+StringComparison.OrdinalIgnoreCase));
+        if (field == null)
+        {
+            return;
+        }
+
+        _visibleFieldNames.Add(field.Name);
+        _parameterValues[field.Name] = DefaultForField(field);
+        ValidateFieldValue(field);
+
+        RefreshOptionalFields();
+        await NotifyStateChangedAsync();
+    }
+
+    private async Task RemoveOptionalField(string fieldName)
+    {
+        if (_definition == null)
+        {
+            return;
+        }
+
+        var field = _definition.Fields.FirstOrDefault(f => string.Equals(f.Name, fieldName,
+StringComparison.OrdinalIgnoreCase));
+        if (field == null || field.IsRequired)
+        {
+            return;
+        }
+
+        _visibleFieldNames.Remove(fieldName);
+        _parameterValues.Remove(fieldName);
+        _validationErrors.Remove(fieldName);
+        _enumRawCache.Remove(fieldName);
+
+        RefreshOptionalFields();
+        await NotifyStateChangedAsync();
+    }
+
+    private async Task OnBooleanChanged(string fieldName, bool? value)
+    {
+        if (!value.HasValue)
+        {
+            _parameterValues[fieldName] = null;
+        }
+        else
+        {
+            _parameterValues[fieldName] = JsonValue.Create(value.Value);
+        }
+
+        await ValidateAndNotifyAsync(fieldName);
+    }
+
+    private async Task OnIntegerChanged(string fieldName, decimal? value)
+    {
+        if (!value.HasValue)
+        {
+            _parameterValues[fieldName] = null;
+        }
+        else
+        {
+            _parameterValues[fieldName] = JsonValue.Create((long)Math.Round(value.Value, 0, MidpointRounding.AwayFromZero));
+        }
+
+        await ValidateAndNotifyAsync(fieldName);
+    }
+
+    private async Task OnNumberChanged(string fieldName, decimal? value)
+    {
+        _parameterValues[fieldName] = value.HasValue ? JsonValue.Create(value.Value) : null;
+        await ValidateAndNotifyAsync(fieldName);
+    }
+
+    private SchemaFormField? FindField(string fieldName)
+        => _definition?.Fields.FirstOrDefault(f => string.Equals(f.Name, fieldName, StringComparison.OrdinalIgnoreCase));
+
+
+    private async Task OnStringChanged(string fieldName, string value)
+    {
+        _parameterValues[fieldName] = JsonValue.Create(value ?? string.Empty);
+        await ValidateAndNotifyAsync(fieldName);
+    }
+
+    private async Task OnEnumChanged(string fieldName, string rawJson)
+    {
+        _enumRawCache[fieldName] = rawJson;
+        _parameterValues[fieldName] = ParseRawNode(rawJson);
+        await ValidateAndNotifyAsync(fieldName);
+    }
+
+    private async Task ValidateAndNotifyAsync(string fieldName)
+    {
+        if (_definition != null)
+        {
+            var field = _definition.Fields.FirstOrDefault(f => string.Equals(f.Name, fieldName,
+StringComparison.OrdinalIgnoreCase));
+            if (field != null)
+            {
+                ValidateFieldValue(field);
+            }
+        }
+
+        await NotifyStateChangedAsync();
+    }
+
+    private void ValidateFieldValue(SchemaFormField field)
+    {
+        if (!_parameterValues.TryGetValue(field.Name, out var node) || node == null)
+        {
+            _validationErrors.Remove(field.Name);
+            return;
+        }
+
+        var error = field.Kind switch
+        {
+            SchemaFieldKind.Boolean => ValidateBoolean(node),
+            SchemaFieldKind.Integer => ValidateInteger(node, field),
+            SchemaFieldKind.Number => ValidateNumber(node, field),
+            SchemaFieldKind.String => ValidateString(node),
+            SchemaFieldKind.Enum => ValidateEnum(node, field),
+            _ => null,
+        };
+
+        if (string.IsNullOrWhiteSpace(error))
+        {
+            _validationErrors.Remove(field.Name);
+        }
+        else
+        {
+            _validationErrors[field.Name] = error;
+        }
+    }
+
+    private static string? ValidateBoolean(JsonNode node)
+    {
+        if (node is JsonValue value && value.TryGetValue<bool>(out _))
+        {
+            return null;
+        }
+
+        return $"Value {FormatNode(node)} does not match expected type boolean.";
+    }
+
+    private static string? ValidateInteger(JsonNode node, SchemaFormField field)
+    {
+        if (node is not JsonValue value || !value.TryGetValue<long>(out var longValue))
+        {
+            return $"Value {FormatNode(node)} does not match expected type integer.";
+        }
+
+        var numeric = (decimal)longValue;
+        if (field.Minimum.HasValue && numeric < field.Minimum.Value)
+        {
+            return $"Value must be >= {field.Minimum.Value.ToString(CultureInfo.InvariantCulture)}.";
+        }
+
+        if (field.Maximum.HasValue && numeric > field.Maximum.Value)
+        {
+            return $"Value must be <= {field.Maximum.Value.ToString(CultureInfo.InvariantCulture)}.";
+        }
+
+        return null;
+    }
+
+    private static string? ValidateNumber(JsonNode node, SchemaFormField field)
+    {
+        decimal numeric;
+        if (node is JsonValue value)
+        {
+            if (value.TryGetValue<decimal>(out var asDecimal))
+            {
+                numeric = asDecimal;
+            }
+            else if (value.TryGetValue<double>(out var asDouble))
+            {
+                numeric = (decimal)asDouble;
+            }
+            else if (value.TryGetValue<long>(out var asLong))
+            {
+                numeric = asLong;
+            }
+            else
+            {
+                return $"Value {FormatNode(node)} does not match expected type number.";
+            }
+        }
+        else
+        {
+            return $"Value {FormatNode(node)} does not match expected type number.";
+        }
+
+        if (field.Minimum.HasValue && numeric < field.Minimum.Value)
+        {
+            return $"Value must be >= {field.Minimum.Value.ToString(CultureInfo.InvariantCulture)}.";
+        }
+
+        if (field.Maximum.HasValue && numeric > field.Maximum.Value)
+        {
+            return $"Value must be <= {field.Maximum.Value.ToString(CultureInfo.InvariantCulture)}.";
+        }
+
+        return null;
+    }
+
+    private static string? ValidateString(JsonNode node)
+    {
+        if (node is JsonValue value && value.TryGetValue<string>(out _))
+        {
+            return null;
+        }
+
+        return $"Value {FormatNode(node)} does not match expected type string.";
+    }
+
+    private static string? ValidateEnum(JsonNode node, SchemaFormField field)
+    {
+        if (field.EnumValues.Any(value => JsonNode.DeepEquals(value, node)))
+        {
+            return null;
+        }
+
+        return $"Value {FormatNode(node)} is not one of the allowed values.";
+    }
+
+    private static string FormatNode(JsonNode? node)
+    {
+        if (node is JsonValue v && v.TryGetValue<string>(out var s))
+        {
+            return s;
+        }
+
+        return node?.ToJsonString() ?? "null";
+    }
+
+    private static JsonNode? ParseRawNode(string rawJson)
+    {
+        if (string.IsNullOrWhiteSpace(rawJson))
+        {
+            return null;
+        }
+
+        try
+        {
+            return JsonNode.Parse(rawJson);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private async Task NotifyStateChangedAsync()
+    {
+        if (FormStateChanged.HasDelegate)
+        {
+            await FormStateChanged.InvokeAsync(HasValidationErrors);
+        }
+    }
+
+    private sealed class EnumOption
+    {
+        public required string RawJson { get; init; }
+        public required string Display { get; init; }
+    }
+}

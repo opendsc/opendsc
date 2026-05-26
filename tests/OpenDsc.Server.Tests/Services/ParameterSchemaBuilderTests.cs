@@ -49,7 +49,8 @@ public class ParameterSchemaBuilderTests
 
     [Theory]
     [InlineData("string")]
-    [InlineData("secureString")]
+    [InlineData("securestring")]    // DSC spec canonical form
+    [InlineData("secureString")]    // backward-compat: still accepted via ToLowerInvariant
     public void BuildJsonSchema_ShouldMapStringTypes(string dscType)
     {
         // Arrange
@@ -129,7 +130,8 @@ public class ParameterSchemaBuilderTests
 
     [Theory]
     [InlineData("object")]
-    [InlineData("secureObject")]
+    [InlineData("secureobject")]    // DSC spec canonical form
+    [InlineData("secureObject")]    // backward-compat: still accepted via ToLowerInvariant
     public void BuildJsonSchema_ShouldMapObjectTypes(string dscType)
     {
         // Arrange
@@ -434,6 +436,46 @@ public class ParameterSchemaBuilderTests
         var parsed = JsonDocument.Parse(serialized);
         parsed.Should().NotBeNull();
         parsed.RootElement.TryGetProperty("properties", out _).Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData("securestring")]
+    [InlineData("secureString")]
+    public void BuildJsonSchema_SecureString_ShouldSupportMinMaxLength(string dscType)
+    {
+        // Arrange — the DSC spec allows minLength/maxLength on securestring
+        var parametersBlock = new Dictionary<string, ParameterDefinition>
+        {
+            ["secureParam"] = new ParameterDefinition { Type = dscType, MinLength = 8, MaxLength = 128 }
+        };
+
+        // Act
+        var schema = _builder.BuildJsonSchema(parametersBlock);
+        var schemaJson = JsonDocument.Parse(JsonSerializer.Serialize(schema));
+
+        // Assert
+        var paramSchema = schemaJson.RootElement
+            .GetProperty("properties")
+            .GetProperty("parameters")
+            .GetProperty("properties")
+            .GetProperty("secureParam");
+
+        paramSchema.GetProperty("minLength").GetInt32().Should().Be(8);
+        paramSchema.GetProperty("maxLength").GetInt32().Should().Be(128);
+    }
+
+    [Fact]
+    public void BuildJsonSchema_WithUnknownType_ShouldThrow()
+    {
+        // Arrange
+        var parametersBlock = new Dictionary<string, ParameterDefinition>
+        {
+            ["badParam"] = new ParameterDefinition { Type = "float" }
+        };
+
+        // Act & Assert
+        var act = () => _builder.BuildJsonSchema(parametersBlock);
+        act.Should().Throw<ArgumentException>().WithMessage("*float*");
     }
 
     [Fact]

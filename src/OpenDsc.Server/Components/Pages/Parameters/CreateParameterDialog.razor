@@ -58,7 +58,7 @@
         @if (!isPassthrough)
         {
             <div Class="d-flex justify-space-between align-center mt-4 mb-2">
-                <MudText Typo="Typo.subtitle2">Parameter Content (YAML)</MudText>
+                <MudText Typo="Typo.subtitle2">Parameter Content</MudText>
                 @if (selectedConfigurationId.HasValue)
                 {
                     <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary"
@@ -68,16 +68,46 @@
                     </MudButton>
                 }
             </div>
-            <div style="height: 400px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
-                <StandaloneCodeEditor @ref="_editor" Id="parameter-create-editor" ConstructionOptions="GetEditorOptions"
-                                      CssClass="monaco-editor-container" />
-            </div>
+
+            @if (HasMissingSchemaForCreate)
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-3">
+                    This configuration major version has no parameter schema. Creating parameter files is blocked until a schema exists.
+                </MudAlert>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(_tabSwitchError))
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-3">@_tabSwitchError</MudAlert>
+            }
+
+            <MudTabs Elevation="0" Rounded="false" @bind-ActivePanelIndex="activeEditorTab" @bind-ActivePanelIndex:after="OnEditorTabChanged">
+                <MudTabPanel Text="Form" Icon="@Icons.Material.Filled.Tune" Disabled="@(currentSchema == null || string.IsNullOrWhiteSpace(currentSchema.GeneratedJsonSchema))">
+                    <ParameterFormEditor @ref="_formEditor"
+                                         SchemaJson="@(currentSchema?.GeneratedJsonSchema)"
+                                         YamlContent="@_formSourceYaml"
+                                         FormStateChanged="OnFormStateChanged" />
+
+                    @if (_hasComplexFields)
+                    {
+                        <MudAlert Severity="Severity.Info" Dense="true" Class="mt-2">
+                            Complex object and array fields are currently editable in YAML mode.
+                        </MudAlert>
+                    }
+                </MudTabPanel>
+                <MudTabPanel Text="YAML" Icon="@Icons.Material.Filled.Code">
+                    <div style="height: 400px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
+                        <StandaloneCodeEditor @ref="_editor" Id="parameter-create-editor" ConstructionOptions="GetEditorOptions"
+                                              CssClass="monaco-editor-container" />
+                    </div>
+                </MudTabPanel>
+            </MudTabs>
         }
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Cancel</MudButton>
         <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="CreateParameter"
-                   Disabled="@(!IsValid() || isCreating)">
+                   Disabled="@(!IsValid() || isCreating || HasMissingSchemaForCreate || _formHasValidationErrors)">
             @if (isCreating)
             {
                 <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
@@ -155,12 +185,24 @@
 
     private string defaultEditorValue = "parameters:\n  setting1: value1\n  setting2: value2\n";
     private ParameterSchemaDetails? currentSchema;
+    private ParameterFormEditor? _formEditor;
     private bool showSchemaDialog;
     private StandaloneCodeEditor? _schemaEditor;
     private SchemaFormat schemaViewFormat = SchemaFormat.Yaml;
     private string _currentSchemaContent = string.Empty;
     private string _editorInitialValue = string.Empty;
     private string? _selectedScopeTypeName;
+    private int activeEditorTab;
+    private bool _formHasValidationErrors;
+    private bool _hasComplexFields;
+    private string? _tabSwitchError;
+    private string? _formSourceYaml;
+
+    private bool HasMissingSchemaForCreate =>
+        !isPassthrough &&
+        selectedConfigurationId.HasValue &&
+        selectedMajor.HasValue &&
+        (currentSchema == null || string.IsNullOrWhiteSpace(currentSchema.GeneratedJsonSchema));
 
     private enum SchemaFormat
     {
@@ -172,6 +214,8 @@
     {
         isPassthrough = InitialIsPassthrough;
         _editorInitialValue = InitialContent ?? defaultEditorValue;
+        _formSourceYaml = _editorInitialValue;
+        activeEditorTab = 0;
 
         if (InitialConfigurationId.HasValue)
         {
@@ -182,13 +226,39 @@
         }
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (isPassthrough || activeEditorTab != 0)
+        {
+            return;
+        }
+
+        if (_formEditor == null ||
+            _formEditor.IsLoaded ||
+            currentSchema == null ||
+            string.IsNullOrWhiteSpace(currentSchema.GeneratedJsonSchema))
+        {
+            return;
+        }
+
+        var yaml = _editor == null ? _editorInitialValue : await _editor.GetValue();
+        await LoadFormFromYamlAsync(yaml);
+
+        if (!_formEditor.IsLoaded)
+        {
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
     private async Task OnConfigurationChanged()
     {
+        _tabSwitchError = null;
         if (!selectedConfigurationId.HasValue)
         {
             currentSchema = null;
             availableMajors = [];
             selectedMajor = null;
+            activeEditorTab = 1;
             if (_editor != null)
             {
                 await _editor.SetValue(defaultEditorValue);
@@ -205,6 +275,7 @@
 
     private async Task OnMajorVersionChanged()
     {
+        _tabSwitchError = null;
         await LoadSchemaForSelectedMajorAsync();
         await SuggestNextPatchAsync();
     }
@@ -266,10 +337,13 @@
         if (!selectedConfigurationId.HasValue || !selectedMajor.HasValue)
         {
             currentSchema = null;
+            _formHasValidationErrors = false;
+            _hasComplexFields = false;
             var fallback = InitialContent ?? defaultEditorValue;
             _editorInitialValue = fallback;
             if (_editor != null)
                 await _editor.SetValue(fallback);
+            activeEditorTab = 1;
             return;
         }
 
@@ -287,8 +361,75 @@
         }
 
         _editorInitialValue = newValue;
+        _formSourceYaml = newValue;
         if (_editor != null)
             await _editor.SetValue(newValue);
+
+        if (currentSchema == null || string.IsNullOrWhiteSpace(currentSchema.GeneratedJsonSchema))
+        {
+            _formHasValidationErrors = false;
+            _hasComplexFields = false;
+            activeEditorTab = 1;
+            return;
+        }
+
+        activeEditorTab = 0;
+        await LoadFormFromYamlAsync(newValue);
+    }
+
+    private async Task OnEditorTabChanged()
+    {
+        _tabSwitchError = null;
+
+        if (isPassthrough)
+        {
+            return;
+        }
+
+        if (activeEditorTab == 0)
+        {
+            if (currentSchema == null || string.IsNullOrWhiteSpace(currentSchema.GeneratedJsonSchema))
+            {
+                _tabSwitchError = "Form editor requires a parameter schema for the selected configuration major version.";
+                activeEditorTab = 1;
+                return;
+            }
+
+            var yaml = _editor == null ? _editorInitialValue : await _editor.GetValue();
+            _formSourceYaml = yaml;
+            await LoadFormFromYamlAsync(yaml);
+            return;
+        }
+
+        if (_formEditor is { IsLoaded: true })
+        {
+            var yaml = _formEditor.BuildYaml();
+            _editorInitialValue = yaml;
+            _formSourceYaml = yaml;
+            if (_editor != null)
+            {
+                await _editor.SetValue(yaml);
+            }
+        }
+    }
+
+    private async Task LoadFormFromYamlAsync(string? yaml)
+    {
+        if (_formEditor == null || currentSchema == null || string.IsNullOrWhiteSpace(currentSchema.GeneratedJsonSchema))
+        {
+            return;
+        }
+
+        await _formEditor.LoadAsync(currentSchema.GeneratedJsonSchema, yaml);
+        _formHasValidationErrors = _formEditor.HasValidationErrors;
+        _hasComplexFields = _formEditor.HasUnsupportedFields;
+    }
+
+    private async Task OnFormStateChanged(bool hasValidationErrors)
+    {
+        _formHasValidationErrors = hasValidationErrors;
+        _hasComplexFields = _formEditor?.HasUnsupportedFields == true;
+        await InvokeAsync(StateHasChanged);
     }
 
     private string GenerateYamlTemplateFromSchema(string jsonSchema)
@@ -447,7 +588,8 @@
         {
             return versionError == null
                 && !string.IsNullOrWhiteSpace(versionString)
-                && SemanticVersion.TryParse(versionString.Trim(), out _);
+                && SemanticVersion.TryParse(versionString.Trim(), out _)
+                && !HasMissingSchemaForCreate;
         }
 
         if (!selectedConfigurationId.HasValue ||
@@ -465,15 +607,15 @@
 
         if (_selectedScopeTypeName == "Default")
         {
-            return true;
+            return !HasMissingSchemaForCreate;
         }
 
-        return !string.IsNullOrWhiteSpace(selectedScopeValue);
+        return !string.IsNullOrWhiteSpace(selectedScopeValue) && !HasMissingSchemaForCreate;
     }
 
     private async Task CreateParameter()
     {
-        if (!IsValid() || (!isPassthrough && _editor == null))
+        if (!IsValid() || HasMissingSchemaForCreate || _formHasValidationErrors)
         {
             return;
         }
@@ -486,7 +628,20 @@
 
             if (!isPassthrough)
             {
-                content = await _editor!.GetValue();
+                if (activeEditorTab == 0 && _formEditor is { IsLoaded: true })
+                {
+                    content = _formEditor.BuildYaml();
+                }
+                else
+                {
+                    if (_editor == null)
+                    {
+                        Snackbar.Add("YAML editor is not ready", Severity.Warning);
+                        return;
+                    }
+
+                    content = await _editor.GetValue();
+                }
 
                 if (string.IsNullOrWhiteSpace(content))
                 {

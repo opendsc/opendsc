@@ -79,6 +79,7 @@ builder.Services.AddScoped<IParameterMerger, ParameterMerger>();
 builder.Services.AddScoped<IParameterMergeService, ParameterMergeService>();
 builder.Services.AddScoped<IParameterSchemaService, ParameterSchemaService>();
 builder.Services.AddScoped<IParameterSchemaBuilder, ParameterSchemaBuilder>();
+builder.Services.AddScoped<IJsonSchemaFormBuilder, JsonSchemaFormBuilder>();
 builder.Services.AddScoped<IParameterValidator, ParameterValidator>();
 builder.Services.AddScoped<IParameterCompatibilityService, ParameterCompatibilityService>();
 builder.Services.AddScoped<IVersionRetentionService, VersionRetentionService>();
