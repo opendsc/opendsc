@@ -1,4 +1,4 @@
-﻿// Copyright (c) Thomas Nieto - All Rights Reserved
+// Copyright (c) Thomas Nieto - All Rights Reserved
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
@@ -9,7 +9,7 @@ using OpenDsc.Contracts.Configurations;
 
 namespace OpenDsc.Client.Commands.Configuration;
 
-[Cmdlet("Publish", "DscServerConfigurationVersion")]
+[Cmdlet(VerbsData.Publish, "DscServerConfigurationVersion", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.Medium)]
 [OutputType(typeof(PublishResult))]
 public sealed class PublishDscServerConfigurationVersionCommand : DscServerCommandBase
 {
@@ -23,8 +23,9 @@ public sealed class PublishDscServerConfigurationVersionCommand : DscServerComma
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(Name)) return;
         var service = GetRequiredService<ConfigurationHttpService>();
-        var result = service.PublishVersionAsync(Name, Version, CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.PublishVersionAsync(Name, Version, PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

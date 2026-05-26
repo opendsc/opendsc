@@ -9,7 +9,7 @@ using OpenDsc.Contracts.Users;
 
 namespace OpenDsc.Client.Commands.Group;
 
-[Cmdlet("Remove", "DscServerGroupRole")]
+[Cmdlet(VerbsCommon.Remove, "DscServerGroupRole", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
 public sealed class RemoveDscServerGroupRoleCommand : DscServerCommandBase
 {
     [Parameter(Mandatory = true, Position = 0)]
@@ -20,12 +20,13 @@ public sealed class RemoveDscServerGroupRoleCommand : DscServerCommandBase
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(GroupId.ToString())) return;
         var service = GetRequiredService<GroupHttpService>();
         var request = new RemoveGroupRoleRequest
         {
             RoleId = RoleId,
         };
 
-        service.RemoveRoleAsync(GroupId, request, CancellationToken.None).GetAwaiter().GetResult();
+        service.RemoveRoleAsync(GroupId, request, PipelineStopToken).GetAwaiter().GetResult();
     }
 }

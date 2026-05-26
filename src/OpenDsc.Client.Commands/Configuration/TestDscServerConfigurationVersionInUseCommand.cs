@@ -1,4 +1,4 @@
-﻿// Copyright (c) Thomas Nieto - All Rights Reserved
+// Copyright (c) Thomas Nieto - All Rights Reserved
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
@@ -9,7 +9,7 @@ using OpenDsc.Contracts.Configurations;
 
 namespace OpenDsc.Client.Commands.Configuration;
 
-[Cmdlet("Test", "DscServerConfigurationVersionInUse")]
+[Cmdlet(VerbsDiagnostic.Test, "DscServerConfigurationVersionInUse")]
 [OutputType(typeof(VersionUsageInfo))]
 public sealed class TestDscServerConfigurationVersionInUseCommand : DscServerCommandBase
 {
@@ -24,7 +24,7 @@ public sealed class TestDscServerConfigurationVersionInUseCommand : DscServerCom
     protected override void ProcessRecord()
     {
         var service = GetRequiredService<ConfigurationHttpService>();
-        var result = service.IsVersionInUseAsync(Name, Version, CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.IsVersionInUseAsync(Name, Version, PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

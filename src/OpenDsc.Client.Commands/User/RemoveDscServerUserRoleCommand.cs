@@ -9,7 +9,7 @@ using OpenDsc.Contracts.Users;
 
 namespace OpenDsc.Client.Commands.User;
 
-[Cmdlet("Remove", "DscServerUserRole")]
+[Cmdlet(VerbsCommon.Remove, "DscServerUserRole", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
 public sealed class RemoveDscServerUserRoleCommand : DscServerCommandBase
 {
     [Parameter(Mandatory = true, Position = 0)]
@@ -20,12 +20,13 @@ public sealed class RemoveDscServerUserRoleCommand : DscServerCommandBase
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(UserId.ToString())) return;
         var service = GetRequiredService<UserHttpService>();
         var request = new RemoveRoleRequest
         {
             RoleId = RoleId,
         };
 
-        service.RemoveRoleAsync(UserId, request, CancellationToken.None).GetAwaiter().GetResult();
+        service.RemoveRoleAsync(UserId, request, PipelineStopToken).GetAwaiter().GetResult();
     }
 }

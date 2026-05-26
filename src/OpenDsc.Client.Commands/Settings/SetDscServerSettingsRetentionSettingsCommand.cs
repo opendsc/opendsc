@@ -9,7 +9,7 @@ using OpenDsc.Contracts.Settings;
 
 namespace OpenDsc.Client.Commands.Settings;
 
-[Cmdlet("Set", "DscServerSettingsRetentionSettings")]
+[Cmdlet(VerbsCommon.Set, "DscServerSettingsRetentionSettings", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.Medium)]
 [OutputType(typeof(RetentionSettingsSummary))]
 public sealed class SetDscServerSettingsRetentionSettingsCommand : DscServerCommandBase
 {
@@ -42,6 +42,7 @@ public sealed class SetDscServerSettingsRetentionSettingsCommand : DscServerComm
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(string.Empty)) return;
         var service = GetRequiredService<SettingsHttpService>();
         var request = new UpdateRetentionSettingsRequest
         {
@@ -56,7 +57,7 @@ public sealed class SetDscServerSettingsRetentionSettingsCommand : DscServerComm
             StatusEventKeepDays = StatusEventKeepDays,
         };
 
-        var result = service.UpdateRetentionSettingsAsync(request, CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.UpdateRetentionSettingsAsync(request, PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

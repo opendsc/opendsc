@@ -9,7 +9,7 @@ using OpenDsc.Contracts.CompositeConfigurations;
 
 namespace OpenDsc.Client.Commands.CompositeConfiguration;
 
-[Cmdlet("New", "DscServerCompositeConfigurationVersion")]
+[Cmdlet(VerbsCommon.New, "DscServerCompositeConfigurationVersion", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.Medium)]
 [OutputType(typeof(CompositeConfigurationVersionDetails))]
 public sealed class NewDscServerCompositeConfigurationVersionCommand : DscServerCommandBase
 {
@@ -26,6 +26,7 @@ public sealed class NewDscServerCompositeConfigurationVersionCommand : DscServer
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(Name)) return;
         var service = GetRequiredService<CompositeConfigurationHttpService>();
         var request = new CreateCompositeConfigurationVersionRequest
         {
@@ -33,7 +34,7 @@ public sealed class NewDscServerCompositeConfigurationVersionCommand : DscServer
             PrereleaseChannel = PrereleaseChannel,
         };
 
-        var result = service.CreateVersionAsync(Name, request, CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.CreateVersionAsync(Name, request, PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

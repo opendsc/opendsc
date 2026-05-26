@@ -9,7 +9,7 @@ using OpenDsc.Contracts.Users;
 
 namespace OpenDsc.Client.Commands.Group;
 
-[Cmdlet("Add", "DscServerGroupMember")]
+[Cmdlet(VerbsCommon.Add, "DscServerGroupMember", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.Low)]
 public sealed class AddDscServerGroupMemberCommand : DscServerCommandBase
 {
     [Parameter(Mandatory = true, Position = 0)]
@@ -20,12 +20,13 @@ public sealed class AddDscServerGroupMemberCommand : DscServerCommandBase
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(GroupId.ToString())) return;
         var service = GetRequiredService<GroupHttpService>();
         var request = new AddGroupMemberRequest
         {
             UserId = UserId,
         };
 
-        service.AddMemberAsync(GroupId, request, CancellationToken.None).GetAwaiter().GetResult();
+        service.AddMemberAsync(GroupId, request, PipelineStopToken).GetAwaiter().GetResult();
     }
 }

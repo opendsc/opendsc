@@ -9,7 +9,7 @@ using OpenDsc.Contracts.Parameters;
 
 namespace OpenDsc.Client.Commands.Parameter;
 
-[Cmdlet("Set", "DscServerParameter")]
+[Cmdlet(VerbsCommon.Set, "DscServerParameter", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.Medium)]
 public sealed class SetDscServerParameterCommand : DscServerCommandBase
 {
     [Parameter(Mandatory = true, Position = 0)]
@@ -21,12 +21,13 @@ public sealed class SetDscServerParameterCommand : DscServerCommandBase
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(ParameterId.ToString())) return;
         var service = GetRequiredService<ParameterHttpService>();
         var request = new UpdateParameterRequest
         {
             Content = Content,
         };
 
-        service.UpdateAsync(ParameterId, request, CancellationToken.None).GetAwaiter().GetResult();
+        service.UpdateAsync(ParameterId, request, PipelineStopToken).GetAwaiter().GetResult();
     }
 }

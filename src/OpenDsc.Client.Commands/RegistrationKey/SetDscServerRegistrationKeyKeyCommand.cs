@@ -9,7 +9,7 @@ using OpenDsc.Contracts.Settings;
 
 namespace OpenDsc.Client.Commands.RegistrationKey;
 
-[Cmdlet("Set", "DscServerRegistrationKeyKey")]
+[Cmdlet(VerbsCommon.Set, "DscServerRegistrationKeyKey", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.Medium)]
 [OutputType(typeof(RegistrationKeyResponse))]
 public sealed class SetDscServerRegistrationKeyKeyCommand : DscServerCommandBase
 {
@@ -21,13 +21,14 @@ public sealed class SetDscServerRegistrationKeyKeyCommand : DscServerCommandBase
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(Id.ToString())) return;
         var service = GetRequiredService<RegistrationKeyHttpService>();
         var request = new UpdateRegistrationKeyRequest
         {
             Description = Description,
         };
 
-        var result = service.UpdateKeyAsync(Id, request, CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.UpdateKeyAsync(Id, request, PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

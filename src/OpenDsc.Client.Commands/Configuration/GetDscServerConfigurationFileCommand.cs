@@ -1,4 +1,4 @@
-﻿// Copyright (c) Thomas Nieto - All Rights Reserved
+// Copyright (c) Thomas Nieto - All Rights Reserved
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
@@ -8,7 +8,7 @@ using OpenDsc.Client.Services;
 
 namespace OpenDsc.Client.Commands.Configuration;
 
-[Cmdlet("Get", "DscServerConfigurationFile")]
+[Cmdlet(VerbsCommon.Get, "DscServerConfigurationFile")]
 [OutputType(typeof(Stream))]
 public sealed class GetDscServerConfigurationFileCommand : DscServerCommandBase
 {
@@ -27,7 +27,7 @@ public sealed class GetDscServerConfigurationFileCommand : DscServerCommandBase
     protected override void ProcessRecord()
     {
         var service = GetRequiredService<ConfigurationHttpService>();
-        var result = service.DownloadFileAsync(Name, Version, FilePath, CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.DownloadFileAsync(Name, Version, FilePath, PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

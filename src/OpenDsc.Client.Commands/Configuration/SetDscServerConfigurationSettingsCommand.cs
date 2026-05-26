@@ -9,7 +9,7 @@ using OpenDsc.Contracts.Configurations;
 
 namespace OpenDsc.Client.Commands.Configuration;
 
-[Cmdlet("Set", "DscServerConfigurationSettings")]
+[Cmdlet(VerbsCommon.Set, "DscServerConfigurationSettings", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.Medium)]
 [OutputType(typeof(ConfigurationSettingsSummary))]
 public sealed class SetDscServerConfigurationSettingsCommand : DscServerCommandBase
 {
@@ -25,6 +25,7 @@ public sealed class SetDscServerConfigurationSettingsCommand : DscServerCommandB
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(Name)) return;
         var service = GetRequiredService<ConfigurationHttpService>();
         var request = new UpdateConfigurationSettingsRequest
         {
@@ -32,7 +33,7 @@ public sealed class SetDscServerConfigurationSettingsCommand : DscServerCommandB
             ParameterValidationMode = ParameterValidationMode,
         };
 
-        var result = service.UpdateSettingsAsync(Name, request, CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.UpdateSettingsAsync(Name, request, PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

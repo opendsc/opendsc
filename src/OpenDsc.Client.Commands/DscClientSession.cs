@@ -11,10 +11,9 @@ namespace OpenDsc.Client.Commands;
 public static class DscClientSession
 {
     private static readonly object SyncRoot = new();
-    private static ServiceProvider? _provider;
-    private static DscClientSessionState? _state;
+    private static DscServerSession? _default;
 
-    public static DscClientSessionState Connect(Uri serverUri, string token, TimeSpan? timeout)
+    internal static DscServerSession Create(Uri serverUri, string token, TimeSpan? timeout)
     {
         var services = new ServiceCollection();
         services.AddOpenDscClient(options =>
@@ -24,67 +23,48 @@ public static class DscClientSession
             options.Timeout = timeout;
         });
 
-        var provider = services.BuildServiceProvider();
-        var state = new DscClientSessionState
-        {
-            ServerUri = serverUri,
-            ConnectedAt = DateTimeOffset.UtcNow,
-        };
-
-        lock (SyncRoot)
-        {
-            _provider?.Dispose();
-            _provider = provider;
-            _state = state;
-        }
-
-        return state;
+        return new DscServerSession(serverUri, services.BuildServiceProvider());
     }
 
-    public static bool Disconnect()
+    internal static DscServerSession? GetDefault()
     {
         lock (SyncRoot)
         {
-            if (_provider is null)
+            return _default;
+        }
+    }
+
+    internal static void SetDefault(DscServerSession session)
+    {
+        lock (SyncRoot)
+        {
+            _default = session;
+        }
+    }
+
+    internal static bool ClearDefault(DscServerSession? session)
+    {
+        lock (SyncRoot)
+        {
+            if (session is null)
+            {
+                if (_default is null)
+                {
+                    return false;
+                }
+
+                _default.Dispose();
+                _default = null;
+                return true;
+            }
+
+            if (!ReferenceEquals(_default, session))
             {
                 return false;
             }
 
-            _provider.Dispose();
-            _provider = null;
-            _state = null;
+            _default = null;
             return true;
-        }
-    }
-
-    public static DscClientSessionState GetState()
-    {
-        lock (SyncRoot)
-        {
-            return _state ?? throw new InvalidOperationException(
-                "No OpenDSC server connection is active. Run Connect-DscServer first.");
-        }
-    }
-
-    public static T GetRequiredService<T>() where T : notnull
-    {
-        lock (SyncRoot)
-        {
-            return (_provider ?? throw new InvalidOperationException(
-                "No OpenDSC server connection is active. Run Connect-DscServer first."))
-                .GetRequiredService<T>();
-        }
-    }
-
-    public static object GetRequiredService(Type serviceType)
-    {
-        ArgumentNullException.ThrowIfNull(serviceType);
-
-        lock (SyncRoot)
-        {
-            return (_provider ?? throw new InvalidOperationException(
-                "No OpenDSC server connection is active. Run Connect-DscServer first."))
-                .GetRequiredService(serviceType);
         }
     }
 }

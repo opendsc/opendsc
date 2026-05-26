@@ -1,4 +1,4 @@
-﻿// Copyright (c) Thomas Nieto - All Rights Reserved
+// Copyright (c) Thomas Nieto - All Rights Reserved
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
@@ -9,7 +9,7 @@ using OpenDsc.Contracts.Permissions;
 
 namespace OpenDsc.Client.Commands.Configuration;
 
-[Cmdlet("Get", "DscServerConfigurationPermissions")]
+[Cmdlet(VerbsCommon.Get, "DscServerConfigurationPermissions")]
 [OutputType(typeof(PermissionEntry))]
 public sealed class GetDscServerConfigurationPermissionsCommand : DscServerCommandBase
 {
@@ -20,7 +20,7 @@ public sealed class GetDscServerConfigurationPermissionsCommand : DscServerComma
     protected override void ProcessRecord()
     {
         var service = GetRequiredService<ConfigurationHttpService>();
-        var result = service.GetPermissionsAsync(Name, CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.GetPermissionsAsync(Name, PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

@@ -1,4 +1,4 @@
-﻿// Copyright (c) Thomas Nieto - All Rights Reserved
+// Copyright (c) Thomas Nieto - All Rights Reserved
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
@@ -9,14 +9,14 @@ using OpenDsc.Contracts.Users;
 
 namespace OpenDsc.Client.Commands.Group;
 
-[Cmdlet("Get", "DscServerGroupGetGroups")]
+[Cmdlet(VerbsCommon.Get, "DscServerGroupGetGroups")]
 [OutputType(typeof(GroupSummary))]
 public sealed class GetDscServerGroupGetGroupsCommand : DscServerCommandBase
 {
     protected override void ProcessRecord()
     {
         var service = GetRequiredService<GroupHttpService>();
-        var result = service.GetGroupsAsync(CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.GetGroupsAsync(PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

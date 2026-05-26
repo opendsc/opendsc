@@ -1,4 +1,4 @@
-﻿// Copyright (c) Thomas Nieto - All Rights Reserved
+// Copyright (c) Thomas Nieto - All Rights Reserved
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
@@ -12,16 +12,15 @@ using System.Text;
 using AwesomeAssertions;
 
 using OpenDsc.Client.Commands;
-using OpenDsc.Client.Commands.Configuration;
-using OpenDsc.Client.Commands.Health;
-using OpenDsc.Contracts.Configurations;
+using OpenDsc.Client.Commands.Node;
+using OpenDsc.Contracts.Nodes;
 
 using Xunit;
 
-namespace OpenDsc.Client.Commands.Tests;
+namespace OpenDsc.Client.Commands.IntegrationTests;
 
 [Trait("Category", "Integration")]
-public sealed class HealthAndConfigurationIntegrationTests : IAsyncLifetime
+public sealed class NodeCmdletIntegrationTests : IAsyncLifetime
 {
     private readonly LightweightServer _server = new();
 
@@ -37,28 +36,80 @@ public sealed class HealthAndConfigurationIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
-    public void GeneratedHealthAndConfigurationCmdlets_WorkEndToEnd()
+    public void GetDscServerNodeGetNodes_ReturnsNodeSummaries()
     {
         using var runspace = CreateRunspace();
 
+        CreateSession(runspace);
+        var results = Invoke(runspace, "Get-DscServerNodeGetNodes");
+
+        results.Should().ContainSingle();
+        var node = results[0].BaseObject.Should().BeOfType<NodeSummary>().Subject;
+        node.Fqdn.Should().Be("server1.corp");
+    }
+
+    [Fact]
+    public void GetDscServerNodeGetNodes_WithFqdnContains_AppendsQueryParam()
+    {
+        using var runspace = CreateRunspace();
+
+        CreateSession(runspace);
+        Invoke(runspace, "Get-DscServerNodeGetNodes", new Dictionary<string, object?>
+        {
+            ["FqdnContains"] = "corp",
+        });
+
+        _server.LastRequestUrl.Should().Contain("fqdnContains=corp");
+    }
+
+    [Fact]
+    public void GetDscServerNodeGetNodes_WithLimit_AppendsQueryParam()
+    {
+        using var runspace = CreateRunspace();
+
+        CreateSession(runspace);
+        Invoke(runspace, "Get-DscServerNodeGetNodes", new Dictionary<string, object?>
+        {
+            ["Limit"] = 5,
+        });
+
+        _server.LastRequestUrl.Should().Contain("limit=5");
+    }
+
+    [Fact]
+    public void GetDscServerNodeGetNodes_WithMultipleFilters_AppendsAllQueryParams()
+    {
+        using var runspace = CreateRunspace();
+
+        CreateSession(runspace);
+        Invoke(runspace, "Get-DscServerNodeGetNodes", new Dictionary<string, object?>
+        {
+            ["FqdnContains"] = "corp",
+            ["Limit"] = 10,
+        });
+
+        _server.LastRequestUrl.Should().Contain("fqdnContains=corp");
+        _server.LastRequestUrl.Should().Contain("limit=10");
+    }
+
+    [Fact]
+    public void GetDscServerNodeGetNodes_WithNoFilters_CallsBaseEndpoint()
+    {
+        using var runspace = CreateRunspace();
+
+        CreateSession(runspace);
+        Invoke(runspace, "Get-DscServerNodeGetNodes");
+
+        _server.LastRequestUrl.Should().Contain("api/v1/nodes");
+    }
+
+    private void CreateSession(Runspace runspace)
+    {
         _ = Invoke(runspace, "New-DscServerSession", new Dictionary<string, object?>
         {
             ["ServerUri"] = _server.BaseAddress,
             ["Token"] = CreateToken("pat_test"),
         });
-
-        var health = Invoke(runspace, "Test-DscServerHealthConnect");
-        var configs = Invoke(runspace, "Get-DscServerConfigurationGetConfigurations");
-
-        health.Should().ContainSingle();
-        health[0].BaseObject.Should().Be(true);
-
-        configs.Should().ContainSingle();
-        var config = configs[0].BaseObject.Should().BeOfType<ConfigurationSummary>().Subject;
-        config.Name.Should().Be("SampleConfig");
-        config.LatestVersion.Should().Be("1.0.0");
-
-        _server.LastAuthorizationHeader.Should().Be("Bearer pat_test");
     }
 
     private static Runspace CreateRunspace()
@@ -66,9 +117,7 @@ public sealed class HealthAndConfigurationIntegrationTests : IAsyncLifetime
         var iss = InitialSessionState.Create();
         iss.Commands.Add(new SessionStateCmdletEntry("New-DscServerSession", typeof(NewDscServerSessionCommand), null));
         iss.Commands.Add(new SessionStateCmdletEntry("Remove-DscServerSession", typeof(RemoveDscServerSessionCommand), null));
-        iss.Commands.Add(new SessionStateCmdletEntry("Test-DscServerHealthConnect", typeof(TestDscServerHealthConnectCommand), null));
-        iss.Commands.Add(new SessionStateCmdletEntry("Get-DscServerConfigurationGetConfigurations", typeof(GetDscServerConfigurationGetConfigurationsCommand), null));
-
+        iss.Commands.Add(new SessionStateCmdletEntry("Get-DscServerNodeGetNodes", typeof(GetDscServerNodeGetNodesCommand), null));
         var runspace = RunspaceFactory.CreateRunspace(iss);
         runspace.Open();
         return runspace;
@@ -112,7 +161,7 @@ public sealed class HealthAndConfigurationIntegrationTests : IAsyncLifetime
 
         public Uri BaseAddress { get; private set; } = null!;
 
-        public string? LastAuthorizationHeader { get; private set; }
+        public string? LastRequestUrl { get; private set; }
 
         public Task StartAsync()
         {
@@ -160,19 +209,12 @@ public sealed class HealthAndConfigurationIntegrationTests : IAsyncLifetime
             while (!cancellationToken.IsCancellationRequested)
             {
                 var context = await _listener.GetContextAsync();
-                LastAuthorizationHeader = context.Request.Headers["Authorization"];
+                LastRequestUrl = context.Request.Url?.ToString();
                 var path = context.Request.Url?.AbsolutePath?.Trim('/') ?? string.Empty;
 
-                if (string.Equals(path, "health/ready", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(path, "api/v1/nodes", StringComparison.OrdinalIgnoreCase))
                 {
-                    context.Response.StatusCode = (int)HttpStatusCode.OK;
-                    context.Response.Close();
-                    continue;
-                }
-
-                if (string.Equals(path, "api/v1/configurations", StringComparison.OrdinalIgnoreCase))
-                {
-                    const string json = "[{\"id\":\"0f6be6f3-9e77-4d74-a1d0-5b869dc8313d\",\"name\":\"SampleConfig\",\"description\":\"Example\",\"useServerManagedParameters\":true,\"versionCount\":1,\"latestVersion\":\"1.0.0\",\"hasPublishedVersion\":true,\"createdAt\":\"2026-01-01T00:00:00Z\"}]";
+                    const string json = "[{\"id\":\"f47ac10b-58cc-4372-a567-0e02b2c3d479\",\"fqdn\":\"server1.corp\",\"status\":\"Compliant\",\"lcmStatus\":\"Idle\",\"isStale\":false,\"createdAt\":\"2026-01-01T00:00:00Z\",\"configurationSource\":\"Pull\"}]";
                     var bytes = Encoding.UTF8.GetBytes(json);
                     context.Response.ContentType = "application/json";
                     context.Response.StatusCode = (int)HttpStatusCode.OK;

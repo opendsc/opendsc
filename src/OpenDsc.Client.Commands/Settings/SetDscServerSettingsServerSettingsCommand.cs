@@ -9,7 +9,7 @@ using OpenDsc.Contracts.Settings;
 
 namespace OpenDsc.Client.Commands.Settings;
 
-[Cmdlet("Set", "DscServerSettingsServerSettings")]
+[Cmdlet(VerbsCommon.Set, "DscServerSettingsServerSettings", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.Medium)]
 [OutputType(typeof(ServerSettingsSummary))]
 public sealed class SetDscServerSettingsServerSettingsCommand : DscServerCommandBase
 {
@@ -21,6 +21,7 @@ public sealed class SetDscServerSettingsServerSettingsCommand : DscServerCommand
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(string.Empty)) return;
         var service = GetRequiredService<SettingsHttpService>();
         var request = new UpdateServerSettingsRequest
         {
@@ -28,7 +29,7 @@ public sealed class SetDscServerSettingsServerSettingsCommand : DscServerCommand
             StalenessMultiplier = StalenessMultiplier,
         };
 
-        var result = service.UpdateServerSettingsAsync(request, CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.UpdateServerSettingsAsync(request, PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

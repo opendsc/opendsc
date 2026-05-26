@@ -9,7 +9,7 @@ using OpenDsc.Contracts.Users;
 
 namespace OpenDsc.Client.Commands.Group;
 
-[Cmdlet("New", "DscServerGroupExternalGroupMapping")]
+[Cmdlet(VerbsCommon.New, "DscServerGroupExternalGroupMapping", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.Medium)]
 [OutputType(typeof(ExternalGroupMappingInfo))]
 public sealed class NewDscServerGroupExternalGroupMappingCommand : DscServerCommandBase
 {
@@ -29,6 +29,7 @@ public sealed class NewDscServerGroupExternalGroupMappingCommand : DscServerComm
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(Provider)) return;
         var service = GetRequiredService<GroupHttpService>();
         var request = new CreateExternalGroupMappingRequest
         {
@@ -38,7 +39,7 @@ public sealed class NewDscServerGroupExternalGroupMappingCommand : DscServerComm
             GroupId = GroupId,
         };
 
-        var result = service.CreateExternalGroupMappingAsync(request, CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.CreateExternalGroupMappingAsync(request, PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

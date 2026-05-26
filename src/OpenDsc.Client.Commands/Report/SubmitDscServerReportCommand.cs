@@ -10,25 +10,29 @@ using OpenDsc.Schema;
 
 namespace OpenDsc.Client.Commands.Report;
 
-[Cmdlet("Submit", "DscServerReport")]
+[Cmdlet(VerbsLifecycle.Submit, "DscServerReport", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.Low)]
 [OutputType(typeof(ReportSummary))]
 public sealed class SubmitDscServerReportCommand : DscServerCommandBase
 {
     [Parameter(Mandatory = true, Position = 0)]
-    public Guid NodeId { get; set; } = default; [Parameter(Mandatory = true, Position = 1)]
+    public Guid NodeId { get; set; }
+
+    [Parameter(Mandatory = true, Position = 1)]
     public DscOperation Operation { get; set; }
 
     [Parameter(Mandatory = true, Position = 2)]
     public DscResult Result { get; set; } = null!;
+
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(NodeId.ToString())) return;
         var service = GetRequiredService<ReportHttpService>();
         var request = new SubmitReportRequest
         {
             Operation = Operation,
             Result = Result,
         };
-        var result = service.SubmitReportAsync(NodeId, request, CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.SubmitReportAsync(NodeId, request, PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

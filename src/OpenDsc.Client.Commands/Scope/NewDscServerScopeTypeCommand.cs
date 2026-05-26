@@ -10,7 +10,7 @@ using OpenDsc.Contracts.Settings;
 
 namespace OpenDsc.Client.Commands.Scope;
 
-[Cmdlet("New", "DscServerScopeType")]
+[Cmdlet(VerbsCommon.New, "DscServerScopeType", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.Medium)]
 [OutputType(typeof(ScopeTypeDetails))]
 public sealed class NewDscServerScopeTypeCommand : DscServerCommandBase
 {
@@ -26,6 +26,7 @@ public sealed class NewDscServerScopeTypeCommand : DscServerCommandBase
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(Name)) return;
         var service = GetRequiredService<ScopeHttpService>();
         var request = new CreateScopeTypeRequest
         {
@@ -34,7 +35,7 @@ public sealed class NewDscServerScopeTypeCommand : DscServerCommandBase
             ValueMode = ValueMode,
         };
 
-        var result = service.CreateScopeTypeAsync(request, CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.CreateScopeTypeAsync(request, PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

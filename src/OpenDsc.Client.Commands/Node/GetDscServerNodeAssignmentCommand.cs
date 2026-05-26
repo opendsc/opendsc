@@ -1,4 +1,4 @@
-﻿// Copyright (c) Thomas Nieto - All Rights Reserved
+// Copyright (c) Thomas Nieto - All Rights Reserved
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
@@ -9,7 +9,7 @@ using OpenDsc.Contracts.Nodes;
 
 namespace OpenDsc.Client.Commands.Node;
 
-[Cmdlet("Get", "DscServerNodeAssignment")]
+[Cmdlet(VerbsCommon.Get, "DscServerNodeAssignment")]
 [OutputType(typeof(NodeAssignmentSummary))]
 public sealed class GetDscServerNodeAssignmentCommand : DscServerCommandBase
 {
@@ -19,7 +19,7 @@ public sealed class GetDscServerNodeAssignmentCommand : DscServerCommandBase
     protected override void ProcessRecord()
     {
         var service = GetRequiredService<NodeHttpService>();
-        var result = service.GetNodeAssignmentAsync(NodeId, CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.GetNodeAssignmentAsync(NodeId, PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

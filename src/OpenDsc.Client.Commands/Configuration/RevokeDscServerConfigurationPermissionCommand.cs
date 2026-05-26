@@ -9,7 +9,7 @@ using OpenDsc.Contracts.Permissions;
 
 namespace OpenDsc.Client.Commands.Configuration;
 
-[Cmdlet("Revoke", "DscServerConfigurationPermission")]
+[Cmdlet(VerbsSecurity.Revoke, "DscServerConfigurationPermission", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
 public sealed class RevokeDscServerConfigurationPermissionCommand : DscServerCommandBase
 {
     [Parameter(Mandatory = true, Position = 0)]
@@ -24,6 +24,7 @@ public sealed class RevokeDscServerConfigurationPermissionCommand : DscServerCom
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(Name)) return;
         var service = GetRequiredService<ConfigurationHttpService>();
         var request = new RevokePermissionRequest
         {
@@ -31,6 +32,6 @@ public sealed class RevokeDscServerConfigurationPermissionCommand : DscServerCom
             PrincipalType = PrincipalType,
         };
 
-        service.RevokePermissionAsync(Name, request, CancellationToken.None).GetAwaiter().GetResult();
+        service.RevokePermissionAsync(Name, request, PipelineStopToken).GetAwaiter().GetResult();
     }
 }

@@ -9,7 +9,7 @@ using OpenDsc.Contracts.Users;
 
 namespace OpenDsc.Client.Commands.Role;
 
-[Cmdlet("New", "DscServerRole")]
+[Cmdlet(VerbsCommon.New, "DscServerRole", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.Medium)]
 [OutputType(typeof(RoleSummary))]
 public sealed class NewDscServerRoleCommand : DscServerCommandBase
 {
@@ -26,6 +26,7 @@ public sealed class NewDscServerRoleCommand : DscServerCommandBase
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(Name)) return;
         var service = GetRequiredService<RoleHttpService>();
         var request = new CreateRoleRequest
         {
@@ -34,7 +35,7 @@ public sealed class NewDscServerRoleCommand : DscServerCommandBase
             Permissions = Permissions,
         };
 
-        var result = service.CreateRoleAsync(request, CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.CreateRoleAsync(request, PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

@@ -9,7 +9,7 @@ using OpenDsc.Contracts.Configurations;
 
 namespace OpenDsc.Client.Commands.Configuration;
 
-[Cmdlet("Add", "DscServerConfigurationFiles")]
+[Cmdlet(VerbsCommon.Add, "DscServerConfigurationFiles", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.Low)]
 public sealed class AddDscServerConfigurationFilesCommand : DscServerCommandBase
 {
     [Parameter(Mandatory = true, Position = 0)]
@@ -25,7 +25,8 @@ public sealed class AddDscServerConfigurationFilesCommand : DscServerCommandBase
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(Name)) return;
         var service = GetRequiredService<ConfigurationHttpService>();
-        service.AddFilesAsync(Name, Version, Files, CancellationToken.None).GetAwaiter().GetResult();
+        service.AddFilesAsync(Name, Version, Files, PipelineStopToken).GetAwaiter().GetResult();
     }
 }

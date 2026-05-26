@@ -9,12 +9,12 @@ using OpenDsc.Contracts.CompositeConfigurations;
 
 namespace OpenDsc.Client.Commands.CompositeConfiguration;
 
-[Cmdlet("Set", "DscServerCompositeConfigurationChildUpdateChild")]
+[Cmdlet(VerbsCommon.Set, "DscServerCompositeConfigurationChildUpdateChild", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.Medium)]
 [OutputType(typeof(CompositeConfigurationItemDetails))]
 public sealed class SetDscServerCompositeConfigurationChildUpdateChildCommand : DscServerCommandBase
 {
     [Parameter(Mandatory = true, Position = 0)]
-    public Guid ItemId { get; set; } = default;
+    public Guid ItemId { get; set; }
 
     [Parameter(Mandatory = false, Position = 1)]
     public string? ActiveVersion { get; set; }
@@ -24,6 +24,7 @@ public sealed class SetDscServerCompositeConfigurationChildUpdateChildCommand : 
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(ItemId.ToString())) return;
         var service = GetRequiredService<CompositeConfigurationHttpService>();
         var request = new UpdateChildConfigurationRequest
         {
@@ -31,7 +32,7 @@ public sealed class SetDscServerCompositeConfigurationChildUpdateChildCommand : 
             Order = Order,
         };
 
-        var result = service.UpdateChildAsync(ItemId, request, CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.UpdateChildAsync(ItemId, request, PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

@@ -4,6 +4,7 @@
 
 using System.Management.Automation;
 using System.Management.Automation.Runspaces;
+using System.Security;
 
 using AwesomeAssertions;
 
@@ -14,43 +15,52 @@ using Xunit;
 namespace OpenDsc.Client.Commands.Tests;
 
 [Trait("Category", "Unit")]
+[Collection("Session")]
 public sealed class ConnectionCommandsTests : IDisposable
 {
     public void Dispose()
     {
-        DscClientSession.Disconnect();
+        DscClientSession.ClearDefault(null);
     }
 
     [Fact]
-    public void ConnectDscServer_ReturnsSessionState()
+    public void NewDscServerSession_ReturnsSession()
     {
         using var runspace = CreateRunspace();
 
-        var results = Invoke(runspace, "Connect-DscServer", new Dictionary<string, object?>
+        var token = new SecureString();
+        foreach (char c in "pat_test") token.AppendChar(c);
+        token.MakeReadOnly();
+
+        var results = Invoke(runspace, "New-DscServerSession", new Dictionary<string, object?>
         {
             ["ServerUri"] = new Uri("https://server.test/"),
-            ["Token"] = "pat_test",
+            ["Token"] = token,
         });
 
         results.Should().ContainSingle();
-        var state = results[0].BaseObject.Should().BeOfType<DscClientSessionState>().Subject;
-        state.ServerUri.Should().Be(new Uri("https://server.test/"));
-        state.ConnectedAt.Should().BeCloseTo(DateTimeOffset.UtcNow, TimeSpan.FromSeconds(10));
+        var session = results[0].BaseObject.Should().BeOfType<DscServerSession>().Subject;
+        session.ServerUri.Should().Be(new Uri("https://server.test/"));
+        session.ConnectedAt.Should().BeCloseTo(DateTimeOffset.UtcNow, TimeSpan.FromSeconds(10));
     }
 
     [Fact]
-    public void DisconnectDscServer_ReturnsTrueWhenConnected_ThenFalse()
+    public void RemoveDscServerSession_ReturnsTrueWhenDefault_ThenFalse()
     {
         using var runspace = CreateRunspace();
 
-        _ = Invoke(runspace, "Connect-DscServer", new Dictionary<string, object?>
+        var token = new SecureString();
+        foreach (char c in "pat_test") token.AppendChar(c);
+        token.MakeReadOnly();
+
+        _ = Invoke(runspace, "New-DscServerSession", new Dictionary<string, object?>
         {
             ["ServerUri"] = new Uri("https://server.test/"),
-            ["Token"] = "pat_test",
+            ["Token"] = token,
         });
 
-        var first = Invoke(runspace, "Disconnect-DscServer");
-        var second = Invoke(runspace, "Disconnect-DscServer");
+        var first = Invoke(runspace, "Remove-DscServerSession");
+        var second = Invoke(runspace, "Remove-DscServerSession");
 
         first.Should().ContainSingle();
         first[0].BaseObject.Should().Be(true);
@@ -62,8 +72,8 @@ public sealed class ConnectionCommandsTests : IDisposable
     private static Runspace CreateRunspace()
     {
         var iss = InitialSessionState.Create();
-        iss.Commands.Add(new SessionStateCmdletEntry("Connect-DscServer", typeof(ConnectDscServerCommand), null));
-        iss.Commands.Add(new SessionStateCmdletEntry("Disconnect-DscServer", typeof(DisconnectDscServerCommand), null));
+        iss.Commands.Add(new SessionStateCmdletEntry("New-DscServerSession", typeof(NewDscServerSessionCommand), null));
+        iss.Commands.Add(new SessionStateCmdletEntry("Remove-DscServerSession", typeof(RemoveDscServerSessionCommand), null));
         var runspace = RunspaceFactory.CreateRunspace(iss);
         runspace.Open();
         return runspace;

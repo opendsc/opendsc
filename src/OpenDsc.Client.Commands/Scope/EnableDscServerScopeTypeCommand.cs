@@ -1,4 +1,4 @@
-﻿// Copyright (c) Thomas Nieto - All Rights Reserved
+// Copyright (c) Thomas Nieto - All Rights Reserved
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
@@ -9,7 +9,7 @@ using OpenDsc.Contracts.Settings;
 
 namespace OpenDsc.Client.Commands.Scope;
 
-[Cmdlet("Enable", "DscServerScopeType")]
+[Cmdlet(VerbsLifecycle.Enable, "DscServerScopeType", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.Medium)]
 [OutputType(typeof(ScopeTypeDetails))]
 public sealed class EnableDscServerScopeTypeCommand : DscServerCommandBase
 {
@@ -18,8 +18,9 @@ public sealed class EnableDscServerScopeTypeCommand : DscServerCommandBase
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(Id.ToString())) return;
         var service = GetRequiredService<ScopeHttpService>();
-        var result = service.EnableScopeTypeAsync(Id, CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.EnableScopeTypeAsync(Id, PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

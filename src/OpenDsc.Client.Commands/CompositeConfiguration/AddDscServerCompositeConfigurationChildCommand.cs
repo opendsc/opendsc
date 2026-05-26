@@ -9,7 +9,7 @@ using OpenDsc.Client.Services;
 
 namespace OpenDsc.Client.Commands.CompositeConfiguration;
 
-[Cmdlet("Add", "DscServerCompositeConfigurationChild")]
+[Cmdlet(VerbsCommon.Add, "DscServerCompositeConfigurationChild", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.Low)]
 [OutputType(typeof(CompositeConfigurationItemDetails))]
 public sealed class AddDscServerCompositeConfigurationChildCommand : DscServerCommandBase
 {
@@ -33,6 +33,7 @@ public sealed class AddDscServerCompositeConfigurationChildCommand : DscServerCo
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(Name)) return;
         var service = GetRequiredService<CompositeConfigurationHttpService>();
         var request = new AddChildConfigurationRequest
         {
@@ -40,7 +41,8 @@ public sealed class AddDscServerCompositeConfigurationChildCommand : DscServerCo
             MajorVersion = MajorVersion,
             Order = Order,
         };
-        var result = service.AddChildAsync(Name, Version, request, CancellationToken.None).GetAwaiter().GetResult();
+
+        var result = service.AddChildAsync(Name, Version, request, PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

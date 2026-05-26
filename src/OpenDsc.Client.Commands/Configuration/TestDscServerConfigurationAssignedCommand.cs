@@ -1,4 +1,4 @@
-﻿// Copyright (c) Thomas Nieto - All Rights Reserved
+// Copyright (c) Thomas Nieto - All Rights Reserved
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
@@ -8,7 +8,7 @@ using OpenDsc.Client.Services;
 
 namespace OpenDsc.Client.Commands.Configuration;
 
-[Cmdlet("Test", "DscServerConfigurationAssigned")]
+[Cmdlet(VerbsDiagnostic.Test, "DscServerConfigurationAssigned")]
 [OutputType(typeof(bool))]
 public sealed class TestDscServerConfigurationAssignedCommand : DscServerCommandBase
 {
@@ -19,7 +19,7 @@ public sealed class TestDscServerConfigurationAssignedCommand : DscServerCommand
     protected override void ProcessRecord()
     {
         var service = GetRequiredService<ConfigurationHttpService>();
-        var result = service.IsConfigurationAssignedAsync(Name, CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.IsConfigurationAssignedAsync(Name, PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

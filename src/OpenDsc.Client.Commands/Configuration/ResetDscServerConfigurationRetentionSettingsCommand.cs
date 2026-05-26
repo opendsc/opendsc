@@ -1,4 +1,4 @@
-﻿// Copyright (c) Thomas Nieto - All Rights Reserved
+// Copyright (c) Thomas Nieto - All Rights Reserved
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
@@ -8,7 +8,7 @@ using OpenDsc.Client.Services;
 
 namespace OpenDsc.Client.Commands.Configuration;
 
-[Cmdlet("Reset", "DscServerConfigurationRetentionSettings")]
+[Cmdlet(VerbsCommon.Reset, "DscServerConfigurationRetentionSettings", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
 public sealed class ResetDscServerConfigurationRetentionSettingsCommand : DscServerCommandBase
 {
     [Parameter(Mandatory = true, Position = 0)]
@@ -17,7 +17,8 @@ public sealed class ResetDscServerConfigurationRetentionSettingsCommand : DscSer
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(Name)) return;
         var service = GetRequiredService<ConfigurationHttpService>();
-        service.ResetRetentionSettingsAsync(Name, CancellationToken.None).GetAwaiter().GetResult();
+        service.ResetRetentionSettingsAsync(Name, PipelineStopToken).GetAwaiter().GetResult();
     }
 }

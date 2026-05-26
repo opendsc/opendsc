@@ -1,4 +1,4 @@
-﻿// Copyright (c) Thomas Nieto - All Rights Reserved
+// Copyright (c) Thomas Nieto - All Rights Reserved
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
@@ -6,9 +6,9 @@ using System.Management.Automation;
 
 using OpenDsc.Client.Services;
 
-namespace OpenDsc.Client.Commands;
+namespace OpenDsc.Client.Commands.Configuration;
 
-[Cmdlet("Remove", "DscServerConfigurationVersion")]
+[Cmdlet(VerbsCommon.Remove, "DscServerConfigurationVersion", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
 public sealed class RemoveDscServerConfigurationVersionCommand : DscServerCommandBase
 {
     [Parameter(Mandatory = true, Position = 0)]
@@ -21,7 +21,8 @@ public sealed class RemoveDscServerConfigurationVersionCommand : DscServerComman
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(Name)) return;
         var service = GetRequiredService<ConfigurationHttpService>();
-        service.DeleteVersionAsync(Name, Version, CancellationToken.None).GetAwaiter().GetResult();
+        service.DeleteVersionAsync(Name, Version, PipelineStopToken).GetAwaiter().GetResult();
     }
 }

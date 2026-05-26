@@ -9,7 +9,7 @@ using OpenDsc.Contracts.Users;
 
 namespace OpenDsc.Client.Commands.Role;
 
-[Cmdlet("Set", "DscServerRoleGroupsForRole")]
+[Cmdlet(VerbsCommon.Set, "DscServerRoleGroupsForRole", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.Medium)]
 public sealed class SetDscServerRoleGroupsForRoleCommand : DscServerCommandBase
 {
     [Parameter(Mandatory = true, Position = 0)]
@@ -21,12 +21,13 @@ public sealed class SetDscServerRoleGroupsForRoleCommand : DscServerCommandBase
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(RoleId.ToString())) return;
         var service = GetRequiredService<RoleHttpService>();
         var request = new SetRoleGroupsRequest
         {
             GroupIds = GroupIds,
         };
 
-        service.SetGroupsForRoleAsync(RoleId, request, CancellationToken.None).GetAwaiter().GetResult();
+        service.SetGroupsForRoleAsync(RoleId, request, PipelineStopToken).GetAwaiter().GetResult();
     }
 }

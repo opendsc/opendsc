@@ -1,4 +1,4 @@
-﻿// Copyright (c) Thomas Nieto - All Rights Reserved
+// Copyright (c) Thomas Nieto - All Rights Reserved
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
@@ -8,18 +8,19 @@ using OpenDsc.Client.Services;
 
 namespace OpenDsc.Client.Commands.CompositeConfiguration;
 
-[Cmdlet("Set", "DscServerCompositeConfigurationChild")]
+[Cmdlet(VerbsCommon.Set, "DscServerCompositeConfigurationChild", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.Medium)]
 public sealed class SetDscServerCompositeConfigurationChildCommand : DscServerCommandBase
 {
     [Parameter(Mandatory = true, Position = 0)]
-    public Guid ItemId { get; set; } = default;
+    public Guid ItemId { get; set; }
 
     [Parameter(Mandatory = true, Position = 1)]
-    public int NewOrder { get; set; } = default;
+    public int NewOrder { get; set; }
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(ItemId.ToString())) return;
         var service = GetRequiredService<CompositeConfigurationHttpService>();
-        service.ReorderChildAsync(ItemId, NewOrder, CancellationToken.None).GetAwaiter().GetResult();
+        service.ReorderChildAsync(ItemId, NewOrder, PipelineStopToken).GetAwaiter().GetResult();
     }
 }

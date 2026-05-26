@@ -1,4 +1,4 @@
-﻿// Copyright (c) Thomas Nieto - All Rights Reserved
+// Copyright (c) Thomas Nieto - All Rights Reserved
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
@@ -9,7 +9,7 @@ using OpenDsc.Contracts.Reports;
 
 namespace OpenDsc.Client.Commands.Report;
 
-[Cmdlet("Get", "DscServerReportGetReports")]
+[Cmdlet(VerbsCommon.Get, "DscServerReportGetReports")]
 [OutputType(typeof(ReportSummary))]
 public sealed class GetDscServerReportGetReportsCommand : DscServerCommandBase
 {
@@ -31,7 +31,7 @@ public sealed class GetDscServerReportGetReportsCommand : DscServerCommandBase
     protected override void ProcessRecord()
     {
         var service = GetRequiredService<ReportHttpService>();
-        var result = service.GetReportsAsync(NodeId, Skip, Take, From, To, CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.GetReportsAsync(NodeId, Skip, Take, From, To, PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

@@ -3,30 +3,32 @@
 // terms of the MIT license.
 
 using System.Management.Automation;
+using System.Net;
+using System.Security;
 
 using OpenDsc.Client.Services;
 using OpenDsc.Contracts.Users;
 
 namespace OpenDsc.Client.Commands.User;
 
-[Cmdlet("Reset", "DscServerUserPassword")]
+[Cmdlet(VerbsCommon.Reset, "DscServerUserPassword", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
 public sealed class ResetDscServerUserPasswordCommand : DscServerCommandBase
 {
     [Parameter(Mandatory = true, Position = 0)]
     public Guid UserId { get; set; }
 
     [Parameter(Mandatory = true, Position = 1)]
-    [ValidateNotNullOrEmpty]
-    public string NewPassword { get; set; } = string.Empty;
+    public SecureString NewPassword { get; set; } = null!;
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(UserId.ToString())) return;
         var service = GetRequiredService<UserHttpService>();
         var request = new ResetPasswordRequest
         {
-            NewPassword = NewPassword,
+            NewPassword = new NetworkCredential(string.Empty, NewPassword).Password,
         };
 
-        service.ResetPasswordAsync(UserId, request, CancellationToken.None).GetAwaiter().GetResult();
+        service.ResetPasswordAsync(UserId, request, PipelineStopToken).GetAwaiter().GetResult();
     }
 }

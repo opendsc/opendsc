@@ -9,7 +9,7 @@ using OpenDsc.Contracts.Configurations;
 
 namespace OpenDsc.Client.Commands.Configuration;
 
-[Cmdlet("Set", "DscServerConfigurationRetentionSettings")]
+[Cmdlet(VerbsCommon.Set, "DscServerConfigurationRetentionSettings", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.Medium)]
 public sealed class SetDscServerConfigurationRetentionSettingsCommand : DscServerCommandBase
 {
     [Parameter(Mandatory = true, Position = 0)]
@@ -30,6 +30,7 @@ public sealed class SetDscServerConfigurationRetentionSettingsCommand : DscServe
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(Name)) return;
         var service = GetRequiredService<ConfigurationHttpService>();
         var request = new SaveRetentionSettingsRequest
         {
@@ -39,6 +40,6 @@ public sealed class SetDscServerConfigurationRetentionSettingsCommand : DscServe
             KeepReleaseVersions = KeepReleaseVersions,
         };
 
-        service.SaveRetentionSettingsAsync(Name, request, CancellationToken.None).GetAwaiter().GetResult();
+        service.SaveRetentionSettingsAsync(Name, request, PipelineStopToken).GetAwaiter().GetResult();
     }
 }

@@ -9,7 +9,7 @@ using OpenDsc.Contracts.Configurations;
 
 namespace OpenDsc.Client.Commands.Configuration;
 
-[Cmdlet("New", "DscServerConfiguration")]
+[Cmdlet(VerbsCommon.New, "DscServerConfiguration", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.Medium)]
 [OutputType(typeof(ConfigurationDetails))]
 public sealed class NewDscServerConfigurationCommand : DscServerCommandBase
 {
@@ -37,6 +37,7 @@ public sealed class NewDscServerConfigurationCommand : DscServerCommandBase
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(Name)) return;
         var service = GetRequiredService<ConfigurationHttpService>();
         var request = new CreateConfigurationAdminRequest
         {
@@ -48,7 +49,7 @@ public sealed class NewDscServerConfigurationCommand : DscServerCommandBase
             Files = Files,
         };
 
-        var result = service.CreateAsync(request, CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.CreateAsync(request, PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

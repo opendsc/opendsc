@@ -1,4 +1,4 @@
-﻿// Copyright (c) Thomas Nieto - All Rights Reserved
+// Copyright (c) Thomas Nieto - All Rights Reserved
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
@@ -9,7 +9,7 @@ using OpenDsc.Contracts.Configurations;
 
 namespace OpenDsc.Client.Commands.Configuration;
 
-[Cmdlet("Get", "DscServerConfigurationSettings")]
+[Cmdlet(VerbsCommon.Get, "DscServerConfigurationSettings")]
 [OutputType(typeof(ConfigurationSettingsSummary))]
 public sealed class GetDscServerConfigurationSettingsCommand : DscServerCommandBase
 {
@@ -20,7 +20,7 @@ public sealed class GetDscServerConfigurationSettingsCommand : DscServerCommandB
     protected override void ProcessRecord()
     {
         var service = GetRequiredService<ConfigurationHttpService>();
-        var result = service.GetSettingsAsync(Name, CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.GetSettingsAsync(Name, PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

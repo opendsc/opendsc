@@ -1,4 +1,4 @@
-﻿// Copyright (c) Thomas Nieto - All Rights Reserved
+// Copyright (c) Thomas Nieto - All Rights Reserved
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
@@ -8,7 +8,7 @@ using OpenDsc.Client.Services;
 
 namespace OpenDsc.Client.Commands.Parameter;
 
-[Cmdlet("Remove", "DscServerParameter")]
+[Cmdlet(VerbsCommon.Remove, "DscServerParameter", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
 public sealed class RemoveDscServerParameterCommand : DscServerCommandBase
 {
     [Parameter(Mandatory = true, Position = 0)]
@@ -27,7 +27,8 @@ public sealed class RemoveDscServerParameterCommand : DscServerCommandBase
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(ScopeTypeId.ToString())) return;
         var service = GetRequiredService<ParameterHttpService>();
-        service.DeleteAsync(ScopeTypeId, ConfigurationId, ScopeValue, Version, CancellationToken.None).GetAwaiter().GetResult();
+        service.DeleteAsync(ScopeTypeId, ConfigurationId, ScopeValue, Version, PipelineStopToken).GetAwaiter().GetResult();
     }
 }

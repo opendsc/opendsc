@@ -1,4 +1,4 @@
-﻿// Copyright (c) Thomas Nieto - All Rights Reserved
+// Copyright (c) Thomas Nieto - All Rights Reserved
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
@@ -9,14 +9,14 @@ using OpenDsc.Contracts.Settings;
 
 namespace OpenDsc.Client.Commands.Scope;
 
-[Cmdlet("Get", "DscServerScopeAllScopeTypesWithValues")]
+[Cmdlet(VerbsCommon.Get, "DscServerScopeAllScopeTypesWithValues")]
 [OutputType(typeof(ScopeTypeWithValuesDetails))]
 public sealed class GetDscServerScopeAllScopeTypesWithValuesCommand : DscServerCommandBase
 {
     protected override void ProcessRecord()
     {
         var service = GetRequiredService<ScopeHttpService>();
-        var result = service.GetAllScopeTypesWithValuesAsync(CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.GetAllScopeTypesWithValuesAsync(PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

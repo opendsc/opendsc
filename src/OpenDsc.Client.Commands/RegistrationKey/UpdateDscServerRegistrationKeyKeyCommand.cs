@@ -1,4 +1,4 @@
-﻿// Copyright (c) Thomas Nieto - All Rights Reserved
+// Copyright (c) Thomas Nieto - All Rights Reserved
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
@@ -9,14 +9,15 @@ using OpenDsc.Contracts.Settings;
 
 namespace OpenDsc.Client.Commands.RegistrationKey;
 
-[Cmdlet("Update", "DscServerRegistrationKeyKey")]
+[Cmdlet(VerbsData.Update, "DscServerRegistrationKeyKey", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.Medium)]
 [OutputType(typeof(RegistrationKeyResponse))]
 public sealed class UpdateDscServerRegistrationKeyKeyCommand : DscServerCommandBase
 {
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(string.Empty)) return;
         var service = GetRequiredService<RegistrationKeyHttpService>();
-        var result = service.RotateKeyAsync(CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.RotateKeyAsync(PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

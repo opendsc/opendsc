@@ -9,7 +9,7 @@ using OpenDsc.Contracts.Users;
 
 namespace OpenDsc.Client.Commands.User;
 
-[Cmdlet("Set", "DscServerUser")]
+[Cmdlet(VerbsCommon.Set, "DscServerUser", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.Medium)]
 [OutputType(typeof(UserSummary))]
 public sealed class SetDscServerUserCommand : DscServerCommandBase
 {
@@ -41,6 +41,7 @@ public sealed class SetDscServerUserCommand : DscServerCommandBase
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(UserId.ToString())) return;
         var service = GetRequiredService<UserHttpService>();
         var request = new UpdateUserRequest
         {
@@ -53,7 +54,7 @@ public sealed class SetDscServerUserCommand : DscServerCommandBase
             IsLocked = IsLocked,
         };
 
-        var result = service.UpdateUserAsync(UserId, request, CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.UpdateUserAsync(UserId, request, PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

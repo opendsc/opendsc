@@ -1,4 +1,4 @@
-﻿// Copyright (c) Thomas Nieto - All Rights Reserved
+// Copyright (c) Thomas Nieto - All Rights Reserved
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
@@ -9,17 +9,17 @@ using OpenDsc.Contracts.Nodes;
 
 namespace OpenDsc.Client.Commands.Report;
 
-[Cmdlet("Get", "DscServerReportNode")]
+[Cmdlet(VerbsCommon.Get, "DscServerReportNode")]
 [OutputType(typeof(NodeSummary))]
 public sealed class GetDscServerReportNodeCommand : DscServerCommandBase
 {
     [Parameter(Mandatory = true, Position = 0)]
-    public Guid ReportId { get; set; } = default;
+    public Guid ReportId { get; set; }
 
     protected override void ProcessRecord()
     {
         var service = GetRequiredService<ReportHttpService>();
-        var result = service.GetReportNodeAsync(ReportId, CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.GetReportNodeAsync(ReportId, PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

@@ -1,4 +1,4 @@
-﻿// Copyright (c) Thomas Nieto - All Rights Reserved
+// Copyright (c) Thomas Nieto - All Rights Reserved
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
@@ -9,14 +9,14 @@ using OpenDsc.Contracts.Users;
 
 namespace OpenDsc.Client.Commands.User;
 
-[Cmdlet("Get", "DscServerUserGetUsers")]
+[Cmdlet(VerbsCommon.Get, "DscServerUserGetUsers")]
 [OutputType(typeof(UserSummary))]
 public sealed class GetDscServerUserGetUsersCommand : DscServerCommandBase
 {
     protected override void ProcessRecord()
     {
         var service = GetRequiredService<UserHttpService>();
-        var result = service.GetUsersAsync(CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.GetUsersAsync(PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

@@ -9,7 +9,7 @@ using OpenDsc.Contracts.Permissions;
 
 namespace OpenDsc.Client.Commands.CompositeConfiguration;
 
-[Cmdlet("Grant", "DscServerCompositeConfigurationPermission")]
+[Cmdlet(VerbsSecurity.Grant, "DscServerCompositeConfigurationPermission", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
 public sealed class GrantDscServerCompositeConfigurationPermissionCommand : DscServerCommandBase
 {
     [Parameter(Mandatory = true, Position = 0)]
@@ -27,6 +27,7 @@ public sealed class GrantDscServerCompositeConfigurationPermissionCommand : DscS
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(Name)) return;
         var service = GetRequiredService<CompositeConfigurationHttpService>();
         var request = new GrantPermissionRequest
         {
@@ -35,6 +36,6 @@ public sealed class GrantDscServerCompositeConfigurationPermissionCommand : DscS
             Level = Level,
         };
 
-        service.GrantPermissionAsync(Name, request, CancellationToken.None).GetAwaiter().GetResult();
+        service.GrantPermissionAsync(Name, request, PipelineStopToken).GetAwaiter().GetResult();
     }
 }

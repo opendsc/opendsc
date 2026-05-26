@@ -9,7 +9,7 @@ using OpenDsc.Contracts.Nodes;
 
 namespace OpenDsc.Client.Commands.Node;
 
-[Cmdlet("Remove", "DscServerNodeTag")]
+[Cmdlet(VerbsCommon.Remove, "DscServerNodeTag", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
 public sealed class RemoveDscServerNodeTagCommand : DscServerCommandBase
 {
     [Parameter(Mandatory = true, Position = 0)]
@@ -20,12 +20,13 @@ public sealed class RemoveDscServerNodeTagCommand : DscServerCommandBase
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(NodeId.ToString())) return;
         var service = GetRequiredService<NodeHttpService>();
         var request = new RemoveNodeTagRequest
         {
             ScopeValueId = ScopeValueId,
         };
 
-        service.RemoveNodeTagAsync(NodeId, request, CancellationToken.None).GetAwaiter().GetResult();
+        service.RemoveNodeTagAsync(NodeId, request, PipelineStopToken).GetAwaiter().GetResult();
     }
 }

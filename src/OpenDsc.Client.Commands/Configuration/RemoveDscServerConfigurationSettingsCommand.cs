@@ -1,4 +1,4 @@
-﻿// Copyright (c) Thomas Nieto - All Rights Reserved
+// Copyright (c) Thomas Nieto - All Rights Reserved
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
@@ -8,7 +8,7 @@ using OpenDsc.Client.Services;
 
 namespace OpenDsc.Client.Commands.Configuration;
 
-[Cmdlet("Remove", "DscServerConfigurationSettings")]
+[Cmdlet(VerbsCommon.Remove, "DscServerConfigurationSettings", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
 public sealed class RemoveDscServerConfigurationSettingsCommand : DscServerCommandBase
 {
     [Parameter(Mandatory = true, Position = 0)]
@@ -17,7 +17,8 @@ public sealed class RemoveDscServerConfigurationSettingsCommand : DscServerComma
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(Name)) return;
         var service = GetRequiredService<ConfigurationHttpService>();
-        service.DeleteSettingsAsync(Name, CancellationToken.None).GetAwaiter().GetResult();
+        service.DeleteSettingsAsync(Name, PipelineStopToken).GetAwaiter().GetResult();
     }
 }

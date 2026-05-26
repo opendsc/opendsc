@@ -9,7 +9,7 @@ using OpenDsc.Contracts.Nodes;
 
 namespace OpenDsc.Client.Commands.Node;
 
-[Cmdlet("Add", "DscServerNodeTag")]
+[Cmdlet(VerbsCommon.Add, "DscServerNodeTag", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.Low)]
 [OutputType(typeof(NodeTagSummary))]
 public sealed class AddDscServerNodeTagCommand : DscServerCommandBase
 {
@@ -21,13 +21,14 @@ public sealed class AddDscServerNodeTagCommand : DscServerCommandBase
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(NodeId.ToString())) return;
         var service = GetRequiredService<NodeHttpService>();
         var request = new AddNodeTagRequest
         {
             ScopeValueId = ScopeValueId,
         };
 
-        var result = service.AddNodeTagAsync(NodeId, request, CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.AddNodeTagAsync(NodeId, request, PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

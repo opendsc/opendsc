@@ -8,21 +8,26 @@ namespace OpenDsc.Client.Commands;
 
 public abstract class DscServerCommandBase : PSCmdlet
 {
-    protected DscClientSessionState ConnectionState => DscClientSession.GetState();
+    [Parameter]
+    public DscServerSession? Session { get; set; }
 
-    protected T GetRequiredService<T>() where T : notnull => DscClientSession.GetRequiredService<T>();
+    private DscServerSession ActiveSession =>
+        Session ?? DscClientSession.GetDefault()
+            ?? throw new InvalidOperationException(
+                "No DSC server session is active. Run New-DscServerSession first or specify -Session.");
 
-    protected object GetRequiredService(Type serviceType) => DscClientSession.GetRequiredService(serviceType);
+    protected T GetRequiredService<T>() where T : notnull => ActiveSession.GetRequiredService<T>();
 
     protected override void BeginProcessing()
     {
-        try
+        if (Session is null && DscClientSession.GetDefault() is null)
         {
-            _ = ConnectionState;
-        }
-        catch (InvalidOperationException ex)
-        {
-            ThrowTerminatingError(new ErrorRecord(ex, "OpenDscClient.NotConnected", ErrorCategory.ConnectionError, null));
+            ThrowTerminatingError(new ErrorRecord(
+                new InvalidOperationException(
+                    "No DSC server session is active. Run New-DscServerSession first or specify -Session."),
+                "OpenDscClient.NoSession",
+                ErrorCategory.ConnectionError,
+                null));
         }
     }
 }

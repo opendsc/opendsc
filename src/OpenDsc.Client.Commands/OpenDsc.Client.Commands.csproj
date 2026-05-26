@@ -20,7 +20,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="PowerShellStandard.Library" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.PowerShell.SDK" PrivateAssets="all" />
+    <PackageReference Include="System.Security.Cryptography.Xml" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="OpenDsc.Client.Commands.Tests" />
+    <InternalsVisibleTo Include="OpenDsc.Client.Commands.IntegrationTests" />
   </ItemGroup>
 
   <ItemGroup>

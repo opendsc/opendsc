@@ -1,4 +1,4 @@
-﻿// Copyright (c) Thomas Nieto - All Rights Reserved
+// Copyright (c) Thomas Nieto - All Rights Reserved
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
@@ -9,7 +9,7 @@ using OpenDsc.Contracts.Parameters;
 
 namespace OpenDsc.Client.Commands.Parameter;
 
-[Cmdlet("Get", "DscServerParameterMajorVersionSummaries")]
+[Cmdlet(VerbsCommon.Get, "DscServerParameterMajorVersionSummaries")]
 [OutputType(typeof(MajorVersionSummary))]
 public sealed class GetDscServerParameterMajorVersionSummariesCommand : DscServerCommandBase
 {
@@ -25,7 +25,7 @@ public sealed class GetDscServerParameterMajorVersionSummariesCommand : DscServe
     protected override void ProcessRecord()
     {
         var service = GetRequiredService<ParameterHttpService>();
-        var result = service.GetMajorVersionSummariesAsync(ScopeTypeId, ConfigurationId, ScopeValue, CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.GetMajorVersionSummariesAsync(ScopeTypeId, ConfigurationId, ScopeValue, PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

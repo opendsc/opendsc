@@ -9,7 +9,7 @@ using OpenDsc.Contracts.Parameters;
 
 namespace OpenDsc.Client.Commands.Parameter;
 
-[Cmdlet("New", "DscServerParameter")]
+[Cmdlet(VerbsCommon.New, "DscServerParameter", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.Medium)]
 [OutputType(typeof(ParameterVersionDetails))]
 public sealed class NewDscServerParameterCommand : DscServerCommandBase
 {
@@ -37,6 +37,7 @@ public sealed class NewDscServerParameterCommand : DscServerCommandBase
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(ScopeTypeId.ToString())) return;
         var service = GetRequiredService<ParameterHttpService>();
         var request = new CreateParameterRequest
         {
@@ -47,7 +48,7 @@ public sealed class NewDscServerParameterCommand : DscServerCommandBase
             IsPassthrough = IsPassthrough,
         };
 
-        var result = service.CreateAsync(ScopeTypeId, ConfigurationId, request, CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.CreateAsync(ScopeTypeId, ConfigurationId, request, PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

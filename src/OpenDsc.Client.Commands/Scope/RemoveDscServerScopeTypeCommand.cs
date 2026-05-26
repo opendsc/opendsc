@@ -1,4 +1,4 @@
-﻿// Copyright (c) Thomas Nieto - All Rights Reserved
+// Copyright (c) Thomas Nieto - All Rights Reserved
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
@@ -8,7 +8,7 @@ using OpenDsc.Client.Services;
 
 namespace OpenDsc.Client.Commands.Scope;
 
-[Cmdlet("Remove", "DscServerScopeType")]
+[Cmdlet(VerbsCommon.Remove, "DscServerScopeType", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
 public sealed class RemoveDscServerScopeTypeCommand : DscServerCommandBase
 {
     [Parameter(Mandatory = true, Position = 0)]
@@ -16,7 +16,8 @@ public sealed class RemoveDscServerScopeTypeCommand : DscServerCommandBase
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(Id.ToString())) return;
         var service = GetRequiredService<ScopeHttpService>();
-        service.DeleteScopeTypeAsync(Id, CancellationToken.None).GetAwaiter().GetResult();
+        service.DeleteScopeTypeAsync(Id, PipelineStopToken).GetAwaiter().GetResult();
     }
 }

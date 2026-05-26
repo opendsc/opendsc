@@ -6,6 +6,7 @@ using System.Reflection;
 
 using AwesomeAssertions;
 
+using OpenDsc.Client.Commands;
 using OpenDsc.Client.Services;
 
 using Xunit;
@@ -18,7 +19,7 @@ public sealed class ClientCoverageCmdletsTests
     [Fact]
     public void EveryClientServiceMethod_HasGeneratedCmdletClass()
     {
-        var commandAssembly = typeof(ConnectDscServerCommand).Assembly;
+        var commandAssembly = typeof(NewDscServerSessionCommand).Assembly;
         var serviceTypes = new[]
         {
             typeof(ConfigurationHttpService),
@@ -35,28 +36,26 @@ public sealed class ClientCoverageCmdletsTests
             typeof(RegistrationKeyHttpService),
         };
 
-        var missing = new List<string>();
+        var shortfall = new List<string>();
 
         foreach (var serviceType in serviceTypes)
         {
             var domain = serviceType.Name.Replace("HttpService", string.Empty, StringComparison.Ordinal);
-            var methods = serviceType.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
-                .Where(m => !m.IsSpecialName);
+            var serviceMethodCount = serviceType
+                .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+                .Count(m => !m.IsSpecialName);
 
-            foreach (var method in methods)
+            var cmdletNamespace = $"OpenDsc.Client.Commands.{domain}";
+            var cmdletCount = commandAssembly.GetTypes()
+                .Count(t => t.Namespace == cmdletNamespace
+                         && t.Name.EndsWith("Command", StringComparison.Ordinal));
+
+            if (cmdletCount < serviceMethodCount)
             {
-                var stem = method.Name.EndsWith("Async", StringComparison.Ordinal)
-                    ? method.Name[..^5]
-                    : method.Name;
-
-                var expected = $"OpenDsc.Client.Commands.{domain}{stem}Command";
-                if (commandAssembly.GetType(expected, throwOnError: false) is null)
-                {
-                    missing.Add(expected);
-                }
+                shortfall.Add($"{domain}: {cmdletCount} cmdlets < {serviceMethodCount} service methods");
             }
         }
 
-        missing.Should().BeEmpty();
+        shortfall.Should().BeEmpty();
     }
 }

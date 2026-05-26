@@ -45,6 +45,8 @@
     <Project Path="tests/OpenDsc.Authoring.Commands.Tests/OpenDsc.Authoring.Commands.Tests.csproj" />
     <Project Path="tests/OpenDsc.Client.Commands.Tests/OpenDsc.Client.Commands.Tests.csproj" />
     <Project
+      Path="tests/OpenDsc.Client.Commands.IntegrationTests/OpenDsc.Client.Commands.IntegrationTests.csproj" />
+    <Project
       Path="tests/OpenDsc.Resource.CommandLine.Tests/OpenDsc.Resource.CommandLine.Tests.csproj" />
     <Project
       Path="tests/OpenDsc.Resource.CommandLine.IntegrationTests/OpenDsc.Resource.CommandLine.IntegrationTests.csproj" />

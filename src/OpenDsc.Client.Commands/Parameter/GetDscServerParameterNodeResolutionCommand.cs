@@ -1,4 +1,4 @@
-﻿// Copyright (c) Thomas Nieto - All Rights Reserved
+// Copyright (c) Thomas Nieto - All Rights Reserved
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
@@ -9,7 +9,7 @@ using OpenDsc.Contracts.Parameters;
 
 namespace OpenDsc.Client.Commands.Parameter;
 
-[Cmdlet("Get", "DscServerParameterNodeResolution")]
+[Cmdlet(VerbsCommon.Get, "DscServerParameterNodeResolution")]
 [OutputType(typeof(ParameterResolutionDetails))]
 public sealed class GetDscServerParameterNodeResolutionCommand : DscServerCommandBase
 {
@@ -22,7 +22,7 @@ public sealed class GetDscServerParameterNodeResolutionCommand : DscServerComman
     protected override void ProcessRecord()
     {
         var service = GetRequiredService<ParameterHttpService>();
-        var result = service.GetNodeResolutionAsync(NodeId, ConfigurationId, CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.GetNodeResolutionAsync(NodeId, ConfigurationId, PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

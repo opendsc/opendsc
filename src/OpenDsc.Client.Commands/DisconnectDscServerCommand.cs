@@ -6,12 +6,31 @@ using System.Management.Automation;
 
 namespace OpenDsc.Client.Commands;
 
-[Cmdlet(VerbsCommunications.Disconnect, "DscServer")]
+[Cmdlet(VerbsCommon.Remove, "DscServerSession", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.Medium)]
 [OutputType(typeof(bool))]
-public sealed class DisconnectDscServerCommand : PSCmdlet
+public sealed class RemoveDscServerSessionCommand : PSCmdlet
 {
-    protected override void EndProcessing()
+    [Parameter(Position = 0, ValueFromPipeline = true)]
+    public DscServerSession? Session { get; set; }
+
+    protected override void ProcessRecord()
     {
-        WriteObject(DscClientSession.Disconnect());
+        var target = Session?.ServerUri.ToString() ?? "default session";
+
+        if (!ShouldProcess(target, "Disconnect"))
+        {
+            return;
+        }
+
+        if (Session is not null)
+        {
+            var wasDefault = DscClientSession.ClearDefault(Session);
+            Session.Dispose();
+            WriteObject(wasDefault);
+        }
+        else
+        {
+            WriteObject(DscClientSession.ClearDefault(null));
+        }
     }
 }

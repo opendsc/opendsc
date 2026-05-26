@@ -9,7 +9,7 @@ using OpenDsc.Contracts.Settings;
 
 namespace OpenDsc.Client.Commands.Scope;
 
-[Cmdlet("Set", "DscServerScopeValue")]
+[Cmdlet(VerbsCommon.Set, "DscServerScopeValue", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.Medium)]
 [OutputType(typeof(ScopeValueDetails))]
 public sealed class SetDscServerScopeValueCommand : DscServerCommandBase
 {
@@ -24,13 +24,14 @@ public sealed class SetDscServerScopeValueCommand : DscServerCommandBase
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(ScopeTypeId.ToString())) return;
         var service = GetRequiredService<ScopeHttpService>();
         var request = new UpdateScopeValueRequest
         {
             Description = Description,
         };
 
-        var result = service.UpdateScopeValueAsync(ScopeTypeId, Id, request, CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.UpdateScopeValueAsync(ScopeTypeId, Id, request, PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

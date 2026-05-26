@@ -1,4 +1,4 @@
-﻿// Copyright (c) Thomas Nieto - All Rights Reserved
+// Copyright (c) Thomas Nieto - All Rights Reserved
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
@@ -9,14 +9,14 @@ using OpenDsc.Contracts.Users;
 
 namespace OpenDsc.Client.Commands.Role;
 
-[Cmdlet("Get", "DscServerRoleGetRoles")]
+[Cmdlet(VerbsCommon.Get, "DscServerRoleGetRoles")]
 [OutputType(typeof(RoleSummary))]
 public sealed class GetDscServerRoleGetRolesCommand : DscServerCommandBase
 {
     protected override void ProcessRecord()
     {
         var service = GetRequiredService<RoleHttpService>();
-        var result = service.GetRolesAsync(CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.GetRolesAsync(PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

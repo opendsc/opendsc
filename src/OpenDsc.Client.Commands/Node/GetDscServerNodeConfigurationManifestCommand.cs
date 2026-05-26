@@ -1,4 +1,4 @@
-﻿// Copyright (c) Thomas Nieto - All Rights Reserved
+// Copyright (c) Thomas Nieto - All Rights Reserved
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
@@ -9,7 +9,7 @@ using OpenDsc.Contracts.Nodes;
 
 namespace OpenDsc.Client.Commands.Node;
 
-[Cmdlet("Get", "DscServerNodeConfigurationManifest")]
+[Cmdlet(VerbsCommon.Get, "DscServerNodeConfigurationManifest")]
 [OutputType(typeof(NodeConfigurationManifest))]
 public sealed class GetDscServerNodeConfigurationManifestCommand : DscServerCommandBase
 {
@@ -19,7 +19,7 @@ public sealed class GetDscServerNodeConfigurationManifestCommand : DscServerComm
     protected override void ProcessRecord()
     {
         var service = GetRequiredService<NodeHttpService>();
-        var result = service.GetNodeConfigurationManifestAsync(NodeId, CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.GetNodeConfigurationManifestAsync(NodeId, PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

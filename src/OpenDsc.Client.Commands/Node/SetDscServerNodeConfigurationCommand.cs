@@ -9,7 +9,7 @@ using OpenDsc.Contracts.Nodes;
 
 namespace OpenDsc.Client.Commands.Node;
 
-[Cmdlet("Set", "DscServerNodeConfiguration")]
+[Cmdlet(VerbsCommon.Set, "DscServerNodeConfiguration", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.Medium)]
 public sealed class SetDscServerNodeConfigurationCommand : DscServerCommandBase
 {
     [Parameter(Mandatory = true, Position = 0)]
@@ -30,6 +30,7 @@ public sealed class SetDscServerNodeConfigurationCommand : DscServerCommandBase
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(NodeId.ToString())) return;
         var service = GetRequiredService<NodeHttpService>();
         var request = new AssignConfigurationRequest
         {
@@ -39,6 +40,6 @@ public sealed class SetDscServerNodeConfigurationCommand : DscServerCommandBase
             PrereleaseChannel = PrereleaseChannel,
         };
 
-        service.AssignConfigurationAsync(NodeId, request, CancellationToken.None).GetAwaiter().GetResult();
+        service.AssignConfigurationAsync(NodeId, request, PipelineStopToken).GetAwaiter().GetResult();
     }
 }

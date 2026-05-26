@@ -10,7 +10,7 @@ using OpenDsc.Contracts.Settings;
 
 namespace OpenDsc.Client.Commands.Settings;
 
-[Cmdlet("Set", "DscServerSettingsValidationSettings")]
+[Cmdlet(VerbsCommon.Set, "DscServerSettingsValidationSettings", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.Medium)]
 [OutputType(typeof(ValidationSettingsSummary))]
 public sealed class SetDscServerSettingsValidationSettingsCommand : DscServerCommandBase
 {
@@ -28,6 +28,7 @@ public sealed class SetDscServerSettingsValidationSettingsCommand : DscServerCom
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(string.Empty)) return;
         var service = GetRequiredService<SettingsHttpService>();
         var request = new UpdateValidationSettingsRequest
         {
@@ -37,7 +38,7 @@ public sealed class SetDscServerSettingsValidationSettingsCommand : DscServerCom
             AllowParameterValidationOverride = AllowParameterValidationOverride,
         };
 
-        var result = service.UpdateValidationSettingsAsync(request, CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.UpdateValidationSettingsAsync(request, PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

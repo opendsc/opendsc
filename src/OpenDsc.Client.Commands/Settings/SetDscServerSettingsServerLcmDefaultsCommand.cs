@@ -10,7 +10,7 @@ using OpenDsc.Contracts.Settings;
 
 namespace OpenDsc.Client.Commands.Settings;
 
-[Cmdlet("Set", "DscServerSettingsServerLcmDefaults")]
+[Cmdlet(VerbsCommon.Set, "DscServerSettingsServerLcmDefaults", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.Medium)]
 [OutputType(typeof(ServerLcmDefaultsSummary))]
 public sealed class SetDscServerSettingsServerLcmDefaultsCommand : DscServerCommandBase
 {
@@ -25,6 +25,7 @@ public sealed class SetDscServerSettingsServerLcmDefaultsCommand : DscServerComm
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(string.Empty)) return;
         var service = GetRequiredService<SettingsHttpService>();
         var request = new UpdateServerLcmDefaultsRequest
         {
@@ -33,7 +34,7 @@ public sealed class SetDscServerSettingsServerLcmDefaultsCommand : DscServerComm
             DefaultReportCompliance = DefaultReportCompliance,
         };
 
-        var result = service.UpdateServerLcmDefaultsAsync(request, CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.UpdateServerLcmDefaultsAsync(request, PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

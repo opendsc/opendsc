@@ -1,4 +1,4 @@
-﻿// Copyright (c) Thomas Nieto - All Rights Reserved
+// Copyright (c) Thomas Nieto - All Rights Reserved
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
@@ -8,7 +8,7 @@ using OpenDsc.Client.Services;
 
 namespace OpenDsc.Client.Commands.User;
 
-[Cmdlet("Get", "DscServerUserExternalLogin")]
+[Cmdlet(VerbsCommon.Get, "DscServerUserExternalLogin")]
 [OutputType(typeof(string))]
 public sealed class GetDscServerUserExternalLoginCommand : DscServerCommandBase
 {
@@ -18,7 +18,7 @@ public sealed class GetDscServerUserExternalLoginCommand : DscServerCommandBase
     protected override void ProcessRecord()
     {
         var service = GetRequiredService<UserHttpService>();
-        var result = service.GetExternalLoginAsync(UserId, CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.GetExternalLoginAsync(UserId, PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

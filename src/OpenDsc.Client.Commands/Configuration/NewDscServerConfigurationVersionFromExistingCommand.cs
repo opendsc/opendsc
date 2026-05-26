@@ -9,7 +9,7 @@ using OpenDsc.Contracts.Configurations;
 
 namespace OpenDsc.Client.Commands.Configuration;
 
-[Cmdlet("New", "DscServerConfigurationVersionFromExisting")]
+[Cmdlet(VerbsCommon.New, "DscServerConfigurationVersionFromExisting", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.Medium)]
 [OutputType(typeof(ConfigurationVersionDetails))]
 public sealed class NewDscServerConfigurationVersionFromExistingCommand : DscServerCommandBase
 {
@@ -27,6 +27,7 @@ public sealed class NewDscServerConfigurationVersionFromExistingCommand : DscSer
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(Name)) return;
         var service = GetRequiredService<ConfigurationHttpService>();
         var request = new CreateVersionFromExistingRequest
         {
@@ -34,7 +35,7 @@ public sealed class NewDscServerConfigurationVersionFromExistingCommand : DscSer
             NewVersion = NewVersion,
         };
 
-        var result = service.CreateVersionFromExistingAsync(Name, request, CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.CreateVersionFromExistingAsync(Name, request, PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

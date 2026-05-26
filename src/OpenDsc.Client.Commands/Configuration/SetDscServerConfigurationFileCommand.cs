@@ -1,4 +1,4 @@
-﻿// Copyright (c) Thomas Nieto - All Rights Reserved
+// Copyright (c) Thomas Nieto - All Rights Reserved
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
@@ -8,7 +8,7 @@ using OpenDsc.Client.Services;
 
 namespace OpenDsc.Client.Commands.Configuration;
 
-[Cmdlet("Set", "DscServerConfigurationFile")]
+[Cmdlet(VerbsCommon.Set, "DscServerConfigurationFile", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.Medium)]
 public sealed class SetDscServerConfigurationFileCommand : DscServerCommandBase
 {
     [Parameter(Mandatory = true, Position = 0)]
@@ -29,7 +29,8 @@ public sealed class SetDscServerConfigurationFileCommand : DscServerCommandBase
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(Name)) return;
         var service = GetRequiredService<ConfigurationHttpService>();
-        service.SaveFileAsync(Name, Version, FilePath, Content, CancellationToken.None).GetAwaiter().GetResult();
+        service.SaveFileAsync(Name, Version, FilePath, Content, PipelineStopToken).GetAwaiter().GetResult();
     }
 }

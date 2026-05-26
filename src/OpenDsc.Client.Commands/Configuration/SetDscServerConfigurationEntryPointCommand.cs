@@ -1,4 +1,4 @@
-﻿// Copyright (c) Thomas Nieto - All Rights Reserved
+// Copyright (c) Thomas Nieto - All Rights Reserved
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
@@ -8,7 +8,7 @@ using OpenDsc.Client.Services;
 
 namespace OpenDsc.Client.Commands.Configuration;
 
-[Cmdlet("Set", "DscServerConfigurationEntryPoint")]
+[Cmdlet(VerbsCommon.Set, "DscServerConfigurationEntryPoint", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.Medium)]
 public sealed class SetDscServerConfigurationEntryPointCommand : DscServerCommandBase
 {
     [Parameter(Mandatory = true, Position = 0)]
@@ -25,7 +25,8 @@ public sealed class SetDscServerConfigurationEntryPointCommand : DscServerComman
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(Name)) return;
         var service = GetRequiredService<ConfigurationHttpService>();
-        service.ChangeEntryPointAsync(Name, Version, EntryPoint, CancellationToken.None).GetAwaiter().GetResult();
+        service.ChangeEntryPointAsync(Name, Version, EntryPoint, PipelineStopToken).GetAwaiter().GetResult();
     }
 }

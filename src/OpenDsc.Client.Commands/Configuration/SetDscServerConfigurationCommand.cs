@@ -9,7 +9,7 @@ using OpenDsc.Contracts.Configurations;
 
 namespace OpenDsc.Client.Commands.Configuration;
 
-[Cmdlet("Set", "DscServerConfiguration")]
+[Cmdlet(VerbsCommon.Set, "DscServerConfiguration", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.Medium)]
 [OutputType(typeof(ConfigurationDetails))]
 public sealed class SetDscServerConfigurationCommand : DscServerCommandBase
 {
@@ -22,8 +22,10 @@ public sealed class SetDscServerConfigurationCommand : DscServerCommandBase
 
     [Parameter(Mandatory = false, Position = 2)]
     public bool? UseServerManagedParameters { get; set; }
+
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(Name)) return;
         var service = GetRequiredService<ConfigurationHttpService>();
         var request = new UpdateConfigurationAdminRequest
         {
@@ -31,7 +33,7 @@ public sealed class SetDscServerConfigurationCommand : DscServerCommandBase
             UseServerManagedParameters = UseServerManagedParameters,
         };
 
-        var result = service.UpdateAsync(Name, request, CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.UpdateAsync(Name, request, PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

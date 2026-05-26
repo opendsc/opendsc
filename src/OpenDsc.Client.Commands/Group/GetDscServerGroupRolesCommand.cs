@@ -1,4 +1,4 @@
-﻿// Copyright (c) Thomas Nieto - All Rights Reserved
+// Copyright (c) Thomas Nieto - All Rights Reserved
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
@@ -8,17 +8,17 @@ using OpenDsc.Client.Services;
 
 namespace OpenDsc.Client.Commands.Group;
 
-[Cmdlet("Get", "DscServerGroupRoles")]
-[OutputType(typeof(IReadOnlyList<Contracts.Users.RoleSummary>))]
+[Cmdlet(VerbsCommon.Get, "DscServerGroupRoles")]
+[OutputType(typeof(Contracts.Users.RoleSummary))]
 public sealed class GetDscServerGroupRolesCommand : DscServerCommandBase
 {
     [Parameter(Mandatory = true, Position = 0)]
-    public Guid GroupId { get; set; } = default;
+    public Guid GroupId { get; set; }
 
     protected override void ProcessRecord()
     {
         var service = GetRequiredService<GroupHttpService>();
-        var result = service.GetGroupRolesAsync(GroupId, CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.GetGroupRolesAsync(GroupId, PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

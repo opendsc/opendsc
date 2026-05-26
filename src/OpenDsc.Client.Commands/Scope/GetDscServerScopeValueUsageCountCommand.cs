@@ -1,4 +1,4 @@
-﻿// Copyright (c) Thomas Nieto - All Rights Reserved
+// Copyright (c) Thomas Nieto - All Rights Reserved
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
@@ -8,7 +8,7 @@ using OpenDsc.Client.Services;
 
 namespace OpenDsc.Client.Commands.Scope;
 
-[Cmdlet("Get", "DscServerScopeValueUsageCount")]
+[Cmdlet(VerbsCommon.Get, "DscServerScopeValueUsageCount")]
 [OutputType(typeof(int))]
 public sealed class GetDscServerScopeValueUsageCountCommand : DscServerCommandBase
 {
@@ -18,7 +18,7 @@ public sealed class GetDscServerScopeValueUsageCountCommand : DscServerCommandBa
     protected override void ProcessRecord()
     {
         var service = GetRequiredService<ScopeHttpService>();
-        var result = service.GetScopeValueUsageCountAsync(ScopeValueId, CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.GetScopeValueUsageCountAsync(ScopeValueId, PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

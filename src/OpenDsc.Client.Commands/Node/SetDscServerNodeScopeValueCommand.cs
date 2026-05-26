@@ -9,7 +9,7 @@ using OpenDsc.Contracts.Nodes;
 
 namespace OpenDsc.Client.Commands.Node;
 
-[Cmdlet("Set", "DscServerNodeScopeValue")]
+[Cmdlet(VerbsCommon.Set, "DscServerNodeScopeValue", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.Medium)]
 public sealed class SetDscServerNodeScopeValueCommand : DscServerCommandBase
 {
     [Parameter(Mandatory = true, Position = 0)]
@@ -24,6 +24,7 @@ public sealed class SetDscServerNodeScopeValueCommand : DscServerCommandBase
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(NodeId.ToString())) return;
         var service = GetRequiredService<NodeHttpService>();
         var request = new SetNodeScopeValueRequest
         {
@@ -31,6 +32,6 @@ public sealed class SetDscServerNodeScopeValueCommand : DscServerCommandBase
             ScopeValue = ScopeValue,
         };
 
-        service.SetNodeScopeValueAsync(NodeId, request, CancellationToken.None).GetAwaiter().GetResult();
+        service.SetNodeScopeValueAsync(NodeId, request, PipelineStopToken).GetAwaiter().GetResult();
     }
 }

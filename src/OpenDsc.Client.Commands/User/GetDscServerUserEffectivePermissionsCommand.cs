@@ -1,4 +1,4 @@
-﻿// Copyright (c) Thomas Nieto - All Rights Reserved
+// Copyright (c) Thomas Nieto - All Rights Reserved
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
@@ -8,8 +8,8 @@ using OpenDsc.Client.Services;
 
 namespace OpenDsc.Client.Commands.User;
 
-[Cmdlet("Get", "DscServerUserEffectivePermissions")]
-[OutputType(typeof(HashSet<string>))]
+[Cmdlet(VerbsCommon.Get, "DscServerUserEffectivePermissions")]
+[OutputType(typeof(string))]
 public sealed class GetDscServerUserEffectivePermissionsCommand : DscServerCommandBase
 {
     [Parameter(Mandatory = true, Position = 0)]
@@ -18,7 +18,7 @@ public sealed class GetDscServerUserEffectivePermissionsCommand : DscServerComma
     protected override void ProcessRecord()
     {
         var service = GetRequiredService<UserHttpService>();
-        var result = service.GetEffectivePermissionsAsync(UserId, CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.GetEffectivePermissionsAsync(UserId, PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }

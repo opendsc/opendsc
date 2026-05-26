@@ -1,4 +1,4 @@
-﻿// Copyright (c) Thomas Nieto - All Rights Reserved
+// Copyright (c) Thomas Nieto - All Rights Reserved
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
@@ -8,7 +8,7 @@ using OpenDsc.Client.Services;
 
 namespace OpenDsc.Client.Commands.User;
 
-[Cmdlet("Remove", "DscServerUser")]
+[Cmdlet(VerbsCommon.Remove, "DscServerUser", SupportsShouldProcess = true, ConfirmImpact = ConfirmImpact.High)]
 public sealed class RemoveDscServerUserCommand : DscServerCommandBase
 {
     [Parameter(Mandatory = true, Position = 0)]
@@ -16,7 +16,8 @@ public sealed class RemoveDscServerUserCommand : DscServerCommandBase
 
     protected override void ProcessRecord()
     {
+        if (!ShouldProcess(UserId.ToString())) return;
         var service = GetRequiredService<UserHttpService>();
-        service.DeleteUserAsync(UserId, CancellationToken.None).GetAwaiter().GetResult();
+        service.DeleteUserAsync(UserId, PipelineStopToken).GetAwaiter().GetResult();
     }
 }

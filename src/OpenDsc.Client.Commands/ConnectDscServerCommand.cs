@@ -3,20 +3,21 @@
 // terms of the MIT license.
 
 using System.Management.Automation;
+using System.Net;
+using System.Security;
 
 namespace OpenDsc.Client.Commands;
 
-[Cmdlet(VerbsCommunications.Connect, "DscServer")]
-[OutputType(typeof(DscClientSessionState))]
-public sealed class ConnectDscServerCommand : PSCmdlet
+[Cmdlet(VerbsCommon.New, "DscServerSession")]
+[OutputType(typeof(DscServerSession))]
+public sealed class NewDscServerSessionCommand : PSCmdlet
 {
-    [Parameter(Mandatory = true)]
+    [Parameter(Mandatory = true, Position = 0)]
     [Alias("Uri")]
     public Uri ServerUri { get; set; } = null!;
 
-    [Parameter(Mandatory = true)]
-    [ValidateNotNullOrEmpty]
-    public string Token { get; set; } = string.Empty;
+    [Parameter(Mandatory = true, Position = 1)]
+    public SecureString Token { get; set; } = null!;
 
     [Parameter]
     [ValidateRange(1, 3600)]
@@ -24,11 +25,14 @@ public sealed class ConnectDscServerCommand : PSCmdlet
 
     protected override void EndProcessing()
     {
+        var token = new NetworkCredential(string.Empty, Token).Password;
+
         TimeSpan? timeout = TimeoutSeconds is null
             ? null
             : TimeSpan.FromSeconds(TimeoutSeconds.Value);
 
-        var state = DscClientSession.Connect(ServerUri, Token, timeout);
-        WriteObject(state);
+        var session = DscClientSession.Create(ServerUri, token, timeout);
+        DscClientSession.SetDefault(session);
+        WriteObject(session);
     }
 }

@@ -1,4 +1,4 @@
-﻿// Copyright (c) Thomas Nieto - All Rights Reserved
+// Copyright (c) Thomas Nieto - All Rights Reserved
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
@@ -9,14 +9,14 @@ using OpenDsc.Contracts.Retention;
 
 namespace OpenDsc.Client.Commands.Settings;
 
-[Cmdlet("Get", "DscServerSettingsRetentionHistory")]
+[Cmdlet(VerbsCommon.Get, "DscServerSettingsRetentionHistory")]
 [OutputType(typeof(RetentionRunSummary))]
 public sealed class GetDscServerSettingsRetentionHistoryCommand : DscServerCommandBase
 {
     protected override void ProcessRecord()
     {
         var service = GetRequiredService<SettingsHttpService>();
-        var result = service.GetRetentionHistoryAsync(CancellationToken.None).GetAwaiter().GetResult();
+        var result = service.GetRetentionHistoryAsync(PipelineStopToken).GetAwaiter().GetResult();
         WriteObject(result, enumerateCollection: true);
     }
 }
