@@ -197,12 +197,17 @@
             return;
         }
 
-        if (_formEditor is { IsLoaded: true } && _editor != null)
+        if (_formEditor is { IsLoaded: true })
         {
             var yaml = _formEditor.BuildYaml();
             initialContent = yaml;
             _formSourceYaml = yaml;
-            await _editor.SetValue(yaml);
+            
+            // Set value if editor is already created; otherwise it will use initialContent when created
+            if (_editor != null)
+            {
+                await _editor.SetValue(yaml);
+            }
         }
     }
 
@@ -251,6 +256,7 @@
             {
                 if (_editor == null)
                 {
+                    Snackbar.Add("Parameter editor is not ready. Please wait for the editor to load or switch tabs.", Severity.Warning);
                     return;
                 }
 

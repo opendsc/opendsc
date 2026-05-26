@@ -1589,7 +1589,7 @@ public sealed partial class ConfigurationService : IConfigurationService
         {
             null => null,
             int i => i,
-            long l => (int)l,
+            long l => l >= int.MinValue && l <= int.MaxValue ? (int)l : null,
             _ => int.TryParse(value.ToString(), out var result) ? result : null
         };
     }

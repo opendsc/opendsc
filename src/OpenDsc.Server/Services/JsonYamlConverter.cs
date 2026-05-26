@@ -116,7 +116,7 @@ public sealed class JsonYamlConverter : IJsonYamlConverter
         if (value is null or "" or "~" or "null") return null;
         if (value is "true" or "True" or "TRUE") return JsonValue.Create(true);
         if (value is "false" or "False" or "FALSE") return JsonValue.Create(false);
-        if (long.TryParse(value, out var l)) return JsonValue.Create(l);
+        if (long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var l)) return JsonValue.Create(l);
         if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var d)) return JsonValue.Create(d);
         return JsonValue.Create(value);
     }

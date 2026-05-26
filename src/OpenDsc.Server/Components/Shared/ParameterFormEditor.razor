@@ -78,6 +78,8 @@ else
 
                     case SchemaFieldKind.Integer:
                         <MudNumericField T="decimal?" Label="Value" Variant="Variant.Outlined" Step="1" Immediate="true"
+                                         Min="@(field.Minimum.HasValue ? (decimal?)field.Minimum.Value : null)"
+                                         Max="@(field.Maximum.HasValue ? (decimal?)field.Maximum.Value : null)"
                                          HelperText="@GetRangeHelperText(field)"
                                          Error="@(!string.IsNullOrWhiteSpace(GetValidationError(field.Name)))"
                                          ErrorText="@GetValidationError(field.Name)" Value="@GetNumericValue(field.Name)"
@@ -86,6 +88,8 @@ else
 
                     case SchemaFieldKind.Number:
                         <MudNumericField T="decimal?" Label="Value" Variant="Variant.Outlined" Immediate="true"
+                                         Min="@(field.Minimum.HasValue ? (decimal?)field.Minimum.Value : null)"
+                                         Max="@(field.Maximum.HasValue ? (decimal?)field.Maximum.Value : null)"
                                          HelperText="@GetRangeHelperText(field)"
                                          Error="@(!string.IsNullOrWhiteSpace(GetValidationError(field.Name)))"
                                          ErrorText="@GetValidationError(field.Name)" Value="@GetNumericValue(field.Name)"
@@ -560,7 +564,14 @@ StringComparison.OrdinalIgnoreCase));
     {
         if (!_parameterValues.TryGetValue(field.Name, out var node) || node == null)
         {
-            _validationErrors.Remove(field.Name);
+            if (field.IsRequired)
+            {
+                _validationErrors[field.Name] = $"{field.Name} is required.";
+            }
+            else
+            {
+                _validationErrors.Remove(field.Name);
+            }
             return;
         }
 

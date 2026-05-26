@@ -122,9 +122,13 @@ public sealed class ParameterSchemaBuilder : IParameterSchemaBuilder
 
     private static void ApplyTypeConstraints(JsonSchemaBuilder builder, string normalizedType, ParameterDefinition param)
     {
-        if (normalizedType is "string" or "securestring" or "array")
+        if (normalizedType is "string" or "securestring")
         {
             ApplyLengthConstraints(builder, param.MinLength, param.MaxLength);
+        }
+        else if (normalizedType == "array")
+        {
+            ApplyArrayItemConstraints(builder, param.MinLength, param.MaxLength);
         }
 
         if (normalizedType == "int")
@@ -143,6 +147,19 @@ public sealed class ParameterSchemaBuilder : IParameterSchemaBuilder
         if (maxLength.HasValue)
         {
             builder.MaxLength((uint)maxLength.Value);
+        }
+    }
+
+    private static void ApplyArrayItemConstraints(JsonSchemaBuilder builder, int? minItems, int? maxItems)
+    {
+        if (minItems.HasValue)
+        {
+            builder.MinItems((uint)minItems.Value);
+        }
+
+        if (maxItems.HasValue)
+        {
+            builder.MaxItems((uint)maxItems.Value);
         }
     }
 
