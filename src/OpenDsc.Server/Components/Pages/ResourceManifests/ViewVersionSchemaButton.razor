@@ -1,0 +1,102 @@
+@* Copyright (c) Thomas Nieto - All Rights Reserved *@
+@* You may use, distribute and modify this code under the *@
+@* terms of the MIT license. *@
+
+@using System.Text.Json
+
+@using OpenDsc.Contracts.ResourceManifests
+@using OpenDsc.Server.Services
+
+@inject IDialogService DialogService
+
+@if (_hasSchema == true)
+{
+    <MudIconButton Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" OnClick="ViewSchema" />
+}
+else if (_hasSchema == false)
+{
+    <MudText Typo="Typo.caption" Color="Color.Secondary">Command-based</MudText>
+}
+
+@code {
+    [Parameter]
+    public Guid VersionId { get; set; }
+
+    [Parameter]
+    public IResourceManifestService ManifestService { get; set; } = default!;
+
+    private bool? _hasSchema;
+    private string? _schemaJson;
+    private string? _schemaVersion;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var versionDetails = await ManifestService.GetVersionDetailsByIdAsync(VersionId);
+        if (versionDetails is null)
+        {
+            _hasSchema = false;
+            return;
+        }
+
+        _schemaVersion = versionDetails.Version;
+
+        if (!string.IsNullOrWhiteSpace(versionDetails.InstanceSchemaJson))
+        {
+            _schemaJson = versionDetails.InstanceSchemaJson;
+            _hasSchema = true;
+            return;
+        }
+
+        // Command-based resources can expose schema via CLI even when the manifest has no embedded schema.
+        var typeName = TryGetTypeName(versionDetails.ManifestJson);
+        if (string.IsNullOrWhiteSpace(typeName))
+        {
+            _hasSchema = false;
+            return;
+        }
+
+        _schemaJson = await ManifestService.GetResourceSchemaAsync(typeName);
+        _hasSchema = !string.IsNullOrWhiteSpace(_schemaJson);
+    }
+
+    private async Task ViewSchema()
+    {
+        if (string.IsNullOrWhiteSpace(_schemaJson))
+        {
+            return;
+        }
+
+        var parameters = new DialogParameters<ViewSchemaDialog>
+        {
+            { x => x.SchemaJson, _schemaJson },
+            { x => x.Title, $"Instance Schema — v{_schemaVersion}" }
+        };
+
+        await DialogService.ShowAsync<ViewSchemaDialog>("Instance Schema", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true });
+    }
+
+    private static string? TryGetTypeName(string? manifestJson)
+    {
+        if (string.IsNullOrWhiteSpace(manifestJson))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(manifestJson);
+            if (document.RootElement.TryGetProperty("type", out var typeElement) &&
+                typeElement.ValueKind == JsonValueKind.String)
+            {
+                return typeElement.GetString();
+            }
+        }
+        catch
+        {
+            // Ignore parse failures and keep command-based label.
+        }
+
+        return null;
+    }
+}

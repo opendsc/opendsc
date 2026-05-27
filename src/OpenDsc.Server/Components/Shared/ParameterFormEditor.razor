@@ -11,11 +11,11 @@
 
 @if (!_isLoaded)
 {
-    <MudAlert Severity="Severity.Info" Dense="true">Form editor is loading...</MudAlert>
+    <MudAlert Severity="Severity.Info">Form editor is loading...</MudAlert>
 }
 else if (_definition == null || !_definition.Fields.Any())
 {
-    <MudAlert Severity="Severity.Warning" Dense="true">
+    <MudAlert Severity="Severity.Warning">
         No schema-backed parameter fields are available for this version.
     </MudAlert>
 }
@@ -23,7 +23,7 @@ else
 {
     @if (_definition.HasUnsupportedFields)
     {
-        <MudAlert Severity="Severity.Info" Dense="true" Class="mb-3">
+        <MudAlert Severity="Severity.Info" Class="mb-3">
             Some complex fields are available only in YAML mode for this first release.
         </MudAlert>
     }
@@ -112,7 +112,7 @@ else
                         break;
 
                     default:
-                        <MudAlert Severity="Severity.Info" Dense="true">This field is editable in YAML mode only.</MudAlert>
+                        <MudAlert Severity="Severity.Info">This field is editable in YAML mode only.</MudAlert>
                         break;
                 }
             </MudCardContent>
@@ -727,3 +727,4 @@ StringComparison.OrdinalIgnoreCase));
         public required string Display { get; init; }
     }
 }
+

@@ -82,12 +82,12 @@
                                                     @if (majorVersions.Any())
                                                     {
                                                         <MudChip T="string" Size="Size.Small">@majorVersions.Count @(majorVersions.Count == 1 ?
-                                                                                                                                                                                                               "version" : "versions")</MudChip>
+                                                                                                                                                                                                                                                                           "version" : "versions")</MudChip>
                                                         }
                                                         @if (draftCount > 0)
                                                         {
                                                             <MudChip T="string" Size="Size.Small" Color="Color.Info">@draftCount @(draftCount == 1 ?
-                                                                                                                                                                                                                            "draft" : "drafts")</MudChip>
+                                                                                                                                                                                                                                                                                            "draft" : "drafts")</MudChip>
                                                             }
                                                         </div>
                                                     </TitleContent>
@@ -545,6 +545,7 @@ else if (loading)
         {
             MaxWidth = MaxWidth.ExtraExtraLarge,
             FullWidth = true,
+            FullScreen = true,
             CloseButton = true
         };
 

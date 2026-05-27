@@ -6,11 +6,13 @@ using System.Text.Json.Serialization;
 
 using OpenDsc.Contracts.Configurations;
 using OpenDsc.Contracts.CompositeConfigurations;
+using OpenDsc.Contracts.DscFunctions;
 using OpenDsc.Contracts.Health;
 using OpenDsc.Contracts.Lcm;
 using OpenDsc.Contracts.Nodes;
 using OpenDsc.Contracts.Permissions;
 using OpenDsc.Contracts.Reports;
+using OpenDsc.Contracts.ResourceManifests;
 using OpenDsc.Contracts.Retention;
 using OpenDsc.Contracts.Settings;
 using OpenDsc.Contracts.Users;
@@ -192,6 +194,19 @@ namespace OpenDsc.Server;
 [JsonSerializable(typeof(AccountType), TypeInfoPropertyName = "AccountType")]
 [JsonSerializable(typeof(NodeStatus), TypeInfoPropertyName = "NodeStatus")]
 [JsonSerializable(typeof(ResourcePermission), TypeInfoPropertyName = "ResourcePermission")]
+// Resource Manifest contracts
+[JsonSerializable(typeof(ResourceManifestSummary))]
+[JsonSerializable(typeof(List<ResourceManifestSummary>))]
+[JsonSerializable(typeof(ResourceManifestDetails))]
+[JsonSerializable(typeof(ResourceManifestVersionSummary))]
+[JsonSerializable(typeof(ResourceManifestVersionDetails))]
+[JsonSerializable(typeof(ImportResourceManifestRequest))]
+[JsonSerializable(typeof(DiscoverResponse))]
+// DSC Function contracts
+[JsonSerializable(typeof(DscFunctionInfo))]
+[JsonSerializable(typeof(List<DscFunctionInfo>))]
+[JsonSerializable(typeof(EvaluateDscFunctionRequest))]
+[JsonSerializable(typeof(EvaluateDscFunctionResult))]
 [JsonSerializable(typeof(PrincipalType), TypeInfoPropertyName = "PrincipalType")]
 public partial class SourceGenerationContext : JsonSerializerContext
 {

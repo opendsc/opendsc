@@ -1,0 +1,503 @@
+@* Copyright (c) Thomas Nieto - All Rights Reserved *@
+@* You may use, distribute and modify this code under the *@
+@* terms of the MIT license. *@
+
+@rendermode InteractiveServer
+
+@using OpenDsc.Contracts.DscFunctions
+@using OpenDsc.Server.Services
+
+@inject IDscFunctionService FunctionService
+@inject IDialogService DialogService
+
+<MudDialog>
+    <DialogContent>
+        <MudGrid>
+            <MudItem xs="5">
+                <MudText Typo="Typo.subtitle2" Class="mb-2">Function</MudText>
+                <MudTextField T="string" @bind-Value="_search" Placeholder="Search..."
+                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                              Variant="Variant.Outlined" Immediate="true" Class="mb-2" />
+                <div style="max-height: 350px; overflow-y: auto;">
+                    @foreach (var fn in FilteredFunctions)
+                    {
+                        <MudListItem T="string"
+                                     Class="@(_selectedFunction?.Name == fn.Name ? "mud-selected-item" : "")"
+                                     OnClick="@(() => SelectFunction(fn))">
+                            <MudText Typo="Typo.body2" Style="font-family: monospace;">@fn.Name</MudText>
+                        </MudListItem>
+                    }
+                </div>
+            </MudItem>
+
+            <MudItem xs="7">
+                @if (_selectedFunction is not null)
+                {
+                    <MudText Typo="Typo.subtitle2" Class="mb-1" Style="font-family: monospace;">
+                        @{
+                            var _funcSig = $"{_selectedFunction.Name}({string.Join(", ", _selectedFunction.ParameterTypes)})";
+                        }
+                        @_funcSig
+                    </MudText>
+                    @if (!string.IsNullOrWhiteSpace(_selectedFunction.Description))
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-3">
+                            @_selectedFunction.Description
+                        </MudText>
+                    }
+
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">Arguments</MudText>
+
+                    @for (int i = 0; i < _args.Count; i++)
+                    {
+                        var idx = i;
+                        <MudPaper Outlined="true" Class="pa-2 mb-2">
+                            <MudGrid>
+                                <MudItem xs="4">
+                                    <MudSelect T="string" Label="@($"Arg {idx + 1} type")"
+                                               Variant="Variant.Outlined"
+                                               Margin="Margin.Dense"
+                                               Value="@(_args[idx].IsNested ? NestedArgKind : LiteralArgKind)"
+                                               ValueChanged="@(v => ChangeArgKind(idx, v))">
+                                        <MudSelectItem T="string" Value="@LiteralArgKind">Literal</MudSelectItem>
+                                        <MudSelectItem T="string" Value="@NestedArgKind">Nested function</MudSelectItem>
+                                    </MudSelect>
+                                </MudItem>
+                                <MudItem xs="7">
+                                    @if (_args[idx].IsNested)
+                                    {
+                                        <div class="d-flex align-center gap-2 flex-wrap">
+                                            @if (_args[idx].NestedFunction is null)
+                                            {
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Warning">Not configured</MudChip>
+                                            }
+                                            else
+                                            {
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Primary">
+                                                    @_args[idx].NestedFunction!.FunctionName (@CountNestedFunctions(_args[idx].NestedFunction!) nested)
+                                                </MudChip>
+                                            }
+                                            <MudButton Size="Size.Small" Variant="Variant.Outlined"
+                                                       StartIcon="@Icons.Material.Filled.AccountTree"
+                                                       OnClick="@(() => ConfigureNestedFunction(idx))">
+                                                @(_args[idx].NestedFunction is null ? "Add nested function" : "Edit nested function")
+                                            </MudButton>
+                                            @if (_args[idx].NestedFunction is not null)
+                                            {
+                                                <MudIconButton Icon="@Icons.Material.Filled.Close"
+                                                               Size="Size.Small"
+                                                               Color="Color.Error"
+                                                               OnClick="@(() => ClearNestedFunction(idx))" />
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <MudTextField T="string"
+                                                      Label="@($"Arg {idx + 1} value")"
+                                                      Variant="Variant.Outlined"
+                                                      Margin="Margin.Dense"
+                                                      Value="@_args[idx].LiteralInput"
+                                                      ValueChanged="@(v => OnArgChanged(idx, v))"
+                                                      Immediate="true"
+                                                      Placeholder="value, 'string-literal', true, false, or null" />
+                                    }
+                                </MudItem>
+                                <MudItem xs="1" Class="d-flex align-center justify-center">
+                                    @if (_args.Count > (_selectedFunction.MinArgs ?? 0))
+                                    {
+                                        <MudIconButton Icon="@Icons.Material.Filled.RemoveCircle"
+                                                       Color="Color.Error"
+                                                       Size="Size.Small"
+                                                       OnClick="@(() => RemoveArgAt(idx))" />
+                                    }
+                                </MudItem>
+                            </MudGrid>
+                        </MudPaper>
+                    }
+
+                    @if (_selectedFunction.MaxArgs is null || _args.Count < _selectedFunction.MaxArgs)
+                    {
+                        <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Add"
+                                   OnClick="AddArg">Add argument</MudButton>
+                    }
+
+                    <MudDivider Class="my-3" />
+
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">Mock Values (for preview)</MudText>
+
+                    <MudExpansionPanels>
+                        <MudExpansionPanel Text="Environment Variables">
+                            @foreach (var key in _mockEnvVars.Keys.ToList())
+                            {
+                                var k = key;
+                                <MudGrid Class="mb-1">
+                                    <MudItem xs="5">
+                                        <MudText Typo="Typo.caption" Style="font-family: monospace;">@k</MudText>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudTextField T="string" Value="@_mockEnvVars[k]"
+                                                      ValueChanged="@(v => _mockEnvVars[k] = v)"
+                                                      Variant="Variant.Outlined"
+                                                      Margin="Margin.Dense" Immediate="true" />
+                                    </MudItem>
+                                    <MudItem xs="1">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                                       OnClick="@(() => _mockEnvVars.Remove(k))" />
+                                    </MudItem>
+                                </MudGrid>
+                            }
+                            <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.Add"
+                                       OnClick="AddMockEnvVar">Add</MudButton>
+                        </MudExpansionPanel>
+
+                        <MudExpansionPanel Text="Parameters">
+                            @foreach (var key in _mockParams.Keys.ToList())
+                            {
+                                var k = key;
+                                <MudGrid Class="mb-1">
+                                    <MudItem xs="5">
+                                        <MudText Typo="Typo.caption" Style="font-family: monospace;">@k</MudText>
+                                    </MudItem>
+                                    <MudItem xs="6">
+                                        <MudTextField T="string" Value="@_mockParams[k]"
+                                                      ValueChanged="@(v => _mockParams[k] = v)"
+                                                      Variant="Variant.Outlined"
+                                                      Margin="Margin.Dense" Immediate="true" />
+                                    </MudItem>
+                                    <MudItem xs="1">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                                       OnClick="@(() => _mockParams.Remove(k))" />
+                                    </MudItem>
+                                </MudGrid>
+                            }
+                            <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.Add"
+                                       OnClick="AddMockParam">Add</MudButton>
+                        </MudExpansionPanel>
+                    </MudExpansionPanels>
+
+                    @if (_previewResult is not null)
+                    {
+                        <MudDivider Class="my-3" />
+                        <MudText Typo="Typo.subtitle2" Class="mb-1">Preview</MudText>
+                        <div style="background: var(--mud-palette-background-grey); padding: 8px; border-radius: 4px; font-family: monospace; font-size: 0.85rem;">
+                            @if (_previewResult.Success)
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Result</MudText>
+                                <MudText Color="Color.Success" Style="font-family: monospace;">@_previewResult.ResultJson</MudText>
+                            }
+                            else
+                            {
+                                <MudText Color="Color.Error" Typo="Typo.caption">@_previewResult.Error</MudText>
+                            }
+
+                            <MudExpansionPanels Class="mt-2">
+                                <MudExpansionPanel Text="Raw expression">
+                                    <MudText Style="font-family: monospace; word-break: break-all;">@_previewResult.FunctionExpression</MudText>
+                                </MudExpansionPanel>
+                            </MudExpansionPanels>
+                        </div>
+                        <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.PlayArrow"
+                                   Color="Color.Primary" OnClick="RunPreview" Class="mt-2">
+                            Refresh preview
+                        </MudButton>
+                    }
+                    else
+                    {
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.PlayArrow"
+                                   Color="Color.Primary" OnClick="RunPreview" Class="mt-3">
+                            Mock preview
+                        </MudButton>
+                    }
+                }
+                else
+                {
+                    <MudText Color="Color.Secondary" Typo="Typo.body2">Select a function to configure its arguments.</MudText>
+                }
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Insert"
+                   Disabled="@(_selectedFunction is null)">
+            Insert
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    /// <summary>
+    /// Pre-populated parameter names from the current config document, used for mock hints.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<string> ParameterNames { get; set; } = [];
+
+    /// <summary>
+    /// Pre-populated variable names from the current config document, used for mock hints.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<string> VariableNames { get; set; } = [];
+
+    [Parameter]
+    public DscFunctionExpression? ExistingExpression { get; set; }
+
+    private const string LiteralArgKind = "literal";
+    private const string NestedArgKind = "nested";
+
+    private string _search = string.Empty;
+    private DscFunctionInfo? _selectedFunction;
+    private List<ArgEditorState> _args = [];
+    private readonly Dictionary<string, string> _mockEnvVars = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _mockParams = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _mockVariables = new(StringComparer.Ordinal);
+    private EvaluateDscFunctionResult? _previewResult;
+
+    private IEnumerable<DscFunctionInfo> FilteredFunctions =>
+        string.IsNullOrWhiteSpace(_search)
+            ? FunctionService.GetFunctions()
+            : FunctionService.GetFunctions().Where(f =>
+                f.Name.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
+                (f.Description?.Contains(_search, StringComparison.OrdinalIgnoreCase) == true));
+
+    protected override void OnInitialized()
+    {
+        if (ExistingExpression is null)
+        {
+            return;
+        }
+
+        var fn = FunctionService.GetFunctions()
+            .FirstOrDefault(f => string.Equals(f.Name, ExistingExpression.FunctionName, StringComparison.OrdinalIgnoreCase));
+
+        if (fn is null)
+        {
+            return;
+        }
+
+        _selectedFunction = fn;
+        _args = ExistingExpression.Args
+            .Select(a => new ArgEditorState
+            {
+                IsNested = a.IsNested,
+                NestedFunction = a.NestedFunction,
+                LiteralInput = FormatLiteralInput(a.LiteralValue)
+            })
+            .ToList();
+
+        EnsureMinArgs();
+    }
+
+    private void SelectFunction(DscFunctionInfo fn)
+    {
+        _selectedFunction = fn;
+        _args = [];
+        EnsureMinArgs();
+        _previewResult = null;
+    }
+
+    private void OnArgChanged(int idx, string value)
+    {
+        if (idx < _args.Count)
+        {
+            _args[idx].LiteralInput = value;
+        }
+    }
+
+    private void AddArg() => _args.Add(new ArgEditorState());
+
+    private void RemoveArgAt(int idx)
+    {
+        if (idx < 0 || idx >= _args.Count)
+        {
+            return;
+        }
+
+        _args.RemoveAt(idx);
+        _previewResult = null;
+    }
+
+    private void ChangeArgKind(int idx, string kind)
+    {
+        if (idx < 0 || idx >= _args.Count)
+        {
+            return;
+        }
+
+        var editor = _args[idx];
+        editor.IsNested = string.Equals(kind, NestedArgKind, StringComparison.Ordinal);
+        if (editor.IsNested)
+        {
+            editor.LiteralInput = string.Empty;
+        }
+        else
+        {
+            editor.NestedFunction = null;
+        }
+
+        _previewResult = null;
+    }
+
+    private async Task ConfigureNestedFunction(int idx)
+    {
+        if (idx < 0 || idx >= _args.Count)
+        {
+            return;
+        }
+
+        var parameters = new DialogParameters<DscFunctionPickerDialog>
+        {
+            { x => x.ParameterNames, ParameterNames },
+            { x => x.VariableNames, VariableNames },
+            { x => x.ExistingExpression, _args[idx].NestedFunction }
+        };
+
+        var dialog = await DialogService.ShowAsync<DscFunctionPickerDialog>(
+            "Build Nested Function",
+            parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true });
+
+        var result = await dialog.Result;
+        if (result?.Data is DscFunctionExpression nested)
+        {
+            _args[idx].IsNested = true;
+            _args[idx].NestedFunction = nested;
+            _args[idx].LiteralInput = string.Empty;
+            _previewResult = null;
+        }
+    }
+
+    private void ClearNestedFunction(int idx)
+    {
+        if (idx < 0 || idx >= _args.Count)
+        {
+            return;
+        }
+
+        _args[idx].NestedFunction = null;
+        _previewResult = null;
+    }
+
+    private void AddMockEnvVar() => _mockEnvVars[$"VAR_{_mockEnvVars.Count + 1}"] = string.Empty;
+    private void AddMockParam() => _mockParams[$"param{_mockParams.Count + 1}"] = "\"value\"";
+
+    private void RunPreview()
+    {
+        if (_selectedFunction is null) return;
+
+        var expression = BuildExpression();
+        if (expression is null)
+        {
+            return;
+        }
+
+        var request = new EvaluateDscFunctionRequest
+        {
+            FunctionName = _selectedFunction.Name,
+            Args = expression.Args.Select(ToPreviewArg).ToList(),
+            MockEnvVars = new Dictionary<string, string>(_mockEnvVars),
+            MockParameters = new Dictionary<string, string>(_mockParams),
+            MockVariables = new Dictionary<string, string>(_mockVariables)
+        };
+
+        _previewResult = FunctionService.Evaluate(request);
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Insert()
+    {
+        var expr = BuildExpression();
+        if (expr is null) return;
+
+        MudDialog.Close(DialogResult.Ok(expr));
+    }
+
+    private DscFunctionExpression? BuildExpression()
+    {
+        if (_selectedFunction is null)
+        {
+            return null;
+        }
+
+        var args = _args.Select(ToFunctionArg).ToList();
+        return new DscFunctionExpression
+        {
+            FunctionName = _selectedFunction.Name,
+            Args = args
+        };
+    }
+
+    private static object? ToPreviewArg(FunctionArg arg) =>
+        arg.IsNested && arg.NestedFunction is not null
+            ? arg.NestedFunction.ToInlineString()
+            : arg.LiteralValue;
+
+    private static FunctionArg ToFunctionArg(ArgEditorState arg)
+    {
+        if (arg.IsNested && arg.NestedFunction is not null)
+        {
+            return FunctionArg.Nested(arg.NestedFunction);
+        }
+
+        return ParseLiteralArgument(arg.LiteralInput);
+    }
+
+    private static string FormatLiteralInput(object? value) => value switch
+    {
+        null => string.Empty,
+        string s => s,
+        bool b => b ? "true" : "false",
+        _ => value.ToString() ?? string.Empty
+    };
+
+    private static FunctionArg ParseLiteralArgument(string input)
+    {
+        var trimmed = input.Trim();
+
+        if (long.TryParse(trimmed, out var l)) return FunctionArg.Literal(l);
+        if (trimmed.Equals("true", StringComparison.OrdinalIgnoreCase)) return FunctionArg.Literal(true);
+        if (trimmed.Equals("false", StringComparison.OrdinalIgnoreCase)) return FunctionArg.Literal(false);
+        if (trimmed.Equals("null", StringComparison.OrdinalIgnoreCase)) return FunctionArg.Literal(null);
+
+        if (trimmed.StartsWith('\'') && trimmed.EndsWith('\'') && trimmed.Length >= 2)
+        {
+            return FunctionArg.Literal(trimmed[1..^1]);
+        }
+
+        return FunctionArg.Literal(trimmed);
+    }
+
+    private void EnsureMinArgs()
+    {
+        if (_selectedFunction is null)
+        {
+            return;
+        }
+
+        var minArgs = _selectedFunction.MinArgs ?? 0;
+        while (_args.Count < minArgs)
+        {
+            _args.Add(new ArgEditorState());
+        }
+    }
+
+    private static int CountNestedFunctions(DscFunctionExpression expression)
+    {
+        return expression.Args
+            .Where(a => a.IsNested && a.NestedFunction is not null)
+            .Sum(a => 1 + CountNestedFunctions(a.NestedFunction!));
+    }
+
+    private sealed class ArgEditorState
+    {
+        public bool IsNested { get; set; }
+        public string LiteralInput { get; set; } = string.Empty;
+        public DscFunctionExpression? NestedFunction { get; set; }
+    }
+}
+
+

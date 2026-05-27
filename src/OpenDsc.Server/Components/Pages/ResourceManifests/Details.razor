@@ -1,0 +1,189 @@
+@* Copyright (c) Thomas Nieto - All Rights Reserved *@
+@* You may use, distribute and modify this code under the *@
+@* terms of the MIT license. *@
+
+@page "/resource-manifests/{Id:guid}"
+@attribute [Authorize(Policy = ServerPermissions.ResourceManifestsRead)]
+@rendermode InteractiveServer
+
+@using Microsoft.AspNetCore.Authorization
+@using OpenDsc.Contracts.ResourceManifests
+@using OpenDsc.Server.Authorization
+@using OpenDsc.Server.Services
+
+@inject IResourceManifestService ManifestService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>@(_manifest?.TypeName ?? "Resource Manifest")</PageTitle>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" />
+}
+else if (_manifest is null)
+{
+    <MudAlert Severity="Severity.Error">Resource manifest not found.</MudAlert>
+}
+else
+{
+    <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ArrowBack" Class="mb-4"
+               OnClick="@(() => Navigation.NavigateTo("/resource-manifests"))">
+        Back to Resource Manifests
+    </MudButton>
+
+    <MudText Typo="Typo.h4" Class="mb-1">@_manifest.TypeName</MudText>
+    <div class="d-flex align-center gap-2 mb-4">
+        <MudChip T="string" Size="Size.Small" Color="@KindColor(_manifest.Kind)">@_manifest.Kind</MudChip>
+        @if (!string.IsNullOrWhiteSpace(_manifest.Description))
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary">@_manifest.Description</MudText>
+        }
+    </div>
+
+    <MudCard>
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h6">Versions</MudText>
+            </CardHeaderContent>
+            <CardHeaderActions>
+                <AuthorizeView Policy="@ServerPermissions.ResourceManifestsWrite">
+                    <Authorized>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small"
+                                   StartIcon="@Icons.Material.Filled.Upload" OnClick="OpenImportDialog">
+                            Import New Version
+                        </MudButton>
+                    </Authorized>
+                </AuthorizeView>
+            </CardHeaderActions>
+        </MudCardHeader>
+        <MudCardContent>
+            @if (!_manifest.Versions.Any())
+            {
+                <MudAlert Severity="Severity.Info" Dense="true">No versions registered.</MudAlert>
+            }
+            else
+            {
+                <MudTable Items="_manifest.Versions" Dense="true" Hover="true">
+                    <HeaderContent>
+                        <MudTh>Version</MudTh>
+                        <MudTh>Tags</MudTh>
+                        <MudTh>Source</MudTh>
+                        <MudTh>Has Schema</MudTh>
+                        <MudTh>Imported</MudTh>
+                        <MudTh></MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Version">
+                            <MudText Typo="Typo.body1" Style="font-family: monospace;">@context.Version</MudText>
+                        </MudTd>
+                        <MudTd DataLabel="Tags">
+                            @if (context.Tags?.Length > 0)
+                            {
+                                @foreach (var tag in context.Tags)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Class="mr-1">@tag</MudChip>
+                                }
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">—</MudText>
+                            }
+                        </MudTd>
+                        <MudTd DataLabel="Source">
+                            @if (context.IsBuiltIn)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Info">Auto-discovered</MudChip>
+                            }
+                            else
+                            {
+                                <MudChip T="string" Size="Size.Small">Manual</MudChip>
+                            }
+                        </MudTd>
+                        <MudTd DataLabel="Has Schema">
+                            @if (context.Id != Guid.Empty)
+                            {
+                                <ViewVersionSchemaButton VersionId="@context.Id" ManifestService="@ManifestService" />
+                            }
+                        </MudTd>
+                        <MudTd DataLabel="Imported">
+                            <MudTooltip Text="@context.ImportedAt.ToString("f")">
+                                @context.ImportedAt.ToString("d")
+                            </MudTooltip>
+                        </MudTd>
+                        <MudTd>
+                            <AuthorizeView Policy="@ServerPermissions.ResourceManifestsWrite" Context="authCtx">
+                                <Authorized>
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Default"
+                                                   OnClick="@(() => ConfirmDeleteVersion(context))" />
+                                </Authorized>
+                            </AuthorizeView>
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+        </MudCardContent>
+    </MudCard>
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private bool _loading = true;
+    private ResourceManifestDetails? _manifest;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _manifest = await ManifestService.GetByIdAsync(Id);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OpenImportDialog()
+    {
+        var dialog = await DialogService.ShowAsync<ImportManifestDialog>("Import Resource Manifest Version");
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            await LoadAsync();
+            Snackbar.Add("Version imported successfully.", Severity.Success);
+        }
+    }
+
+    private async Task ConfirmDeleteVersion(ResourceManifestVersionSummary version)
+    {
+        var confirm = await DialogService.ShowMessageBox(
+            "Delete Version",
+            $"Delete version {version.Version}? This cannot be undone.",
+            yesText: "Delete", cancelText: "Cancel");
+
+        if (confirm == true)
+        {
+            await ManifestService.DeleteVersionAsync(version.Id);
+            Snackbar.Add($"Deleted version {version.Version}.", Severity.Success);
+            await LoadAsync();
+        }
+    }
+
+    private static Color KindColor(string kind) => kind switch
+    {
+        "group" => Color.Primary,
+        "adapter" => Color.Secondary,
+        "importer" => Color.Warning,
+        "exporter" => Color.Info,
+        _ => Color.Default
+    };
+}

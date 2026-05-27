@@ -53,6 +53,10 @@ body {
     width: 100%;
 }
 
+.flex-grow-1 {
+    flex: 1 1 auto;
+}
+
 /* Monaco Editor */
 .monaco-editor-container {
     height: 100%;
@@ -65,4 +69,53 @@ body {
 
 .file-viewer-editor {
     height: 600px;
+}
+
+.monaco-editor-container,
+.file-viewer-editor,
+.manifest-import-editor {
+    cursor: text;
+}
+
+.optional-property-picker {
+    border-color: var(--mud-palette-primary);
+    background: color-mix(in srgb, var(--mud-palette-primary) 6%, transparent);
+}
+
+.complex-value-editor {
+    width: 100%;
+}
+
+.complex-node {
+    border: 1px solid var(--mud-palette-lines-default);
+    border-left: 4px solid var(--mud-palette-primary);
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 8px;
+    width: 100%;
+}
+
+.complex-node.array-node {
+    border-left-color: var(--mud-palette-secondary);
+}
+
+.complex-node-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+
+.complex-node-items {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.complex-node-item {
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: 6px;
+    padding: 10px;
 }

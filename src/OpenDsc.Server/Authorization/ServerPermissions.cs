@@ -17,6 +17,8 @@ public static class ServerPermissions
     public const string GroupsManage = "groups.manage";
     public const string RolesManage = "roles.manage";
     public const string RegistrationKeysManage = "registration-keys.manage";
+    public const string ResourceManifestsRead = "resource-manifests.read";
+    public const string ResourceManifestsWrite = "resource-manifests.write";
 
     public static readonly FrozenSet<string> All = new[]
     {
@@ -26,5 +28,7 @@ public static class ServerPermissions
         GroupsManage,
         RolesManage,
         RegistrationKeysManage,
+        ResourceManifestsRead,
+        ResourceManifestsWrite,
     }.ToFrozenSet(StringComparer.Ordinal);
 }

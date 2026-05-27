@@ -39,7 +39,7 @@ else
             }
             else
             {
-                <MudDataGrid T="PermissionRow" Items="@rows" Dense="true" Hover="true" SortMode="SortMode.Single">
+                <MudDataGrid T="PermissionRow" Items="@rows" Hover="true" SortMode="SortMode.Single">
                     <Columns>
                         <PropertyColumn Property="x => x.PrincipalName" Title="Principal" />
                         <PropertyColumn Property="x => x.PrincipalType" Title="Type">
@@ -340,3 +340,4 @@ currentUserId.Value);
         _ => Color.Default
     };
 }
+

@@ -1,0 +1,116 @@
+@* Copyright (c) Thomas Nieto - All Rights Reserved *@
+@* You may use, distribute and modify this code under the *@
+@* terms of the MIT license. *@
+
+@rendermode InteractiveServer
+
+@using Microsoft.JSInterop
+@using OpenDsc.Contracts.ResourceManifests
+@using OpenDsc.Server.Services
+
+@inject IResourceManifestService ManifestService
+@inject IJSRuntime JSRuntime
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mb-2">
+            Paste or upload a <code>.dsc.resource.json</code> manifest, a <code>.dsc.resources.json/yaml</code>
+            bundle (array of manifests), or plain NDJSON from <code>dsc resource list</code>.
+        </MudText>
+        @if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-3">@_error</MudAlert>
+        }
+        <div class="d-flex gap-2 mb-2">
+            <MudButton StartIcon="@Icons.Material.Filled.UploadFile" Size="Size.Small" Variant="Variant.Outlined"
+                       OnClick="TriggerFilePicker">
+                Upload file
+            </MudButton>
+            @if (!string.IsNullOrWhiteSpace(_uploadedFileName))
+            {
+                <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Filled.InsertDriveFile" OnClose="ClearFile">
+                    @_uploadedFileName
+                </MudChip>
+            }
+        </div>
+        <InputFile @ref="_inputFile" id="manifest-file-input" OnChange="OnFileSelected" accept=".json,.yaml,.yml"
+                   style="display:none" />
+        <MudTextField T="string" @bind-Value="_content" Variant="Variant.Outlined" Lines="18" AutoGrow="false"
+                      Immediate="false" Disabled="@_saving" ReadOnly="false" Style="font-family: monospace;" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Import" Disabled="_saving">
+            @if (_saving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Import
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private InputFile? _inputFile;
+    private string? _error;
+    private bool _saving;
+    private string _uploadedFileName = string.Empty;
+
+    private string _content = string.Empty;
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task TriggerFilePicker()
+    {
+        await JSRuntime.InvokeVoidAsync("eval",
+            "document.getElementById('manifest-file-input').click()");
+    }
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        _error = null;
+        var file = e.File;
+        _uploadedFileName = file.Name;
+
+        using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+        using var reader = new StreamReader(stream);
+        var text = await reader.ReadToEndAsync();
+        _content = text;
+    }
+
+    private Task ClearFile()
+    {
+        _uploadedFileName = string.Empty;
+        _content = string.Empty;
+        return Task.CompletedTask;
+    }
+
+    private async Task Import()
+    {
+        _error = null;
+        _saving = true;
+        try
+        {
+            if (string.IsNullOrWhiteSpace(_content))
+            {
+                _error = "Please paste or upload manifest content.";
+                return;
+            }
+
+            var fileName = string.IsNullOrWhiteSpace(_uploadedFileName) ? null : _uploadedFileName;
+            var count = await ManifestService.ImportManyAsync(_content, fileName);
+            MudDialog.Close(DialogResult.Ok(count));
+        }
+        catch (ArgumentException ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

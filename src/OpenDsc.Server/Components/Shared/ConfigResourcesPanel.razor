@@ -1,0 +1,322 @@
+@* Copyright (c) Thomas Nieto - All Rights Reserved *@
+@* You may use, distribute and modify this code under the *@
+@* terms of the MIT license. *@
+
+@rendermode InteractiveServer
+
+@using OpenDsc.Contracts.ResourceManifests
+@using OpenDsc.Server.Services
+
+@inject IResourceManifestService ManifestService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<MudStack>
+    <div class="d-flex justify-space-between align-center mb-2">
+        <div class="d-flex gap-2">
+            @if (!ReadOnly)
+            {
+                <MudButton StartIcon="@Icons.Material.Filled.AccountTree" Size="Size.Small" Variant="Variant.Outlined"
+                           OnClick="AddGroupResource">
+                    Add group
+                </MudButton>
+                <MudButton StartIcon="@Icons.Material.Filled.Add" Size="Size.Small" Variant="Variant.Filled"
+                           Color="Color.Primary" OnClick="OpenAddResourceDialog">
+                    Add resource
+                </MudButton>
+            }
+        </div>
+    </div>
+
+    @if (Resources.Count == 0)
+    {
+        <MudText Color="Color.Secondary" Typo="Typo.body2">
+            No resources defined. Resources are the instances that DSC will manage.
+        </MudText>
+    }
+    else if (_missingManifestTypes.Count > 0)
+    {
+        <MudAlert Severity="Severity.Warning" Class="mb-2">
+            Manifest metadata is unavailable for one or more resource types. You can still edit in form mode,
+            but type autocomplete, property schema, and validation hints are limited.
+        </MudAlert>
+    }
+
+    @if (_isLoadingSchemas)
+    {
+        <MudPaper Outlined="true" Class="pa-4 text-center">
+            <MudProgressCircular Indeterminate="true" Size="Size.Large" Color="Color.Primary" Class="mb-2" />
+            <MudText Typo="Typo.subtitle2">Loading resource schemas...</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Preparing property metadata before rendering the form.
+            </MudText>
+        </MudPaper>
+    }
+    else foreach (var resource in Resources.ToList())
+    {
+        var r = resource;
+        var index = Resources.IndexOf(r);
+        <div class="d-flex align-start gap-2 mb-2">
+            @if (!ReadOnly)
+            {
+                <div class="d-flex flex-column pt-4">
+                    <MudIconButton Icon="@Icons.Material.Filled.KeyboardArrowUp" Size="Size.Small" Disabled="@(index <= 0)"
+                                   OnClick="@(() => MoveResource(index, index - 1))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.KeyboardArrowDown" Size="Size.Small"
+                                   Disabled="@(index < 0 || index >= Resources.Count - 1)"
+                                   OnClick="@(() => MoveResource(index, index + 1))" />
+                </div>
+            }
+            <div class="flex-grow-1">
+                @if (IsGroupOrAssertion(r.Type))
+                {
+                    <GroupResourceBlock Resource="@r" ResourceChanged="@(updated => OnResourceChanged(r, updated))"
+                                        OnRemove="@(removed => RemoveResource(removed))" ParameterNames="@ParameterNames"
+                                        VariableNames="@VariableNames" ReadOnly="@ReadOnly" AvailableTypes="@_availableTypes"
+                                        ResourceReferences="@_resourceReferences" />
+                }
+                else
+                {
+                    <ResourceInstanceBlock Resource="@r" InstanceSchemaJson="@GetInstanceSchema(r.Type)"
+                                           ResourceChanged="@(updated => OnResourceChanged(r, updated))"
+                                           OnRemove="@(removed => RemoveResource(removed))" ParameterNames="@ParameterNames"
+                                           VariableNames="@VariableNames" ReadOnly="@ReadOnly" AvailableTypes="@_availableTypes"
+                                           ResourceReferences="@_resourceReferences" />
+                }
+            </div>
+        </div>
+    }
+</MudStack>
+
+
+@code {
+    [Parameter, EditorRequired]
+    public List<ConfigResourceState> Resources { get; set; } = [];
+
+    [Parameter]
+    public EventCallback<List<ConfigResourceState>> ResourcesChanged { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<string> ParameterNames { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyList<string> VariableNames { get; set; } = [];
+
+    [Parameter]
+    public bool ReadOnly { get; set; }
+
+    private Dictionary<string, string?> _schemaCache = new(StringComparer.OrdinalIgnoreCase);
+    private HashSet<string> _missingManifestTypes = new(StringComparer.OrdinalIgnoreCase);
+    private List<string> _availableTypes = [];
+    private List<ResourceReferenceOption> _resourceReferences = [];
+    private bool _isLoadingSchemas;
+
+    protected override Task OnInitializedAsync() => Task.CompletedTask;
+
+    protected override void OnParametersSet()
+    {
+        var typesToLoad = Resources
+            .Where(r => !IsGroupOrAssertion(r.Type))
+            .Select(r => r.Type)
+            .Where(t => !string.IsNullOrWhiteSpace(t))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        _isLoadingSchemas = typesToLoad.Any(type => !_schemaCache.ContainsKey(type));
+        _resourceReferences = BuildResourceReferences(Resources);
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _availableTypes = (await ManifestService.GetAllAsync())
+            .Select(m => m.TypeName)
+            .OrderBy(t => t)
+            .ToList();
+
+        var typesToLoad = Resources
+            .Where(r => !IsGroupOrAssertion(r.Type))
+            .Select(r => r.Type)
+            .Where(t => !string.IsNullOrWhiteSpace(t))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (typesToLoad.Count == 0)
+        {
+            _isLoadingSchemas = false;
+            return;
+        }
+
+        _isLoadingSchemas = typesToLoad.Any(type => !_schemaCache.ContainsKey(type));
+        await Task.WhenAll(typesToLoad.Select(LoadSchemaForType));
+        _isLoadingSchemas = false;
+    }
+
+    private static bool IsGroupOrAssertion(string type) =>
+        type.Equals("Microsoft.DSC/Group", StringComparison.OrdinalIgnoreCase) ||
+        type.Equals("Microsoft.DSC/Assertion", StringComparison.OrdinalIgnoreCase);
+
+    private string? GetInstanceSchema(string type)
+    {
+        _schemaCache.TryGetValue(type, out var schema);
+        return schema;
+    }
+
+    private async Task<IEnumerable<string>> SearchTypes(string value, CancellationToken ct)
+    {
+        return _availableTypes
+            .Where(type => string.IsNullOrWhiteSpace(value) ||
+                           type.Contains(value, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private async Task OpenAddResourceDialog()
+    {
+        if (ReadOnly)
+        {
+            return;
+        }
+
+        var parameters = new DialogParameters<AddResourceDialog>
+        {
+            { x => x.DefaultName, $"resource{Resources.Count + 1}" }
+        };
+        var dialog = await DialogService.ShowAsync<AddResourceDialog>(
+            "Add Resource", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        var result = await dialog.Result;
+        if (result?.Data is (string type, string name))
+        {
+            var resourceName = string.IsNullOrWhiteSpace(name) ? $"resource{Resources.Count + 1}" : name;
+            if (HasDuplicateTypeAndName(type, resourceName))
+            {
+                Snackbar.Add($"A resource with type '{type}' and instance name '{resourceName}' already exists.", Severity.Error);
+                return;
+            }
+
+            var resource = new ConfigResourceState
+            {
+                Name = resourceName,
+                Type = type
+            };
+            await LoadSchemaForType(resource.Type);
+            Resources.Add(resource);
+            await ResourcesChanged.InvokeAsync(Resources);
+        }
+    }
+
+    private void AddGroupResource()
+    {
+        if (ReadOnly)
+        {
+            return;
+        }
+
+        Resources.Add(new ConfigResourceState
+        {
+            Name = $"group{Resources.Count + 1}",
+            Type = "Microsoft.DSC/Group"
+        });
+        ResourcesChanged.InvokeAsync(Resources);
+    }
+
+    private void MoveResource(int fromIndex, int toIndex)
+    {
+        if (fromIndex < 0 || toIndex < 0 || fromIndex >= Resources.Count || toIndex >= Resources.Count || fromIndex == toIndex)
+        {
+            return;
+        }
+
+        var item = Resources[fromIndex];
+        Resources.RemoveAt(fromIndex);
+        Resources.Insert(toIndex, item);
+        ResourcesChanged.InvokeAsync(Resources);
+    }
+
+    private static List<ResourceReferenceOption> BuildResourceReferences(IEnumerable<ConfigResourceState> resources)
+    {
+        var refs = new List<ResourceReferenceOption>();
+
+        void Visit(IEnumerable<ConfigResourceState> items)
+        {
+            foreach (var resource in items)
+            {
+                var label = $"{resource.Type} / {resource.Name}";
+                refs.Add(new ResourceReferenceOption(label, $"[resourceId('{resource.Type}', '{resource.Name}')]", resource.Type,
+resource.Name));
+                if (resource.NestedResources.Count > 0)
+                {
+                    Visit(resource.NestedResources);
+                }
+            }
+        }
+
+        Visit(resources);
+        return refs;
+    }
+
+    private bool HasDuplicateTypeAndName(string type, string name)
+    {
+        return Resources.Any(r =>
+            string.Equals(r.Type, type, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(r.Name, name, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private async Task LoadSchemaForType(string type)
+    {
+        if (_schemaCache.ContainsKey(type)) return;
+
+        try
+        {
+            var manifest = await ManifestService.GetByTypeNameAsync(type);
+            if (manifest?.Versions.FirstOrDefault() is { } v)
+            {
+                var details = await ManifestService.GetVersionDetailsByIdAsync(v.Id);
+
+                // Try to use embedded schema first
+                if (!string.IsNullOrWhiteSpace(details?.InstanceSchemaJson))
+                {
+                    _schemaCache[type] = details.InstanceSchemaJson;
+                    _missingManifestTypes.Remove(type);
+                }
+                else
+                {
+                    // Fall back to fetching from DSC CLI for command-based resources
+                    var schema = await ManifestService.GetResourceSchemaAsync(type);
+                    if (!string.IsNullOrWhiteSpace(schema))
+                    {
+                        _schemaCache[type] = schema;
+                        _missingManifestTypes.Remove(type);
+                    }
+                    else
+                    {
+                        _schemaCache[type] = null;
+                        _missingManifestTypes.Add(type);
+                    }
+                }
+            }
+            else
+            {
+                _schemaCache[type] = null;
+                _missingManifestTypes.Add(type);
+            }
+        }
+        catch
+        {
+            _schemaCache[type] = null;
+            _missingManifestTypes.Add(type);
+        }
+    }
+
+    private void OnResourceChanged(ConfigResourceState original, ConfigResourceState updated)
+    {
+        var idx = Resources.IndexOf(original);
+        if (idx >= 0) Resources[idx] = updated;
+        ResourcesChanged.InvokeAsync(Resources);
+    }
+
+    private void RemoveResource(ConfigResourceState resource)
+    {
+        Resources.Remove(resource);
+        ResourcesChanged.InvokeAsync(Resources);
+    }
+}
+

@@ -1,0 +1,182 @@
+@* Copyright (c) Thomas Nieto - All Rights Reserved *@
+@* You may use, distribute and modify this code under the *@
+@* terms of the MIT license. *@
+
+@rendermode InteractiveServer
+
+<MudStack>
+    <div class="d-flex justify-space-between align-center mb-2">
+        @if (!ReadOnly)
+        {
+            <MudButton StartIcon="@Icons.Material.Filled.Add" Size="Size.Small" Variant="Variant.Filled"
+                       Color="Color.Primary" OnClick="AddParameter">
+                Add parameter
+            </MudButton>
+        }
+    </div>
+
+    @if (Parameters.Count == 0)
+    {
+        <MudText Color="Color.Secondary" Typo="Typo.body2">
+            No parameters defined. Parameters let you pass dynamic values into your configuration.
+        </MudText>
+    }
+
+    @foreach (var name in Parameters.Keys.ToList())
+    {
+        var paramName = name;
+        var param = Parameters[paramName];
+
+        <MudCard Outlined="true" Class="mb-2">
+            <MudCardContent>
+                <MudGrid>
+                    <MudItem xs="12" Class="d-flex justify-space-between align-center">
+                        <MudText Typo="Typo.body1" Style="font-family: monospace; font-weight: bold;">
+                            @paramName
+                        </MudText>
+                        @if (!ReadOnly)
+                        {
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                           OnClick="@(() => RemoveParameter(paramName))" />
+                        }
+                    </MudItem>
+
+                    <MudItem xs="6">
+                        <MudSelect T="string" Label="Type" Value="@param.Type" Variant="Variant.Outlined"
+                                   Margin="Margin.Dense" Disabled="@ReadOnly"
+                                   ValueChanged="@(v => { param.Type = v; ParametersChanged.InvokeAsync(Parameters); })">
+                            <MudSelectItem T="string" Value="@("string")">string</MudSelectItem>
+                            <MudSelectItem T="string" Value="@("securestring")">securestring</MudSelectItem>
+                            <MudSelectItem T="string" Value="@("int")">int</MudSelectItem>
+                            <MudSelectItem T="string" Value="@("bool")">bool</MudSelectItem>
+                            <MudSelectItem T="string" Value="@("object")">object</MudSelectItem>
+                            <MudSelectItem T="string" Value="@("secureobject")">secureobject</MudSelectItem>
+                            <MudSelectItem T="string" Value="@("array")">array</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+
+                    <MudItem xs="6">
+                        @if (param.Type is "bool")
+                        {
+                            <MudSelect T="bool" Label="Default value" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                       Disabled="@ReadOnly" Value="@(param.DefaultValue as bool? ?? false)"
+                                       ValueChanged="@(v => { param.DefaultValue = v; ParametersChanged.InvokeAsync(Parameters); })">
+                                <MudSelectItem T="bool" Value="@true">true</MudSelectItem>
+                                <MudSelectItem T="bool" Value="@false">false</MudSelectItem>
+                            </MudSelect>
+                        }
+                        else if (param.Type is "int")
+                        {
+                            <MudNumericField T="int?" Label="Default value" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                             Disabled="@ReadOnly" Value="@ToNullableInt(param.DefaultValue)"
+                                             ValueChanged="@(v => { param.DefaultValue = v; ParametersChanged.InvokeAsync(Parameters); })" />
+                        }
+                        else
+                        {
+                            <MudTextField T="string" Label="Default value" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                          Disabled="@ReadOnly" Value="@(param.DefaultValue?.ToString() ?? string.Empty)"
+                                          ValueChanged="@(v => { param.DefaultValue = v; ParametersChanged.InvokeAsync(Parameters); })"
+                                          Immediate="true" />
+                        }
+                    </MudItem>
+
+                    <MudItem xs="12">
+                        <MudTextField T="string" Label="Description" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                      Disabled="@ReadOnly" Value="@(param.Description ?? string.Empty)"
+                                      ValueChanged="@(v => { param.Description = v; ParametersChanged.InvokeAsync(Parameters); })"
+                                      Immediate="true" />
+                    </MudItem>
+
+                    @if (param.Type is "string" or "securestring")
+                    {
+                        <MudItem xs="3">
+                            <MudNumericField T="int?" Label="Min length" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                             Disabled="@ReadOnly" Value="@param.MinLength"
+                                             ValueChanged="@(v => { param.MinLength = v; ParametersChanged.InvokeAsync(Parameters); })" />
+                        </MudItem>
+                        <MudItem xs="3">
+                            <MudNumericField T="int?" Label="Max length" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                             Disabled="@ReadOnly" Value="@param.MaxLength"
+                                             ValueChanged="@(v => { param.MaxLength = v; ParametersChanged.InvokeAsync(Parameters); })" />
+                        </MudItem>
+                    }
+
+                    @if (param.Type is "int")
+                    {
+                        <MudItem xs="3">
+                            <MudNumericField T="int?" Label="Min value" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                             Disabled="@ReadOnly" Value="@param.MinValue"
+                                             ValueChanged="@(v => { param.MinValue = v; ParametersChanged.InvokeAsync(Parameters); })" />
+                        </MudItem>
+                        <MudItem xs="3">
+                            <MudNumericField T="int?" Label="Max value" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                             Disabled="@ReadOnly" Value="@param.MaxValue"
+                                             ValueChanged="@(v => { param.MaxValue = v; ParametersChanged.InvokeAsync(Parameters); })" />
+                        </MudItem>
+                    }
+
+                    <MudItem xs="12">
+                        <MudTextField T="string" Label="Allowed values (comma-separated)" Variant="Variant.Outlined"
+                                      Margin="Margin.Dense" Disabled="@ReadOnly"
+                                      Value="@(param.AllowedValues is null || param.AllowedValues.Count == 0 ? string.Empty : string.Join(", ", param.AllowedValues))"
+                                      ValueChanged="@(v => UpdateAllowedValues(param, v))" Immediate="true"
+                                      Placeholder="e.g., Option1, Option2, Option3" />
+                    </MudItem>
+                </MudGrid>
+            </MudCardContent>
+        </MudCard>
+    }
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired]
+    public Dictionary<string, ConfigParameterState> Parameters { get; set; } = [];
+
+    [Parameter]
+    public EventCallback<Dictionary<string, ConfigParameterState>> ParametersChanged { get; set; }
+
+    [Parameter]
+    public bool ReadOnly { get; set; }
+
+    private void AddParameter()
+    {
+        var name = $"param{Parameters.Count + 1}";
+        Parameters[name] = new ConfigParameterState();
+        ParametersChanged.InvokeAsync(Parameters);
+    }
+
+    private void RemoveParameter(string name)
+    {
+        Parameters.Remove(name);
+        ParametersChanged.InvokeAsync(Parameters);
+    }
+
+    private void UpdateAllowedValues(ConfigParameterState param, string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            param.AllowedValues = null;
+        }
+        else
+        {
+            var values = value.Split(',')
+                .Select(v => v.Trim())
+                .Where(v => !string.IsNullOrEmpty(v))
+                .Cast<object>()
+                .ToList();
+            param.AllowedValues = values.Count > 0 ? values : null;
+        }
+
+        ParametersChanged.InvokeAsync(Parameters);
+    }
+
+    private static int? ToNullableInt(object? value) => value switch
+    {
+        int i => i,
+        long l => checked((int)l),
+        string s when int.TryParse(s, out var parsed) => parsed,
+        _ => null
+    };
+}
+
+

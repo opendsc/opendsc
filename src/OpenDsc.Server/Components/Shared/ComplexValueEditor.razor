@@ -1,0 +1,340 @@
+@* Copyright (c) Thomas Nieto - All Rights Reserved *@
+@* You may use, distribute and modify this code under the *@
+@* terms of the MIT license. *@
+
+@rendermode InteractiveServer
+
+<div class="complex-value-editor">
+    @if (ShowTypeSelector)
+    {
+        <MudSelect T="string" Label="Value type" Variant="Variant.Outlined" Margin="Margin.Dense" Value="@CurrentKind"
+                   ValueChanged="ChangeKind" Disabled="@ReadOnly" Dense="true" Class="mb-2">
+            <MudSelectItem T="string" Value="@("string")">String</MudSelectItem>
+            <MudSelectItem T="string" Value="@("number")">Number</MudSelectItem>
+            <MudSelectItem T="string" Value="@("boolean")">Boolean</MudSelectItem>
+            <MudSelectItem T="string" Value="@("object")">Object</MudSelectItem>
+            <MudSelectItem T="string" Value="@("array")">Array</MudSelectItem>
+            <MudSelectItem T="string" Value="@("null")">Null</MudSelectItem>
+        </MudSelect>
+    }
+
+    @if (CurrentKind == "object")
+    {
+        var objectValue = GetObjectValue();
+        <div class="complex-node object-node">
+            <div class="complex-node-header">
+                <MudText Typo="Typo.subtitle2">@(string.IsNullOrWhiteSpace(Label) ? "Object" : Label)</MudText>
+                @if (!ReadOnly)
+                {
+                    <MudStack Row="true" Spacing="1">
+                        <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="@(() => AddObjectMember("string"))">Text
+                        </MudButton>
+                        <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="@(() => AddObjectMember("number"))">Number
+                        </MudButton>
+                        <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="@(() => AddObjectMember("boolean"))">Bool
+                        </MudButton>
+                        <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="@(() => AddObjectMember("object"))">Object
+                        </MudButton>
+                        <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="@(() => AddObjectMember("array"))">Array
+                        </MudButton>
+                    </MudStack>
+                }
+            </div>
+
+            <div class="complex-node-items">
+                @foreach (var entry in objectValue.ToList())
+                {
+                    var key = entry.Key;
+                    <div class="complex-node-item">
+                        <MudGrid>
+                            <MudItem xs="12" md="4">
+                                <MudTextField T="string" Label="Key" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                              Value="@key" ValueChanged="@(newKey => RenameObjectKey(key, newKey))" Disabled="@ReadOnly"
+                                              Immediate="true" />
+                            </MudItem>
+                            <MudItem xs="12" md="7">
+                                <ComplexValueEditor Label="@key" Value="@objectValue[key]"
+                                                    ValueChanged="@(newValue => UpdateObjectMember(key, newValue))" ReadOnly="@ReadOnly"
+                                                    ShowTypeSelector="true" />
+                            </MudItem>
+                            <MudItem xs="12" md="1" Class="d-flex align-start justify-center">
+                                @if (!ReadOnly)
+                                {
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                                                   OnClick="@(() => RemoveObjectMember(key))" />
+                                }
+                            </MudItem>
+                        </MudGrid>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+    else if (CurrentKind == "array")
+    {
+        var arrayValue = GetArrayValue();
+        <div class="complex-node array-node">
+            <div class="complex-node-header">
+                <MudText Typo="Typo.subtitle2">@(string.IsNullOrWhiteSpace(Label) ? "Array" : Label)</MudText>
+                @if (!ReadOnly)
+                {
+                    <MudStack Row="true" Spacing="1">
+                        <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="@(() => AddArrayItem("string"))">Text
+                        </MudButton>
+                        <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="@(() => AddArrayItem("number"))">Number
+                        </MudButton>
+                        <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="@(() => AddArrayItem("boolean"))">Bool
+                        </MudButton>
+                        <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="@(() => AddArrayItem("object"))">Object
+                        </MudButton>
+                        <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="@(() => AddArrayItem("array"))">Array
+                        </MudButton>
+                    </MudStack>
+                }
+            </div>
+
+            <div class="complex-node-items">
+                @for (var index = 0; index < arrayValue.Count; index++)
+                {
+                    var itemIndex = index;
+                    var itemLabel = $"Item {itemIndex}";
+                    <div class="complex-node-item">
+                        <div class="d-flex align-start gap-2">
+                            <MudChip T="string" Size="Size.Small" Color="Color.Secondary">@itemLabel</MudChip>
+                            <div class="flex-grow-1">
+                                <ComplexValueEditor Label="@itemLabel" Value="@arrayValue[itemIndex]"
+                                                    ValueChanged="@(newValue => UpdateArrayItem(itemIndex, newValue))" ReadOnly="@ReadOnly"
+                                                    ShowTypeSelector="true" />
+                            </div>
+                            @if (!ReadOnly)
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                                               OnClick="@(() => RemoveArrayItem(itemIndex))" />
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+    else if (CurrentKind == "boolean")
+    {
+        <MudCheckBox T="bool" Label="@Label" Value="@(Value as bool? ?? false)" ValueChanged="OnBoolChanged"
+                     Disabled="@ReadOnly" />
+    }
+    else if (CurrentKind == "number")
+    {
+        <MudNumericField T="double?" Label="@Label" Variant="Variant.Outlined" Margin="Margin.Dense"
+                         Value="@GetNumberValue()" ValueChanged="OnNumberChanged" Disabled="@ReadOnly" />
+    }
+    else if (CurrentKind == "null")
+    {
+        <MudAlert Severity="Severity.Info" Dense="true">No value set.</MudAlert>
+    }
+    else
+    {
+        <MudTextField T="string" Label="@Label" Variant="Variant.Outlined" Margin="Margin.Dense"
+                      Value="@(Value?.ToString() ?? string.Empty)" ValueChanged="OnStringChanged" Disabled="@ReadOnly"
+                      Immediate="true" />
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string? Label { get; set; }
+
+    [Parameter]
+    public object? Value { get; set; }
+
+    [Parameter]
+    public string? RootKind { get; set; }
+
+    [Parameter]
+    public bool ReadOnly { get; set; }
+
+    [Parameter]
+    public bool ShowTypeSelector { get; set; }
+
+    [Parameter]
+    public EventCallback<object?> ValueChanged { get; set; }
+
+    private string CurrentKind => NormalizeKind(RootKind ?? InferKind(Value));
+
+    private Dictionary<string, object?> GetObjectValue()
+    {
+        return Value switch
+        {
+            Dictionary<string, object?> dict => dict,
+            IDictionary<string, object?> dict => new Dictionary<string, object?>(dict, StringComparer.Ordinal),
+            _ => new Dictionary<string, object?>(StringComparer.Ordinal)
+        };
+    }
+
+    private List<object?> GetArrayValue()
+    {
+        return Value switch
+        {
+            List<object?> list => list,
+            IEnumerable<object?> sequence => sequence.ToList(),
+            _ => []
+        };
+    }
+
+    private async Task ChangeKind(string kind)
+    {
+        await ValueChanged.InvokeAsync(CreateDefaultValue(kind));
+    }
+
+    private async Task OnStringChanged(string value)
+    {
+        await ValueChanged.InvokeAsync(value);
+    }
+
+    private async Task OnNumberChanged(double? value)
+    {
+        await ValueChanged.InvokeAsync(value ?? 0d);
+    }
+
+    private async Task OnBoolChanged(bool value)
+    {
+        await ValueChanged.InvokeAsync(value);
+    }
+
+    private double? GetNumberValue()
+    {
+        return Value switch
+        {
+            byte number => number,
+            short number => number,
+            int number => number,
+            long number => number,
+            float number => number,
+            double number => number,
+            decimal number => (double)number,
+            string text when double.TryParse(text, out var parsed) => parsed,
+            _ => 0d
+        };
+    }
+
+    private async Task AddObjectMember(string kind)
+    {
+        var dict = GetObjectValue();
+        var key = GetNextObjectKey(dict);
+        dict[key] = CreateDefaultValue(kind);
+        await ValueChanged.InvokeAsync(dict);
+    }
+
+    private async Task RenameObjectKey(string oldKey, string? newKey)
+    {
+        if (ReadOnly || string.IsNullOrWhiteSpace(newKey) || string.Equals(oldKey, newKey, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        var dict = GetObjectValue();
+        if (dict.ContainsKey(newKey))
+        {
+            return;
+        }
+
+        var value = dict[oldKey];
+        dict.Remove(oldKey);
+        dict[newKey] = value;
+        await ValueChanged.InvokeAsync(dict);
+    }
+
+    private async Task UpdateObjectMember(string key, object? newValue)
+    {
+        var dict = GetObjectValue();
+        dict[key] = newValue;
+        await ValueChanged.InvokeAsync(dict);
+    }
+
+    private async Task RemoveObjectMember(string key)
+    {
+        var dict = GetObjectValue();
+        dict.Remove(key);
+        await ValueChanged.InvokeAsync(dict);
+    }
+
+    private async Task AddArrayItem(string kind)
+    {
+        var list = GetArrayValue();
+        list.Add(CreateDefaultValue(kind));
+        await ValueChanged.InvokeAsync(list);
+    }
+
+    private async Task UpdateArrayItem(int index, object? newValue)
+    {
+        var list = GetArrayValue();
+        if (index < 0 || index >= list.Count)
+        {
+            return;
+        }
+
+        list[index] = newValue;
+        await ValueChanged.InvokeAsync(list);
+    }
+
+    private async Task RemoveArrayItem(int index)
+    {
+        var list = GetArrayValue();
+        if (index < 0 || index >= list.Count)
+        {
+            return;
+        }
+
+        list.RemoveAt(index);
+        await ValueChanged.InvokeAsync(list);
+    }
+
+    private static string InferKind(object? value)
+    {
+        return value switch
+        {
+            null => "null",
+            Dictionary<string, object?> => "object",
+            IDictionary<string, object?> => "object",
+            List<object?> => "array",
+            IEnumerable<object?> => "array",
+            bool => "boolean",
+            sbyte or byte or short or ushort or int or uint or long or ulong or float or double or decimal => "number",
+            _ => "string"
+        };
+    }
+
+    private static string NormalizeKind(string kind)
+    {
+        return kind switch
+        {
+            "integer" => "number",
+            _ => kind
+        };
+    }
+
+    private static object? CreateDefaultValue(string kind)
+    {
+        return NormalizeKind(kind) switch
+        {
+            "object" => new Dictionary<string, object?>(StringComparer.Ordinal),
+            "array" => new List<object?>(),
+            "boolean" => false,
+            "number" => 0d,
+            "null" => null,
+            _ => string.Empty
+        };
+    }
+
+    private static string GetNextObjectKey(Dictionary<string, object?> dict)
+    {
+        var index = dict.Count + 1;
+        var candidate = $"key{index}";
+        while (dict.ContainsKey(candidate))
+        {
+            index++;
+            candidate = $"key{index}";
+        }
+
+        return candidate;
+    }
+}

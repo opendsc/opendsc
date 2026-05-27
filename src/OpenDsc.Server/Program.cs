@@ -97,6 +97,9 @@ builder.Services.AddScoped<IRegistrationKeyService, RegistrationKeyService>();
 builder.Services.AddScoped<IHealthService, HealthService>();
 builder.Services.AddScoped<INodeService, NodeService>();
 builder.Services.AddScoped<IJsonYamlConverter, JsonYamlConverter>();
+builder.Services.AddScoped<IResourceManifestService, ResourceManifestService>();
+builder.Services.AddSingleton<IDscFunctionService, DscFunctionService>();
+builder.Services.AddScoped<IConfigDocumentSerializer, ConfigDocumentSerializer>();
 
 #if !WINDOWS
 if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
@@ -169,5 +172,7 @@ app.MapRetentionSettingsEndpoints();
 app.MapConfigurationSettingsEndpoints();
 app.MapRegistrationKeyEndpoints();
 app.MapRetentionEndpoints();
+app.MapResourceManifestEndpoints();
+app.MapDscFunctionEndpoints();
 
 app.Run();

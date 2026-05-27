@@ -1,0 +1,192 @@
+@* Copyright (c) Thomas Nieto - All Rights Reserved *@
+@* You may use, distribute and modify this code under the *@
+@* terms of the MIT license. *@
+
+@page "/resource-manifests"
+@attribute [Authorize(Policy = ServerPermissions.ResourceManifestsRead)]
+@rendermode InteractiveServer
+
+@using Microsoft.AspNetCore.Authorization
+@using OpenDsc.Contracts.ResourceManifests
+@using OpenDsc.Server.Authorization
+@using OpenDsc.Server.Services
+
+@inject IResourceManifestService ManifestService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Resource Manifests</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Resource Manifests</MudText>
+
+<MudCard>
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Registered DSC resource types with their version-specific instance schemas.
+                These schemas power the configuration document form editor.
+            </MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <AuthorizeView Policy="@ServerPermissions.ResourceManifestsWrite">
+                <Authorized>
+                    <MudButtonGroup Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small">
+                        <MudButton StartIcon="@Icons.Material.Filled.Upload" OnClick="OpenImportDialog">
+                            Import JSON
+                        </MudButton>
+                        <MudButton StartIcon="@Icons.Material.Filled.Search" OnClick="DiscoverManifests"
+                                   Disabled="_discovering">
+                            @if (_discovering)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-1" />
+                            }
+                            Discover from DSC
+                        </MudButton>
+                    </MudButtonGroup>
+                </Authorized>
+            </AuthorizeView>
+        </CardHeaderActions>
+    </MudCardHeader>
+    <MudCardContent>
+        @if (_loading)
+        {
+            <MudProgressLinear Indeterminate="true" />
+        }
+        else if (_manifests.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">
+                No resource manifests registered. Import a manifest JSON or click <strong>Discover from DSC</strong>
+                to auto-discover manifests from a local DSC installation.
+            </MudAlert>
+        }
+        else
+        {
+            <MudTextField T="string" @bind-Value="_searchText" Placeholder="Search by type name..."
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Variant="Variant.Outlined"
+                          Class="mb-4" Immediate="true" />
+
+            <MudTable Items="FilteredManifests" Dense="true" Hover="true" Striped="true">
+                <HeaderContent>
+                    <MudTh>Type Name</MudTh>
+                    <MudTh>Kind</MudTh>
+                    <MudTh>Versions</MudTh>
+                    <MudTh>Description</MudTh>
+                    <MudTh>Updated</MudTh>
+                    <MudTh></MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="Type Name">
+                        <MudLink Href="@($"/resource-manifests/{context.Id}")">@context.TypeName</MudLink>
+                    </MudTd>
+                    <MudTd DataLabel="Kind">
+                        <MudChip T="string" Size="Size.Small" Color="@KindColor(context.Kind)">@context.Kind</MudChip>
+                    </MudTd>
+                    <MudTd DataLabel="Versions">@context.VersionCount</MudTd>
+                    <MudTd DataLabel="Description">
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                            @(context.Description ?? "—")
+                        </MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Updated">
+                        <MudTooltip Text="@context.UpdatedAt.ToString("f")">
+                            @context.UpdatedAt.ToString("d")
+                        </MudTooltip>
+                    </MudTd>
+                    <MudTd>
+                        <AuthorizeView Policy="@ServerPermissions.ResourceManifestsWrite" Context="authCtx">
+                            <Authorized>
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Default" Size="Size.Small"
+                                               OnClick="@(() => ConfirmDelete(context))" />
+                            </Authorized>
+                        </AuthorizeView>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    private bool _loading = true;
+    private bool _discovering;
+    private string _searchText = string.Empty;
+    private List<ResourceManifestSummary> _manifests = [];
+
+    private IEnumerable<ResourceManifestSummary> FilteredManifests =>
+        string.IsNullOrWhiteSpace(_searchText)
+            ? _manifests
+            : _manifests.Where(m => m.TypeName.Contains(_searchText, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _manifests = (await ManifestService.GetAllAsync()).ToList();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OpenImportDialog()
+    {
+        var dialog = await DialogService.ShowAsync<ImportManifestDialog>("Import Resource Manifest");
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            await LoadAsync();
+            var importedCount = result.Data is int c ? c : 1;
+            Snackbar.Add($"Imported {importedCount} manifest(s).", Severity.Success);
+        }
+    }
+
+    private async Task DiscoverManifests()
+    {
+        _discovering = true;
+        try
+        {
+            var count = await ManifestService.DiscoverFromDscCliAsync();
+            Snackbar.Add($"Discovered {count} manifest(s) from DSC CLI.", Severity.Success);
+            await LoadAsync();
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _discovering = false;
+        }
+    }
+
+    private async Task ConfirmDelete(ResourceManifestSummary manifest)
+    {
+        var dialog = await DialogService.ShowMessageBox(
+            "Delete Resource Manifest",
+            $"Delete '{manifest.TypeName}' and all {manifest.VersionCount} version(s)? This cannot be undone.",
+            yesText: "Delete", cancelText: "Cancel");
+
+        if (dialog == true)
+        {
+            await ManifestService.DeleteManifestAsync(manifest.Id);
+            Snackbar.Add($"Deleted '{manifest.TypeName}'.", Severity.Success);
+            await LoadAsync();
+        }
+    }
+
+    private static Color KindColor(string kind) => kind switch
+    {
+        "group" => Color.Primary,
+        "adapter" => Color.Secondary,
+        "importer" => Color.Warning,
+        "exporter" => Color.Info,
+        _ => Color.Default
+    };
+}

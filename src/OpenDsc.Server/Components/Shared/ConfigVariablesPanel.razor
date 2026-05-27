@@ -1,0 +1,239 @@
+@* Copyright (c) Thomas Nieto - All Rights Reserved *@
+@* You may use, distribute and modify this code under the *@
+@* terms of the MIT license. *@
+
+@rendermode InteractiveServer
+
+@using System.Text.Json.Nodes
+
+<MudStack>
+    <div class="d-flex justify-space-between align-center mb-2">
+        @if (!ReadOnly)
+        {
+            <MudButton StartIcon="@Icons.Material.Filled.Add" Size="Size.Small" Variant="Variant.Filled"
+                       Color="Color.Primary" OnClick="AddVariable">
+                Add variable
+            </MudButton>
+        }
+    </div>
+
+    @if (Variables.Count == 0)
+    {
+        <MudText Color="Color.Secondary" Typo="Typo.body2">
+            No variables defined. Variables hold computed or reusable values.
+        </MudText>
+    }
+
+    @foreach (var name in Variables.Keys.ToList())
+    {
+        var varName = name;
+        var kind = GetKind(Variables[varName]);
+
+        <MudCard Outlined="true" Class="mb-2">
+            <MudCardContent>
+                <MudGrid>
+                    <MudItem xs="4">
+                        <MudTextField T="string" Label="Name" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                      Disabled="@ReadOnly" Value="@varName" ValueChanged="@(v => RenameVariable(varName, v))"
+                                      Immediate="true" Style="font-family: monospace;" />
+                    </MudItem>
+                    <MudItem xs="3">
+                        <MudSelect T="string" Label="Type" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                   Disabled="@ReadOnly" Value="@kind" ValueChanged="@(v => SetKind(varName, v))">
+                            <MudSelectItem T="string" Value="@VariableTypeString">string</MudSelectItem>
+                            <MudSelectItem T="string" Value="@VariableTypeNumber">number</MudSelectItem>
+                            <MudSelectItem T="string" Value="@VariableTypeBool">bool</MudSelectItem>
+                            <MudSelectItem T="string" Value="@VariableTypeNull">null</MudSelectItem>
+                            <MudSelectItem T="string" Value="@VariableTypeObject">object</MudSelectItem>
+                            <MudSelectItem T="string" Value="@VariableTypeArray">array</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="4">
+                        @if (kind is "object" or "array")
+                        {
+                            <MudTextField T="string" Label="Value (JSON)" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                          Disabled="@ReadOnly" Lines="4" Value="@FormatJsonValue(Variables[varName])"
+                                          ValueChanged="@(v => SetStructuredValue(varName, kind, v))" Immediate="true" />
+                        }
+                        else if (kind is "bool")
+                        {
+                            <MudSelect T="bool" Label="Value" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                       Disabled="@ReadOnly" Value="@((Variables[varName] as bool?) ?? false)"
+                                       ValueChanged="@(v => SetBoolValue(varName, v))">
+                                <MudSelectItem T="bool" Value="@true">true</MudSelectItem>
+                                <MudSelectItem T="bool" Value="@false">false</MudSelectItem>
+                            </MudSelect>
+                        }
+                        else if (kind is "number")
+                        {
+                            <MudNumericField T="double?" Label="Value" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                             Disabled="@ReadOnly" Value="@ToNullableDouble(Variables[varName])"
+                                             ValueChanged="@(v => SetNumberValue(varName, v))" />
+                        }
+                        else if (kind is "null")
+                        {
+                            <MudTextField T="string" Label="Value" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                          Disabled="true" Value="null" />
+                        }
+                        else
+                        {
+                            <MudTextField T="string" Label="Value" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                          Disabled="@ReadOnly" Value="@FormatScalarValue(Variables[varName])"
+                                          ValueChanged="@(v => SetStructuredValue(varName, kind, v))" Immediate="true" />
+                        }
+                    </MudItem>
+                    <MudItem xs="1" Class="d-flex align-center justify-center">
+                        @if (!ReadOnly)
+                        {
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                           OnClick="@(() => RemoveVariable(varName))" />
+                        }
+                    </MudItem>
+                </MudGrid>
+            </MudCardContent>
+        </MudCard>
+    }
+</MudStack>
+
+@code {
+    [Parameter, EditorRequired]
+    public Dictionary<string, object?> Variables { get; set; } = [];
+
+    [Parameter]
+    public EventCallback<Dictionary<string, object?>> VariablesChanged { get; set; }
+
+    [Parameter]
+    public bool ReadOnly { get; set; }
+
+    private const string VariableTypeString = "string";
+    private const string VariableTypeNumber = "number";
+    private const string VariableTypeBool = "bool";
+    private const string VariableTypeNull = "null";
+    private const string VariableTypeObject = "object";
+    private const string VariableTypeArray = "array";
+
+    private void AddVariable()
+    {
+        var name = $"variable{Variables.Count + 1}";
+        Variables[name] = string.Empty;
+        VariablesChanged.InvokeAsync(Variables);
+    }
+
+    private static string GetKind(object? value) => value switch
+    {
+        null => "null",
+        bool => "bool",
+        sbyte or byte or short or ushort or int or uint or long or ulong or float or double or decimal => "number",
+        JsonNode node when node is JsonArray => "array",
+        JsonNode node when node is JsonObject => "object",
+        _ => "string"
+    };
+
+    private static string FormatScalarValue(object? value) => value switch
+    {
+        null => string.Empty,
+        JsonNode node => node.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = false }),
+        _ => value.ToString() ?? string.Empty
+    };
+
+    private static string FormatJsonValue(object? value)
+    {
+        if (value is JsonNode node)
+        {
+            return node.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        }
+
+        return string.IsNullOrWhiteSpace(value?.ToString()) ? "{}" : value.ToString()!;
+    }
+
+    private void SetKind(string name, string kind)
+    {
+        Variables[name] = kind switch
+        {
+            "bool" => false,
+            "number" => 0,
+            "object" => new JsonObject(),
+            "array" => new JsonArray(),
+            "null" => null,
+            _ => string.Empty
+        };
+
+        VariablesChanged.InvokeAsync(Variables);
+    }
+
+    private void SetStructuredValue(string name, string kind, string value)
+    {
+        Variables[name] = kind switch
+        {
+            "number" when double.TryParse(value, out var d) => d,
+            "number" => value,
+            "null" => null,
+            "object" or "array" => ParseJsonNode(value),
+            _ => value
+        };
+
+        VariablesChanged.InvokeAsync(Variables);
+    }
+
+    private void SetBoolValue(string name, bool value)
+    {
+        Variables[name] = value;
+        VariablesChanged.InvokeAsync(Variables);
+    }
+
+    private void SetNumberValue(string name, double? value)
+    {
+        Variables[name] = value;
+        VariablesChanged.InvokeAsync(Variables);
+    }
+
+    private static double? ToNullableDouble(object? value) => value switch
+    {
+        double d => d,
+        float f => f,
+        decimal m => (double)m,
+        int i => i,
+        long l => l,
+        string s when double.TryParse(s, out var parsed) => parsed,
+        _ => null
+    };
+
+    private static JsonNode? ParseJsonNode(string value)
+    {
+        try
+        {
+            return string.IsNullOrWhiteSpace(value) ? null : JsonNode.Parse(value);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private void RenameVariable(string oldName, string newName)
+    {
+        if (string.IsNullOrWhiteSpace(newName) || oldName == newName || Variables.ContainsKey(newName))
+        {
+            return;
+        }
+
+        var value = Variables[oldName];
+        var updated = new Dictionary<string, object?>(StringComparer.Ordinal);
+        foreach (var (k, v) in Variables)
+        {
+            updated[k == oldName ? newName : k] = v;
+        }
+
+        Variables.Clear();
+        foreach (var (k, v) in updated) Variables[k] = v;
+        VariablesChanged.InvokeAsync(Variables);
+    }
+
+    private void RemoveVariable(string name)
+    {
+        Variables.Remove(name);
+        VariablesChanged.InvokeAsync(Variables);
+    }
+}
+
+

@@ -16,6 +16,16 @@ namespace OpenDsc.Server.Data;
 public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) : DbContext(options)
 {
     /// <summary>
+    /// Registered DSC resource manifest types.
+    /// </summary>
+    public DbSet<ResourceManifest> ResourceManifests => Set<ResourceManifest>();
+
+    /// <summary>
+    /// Versioned DSC resource manifest records.
+    /// </summary>
+    public DbSet<ResourceManifestVersion> ResourceManifestVersions => Set<ResourceManifestVersion>();
+
+    /// <summary>
     /// Registered nodes.
     /// </summary>
     public DbSet<Node> Nodes => Set<Node>();
@@ -620,6 +630,28 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
                 .HasConversion(
                     v => v.HasValue ? (long?)v.Value.ToUnixTimeMilliseconds() : null,
                     v => v.HasValue ? (DateTimeOffset?)DateTimeOffset.FromUnixTimeMilliseconds(v.Value) : null);
+        });
+
+        modelBuilder.Entity<ResourceManifest>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.TypeName).IsUnique();
+            entity.Property(e => e.TypeName).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.Description).HasMaxLength(1000);
+            entity.Property(e => e.Kind).HasMaxLength(20).IsRequired();
+        });
+
+        modelBuilder.Entity<ResourceManifestVersion>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.ManifestId, e.Version }).IsUnique();
+            entity.Property(e => e.Version).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.TagsJson).HasMaxLength(2000);
+
+            entity.HasOne(e => e.Manifest)
+                .WithMany(m => m.Versions)
+                .HasForeignKey(e => e.ManifestId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         SeedDefaultScopeTypes(modelBuilder);

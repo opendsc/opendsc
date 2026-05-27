@@ -1,0 +1,383 @@
+@* Copyright (c) Thomas Nieto - All Rights Reserved *@
+@* You may use, distribute and modify this code under the *@
+@* terms of the MIT license. *@
+
+@rendermode InteractiveServer
+
+@using System.Text.Json
+@using System.Text.Json.Nodes
+@using System.Text.RegularExpressions
+
+@inject IDialogService DialogService
+
+<div class="d-flex align-center gap-2 mb-2">
+    @if (!string.IsNullOrWhiteSpace(Description))
+    {
+        <MudTooltip Text="@Description">
+            <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Color="Color.Info" />
+        </MudTooltip>
+    }
+
+    @if (Value.IsFunction && Value.Function is not null)
+    {
+        <MudChip T="string" Color="Color.Primary" Size="Size.Small">
+            @GetFunctionSummary(Value.Function)
+        </MudChip>
+        <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.PlayArrow"
+                   OnClick="OpenFunctionPicker">
+            Mock preview
+        </MudButton>
+        <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Edit"
+                   OnClick="OpenFunctionPicker">
+            Edit
+        </MudButton>
+        <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Color="Color.Error" OnClick="ClearFunction" />
+
+        <MudExpansionPanels>
+            <MudExpansionPanel Text="Raw expression">
+                <MudText Typo="Typo.caption" Style="font-family: monospace; word-break: break-all;">
+                    @Value.Function.ToInlineString()
+                </MudText>
+            </MudExpansionPanel>
+        </MudExpansionPanels>
+    }
+    else
+    {
+        @switch (EffectiveType)
+        {
+            case "boolean":
+                <MudCheckBox T="bool" Label="@Label" Value="@(Value.RawValue is true)" ValueChanged="@OnBoolChanged"
+                             Disabled="@ReadOnly" />
+                break;
+
+            case "integer":
+            case "number":
+                var numError = ValidateConstraints(Value.RawValue);
+                <MudNumericField T="long" Label="@Label" Variant="Variant.Outlined" Disabled="@ReadOnly"
+                                 Value="@(Value.RawValue is long l ? l : 0)" ValueChanged="@(v => OnValueChanged(v))"
+                                 Error="@(numError is not null)" ErrorText="@numError" />
+                break;
+
+            case "object":
+            case "array":
+                <ComplexValueEditor Label="@Label" Value="@Value.RawValue" RootKind="@EffectiveType" ReadOnly="@ReadOnly"
+                                    ValueChanged="OnValueChanged" />
+                break;
+
+            default:
+                @if (AllowedValues.Count > 0)
+                {
+                    <MudSelect T="string" Label="@Label" Variant="Variant.Outlined" Disabled="@ReadOnly"
+                               Value="@(Value.RawValue?.ToString() ?? string.Empty)" ValueChanged="@(v => OnValueChanged(v))">
+                        @foreach (var option in AllowedValues)
+                        {
+                            <MudSelectItem T="string" Value="@option">@option</MudSelectItem>
+                        }
+                    </MudSelect>
+                }
+                else
+                {
+                    var strError = ValidateConstraints(Value.RawValue?.ToString());
+                    <MudTextField T="string" Label="@Label" Variant="Variant.Outlined" Disabled="@ReadOnly"
+                                  Value="@(Value.RawValue?.ToString() ?? string.Empty)" ValueChanged="@(v => OnValueChanged(v))" Immediate="true"
+                                  Error="@(strError is not null)" ErrorText="@strError" />
+                }
+                break;
+        }
+
+        @if (AllowFunctions && !ReadOnly)
+        {
+            <MudTooltip Text="Use a DSC function expression">
+                <MudIconButton Icon="@Icons.Material.Filled.Functions" Size="Size.Small" OnClick="OpenFunctionPicker" />
+            </MudTooltip>
+        }
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Label { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public ConfigPropertyValue Value { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<ConfigPropertyValue> ValueChanged { get; set; }
+
+    /// <summary>JSON Schema node for this property (optional). Used to derive type and enum values.</summary>
+    [Parameter]
+    public JsonElement? Schema { get; set; }
+
+    [Parameter]
+    public string? Description { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<string> ParameterNames { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyList<string> VariableNames { get; set; } = [];
+
+    [Parameter]
+    public bool ReadOnly { get; set; }
+
+    [Parameter]
+    public bool AllowFunctions { get; set; } = true;
+
+    private string EffectiveType
+    {
+        get
+        {
+            if (!Value.IsFunction && TryInferTypeFromValue(Value.RawValue, out var valueType))
+            {
+                return valueType;
+            }
+
+            return TryGetEffectiveType(Schema, out var schemaType) ? schemaType : "string";
+        }
+    }
+
+    private bool IsComplexType => EffectiveType is "object" or "array";
+
+    private static bool TryInferTypeFromValue(object? value, out string type)
+    {
+        type = "string";
+        if (value is null)
+        {
+            return false;
+        }
+
+        if (value is JsonObject or IDictionary<string, object?>)
+        {
+            type = "object";
+            return true;
+        }
+
+        if (value is JsonArray or IEnumerable<object?>)
+        {
+            type = "array";
+            return true;
+        }
+
+        if (value is bool)
+        {
+            type = "boolean";
+            return true;
+        }
+
+        if (value is sbyte or byte or short or ushort or int or uint or long or ulong or float or double or decimal)
+        {
+            type = "number";
+            return true;
+        }
+
+        if (value is string)
+        {
+            type = "string";
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryGetEffectiveType(JsonElement? schema, out string type)
+    {
+        type = "string";
+        if (!schema.HasValue)
+        {
+            return false;
+        }
+
+        if (TryGetTypeFromElement(schema.Value, out type))
+        {
+            return true;
+        }
+
+        if (schema.Value.TryGetProperty("anyOf", out var anyOf) && anyOf.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in anyOf.EnumerateArray())
+            {
+                if (TryGetTypeFromElement(item, out type))
+                {
+                    return true;
+                }
+            }
+        }
+
+        if (schema.Value.TryGetProperty("oneOf", out var oneOf) && oneOf.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in oneOf.EnumerateArray())
+            {
+                if (TryGetTypeFromElement(item, out type))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static bool TryGetTypeFromElement(JsonElement schemaElement, out string type)
+    {
+        type = "string";
+        if (!schemaElement.TryGetProperty("type", out var typeProp))
+        {
+            return false;
+        }
+
+        if (typeProp.ValueKind == JsonValueKind.String)
+        {
+            var parsed = typeProp.GetString();
+            if (!string.IsNullOrWhiteSpace(parsed) && !string.Equals(parsed, "null", StringComparison.OrdinalIgnoreCase))
+            {
+                type = parsed;
+                return true;
+            }
+
+            return false;
+        }
+
+        if (typeProp.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in typeProp.EnumerateArray())
+            {
+                if (item.ValueKind != JsonValueKind.String)
+                {
+                    continue;
+                }
+
+                var parsed = item.GetString();
+                if (!string.IsNullOrWhiteSpace(parsed) && !string.Equals(parsed, "null", StringComparison.OrdinalIgnoreCase))
+                {
+                    type = parsed;
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private List<string> AllowedValues
+    {
+        get
+        {
+            var list = new List<string>();
+            if (Schema.HasValue && Schema.Value.TryGetProperty("enum", out var enumProp) &&
+                enumProp.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var item in enumProp.EnumerateArray())
+                {
+                    list.Add(item.ToString());
+                }
+            }
+            return list;
+        }
+    }
+
+    private string? ValidateConstraints(object? value)
+    {
+        if (value is null || !Schema.HasValue)
+        {
+            return null;
+        }
+
+        var schema = Schema.Value;
+
+        // String validation
+        if (value is string strValue)
+        {
+            if (schema.TryGetProperty("minLength", out var minLen) && minLen.GetInt32() > strValue.Length)
+            {
+                return $"Minimum length is {minLen.GetInt32()}";
+            }
+
+            if (schema.TryGetProperty("maxLength", out var maxLen) && maxLen.GetInt32() < strValue.Length)
+            {
+                return $"Maximum length is {maxLen.GetInt32()}";
+            }
+
+            if (schema.TryGetProperty("pattern", out var pattern) && pattern.GetString() is { } regex)
+            {
+                try
+                {
+                    if (!Regex.IsMatch(strValue, regex))
+                    {
+                        return $"Value does not match required pattern";
+                    }
+                }
+                catch (RegexParseException ex)
+                {
+                    return $"Invalid regex pattern: {ex.Message}";
+                }
+            }
+        }
+
+        // Numeric validation
+        if (value is long longValue)
+        {
+            if (schema.TryGetProperty("minimum", out var min) && min.GetInt64() > longValue)
+            {
+                return $"Minimum value is {min.GetInt64()}";
+            }
+
+            if (schema.TryGetProperty("maximum", out var max) && max.GetInt64() < longValue)
+            {
+                return $"Maximum value is {max.GetInt64()}";
+            }
+        }
+
+        return null;
+    }
+
+    private async Task OnBoolChanged(bool newValue)
+    {
+        await ValueChanged.InvokeAsync(ConfigPropertyValue.Literal(newValue));
+    }
+
+    private async Task OnValueChanged(object? newValue)
+    {
+        await ValueChanged.InvokeAsync(ConfigPropertyValue.Literal(newValue));
+    }
+
+    private async Task ClearFunction()
+    {
+        await ValueChanged.InvokeAsync(ConfigPropertyValue.Literal(null));
+    }
+
+    private async Task OpenFunctionPicker()
+    {
+        var parameters = new DialogParameters<DscFunctionPickerDialog>
+        {
+            { x => x.ParameterNames, ParameterNames },
+            { x => x.VariableNames, VariableNames },
+            { x => x.ExistingExpression, Value.IsFunction ? Value.Function : null }
+        };
+
+        var dialog = await DialogService.ShowAsync<DscFunctionPickerDialog>(
+            "Insert DSC Function", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true });
+
+        var result = await dialog.Result;
+        if (result?.Data is DscFunctionExpression expr)
+        {
+            await ValueChanged.InvokeAsync(ConfigPropertyValue.FromFunction(expr));
+        }
+    }
+
+    private static string GetFunctionSummary(DscFunctionExpression expression)
+    {
+        var nestedCount = CountNestedFunctions(expression);
+        return nestedCount > 0
+            ? $"{expression.FunctionName} ({nestedCount} nested)"
+            : expression.FunctionName;
+    }
+
+    private static int CountNestedFunctions(DscFunctionExpression expression)
+    {
+        return expression.Args
+            .Where(a => a.IsNested && a.NestedFunction is not null)
+            .Sum(a => 1 + CountNestedFunctions(a.NestedFunction!));
+    }
+}
+

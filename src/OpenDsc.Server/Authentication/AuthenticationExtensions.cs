@@ -258,7 +258,13 @@ public static class AuthenticationExtensions
                 .RequireClaim("permission", ParameterPermissions.AdminOverride))
             .AddPolicy(ScopePermissions.AdminOverride, policy => policy
                 .AddAuthenticationSchemes(UserApiBearerScheme)
-                .RequireClaim("permission", ScopePermissions.AdminOverride));
+                .RequireClaim("permission", ScopePermissions.AdminOverride))
+            .AddPolicy(ServerPermissions.ResourceManifestsRead, policy => policy
+                .AddAuthenticationSchemes(UserApiBearerScheme)
+                .RequireClaim("permission", ServerPermissions.ResourceManifestsRead))
+            .AddPolicy(ServerPermissions.ResourceManifestsWrite, policy => policy
+                .AddAuthenticationSchemes(UserApiBearerScheme)
+                .RequireClaim("permission", ServerPermissions.ResourceManifestsWrite));
 
         return services;
     }

@@ -1,0 +1,89 @@
+@* Copyright (c) Thomas Nieto - All Rights Reserved *@
+@* You may use, distribute and modify this code under the *@
+@* terms of the MIT license. *@
+
+@rendermode InteractiveServer
+
+@using System.Text.Json
+@using System.Text.Json.Nodes
+@using YamlDotNet.Serialization
+@inject ThemeService ThemeService
+
+<MudDialog>
+    <DialogContent>
+        <MudTabs Elevation="0" Rounded="false" ApplyEffectsToContainer="false">
+            <MudTabPanel Text="JSON">
+                <MudTextField T="string" Value="@PrettyJson" Variant="Variant.Outlined" Lines="24" ReadOnly="true"
+                              Margin="Margin.Dense" Style="font-family: monospace;" />
+            </MudTabPanel>
+            <MudTabPanel Text="YAML">
+                <MudTextField T="string" Value="@PrettyYaml" Variant="Variant.Outlined" Lines="24" ReadOnly="true"
+                              Margin="Margin.Dense" Style="font-family: monospace;" />
+            </MudTabPanel>
+        </MudTabs>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Close())">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public string SchemaJson { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Title { get; set; } = "Schema";
+
+    private string PrettyJson => TryPrettyJson(SchemaJson);
+
+    private string PrettyYaml => TryPrettyYaml(SchemaJson);
+
+    private static string TryPrettyJson(string json)
+    {
+        try
+        {
+            var node = JsonNode.Parse(json);
+            return node?.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) ?? json;
+        }
+        catch
+        {
+            return json;
+        }
+    }
+
+    private static string TryPrettyYaml(string json)
+    {
+        try
+        {
+            var node = JsonNode.Parse(json);
+            if (node is null)
+            {
+                return string.Empty;
+            }
+
+            var native = ConvertNode(node);
+            var serializer = new SerializerBuilder().Build();
+            return serializer.Serialize(native);
+        }
+        catch
+        {
+            return json;
+        }
+    }
+
+    private static object? ConvertNode(JsonNode? node) => node switch
+    {
+        null => null,
+        JsonValue value => value.TryGetValue<bool>(out var b) ? b
+            : value.TryGetValue<long>(out var l) ? l
+            : value.TryGetValue<double>(out var d) ? d
+            : value.TryGetValue<string>(out var s) ? s
+            : value.ToJsonString(),
+        JsonObject obj => obj.ToDictionary(kvp => kvp.Key, kvp => ConvertNode(kvp.Value)),
+        JsonArray arr => arr.Select(ConvertNode).ToList(),
+        _ => node.ToJsonString()
+    };
+}

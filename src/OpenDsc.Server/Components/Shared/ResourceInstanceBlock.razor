@@ -1,0 +1,470 @@
+@* Copyright (c) Thomas Nieto - All Rights Reserved *@
+@* You may use, distribute and modify this code under the *@
+@* terms of the MIT license. *@
+
+@rendermode InteractiveServer
+
+@using System.Text.Json
+@using System.Text.Json.Nodes
+
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<MudCard Outlined="true" Class="mb-3">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <div class="d-flex align-center gap-2" Style="flex-wrap: wrap;">
+                @if (!ReadOnly && _isEditingName)
+                {
+                    <MudTextField T="string" Value="@Resource.Name"
+                                  ValueChanged="@(v => { Resource.Name = v; ResourceChanged.InvokeAsync(Resource); })"
+                                  Variant="Variant.Outlined" Margin="Margin.Dense" OnBlur="@(() => _isEditingName = false)"
+                                  Immediate="true" Style="width: 150px;" />
+                }
+                else
+                {
+                    <MudText Typo="Typo.subtitle1" Style="font-weight: bold;">@Resource.Name</MudText>
+                    @if (!ReadOnly)
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Class="ma-0"
+                                       OnClick="@(() => _isEditingName = true)" />
+                    }
+                }
+                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Class="my-0">@Resource.Type</MudChip>
+                @if (!string.IsNullOrWhiteSpace(Resource.Version))
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Default" Class="my-0">v@(Resource.Version)</MudChip>
+                }
+            </div>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            @if (!ReadOnly)
+            {
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                               OnClick="@(() => OnRemove.InvokeAsync(Resource))" />
+            }
+        </CardHeaderActions>
+    </MudCardHeader>
+    <MudCardContent>
+        @if (_isEditingType && Resource.Properties.Count == 0)
+        {
+            <MudAutocomplete T="string" Label="Resource type" Variant="Variant.Outlined" Margin="Margin.Dense"
+                             Value="@Resource.Type" SearchFunc="SearchTypes"
+                             ValueChanged="@(v => { Resource.Type = v; _isEditingType = false; ResourceChanged.InvokeAsync(Resource); })"
+                             OnBlur="@(() => _isEditingType = false)" Immediate="true" />
+        }
+        else if (_isEditingType && Resource.Properties.Count > 0)
+        {
+            _isEditingType = false;
+        }
+
+        @if (_schemaProperties.Count > 0)
+        {
+            <MudDivider Class="my-3" />
+
+            var requiredProps = _requiredPropertyNames.Where(r => _schemaProperties.ContainsKey(r)).ToList();
+            var optionalProps = _schemaProperties.Where(p => !_requiredPropertyNames.Contains(p.Key)).ToList();
+
+            @if (requiredProps.Count > 0)
+            {
+                <MudText Typo="Typo.subtitle2" Class="mb-2">Required Properties</MudText>
+
+                @foreach (var propName in requiredProps)
+                {
+                    var pn = propName;
+                    var schemaProp = _schemaProperties[pn];
+                    var currentValue = Resource.Properties.TryGetValue(pn, out var pv)
+                        ? pv
+                        : ConfigPropertyValue.Literal(null);
+
+                    <ResourcePropertyField Label="@pn" Value="@currentValue" Schema="@schemaProp"
+                                           Description="@GetSchemaDescription(schemaProp)" ParameterNames="@ParameterNames"
+                                           VariableNames="@VariableNames" ReadOnly="@ReadOnly"
+                                           AllowFunctions="@(schemaProp is null || !IsBooleanSchema(schemaProp) && !string.Equals(pn, "_exist", StringComparison.OrdinalIgnoreCase))"
+                                           ValueChanged="@(v => OnPropertyChanged(pn, v))" />
+                }
+            }
+
+            @if (optionalProps.Count > 0)
+            {
+                @if (requiredProps.Count > 0)
+                {
+                    <MudDivider Class="my-3" />
+                }
+
+                <MudText Typo="Typo.subtitle2" Class="mb-2">Optional Properties</MudText>
+
+                @foreach (var (propName, schemaProp) in optionalProps.Where(p => Resource.Properties.ContainsKey(p.Key)))
+                {
+                    var pn = propName;
+                    var currentValue = Resource.Properties[pn];
+
+                    <div class="d-flex align-start gap-2 mb-1">
+                        <div class="flex-grow-1">
+                            <ResourcePropertyField Label="@pn" Value="@currentValue" Schema="@schemaProp"
+                                                   Description="@GetSchemaDescription(schemaProp)" ParameterNames="@ParameterNames"
+                                                   VariableNames="@VariableNames" ReadOnly="@ReadOnly"
+                                                   AllowFunctions="@(schemaProp is null || !IsBooleanSchema(schemaProp) && !string.Equals(pn, "_exist", StringComparison.OrdinalIgnoreCase))"
+                                                   ValueChanged="@(v => OnPropertyChanged(pn, v))" />
+                        </div>
+                        @if (!ReadOnly)
+                        {
+                            <MudTooltip Text="Remove optional property">
+                                <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Color="Color.Error" Size="Size.Small"
+                                               Class="mt-1" OnClick="@(() => RemoveProperty(pn))" />
+                            </MudTooltip>
+                        }
+                    </div>
+                }
+
+                @if (!ReadOnly && optionalProps.Any(p => !Resource.Properties.ContainsKey(p.Key)))
+                {
+                    <MudStack Row="true" Spacing="1" Class="mt-2 align-center">
+                        <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.AddCircleOutline"
+                                   OnClick="@(() => _showOptionalPropertyPicker = true)" Variant="Variant.Outlined" Color="Color.Primary">
+                            Add optional property
+                        </MudButton>
+                        @if (_showOptionalPropertyPicker)
+                        {
+                            <MudPaper Outlined="true" Class="optional-property-picker pa-2">
+                                <MudStack Row="true" Spacing="1" Class="align-center">
+                                    <MudSelect T="string" Value="@_pendingOptionalPropName" ValueChanged="AddSingleOptionalProperty"
+                                               Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true" Style="width: 240px;"
+                                               Label="Optional property">
+                                        @foreach (var (propName, _) in optionalProps.Where(p =>
+                        !Resource.Properties.ContainsKey(p.Key)))
+                                        {
+                                            <MudSelectItem T="string" Value="@propName">@propName</MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                    <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Color="Color.Default"
+                                                   OnClick="CancelOptionalPropertySelection" />
+                                </MudStack>
+                            </MudPaper>
+                        }
+                    </MudStack>
+                }
+            }
+        }
+        else
+        {
+            @foreach (var (propName, propValue) in Resource.Properties.ToList())
+            {
+                var pn = propName;
+
+                <MudGrid>
+                    <MudItem xs="4">
+                        <MudTextField T="string" Label="Property name" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                      Disabled="@ReadOnly" Value="@pn" ValueChanged="@(v => RenameProperty(pn, v))" Immediate="true" />
+                    </MudItem>
+                    <MudItem xs="7">
+                        <ResourcePropertyField Label="Value" Value="@propValue" ParameterNames="@ParameterNames"
+                                               VariableNames="@VariableNames" ReadOnly="@ReadOnly"
+                                               ValueChanged="@(v => OnPropertyChanged(pn, v))" />
+                    </MudItem>
+                    <MudItem xs="1" Class="d-flex align-center justify-center">
+                        @if (!ReadOnly)
+                        {
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                           OnClick="@(() => RemoveProperty(pn))" />
+                        }
+                    </MudItem>
+                </MudGrid>
+            }
+
+            @if (!ReadOnly)
+            {
+                <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.Add" OnClick="AddCustomProperty" Class="mt-1">
+                    Add property
+                </MudButton>
+            }
+        }
+
+        @if (Resource.DependsOn.Count > 0 || _showDependsOn)
+        {
+            <MudDivider Class="my-3" />
+            <MudText Typo="Typo.subtitle2" Class="mb-1">Depends on</MudText>
+            @foreach (var dep in Resource.DependsOn.ToList())
+            {
+                var d = dep;
+                var option = ResolveDependencyOption(d);
+                <div class="d-flex align-center gap-2 mb-2 flex-wrap">
+                    @if (option is not null)
+                    {
+                        <MudChip T="string" Color="Color.Info" Size="Size.Small">Type: @option.Type</MudChip>
+                        <MudChip T="string" Color="Color.Primary" Size="Size.Small">Name: @option.Name</MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Color="Color.Default" Size="Size.Small">@d</MudChip>
+                    }
+
+                    @if (!ReadOnly)
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                       OnClick="@(() => { Resource.DependsOn.Remove(d); ResourceChanged.InvokeAsync(Resource); })" />
+                    }
+                </div>
+            }
+
+            @if (!ReadOnly)
+            {
+                <MudSelect T="string" Label="Add dependency" Variant="Variant.Outlined" Margin="Margin.Dense"
+                           Value="@_pendingDependencyExpression" ValueChanged="OnPendingDependencySelected">
+                    @foreach (var option in ResourceReferences
+                                     .Where(o => !string.Equals(o.Type, Resource.Type, StringComparison.OrdinalIgnoreCase) ||
+                                                 !string.Equals(o.Name, Resource.Name, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        <MudSelectItem T="string" Value="@option.Expression">
+                            @option.Type / @option.Name
+                        </MudSelectItem>
+                    }
+                </MudSelect>
+            }
+        }
+        else
+        {
+            @if (!ReadOnly)
+            {
+                <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Link"
+                           OnClick="@(() => _showDependsOn = true)" Class="mt-1">
+                    Add dependency
+                </MudButton>
+            }
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter, EditorRequired]
+    public ConfigResourceState Resource { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback<ConfigResourceState> ResourceChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<ConfigResourceState> OnRemove { get; set; }
+
+    /// <summary>
+    /// Optional: instance schema JSON string from the manifest, used to drive the property fields.
+    /// </summary>
+    [Parameter]
+    public string? InstanceSchemaJson { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<string> ParameterNames { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyList<string> VariableNames { get; set; } = [];
+
+    [Parameter]
+    public bool ReadOnly { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<ResourceReferenceOption> ResourceReferences { get; set; } = [];
+
+    private Dictionary<string, JsonElement?> _schemaProperties = new(StringComparer.Ordinal);
+    private HashSet<string> _requiredPropertyNames = new(StringComparer.Ordinal);
+    private bool _showDependsOn;
+    private bool _isEditingName;
+    private bool _isEditingType;
+    private bool _showOptionalPropertyPicker;
+    private string? _pendingDependencyExpression;
+    private string? _pendingOptionalPropName;
+
+    protected override void OnParametersSet()
+    {
+        _schemaProperties.Clear();
+        _requiredPropertyNames.Clear();
+        _showOptionalPropertyPicker = false;
+        _pendingOptionalPropName = null;
+
+        if (!string.IsNullOrWhiteSpace(InstanceSchemaJson))
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(InstanceSchemaJson);
+                if (doc.RootElement.TryGetProperty("properties", out var props))
+                {
+                    foreach (var prop in props.EnumerateObject())
+                    {
+                        _schemaProperties[prop.Name] = prop.Value.Clone();
+                    }
+                }
+
+                if (doc.RootElement.TryGetProperty("required", out var requiredArray))
+                {
+                    foreach (var item in requiredArray.EnumerateArray())
+                    {
+                        if (item.GetString() is { } name)
+                        {
+                            _requiredPropertyNames.Add(name);
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // Ignore schema parse errors — fall back to free-form
+            }
+        }
+    }
+
+    private void OnPropertyChanged(string propName, ConfigPropertyValue newValue)
+    {
+        Resource.Properties[propName] = newValue;
+        ResourceChanged.InvokeAsync(Resource);
+    }
+
+    private void AddCustomProperty()
+    {
+        if (ReadOnly)
+        {
+            return;
+        }
+
+        var name = $"property{Resource.Properties.Count + 1}";
+        Resource.Properties[name] = ConfigPropertyValue.Literal(null);
+        ResourceChanged.InvokeAsync(Resource);
+    }
+
+    private void RemoveProperty(string propName)
+    {
+        if (ReadOnly)
+        {
+            return;
+        }
+
+        Resource.Properties.Remove(propName);
+        if (_pendingOptionalPropName == propName)
+        {
+            _pendingOptionalPropName = null;
+        }
+        ResourceChanged.InvokeAsync(Resource);
+    }
+
+    private void RenameProperty(string oldName, string newName)
+    {
+        if (ReadOnly)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(newName) || string.Equals(oldName, newName, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        if (Resource.Properties.ContainsKey(newName))
+        {
+            Snackbar.Add($"A property named '{newName}' already exists.", Severity.Warning);
+            return;
+        }
+
+        var value = Resource.Properties[oldName];
+        var updated = new Dictionary<string, ConfigPropertyValue>(StringComparer.Ordinal);
+        foreach (var (key, propValue) in Resource.Properties)
+        {
+            updated[key == oldName ? newName : key] = propValue;
+        }
+
+        Resource.Properties = updated;
+        ResourceChanged.InvokeAsync(Resource);
+    }
+
+    private void AddDependency()
+    {
+        if (ReadOnly)
+        {
+            return;
+        }
+
+        Resource.DependsOn.Add(ResourceReferences.FirstOrDefault()?.Expression ?? "[resourceId('', '')]");
+        ResourceChanged.InvokeAsync(Resource);
+    }
+
+    private void OnPendingDependencySelected(string expression)
+    {
+        if (ReadOnly || string.IsNullOrWhiteSpace(expression))
+        {
+            return;
+        }
+
+        if (!Resource.DependsOn.Contains(expression, StringComparer.OrdinalIgnoreCase))
+        {
+            Resource.DependsOn.Add(expression);
+            ResourceChanged.InvokeAsync(Resource);
+        }
+
+        _pendingDependencyExpression = null;
+    }
+
+    private async Task<IEnumerable<string>> SearchTypes(string value, CancellationToken ct)
+    {
+        // Resource type suggestions are supplied externally when the panel has manifests available.
+        return AvailableTypes.Where(t => string.IsNullOrWhiteSpace(value) || t.Contains(value,
+StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Parameter]
+    public IReadOnlyList<string> AvailableTypes { get; set; } = [];
+
+    private static bool IsBooleanSchema(JsonElement? schema)
+    {
+        if (!schema.HasValue || !schema.Value.TryGetProperty("type", out var typeProp))
+        {
+            return false;
+        }
+
+        // Type can be a string or an array (e.g., ["boolean", "null"])
+        if (typeProp.ValueKind == JsonValueKind.String)
+        {
+            return string.Equals(typeProp.GetString(), "boolean", StringComparison.OrdinalIgnoreCase);
+        }
+
+        if (typeProp.ValueKind == JsonValueKind.Array)
+        {
+            return typeProp.EnumerateArray().Any(t => t.ValueKind == JsonValueKind.String &&
+                string.Equals(t.GetString(), "boolean", StringComparison.OrdinalIgnoreCase));
+        }
+
+        return false;
+    }
+
+    private void AddSingleOptionalProperty(string? propName)
+    {
+        if (string.IsNullOrWhiteSpace(propName) || Resource.Properties.ContainsKey(propName))
+        {
+            return;
+        }
+
+        Resource.Properties[propName] = ConfigPropertyValue.Literal(null);
+        _showOptionalPropertyPicker = false;
+        _pendingOptionalPropName = null;
+        ResourceChanged.InvokeAsync(Resource);
+    }
+
+    private void CancelOptionalPropertySelection()
+    {
+        _showOptionalPropertyPicker = false;
+        _pendingOptionalPropName = null;
+    }
+
+    private static string? GetSchemaDescription(JsonElement? schema)
+    {
+        if (!schema.HasValue || !schema.Value.TryGetProperty("description", out var descriptionProp))
+        {
+            return null;
+        }
+
+        return descriptionProp.GetString();
+    }
+
+    private ResourceReferenceOption? ResolveDependencyOption(string expression)
+    {
+        return ResourceReferences.FirstOrDefault(r => string.Equals(r.Expression, expression,
+StringComparison.OrdinalIgnoreCase));
+    }
+}
+
+

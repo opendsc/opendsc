@@ -1,0 +1,118 @@
+@* Copyright (c) Thomas Nieto - All Rights Reserved *@
+@* You may use, distribute and modify this code under the *@
+@* terms of the MIT license. *@
+
+@rendermode InteractiveServer
+
+<MudCard Outlined="true" Class="mb-3" Style="border-left: 4px solid var(--mud-palette-primary);">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <div class="d-flex align-center gap-2">
+                <MudIcon Icon="@Icons.Material.Filled.AccountTree" Color="Color.Primary" />
+                <MudText Typo="Typo.subtitle1" Style="font-weight: bold;">@Resource.Name</MudText>
+                <MudChip T="string" Size="Size.Small" Color="Color.Primary">@Resource.Type</MudChip>
+            </div>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            @if (!ReadOnly)
+            {
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                               OnClick="@(() => OnRemove.InvokeAsync(Resource))" />
+            }
+        </CardHeaderActions>
+    </MudCardHeader>
+
+    <MudCardContent>
+        <MudTextField T="string" Label="Instance name" Variant="Variant.Outlined" Margin="Margin.Dense"
+                      Disabled="@ReadOnly" Value="@Resource.Name"
+                      ValueChanged="@(v => { Resource.Name = v; ResourceChanged.InvokeAsync(Resource); })" Immediate="true"
+                      Class="mb-3" />
+
+        <div class="d-flex justify-space-between align-center mb-2">
+            <MudText Typo="Typo.subtitle2">Nested resources</MudText>
+            @if (!ReadOnly)
+            {
+                <MudButton StartIcon="@Icons.Material.Filled.Add" Size="Size.Small" Variant="Variant.Outlined"
+                           OnClick="AddNestedResource">
+                    Add nested resource
+                </MudButton>
+            }
+        </div>
+
+        @if (Resource.NestedResources.Count == 0)
+        {
+            <MudText Color="Color.Secondary" Typo="Typo.body2" Class="mb-2">
+                No nested resources. Add resource instances that belong to this group or assertion.
+            </MudText>
+        }
+
+        <div style="padding-left: 16px; border-left: 2px solid var(--mud-palette-divider);">
+            @foreach (var nested in Resource.NestedResources.ToList())
+            {
+                var nr = nested;
+                @if (IsGroupOrAssertion(nr.Type))
+                {
+                    <GroupResourceBlock Resource="@nr"
+                                        ResourceChanged="@(r => { var i = Resource.NestedResources.IndexOf(nr); if (i >= 0) Resource.NestedResources[i] = r; ResourceChanged.InvokeAsync(Resource); })"
+                                        OnRemove="@(r => { Resource.NestedResources.Remove(r); ResourceChanged.InvokeAsync(Resource); })"
+                                        ParameterNames="@ParameterNames" VariableNames="@VariableNames" ReadOnly="@ReadOnly"
+                                        AvailableTypes="@AvailableTypes" ResourceReferences="@ResourceReferences" />
+                }
+                else
+                {
+                    <ResourceInstanceBlock Resource="@nr"
+                                           ResourceChanged="@(r => { var i = Resource.NestedResources.IndexOf(nr); if (i >= 0) Resource.NestedResources[i] = r; ResourceChanged.InvokeAsync(Resource); })"
+                                           OnRemove="@(r => { Resource.NestedResources.Remove(r); ResourceChanged.InvokeAsync(Resource); })"
+                                           ParameterNames="@ParameterNames" VariableNames="@VariableNames" ReadOnly="@ReadOnly"
+                                           AvailableTypes="@AvailableTypes" ResourceReferences="@ResourceReferences" />
+                }
+            }
+        </div>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter, EditorRequired]
+    public ConfigResourceState Resource { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback<ConfigResourceState> ResourceChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<ConfigResourceState> OnRemove { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<string> ParameterNames { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyList<string> VariableNames { get; set; } = [];
+
+    [Parameter]
+    public bool ReadOnly { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<string> AvailableTypes { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyList<ResourceReferenceOption> ResourceReferences { get; set; } = [];
+
+    private static bool IsGroupOrAssertion(string type) =>
+        type.Equals("Microsoft.DSC/Group", StringComparison.OrdinalIgnoreCase) ||
+        type.Equals("Microsoft.DSC/Assertion", StringComparison.OrdinalIgnoreCase);
+
+    private void AddNestedResource()
+    {
+        if (ReadOnly)
+        {
+            return;
+        }
+
+        Resource.NestedResources.Add(new ConfigResourceState
+        {
+            Name = $"nestedResource{Resource.NestedResources.Count + 1}",
+            Type = string.Empty
+        });
+        ResourceChanged.InvokeAsync(Resource);
+    }
+}
+

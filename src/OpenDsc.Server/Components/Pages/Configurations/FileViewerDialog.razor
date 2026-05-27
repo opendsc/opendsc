@@ -17,22 +17,23 @@
 @inject IJSRuntime JSRuntime
 @inject IParameterService ParameterService
 @inject IConfigurationService ConfigurationService
+@inject IConfigDocumentSerializer ConfigSerializer
 
 <MudDialog>
     <DialogContent>
         <div class="d-flex align-center justify-space-between mb-2">
             <MudText Typo="Typo.body2" Color="Color.Secondary">Version @Version @(IsEditMode ? "(Editing)" :
-                                                                         "(Read-only)")</MudText>
-                @if (!IsEditMode)
-                {
-                    <MudButtonGroup Size="Size.Small">
-                        <MudButton OnClick="@(() => SwitchMode(ViewMode.View))"
-                                   Variant="@(currentMode == ViewMode.View ? Variant.Filled : Variant.Text)"
-                                   Color="@(currentMode == ViewMode.View ? Color.Primary : Color.Default)"
-                                   Style="@(currentMode == ViewMode.View ? "" : "opacity: 0.6")">
-                            <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" Class="mr-1" />
-                            View
-                        </MudButton>
+                                                                                         "(Read-only)")</MudText>
+                <MudButtonGroup Size="Size.Small">
+                    <MudButton OnClick="@(() => SwitchMode(ViewMode.View))"
+                               Variant="@(currentMode == ViewMode.View ? Variant.Filled : Variant.Text)"
+                               Color="@(currentMode == ViewMode.View ? Color.Primary : Color.Default)"
+                               Style="@(currentMode == ViewMode.View ? "" : "opacity: 0.6")">
+                        <MudIcon Icon="@Icons.Material.Filled.Visibility" Size="Size.Small" Class="mr-1" />
+                        @(IsEditMode ? "YAML" : "View")
+                    </MudButton>
+                    @if (!IsEditMode)
+                    {
                         <MudButton OnClick="@(() => SwitchMode(ViewMode.Compare))"
                                    Variant="@(currentMode == ViewMode.Compare ? Variant.Filled : Variant.Text)"
                                    Color="@(currentMode == ViewMode.Compare ? Color.Primary : Color.Default)"
@@ -41,8 +42,18 @@
                             <MudIcon Icon="@Icons.Material.Filled.CompareArrows" Size="Size.Small" Class="mr-1" />
                             Compare
                         </MudButton>
-                    </MudButtonGroup>
-                }
+                    }
+                    @if (IsDscYamlFile)
+                    {
+                        <MudButton OnClick="@(() => SwitchMode(ViewMode.Form))"
+                                   Variant="@(currentMode == ViewMode.Form ? Variant.Filled : Variant.Text)"
+                                   Color="@(currentMode == ViewMode.Form ? Color.Primary : Color.Default)"
+                                   Style="@(currentMode == ViewMode.Form ? "" : "opacity: 0.6")">
+                            <MudIcon Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Class="mr-1" />
+                            Form
+                        </MudButton>
+                    }
+                </MudButtonGroup>
             </div>
 
             @if (currentMode == ViewMode.Compare)
@@ -65,16 +76,24 @@
             {
                 @if (currentMode == ViewMode.View)
                 {
-                    <div style="height: 600px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
+                    <div style="height: calc(100vh - 210px); width: 100%; border: 1px solid var(--mud-palette-lines-default);">
                         <StandaloneCodeEditor @ref="_editor" Id="file-editor-config" ConstructionOptions="GetEditorOptions"
                                               CssClass="file-viewer-editor" />
                     </div>
                 }
-                else
+                else if (currentMode == ViewMode.Compare)
                 {
-                    <div style="height: 600px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
+                    <div style="height: calc(100vh - 210px); width: 100%; border: 1px solid var(--mud-palette-lines-default);">
                         <StandaloneDiffEditor @ref="_diffEditor" Id="file-diff-editor" ConstructionOptions="GetDiffEditorOptions"
                                               CssClass="file-viewer-editor" />
+                    </div>
+                }
+                else if (currentMode == ViewMode.Form && _formDocument is not null)
+                {
+                    <div
+                        style="height: calc(100vh - 210px); width: 100%; overflow-y: auto; border: 1px solid var(--mud-palette-lines-default);">
+                        <ConfigDocumentFormEditor Document="@_formDocument" DocumentChanged="@OnFormDocumentChanged"
+                                                  YamlChanged="@OnFormYamlChanged" IsReadOnly="@(!IsEditMode)" />
                     </div>
                 }
             }
@@ -129,7 +148,7 @@
     [Parameter]
     public string? ParameterScopeValue { get; set; }
 
-    private enum ViewMode { View, Compare }
+    private enum ViewMode { View, Compare, Form }
 
     private StandaloneCodeEditor? _editor;
     private StandaloneDiffEditor? _diffEditor;
@@ -141,6 +160,12 @@
     private string compareVersion = string.Empty;
     private TextModel? _originalModel;
     private TextModel? _modifiedModel;
+    private ConfigDocumentState? _formDocument;
+    private string _formYaml = string.Empty;
+
+    private bool IsDscYamlFile =>
+        FilePath.EndsWith(".dsc.yaml", StringComparison.OrdinalIgnoreCase) ||
+        FilePath.EndsWith(".dsc.yml", StringComparison.OrdinalIgnoreCase);
 
     protected override async Task OnInitializedAsync()
     {
@@ -249,12 +274,70 @@
 
     private async Task SwitchMode(ViewMode mode)
     {
-        currentMode = mode;
+        if (mode == currentMode)
+            return;
 
-        if (mode == ViewMode.Compare && !string.IsNullOrEmpty(compareVersion))
+        if (mode == ViewMode.Compare)
         {
-            await LoadCompareFileContent();
-            await UpdateDiffEditor();
+            currentMode = mode;
+            if (!string.IsNullOrEmpty(compareVersion))
+            {
+                await LoadCompareFileContent();
+                await UpdateDiffEditor();
+            }
+            return;
+        }
+
+        if (mode == ViewMode.Form)
+        {
+            // In edit mode, sync latest YAML text from Monaco before switching to form.
+            if (IsEditMode && _editor is not null)
+            {
+                var yaml = await _editor.GetValue();
+                if (!string.IsNullOrWhiteSpace(yaml))
+                {
+                    fileContent = yaml;
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(fileContent))
+            {
+                _formDocument = ConfigSerializer.Deserialize(fileContent) ?? new ConfigDocumentState();
+            }
+            else
+            {
+                _formDocument = new ConfigDocumentState();
+            }
+
+            currentMode = mode;
+            return;
+        }
+
+        // Switching to YAML/view mode: if form has changes, serialize back to text.
+        if (currentMode == ViewMode.Form && _formDocument is not null)
+        {
+            fileContent = ConfigSerializer.Serialize(_formDocument);
+            _formYaml = fileContent;
+            if (_editor is not null)
+            {
+                await _editor.SetValue(fileContent);
+            }
+        }
+
+        currentMode = mode;
+    }
+
+    private void OnFormDocumentChanged(ConfigDocumentState state)
+    {
+        _formDocument = state;
+    }
+
+    private async Task OnFormYamlChanged(string yaml)
+    {
+        _formYaml = yaml;
+        if (IsEditMode && _editor is not null && currentMode == ViewMode.View)
+        {
+            await _editor.SetValue(yaml);
         }
     }
 
@@ -417,23 +500,31 @@
 
     private async Task SaveFile()
     {
-        if (_editor == null)
-        {
-            Snackbar.Add("Editor not initialized", Severity.Error);
-            return;
-        }
-
         if (currentMode == ViewMode.Compare)
         {
             Snackbar.Add("Cannot save in compare mode", Severity.Warning);
             return;
         }
 
+        if (currentMode != ViewMode.Form && _editor == null)
+        {
+            Snackbar.Add("Editor not initialized", Severity.Error);
+            return;
+        }
+
         try
         {
-            var content = await _editor!.GetValue();
+            string content;
+            if (currentMode == ViewMode.Form && _formDocument is not null)
+            {
+                content = ConfigSerializer.Serialize(_formDocument);
+            }
+            else
+            {
+                content = await _editor!.GetValue() ?? string.Empty;
+            }
 
-            await ConfigurationService.SaveFileAsync(ConfigurationName, Version, FilePath, content ?? "");
+            await ConfigurationService.SaveFileAsync(ConfigurationName, Version, FilePath, content);
 
             Snackbar.Add("File saved successfully", Severity.Success);
             MudDialog.Close(DialogResult.Ok(true));

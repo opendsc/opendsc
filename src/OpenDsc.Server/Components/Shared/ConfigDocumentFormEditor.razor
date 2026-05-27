@@ -1,0 +1,240 @@
+@* Copyright (c) Thomas Nieto - All Rights Reserved *@
+@* You may use, distribute and modify this code under the *@
+@* terms of the MIT license. *@
+
+@rendermode InteractiveServer
+
+@using OpenDsc.Server.Services
+@using BlazorMonaco
+@using BlazorMonaco.Editor
+@using Microsoft.JSInterop
+
+@inject IConfigDocumentSerializer Serializer
+@inject ThemeService ThemeService
+
+@if (_validationErrors.Count > 0)
+{
+    <MudAlert Severity="Severity.Error" Dense="true" Class="mb-2">
+        <MudText Typo="Typo.caption">Form validation errors:</MudText>
+        @foreach (var error in _validationErrors.Take(6))
+        {
+            <MudText Typo="Typo.caption">- @error</MudText>
+        }
+        @if (_validationErrors.Count > 6)
+        {
+            <MudText Typo="Typo.caption">- ...and @(_validationErrors.Count - 6) more</MudText>
+        }
+    </MudAlert>
+}
+
+<MudTabs Elevation="0" Rounded="false" ApplyEffectsToContainer="false">
+    <MudTabPanel Text="Parameters" Icon="@Icons.Material.Filled.Input">
+        <div class="pa-3">
+            <ConfigParametersPanel Parameters="@Document.Parameters"
+                                   ParametersChanged="@(p => { Document.Parameters = p; OnChanged(); })"
+                                   ReadOnly="@IsReadOnly" />
+        </div>
+    </MudTabPanel>
+
+    <MudTabPanel Text="Variables" Icon="@Icons.Material.Filled.DataObject">
+        <div class="pa-3">
+            <ConfigVariablesPanel Variables="@Document.Variables"
+                                  VariablesChanged="@(v => { Document.Variables = v; OnChanged(); })"
+                                  ReadOnly="@IsReadOnly" />
+        </div>
+    </MudTabPanel>
+
+    <MudTabPanel Text="Resources" Icon="@Icons.Material.Filled.Inventory">
+        <div class="pa-3">
+            <ConfigResourcesPanel Resources="@Document.Resources"
+                                  ResourcesChanged="@(r => { Document.Resources = r; OnChanged(); })"
+                                  ParameterNames="@(Document.Parameters.Keys.ToList())"
+                                  VariableNames="@(Document.Variables.Keys.ToList())"
+                                  ReadOnly="@IsReadOnly" />
+        </div>
+    </MudTabPanel>
+
+    <MudTabPanel Text="Preview YAML" Icon="@Icons.Material.Filled.Code" OnClick="RefreshPreview">
+        @if (!string.IsNullOrWhiteSpace(_previewError))
+        {
+            <MudAlert Severity="Severity.Error" Dense="true" Class="mb-2">@_previewError</MudAlert>
+        }
+        <div style="height: calc(100vh - 285px); min-height: 420px;" class="pa-2">
+            <StandaloneCodeEditor @ref="_yamlEditor"
+                                  Id="config-doc-preview"
+                                  ConstructionOptions="YamlEditorOptions"
+                                  CssClass="w-100 h-100" />
+        </div>
+    </MudTabPanel>
+</MudTabs>
+
+@code {
+    [Parameter]
+    public ConfigDocumentState Document { get; set; } = new();
+
+    [Parameter]
+    public bool IsReadOnly { get; set; }
+
+    [Parameter]
+    public EventCallback<ConfigDocumentState> DocumentChanged { get; set; }
+
+    /// <summary>
+    /// When set, emits the serialized YAML whenever the document changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<string> YamlChanged { get; set; }
+
+    private StandaloneCodeEditor? _yamlEditor;
+    private bool _yamlDirty = true;
+    private bool _retryPreviewOnNextRender;
+    private string _currentYamlPreview = string.Empty;
+    private string? _previewError;
+    private List<string> _validationErrors = [];
+
+    protected override void OnParametersSet()
+    {
+        _validationErrors = ValidateDocument(Document);
+    }
+
+    private void OnChanged()
+    {
+        _yamlDirty = true;
+        _retryPreviewOnNextRender = false;
+        _previewError = null;
+        _validationErrors = ValidateDocument(Document);
+        DocumentChanged.InvokeAsync(Document);
+
+        if (_validationErrors.Count == 0 && TrySerialize(Document, out var yaml, out _))
+        {
+            _currentYamlPreview = yaml;
+            if (YamlChanged.HasDelegate)
+            {
+                YamlChanged.InvokeAsync(yaml);
+            }
+        }
+    }
+
+    private async Task RefreshPreview()
+    {
+        if (_validationErrors.Count > 0)
+        {
+            _previewError = "Fix form validation errors before previewing YAML.";
+            return;
+        }
+
+        if (!TrySerialize(Document, out var yaml, out var serializeError))
+        {
+            _previewError = serializeError;
+            return;
+        }
+
+        _currentYamlPreview = yaml;
+
+        if (_yamlEditor is null || !_yamlDirty)
+        {
+            return;
+        }
+
+        try
+        {
+            await _yamlEditor.SetValue(yaml);
+            _previewError = null;
+            _retryPreviewOnNextRender = false;
+        }
+        catch (JSException)
+        {
+            // Monaco may not have registered this specific editor ID yet. Retry next render.
+            _retryPreviewOnNextRender = true;
+            _previewError = "Preview is initializing. Please stay on this tab for a moment.";
+            return;
+        }
+
+        _yamlDirty = false;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Monaco editor ref or ID binding may lag one render; retry safely.
+        if (_yamlEditor is not null && (_yamlDirty || _retryPreviewOnNextRender))
+        {
+            await RefreshPreview();
+        }
+    }
+
+    private StandaloneEditorConstructionOptions YamlEditorOptions(StandaloneCodeEditor editor) =>
+        new()
+        {
+            Language = "yaml",
+            ReadOnly = true,
+            Value = _currentYamlPreview,
+            Theme = ThemeService.IsDarkMode ? "vs-dark" : "vs",
+            AutomaticLayout = true,
+            Minimap = new EditorMinimapOptions { Enabled = false }
+        };
+
+    private bool TrySerialize(ConfigDocumentState document, out string yaml, out string? error)
+    {
+        try
+        {
+            yaml = Serializer.Serialize(document);
+            error = null;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            yaml = string.Empty;
+            error = $"Unable to generate YAML preview: {ex.Message}";
+            return false;
+        }
+    }
+
+    private static List<string> ValidateDocument(ConfigDocumentState document)
+    {
+        var errors = new List<string>();
+
+        foreach (var (name, parameter) in document.Parameters)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                errors.Add("Parameter name cannot be empty.");
+            }
+
+            if (string.Equals(parameter.Type, "int", StringComparison.OrdinalIgnoreCase) &&
+                parameter.DefaultValue is not null &&
+                parameter.DefaultValue is not int && parameter.DefaultValue is not long)
+            {
+                errors.Add($"Parameter '{name}' default value must be an integer.");
+            }
+
+            if (string.Equals(parameter.Type, "bool", StringComparison.OrdinalIgnoreCase) &&
+                parameter.DefaultValue is not null &&
+                parameter.DefaultValue is not bool)
+            {
+                errors.Add($"Parameter '{name}' default value must be true or false.");
+            }
+        }
+
+        foreach (var (name, _) in document.Variables)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                errors.Add("Variable name cannot be empty.");
+            }
+        }
+
+        var duplicateTypeNames = document.Resources
+            .Where(r => !string.IsNullOrWhiteSpace(r.Type) && !string.IsNullOrWhiteSpace(r.Name))
+            .GroupBy(r => $"{r.Type}|{r.Name}", StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Count() > 1)
+            .Select(g => g.Key)
+            .ToList();
+
+        foreach (var duplicate in duplicateTypeNames)
+        {
+            var parts = duplicate.Split('|');
+            errors.Add($"Duplicate resource: type '{parts[0]}' with instance '{parts[1]}'.");
+        }
+
+        return errors;
+    }
+}
