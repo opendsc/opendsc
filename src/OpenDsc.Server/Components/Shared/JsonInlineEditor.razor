@@ -1,0 +1,62 @@
+@* Copyright (c) Thomas Nieto - All Rights Reserved *@
+@* You may use, distribute and modify this code under the *@
+@* terms of the MIT license. *@
+
+@rendermode InteractiveServer
+
+@using BlazorMonaco.Editor
+
+@inject ThemeService ThemeService
+
+<MudStack Spacing="1">
+    <div style="height: 150px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
+        <StandaloneCodeEditor @ref="_editor" Id="@EditorId" ConstructionOptions="EditorOptions"
+                              CssClass="file-viewer-editor" />
+    </div>
+    @if (!ReadOnly)
+    {
+        <div class="d-flex justify-end">
+            <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="ApplyValue">Apply JSON</MudButton>
+        </div>
+    }
+</MudStack>
+
+@code {
+    [Parameter]
+    public string EditorId { get; set; } = $"json-inline-{Guid.NewGuid():N}";
+
+    [Parameter]
+    public string InitialValue { get; set; } = "{}";
+
+    [Parameter]
+    public bool ReadOnly { get; set; }
+
+    [Parameter]
+    public EventCallback<string> ValueApplied { get; set; }
+
+    private StandaloneCodeEditor? _editor;
+
+    private StandaloneEditorConstructionOptions EditorOptions(StandaloneCodeEditor editor) =>
+        new()
+        {
+            Language = "json",
+            ReadOnly = ReadOnly,
+            Value = InitialValue,
+            Theme = ThemeService.IsDarkMode ? "vs-dark" : "vs",
+            AutomaticLayout = true,
+            Minimap = new EditorMinimapOptions { Enabled = false },
+            ScrollBeyondLastLine = false,
+            FontSize = 13
+        };
+
+    private async Task ApplyValue()
+    {
+        if (ReadOnly || _editor is null)
+        {
+            return;
+        }
+
+        var value = await _editor.GetValue();
+        await ValueApplied.InvokeAsync(value);
+    }
+}

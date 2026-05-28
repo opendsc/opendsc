@@ -4,6 +4,7 @@
 
 @rendermode InteractiveServer
 
+@using BlazorMonaco.Editor
 @using System.Text.Json
 @using System.Text.Json.Nodes
 @using YamlDotNet.Serialization
@@ -11,14 +12,18 @@
 
 <MudDialog>
     <DialogContent>
-        <MudTabs Elevation="0" Rounded="false" ApplyEffectsToContainer="false">
-            <MudTabPanel Text="JSON">
-                <MudTextField T="string" Value="@PrettyJson" Variant="Variant.Outlined" Lines="24" ReadOnly="true"
-                              Margin="Margin.Dense" Style="font-family: monospace;" />
-            </MudTabPanel>
+        <MudTabs Elevation="0" Rounded="false" ApplyEffectsToContainer="false" ActivePanelIndex="0">
             <MudTabPanel Text="YAML">
-                <MudTextField T="string" Value="@PrettyYaml" Variant="Variant.Outlined" Lines="24" ReadOnly="true"
-                              Margin="Margin.Dense" Style="font-family: monospace;" />
+                <div style="height: 60vh; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
+                    <StandaloneCodeEditor Id="schema-yaml-editor" ConstructionOptions="YamlEditorOptions"
+                                          CssClass="file-viewer-editor" />
+                </div>
+            </MudTabPanel>
+            <MudTabPanel Text="JSON">
+                <div style="height: 60vh; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
+                    <StandaloneCodeEditor Id="schema-json-editor" ConstructionOptions="JsonEditorOptions"
+                                          CssClass="file-viewer-editor" />
+                </div>
             </MudTabPanel>
         </MudTabs>
     </DialogContent>
@@ -40,6 +45,30 @@
     private string PrettyJson => TryPrettyJson(SchemaJson);
 
     private string PrettyYaml => TryPrettyYaml(SchemaJson);
+
+    private StandaloneEditorConstructionOptions YamlEditorOptions(StandaloneCodeEditor editor) =>
+        new()
+        {
+            Language = "yaml",
+            ReadOnly = true,
+            Value = PrettyYaml,
+            Theme = ThemeService.IsDarkMode ? "vs-dark" : "vs",
+            AutomaticLayout = true,
+            Minimap = new EditorMinimapOptions { Enabled = false },
+            ScrollBeyondLastLine = false
+        };
+
+    private StandaloneEditorConstructionOptions JsonEditorOptions(StandaloneCodeEditor editor) =>
+        new()
+        {
+            Language = "json",
+            ReadOnly = true,
+            Value = PrettyJson,
+            Theme = ThemeService.IsDarkMode ? "vs-dark" : "vs",
+            AutomaticLayout = true,
+            Minimap = new EditorMinimapOptions { Enabled = false },
+            ScrollBeyondLastLine = false
+        };
 
     private static string TryPrettyJson(string json)
     {

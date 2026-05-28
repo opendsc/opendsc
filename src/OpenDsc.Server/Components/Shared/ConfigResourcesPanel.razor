@@ -20,12 +20,29 @@
                            OnClick="AddGroupResource">
                     Add group
                 </MudButton>
+                <MudButton StartIcon="@Icons.Material.Filled.Rule" Size="Size.Small" Variant="Variant.Outlined"
+                           OnClick="AddAssertionResource">
+                    Add assertion
+                </MudButton>
                 <MudButton StartIcon="@Icons.Material.Filled.Add" Size="Size.Small" Variant="Variant.Filled"
                            Color="Color.Primary" OnClick="OpenAddResourceDialog">
                     Add resource
                 </MudButton>
             }
         </div>
+        @if (Resources.Count > 0)
+        {
+            <div class="d-flex gap-2">
+                <MudButton StartIcon="@Icons.Material.Filled.UnfoldMore" Size="Size.Small" Variant="Variant.Text"
+                           OnClick="ExpandAllResources">
+                    Expand all
+                </MudButton>
+                <MudButton StartIcon="@Icons.Material.Filled.UnfoldLess" Size="Size.Small" Variant="Variant.Text"
+                           OnClick="CollapseAllResources">
+                    Collapse all
+                </MudButton>
+            </div>
+        }
     </div>
 
     @if (Resources.Count == 0)
@@ -73,7 +90,8 @@
                     <GroupResourceBlock Resource="@r" ResourceChanged="@(updated => OnResourceChanged(r, updated))"
                                         OnRemove="@(removed => RemoveResource(removed))" ParameterNames="@ParameterNames"
                                         VariableNames="@VariableNames" ReadOnly="@ReadOnly" AvailableTypes="@_availableTypes"
-                                        ResourceReferences="@_resourceReferences" />
+                                        ResourceReferences="@_resourceReferences" CollapseCommandVersion="@_collapseCommandVersion"
+                                        ExpandOnCommand="@_expandOnCommand" />
                 }
                 else
                 {
@@ -81,7 +99,8 @@
                                            ResourceChanged="@(updated => OnResourceChanged(r, updated))"
                                            OnRemove="@(removed => RemoveResource(removed))" ParameterNames="@ParameterNames"
                                            VariableNames="@VariableNames" ReadOnly="@ReadOnly" AvailableTypes="@_availableTypes"
-                                           ResourceReferences="@_resourceReferences" />
+                                           ResourceReferences="@_resourceReferences" CollapseCommandVersion="@_collapseCommandVersion"
+                                           ExpandOnCommand="@_expandOnCommand" />
                 }
             </div>
         </div>
@@ -110,6 +129,8 @@
     private List<string> _availableTypes = [];
     private List<ResourceReferenceOption> _resourceReferences = [];
     private bool _isLoadingSchemas;
+    private int _collapseCommandVersion;
+    private bool _expandOnCommand = true;
 
     protected override Task OnInitializedAsync() => Task.CompletedTask;
 
@@ -218,6 +239,21 @@
         ResourcesChanged.InvokeAsync(Resources);
     }
 
+    private void AddAssertionResource()
+    {
+        if (ReadOnly)
+        {
+            return;
+        }
+
+        Resources.Add(new ConfigResourceState
+        {
+            Name = $"assertion{Resources.Count + 1}",
+            Type = "Microsoft.DSC/Assertion"
+        });
+        ResourcesChanged.InvokeAsync(Resources);
+    }
+
     private void MoveResource(int fromIndex, int toIndex)
     {
         if (fromIndex < 0 || toIndex < 0 || fromIndex >= Resources.Count || toIndex >= Resources.Count || fromIndex == toIndex)
@@ -317,6 +353,18 @@ resource.Name));
     {
         Resources.Remove(resource);
         ResourcesChanged.InvokeAsync(Resources);
+    }
+
+    private void ExpandAllResources()
+    {
+        _expandOnCommand = true;
+        _collapseCommandVersion++;
+    }
+
+    private void CollapseAllResources()
+    {
+        _expandOnCommand = false;
+        _collapseCommandVersion++;
     }
 }
 

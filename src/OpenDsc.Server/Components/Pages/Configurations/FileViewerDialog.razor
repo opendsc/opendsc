@@ -23,7 +23,7 @@
     <DialogContent>
         <div class="d-flex align-center justify-space-between mb-2">
             <MudText Typo="Typo.body2" Color="Color.Secondary">Version @Version @(IsEditMode ? "(Editing)" :
-                                                                                         "(Read-only)")</MudText>
+                                                                                                         "(Read-only)")</MudText>
                 <MudButtonGroup Size="Size.Small">
                     <MudButton OnClick="@(() => SwitchMode(ViewMode.View))"
                                Variant="@(currentMode == ViewMode.View ? Variant.Filled : Variant.Text)"
@@ -69,21 +69,20 @@
 
             @if (isLoading)
             {
-                <MudProgressCircular Indeterminate="true" />
-                <MudText Typo="Typo.caption">Loading file...</MudText>
+                <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">Loading preview...</MudAlert>
             }
             else if (fileContent != null)
             {
                 @if (currentMode == ViewMode.View)
                 {
-                    <div style="height: calc(100vh - 210px); width: 100%; border: 1px solid var(--mud-palette-lines-default);">
+                    <div style="height: calc(100vh - 165px); width: 100%; border: 1px solid var(--mud-palette-lines-default);">
                         <StandaloneCodeEditor @ref="_editor" Id="file-editor-config" ConstructionOptions="GetEditorOptions"
                                               CssClass="file-viewer-editor" />
                     </div>
                 }
                 else if (currentMode == ViewMode.Compare)
                 {
-                    <div style="height: calc(100vh - 210px); width: 100%; border: 1px solid var(--mud-palette-lines-default);">
+                    <div style="height: calc(100vh - 165px); width: 100%; border: 1px solid var(--mud-palette-lines-default);">
                         <StandaloneDiffEditor @ref="_diffEditor" Id="file-diff-editor" ConstructionOptions="GetDiffEditorOptions"
                                               CssClass="file-viewer-editor" />
                     </div>
@@ -91,7 +90,7 @@
                 else if (currentMode == ViewMode.Form && _formDocument is not null)
                 {
                     <div
-                        style="height: calc(100vh - 210px); width: 100%; overflow-y: auto; border: 1px solid var(--mud-palette-lines-default);">
+                        style="height: calc(100vh - 165px); width: 100%; overflow-y: auto; border: 1px solid var(--mud-palette-lines-default);">
                         <ConfigDocumentFormEditor Document="@_formDocument" DocumentChanged="@OnFormDocumentChanged"
                                                   YamlChanged="@OnFormYamlChanged" IsReadOnly="@(!IsEditMode)" />
                     </div>

@@ -52,6 +52,11 @@ public sealed class ConfigResourceState
     public string? Version { get; set; }
 
     /// <summary>
+    /// Optional execution gate. When set, this expression must evaluate to boolean.
+    /// </summary>
+    public ConfigPropertyValue? Condition { get; set; }
+
+    /// <summary>
     /// Properties for this resource instance.
     /// Value is a <see cref="ConfigPropertyValue"/> which can be a literal or a function expression.
     /// </summary>

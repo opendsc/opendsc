@@ -20,79 +20,95 @@
 
     @if (Value.IsFunction && Value.Function is not null)
     {
-        <MudChip T="string" Color="Color.Primary" Size="Size.Small">
-            @GetFunctionSummary(Value.Function)
-        </MudChip>
-        <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.PlayArrow"
-                   OnClick="OpenFunctionPicker">
-            Mock preview
-        </MudButton>
-        <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Edit"
-                   OnClick="OpenFunctionPicker">
-            Edit
-        </MudButton>
-        <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Color="Color.Error" OnClick="ClearFunction" />
-
-        <MudExpansionPanels>
-            <MudExpansionPanel Text="Raw expression">
-                <MudText Typo="Typo.caption" Style="font-family: monospace; word-break: break-all;">
-                    @Value.Function.ToInlineString()
-                </MudText>
-            </MudExpansionPanel>
-        </MudExpansionPanels>
-    }
-    else
-    {
-        @switch (EffectiveType)
-        {
-            case "boolean":
-                <MudCheckBox T="bool" Label="@Label" Value="@(Value.RawValue is true)" ValueChanged="@OnBoolChanged"
-                             Disabled="@ReadOnly" />
-                break;
-
-            case "integer":
-            case "number":
-                var numError = ValidateConstraints(Value.RawValue);
-                <MudNumericField T="long" Label="@Label" Variant="Variant.Outlined" Disabled="@ReadOnly"
-                                 Value="@(Value.RawValue is long l ? l : 0)" ValueChanged="@(v => OnValueChanged(v))"
-                                 Error="@(numError is not null)" ErrorText="@numError" />
-                break;
-
-            case "object":
-            case "array":
-                <ComplexValueEditor Label="@Label" Value="@Value.RawValue" RootKind="@EffectiveType" ReadOnly="@ReadOnly"
-                                    ValueChanged="OnValueChanged" />
-                break;
-
-            default:
-                @if (AllowedValues.Count > 0)
-                {
-                    <MudSelect T="string" Label="@Label" Variant="Variant.Outlined" Disabled="@ReadOnly"
-                               Value="@(Value.RawValue?.ToString() ?? string.Empty)" ValueChanged="@(v => OnValueChanged(v))">
-                        @foreach (var option in AllowedValues)
+        var _nestedCount = CountNestedFunctions(Value.Function);
+        <MudField Label="@Label" Variant="Variant.Outlined" Style="min-width: 200px; flex: 1;">
+            <div class="d-flex align-center gap-2">
+                <MudIcon Icon="@Icons.Material.Filled.Functions" Size="Size.Small" Color="Color.Primary" />
+                <div>
+                    <MudText Typo="Typo.body2" Style="font-family: monospace; line-height: 1.2;">
+                        @Value.Function.FunctionName</MudText>
+                        @if (_nestedCount > 0)
                         {
-                            <MudSelectItem T="string" Value="@option">@option</MudSelectItem>
-                        }
-                    </MudSelect>
-                }
-                else
+                            <MudText Typo="Typo.caption" Color="Color.Secondary" Style="line-height: 1.2;">@_nestedCount nested
+                                function@(_nestedCount == 1 ? "" : "s")</MudText>
+                            }
+                        </div>
+                    </div>
+                </MudField>
+                <MudTooltip Text="Mock function preview">
+                    <MudIconButton Icon="@Icons.Material.Filled.PlayArrow" Size="Size.Small" OnClick="OpenFunctionPreview" />
+                </MudTooltip>
+                <MudTooltip Text="Edit function">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" OnClick="OpenFunctionPicker" />
+                </MudTooltip>
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Color="Color.Error" OnClick="ClearFunction" />
+            }
+    else
+            {
+                var registryChoices = GetRegistryValueDataChoices();
+                @switch (EffectiveType)
                 {
-                    var strError = ValidateConstraints(Value.RawValue?.ToString());
-                    <MudTextField T="string" Label="@Label" Variant="Variant.Outlined" Disabled="@ReadOnly"
-                                  Value="@(Value.RawValue?.ToString() ?? string.Empty)" ValueChanged="@(v => OnValueChanged(v))" Immediate="true"
-                                  Error="@(strError is not null)" ErrorText="@strError" />
-                }
-                break;
-        }
+                    case "boolean":
+                        <MudCheckBox T="bool" Label="@Label" Value="@(Value.RawValue is true)" ValueChanged="@OnBoolChanged"
+                                     Disabled="@ReadOnly" />
+                        break;
 
-        @if (AllowFunctions && !ReadOnly)
-        {
-            <MudTooltip Text="Use a DSC function expression">
-                <MudIconButton Icon="@Icons.Material.Filled.Functions" Size="Size.Small" OnClick="OpenFunctionPicker" />
-            </MudTooltip>
-        }
-    }
-</div>
+                    case "integer":
+                    case "number":
+                        var numError = ValidateConstraints(Value.RawValue);
+                        <MudNumericField T="long" Label="@Label" Variant="Variant.Outlined" Disabled="@ReadOnly"
+                                         Value="@(Value.RawValue is long l ? l : 0)" ValueChanged="@(v => OnValueChanged(v))"
+                                         Error="@(numError is not null)" ErrorText="@numError" />
+                        break;
+
+                    case "object":
+                    case "array":
+                        <ComplexValueEditor Label="@Label" Value="@Value.RawValue" RootKind="@EffectiveType" ReadOnly="@ReadOnly"
+                                            ValueChanged="OnValueChanged" />
+                        break;
+
+                    default:
+                        @if (registryChoices.Count > 0)
+                        {
+                            <MudSelect T="string" Label="Registry value type" Variant="Variant.Outlined" Disabled="@ReadOnly"
+                                       Value="@GetCurrentRegistryChoice(registryChoices)"
+                                       ValueChanged="@(choice => OnRegistryChoiceChanged(choice, registryChoices))">
+                                @foreach (var choice in registryChoices)
+                                {
+                                    <MudSelectItem T="string" Value="@choice">@choice</MudSelectItem>
+                                }
+                            </MudSelect>
+                        }
+
+                        @if (AllowedValues.Count > 0)
+                        {
+                            <MudSelect T="string" Label="@Label" Variant="Variant.Outlined" Disabled="@ReadOnly"
+                                       Value="@(Value.RawValue?.ToString() ?? string.Empty)" ValueChanged="@(v => OnValueChanged(v))">
+                                @foreach (var option in AllowedValues)
+                                {
+                                    <MudSelectItem T="string" Value="@option">@option</MudSelectItem>
+                                }
+                            </MudSelect>
+                        }
+                        else
+                        {
+                            var strError = ValidateConstraints(Value.RawValue?.ToString());
+                            <MudTextField T="string" Label="@Label" Variant="Variant.Outlined" Disabled="@ReadOnly"
+                                          Value="@(Value.RawValue?.ToString() ?? string.Empty)" ValueChanged="@(v => OnValueChanged(v))" Immediate="true"
+                                          Error="@(strError is not null)" ErrorText="@strError" />
+                        }
+                        break;
+                }
+
+                @if (AllowFunctions && !ReadOnly)
+                {
+                    <MudTooltip Text="Use a DSC function expression">
+                        <MudIconButton Icon="@Icons.Material.Filled.Functions" Size="Size.Small" OnClick="OpenFunctionPicker" />
+                    </MudTooltip>
+                }
+
+            }
+        </div>
 
 @code {
     [Parameter, EditorRequired]
@@ -116,6 +132,15 @@
 
     [Parameter]
     public IReadOnlyList<string> VariableNames { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyList<string> AvailableTypes { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyList<ResourceReferenceOption> ResourceReferences { get; set; } = [];
+
+    [Parameter]
+    public string? RootSchemaJson { get; set; }
 
     [Parameter]
     public bool ReadOnly { get; set; }
@@ -351,6 +376,8 @@
         {
             { x => x.ParameterNames, ParameterNames },
             { x => x.VariableNames, VariableNames },
+            { x => x.AvailableTypes, AvailableTypes },
+            { x => x.ResourceReferences, ResourceReferences },
             { x => x.ExistingExpression, Value.IsFunction ? Value.Function : null }
         };
 
@@ -363,6 +390,127 @@
         {
             await ValueChanged.InvokeAsync(ConfigPropertyValue.FromFunction(expr));
         }
+    }
+
+    private async Task OpenFunctionPreview()
+    {
+        if (!Value.IsFunction || Value.Function is null)
+        {
+            return;
+        }
+
+        var parameters = new DialogParameters<DscFunctionPickerDialog>
+        {
+            { x => x.ParameterNames, ParameterNames },
+            { x => x.VariableNames, VariableNames },
+            { x => x.AvailableTypes, AvailableTypes },
+            { x => x.ResourceReferences, ResourceReferences },
+            { x => x.ExistingExpression, Value.Function },
+            { x => x.PreviewOnly, true }
+        };
+
+        await DialogService.ShowAsync<DscFunctionPickerDialog>(
+            "Mock Function Preview", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true });
+    }
+
+    private List<string> GetRegistryValueDataChoices()
+    {
+        if (!string.Equals(Label, "valueData", StringComparison.OrdinalIgnoreCase) ||
+            string.IsNullOrWhiteSpace(RootSchemaJson))
+        {
+            return [];
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(RootSchemaJson);
+            if (!doc.RootElement.TryGetProperty("$defs", out var defs) ||
+                !defs.TryGetProperty("RegistryValueData", out var registryValueData) ||
+                !registryValueData.TryGetProperty("oneOf", out var oneOf) ||
+                oneOf.ValueKind != JsonValueKind.Array)
+            {
+                return [];
+            }
+
+            var choices = new List<string>();
+            foreach (var candidate in oneOf.EnumerateArray())
+            {
+                if (candidate.TryGetProperty("enum", out var enumValues) && enumValues.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var enumValue in enumValues.EnumerateArray())
+                    {
+                        if (enumValue.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(enumValue.GetString()))
+                        {
+                            choices.Add(enumValue.GetString()!);
+                        }
+                    }
+                }
+
+                if (candidate.TryGetProperty("properties", out var properties) && properties.ValueKind == JsonValueKind.Object)
+                {
+                    foreach (var property in properties.EnumerateObject())
+                    {
+                        choices.Add(property.Name);
+                    }
+                }
+            }
+
+            return choices.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    private string GetCurrentRegistryChoice(IReadOnlyList<string> choices)
+    {
+        if (Value.RawValue is string rawString && choices.Contains(rawString, StringComparer.OrdinalIgnoreCase))
+        {
+            return choices.First(c => string.Equals(c, rawString, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (Value.RawValue is IDictionary<string, object?> map && map.Count == 1)
+        {
+            var key = map.Keys.First();
+            if (choices.Contains(key, StringComparer.OrdinalIgnoreCase))
+            {
+                return choices.First(c => string.Equals(c, key, StringComparison.OrdinalIgnoreCase));
+            }
+        }
+
+        return choices.FirstOrDefault() ?? string.Empty;
+    }
+
+    private async Task OnRegistryChoiceChanged(string choice, IReadOnlyList<string> choices)
+    {
+        if (string.IsNullOrWhiteSpace(choice))
+        {
+            return;
+        }
+
+        if (string.Equals(choice, "None", StringComparison.OrdinalIgnoreCase))
+        {
+            await ValueChanged.InvokeAsync(ConfigPropertyValue.Literal("None"));
+            return;
+        }
+
+        object defaultInner = choice switch
+        {
+            "Binary" => new List<object?>(),
+            "MultiString" => new List<object?>(),
+            "DWord" => 0L,
+            "QWord" => 0L,
+            _ => string.Empty
+        };
+
+        var payload = new Dictionary<string, object?>(StringComparer.Ordinal)
+        {
+            [choice] = defaultInner
+        };
+
+        await ValueChanged.InvokeAsync(ConfigPropertyValue.Literal(payload));
     }
 
     private static string GetFunctionSummary(DscFunctionExpression expression)

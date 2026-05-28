@@ -4,21 +4,25 @@
 
 @rendermode InteractiveServer
 
+@using System.Text.Json
+@using System.Text.Json.Nodes
 @using OpenDsc.Contracts.DscFunctions
 @using OpenDsc.Server.Services
 
 @inject IDscFunctionService FunctionService
 @inject IDialogService DialogService
 
-<MudDialog>
+<MudDialog Style="width: min(1280px, 96vw); height: min(88vh, 900px); display: flex; flex-direction: column;">
     <DialogContent>
-        <MudGrid>
-            <MudItem xs="5">
+        <MudGrid Style="height: 100%; min-height: 0;">
+            @if (!PreviewOnly)
+            {
+            <MudItem xs="12" md="4" Style="min-height: 0;">
                 <MudText Typo="Typo.subtitle2" Class="mb-2">Function</MudText>
                 <MudTextField T="string" @bind-Value="_search" Placeholder="Search..."
                               Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
                               Variant="Variant.Outlined" Immediate="true" Class="mb-2" />
-                <div style="max-height: 350px; overflow-y: auto;">
+                <MudList T="string" Dense="true" Class="pa-0" Style="max-height: calc(10 * 2.25rem + 0.5rem); overflow-y: auto;">
                     @foreach (var fn in FilteredFunctions)
                     {
                         <MudListItem T="string"
@@ -27,154 +31,192 @@
                             <MudText Typo="Typo.body2" Style="font-family: monospace;">@fn.Name</MudText>
                         </MudListItem>
                     }
-                </div>
+                </MudList>
             </MudItem>
+            }
 
-            <MudItem xs="7">
+            <MudItem xs="12" md="@(PreviewOnly ? 12 : 8)" Style="min-height: 0;">
                 @if (_selectedFunction is not null)
                 {
-                    <MudText Typo="Typo.subtitle2" Class="mb-1" Style="font-family: monospace;">
-                        @{
-                            var _funcSig = $"{_selectedFunction.Name}({string.Join(", ", _selectedFunction.ParameterTypes)})";
-                        }
-                        @_funcSig
-                    </MudText>
-                    @if (!string.IsNullOrWhiteSpace(_selectedFunction.Description))
+                    @if (!PreviewOnly)
                     {
-                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-3">
-                            @_selectedFunction.Description
+                        <MudText Typo="Typo.subtitle2" Class="mb-1" Style="font-family: monospace;">
+                            @{
+                                var _funcSig = $"{_selectedFunction.Name}({string.Join(", ", _selectedFunction.ParameterTypes)})";
+                            }
+                            @_funcSig
                         </MudText>
-                    }
+                        @if (!string.IsNullOrWhiteSpace(_selectedFunction.Description))
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-3">
+                                @_selectedFunction.Description
+                            </MudText>
+                        }
 
-                    <MudText Typo="Typo.subtitle2" Class="mb-2">Arguments</MudText>
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Arguments</MudText>
 
-                    @for (int i = 0; i < _args.Count; i++)
-                    {
-                        var idx = i;
-                        <MudPaper Outlined="true" Class="pa-2 mb-2">
-                            <MudGrid>
-                                <MudItem xs="4">
-                                    <MudSelect T="string" Label="@($"Arg {idx + 1} type")"
-                                               Variant="Variant.Outlined"
-                                               Margin="Margin.Dense"
-                                               Value="@(_args[idx].IsNested ? NestedArgKind : LiteralArgKind)"
-                                               ValueChanged="@(v => ChangeArgKind(idx, v))">
-                                        <MudSelectItem T="string" Value="@LiteralArgKind">Literal</MudSelectItem>
-                                        <MudSelectItem T="string" Value="@NestedArgKind">Nested function</MudSelectItem>
-                                    </MudSelect>
-                                </MudItem>
-                                <MudItem xs="7">
-                                    @if (_args[idx].IsNested)
-                                    {
-                                        <div class="d-flex align-center gap-2 flex-wrap">
-                                            @if (_args[idx].NestedFunction is null)
+                        @for (int i = 0; i < _args.Count; i++)
+                        {
+                            var idx = i;
+                            <MudPaper Outlined="true" Class="pa-2 mb-2">
+                                <MudGrid>
+                                    <MudItem xs="4">
+                                        <MudSelect T="string" Label="Source"
+                                                   Variant="Variant.Outlined"
+                                                   Margin="Margin.Dense"
+                                                   Disabled="@IsArgKindLockedToNested(idx)"
+                                                   Value="@(_args[idx].IsNested ? NestedArgKind : LiteralArgKind)"
+                                                   ValueChanged="@(v => ChangeArgKind(idx, v))">
+                                            <MudSelectItem T="string" Value="@LiteralArgKind">Literal</MudSelectItem>
+                                            <MudSelectItem T="string" Value="@NestedArgKind">Nested function</MudSelectItem>
+                                        </MudSelect>
+                                    </MudItem>
+                                    <MudItem xs="7">
+                                        @if (_args[idx].IsNested)
+                                        {
+                                            <div class="d-flex align-center gap-2 flex-wrap">
+                                                @if (_args[idx].NestedFunction is null)
+                                                {
+                                                    <MudChip T="string" Size="Size.Small" Color="Color.Warning">Not configured</MudChip>
+                                                }
+                                                else
+                                                {
+                                                    <MudChip T="string" Size="Size.Small" Color="Color.Primary" Icon="@Icons.Material.Filled.Functions">
+                                                        @_args[idx].NestedFunction!.FunctionName
+                                                    </MudChip>
+                                                }
+                                                <MudButton Size="Size.Small" Variant="Variant.Outlined"
+                                                           StartIcon="@Icons.Material.Filled.AccountTree"
+                                                           OnClick="@(() => ConfigureNestedFunction(idx))">
+                                                    @(_args[idx].NestedFunction is null ? "Add nested function" : "Edit nested function")
+                                                </MudButton>
+                                                @if (_args[idx].NestedFunction is not null)
+                                                {
+                                                    <MudIconButton Icon="@Icons.Material.Filled.Close"
+                                                                   Size="Size.Small"
+                                                                   Color="Color.Error"
+                                                                   OnClick="@(() => ClearNestedFunction(idx))" />
+                                                }
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            if (TryGetLiteralOptions(idx, out var literalOptions, out var literalPlaceholder))
                                             {
-                                                <MudChip T="string" Size="Size.Small" Color="Color.Warning">Not configured</MudChip>
+                                                <MudAutocomplete T="string"
+                                                                 Label="@GetArgumentLabel(idx)"
+                                                                 Variant="Variant.Outlined"
+                                                                 Margin="Margin.Dense"
+                                                                 Value="@_args[idx].LiteralInput"
+                                                                 ValueChanged="@(v => OnArgChanged(idx, v ?? string.Empty))"
+                                                                 SearchFunc="@((text, ct) => SearchLiteralOptions(idx, text))"
+                                                                 CoerceText="true"
+                                                                 Immediate="true"
+                                                                 Placeholder="@literalPlaceholder" />
                                             }
                                             else
                                             {
-                                                <MudChip T="string" Size="Size.Small" Color="Color.Primary">
-                                                    @_args[idx].NestedFunction!.FunctionName (@CountNestedFunctions(_args[idx].NestedFunction!) nested)
-                                                </MudChip>
+                                                <MudTextField T="string"
+                                                              Label="@GetArgumentLabel(idx)"
+                                                              Variant="Variant.Outlined"
+                                                              Margin="Margin.Dense"
+                                                              Value="@_args[idx].LiteralInput"
+                                                              ValueChanged="@(v => OnArgChanged(idx, v))"
+                                                              Immediate="true"
+                                                              Placeholder="@literalPlaceholder" />
                                             }
-                                            <MudButton Size="Size.Small" Variant="Variant.Outlined"
-                                                       StartIcon="@Icons.Material.Filled.AccountTree"
-                                                       OnClick="@(() => ConfigureNestedFunction(idx))">
-                                                @(_args[idx].NestedFunction is null ? "Add nested function" : "Edit nested function")
-                                            </MudButton>
-                                            @if (_args[idx].NestedFunction is not null)
-                                            {
-                                                <MudIconButton Icon="@Icons.Material.Filled.Close"
-                                                               Size="Size.Small"
-                                                               Color="Color.Error"
-                                                               OnClick="@(() => ClearNestedFunction(idx))" />
-                                            }
-                                        </div>
-                                    }
-                                    else
-                                    {
-                                        <MudTextField T="string"
-                                                      Label="@($"Arg {idx + 1} value")"
-                                                      Variant="Variant.Outlined"
-                                                      Margin="Margin.Dense"
-                                                      Value="@_args[idx].LiteralInput"
-                                                      ValueChanged="@(v => OnArgChanged(idx, v))"
-                                                      Immediate="true"
-                                                      Placeholder="value, 'string-literal', true, false, or null" />
-                                    }
-                                </MudItem>
-                                <MudItem xs="1" Class="d-flex align-center justify-center">
-                                    @if (_args.Count > (_selectedFunction.MinArgs ?? 0))
-                                    {
-                                        <MudIconButton Icon="@Icons.Material.Filled.RemoveCircle"
-                                                       Color="Color.Error"
-                                                       Size="Size.Small"
-                                                       OnClick="@(() => RemoveArgAt(idx))" />
-                                    }
-                                </MudItem>
-                            </MudGrid>
-                        </MudPaper>
+                                        }
+                                    </MudItem>
+                                    <MudItem xs="1" Class="d-flex align-center justify-center">
+                                        @if (_args.Count > GetEffectiveMinArgs())
+                                        {
+                                            <MudIconButton Icon="@Icons.Material.Filled.RemoveCircle"
+                                                           Color="Color.Error"
+                                                           Size="Size.Small"
+                                                           OnClick="@(() => RemoveArgAt(idx))" />
+                                        }
+                                    </MudItem>
+                                </MudGrid>
+                            </MudPaper>
+                        }
+
+                        @if (GetEffectiveMaxArgs() is null || _args.Count < GetEffectiveMaxArgs())
+                        {
+                            <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Add"
+                                       OnClick="AddArg">Add argument</MudButton>
+                        }
+
+                        <MudDivider Class="my-3" />
                     }
 
-                    @if (_selectedFunction.MaxArgs is null || _args.Count < _selectedFunction.MaxArgs)
+                    <MudText Typo="Typo.subtitle2" Class="mb-1">Function Composition</MudText>
+                    <div style="border: 1px solid var(--mud-palette-lines-default); border-radius: 4px; padding: 8px; background: var(--mud-palette-background-grey); overflow: auto; max-height: 260px;">
+                        @if (BuildCompositionTree() is { } previewTree)
+                        {
+                            @RenderCompositionNode(previewTree, 0)
+                        }
+                    </div>
+
+                    @if (HasPreviewMocks)
                     {
-                        <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Add"
-                                   OnClick="AddArg">Add argument</MudButton>
+                        <MudDivider Class="my-2" />
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">Mock Values (for preview)</MudText>
+
+                        <MudExpansionPanels>
+                            @if (_usage?.EnvVars.Count > 0)
+                            {
+                                <MudExpansionPanel Text="Environment Variables" Expanded="true">
+                                    @foreach (var name in _usage.EnvVars.OrderBy(n => n, StringComparer.OrdinalIgnoreCase))
+                                    {
+                                        <MudTextField T="string" Label="@name" Value="@GetMockEnvVar(name)"
+                                                      ValueChanged="@(value => SetMockEnvVar(name, value))"
+                                                      Variant="Variant.Outlined" Margin="Margin.Dense"
+                                                      Immediate="true" />
+                                    }
+                                </MudExpansionPanel>
+                            }
+
+                            @if (_usage?.Parameters.Count > 0)
+                            {
+                                <MudExpansionPanel Text="Parameters" Expanded="true">
+                                    @foreach (var name in _usage.Parameters.OrderBy(n => n, StringComparer.OrdinalIgnoreCase))
+                                    {
+                                        <MudTextField T="string" Label="@name" Value="@GetMockParameter(name)"
+                                                      ValueChanged="@(value => SetMockParameter(name, value))"
+                                                      Variant="Variant.Outlined" Margin="Margin.Dense"
+                                                      Immediate="true" />
+                                    }
+                                </MudExpansionPanel>
+                            }
+
+                            @if (_usage?.Variables.Count > 0)
+                            {
+                                <MudExpansionPanel Text="Variables" Expanded="true">
+                                    @foreach (var name in _usage.Variables.OrderBy(n => n, StringComparer.OrdinalIgnoreCase))
+                                    {
+                                        <MudTextField T="string" Label="@name" Value="@GetMockVariable(name)"
+                                                      ValueChanged="@(value => SetMockVariable(name, value))"
+                                                      Variant="Variant.Outlined" Margin="Margin.Dense"
+                                                      Immediate="true" />
+                                    }
+                                </MudExpansionPanel>
+                            }
+
+                            @if (_referenceTargets.Count > 0)
+                            {
+                                <MudExpansionPanel Text="Referenced Resources" Expanded="true">
+                                    @foreach (var reference in _referenceTargets)
+                                    {
+                                        <MudPaper Outlined="true" Class="pa-2 mb-2">
+                                            <MudText Typo="Typo.body2" Class="mb-2">@reference.DisplayLabel</MudText>
+                                            <JsonInlineEditor InitialValue="@GetMockReferenceOutput(reference.Key)"
+                                                              ValueApplied="@(value => SetMockReferenceOutput(reference.Key, value))" />
+                                        </MudPaper>
+                                    }
+                                </MudExpansionPanel>
+                            }
+                        </MudExpansionPanels>
                     }
-
-                    <MudDivider Class="my-3" />
-
-                    <MudText Typo="Typo.subtitle2" Class="mb-2">Mock Values (for preview)</MudText>
-
-                    <MudExpansionPanels>
-                        <MudExpansionPanel Text="Environment Variables">
-                            @foreach (var key in _mockEnvVars.Keys.ToList())
-                            {
-                                var k = key;
-                                <MudGrid Class="mb-1">
-                                    <MudItem xs="5">
-                                        <MudText Typo="Typo.caption" Style="font-family: monospace;">@k</MudText>
-                                    </MudItem>
-                                    <MudItem xs="6">
-                                        <MudTextField T="string" Value="@_mockEnvVars[k]"
-                                                      ValueChanged="@(v => _mockEnvVars[k] = v)"
-                                                      Variant="Variant.Outlined"
-                                                      Margin="Margin.Dense" Immediate="true" />
-                                    </MudItem>
-                                    <MudItem xs="1">
-                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
-                                                       OnClick="@(() => _mockEnvVars.Remove(k))" />
-                                    </MudItem>
-                                </MudGrid>
-                            }
-                            <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.Add"
-                                       OnClick="AddMockEnvVar">Add</MudButton>
-                        </MudExpansionPanel>
-
-                        <MudExpansionPanel Text="Parameters">
-                            @foreach (var key in _mockParams.Keys.ToList())
-                            {
-                                var k = key;
-                                <MudGrid Class="mb-1">
-                                    <MudItem xs="5">
-                                        <MudText Typo="Typo.caption" Style="font-family: monospace;">@k</MudText>
-                                    </MudItem>
-                                    <MudItem xs="6">
-                                        <MudTextField T="string" Value="@_mockParams[k]"
-                                                      ValueChanged="@(v => _mockParams[k] = v)"
-                                                      Variant="Variant.Outlined"
-                                                      Margin="Margin.Dense" Immediate="true" />
-                                    </MudItem>
-                                    <MudItem xs="1">
-                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
-                                                       OnClick="@(() => _mockParams.Remove(k))" />
-                                    </MudItem>
-                                </MudGrid>
-                            }
-                            <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.Add"
-                                       OnClick="AddMockParam">Add</MudButton>
-                        </MudExpansionPanel>
-                    </MudExpansionPanels>
 
                     @if (_previewResult is not null)
                     {
@@ -197,32 +239,43 @@
                                 </MudExpansionPanel>
                             </MudExpansionPanels>
                         </div>
-                        <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.PlayArrow"
-                                   Color="Color.Primary" OnClick="RunPreview" Class="mt-2">
-                            Refresh preview
-                        </MudButton>
+
+                        @if (_executionPreviewTree is not null)
+                        {
+                            <MudText Typo="Typo.subtitle2" Class="mt-2 mb-1">Execution Trace</MudText>
+                            <div style="border: 1px solid var(--mud-palette-lines-default); border-radius: 4px; padding: 8px; background: var(--mud-palette-background-grey); overflow: auto; max-height: 240px;">
+                                @RenderExecutionTraceNode(_executionPreviewTree, 0)
+                            </div>
+                        }
                     }
-                    else
-                    {
-                        <MudButton Size="Size.Small" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.PlayArrow"
-                                   Color="Color.Primary" OnClick="RunPreview" Class="mt-3">
-                            Mock preview
-                        </MudButton>
-                    }
+
+                    <MudButton Size="Size.Small" Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.PlayArrow"
+                               Color="Color.Primary" OnClick="RunPreview" Class="mt-1">
+                        Mock preview
+                    </MudButton>
                 }
                 else
                 {
-                    <MudText Color="Color.Secondary" Typo="Typo.body2">Select a function to configure its arguments.</MudText>
+                    <MudText Color="Color.Secondary" Typo="Typo.body2">
+                        @(PreviewOnly ? "No function expression is available for preview." : "Select a function to configure its arguments.")
+                    </MudText>
                 }
             </MudItem>
         </MudGrid>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Insert"
-                   Disabled="@(_selectedFunction is null)">
-            Insert
-        </MudButton>
+        @if (PreviewOnly)
+        {
+            <MudButton OnClick="Cancel">Close</MudButton>
+        }
+        else
+        {
+            <MudButton OnClick="Cancel">Cancel</MudButton>
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Insert"
+                       Disabled="@(_selectedFunction is null)">
+                Insert
+            </MudButton>
+        }
     </DialogActions>
 </MudDialog>
 
@@ -243,7 +296,16 @@
     public IReadOnlyList<string> VariableNames { get; set; } = [];
 
     [Parameter]
+    public IReadOnlyList<string> AvailableTypes { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyList<ResourceReferenceOption> ResourceReferences { get; set; } = [];
+
+    [Parameter]
     public DscFunctionExpression? ExistingExpression { get; set; }
+
+    [Parameter]
+    public bool PreviewOnly { get; set; }
 
     private const string LiteralArgKind = "literal";
     private const string NestedArgKind = "nested";
@@ -254,7 +316,18 @@
     private readonly Dictionary<string, string> _mockEnvVars = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> _mockParams = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> _mockVariables = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _mockReferenceOutputs = new(StringComparer.Ordinal);
+    private FunctionPreviewUsage? _usage;
+    private List<ReferenceTarget> _referenceTargets = [];
     private EvaluateDscFunctionResult? _previewResult;
+    private FunctionPreviewNode? _executionPreviewTree;
+
+    private bool HasPreviewMocks =>
+        _usage is not null && (
+            _usage.EnvVars.Count > 0 ||
+            _usage.Parameters.Count > 0 ||
+            _usage.Variables.Count > 0 ||
+            _referenceTargets.Count > 0);
 
     private IEnumerable<DscFunctionInfo> FilteredFunctions =>
         string.IsNullOrWhiteSpace(_search)
@@ -267,6 +340,7 @@
     {
         if (ExistingExpression is null)
         {
+            RefreshPreviewMetadata();
             return;
         }
 
@@ -289,14 +363,23 @@
             .ToList();
 
         EnsureMinArgs();
+        NormalizeArgsForSelectedFunction();
+        RefreshPreviewMetadata();
     }
 
     private void SelectFunction(DscFunctionInfo fn)
     {
         _selectedFunction = fn;
-        _args = [];
+        _args = string.Equals(fn.Name, "reference", StringComparison.OrdinalIgnoreCase)
+            ? [new ArgEditorState { IsNested = true, NestedFunction = CreateEmptyResourceIdExpression() }]
+            : string.Equals(fn.Name, "resourceId", StringComparison.OrdinalIgnoreCase)
+                ? [new ArgEditorState(), new ArgEditorState()]
+                : [];
         EnsureMinArgs();
+        NormalizeArgsForSelectedFunction();
+        RefreshPreviewMetadata();
         _previewResult = null;
+        _executionPreviewTree = null;
     }
 
     private void OnArgChanged(int idx, string value)
@@ -304,10 +387,32 @@
         if (idx < _args.Count)
         {
             _args[idx].LiteralInput = value;
+
+            if (idx == 0 && _args.Count > 1 && IsResourceReferenceFunction(_selectedFunction?.Name))
+            {
+                _args[1].LiteralInput = string.Empty;
+            }
+
+            RefreshPreviewMetadata();
+            _previewResult = null;
+            _executionPreviewTree = null;
         }
     }
 
-    private void AddArg() => _args.Add(new ArgEditorState());
+    private void AddArg()
+    {
+        var maxArgs = GetEffectiveMaxArgs();
+        if (maxArgs is not null && _args.Count >= maxArgs)
+        {
+            return;
+        }
+
+        _args.Add(new ArgEditorState());
+        NormalizeArgsForSelectedFunction();
+        RefreshPreviewMetadata();
+        _previewResult = null;
+        _executionPreviewTree = null;
+    }
 
     private void RemoveArgAt(int idx)
     {
@@ -317,7 +422,10 @@
         }
 
         _args.RemoveAt(idx);
+        NormalizeArgsForSelectedFunction();
+        RefreshPreviewMetadata();
         _previewResult = null;
+        _executionPreviewTree = null;
     }
 
     private void ChangeArgKind(int idx, string kind)
@@ -325,6 +433,11 @@
         if (idx < 0 || idx >= _args.Count)
         {
             return;
+        }
+
+        if (IsArgKindLockedToNested(idx))
+        {
+            kind = NestedArgKind;
         }
 
         var editor = _args[idx];
@@ -338,7 +451,11 @@
             editor.NestedFunction = null;
         }
 
+        NormalizeArgsForSelectedFunction();
+
+        RefreshPreviewMetadata();
         _previewResult = null;
+        _executionPreviewTree = null;
     }
 
     private async Task ConfigureNestedFunction(int idx)
@@ -352,6 +469,8 @@
         {
             { x => x.ParameterNames, ParameterNames },
             { x => x.VariableNames, VariableNames },
+            { x => x.AvailableTypes, AvailableTypes },
+            { x => x.ResourceReferences, ResourceReferences },
             { x => x.ExistingExpression, _args[idx].NestedFunction }
         };
 
@@ -366,7 +485,9 @@
             _args[idx].IsNested = true;
             _args[idx].NestedFunction = nested;
             _args[idx].LiteralInput = string.Empty;
+            RefreshPreviewMetadata();
             _previewResult = null;
+            _executionPreviewTree = null;
         }
     }
 
@@ -378,32 +499,278 @@
         }
 
         _args[idx].NestedFunction = null;
+        RefreshPreviewMetadata();
         _previewResult = null;
+        _executionPreviewTree = null;
     }
 
     private void AddMockEnvVar() => _mockEnvVars[$"VAR_{_mockEnvVars.Count + 1}"] = string.Empty;
     private void AddMockParam() => _mockParams[$"param{_mockParams.Count + 1}"] = "\"value\"";
 
-    private void RunPreview()
+    private void RenameMockEnvVar(string oldName, string newName)
     {
-        if (_selectedFunction is null) return;
-
-        var expression = BuildExpression();
-        if (expression is null)
+        if (string.IsNullOrWhiteSpace(newName) || string.Equals(oldName, newName, StringComparison.Ordinal) || _mockEnvVars.ContainsKey(newName))
         {
             return;
         }
 
-        var request = new EvaluateDscFunctionRequest
-        {
-            FunctionName = _selectedFunction.Name,
-            Args = expression.Args.Select(ToPreviewArg).ToList(),
-            MockEnvVars = new Dictionary<string, string>(_mockEnvVars),
-            MockParameters = new Dictionary<string, string>(_mockParams),
-            MockVariables = new Dictionary<string, string>(_mockVariables)
-        };
+        var value = _mockEnvVars[oldName];
+        _mockEnvVars.Remove(oldName);
+        _mockEnvVars[newName] = value;
+    }
 
-        _previewResult = FunctionService.Evaluate(request);
+    private void RenameMockParam(string oldName, string newName)
+    {
+        if (string.IsNullOrWhiteSpace(newName) || string.Equals(oldName, newName, StringComparison.Ordinal) || _mockParams.ContainsKey(newName))
+        {
+            return;
+        }
+
+        var value = _mockParams[oldName];
+        _mockParams.Remove(oldName);
+        _mockParams[newName] = value;
+    }
+
+    private bool TryGetLiteralOptions(int idx, out IReadOnlyList<string> options, out string placeholder)
+    {
+        options = [];
+        placeholder = "value, 'string-literal', true, false, or null";
+
+        if (_selectedFunction is null)
+        {
+            return false;
+        }
+
+        var functionName = _selectedFunction.Name;
+        if (string.Equals(functionName, "parameters", StringComparison.OrdinalIgnoreCase) && idx == 0)
+        {
+            options = _usage?.Parameters.OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList() ?? [];
+            placeholder = "Select a parameter";
+            return true;
+        }
+
+        if (string.Equals(functionName, "variables", StringComparison.OrdinalIgnoreCase) && idx == 0)
+        {
+            options = _usage?.Variables.OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList() ?? [];
+            placeholder = "Select a variable";
+            return true;
+        }
+
+        if (string.Equals(functionName, "resourceId", StringComparison.OrdinalIgnoreCase) && idx == 0)
+        {
+            options = ResourceReferences
+                .Select(r => r.Type)
+                .Where(t => !string.IsNullOrWhiteSpace(t))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(t => t, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            placeholder = "Select a resource type";
+            return true;
+        }
+
+        if (string.Equals(functionName, "resourceId", StringComparison.OrdinalIgnoreCase) && idx == 1)
+        {
+            var typeName = _args.Count > 0 ? NormalizeLiteralToken(_args[0].LiteralInput) : string.Empty;
+            var references = string.IsNullOrWhiteSpace(typeName)
+                ? []
+                : ResourceReferences.Where(r => string.Equals(r.Type, typeName, StringComparison.OrdinalIgnoreCase)).ToList();
+
+            options = references.Select(r => r.Name).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            placeholder = string.IsNullOrWhiteSpace(typeName)
+                ? "Select a resource type first"
+                : "Select an instance name";
+            return true;
+        }
+
+        return false;
+    }
+
+    private Task<IEnumerable<string>> SearchLiteralOptions(int idx, string? searchText)
+    {
+        if (!TryGetLiteralOptions(idx, out var options, out _))
+        {
+            return Task.FromResult(Enumerable.Empty<string>());
+        }
+
+        IEnumerable<string> filtered = options;
+        if (!string.IsNullOrWhiteSpace(searchText))
+        {
+            filtered = filtered.Where(option => option.Contains(searchText, StringComparison.OrdinalIgnoreCase));
+        }
+
+        return Task.FromResult(filtered);
+    }
+
+    private string GetArgumentLabel(int idx)
+    {
+        if (_selectedFunction is null)
+        {
+            return $"Arg {idx + 1}";
+        }
+
+        if (string.Equals(_selectedFunction.Name, "reference", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Resource";
+        }
+
+        if (string.Equals(_selectedFunction.Name, "resourceId", StringComparison.OrdinalIgnoreCase))
+        {
+            return idx == 0 ? "Resource type" : "Instance name";
+        }
+
+        return $"Arg {idx + 1}";
+    }
+
+    private static string GetLiteralPlaceholder() => "value, 'string-literal', true, false, or null";
+
+    private static bool IsResourceReferenceFunction(string? functionName)
+    {
+        if (string.IsNullOrWhiteSpace(functionName))
+        {
+            return false;
+        }
+
+        return string.Equals(functionName, "reference", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(functionName, "resourceId", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private bool IsArgKindLockedToNested(int idx)
+    {
+        return _selectedFunction is not null &&
+               string.Equals(_selectedFunction.Name, "reference", StringComparison.OrdinalIgnoreCase) &&
+               idx == 0;
+    }
+
+    private int GetEffectiveMinArgs()
+    {
+        if (_selectedFunction is null)
+        {
+            return 0;
+        }
+
+        if (string.Equals(_selectedFunction.Name, "resourceId", StringComparison.OrdinalIgnoreCase))
+        {
+            return 2;
+        }
+
+        if (string.Equals(_selectedFunction.Name, "reference", StringComparison.OrdinalIgnoreCase))
+        {
+            return 1;
+        }
+
+        return _selectedFunction.MinArgs ?? 0;
+    }
+
+    private int? GetEffectiveMaxArgs()
+    {
+        if (_selectedFunction is null)
+        {
+            return null;
+        }
+
+        if (string.Equals(_selectedFunction.Name, "resourceId", StringComparison.OrdinalIgnoreCase))
+        {
+            return 2;
+        }
+
+        if (string.Equals(_selectedFunction.Name, "reference", StringComparison.OrdinalIgnoreCase))
+        {
+            return 1;
+        }
+
+        return _selectedFunction.MaxArgs;
+    }
+
+    private void NormalizeArgsForSelectedFunction()
+    {
+        if (_selectedFunction is null)
+        {
+            return;
+        }
+
+        if (string.Equals(_selectedFunction.Name, "reference", StringComparison.OrdinalIgnoreCase))
+        {
+            if (_args.Count == 0)
+            {
+                _args.Add(new ArgEditorState());
+            }
+
+            _args[0].IsNested = true;
+            _args[0].NestedFunction ??= CreateEmptyResourceIdExpression();
+            _args[0].LiteralInput = string.Empty;
+
+            if (_args.Count > 1)
+            {
+                _args.RemoveRange(1, _args.Count - 1);
+            }
+
+            return;
+        }
+
+        if (string.Equals(_selectedFunction.Name, "resourceId", StringComparison.OrdinalIgnoreCase))
+        {
+            while (_args.Count < 2)
+            {
+                _args.Add(new ArgEditorState());
+            }
+
+            if (_args.Count > 2)
+            {
+                _args.RemoveRange(2, _args.Count - 2);
+            }
+
+            for (var i = 0; i < 2; i++)
+            {
+                _args[i].IsNested = false;
+                _args[i].NestedFunction = null;
+            }
+        }
+    }
+
+    private static string NormalizeLiteralToken(string input)
+    {
+        var token = input.Trim();
+        if (token.Length >= 2)
+        {
+            if ((token.StartsWith('"') && token.EndsWith('"')) ||
+                (token.StartsWith('\'') && token.EndsWith('\'')))
+            {
+                token = token[1..^1];
+            }
+        }
+
+        return token;
+    }
+
+    private void RunPreview()
+    {
+        var expression = BuildExpression();
+        if (expression is null)
+        {
+            _previewResult = null;
+            _executionPreviewTree = null;
+            return;
+        }
+
+        try
+        {
+            _executionPreviewTree = BuildPreviewNode(expression, "root");
+            var value = _executionPreviewTree.ResolvedValue;
+            _previewResult = new EvaluateDscFunctionResult
+            {
+                FunctionExpression = expression.ToInlineString(),
+                ResultJson = SerializePreviewValue(value)
+            };
+        }
+        catch (Exception ex)
+        {
+            _executionPreviewTree = null;
+            _previewResult = new EvaluateDscFunctionResult
+            {
+                FunctionExpression = expression.ToInlineString(),
+                Error = ex.Message
+            };
+        }
     }
 
     private void Cancel() => MudDialog.Cancel();
@@ -430,11 +797,6 @@
             Args = args
         };
     }
-
-    private static object? ToPreviewArg(FunctionArg arg) =>
-        arg.IsNested && arg.NestedFunction is not null
-            ? arg.NestedFunction.ToInlineString()
-            : arg.LiteralValue;
 
     private static FunctionArg ToFunctionArg(ArgEditorState arg)
     {
@@ -471,6 +833,718 @@
         return FunctionArg.Literal(trimmed);
     }
 
+    private string GetMockEnvVar(string name) =>
+        _mockEnvVars.TryGetValue(name, out var value) ? value : string.Empty;
+
+    private void SetMockEnvVar(string name, string value) => _mockEnvVars[name] = value;
+
+    private string GetMockParameter(string name) =>
+        _mockParams.TryGetValue(name, out var value) ? value : string.Empty;
+
+    private void SetMockParameter(string name, string value) => _mockParams[name] = value;
+
+    private string GetMockVariable(string name) =>
+        _mockVariables.TryGetValue(name, out var value) ? value : string.Empty;
+
+    private void SetMockVariable(string name, string value) => _mockVariables[name] = value;
+
+    private string GetMockReferenceOutput(string key) =>
+        _mockReferenceOutputs.TryGetValue(key, out var value) ? value : "{}";
+
+    private void SetMockReferenceOutput(string key, string value) =>
+        _mockReferenceOutputs[key] = string.IsNullOrWhiteSpace(value) ? "{}" : value;
+
+    private static DscFunctionExpression CreateEmptyResourceIdExpression() => new()
+    {
+        FunctionName = "resourceId",
+        Args = [FunctionArg.Literal(string.Empty), FunctionArg.Literal(string.Empty)]
+    };
+
+    private FunctionPreviewUsage? BuildUsage()
+    {
+        var expression = BuildExpression();
+        if (expression is null)
+        {
+            return null;
+        }
+
+        var usage = new FunctionPreviewUsage();
+        CollectUsage(expression, usage);
+        return usage;
+    }
+
+    private void RefreshPreviewMetadata()
+    {
+        _usage = BuildUsage();
+        _referenceTargets = BuildReferenceTargets(_usage).ToList();
+    }
+
+    private static void CollectUsage(DscFunctionExpression expression, FunctionPreviewUsage usage)
+    {
+        foreach (var arg in expression.Args)
+        {
+            if (arg.IsNested && arg.NestedFunction is not null)
+            {
+                CollectUsage(arg.NestedFunction, usage);
+            }
+        }
+
+        if (string.Equals(expression.FunctionName, "envvar", StringComparison.OrdinalIgnoreCase) &&
+            expression.Args.Count > 0 && expression.Args[0].LiteralValue is string envName && !string.IsNullOrWhiteSpace(envName))
+        {
+            usage.EnvVars.Add(envName);
+        }
+
+        if (string.Equals(expression.FunctionName, "parameters", StringComparison.OrdinalIgnoreCase) &&
+            expression.Args.Count > 0 && expression.Args[0].LiteralValue is string parameterName && !string.IsNullOrWhiteSpace(parameterName))
+        {
+            usage.Parameters.Add(parameterName);
+        }
+
+        if (string.Equals(expression.FunctionName, "variables", StringComparison.OrdinalIgnoreCase) &&
+            expression.Args.Count > 0 && expression.Args[0].LiteralValue is string variableName && !string.IsNullOrWhiteSpace(variableName))
+        {
+            usage.Variables.Add(variableName);
+        }
+
+        if (string.Equals(expression.FunctionName, "reference", StringComparison.OrdinalIgnoreCase))
+        {
+            var targetKey = ResolveReferenceTargetKey(expression);
+            if (!string.IsNullOrWhiteSpace(targetKey))
+            {
+                usage.ReferenceTargets.Add(targetKey);
+            }
+        }
+    }
+
+    private static IEnumerable<ReferenceTarget> BuildReferenceTargets(FunctionPreviewUsage? usage)
+    {
+        if (usage is null)
+        {
+            return [];
+        }
+
+        return usage.ReferenceTargets
+            .OrderBy(key => key, StringComparer.OrdinalIgnoreCase)
+            .Select(key => new ReferenceTarget(key, key));
+    }
+
+    private FunctionPreviewNode? BuildCompositionTree()
+    {
+        var expression = BuildExpression();
+        if (expression is null)
+        {
+            return null;
+        }
+
+        return BuildCompositionNode(expression, "root");
+    }
+
+    private FunctionPreviewNode BuildCompositionNode(DscFunctionExpression expression, string path)
+    {
+        var node = new FunctionPreviewNode
+        {
+            Key = path,
+            Title = expression.FunctionName,
+            IsFunction = true
+        };
+
+        for (var i = 0; i < expression.Args.Count; i++)
+        {
+            var arg = expression.Args[i];
+            var childPath = $"{path}.{i}";
+            if (arg.IsNested && arg.NestedFunction is not null)
+            {
+                var childNode = BuildCompositionNode(arg.NestedFunction, childPath);
+                childNode.Title = $"arg {i + 1}: {arg.NestedFunction.FunctionName}";
+                node.Children.Add(childNode);
+            }
+            else
+            {
+                var literalValue = arg.LiteralValue;
+                node.Children.Add(new FunctionPreviewNode
+                {
+                    Key = childPath,
+                    Title = $"arg {i + 1}: {FormatLeafValue(literalValue)}",
+                    IsFunction = false
+                });
+            }
+        }
+
+        return node;
+    }
+
+    private FunctionPreviewNode? BuildPreviewTree()
+    {
+        var expression = BuildExpression();
+        if (expression is null)
+        {
+            return null;
+        }
+
+        return BuildPreviewNode(expression, "root");
+    }
+
+    private FunctionPreviewNode BuildPreviewNode(DscFunctionExpression expression, string path)
+    {
+        var node = new FunctionPreviewNode
+        {
+            Key = path,
+            Title = $"{expression.FunctionName}()",
+            IsFunction = true
+        };
+
+        var resolvedArgs = new List<object?>();
+        for (var i = 0; i < expression.Args.Count; i++)
+        {
+            var arg = expression.Args[i];
+            var childPath = $"{path}.{i}";
+            if (arg.IsNested && arg.NestedFunction is not null)
+            {
+                var childNode = BuildPreviewNode(arg.NestedFunction, childPath);
+                node.Children.Add(childNode);
+                resolvedArgs.Add(childNode.ResolvedValue);
+            }
+            else
+            {
+                var literalValue = arg.LiteralValue;
+                node.Children.Add(new FunctionPreviewNode
+                {
+                    Key = childPath,
+                    Title = $"arg {i + 1}: {FormatLeafValue(literalValue)}",
+                    IsFunction = false,
+                    ResolvedValue = literalValue
+                });
+                resolvedArgs.Add(literalValue);
+            }
+        }
+
+        node.ResolvedValue = EvaluateFunctionValue(expression.FunctionName, resolvedArgs);
+        node.ResultText = SerializePreviewValue(node.ResolvedValue);
+        return node;
+    }
+
+    private object? EvaluateExpression(DscFunctionExpression expression)
+    {
+        var resolvedArgs = expression.Args.Select(EvaluateFunctionArg).ToList();
+        return EvaluateFunctionValue(expression.FunctionName, resolvedArgs);
+    }
+
+    private object? EvaluateFunctionArg(FunctionArg arg)
+    {
+        if (arg.IsNested && arg.NestedFunction is not null)
+        {
+            return EvaluateExpression(arg.NestedFunction);
+        }
+
+        return arg.LiteralValue;
+    }
+
+    private object? EvaluateFunctionValue(string name, IReadOnlyList<object?> resolved)
+    {
+        return name switch
+        {
+            "concat" => EvaluateConcat(resolved),
+            "base64" => Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(AsString(resolved, 0))),
+            "base64Decode" => System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(AsString(resolved, 0))),
+            "envvar" => _mockEnvVars.TryGetValue(AsString(resolved, 0), out var envValue) ? envValue : $"$({AsString(resolved, 0)})",
+            "parameters" => ParseMockJsonValue(_mockParams, AsString(resolved, 0), $"$(parameters({AsString(resolved, 0)}))"),
+            "variables" => ParseMockJsonValue(_mockVariables, AsString(resolved, 0), $"$(variables({AsString(resolved, 0)}))"),
+            "resourceId" => ResolveResourceId(resolved),
+            "reference" => EvaluateReference(resolved),
+            "int" => AsLong(resolved, 0),
+            "string" => resolved[0]?.ToString() ?? "null",
+            "bool" => ParseBool(resolved[0]),
+            "null" => null,
+            "createArray" => resolved.ToArray(),
+            "createObject" => EvaluateCreateObject(resolved),
+            "div" => AsLong(resolved, 0) / AsLong(resolved, 1),
+            "mod" => AsLong(resolved, 0) % AsLong(resolved, 1),
+            "mul" => AsLong(resolved, 0) * AsLong(resolved, 1),
+            "add" => AsLong(resolved, 0) + AsLong(resolved, 1),
+            "sub" => AsLong(resolved, 0) - AsLong(resolved, 1),
+            "min" => Math.Min(AsLong(resolved, 0), AsLong(resolved, 1)),
+            "max" => Math.Max(AsLong(resolved, 0), AsLong(resolved, 1)),
+            "toLower" => AsString(resolved, 0).ToLowerInvariant(),
+            "toUpper" => AsString(resolved, 0).ToUpperInvariant(),
+            "trim" => AsString(resolved, 0).Trim(),
+            "substring" => EvaluateSubstring(resolved),
+            "length" => EvaluateLength(resolved),
+            "empty" => EvaluateEmpty(resolved),
+            "contains" => AsString(resolved, 0).Contains(AsString(resolved, 1), StringComparison.Ordinal),
+            "startsWith" => AsString(resolved, 0).StartsWith(AsString(resolved, 1), StringComparison.Ordinal),
+            "endsWith" => AsString(resolved, 0).EndsWith(AsString(resolved, 1), StringComparison.Ordinal),
+            "indexOf" => (long)AsString(resolved, 0).IndexOf(AsString(resolved, 1), StringComparison.Ordinal),
+            "lastIndexOf" => (long)AsString(resolved, 0).LastIndexOf(AsString(resolved, 1), StringComparison.Ordinal),
+            "replace" => AsString(resolved, 0).Replace(AsString(resolved, 1), AsString(resolved, 2), StringComparison.Ordinal),
+            "split" => AsString(resolved, 0).Split(AsString(resolved, 1)),
+            "join" => string.Join(AsString(resolved, 1), (IEnumerable<string>)(resolved[0] as IEnumerable<string> ?? [])),
+            "path" => Path.Combine(resolved.Select(r => r?.ToString() ?? string.Empty).ToArray()),
+            _ => throw new InvalidOperationException($"Unknown function '{name}'.")
+        };
+    }
+
+    private object? EvaluateCreateObject(IReadOnlyList<object?> resolved)
+    {
+        var result = new Dictionary<string, object?>(StringComparer.Ordinal);
+        for (var i = 0; i + 1 < resolved.Count; i += 2)
+        {
+            var key = resolved[i]?.ToString() ?? string.Empty;
+            result[key] = resolved[i + 1];
+        }
+
+        return result;
+    }
+
+    private object? EvaluateReference(IReadOnlyList<object?> resolved)
+    {
+        var targetKey = AsString(resolved, 0);
+        var mockValue = ParseReferenceMockValue(targetKey);
+
+        if (resolved.Count < 2 || string.IsNullOrWhiteSpace(AsString(resolved, 1)))
+        {
+            return mockValue ?? $"$(reference({targetKey}))";
+        }
+
+        var propertyName = AsString(resolved, 1);
+        if (mockValue is null)
+        {
+            return $"$(reference({targetKey}).{propertyName})";
+        }
+
+        return TryGetObjectProperty(mockValue, propertyName, out var propertyValue)
+            ? propertyValue
+            : $"$(reference({targetKey}).{propertyName})";
+    }
+
+    private object? ParseMockJsonValue(Dictionary<string, string> source, string key, string fallback)
+    {
+        if (!source.TryGetValue(key, out var raw) || string.IsNullOrWhiteSpace(raw))
+        {
+            return fallback;
+        }
+
+        return ParseJsonLikeValue(raw, fallback);
+    }
+
+    private object? ParseReferenceMockValue(string key)
+    {
+        if (!_mockReferenceOutputs.TryGetValue(key, out var raw) || string.IsNullOrWhiteSpace(raw))
+        {
+            return null;
+        }
+
+        return ParseJsonLikeValue(raw, raw);
+    }
+
+    private static IReadOnlyList<string> GetReferencePropertyNames(string rawJson)
+    {
+        try
+        {
+            var node = JsonNode.Parse(rawJson);
+            if (node is JsonObject jsonObject)
+            {
+                return jsonObject.Select(property => property.Key).ToList();
+            }
+        }
+        catch
+        {
+        }
+
+        return [];
+    }
+
+    private static object? ParseJsonLikeValue(string raw, object? fallback)
+    {
+        try
+        {
+            return JsonNode.Parse(raw);
+        }
+        catch
+        {
+            return fallback;
+        }
+    }
+
+    private static bool TryGetObjectProperty(object? value, string propertyName, out object? propertyValue)
+    {
+        propertyValue = null;
+        if (value is JsonObject jsonObject && jsonObject.TryGetPropertyValue(propertyName, out var jsonNode))
+        {
+            propertyValue = jsonNode;
+            return true;
+        }
+
+        if (value is IDictionary<string, object?> dict && dict.TryGetValue(propertyName, out var dictValue))
+        {
+            propertyValue = dictValue;
+            return true;
+        }
+
+        if (value is JsonNode node && node is JsonObject nodeObject && nodeObject.TryGetPropertyValue(propertyName, out var nodeValue))
+        {
+            propertyValue = nodeValue;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static object? EvaluateSubstring(IReadOnlyList<object?> resolved)
+    {
+        var str = AsString(resolved, 0);
+        var start = (int)AsLong(resolved, 1);
+        if (resolved.Count >= 3)
+        {
+            var len = (int)AsLong(resolved, 2);
+            return str.Substring(start, Math.Min(len, str.Length - start));
+        }
+
+        return str[start..];
+    }
+
+    private static object? EvaluateLength(IReadOnlyList<object?> resolved)
+    {
+        return resolved[0] switch
+        {
+            string s => (long)s.Length,
+            Array a => (long)a.Length,
+            JsonArray jsonArray => (long)jsonArray.Count,
+            JsonObject jsonObject => (long)jsonObject.Count,
+            _ => (long)(resolved[0]?.ToString()?.Length ?? 0)
+        };
+    }
+
+    private static object? EvaluateEmpty(IReadOnlyList<object?> resolved)
+    {
+        return resolved[0] switch
+        {
+            string s => s.Length == 0,
+            Array a => a.Length == 0,
+            JsonArray jsonArray => jsonArray.Count == 0,
+            JsonObject jsonObject => jsonObject.Count == 0,
+            _ => resolved[0] is null
+        };
+    }
+
+    private static object? EvaluateConcat(IReadOnlyList<object?> resolved)
+    {
+        if (resolved.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        if (resolved[0] is Array || resolved[0] is IEnumerable<object>)
+        {
+            var combined = new List<object?>();
+            foreach (var item in resolved)
+            {
+                if (item is object[] array)
+                {
+                    combined.AddRange(array);
+                }
+                else if (item is List<object?> list)
+                {
+                    combined.AddRange(list);
+                }
+                else
+                {
+                    combined.Add(item);
+                }
+            }
+
+            return combined.ToArray();
+        }
+
+        return string.Concat(resolved.Select(r => r?.ToString() ?? string.Empty));
+    }
+
+    private static string AsString(IReadOnlyList<object?> resolved, int index)
+    {
+        if (index >= resolved.Count)
+        {
+            return string.Empty;
+        }
+
+        return resolved[index]?.ToString() ?? string.Empty;
+    }
+
+    private static long AsLong(IReadOnlyList<object?> resolved, int index)
+    {
+        if (index >= resolved.Count)
+        {
+            return 0;
+        }
+
+        return resolved[index] switch
+        {
+            long value => value,
+            int value => value,
+            short value => value,
+            byte value => value,
+            string text when long.TryParse(text, out var parsed) => parsed,
+            bool flag => flag ? 1 : 0,
+            _ when long.TryParse(resolved[index]?.ToString(), out var parsed) => parsed,
+            _ => 0
+        };
+    }
+
+    private static bool ParseBool(object? value)
+    {
+        return value switch
+        {
+            bool flag => flag,
+            string text when bool.TryParse(text, out var parsed) => parsed,
+            string text when string.Equals(text, "1", StringComparison.Ordinal) => true,
+            string text when string.Equals(text, "0", StringComparison.Ordinal) => false,
+            long number => number != 0,
+            int number => number != 0,
+            _ => value is not null
+        };
+    }
+
+    private static string ResolveResourceId(IReadOnlyList<object?> resolved)
+    {
+        if (resolved.Count >= 2)
+        {
+            return $"[resourceId('{resolved[0]}', '{resolved[1]}')]";
+        }
+
+        return $"[resourceId('{AsString(resolved, 0)}')]";
+    }
+
+    private static string ResolveReferenceTargetKey(DscFunctionExpression expression)
+    {
+        if (!string.Equals(expression.FunctionName, "reference", StringComparison.OrdinalIgnoreCase) || expression.Args.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var firstArg = expression.Args[0];
+        if (firstArg.IsNested && firstArg.NestedFunction is not null)
+        {
+            return firstArg.NestedFunction.ToInlineString();
+        }
+
+        return firstArg.LiteralValue?.ToString() ?? string.Empty;
+    }
+
+    private string ResolveReferenceTargetKey()
+    {
+        if (_selectedFunction is null)
+        {
+            return string.Empty;
+        }
+
+        var expression = BuildExpression();
+        return expression is null ? string.Empty : ResolveReferenceTargetKey(expression);
+    }
+
+    private static string SerializePreviewValue(object? value)
+    {
+        return value switch
+        {
+            null => "null",
+            JsonNode node => node.ToJsonString(),
+            JsonElement element => element.GetRawText(),
+            string s => JsonSerializer.Serialize(s),
+            _ => JsonSerializer.Serialize(value)
+        };
+    }
+
+    private static string FormatLeafValue(object? value)
+    {
+        return value switch
+        {
+            null => "null",
+            string s => s,
+            bool b => b ? "true" : "false",
+            JsonNode node => node.ToJsonString(),
+            JsonElement element => element.GetRawText(),
+            _ => value.ToString() ?? string.Empty
+        };
+    }
+
+    private RenderFragment RenderPreviewNode(FunctionPreviewNode node, int depth) => builder =>
+    {
+        var seq = 0;
+        var hasChildren = node.Children.Count > 0;
+        var indentPx = depth * 20;
+        var resultText = node.IsFunction ? node.ResultText : null;
+
+        builder.OpenElement(seq++, "div");
+        builder.AddAttribute(seq++, "style", "display: grid; grid-template-columns: auto auto 1fr auto; align-items: center; gap: 8px; padding: 4px 0;");
+
+        builder.OpenElement(seq++, "div");
+        builder.AddAttribute(seq++, "style", $"display: flex; align-items: center; width: {indentPx}px; flex-shrink: 0;");
+        if (hasChildren)
+        {
+            builder.OpenComponent<MudIconButton>(seq++);
+            builder.AddAttribute(seq++, "Icon", node.IsExpanded ? Icons.Material.Filled.ExpandMore : Icons.Material.Filled.ChevronRight);
+            builder.AddAttribute(seq++, "Size", Size.Small);
+            builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create<Microsoft.AspNetCore.Components.Web.MouseEventArgs>(this, _ => node.IsExpanded = !node.IsExpanded));
+            builder.AddAttribute(seq++, "Style", "margin-right: 4px;");
+            builder.CloseComponent();
+        }
+        else
+        {
+            builder.AddMarkupContent(seq++, "<span style=\"width: 32px;\"></span>");
+        }
+        builder.CloseElement();
+
+        builder.OpenComponent<MudIcon>(seq++);
+        builder.AddAttribute(seq++, "Icon", node.IsFunction ? Icons.Material.Filled.Functions : Icons.Material.Filled.Label);
+        builder.AddAttribute(seq++, "Size", Size.Small);
+        builder.AddAttribute(seq++, "Color", node.IsFunction ? Color.Primary : Color.Default);
+        builder.CloseComponent();
+
+        builder.OpenComponent<MudText>(seq++);
+        builder.AddAttribute(seq++, "Typo", Typo.body2);
+        builder.AddAttribute(seq++, "Style", "font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;");
+        builder.AddContent(seq++, node.Title);
+        builder.CloseComponent();
+
+        builder.OpenElement(seq++, "div");
+        if (!string.IsNullOrWhiteSpace(resultText))
+        {
+            builder.OpenComponent<MudTooltip>(seq++);
+            builder.AddAttribute(seq++, "Text", resultText);
+            builder.AddAttribute(seq++, "ChildContent", (RenderFragment)(tooltipBuilder =>
+            {
+                tooltipBuilder.OpenComponent<MudText>(0);
+                tooltipBuilder.AddAttribute(1, "Typo", Typo.caption);
+                tooltipBuilder.AddAttribute(2, "Style", "font-family: monospace; color: var(--mud-palette-info); background: var(--mud-palette-background-grey); border: 1px solid var(--mud-palette-lines-default); border-radius: 999px; padding: 2px 8px; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;");
+                tooltipBuilder.AddContent(3, TruncatePreviewValue(resultText));
+                tooltipBuilder.CloseComponent();
+            }));
+            builder.CloseComponent();
+        }
+        builder.CloseElement();
+
+        builder.CloseElement();
+
+        if (hasChildren && node.IsExpanded)
+        {
+            foreach (var child in node.Children)
+            {
+                builder.AddContent(seq++, RenderPreviewNode(child, depth + 1));
+            }
+        }
+    };
+
+    private RenderFragment RenderExecutionTraceNode(FunctionPreviewNode node, int depth) => builder =>
+    {
+        var seq = 0;
+        var indentPx = depth * 16;
+
+        builder.OpenElement(seq++, "div");
+        builder.AddAttribute(seq++, "style", $"padding-left: {indentPx}px; margin: 2px 0; font-family: monospace;");
+
+        builder.OpenElement(seq++, "div");
+        builder.AddAttribute(seq++, "style", "display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap;");
+
+        builder.OpenElement(seq++, "span");
+        builder.AddAttribute(seq++, "style", "font-weight: 600;");
+        builder.AddContent(seq++, node.IsFunction ? node.Title : node.Title);
+        builder.CloseElement();
+
+        if (node.IsFunction && !string.IsNullOrWhiteSpace(node.ResultText))
+        {
+            builder.OpenElement(seq++, "span");
+            builder.AddAttribute(seq++, "style", "color: var(--mud-palette-primary); font-size: 0.85rem;");
+            builder.AddContent(seq++, $"=> {node.ResultText}");
+            builder.CloseElement();
+        }
+
+        builder.CloseElement();
+        builder.CloseElement();
+
+        if (node.IsExpanded)
+        {
+            foreach (var child in node.Children)
+            {
+                builder.AddContent(seq++, RenderExecutionTraceNode(child, depth + 1));
+            }
+        }
+    };
+
+    private RenderFragment RenderCompositionNode(FunctionPreviewNode node, int depth) => builder =>
+    {
+        var seq = 0;
+        var hasChildren = node.Children.Count > 0;
+        var indentPx = depth * 20;
+
+        builder.OpenElement(seq++, "div");
+        builder.AddAttribute(seq++, "style", "display: flex; align-items: flex-start; gap: 8px; padding: 2px 0;");
+
+        builder.OpenElement(seq++, "div");
+        builder.AddAttribute(seq++, "style", $"width: {indentPx}px; flex-shrink: 0;");
+        builder.CloseElement();
+
+        if (hasChildren)
+        {
+            builder.OpenComponent<MudIconButton>(seq++);
+            builder.AddAttribute(seq++, "Icon", node.IsExpanded ? Icons.Material.Filled.ExpandMore : Icons.Material.Filled.ChevronRight);
+            builder.AddAttribute(seq++, "Size", Size.Small);
+            builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create<Microsoft.AspNetCore.Components.Web.MouseEventArgs>(this, _ => node.IsExpanded = !node.IsExpanded));
+            builder.CloseComponent();
+        }
+        else
+        {
+            builder.OpenElement(seq++, "span");
+            builder.AddAttribute(seq++, "style", "width: 32px; display: inline-block;");
+            builder.CloseElement();
+        }
+
+        builder.OpenComponent<MudIcon>(seq++);
+        builder.AddAttribute(seq++, "Icon", node.IsFunction ? Icons.Material.Filled.Functions : Icons.Material.Filled.Label);
+        builder.AddAttribute(seq++, "Size", Size.Small);
+        builder.AddAttribute(seq++, "Color", node.IsFunction ? Color.Primary : Color.Default);
+        builder.CloseComponent();
+
+        builder.OpenElement(seq++, "span");
+        builder.AddAttribute(seq++, "style", "font-family: monospace; line-height: 1.6;");
+        builder.AddContent(seq++, node.Title);
+        builder.CloseElement();
+
+        builder.CloseElement();
+
+        if (hasChildren && node.IsExpanded)
+        {
+            foreach (var child in node.Children)
+            {
+                builder.AddContent(seq++, RenderCompositionNode(child, depth + 1));
+            }
+        }
+    };
+
+    private static string TruncatePreviewValue(string value)
+    {
+        const int maxLength = 48;
+        return value.Length <= maxLength ? value : value[..maxLength] + "…";
+    }
+
+    private sealed class FunctionPreviewUsage
+    {
+        public HashSet<string> EnvVars { get; } = new(StringComparer.Ordinal);
+        public HashSet<string> Parameters { get; } = new(StringComparer.Ordinal);
+        public HashSet<string> Variables { get; } = new(StringComparer.Ordinal);
+        public HashSet<string> ReferenceTargets { get; } = new(StringComparer.Ordinal);
+    }
+
+    private sealed class FunctionPreviewNode
+    {
+        public string Key { get; init; } = string.Empty;
+        public string Title { get; set; } = string.Empty;
+        public bool IsFunction { get; init; }
+        public bool IsExpanded { get; set; } = true;
+        public object? ResolvedValue { get; set; }
+        public string? ResultText { get; set; }
+        public List<FunctionPreviewNode> Children { get; } = [];
+    }
+
+    private sealed record ReferenceTarget(string Key, string DisplayLabel);
+
     private void EnsureMinArgs()
     {
         if (_selectedFunction is null)
@@ -478,10 +1552,16 @@
             return;
         }
 
-        var minArgs = _selectedFunction.MinArgs ?? 0;
+        var minArgs = GetEffectiveMinArgs();
         while (_args.Count < minArgs)
         {
             _args.Add(new ArgEditorState());
+        }
+
+        var maxArgs = GetEffectiveMaxArgs();
+        if (maxArgs is not null && _args.Count > maxArgs)
+        {
+            _args.RemoveRange(maxArgs.Value, _args.Count - maxArgs.Value);
         }
     }
 
@@ -497,6 +1577,91 @@
         public bool IsNested { get; set; }
         public string LiteralInput { get; set; } = string.Empty;
         public DscFunctionExpression? NestedFunction { get; set; }
+    }
+
+    private sealed class FunctionTreeItem
+    {
+        public string Label { get; init; } = string.Empty;
+        public bool IsFunction { get; init; }
+    }
+
+    private List<TreeItemData<FunctionTreeItem>> BuildFunctionTreeItems()
+    {
+        if (_selectedFunction is null)
+        {
+            return [];
+        }
+
+        var rootChildren = BuildArgTreeItems(_args);
+        return [new TreeItemData<FunctionTreeItem>
+        {
+            Value = new FunctionTreeItem { Label = $"{_selectedFunction.Name}()", IsFunction = true },
+            Children = rootChildren
+        }];
+    }
+
+    private static List<TreeItemData<FunctionTreeItem>> BuildArgTreeItems(List<ArgEditorState> args)
+    {
+        var items = new List<TreeItemData<FunctionTreeItem>>();
+        for (var i = 0; i < args.Count; i++)
+        {
+            var arg = args[i];
+            if (arg.IsNested && arg.NestedFunction is not null)
+            {
+                var children = BuildExpressionArgTreeItems(arg.NestedFunction.Args);
+                items.Add(new TreeItemData<FunctionTreeItem>
+                {
+                    Value = new FunctionTreeItem { Label = $"arg {i + 1}: {arg.NestedFunction.FunctionName}()", IsFunction = true },
+                    Children = children
+                });
+            }
+            else
+            {
+                var displayValue = string.IsNullOrWhiteSpace(arg.LiteralInput) ? "(not set)" : arg.LiteralInput;
+                items.Add(new TreeItemData<FunctionTreeItem>
+                {
+                    Value = new FunctionTreeItem { Label = $"arg {i + 1}: {displayValue}", IsFunction = false },
+                    Children = []
+                });
+            }
+        }
+
+        return items;
+    }
+
+    private static List<TreeItemData<FunctionTreeItem>> BuildExpressionArgTreeItems(List<FunctionArg> args)
+    {
+        var items = new List<TreeItemData<FunctionTreeItem>>();
+        for (var i = 0; i < args.Count; i++)
+        {
+            var arg = args[i];
+            if (arg.IsNested && arg.NestedFunction is not null)
+            {
+                var children = BuildExpressionArgTreeItems(arg.NestedFunction.Args);
+                items.Add(new TreeItemData<FunctionTreeItem>
+                {
+                    Value = new FunctionTreeItem { Label = $"arg {i + 1}: {arg.NestedFunction.FunctionName}()", IsFunction = true },
+                    Children = children
+                });
+            }
+            else
+            {
+                var displayValue = arg.LiteralValue switch
+                {
+                    null => "null",
+                    string s => $"'{s}'",
+                    bool b => b ? "true" : "false",
+                    _ => arg.LiteralValue.ToString()!
+                };
+                items.Add(new TreeItemData<FunctionTreeItem>
+                {
+                    Value = new FunctionTreeItem { Label = $"arg {i + 1}: {displayValue}", IsFunction = false },
+                    Children = []
+                });
+            }
+        }
+
+        return items;
     }
 }
 

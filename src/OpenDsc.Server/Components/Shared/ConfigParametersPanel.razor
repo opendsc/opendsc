@@ -4,6 +4,10 @@
 
 @rendermode InteractiveServer
 
+@using System.Text.Json
+
+@inject ISnackbar Snackbar
+
 <MudStack>
     <div class="d-flex justify-space-between align-center mb-2">
         @if (!ReadOnly)
@@ -71,6 +75,12 @@
                                              Disabled="@ReadOnly" Value="@ToNullableInt(param.DefaultValue)"
                                              ValueChanged="@(v => { param.DefaultValue = v; ParametersChanged.InvokeAsync(Parameters); })" />
                         }
+                        else if (param.Type is "object" or "array")
+                        {
+                            <JsonInlineEditor EditorId="@($"param-default-{GetSafeEditorSuffix(paramName)}")"
+                                              InitialValue="@GetStructuredDefaultValue(param)" ReadOnly="@ReadOnly"
+                                              ValueApplied="@(json => UpdateStructuredDefaultValue(param, json, param.Type == "array"))" />
+                        }
                         else
                         {
                             <MudTextField T="string" Label="Default value" Variant="Variant.Outlined" Margin="Margin.Dense"
@@ -116,11 +126,59 @@
                     }
 
                     <MudItem xs="12">
-                        <MudTextField T="string" Label="Allowed values (comma-separated)" Variant="Variant.Outlined"
-                                      Margin="Margin.Dense" Disabled="@ReadOnly"
-                                      Value="@(param.AllowedValues is null || param.AllowedValues.Count == 0 ? string.Empty : string.Join(", ", param.AllowedValues))"
-                                      ValueChanged="@(v => UpdateAllowedValues(param, v))" Immediate="true"
-                                      Placeholder="e.g., Option1, Option2, Option3" />
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-1">Allowed values</MudText>
+                        @if (!ReadOnly)
+                        {
+                            <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Add"
+                                       OnClick="@(() => AddAllowedValue(param))" Class="mb-1">
+                                Add value
+                            </MudButton>
+                        }
+
+                        @if (param.AllowedValues is { Count: > 0 })
+                        {
+                            @for (var i = 0; i < param.AllowedValues.Count; i++)
+                            {
+                                var idx = i;
+                                <MudGrid Class="mb-1">
+                                    <MudItem xs="8">
+                                        @if (param.Type is "int")
+                                        {
+                                            <MudNumericField T="long?" Label="Value" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                                             Disabled="@ReadOnly" Value="@ToNullableLong(param.AllowedValues[idx])"
+                                                             ValueChanged="@(v => UpdateAllowedIntValue(param, idx, v))" />
+                                        }
+                                        else if (param.Type is "bool")
+                                        {
+                                            <MudSelect T="bool" Label="Value" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                                       Disabled="@ReadOnly" Value="@(param.AllowedValues[idx] is bool b && b)"
+                                                       ValueChanged="@(v => UpdateAllowedBoolValue(param, idx, v))">
+                                                <MudSelectItem T="bool" Value="@true">true</MudSelectItem>
+                                                <MudSelectItem T="bool" Value="@false">false</MudSelectItem>
+                                            </MudSelect>
+                                        }
+                                        else
+                                        {
+                                            <MudTextField T="string" Label="Value" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                                          Disabled="@ReadOnly" Value="@(param.AllowedValues[idx]?.ToString() ?? string.Empty)"
+                                                          ValueChanged="@(v => UpdateAllowedTextValue(param, idx, v))" Immediate="true" />
+                                        }
+                                    </MudItem>
+                                    <MudItem xs="4" Class="d-flex align-center justify-end gap-1">
+                                        @if (!ReadOnly)
+                                        {
+                                            <MudIconButton Icon="@Icons.Material.Filled.KeyboardArrowUp" Size="Size.Small"
+                                                           Disabled="@(idx == 0)" OnClick="@(() => MoveAllowedValue(param, idx, idx - 1))" />
+                                            <MudIconButton Icon="@Icons.Material.Filled.KeyboardArrowDown" Size="Size.Small"
+                                                           Disabled="@(idx >= param.AllowedValues.Count - 1)"
+                                                           OnClick="@(() => MoveAllowedValue(param, idx, idx + 1))" />
+                                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                                           OnClick="@(() => RemoveAllowedValue(param, idx))" />
+                                        }
+                                    </MudItem>
+                                </MudGrid>
+                            }
+                        }
                     </MudItem>
                 </MudGrid>
             </MudCardContent>
@@ -151,24 +209,181 @@
         ParametersChanged.InvokeAsync(Parameters);
     }
 
-    private void UpdateAllowedValues(ConfigParameterState param, string value)
+    private void AddAllowedValue(ConfigParameterState param)
     {
-        if (string.IsNullOrWhiteSpace(value))
+        param.AllowedValues ??= [];
+        param.AllowedValues.Add(GetDefaultAllowedValue(param.Type));
+        ParametersChanged.InvokeAsync(Parameters);
+    }
+
+    private void UpdateAllowedTextValue(ConfigParameterState param, int index, string value)
+    {
+        if (param.AllowedValues is null || index < 0 || index >= param.AllowedValues.Count)
+        {
+            return;
+        }
+
+        param.AllowedValues[index] = value;
+        ParametersChanged.InvokeAsync(Parameters);
+    }
+
+    private void UpdateAllowedIntValue(ConfigParameterState param, int index, long? value)
+    {
+        if (param.AllowedValues is null || index < 0 || index >= param.AllowedValues.Count)
+        {
+            return;
+        }
+
+        param.AllowedValues[index] = value ?? 0L;
+        ParametersChanged.InvokeAsync(Parameters);
+    }
+
+    private void UpdateAllowedBoolValue(ConfigParameterState param, int index, bool value)
+    {
+        if (param.AllowedValues is null || index < 0 || index >= param.AllowedValues.Count)
+        {
+            return;
+        }
+
+        param.AllowedValues[index] = value;
+        ParametersChanged.InvokeAsync(Parameters);
+    }
+
+    private void RemoveAllowedValue(ConfigParameterState param, int index)
+    {
+        if (param.AllowedValues is null || index < 0 || index >= param.AllowedValues.Count)
+        {
+            return;
+        }
+
+        param.AllowedValues.RemoveAt(index);
+        if (param.AllowedValues.Count == 0)
         {
             param.AllowedValues = null;
-        }
-        else
-        {
-            var values = value.Split(',')
-                .Select(v => v.Trim())
-                .Where(v => !string.IsNullOrEmpty(v))
-                .Cast<object>()
-                .ToList();
-            param.AllowedValues = values.Count > 0 ? values : null;
         }
 
         ParametersChanged.InvokeAsync(Parameters);
     }
+
+    private void MoveAllowedValue(ConfigParameterState param, int fromIndex, int toIndex)
+    {
+        if (param.AllowedValues is null ||
+            fromIndex < 0 ||
+            toIndex < 0 ||
+            fromIndex >= param.AllowedValues.Count ||
+            toIndex >= param.AllowedValues.Count ||
+            fromIndex == toIndex)
+        {
+            return;
+        }
+
+        var item = param.AllowedValues[fromIndex];
+        param.AllowedValues.RemoveAt(fromIndex);
+        param.AllowedValues.Insert(toIndex, item);
+        ParametersChanged.InvokeAsync(Parameters);
+    }
+
+    private static object GetDefaultAllowedValue(string type)
+    {
+        return type switch
+        {
+            "int" => 0L,
+            "bool" => false,
+            _ => string.Empty
+        };
+    }
+
+    private async Task UpdateStructuredDefaultValue(ConfigParameterState param, string json, bool expectArray)
+    {
+        try
+        {
+            var value = JsonSerializer.Deserialize<object>(json);
+
+            if (expectArray && value is not JsonElement { ValueKind: JsonValueKind.Array } && value is not List<object>)
+            {
+                Snackbar.Add("Default value must be a JSON array.", Severity.Warning);
+                return;
+            }
+
+            if (!expectArray && value is not JsonElement { ValueKind: JsonValueKind.Object } && value is not Dictionary<string,
+object>)
+            {
+                Snackbar.Add("Default value must be a JSON object.", Severity.Warning);
+                return;
+            }
+
+            param.DefaultValue = ConvertStructuredValue(value);
+            await ParametersChanged.InvokeAsync(Parameters);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Invalid JSON: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private static object? ConvertStructuredValue(object? value)
+    {
+        if (value is JsonElement element)
+        {
+            return ConvertJsonElement(element);
+        }
+
+        return value;
+    }
+
+    private static object? ConvertJsonElement(JsonElement element)
+    {
+        return element.ValueKind switch
+        {
+            JsonValueKind.Object => element.EnumerateObject()
+                .ToDictionary(p => p.Name, p => ConvertJsonElement(p.Value), StringComparer.Ordinal),
+            JsonValueKind.Array => element.EnumerateArray().Select(ConvertJsonElement).ToList(),
+            JsonValueKind.String => element.GetString(),
+            JsonValueKind.Number when element.TryGetInt64(out var l) => l,
+            JsonValueKind.Number => element.GetDouble(),
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.Null => null,
+            _ => element.ToString()
+        };
+    }
+
+    private static string GetStructuredDefaultValue(ConfigParameterState param)
+    {
+        var fallback = string.Equals(param.Type, "array", StringComparison.OrdinalIgnoreCase) ? "[]" : "{}";
+        if (param.DefaultValue is null)
+        {
+            return fallback;
+        }
+
+        if (param.DefaultValue is string s && !string.IsNullOrWhiteSpace(s))
+        {
+            return s;
+        }
+
+        try
+        {
+            return JsonSerializer.Serialize(param.DefaultValue, new JsonSerializerOptions { WriteIndented = true });
+        }
+        catch
+        {
+            return fallback;
+        }
+    }
+
+    private static string GetSafeEditorSuffix(string input)
+    {
+        var chars = input.Select(ch => char.IsLetterOrDigit(ch) ? ch : '-').ToArray();
+        return new string(chars);
+    }
+
+    private static long? ToNullableLong(object? value) => value switch
+    {
+        long l => l,
+        int i => i,
+        string s when long.TryParse(s, out var parsed) => parsed,
+        _ => null
+    };
 
     private static int? ToNullableInt(object? value) => value switch
     {

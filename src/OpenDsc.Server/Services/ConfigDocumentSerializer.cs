@@ -36,7 +36,15 @@ public sealed class ConfigDocumentSerializer : IConfigDocumentSerializer
                 }
                 if (param.DefaultValue is not null)
                 {
-                    sb.AppendLine($"    defaultValue: {SerializeScalar(param.DefaultValue)}");
+                    if (IsScalarYamlValue(param.DefaultValue))
+                    {
+                        sb.AppendLine($"    defaultValue: {SerializeScalar(param.DefaultValue)}");
+                    }
+                    else
+                    {
+                        sb.AppendLine("    defaultValue:");
+                        WriteComplexYamlValue(sb, ConvertRawValueToSerializable(param.DefaultValue), indent: 6);
+                    }
                 }
                 if (param.AllowedValues?.Count > 0)
                 {
@@ -78,7 +86,19 @@ public sealed class ConfigDocumentSerializer : IConfigDocumentSerializer
         sb.AppendLine($"{pad}  type: {resource.Type}");
         if (!string.IsNullOrWhiteSpace(resource.Version))
         {
-            sb.AppendLine($"{pad}  version: {resource.Version}");
+            sb.AppendLine($"{pad}  requireVersion: {resource.Version}");
+        }
+
+        if (resource.Condition is not null)
+        {
+            if (resource.Condition.IsFunction && resource.Condition.Function is not null)
+            {
+                sb.AppendLine($"{pad}  condition: {QuoteYamlString(resource.Condition.Function.ToInlineString())}");
+            }
+            else
+            {
+                sb.AppendLine($"{pad}  condition: {SerializeScalar(resource.Condition.RawValue)}");
+            }
         }
 
         if (resource.DependsOn.Count > 0)
@@ -252,7 +272,7 @@ public sealed class ConfigDocumentSerializer : IConfigDocumentSerializer
 
                 if (paramMap.Children.TryGetValue(new YamlScalarNode("defaultValue"), out var defNode))
                 {
-                    param.DefaultValue = ParseScalarValue(defNode);
+                    param.DefaultValue = ParseYamlNodeValue(defNode);
                 }
 
                 if (paramMap.Children.TryGetValue(new YamlScalarNode("allowedValues"), out var avNode) &&
@@ -316,8 +336,13 @@ public sealed class ConfigDocumentSerializer : IConfigDocumentSerializer
         {
             Name = name,
             Type = type,
-            Version = TryGetString(resourceMap, "version")
+            Version = TryGetString(resourceMap, "requireVersion") ?? TryGetString(resourceMap, "version")
         };
+
+        if (resourceMap.Children.TryGetValue(new YamlScalarNode("condition"), out var conditionNode))
+        {
+            resource.Condition = ParsePropertyValue(conditionNode);
+        }
 
         if (resourceMap.Children.TryGetValue(new YamlScalarNode("dependsOn"), out var depsNode) &&
             depsNode is YamlSequenceNode depsSeq)

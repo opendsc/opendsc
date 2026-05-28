@@ -14,7 +14,8 @@
         <MudStack>
             <MudAutocomplete T="string" Label="Resource type" Variant="Variant.Outlined" Value="@_type"
                              SearchFunc="SearchManifests" ValueChanged="@(v => _type = v)" CoerceValue="false"
-                             ResetValueOnEmptyText="false" Immediate="true" Placeholder="Search by type name or description">
+                             ResetValueOnEmptyText="false" Immediate="true" OpenOnFocus="true" MaxItems="5000"
+                             Placeholder="Search by type name or description">
                 <ItemTemplate Context="manifest">
                     <div class="d-flex flex-column">
                         <MudText Typo="Typo.body2">@manifest</MudText>
@@ -42,6 +43,9 @@
     [Parameter]
     public string DefaultName { get; set; } = string.Empty;
 
+    [Parameter]
+    public string? DefaultType { get; set; }
+
     private string _type = string.Empty;
     private string _name = string.Empty;
     private List<ResourceManifestSummary> _manifests = [];
@@ -49,7 +53,10 @@
     protected override async Task OnInitializedAsync()
     {
         _name = DefaultName;
-        _manifests = (await ManifestService.GetAllAsync()).ToList();
+        _type = DefaultType ?? string.Empty;
+        _manifests = (await ManifestService.GetAllAsync())
+            .OrderBy(m => m.TypeName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     private Task<IEnumerable<string>> SearchManifests(string value, CancellationToken ct)

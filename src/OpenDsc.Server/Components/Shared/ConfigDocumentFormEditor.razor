@@ -31,16 +31,14 @@
     <MudTabPanel Text="Parameters" Icon="@Icons.Material.Filled.Input">
         <div class="pa-3">
             <ConfigParametersPanel Parameters="@Document.Parameters"
-                                   ParametersChanged="@(p => { Document.Parameters = p; OnChanged(); })"
-                                   ReadOnly="@IsReadOnly" />
+                                   ParametersChanged="@(p => { Document.Parameters = p; OnChanged(); })" ReadOnly="@IsReadOnly" />
         </div>
     </MudTabPanel>
 
     <MudTabPanel Text="Variables" Icon="@Icons.Material.Filled.DataObject">
         <div class="pa-3">
             <ConfigVariablesPanel Variables="@Document.Variables"
-                                  VariablesChanged="@(v => { Document.Variables = v; OnChanged(); })"
-                                  ReadOnly="@IsReadOnly" />
+                                  VariablesChanged="@(v => { Document.Variables = v; OnChanged(); })" ReadOnly="@IsReadOnly" />
         </div>
     </MudTabPanel>
 
@@ -49,8 +47,7 @@
             <ConfigResourcesPanel Resources="@Document.Resources"
                                   ResourcesChanged="@(r => { Document.Resources = r; OnChanged(); })"
                                   ParameterNames="@(Document.Parameters.Keys.ToList())"
-                                  VariableNames="@(Document.Variables.Keys.ToList())"
-                                  ReadOnly="@IsReadOnly" />
+                                  VariableNames="@(Document.Variables.Keys.ToList())" ReadOnly="@IsReadOnly" />
         </div>
     </MudTabPanel>
 
@@ -60,9 +57,7 @@
             <MudAlert Severity="Severity.Error" Dense="true" Class="mb-2">@_previewError</MudAlert>
         }
         <div style="height: calc(100vh - 285px); min-height: 420px;" class="pa-2">
-            <StandaloneCodeEditor @ref="_yamlEditor"
-                                  Id="config-doc-preview"
-                                  ConstructionOptions="YamlEditorOptions"
+            <StandaloneCodeEditor @ref="_yamlEditor" Id="config-doc-preview" ConstructionOptions="YamlEditorOptions"
                                   CssClass="w-100 h-100" />
         </div>
     </MudTabPanel>
@@ -235,6 +230,26 @@
             errors.Add($"Duplicate resource: type '{parts[0]}' with instance '{parts[1]}'.");
         }
 
+        foreach (var resource in FlattenResources(document.Resources))
+        {
+            if (resource.Condition is { IsFunction: false, RawValue: not null } && resource.Condition.RawValue is not string)
+            {
+                errors.Add($"Resource '{resource.Name}' condition must be a string expression or a function expression.");
+            }
+        }
+
         return errors;
+    }
+
+    private static IEnumerable<ConfigResourceState> FlattenResources(IEnumerable<ConfigResourceState> resources)
+    {
+        foreach (var resource in resources)
+        {
+            yield return resource;
+            foreach (var nested in FlattenResources(resource.NestedResources))
+            {
+                yield return nested;
+            }
+        }
     }
 }

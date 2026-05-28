@@ -38,7 +38,7 @@ else
         <MudChip T="string" Size="Size.Small" Color="@KindColor(_manifest.Kind)">@_manifest.Kind</MudChip>
         @if (!string.IsNullOrWhiteSpace(_manifest.Description))
         {
-            <MudText Typo="Typo.body2" Color="Color.Secondary">@_manifest.Description</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Default">@_manifest.Description</MudText>
         }
     </div>
 
@@ -88,7 +88,7 @@ else
                             }
                             else
                             {
-                                <MudText Typo="Typo.body2" Color="Color.Secondary">—</MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Default">—</MudText>
                             }
                         </MudTd>
                         <MudTd DataLabel="Source">
