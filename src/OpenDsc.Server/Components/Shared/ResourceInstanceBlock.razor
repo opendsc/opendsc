@@ -65,26 +65,26 @@
             @if (Resource.Condition is not null)
             {
                 <MudDivider Class="my-3" />
-                <div class="d-flex align-start gap-2 mb-2">
+                <div class="d-flex align-center gap-2 mb-2">
                     <div class="flex-grow-1">
                         <ResourcePropertyField Label="Condition" Value="@Resource.Condition"
                                                Description="Optional runtime check. Must evaluate to true for the resource to run."
                                                ParameterNames="@ParameterNames" VariableNames="@VariableNames" AvailableTypes="@AvailableTypes"
                                                ResourceReferences="@ResourceReferences" ReadOnly="@ReadOnly" AllowFunctions="true"
-                                               ValueChanged="OnConditionChanged" />
-                        @if (!string.IsNullOrWhiteSpace(ConditionValidationError))
-                        {
-                            <MudText Typo="Typo.caption" Color="Color.Warning">@ConditionValidationError</MudText>
-                        }
+                                               ContainerClass="mb-0" ValueChanged="OnConditionChanged" />
                     </div>
                     @if (!ReadOnly)
                     {
                         <MudTooltip Text="Remove condition">
                             <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Color="Color.Error" Size="Size.Small"
-                                           Class="mt-1" OnClick="RemoveCondition" />
+                                           OnClick="RemoveCondition" />
                         </MudTooltip>
                     }
                 </div>
+                @if (!string.IsNullOrWhiteSpace(ConditionValidationError))
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Warning" Class="mb-2">@ConditionValidationError</MudText>
+                }
             }
             else if (!ReadOnly)
             {
@@ -137,20 +137,20 @@
                         var pn = propName;
                         var currentValue = Resource.Properties[pn];
 
-                        <div class="d-flex align-start gap-2 mb-1">
+                        <div class="d-flex align-center gap-2 mb-1">
                             <div class="flex-grow-1">
                                 <ResourcePropertyField Label="@pn" Value="@currentValue" Schema="@schemaProp"
                                                        Description="@GetSchemaDescription(schemaProp)" ParameterNames="@ParameterNames"
                                                        VariableNames="@VariableNames" AvailableTypes="@AvailableTypes"
                                                        ResourceReferences="@ResourceReferences" RootSchemaJson="@InstanceSchemaJson" ReadOnly="@ReadOnly"
                                                        AllowFunctions="@(schemaProp is null || !IsBooleanSchema(schemaProp) && !string.Equals(pn, "_exist", StringComparison.OrdinalIgnoreCase))"
-                                                       ValueChanged="@(v => OnPropertyChanged(pn, v))" />
+                                                       ContainerClass="mb-0" ValueChanged="@(v => OnPropertyChanged(pn, v))" />
                             </div>
                             @if (!ReadOnly)
                             {
                                 <MudTooltip Text="Remove optional property">
                                     <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline" Color="Color.Error" Size="Size.Small"
-                                                   Class="mt-1" OnClick="@(() => RemoveProperty(pn))" />
+                                                   OnClick="@(() => RemoveProperty(pn))" />
                                 </MudTooltip>
                             }
                         </div>
@@ -158,16 +158,16 @@
 
                     @if (!ReadOnly && optionalProps.Any(p => !Resource.Properties.ContainsKey(p.Key)))
                     {
-                        <MudStack Row="true" Spacing="1" Class="mt-2 align-center">
+                        <div class="d-flex align-center gap-2 mt-2 flex-wrap">
                             <MudButton Size="Size.Small" StartIcon="@Icons.Material.Filled.AddCircleOutline"
                                        OnClick="@(() => _showOptionalPropertyPicker = true)" Variant="Variant.Outlined" Color="Color.Primary">
                                 Add optional property
                             </MudButton>
                             @if (_showOptionalPropertyPicker)
                             {
-                                <MudStack Row="true" Spacing="1" Class="align-center">
+                                <div class="d-flex align-center gap-2 flex-wrap">
                                     <MudSelect T="string" Value="@_pendingOptionalPropName" ValueChanged="AddSingleOptionalProperty"
-                                               Variant="Variant.Text" Margin="Margin.Dense" Dense="true" Style="width: 240px;"
+                                               Variant="Variant.Outlined" Margin="Margin.None" Dense="true" Style="width: 240px;"
                                                Label="Optional property">
                                         @foreach (var (propName, _) in optionalProps.Where(p =>
                         !Resource.Properties.ContainsKey(p.Key)))
@@ -177,9 +177,9 @@
                                     </MudSelect>
                                     <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" Color="Color.Default"
                                                    OnClick="CancelOptionalPropertySelection" />
-                                </MudStack>
+                                </div>
                             }
-                        </MudStack>
+                        </div>
                     }
                 }
             }
@@ -492,10 +492,28 @@ StringComparison.OrdinalIgnoreCase));
             return;
         }
 
-        Resource.Properties[propName] = ConfigPropertyValue.Literal(null);
+        _schemaProperties.TryGetValue(propName, out var schemaProp);
+        var initialValue = GetOptionalPropertyInitialValue(propName, schemaProp);
+        Resource.Properties[propName] = ConfigPropertyValue.Literal(initialValue);
         _showOptionalPropertyPicker = false;
         _pendingOptionalPropName = null;
         ResourceChanged.InvokeAsync(Resource);
+    }
+
+    private static object? GetOptionalPropertyInitialValue(string propName, JsonElement? schema)
+    {
+        // Keep _exist deterministic: adding it means the unchecked state should serialize as false, not null.
+        if (string.Equals(propName, "_exist", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (IsBooleanSchema(schema))
+        {
+            return false;
+        }
+
+        return null;
     }
 
     private void CancelOptionalPropertySelection()

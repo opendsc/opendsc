@@ -182,7 +182,7 @@ public sealed class ConfigDocumentSerializer : IConfigDocumentSerializer
         var pad = new string(' ', indent);
         foreach (var line in yaml.Split('\n'))
         {
-            sb.AppendLine($"{pad}{line}");
+            sb.AppendLine($"{pad}{line.TrimEnd('\r')}");
         }
     }
 

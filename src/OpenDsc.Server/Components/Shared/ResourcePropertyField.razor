@@ -10,7 +10,7 @@
 
 @inject IDialogService DialogService
 
-<div class="d-flex align-center gap-2 mb-2">
+<div class="@($"d-flex align-center gap-2 {ContainerClass}")">
     @if (!string.IsNullOrWhiteSpace(Description))
     {
         <MudTooltip Text="@Description">
@@ -45,7 +45,7 @@
             }
     else
             {
-                var registryChoices = GetRegistryValueDataChoices();
+                var variantChoices = GetOneOfVariantChoices();
                 @switch (EffectiveType)
                 {
                     case "boolean":
@@ -68,12 +68,11 @@
                         break;
 
                     default:
-                        @if (registryChoices.Count > 0)
+                        @if (variantChoices.Count > 0)
                         {
-                            <MudSelect T="string" Label="Registry value type" Variant="Variant.Outlined" Disabled="@ReadOnly"
-                                       Value="@GetCurrentRegistryChoice(registryChoices)"
-                                       ValueChanged="@(choice => OnRegistryChoiceChanged(choice, registryChoices))">
-                                @foreach (var choice in registryChoices)
+                            <MudSelect T="string" Label="@Label" Variant="Variant.Outlined" Disabled="@ReadOnly"
+                                       Value="@GetCurrentVariantChoice(variantChoices)" ValueChanged="@(choice => OnVariantChoiceChanged(choice))">
+                                @foreach (var choice in variantChoices)
                                 {
                                     <MudSelectItem T="string" Value="@choice">@choice</MudSelectItem>
                                 }
@@ -98,6 +97,14 @@
                                           Error="@(strError is not null)" ErrorText="@strError" />
                         }
                         break;
+                }
+
+                @if (!ReadOnly && !Value.IsFunction && SupportsNullLiteral)
+                {
+                    <MudTooltip Text="Set value to null">
+                        <MudIconButton Icon="@Icons.Material.Filled.DoNotDisturb" Size="Size.Small" OnClick="SetNullLiteral"
+                                       Disabled="@(Value.RawValue is null)" />
+                    </MudTooltip>
                 }
 
                 @if (AllowFunctions && !ReadOnly)
@@ -148,6 +155,9 @@
     [Parameter]
     public bool AllowFunctions { get; set; } = true;
 
+    [Parameter]
+    public string ContainerClass { get; set; } = "mb-2";
+
     private string EffectiveType
     {
         get
@@ -162,6 +172,8 @@
     }
 
     private bool IsComplexType => EffectiveType is "object" or "array";
+
+    private bool SupportsNullLiteral => SchemaAllowsNull(Schema);
 
     private static bool TryInferTypeFromValue(object? value, out string type)
     {
@@ -283,6 +295,69 @@
         return false;
     }
 
+    private static bool SchemaAllowsNull(JsonElement? schema)
+    {
+        if (!schema.HasValue)
+        {
+            return false;
+        }
+
+        return ElementDeclaresNull(schema.Value);
+    }
+
+    private static bool ElementDeclaresNull(JsonElement element)
+    {
+        if (element.TryGetProperty("type", out var typeProp))
+        {
+            if (typeProp.ValueKind == JsonValueKind.String &&
+                string.Equals(typeProp.GetString(), "null", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (typeProp.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var item in typeProp.EnumerateArray())
+                {
+                    if (item.ValueKind == JsonValueKind.String &&
+                        string.Equals(item.GetString(), "null", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        if (element.TryGetProperty("const", out var constProp) && constProp.ValueKind == JsonValueKind.Null)
+        {
+            return true;
+        }
+
+        if (element.TryGetProperty("anyOf", out var anyOf) && anyOf.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in anyOf.EnumerateArray())
+            {
+                if (ElementDeclaresNull(item))
+                {
+                    return true;
+                }
+            }
+        }
+
+        if (element.TryGetProperty("oneOf", out var oneOf) && oneOf.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in oneOf.EnumerateArray())
+            {
+                if (ElementDeclaresNull(item))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     private List<string> AllowedValues
     {
         get
@@ -370,6 +445,11 @@
         await ValueChanged.InvokeAsync(ConfigPropertyValue.Literal(null));
     }
 
+    private async Task SetNullLiteral()
+    {
+        await ValueChanged.InvokeAsync(ConfigPropertyValue.Literal(null));
+    }
+
     private async Task OpenFunctionPicker()
     {
         var parameters = new DialogParameters<DscFunctionPickerDialog>
@@ -414,57 +494,57 @@
             new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true });
     }
 
-    private List<string> GetRegistryValueDataChoices()
+    private List<string> GetOneOfVariantChoices()
     {
-        if (!string.Equals(Label, "valueData", StringComparison.OrdinalIgnoreCase) ||
-            string.IsNullOrWhiteSpace(RootSchemaJson))
+        var resolvedSchema = ResolveSchema(Schema);
+        if (resolvedSchema is null)
         {
             return [];
         }
 
-        try
-        {
-            using var doc = JsonDocument.Parse(RootSchemaJson);
-            if (!doc.RootElement.TryGetProperty("$defs", out var defs) ||
-                !defs.TryGetProperty("RegistryValueData", out var registryValueData) ||
-                !registryValueData.TryGetProperty("oneOf", out var oneOf) ||
-                oneOf.ValueKind != JsonValueKind.Array)
-            {
-                return [];
-            }
-
-            var choices = new List<string>();
-            foreach (var candidate in oneOf.EnumerateArray())
-            {
-                if (candidate.TryGetProperty("enum", out var enumValues) && enumValues.ValueKind == JsonValueKind.Array)
-                {
-                    foreach (var enumValue in enumValues.EnumerateArray())
-                    {
-                        if (enumValue.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(enumValue.GetString()))
-                        {
-                            choices.Add(enumValue.GetString()!);
-                        }
-                    }
-                }
-
-                if (candidate.TryGetProperty("properties", out var properties) && properties.ValueKind == JsonValueKind.Object)
-                {
-                    foreach (var property in properties.EnumerateObject())
-                    {
-                        choices.Add(property.Name);
-                    }
-                }
-            }
-
-            return choices.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-        }
-        catch
+        var branches = GetOneOfBranches(resolvedSchema.Value);
+        if (branches.Length == 0)
         {
             return [];
         }
+
+        var variants = new List<string>();
+        foreach (var branch in branches)
+        {
+            if (ElementDeclaresNull(branch))
+            {
+                continue;
+            }
+
+            if (branch.TryGetProperty("enum", out var enumProp) && enumProp.ValueKind == JsonValueKind.Array)
+            {
+                var items = enumProp.EnumerateArray()
+                    .Where(e => e.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(e.GetString()))
+                    .ToList();
+                if (items.Count == 1)
+                {
+                    variants.Add(items[0].GetString()!);
+                    continue;
+                }
+            }
+
+            if (branch.TryGetProperty("properties", out var props) && props.ValueKind == JsonValueKind.Object)
+            {
+                var propList = props.EnumerateObject().ToList();
+                if (propList.Count == 1)
+                {
+                    variants.Add(propList[0].Name);
+                    continue;
+                }
+            }
+
+            return [];
+        }
+
+        return variants;
     }
 
-    private string GetCurrentRegistryChoice(IReadOnlyList<string> choices)
+    private string GetCurrentVariantChoice(IReadOnlyList<string> choices)
     {
         if (Value.RawValue is string rawString && choices.Contains(rawString, StringComparer.OrdinalIgnoreCase))
         {
@@ -483,34 +563,131 @@
         return choices.FirstOrDefault() ?? string.Empty;
     }
 
-    private async Task OnRegistryChoiceChanged(string choice, IReadOnlyList<string> choices)
+    private async Task OnVariantChoiceChanged(string choice)
     {
         if (string.IsNullOrWhiteSpace(choice))
         {
             return;
         }
 
-        if (string.Equals(choice, "None", StringComparison.OrdinalIgnoreCase))
+        var resolvedSchema = ResolveSchema(Schema);
+        if (resolvedSchema is null)
         {
-            await ValueChanged.InvokeAsync(ConfigPropertyValue.Literal("None"));
             return;
         }
 
-        object defaultInner = choice switch
+        foreach (var branch in GetOneOfBranches(resolvedSchema.Value))
         {
-            "Binary" => new List<object?>(),
-            "MultiString" => new List<object?>(),
-            "DWord" => 0L,
-            "QWord" => 0L,
+            if (branch.TryGetProperty("enum", out var enumProp) && enumProp.ValueKind == JsonValueKind.Array)
+            {
+                var items = enumProp.EnumerateArray()
+                    .Where(e => e.ValueKind == JsonValueKind.String)
+                    .Select(e => e.GetString())
+                    .ToList();
+                if (items.Count == 1 && string.Equals(items[0], choice, StringComparison.OrdinalIgnoreCase))
+                {
+                    await ValueChanged.InvokeAsync(ConfigPropertyValue.Literal(choice));
+                    return;
+                }
+            }
+
+            if (branch.TryGetProperty("properties", out var props) && props.ValueKind == JsonValueKind.Object)
+            {
+                var propList = props.EnumerateObject().ToList();
+                if (propList.Count == 1 && string.Equals(propList[0].Name, choice, StringComparison.OrdinalIgnoreCase))
+                {
+                    var defaultValue = GetDefaultForSchema(propList[0].Value);
+                    var payload = new Dictionary<string, object?>(StringComparer.Ordinal) { [choice] = defaultValue };
+                    await ValueChanged.InvokeAsync(ConfigPropertyValue.Literal(payload));
+                    return;
+                }
+            }
+        }
+    }
+
+    private static object? GetDefaultForSchema(JsonElement schema)
+    {
+        string? type = null;
+        if (schema.TryGetProperty("type", out var typeProp))
+        {
+            if (typeProp.ValueKind == JsonValueKind.String)
+            {
+                type = typeProp.GetString();
+            }
+            else if (typeProp.ValueKind == JsonValueKind.Array)
+            {
+                type = typeProp.EnumerateArray()
+                    .Where(e => e.ValueKind == JsonValueKind.String &&
+                        !string.Equals(e.GetString(), "null", StringComparison.OrdinalIgnoreCase))
+                    .Select(e => e.GetString())
+                    .FirstOrDefault();
+            }
+        }
+
+        return type switch
+        {
+            "array" => new List<object?>(),
+            "integer" or "number" => 0L,
+            "object" => new Dictionary<string, object?>(),
+            "boolean" => false,
             _ => string.Empty
         };
+    }
 
-        var payload = new Dictionary<string, object?>(StringComparer.Ordinal)
+    private JsonElement? ResolveSchema(JsonElement? schema)
+    {
+        if (!schema.HasValue)
         {
-            [choice] = defaultInner
-        };
+            return null;
+        }
 
-        await ValueChanged.InvokeAsync(ConfigPropertyValue.Literal(payload));
+        if (schema.Value.TryGetProperty("$ref", out var refProp) &&
+            refProp.ValueKind == JsonValueKind.String &&
+            !string.IsNullOrWhiteSpace(RootSchemaJson))
+        {
+            var refPath = refProp.GetString()!;
+
+            if (refPath.StartsWith("#/"))
+            {
+                try
+                {
+                    using var doc = JsonDocument.Parse(RootSchemaJson);
+                    var parts = refPath[2..].Split('/');
+
+                    var current = doc.RootElement;
+                    foreach (var part in parts)
+                    {
+                        var decoded = Uri.UnescapeDataString(part.Replace("~1", "/").Replace("~0", "~"));
+                        if (!current.TryGetProperty(decoded, out current))
+                        {
+                            return null;
+                        }
+                    }
+                    return current.Clone();
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+        }
+
+        return schema;
+    }
+
+    private static JsonElement[] GetOneOfBranches(JsonElement schema)
+    {
+        if (schema.TryGetProperty("oneOf", out var oneOf) && oneOf.ValueKind == JsonValueKind.Array)
+        {
+            return oneOf.EnumerateArray().ToArray();
+        }
+
+        if (schema.TryGetProperty("anyOf", out var anyOf) && anyOf.ValueKind == JsonValueKind.Array)
+        {
+            return anyOf.EnumerateArray().ToArray();
+        }
+
+        return [];
     }
 
     private static string GetFunctionSummary(DscFunctionExpression expression)

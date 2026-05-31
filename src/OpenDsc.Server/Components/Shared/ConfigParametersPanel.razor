@@ -126,65 +126,68 @@
                     }
 
                     <MudItem xs="12">
-                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-1">Allowed values</MudText>
-                        @if (!ReadOnly)
-                        {
-                            <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Add"
-                                       OnClick="@(() => AddAllowedValue(param))" Class="mb-1">
-                                Add value
-                            </MudButton>
-                        }
-
-                        @if (param.AllowedValues is { Count: > 0 })
-                        {
-                            @for (var i = 0; i < param.AllowedValues.Count; i++)
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-1" Style="font-size: 0.8rem;">Allowed
+                            values</MudText>
+                            @if (!ReadOnly)
                             {
-                                var idx = i;
-                                <MudGrid Class="mb-1">
-                                    <MudItem xs="8">
-                                        @if (param.Type is "int")
-                                        {
-                                            <MudNumericField T="long?" Label="Value" Variant="Variant.Outlined" Margin="Margin.Dense"
-                                                             Disabled="@ReadOnly" Value="@ToNullableLong(param.AllowedValues[idx])"
-                                                             ValueChanged="@(v => UpdateAllowedIntValue(param, idx, v))" />
-                                        }
-                                        else if (param.Type is "bool")
-                                        {
-                                            <MudSelect T="bool" Label="Value" Variant="Variant.Outlined" Margin="Margin.Dense"
-                                                       Disabled="@ReadOnly" Value="@(param.AllowedValues[idx] is bool b && b)"
-                                                       ValueChanged="@(v => UpdateAllowedBoolValue(param, idx, v))">
-                                                <MudSelectItem T="bool" Value="@true">true</MudSelectItem>
-                                                <MudSelectItem T="bool" Value="@false">false</MudSelectItem>
-                                            </MudSelect>
-                                        }
-                                        else
-                                        {
-                                            <MudTextField T="string" Label="Value" Variant="Variant.Outlined" Margin="Margin.Dense"
-                                                          Disabled="@ReadOnly" Value="@(param.AllowedValues[idx]?.ToString() ?? string.Empty)"
-                                                          ValueChanged="@(v => UpdateAllowedTextValue(param, idx, v))" Immediate="true" />
-                                        }
-                                    </MudItem>
-                                    <MudItem xs="4" Class="d-flex align-center justify-end gap-1">
-                                        @if (!ReadOnly)
-                                        {
-                                            <MudIconButton Icon="@Icons.Material.Filled.KeyboardArrowUp" Size="Size.Small"
-                                                           Disabled="@(idx == 0)" OnClick="@(() => MoveAllowedValue(param, idx, idx - 1))" />
-                                            <MudIconButton Icon="@Icons.Material.Filled.KeyboardArrowDown" Size="Size.Small"
-                                                           Disabled="@(idx >= param.AllowedValues.Count - 1)"
-                                                           OnClick="@(() => MoveAllowedValue(param, idx, idx + 1))" />
-                                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
-                                                           OnClick="@(() => RemoveAllowedValue(param, idx))" />
-                                        }
-                                    </MudItem>
-                                </MudGrid>
+                                <div class="mb-1">
+                                    <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Add"
+                                               OnClick="@(() => AddAllowedValue(param))">
+                                        Add value
+                                    </MudButton>
+                                </div>
                             }
-                        }
-                    </MudItem>
-                </MudGrid>
-            </MudCardContent>
-        </MudCard>
-    }
-</MudStack>
+
+                            @if (param.AllowedValues is { Count: > 0 })
+                            {
+                                @for (var i = 0; i < param.AllowedValues.Count; i++)
+                                {
+                                    var idx = i;
+                                    <MudGrid Class="mb-1">
+                                        <MudItem xs="8">
+                                            @if (param.Type is "int")
+                                            {
+                                                <MudNumericField T="long?" Label="Value" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                                                 Disabled="@ReadOnly" Value="@ToNullableLong(param.AllowedValues[idx])"
+                                                                 ValueChanged="@(v => UpdateAllowedIntValue(param, idx, v))" />
+                                            }
+                                            else if (param.Type is "bool")
+                                            {
+                                                <MudSelect T="bool" Label="Value" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                                           Disabled="@ReadOnly" Value="@(param.AllowedValues[idx] is bool b && b)"
+                                                           ValueChanged="@(v => UpdateAllowedBoolValue(param, idx, v))">
+                                                    <MudSelectItem T="bool" Value="@true">true</MudSelectItem>
+                                                    <MudSelectItem T="bool" Value="@false">false</MudSelectItem>
+                                                </MudSelect>
+                                            }
+                                            else
+                                            {
+                                                <MudTextField T="string" Label="Value" Variant="Variant.Outlined" Margin="Margin.Dense"
+                                                              Disabled="@ReadOnly" Value="@(param.AllowedValues[idx]?.ToString() ?? string.Empty)"
+                                                              ValueChanged="@(v => UpdateAllowedTextValue(param, idx, v))" Immediate="true" />
+                                            }
+                                        </MudItem>
+                                        <MudItem xs="4" Class="d-flex align-center justify-end gap-1">
+                                            @if (!ReadOnly)
+                                            {
+                                                <MudIconButton Icon="@Icons.Material.Filled.KeyboardArrowUp" Size="Size.Small"
+                                                               Disabled="@(idx == 0)" OnClick="@(() => MoveAllowedValue(param, idx, idx - 1))" />
+                                                <MudIconButton Icon="@Icons.Material.Filled.KeyboardArrowDown" Size="Size.Small"
+                                                               Disabled="@(idx >= param.AllowedValues.Count - 1)"
+                                                               OnClick="@(() => MoveAllowedValue(param, idx, idx + 1))" />
+                                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                                               OnClick="@(() => RemoveAllowedValue(param, idx))" />
+                                            }
+                                        </MudItem>
+                                    </MudGrid>
+                                }
+                            }
+                        </MudItem>
+                    </MudGrid>
+                </MudCardContent>
+            </MudCard>
+        }
+    </MudStack>
 
 @code {
     [Parameter, EditorRequired]
