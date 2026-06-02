@@ -3,40 +3,52 @@
 @* terms of the MIT license. *@
 
 @rendermode InteractiveServer
+@implements IDisposable
 
 @using Microsoft.JSInterop
+@using BlazorMonaco
+@using BlazorMonaco.Editor
 @using OpenDsc.Contracts.ResourceManifests
 @using OpenDsc.Server.Services
 
 @inject IResourceManifestService ManifestService
 @inject IJSRuntime JSRuntime
+@inject ThemeService ThemeService
 
 <MudDialog>
     <DialogContent>
-        <MudText Typo="Typo.body2" Class="mb-2">
-            Paste or upload a <code>.dsc.resource.json</code> manifest, a <code>.dsc.resources.json/yaml</code>
-            bundle (array of manifests), or plain NDJSON from <code>dsc resource list</code>.
-        </MudText>
-        @if (!string.IsNullOrWhiteSpace(_error))
-        {
-            <MudAlert Severity="Severity.Error" Class="mb-3">@_error</MudAlert>
-        }
-        <div class="d-flex gap-2 mb-2">
-            <MudButton StartIcon="@Icons.Material.Filled.UploadFile" Size="Size.Small" Variant="Variant.Outlined"
-                       OnClick="TriggerFilePicker">
-                Upload file
-            </MudButton>
-            @if (!string.IsNullOrWhiteSpace(_uploadedFileName))
+        <div style="width: 100%;">
+            <MudText Typo="Typo.body2" Class="mb-2">
+                Paste or upload a <code>.dsc.resource.json</code> manifest or a <code>.dsc.resources.json/yaml</code>
+                bundle (array of manifests).
+            </MudText>
+            @if (!string.IsNullOrWhiteSpace(_error))
             {
-                <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Filled.InsertDriveFile" OnClose="ClearFile">
-                    @_uploadedFileName
-                </MudChip>
+                <MudAlert Severity="Severity.Error" Class="mb-3">@_error</MudAlert>
             }
+            <div class="d-flex gap-2 mb-2">
+                <MudButton StartIcon="@Icons.Material.Filled.UploadFile" Size="Size.Small" Variant="Variant.Outlined"
+                           OnClick="TriggerFilePicker">
+                    Upload file
+                </MudButton>
+                <MudButton StartIcon="@Icons.Material.Filled.AutoFixHigh" Size="Size.Small" Variant="Variant.Outlined"
+                           OnClick="DetectLanguageClick">
+                    Detect Language
+                </MudButton>
+                @if (!string.IsNullOrWhiteSpace(_uploadedFileName))
+                {
+                    <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Filled.InsertDriveFile" OnClose="ClearFile">
+                        @_uploadedFileName
+                    </MudChip>
+                }
+            </div>
+            <InputFile @ref="_inputFile" id="manifest-file-input" OnChange="OnFileSelected" accept=".json,.yaml,.yml"
+                       style="display:none" />
+            <div style="height: 500px; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
+                <StandaloneCodeEditor @ref="_editor" Id="manifest-import-editor" ConstructionOptions="GetEditorOptions"
+                                      CssClass="monaco-editor-container" />
+            </div>
         </div>
-        <InputFile @ref="_inputFile" id="manifest-file-input" OnChange="OnFileSelected" accept=".json,.yaml,.yml"
-                   style="display:none" />
-        <MudTextField T="string" @bind-Value="_content" Variant="Variant.Outlined" Lines="18" AutoGrow="false"
-                      Immediate="false" Disabled="@_saving" ReadOnly="false" Style="font-family: monospace;" />
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Cancel</MudButton>
@@ -55,11 +67,17 @@
     private IMudDialogInstance MudDialog { get; set; } = default!;
 
     private InputFile? _inputFile;
+    private StandaloneCodeEditor? _editor;
     private string? _error;
     private bool _saving;
     private string _uploadedFileName = string.Empty;
-
     private string _content = string.Empty;
+    private string _language = "json";
+
+    protected override void OnInitialized()
+    {
+        ThemeService.OnThemeChanged += OnThemeChanged;
+    }
 
     private void Cancel() => MudDialog.Cancel();
 
@@ -72,13 +90,46 @@
     private async Task OnFileSelected(InputFileChangeEventArgs e)
     {
         _error = null;
-        var file = e.File;
-        _uploadedFileName = file.Name;
+        try
+        {
+            var file = e.File;
+            _uploadedFileName = file.Name;
 
-        using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
-        using var reader = new StreamReader(stream);
-        var text = await reader.ReadToEndAsync();
-        _content = text;
+            using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
+            using var reader = new StreamReader(stream);
+            var text = await reader.ReadToEndAsync();
+            _content = text;
+
+            // Auto-detect language based on file extension
+            DetectLanguage(file.Name);
+
+            if (_editor != null)
+            {
+                try
+                {
+                    await _editor.SetValue(_content);
+                    var model = await _editor.GetModel();
+                    if (model != null)
+                    {
+                        await Global.SetModelLanguage(JSRuntime, model, _language);
+                    }
+                }
+                catch (TaskCanceledException)
+                {
+                    _error = "Failed to load file into editor (timeout). Content is ready to import.";
+                }
+                catch (Exception ex)
+                {
+                    _error = $"Failed to load file into editor: {ex.Message}";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to read file: {ex.Message}";
+            _uploadedFileName = string.Empty;
+            _content = string.Empty;
+        }
     }
 
     private Task ClearFile()
@@ -88,16 +139,103 @@
         return Task.CompletedTask;
     }
 
+    private void DetectLanguage(string fileName)
+    {
+        var extension = Path.GetExtension(fileName).ToLowerInvariant();
+        _language = extension switch
+        {
+            ".yaml" or ".yml" => "yaml",
+            ".json" => "json",
+            _ => "json" // default to JSON
+        };
+    }
+
+    private void DetectLanguageFromContent(string content)
+    {
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            _language = "json";
+            return;
+        }
+
+        var trimmed = content.TrimStart();
+        if (trimmed.StartsWith("{") || trimmed.StartsWith("["))
+        {
+            _language = "json";
+        }
+        else
+        {
+            // Likely YAML if it doesn't start with JSON delimiters
+            _language = "yaml";
+        }
+    }
+
+    private async Task DetectLanguageClick()
+    {
+        if (_editor == null)
+            return;
+
+        try
+        {
+            // Get the current content from the editor
+            _content = await _editor.GetValue();
+            DetectLanguageFromContent(_content);
+
+            // Update the editor with the detected language
+            var model = await _editor.GetModel();
+            if (model != null)
+            {
+                await Global.SetModelLanguage(JSRuntime, model, _language);
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            _error = "Language detection timed out. Please try again or click Import to proceed.";
+        }
+        catch (Exception ex)
+        {
+            _error = $"Failed to detect language: {ex.Message}";
+        }
+    }
+
     private async Task Import()
     {
         _error = null;
         _saving = true;
         try
         {
+            // Get the latest content from the editor
+            if (_editor != null)
+            {
+                try
+                {
+                    _content = await _editor.GetValue();
+                }
+                catch (TaskCanceledException)
+                {
+                    _error = "Failed to read editor content (timeout). Please try again.";
+                    _saving = false;
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    _error = $"Failed to read editor content: {ex.Message}";
+                    _saving = false;
+                    return;
+                }
+            }
+
             if (string.IsNullOrWhiteSpace(_content))
             {
                 _error = "Please paste or upload manifest content.";
+                _saving = false;
                 return;
+            }
+
+            // Auto-detect language from content if no file was uploaded
+            if (string.IsNullOrWhiteSpace(_uploadedFileName))
+            {
+                DetectLanguageFromContent(_content);
             }
 
             var fileName = string.IsNullOrWhiteSpace(_uploadedFileName) ? null : _uploadedFileName;
@@ -108,9 +246,49 @@
         {
             _error = ex.Message;
         }
+        catch (Exception ex)
+        {
+            _error = $"Import failed: {ex.Message}";
+        }
         finally
         {
             _saving = false;
         }
+    }
+
+    private StandaloneEditorConstructionOptions GetEditorOptions(StandaloneCodeEditor editor)
+    {
+        return new StandaloneEditorConstructionOptions
+        {
+            AutomaticLayout = true,
+            Language = _language,
+            Value = _content,
+            Theme = ThemeService.IsDarkMode ? "vs-dark" : "vs",
+            ReadOnly = _saving,
+            LineNumbers = "on",
+            Minimap = new EditorMinimapOptions { Enabled = false },
+            ScrollBeyondLastLine = false,
+            FontSize = 14,
+            FontFamily = "'Cascadia Code', 'Courier New', monospace",
+            TabSize = 2,
+            InsertSpaces = true,
+            WordWrap = "off"
+        };
+    }
+
+    private async void OnThemeChanged()
+    {
+        try
+        {
+            await Global.SetTheme(JSRuntime, ThemeService.IsDarkMode ? "vs-dark" : "vs");
+        }
+        catch
+        {
+        }
+    }
+
+    void IDisposable.Dispose()
+    {
+        ThemeService.OnThemeChanged -= OnThemeChanged;
     }
 }

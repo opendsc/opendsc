@@ -201,6 +201,7 @@ namespace OpenDsc.Server;
 [JsonSerializable(typeof(ResourceManifestVersionSummary))]
 [JsonSerializable(typeof(ResourceManifestVersionDetails))]
 [JsonSerializable(typeof(ImportResourceManifestRequest))]
+[JsonSerializable(typeof(DiscoveryResult))]
 [JsonSerializable(typeof(DiscoverResponse))]
 // DSC Function contracts
 [JsonSerializable(typeof(DscFunctionInfo))]

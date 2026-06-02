@@ -69,10 +69,10 @@ else if (_hasSchema == false)
         var parameters = new DialogParameters<ViewSchemaDialog>
         {
             { x => x.SchemaJson, _schemaJson },
-            { x => x.Title, $"Instance Schema — v{_schemaVersion}" }
+            { x => x.Title, $"Resource Schema — v{_schemaVersion}" }
         };
 
-        await DialogService.ShowAsync<ViewSchemaDialog>("Instance Schema", parameters,
+        await DialogService.ShowAsync<ViewSchemaDialog>("Resource Schema", parameters,
             new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true });
     }
 

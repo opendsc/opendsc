@@ -22,16 +22,16 @@ public interface IResourceManifestService
 
     /// <summary>
     /// Imports one or more manifests from text content. Accepts:
-    /// single manifest JSON, JSON array of manifests, NDJSON, or YAML
+    /// single manifest JSON, JSON array of manifests, or YAML
     /// (single mapping or sequence). Returns the count of versions imported.
     /// </summary>
     Task<int> ImportManyAsync(string content, string? fileName = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Shells out to <c>dsc resource list</c> and upserts each discovered manifest.
-    /// Returns the count of new versions imported.
+    /// Returns statistics about discovered, imported, updated, and skipped manifests.
     /// </summary>
-    Task<int> DiscoverFromDscCliAsync(CancellationToken cancellationToken = default);
+    Task<DiscoveryResult> DiscoverFromDscCliAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Fetches the JSON schema for a specific resource type using <c>dsc resource schema -r &lt;typeName&gt;</c>.

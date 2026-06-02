@@ -13,13 +13,13 @@
 <MudDialog>
     <DialogContent>
         <MudTabs Elevation="0" Rounded="false" ApplyEffectsToContainer="false" ActivePanelIndex="0">
-            <MudTabPanel Text="YAML">
+            <MudTabPanel Text="YAML" Icon="@Icons.Material.Filled.Code">
                 <div style="height: 60vh; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
                     <StandaloneCodeEditor Id="schema-yaml-editor" ConstructionOptions="YamlEditorOptions"
                                           CssClass="file-viewer-editor" />
                 </div>
             </MudTabPanel>
-            <MudTabPanel Text="JSON">
+            <MudTabPanel Text="JSON" Icon="@Icons.Material.Filled.DataObject">
                 <div style="height: 60vh; width: 100%; border: 1px solid var(--mud-palette-lines-default);">
                     <StandaloneCodeEditor Id="schema-json-editor" ConstructionOptions="JsonEditorOptions"
                                           CssClass="file-viewer-editor" />

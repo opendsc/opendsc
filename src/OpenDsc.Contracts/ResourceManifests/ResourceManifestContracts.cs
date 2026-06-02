@@ -14,6 +14,7 @@ public sealed class ResourceManifestSummary
     public string? Description { get; init; }
     public required string Kind { get; init; }
     public required int VersionCount { get; init; }
+    public string[]? Tags { get; init; }
     public required DateTimeOffset CreatedAt { get; init; }
     public required DateTimeOffset UpdatedAt { get; init; }
 }
@@ -67,4 +68,22 @@ public sealed class ImportResourceManifestRequest
     /// Raw DSC resource manifest JSON (the full .dsc.resource.json content).
     /// </summary>
     public required string ManifestJson { get; init; }
+}
+
+/// <summary>
+/// Result of discovering manifests from DSC CLI with breakdown statistics.
+/// </summary>
+public sealed class DiscoveryResult
+{
+    /// <summary>Total manifests discovered from dsc resource list.</summary>
+    public required int Discovered { get; init; }
+
+    /// <summary>New manifest versions imported.</summary>
+    public required int Imported { get; init; }
+
+    /// <summary>Existing manifest versions updated.</summary>
+    public required int Updated { get; init; }
+
+    /// <summary>Manifest entries that failed to parse or process.</summary>
+    public required int Failed { get; init; }
 }

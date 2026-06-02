@@ -157,8 +157,14 @@ public static class ResourceManifestEndpoints
     {
         try
         {
-            var count = await service.DiscoverFromDscCliAsync(cancellationToken);
-            return TypedResults.Ok(new DiscoverResponse { ImportedCount = count });
+            var result = await service.DiscoverFromDscCliAsync(cancellationToken);
+            return TypedResults.Ok(new DiscoverResponse
+            {
+                Discovered = result.Discovered,
+                Imported = result.Imported,
+                Updated = result.Updated,
+                Failed = result.Failed
+            });
         }
         catch (InvalidOperationException ex)
         {
@@ -201,5 +207,8 @@ public static class ResourceManifestEndpoints
 
 public sealed class DiscoverResponse
 {
-    public required int ImportedCount { get; init; }
+    public required int Discovered { get; init; }
+    public required int Imported { get; init; }
+    public required int Updated { get; init; }
+    public required int Failed { get; init; }
 }

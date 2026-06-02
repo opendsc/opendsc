@@ -61,7 +61,7 @@
         }
         else
         {
-            <MudTextField T="string" @bind-Value="_searchText" Placeholder="Search by type name..."
+            <MudTextField T="string" @bind-Value="_searchText" Placeholder="Search by type name, description, or tags..."
                           Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" Variant="Variant.Outlined"
                           Class="mb-4" Immediate="true" />
 
@@ -115,7 +115,10 @@
     private IEnumerable<ResourceManifestSummary> FilteredManifests =>
         string.IsNullOrWhiteSpace(_searchText)
             ? _manifests
-            : _manifests.Where(m => m.TypeName.Contains(_searchText, StringComparison.OrdinalIgnoreCase));
+            : _manifests.Where(m =>
+                m.TypeName.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ||
+                (m.Description?.Contains(_searchText, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (m.Tags?.Any(t => t.Contains(_searchText, StringComparison.OrdinalIgnoreCase)) ?? false));
 
     protected override async Task OnInitializedAsync()
     {
@@ -137,7 +140,8 @@
 
     private async Task OpenImportDialog()
     {
-        var dialog = await DialogService.ShowAsync<ImportManifestDialog>("Import Resource Manifest");
+        var options = new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ImportManifestDialog>("Import Resource Manifest", options);
         var result = await dialog.Result;
         if (result is { Canceled: false })
         {
@@ -152,8 +156,16 @@
         _discovering = true;
         try
         {
-            var count = await ManifestService.DiscoverFromDscCliAsync();
-            Snackbar.Add($"Discovered {count} manifest(s) from DSC CLI.", Severity.Success);
+            var result = await ManifestService.DiscoverFromDscCliAsync();
+
+            // Build a detailed message with breakdown
+            var message = $"Discovered {result.Discovered}: {result.Imported} imported, {result.Updated} updated";
+            if (result.Failed > 0)
+            {
+                message += $", {result.Failed} failed";
+            }
+
+            Snackbar.Add(message, Severity.Success);
             await LoadAsync();
         }
         catch (InvalidOperationException ex)

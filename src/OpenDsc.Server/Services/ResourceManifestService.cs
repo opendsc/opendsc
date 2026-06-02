@@ -23,22 +23,39 @@ public sealed class ResourceManifestService(
 {
     public async Task<IReadOnlyList<ResourceManifestSummary>> GetAllAsync(CancellationToken cancellationToken = default)
     {
-        var manifests = await db.ResourceManifests
+        var manifestData = await db.ResourceManifests
             .AsNoTracking()
             .OrderBy(m => m.TypeName)
+            .Select(m => new
+            {
+                m.Id,
+                m.TypeName,
+                m.Description,
+                m.Kind,
+                VersionCount = m.Versions.Count,
+                m.CreatedAt,
+                m.UpdatedAt,
+                m.Versions
+            })
+            .ToListAsync(cancellationToken);
+
+        return manifestData
             .Select(m => new ResourceManifestSummary
             {
                 Id = m.Id,
                 TypeName = m.TypeName,
                 Description = m.Description,
                 Kind = m.Kind,
-                VersionCount = m.Versions.Count,
+                VersionCount = m.VersionCount,
+                Tags = m.Versions
+                    .Where(v => !string.IsNullOrEmpty(v.TagsJson))
+                    .SelectMany(v => JsonSerializer.Deserialize<string[]>(v.TagsJson!) ?? Array.Empty<string>())
+                    .Distinct()
+                    .ToArray(),
                 CreatedAt = m.CreatedAt,
                 UpdatedAt = m.UpdatedAt
             })
-            .ToListAsync(cancellationToken);
-
-        return manifests;
+            .ToList();
     }
 
     public async Task<ResourceManifestDetails?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
@@ -167,52 +184,45 @@ public sealed class ResourceManifestService(
             jsonContent = content;
         }
 
-        // Collect individual manifest JSON strings from three formats:
-        // 1. JSON array  2. NDJSON  3. Single JSON object
+        // Collect individual manifest JSON strings from two formats:
+        // 1. Object with resources array: { "resources": [...] }
+        // 2. Single manifest object
         var manifests = new List<string>();
-        var trimmed = jsonContent.TrimStart();
 
-        if (trimmed.StartsWith('['))
+        try
         {
-            // JSON array
-            try
+            var parsed = JsonNode.Parse(jsonContent);
+
+            if (parsed is JsonObject obj)
             {
-                var array = JsonNode.Parse(jsonContent)?.AsArray();
-                if (array is not null)
+                // Check for Format 1: { "resources": [...] }
+                if (obj.TryGetPropertyValue("resources", out var resourcesNode) && resourcesNode is JsonArray resourcesArray)
                 {
-                    foreach (var item in array)
+                    foreach (var item in resourcesArray)
                     {
                         if (item is not null)
                             manifests.Add(item.ToJsonString());
                     }
                 }
-            }
-            catch (JsonException ex)
-            {
-                throw new ArgumentException("Invalid JSON array in import content.", ex);
-            }
-        }
-        else if (trimmed.StartsWith('{'))
-        {
-            // Try NDJSON (multiple JSON objects separated by newlines)
-            var lines = jsonContent.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            if (lines.Length > 1)
-            {
-                foreach (var line in lines)
+                else
                 {
-                    if (!string.IsNullOrWhiteSpace(line))
-                        manifests.Add(line);
+                    // Format 2: Single manifest object
+                    manifests.Add(jsonContent.Trim());
                 }
             }
             else
             {
-                // Single JSON object
-                manifests.Add(jsonContent.Trim());
+                throw new ArgumentException("Content must be a JSON manifest object or object with 'resources' array.");
             }
         }
-        else
+        catch (JsonException ex)
         {
-            throw new ArgumentException("Content does not appear to be valid JSON or YAML manifest data.");
+            throw new ArgumentException("Invalid JSON format.", ex);
+        }
+
+        if (manifests.Count == 0)
+        {
+            throw new ArgumentException("No manifests found in the provided content.");
         }
 
         int imported = 0;
@@ -249,7 +259,7 @@ public sealed class ResourceManifestService(
         return imported;
     }
 
-    public async Task<int> DiscoverFromDscCliAsync(CancellationToken cancellationToken = default)
+    public async Task<DiscoveryResult> DiscoverFromDscCliAsync(CancellationToken cancellationToken = default)
     {
         string rawOutput;
         try
@@ -264,7 +274,7 @@ public sealed class ResourceManifestService(
 
         if (string.IsNullOrWhiteSpace(rawOutput))
         {
-            return 0;
+            return new DiscoveryResult { Discovered = 0, Imported = 0, Updated = 0, Failed = 0 };
         }
 
         // dsc resource list outputs one JSON object per line (NDJSON)
@@ -272,12 +282,18 @@ public sealed class ResourceManifestService(
             .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
         int imported = 0;
+        int updated = 0;
+        int failed = 0;
+        int discovered = 0;
+
         foreach (var line in lines)
         {
             if (string.IsNullOrWhiteSpace(line))
             {
                 continue;
             }
+
+            discovered++;
 
             // Each line is a resource summary object; the manifest JSON is embedded in the "manifest" property
             JsonNode? lineNode;
@@ -288,6 +304,7 @@ public sealed class ResourceManifestService(
             catch (JsonException)
             {
                 logger.LogDebug("Skipping non-JSON line from dsc resource list output.");
+                failed++;
                 continue;
             }
 
@@ -306,16 +323,125 @@ public sealed class ResourceManifestService(
 
             try
             {
-                await ImportAsync(manifestJson, isBuiltIn: true, cancellationToken);
-                imported++;
+                var outcome = await ImportAndTrackAsync(manifestJson, cancellationToken);
+                if (outcome == ImportOutcome.New)
+                    imported++;
+                else if (outcome == ImportOutcome.Updated)
+                    updated++;
+                // Unchanged outcomes don't increment any counter
             }
             catch (Exception ex)
             {
                 logger.LogDebug(ex, "Skipping manifest entry that could not be parsed.");
+                failed++;
             }
         }
 
-        return imported;
+        return new DiscoveryResult
+        {
+            Discovered = discovered,
+            Imported = imported,
+            Updated = updated,
+            Failed = failed
+        };
+    }
+
+    private enum ImportOutcome { New, Updated, Unchanged }
+
+    private async Task<ImportOutcome> ImportAndTrackAsync(string manifestJson, CancellationToken cancellationToken)
+    {
+        var parsed = ParseManifest(manifestJson);
+
+        var manifest = await db.ResourceManifests
+            .FirstOrDefaultAsync(m => m.TypeName == parsed.TypeName, cancellationToken);
+
+        bool isNewManifest = manifest is null;
+
+        if (manifest is null)
+        {
+            manifest = new ResourceManifest
+            {
+                Id = Guid.NewGuid(),
+                TypeName = parsed.TypeName,
+                Description = parsed.Description,
+                Kind = parsed.Kind,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow
+            };
+            db.ResourceManifests.Add(manifest);
+        }
+        else
+        {
+            manifest.Description = parsed.Description;
+            manifest.Kind = parsed.Kind;
+            manifest.UpdatedAt = DateTimeOffset.UtcNow;
+        }
+
+        var existing = await db.ResourceManifestVersions
+            .FirstOrDefaultAsync(v => v.ManifestId == manifest.Id && v.Version == parsed.Version, cancellationToken);
+
+        if (existing is null)
+        {
+            // New version
+            var newVersion = new ResourceManifestVersion
+            {
+                Id = Guid.NewGuid(),
+                ManifestId = manifest.Id,
+                Version = parsed.Version,
+                ManifestJson = manifestJson,
+                InstanceSchemaJson = parsed.InstanceSchemaJson,
+                TagsJson = parsed.TagsJson,
+                IsBuiltIn = true,
+                ImportedAt = DateTimeOffset.UtcNow
+            };
+            db.ResourceManifestVersions.Add(newVersion);
+            await db.SaveChangesAsync(cancellationToken);
+            return ImportOutcome.New;
+        }
+
+        // Existing version - check if content has actually changed
+        // Normalize both JSON strings to canonical form for proper comparison
+        bool contentChanged = HasManifestContentChanged(existing.ManifestJson, manifestJson) ||
+                            HasManifestContentChanged(existing.InstanceSchemaJson, parsed.InstanceSchemaJson) ||
+                            existing.TagsJson != parsed.TagsJson;
+
+        if (contentChanged)
+        {
+            existing.ManifestJson = manifestJson;
+            existing.InstanceSchemaJson = parsed.InstanceSchemaJson;
+            existing.TagsJson = parsed.TagsJson;
+            existing.IsBuiltIn = true;
+            await db.SaveChangesAsync(cancellationToken);
+            return ImportOutcome.Updated;
+        }
+
+        return ImportOutcome.Unchanged;
+    }
+
+    private static bool HasManifestContentChanged(string? existing, string? incoming)
+    {
+        // If both are null or empty, no change
+        if (string.IsNullOrWhiteSpace(existing) && string.IsNullOrWhiteSpace(incoming))
+            return false;
+
+        // If one is null/empty and the other isn't, there's a change
+        if (string.IsNullOrWhiteSpace(existing) != string.IsNullOrWhiteSpace(incoming))
+            return true;
+
+        try
+        {
+            // Both are non-null at this point
+            // Parse both JSON strings and compare the parsed structures
+            var existingNode = JsonNode.Parse(existing!);
+            var incomingNode = JsonNode.Parse(incoming!);
+
+            return !JsonNode.DeepEquals(existingNode, incomingNode);
+        }
+        catch
+        {
+            // If parsing fails, fall back to string comparison
+            return existing != incoming;
+        }
     }
 
     public async Task DeleteManifestAsync(Guid id, CancellationToken cancellationToken = default)
