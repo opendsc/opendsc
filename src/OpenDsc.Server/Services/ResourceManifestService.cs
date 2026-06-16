@@ -2,15 +2,16 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
-using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
 using Microsoft.EntityFrameworkCore;
 
 using OpenDsc.Contracts.ResourceManifests;
+using OpenDsc.Schema;
 using OpenDsc.Server.Data;
 using OpenDsc.Server.Entities;
+using OpenDsc.Server.Mcp;
 
 using YamlDotNet.Serialization;
 
@@ -19,8 +20,33 @@ namespace OpenDsc.Server.Services;
 public sealed class ResourceManifestService(
     ServerDbContext db,
     ILogger<ResourceManifestService> logger,
-    IJsonYamlConverter jsonYamlConverter) : IResourceManifestService
+    IMcpClient mcpClient) : IResourceManifestService
 {
+    // Lock to protect access to _discoveryTask
+    private static readonly object _discoveryTaskLock = new();
+
+    // Caches the in-progress or completed discovery task so multiple callers can await the same operation
+    private static Task<DiscoveryResult>? _discoveryTask;
+
+    // Lazy-loaded cache of the last discovery time from the database
+    private DateTimeOffset? _cachedLastDiscoveryTime;
+    private bool _lastDiscoveryTimeLoaded;
+
+    public DateTimeOffset? GetLastDiscoveryTime
+    {
+        get
+        {
+            if (!_lastDiscoveryTimeLoaded)
+            {
+                // Lazy load from database on first access
+                var metadata = db.DiscoveryMetadata.FirstOrDefault(m => m.Id == 1);
+                _cachedLastDiscoveryTime = metadata?.LastDiscoveredAt;
+                _lastDiscoveryTimeLoaded = true;
+            }
+            return _cachedLastDiscoveryTime;
+        }
+    }
+
     public async Task<IReadOnlyList<ResourceManifestSummary>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         var manifestData = await db.ResourceManifests
@@ -259,91 +285,162 @@ public sealed class ResourceManifestService(
         return imported;
     }
 
-    public async Task<DiscoveryResult> DiscoverFromDscCliAsync(CancellationToken cancellationToken = default)
+    public async Task<DiscoveryResult> DiscoverFromMcpAsync(CancellationToken cancellationToken = default)
     {
-        string rawOutput;
+        // Check if discovery is already in progress; if so, await the same task
+        Task<DiscoveryResult>? discoveryTask;
+        lock (_discoveryTaskLock)
+        {
+            if (_discoveryTask is null)
+            {
+                _discoveryTask = RunDiscoveryAsync(cancellationToken);
+            }
+            discoveryTask = _discoveryTask;
+        }
+
+        return await discoveryTask;
+    }
+
+    private async Task<DiscoveryResult> RunDiscoveryAsync(CancellationToken cancellationToken)
+    {
         try
         {
-            rawOutput = await RunDscResourceListAsync(cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "Failed to run 'dsc resource list'. DSC may not be installed.");
-            throw new InvalidOperationException("Failed to run 'dsc resource list'. Ensure DSC is installed and on PATH.", ex);
-        }
-
-        if (string.IsNullOrWhiteSpace(rawOutput))
-        {
-            return new DiscoveryResult { Discovered = 0, Imported = 0, Updated = 0, Failed = 0 };
-        }
-
-        // dsc resource list outputs one JSON object per line (NDJSON)
-        var lines = rawOutput
-            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-        int imported = 0;
-        int updated = 0;
-        int failed = 0;
-        int discovered = 0;
-
-        foreach (var line in lines)
-        {
-            if (string.IsNullOrWhiteSpace(line))
-            {
-                continue;
-            }
-
-            discovered++;
-
-            // Each line is a resource summary object; the manifest JSON is embedded in the "manifest" property
-            JsonNode? lineNode;
             try
             {
-                lineNode = JsonNode.Parse(line);
-            }
-            catch (JsonException)
-            {
-                logger.LogDebug("Skipping non-JSON line from dsc resource list output.");
-                failed++;
-                continue;
-            }
-
-            // Try to extract the embedded manifest JSON
-            var manifestNode = lineNode?["manifest"];
-            string manifestJson;
-            if (manifestNode is not null)
-            {
-                manifestJson = manifestNode.ToJsonString();
-            }
-            else
-            {
-                // Fall back to the resource list entry itself if no embedded manifest
-                manifestJson = line;
-            }
-
-            try
-            {
-                var outcome = await ImportAndTrackAsync(manifestJson, cancellationToken);
-                if (outcome == ImportOutcome.New)
-                    imported++;
-                else if (outcome == ImportOutcome.Updated)
-                    updated++;
-                // Unchanged outcomes don't increment any counter
+                await mcpClient.InitializeAsync(cancellationToken);
             }
             catch (Exception ex)
             {
-                logger.LogDebug(ex, "Skipping manifest entry that could not be parsed.");
-                failed++;
+                logger.LogWarning(ex, "Failed to initialize MCP client. Ensure 'dsc mcp' is installed and available in PATH.");
+                throw new InvalidOperationException("Failed to initialize MCP client. Ensure 'dsc mcp' is installed and available in PATH.", ex);
+            }
+
+            try
+            {
+                // Get list of all resources
+                var resources = await mcpClient.ListResourcesAsync(cancellationToken);
+
+                if (resources.Count == 0)
+                {
+                    return new DiscoveryResult { Discovered = 0, Imported = 0, Updated = 0, Failed = 0 };
+                }
+
+                int imported = 0;
+                int updated = 0;
+                int failed = 0;
+                int skipped = 0;
+
+                // For each resource, fetch full details including schema
+                foreach (var resource in resources)
+                {
+                    // Validate resource type format (must be "Owner/Name" with non-empty segments)
+                    if (!IsValidResourceType(resource.Type))
+                    {
+                        logger.LogDebug("Skipped resource '{ResourceType}': invalid fully qualified type name format (must be 'Owner/Name')", resource.Type);
+                        skipped++;
+                        continue;
+                    }
+
+                    try
+                    {
+                        var manifest = await mcpClient.GetResourceDetailsAsync(resource.Type, cancellationToken);
+
+                        if (manifest is null)
+                        {
+                            logger.LogDebug("Could not fetch details for resource '{ResourceType}'", resource.Type);
+                            failed++;
+                            continue;
+                        }
+
+                        // Construct a manifest JSON from the resource manifest
+                        var manifestJson = ConstructManifestJson(manifest);
+
+                        var outcome = await ImportAndTrackAsync(manifestJson, cancellationToken);
+                        if (outcome == ImportOutcome.New)
+                            imported++;
+                        else if (outcome == ImportOutcome.Updated)
+                            updated++;
+                        // Unchanged outcomes don't increment any counter
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogDebug(ex, "Failed to import resource '{ResourceType}'", resource.Type);
+                        failed++;
+                    }
+                }
+
+                logger.LogInformation("Resource discovery complete: {Discovered} discovered, {Valid} valid, {Skipped} skipped, {Imported} imported, {Updated} updated, {Failed} failed",
+                    resources.Count, resources.Count - skipped, skipped, imported, updated, failed);
+
+                // Update last discovery time on success - save to database and cache
+                await SaveLastDiscoveryTimeAsync(cancellationToken);
+
+                return new DiscoveryResult
+                {
+                    Discovered = resources.Count - skipped,
+                    Imported = imported,
+                    Updated = updated,
+                    Failed = failed
+                };
+            }
+            finally
+            {
+                await mcpClient.DisconnectAsync(cancellationToken);
+            }
+        }
+        finally
+        {
+            // Clear the cached task so next discovery request (after this one completes) starts fresh
+            lock (_discoveryTaskLock)
+            {
+                _discoveryTask = null;
+            }
+        }
+    }
+
+    private static string ConstructManifestJson(DscResourceInfo manifest)
+    {
+        var manifestJson = new JsonObject
+        {
+            { "type", manifest.Type },
+            { "version", manifest.Version ?? "0.1.0" },
+            { "kind", manifest.Kind?.ToString().ToLowerInvariant() },
+            { "description", manifest.Description }
+        };
+
+        // Add capabilities if available
+        if (manifest.Capabilities is { Length: > 0 })
+        {
+            var capsArray = new JsonArray();
+            foreach (var cap in manifest.Capabilities)
+            {
+                capsArray.Add(cap.ToString().ToLowerInvariant());
+            }
+            manifestJson["capabilities"] = capsArray;
+        }
+
+        // Add schema if available (wrapped in "embedded" property as expected by ParseManifest)
+        if (!string.IsNullOrEmpty(manifest.Schema))
+        {
+            try
+            {
+                var schema = JsonNode.Parse(manifest.Schema);
+                manifestJson["schema"] = new JsonObject
+                {
+                    { "embedded", schema }
+                };
+            }
+            catch (JsonException)
+            {
+                // If schema is not valid JSON, store it as a string in embedded
+                manifestJson["schema"] = new JsonObject
+                {
+                    { "embedded", manifest.Schema }
+                };
             }
         }
 
-        return new DiscoveryResult
-        {
-            Discovered = discovered,
-            Imported = imported,
-            Updated = updated,
-            Failed = failed
-        };
+        return manifestJson.ToJsonString();
     }
 
     private enum ImportOutcome { New, Updated, Unchanged }
@@ -466,25 +563,6 @@ public sealed class ResourceManifestService(
     // Private helpers
     // -------------------------------------------------------------------------
 
-    private static async Task<string> RunDscResourceListAsync(CancellationToken cancellationToken)
-    {
-        using var process = new Process();
-        process.StartInfo = new ProcessStartInfo
-        {
-            FileName = "dsc",
-            Arguments = "resource list",
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-
-        process.Start();
-        var output = await process.StandardOutput.ReadToEndAsync(cancellationToken);
-        await process.WaitForExitAsync(cancellationToken);
-        return output;
-    }
-
     public async Task<string?> GetResourceSchemaAsync(string typeName, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(typeName))
@@ -494,29 +572,23 @@ public sealed class ResourceManifestService(
 
         try
         {
-            using var process = new Process();
-            process.StartInfo = new ProcessStartInfo
-            {
-                FileName = "dsc",
-                Arguments = $"resource schema -r {typeName}",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
+            // Get the latest version of the resource manifest
+            var manifest = await db.ResourceManifests
+                .AsNoTracking()
+                .Include(m => m.Versions)
+                .FirstOrDefaultAsync(m => m.TypeName == typeName, cancellationToken);
 
-            process.Start();
-            var output = await process.StandardOutput.ReadToEndAsync(cancellationToken);
-            await process.WaitForExitAsync(cancellationToken);
-
-            if (process.ExitCode == 0 && !string.IsNullOrWhiteSpace(output))
+            if (manifest is null || manifest.Versions.Count == 0)
             {
-                // The output is YAML, convert it to JSON for storage
-                var jsonSchema = jsonYamlConverter.ConvertYamlToJson(output);
-                return !string.IsNullOrWhiteSpace(jsonSchema) ? jsonSchema : null;
+                return null;
             }
 
-            return null;
+            // Get the most recent version (typically highest version number)
+            var latestVersion = manifest.Versions
+                .OrderByDescending(v => v.ImportedAt)
+                .FirstOrDefault();
+
+            return latestVersion?.InstanceSchemaJson;
         }
         catch (Exception ex)
         {
@@ -648,5 +720,62 @@ public sealed class ResourceManifestService(
         {
             return null;
         }
+    }
+
+    private async Task SaveLastDiscoveryTimeAsync(CancellationToken cancellationToken)
+    {
+        // Update or create the singleton DiscoveryMetadata record
+        var metadata = await db.DiscoveryMetadata.FirstOrDefaultAsync(m => m.Id == 1, cancellationToken);
+        var now = DateTimeOffset.UtcNow;
+
+        if (metadata is null)
+        {
+            metadata = new DiscoveryMetadata { Id = 1, LastDiscoveredAt = now };
+            db.DiscoveryMetadata.Add(metadata);
+        }
+        else
+        {
+            metadata.LastDiscoveredAt = now;
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        // Update the cached value
+        _cachedLastDiscoveryTime = now.UtcDateTime;
+    }
+
+    private static bool IsValidResourceType(string? typeName)
+    {
+        if (string.IsNullOrWhiteSpace(typeName))
+        {
+            return false;
+        }
+
+        // Valid resource type format: "Owner/Name" with non-empty segments
+        var parts = typeName.Split('/');
+        if (parts.Length != 2 || string.IsNullOrWhiteSpace(parts[0]) || string.IsNullOrWhiteSpace(parts[1]))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    private static string ConstructMinimalManifestJson(DscResourceInfo resource)
+    {
+        // Create a minimal manifest JSON from resource info (used for CLI-based discovery)
+        var manifest = new JsonObject
+        {
+            { "type", resource.Type },
+            { "version", resource.Version ?? "0.1.0" },
+            { "kind", resource.Kind?.ToString().ToLowerInvariant() ?? "resource" }
+        };
+
+        if (!string.IsNullOrWhiteSpace(resource.Description))
+        {
+            manifest["description"] = resource.Description;
+        }
+
+        return manifest.ToJsonString();
     }
 }

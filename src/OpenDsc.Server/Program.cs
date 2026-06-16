@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Server.Kestrel.Https;
 using MudBlazor.Services;
 
 using OpenDsc.Server;
+using OpenDsc.Server.Mcp;
 using OpenDsc.Contracts.Configurations;
 using OpenDsc.Contracts.CompositeConfigurations;
 using OpenDsc.Contracts.Dashboard;
@@ -96,6 +97,7 @@ builder.Services.AddScoped<IScopeService, ScopeService>();
 builder.Services.AddScoped<IRegistrationKeyService, RegistrationKeyService>();
 builder.Services.AddScoped<IHealthService, HealthService>();
 builder.Services.AddScoped<INodeService, NodeService>();
+builder.Services.AddScoped<IMcpClient, DscMcpClient>();
 builder.Services.AddScoped<IJsonYamlConverter, JsonYamlConverter>();
 builder.Services.AddScoped<IResourceManifestService, ResourceManifestService>();
 builder.Services.AddSingleton<IDscFunctionService, DscFunctionService>();

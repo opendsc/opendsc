@@ -51,8 +51,8 @@ public static class ResourceManifestEndpoints
 
         group.MapPost("/discover", Discover)
             .RequireAuthorization(ServerPermissions.ResourceManifestsWrite)
-            .WithSummary("Discover manifests from DSC CLI")
-            .WithDescription("Runs 'dsc resource list' and imports all discovered manifests.");
+            .WithSummary("Discover manifests from DSC MCP server")
+            .WithDescription("Connects to dsc mcp and imports all discovered manifests.");
 
         group.MapDelete("/{id:guid}", DeleteManifest)
             .RequireAuthorization(ServerPermissions.ResourceManifestsWrite)
@@ -157,7 +157,7 @@ public static class ResourceManifestEndpoints
     {
         try
         {
-            var result = await service.DiscoverFromDscCliAsync(cancellationToken);
+            var result = await service.DiscoverFromMcpAsync(cancellationToken);
             return TypedResults.Ok(new DiscoverResponse
             {
                 Discovered = result.Discovered,

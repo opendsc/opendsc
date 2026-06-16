@@ -28,14 +28,20 @@ public interface IResourceManifestService
     Task<int> ImportManyAsync(string content, string? fileName = null, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Shells out to <c>dsc resource list</c> and upserts each discovered manifest.
+    /// Discovers DSC resources using the MCP server and upserts each discovered manifest.
     /// Returns statistics about discovered, imported, updated, and skipped manifests.
+    /// Discovery operations are serialized - only one can run at a time across all users/requests.
     /// </summary>
-    Task<DiscoveryResult> DiscoverFromDscCliAsync(CancellationToken cancellationToken = default);
+    Task<DiscoveryResult> DiscoverFromMcpAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Fetches the JSON schema for a specific resource type using <c>dsc resource schema -r &lt;typeName&gt;</c>.
-    /// Returns the schema JSON if available, or null if the resource is not found or schema fetch fails.
+    /// Gets the timestamp of the last successful resource discovery, or null if discovery has not run.
+    /// </summary>
+    DateTimeOffset? GetLastDiscoveryTime { get; }
+
+    /// <summary>
+    /// Gets the JSON schema for a specific resource type from an imported manifest.
+    /// Returns the schema JSON if available, or null if the resource is not found or has no schema.
     /// </summary>
     Task<string?> GetResourceSchemaAsync(string typeName, CancellationToken cancellationToken = default);
 

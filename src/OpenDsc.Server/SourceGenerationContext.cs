@@ -189,6 +189,8 @@ namespace OpenDsc.Server;
 // Schema types
 [JsonSerializable(typeof(DscResult))]
 [JsonSerializable(typeof(DscOperation))]
+[JsonSerializable(typeof(DscResourceInfo))]
+[JsonSerializable(typeof(List<DscResourceInfo>))]
 // Enums
 [JsonSerializable(typeof(ScopeValueMode))]
 [JsonSerializable(typeof(AccountType), TypeInfoPropertyName = "AccountType")]
@@ -203,6 +205,7 @@ namespace OpenDsc.Server;
 [JsonSerializable(typeof(ImportResourceManifestRequest))]
 [JsonSerializable(typeof(DiscoveryResult))]
 [JsonSerializable(typeof(DiscoverResponse))]
+
 // DSC Function contracts
 [JsonSerializable(typeof(DscFunctionInfo))]
 [JsonSerializable(typeof(List<DscFunctionInfo>))]

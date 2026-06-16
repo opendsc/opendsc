@@ -95,6 +95,8 @@ public class ServerWebApplicationFactory : WebApplicationFactory<Program>
                     ServerPermissions.GroupsManage,
                     ServerPermissions.RolesManage,
                     ServerPermissions.RegistrationKeysManage,
+                    ServerPermissions.ResourceManifestsRead,
+                    ServerPermissions.ResourceManifestsWrite,
                     NodePermissions.Read,
                     NodePermissions.Write,
                     NodePermissions.Delete,

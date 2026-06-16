@@ -28,23 +28,31 @@
             </MudText>
         </CardHeaderContent>
         <CardHeaderActions>
-            <AuthorizeView Policy="@ServerPermissions.ResourceManifestsWrite">
-                <Authorized>
-                    <MudButtonGroup Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small">
-                        <MudButton StartIcon="@Icons.Material.Filled.Upload" OnClick="OpenImportDialog">
-                            Import JSON
-                        </MudButton>
-                        <MudButton StartIcon="@Icons.Material.Filled.Search" OnClick="DiscoverManifests"
-                                   Disabled="_discovering">
-                            @if (_discovering)
-                            {
-                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-1" />
-                            }
-                            Discover from DSC
-                        </MudButton>
-                    </MudButtonGroup>
-                </Authorized>
-            </AuthorizeView>
+            <div Style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+                @if (_lastDiscoveryTime.HasValue)
+                {
+                    <MudText Typo="Typo.caption" Style="opacity: 0.7;">
+                        Last discovered: @_lastDiscoveryTime.Value.LocalDateTime.ToString("g")
+                    </MudText>
+                }
+                <AuthorizeView Policy="@ServerPermissions.ResourceManifestsWrite">
+                    <Authorized>
+                        <MudButtonGroup Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small">
+                            <MudButton StartIcon="@Icons.Material.Filled.Upload" OnClick="OpenImportDialog">
+                                Import JSON
+                            </MudButton>
+                            <MudButton StartIcon="@Icons.Material.Filled.Search" OnClick="DiscoverManifests"
+                                       Disabled="_discovering">
+                                @if (_discovering)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-1" />
+                                }
+                                Discover from DSC
+                            </MudButton>
+                        </MudButtonGroup>
+                    </Authorized>
+                </AuthorizeView>
+            </div>
         </CardHeaderActions>
     </MudCardHeader>
     <MudCardContent>
@@ -111,6 +119,7 @@
     private bool _discovering;
     private string _searchText = string.Empty;
     private List<ResourceManifestSummary> _manifests = [];
+    private DateTimeOffset? _lastDiscoveryTime;
 
     private IEnumerable<ResourceManifestSummary> FilteredManifests =>
         string.IsNullOrWhiteSpace(_searchText)
@@ -131,6 +140,7 @@
         try
         {
             _manifests = (await ManifestService.GetAllAsync()).ToList();
+            _lastDiscoveryTime = ManifestService.GetLastDiscoveryTime;
         }
         finally
         {
@@ -156,7 +166,7 @@
         _discovering = true;
         try
         {
-            var result = await ManifestService.DiscoverFromDscCliAsync();
+            var result = await ManifestService.DiscoverFromMcpAsync();
 
             // Build a detailed message with breakdown
             var message = $"Discovered {result.Discovered}: {result.Imported} imported, {result.Updated} updated";
@@ -167,6 +177,7 @@
 
             Snackbar.Add(message, Severity.Success);
             await LoadAsync();
+            _lastDiscoveryTime = ManifestService.GetLastDiscoveryTime;
         }
         catch (InvalidOperationException ex)
         {

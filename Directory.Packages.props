@@ -56,5 +56,6 @@
     <PackageVersion Include="Microsoft.AspNetCore.Cryptography.KeyDerivation" Version="10.0.0" />
     <PackageVersion Include="MudBlazor" Version="8.1.0" />
     <PackageVersion Include="BlazorMonaco" Version="3.4.0" />
+    <PackageVersion Include="ModelContextProtocol" Version="1.4.0" />
   </ItemGroup>
 </Project>

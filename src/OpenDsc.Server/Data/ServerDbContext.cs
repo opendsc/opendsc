@@ -180,6 +180,11 @@ public sealed class ServerDbContext(DbContextOptions<ServerDbContext> options) :
     /// </summary>
     public DbSet<RetentionRun> RetentionRuns => Set<RetentionRun>();
 
+    /// <summary>
+    /// Discovery metadata (singleton).
+    /// </summary>
+    public DbSet<DiscoveryMetadata> DiscoveryMetadata => Set<DiscoveryMetadata>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
