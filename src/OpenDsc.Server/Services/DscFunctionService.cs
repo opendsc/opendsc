@@ -7,345 +7,52 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 
 using OpenDsc.Contracts.DscFunctions;
+using OpenDsc.Server.Mcp;
 
 namespace OpenDsc.Server.Services;
 
 /// <summary>
 /// Evaluates DSC configuration document functions in-process.
 /// Covers all pure functions and supports mock values for context-dependent functions.
+/// Uses the DSC MCP server as the primary source for available functions.
 /// </summary>
 public sealed class DscFunctionService : IDscFunctionService
 {
-    // The static catalog of DSC v3 configuration document functions
-    private static readonly IReadOnlyList<DscFunctionInfo> Catalog =
-    [
-        new DscFunctionInfo
-        {
-            Name = "concat",
-            Description = "Concatenates multiple strings or arrays into a single value.",
-            MinArgs = 1,
-            MaxArgs = null,
-            ParameterTypes = ["string|array"],
-            ReturnType = "string|array"
-        },
-        new DscFunctionInfo
-        {
-            Name = "base64",
-            Description = "Encodes a string as Base64.",
-            MinArgs = 1,
-            MaxArgs = 1,
-            ParameterTypes = ["string"],
-            ReturnType = "string"
-        },
-        new DscFunctionInfo
-        {
-            Name = "base64Decode",
-            Description = "Decodes a Base64-encoded string.",
-            MinArgs = 1,
-            MaxArgs = 1,
-            ParameterTypes = ["string"],
-            ReturnType = "string"
-        },
-        new DscFunctionInfo
-        {
-            Name = "envvar",
-            Description = "Returns the value of an environment variable.",
-            MinArgs = 1,
-            MaxArgs = 1,
-            ParameterTypes = ["string"],
-            ReturnType = "string"
-        },
-        new DscFunctionInfo
-        {
-            Name = "parameters",
-            Description = "Returns the value of a configuration parameter.",
-            MinArgs = 1,
-            MaxArgs = 1,
-            ParameterTypes = ["string"],
-            ReturnType = "any"
-        },
-        new DscFunctionInfo
-        {
-            Name = "variables",
-            Description = "Returns the value of a configuration variable.",
-            MinArgs = 1,
-            MaxArgs = 1,
-            ParameterTypes = ["string"],
-            ReturnType = "any"
-        },
-        new DscFunctionInfo
-        {
-            Name = "reference",
-            Description = "Returns the output of another resource instance.",
-            MinArgs = 1,
-            MaxArgs = 2,
-            ParameterTypes = ["string", "string"],
-            ReturnType = "object"
-        },
-        new DscFunctionInfo
-        {
-            Name = "resourceId",
-            Description = "Returns the qualified resource ID string for a named instance.",
-            MinArgs = 1,
-            MaxArgs = 2,
-            ParameterTypes = ["string", "string"],
-            ReturnType = "string"
-        },
-        new DscFunctionInfo
-        {
-            Name = "int",
-            Description = "Converts a value to an integer.",
-            MinArgs = 1,
-            MaxArgs = 1,
-            ParameterTypes = ["string|number"],
-            ReturnType = "integer"
-        },
-        new DscFunctionInfo
-        {
-            Name = "string",
-            Description = "Converts a value to its string representation.",
-            MinArgs = 1,
-            MaxArgs = 1,
-            ParameterTypes = ["any"],
-            ReturnType = "string"
-        },
-        new DscFunctionInfo
-        {
-            Name = "bool",
-            Description = "Converts a value to a boolean.",
-            MinArgs = 1,
-            MaxArgs = 1,
-            ParameterTypes = ["string|boolean"],
-            ReturnType = "boolean"
-        },
-        new DscFunctionInfo
-        {
-            Name = "null",
-            Description = "Returns null.",
-            MinArgs = 0,
-            MaxArgs = 0,
-            ParameterTypes = [],
-            ReturnType = "null"
-        },
-        new DscFunctionInfo
-        {
-            Name = "createArray",
-            Description = "Creates an array from the provided values.",
-            MinArgs = 0,
-            MaxArgs = null,
-            ParameterTypes = ["any"],
-            ReturnType = "array"
-        },
-        new DscFunctionInfo
-        {
-            Name = "createObject",
-            Description = "Creates an object from alternating key/value argument pairs.",
-            MinArgs = 0,
-            MaxArgs = null,
-            ParameterTypes = ["string", "any"],
-            ReturnType = "object"
-        },
-        new DscFunctionInfo
-        {
-            Name = "div",
-            Description = "Performs integer division.",
-            MinArgs = 2,
-            MaxArgs = 2,
-            ParameterTypes = ["integer", "integer"],
-            ReturnType = "integer"
-        },
-        new DscFunctionInfo
-        {
-            Name = "mod",
-            Description = "Returns the modulo (remainder) of integer division.",
-            MinArgs = 2,
-            MaxArgs = 2,
-            ParameterTypes = ["integer", "integer"],
-            ReturnType = "integer"
-        },
-        new DscFunctionInfo
-        {
-            Name = "mul",
-            Description = "Multiplies two integers.",
-            MinArgs = 2,
-            MaxArgs = 2,
-            ParameterTypes = ["integer", "integer"],
-            ReturnType = "integer"
-        },
-        new DscFunctionInfo
-        {
-            Name = "add",
-            Description = "Adds two integers.",
-            MinArgs = 2,
-            MaxArgs = 2,
-            ParameterTypes = ["integer", "integer"],
-            ReturnType = "integer"
-        },
-        new DscFunctionInfo
-        {
-            Name = "sub",
-            Description = "Subtracts the second integer from the first.",
-            MinArgs = 2,
-            MaxArgs = 2,
-            ParameterTypes = ["integer", "integer"],
-            ReturnType = "integer"
-        },
-        new DscFunctionInfo
-        {
-            Name = "min",
-            Description = "Returns the smaller of two integers.",
-            MinArgs = 2,
-            MaxArgs = 2,
-            ParameterTypes = ["integer", "integer"],
-            ReturnType = "integer"
-        },
-        new DscFunctionInfo
-        {
-            Name = "max",
-            Description = "Returns the larger of two integers.",
-            MinArgs = 2,
-            MaxArgs = 2,
-            ParameterTypes = ["integer", "integer"],
-            ReturnType = "integer"
-        },
-        new DscFunctionInfo
-        {
-            Name = "toLower",
-            Description = "Converts a string to lower case.",
-            MinArgs = 1,
-            MaxArgs = 1,
-            ParameterTypes = ["string"],
-            ReturnType = "string"
-        },
-        new DscFunctionInfo
-        {
-            Name = "toUpper",
-            Description = "Converts a string to upper case.",
-            MinArgs = 1,
-            MaxArgs = 1,
-            ParameterTypes = ["string"],
-            ReturnType = "string"
-        },
-        new DscFunctionInfo
-        {
-            Name = "trim",
-            Description = "Removes leading and trailing whitespace from a string.",
-            MinArgs = 1,
-            MaxArgs = 1,
-            ParameterTypes = ["string"],
-            ReturnType = "string"
-        },
-        new DscFunctionInfo
-        {
-            Name = "substring",
-            Description = "Returns a substring starting at a given index, optionally limited by length.",
-            MinArgs = 2,
-            MaxArgs = 3,
-            ParameterTypes = ["string", "integer", "integer"],
-            ReturnType = "string"
-        },
-        new DscFunctionInfo
-        {
-            Name = "length",
-            Description = "Returns the length of a string or array.",
-            MinArgs = 1,
-            MaxArgs = 1,
-            ParameterTypes = ["string|array"],
-            ReturnType = "integer"
-        },
-        new DscFunctionInfo
-        {
-            Name = "empty",
-            Description = "Returns true if a string or array is empty.",
-            MinArgs = 1,
-            MaxArgs = 1,
-            ParameterTypes = ["string|array"],
-            ReturnType = "boolean"
-        },
-        new DscFunctionInfo
-        {
-            Name = "contains",
-            Description = "Returns true if a string contains the specified substring.",
-            MinArgs = 2,
-            MaxArgs = 2,
-            ParameterTypes = ["string", "string"],
-            ReturnType = "boolean"
-        },
-        new DscFunctionInfo
-        {
-            Name = "startsWith",
-            Description = "Returns true if a string starts with the specified prefix.",
-            MinArgs = 2,
-            MaxArgs = 2,
-            ParameterTypes = ["string", "string"],
-            ReturnType = "boolean"
-        },
-        new DscFunctionInfo
-        {
-            Name = "endsWith",
-            Description = "Returns true if a string ends with the specified suffix.",
-            MinArgs = 2,
-            MaxArgs = 2,
-            ParameterTypes = ["string", "string"],
-            ReturnType = "boolean"
-        },
-        new DscFunctionInfo
-        {
-            Name = "indexOf",
-            Description = "Returns the index of the first occurrence of a substring, or -1 if not found.",
-            MinArgs = 2,
-            MaxArgs = 2,
-            ParameterTypes = ["string", "string"],
-            ReturnType = "integer"
-        },
-        new DscFunctionInfo
-        {
-            Name = "lastIndexOf",
-            Description = "Returns the index of the last occurrence of a substring, or -1 if not found.",
-            MinArgs = 2,
-            MaxArgs = 2,
-            ParameterTypes = ["string", "string"],
-            ReturnType = "integer"
-        },
-        new DscFunctionInfo
-        {
-            Name = "replace",
-            Description = "Replaces all occurrences of a search string with a replacement string.",
-            MinArgs = 3,
-            MaxArgs = 3,
-            ParameterTypes = ["string", "string", "string"],
-            ReturnType = "string"
-        },
-        new DscFunctionInfo
-        {
-            Name = "split",
-            Description = "Splits a string into an array using a delimiter.",
-            MinArgs = 2,
-            MaxArgs = 2,
-            ParameterTypes = ["string", "string"],
-            ReturnType = "array"
-        },
-        new DscFunctionInfo
-        {
-            Name = "join",
-            Description = "Joins an array of strings into a single string with a delimiter.",
-            MinArgs = 2,
-            MaxArgs = 2,
-            ParameterTypes = ["array", "string"],
-            ReturnType = "string"
-        },
-        new DscFunctionInfo
-        {
-            Name = "path",
-            Description = "Combines path segments using the OS path separator.",
-            MinArgs = 1,
-            MaxArgs = null,
-            ParameterTypes = ["string"],
-            ReturnType = "string"
-        },
-    ];
+    private readonly IMcpClient _mcpClient;
+    private readonly ILogger<DscFunctionService> _logger;
+    private IReadOnlyList<DscFunctionInfo>? _cachedFunctions;
 
-    public IReadOnlyList<DscFunctionInfo> GetFunctions() => Catalog;
+    public DscFunctionService(IMcpClient mcpClient, ILogger<DscFunctionService> logger)
+    {
+        _mcpClient = mcpClient;
+        _logger = logger;
+    }
+
+    public IReadOnlyList<DscFunctionInfo> GetFunctions()
+    {
+        // Return cached functions from MCP server, or empty if not yet loaded
+        return _cachedFunctions ?? [];
+    }
+
+    public async Task<IReadOnlyList<DscFunctionInfo>> GetFunctionsAsync(CancellationToken cancellationToken = default)
+    {
+        // Return cached functions if available
+        if (_cachedFunctions is not null)
+        {
+            return _cachedFunctions;
+        }
+
+        // Initialize MCP client if not already connected
+        if (!_mcpClient.IsConnected)
+        {
+            await _mcpClient.InitializeAsync(cancellationToken);
+        }
+
+        // Fetch from MCP server
+        _cachedFunctions = await _mcpClient.ListFunctionsAsync(cancellationToken);
+        _logger.LogInformation("Loaded {Count} DSC functions from MCP server", _cachedFunctions.Count);
+        return _cachedFunctions;
+    }
 
     public EvaluateDscFunctionResult Evaluate(EvaluateDscFunctionRequest request)
     {

@@ -100,7 +100,7 @@ builder.Services.AddScoped<INodeService, NodeService>();
 builder.Services.AddScoped<IMcpClient, DscMcpClient>();
 builder.Services.AddScoped<IJsonYamlConverter, JsonYamlConverter>();
 builder.Services.AddScoped<IResourceManifestService, ResourceManifestService>();
-builder.Services.AddSingleton<IDscFunctionService, DscFunctionService>();
+builder.Services.AddScoped<IDscFunctionService, DscFunctionService>();
 builder.Services.AddScoped<IConfigDocumentSerializer, ConfigDocumentSerializer>();
 
 #if !WINDOWS

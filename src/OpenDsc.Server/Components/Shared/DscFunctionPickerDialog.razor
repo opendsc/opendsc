@@ -19,19 +19,26 @@
             {
             <MudItem xs="12" md="4" Style="min-height: 0;">
                 <MudText Typo="Typo.subtitle2" Class="mb-2">Function</MudText>
-                <MudTextField T="string" @bind-Value="_search" Placeholder="Search..."
-                              Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
-                              Variant="Variant.Outlined" Immediate="true" Class="mb-2" />
-                <MudList T="string" Dense="true" Class="pa-0" Style="max-height: calc(10 * 2.25rem + 0.5rem); overflow-y: auto;">
-                    @foreach (var fn in FilteredFunctions)
-                    {
-                        <MudListItem T="string"
-                                     Class="@(_selectedFunction?.Name == fn.Name ? "mud-selected-item" : "")"
-                                     OnClick="@(() => SelectFunction(fn))">
-                            <MudText Typo="Typo.body2" Style="font-family: monospace;">@fn.Name</MudText>
-                        </MudListItem>
-                    }
-                </MudList>
+                @if (!_isLoaded)
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true">Loading functions...</MudAlert>
+                }
+                else
+                {
+                    <MudTextField T="string" @bind-Value="_search" Placeholder="Search..."
+                                  Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                                  Variant="Variant.Outlined" Immediate="true" Class="mb-2" />
+                    <MudList T="string" Dense="true" Class="pa-0" Style="max-height: calc(10 * 2.25rem + 0.5rem); overflow-y: auto;">
+                        @foreach (var fn in FilteredFunctions)
+                        {
+                            <MudListItem T="string"
+                                         Class="@(_selectedFunction?.Name == fn.Name ? "mud-selected-item" : "")"
+                                         OnClick="@(() => SelectFunction(fn))">
+                                <MudText Typo="Typo.body2" Style="font-family: monospace;">@fn.Name</MudText>
+                            </MudListItem>
+                        }
+                    </MudList>
+                }
             </MudItem>
             }
 
@@ -310,6 +317,8 @@
     private const string LiteralArgKind = "literal";
     private const string NestedArgKind = "nested";
 
+    private bool _isLoaded;
+    private IReadOnlyList<DscFunctionInfo> _allFunctions = [];
     private string _search = string.Empty;
     private DscFunctionInfo? _selectedFunction;
     private List<ArgEditorState> _args = [];
@@ -331,20 +340,24 @@
 
     private IEnumerable<DscFunctionInfo> FilteredFunctions =>
         string.IsNullOrWhiteSpace(_search)
-            ? FunctionService.GetFunctions()
-            : FunctionService.GetFunctions().Where(f =>
+            ? _allFunctions
+            : _allFunctions.Where(f =>
                 f.Name.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
                 (f.Description?.Contains(_search, StringComparison.OrdinalIgnoreCase) == true));
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
+        // Load functions from the service asynchronously
+        _allFunctions = await FunctionService.GetFunctionsAsync();
+        _isLoaded = true;
+
         if (ExistingExpression is null)
         {
             RefreshPreviewMetadata();
             return;
         }
 
-        var fn = FunctionService.GetFunctions()
+        var fn = _allFunctions
             .FirstOrDefault(f => string.Equals(f.Name, ExistingExpression.FunctionName, StringComparison.OrdinalIgnoreCase));
 
         if (fn is null)

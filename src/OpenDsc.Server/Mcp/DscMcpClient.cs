@@ -8,6 +8,7 @@ using System.Text.Json.Nodes;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 
+using OpenDsc.Contracts.DscFunctions;
 using OpenDsc.Schema;
 
 namespace OpenDsc.Server.Mcp;
@@ -203,6 +204,174 @@ public sealed class DscMcpClient : IMcpClient, IAsyncDisposable
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to get details for resource '{ResourceType}'", typeName);
+            return null;
+        }
+    }
+
+    public async Task<List<DscFunctionInfo>> ListFunctionsAsync(CancellationToken cancellationToken = default)
+    {
+        if (!IsConnected || _mcpClient is null)
+        {
+            throw new InvalidOperationException("MCP client is not connected. Call InitializeAsync first.");
+        }
+
+        try
+        {
+            // Call the list_dsc_functions tool via MCP
+            var result = await _mcpClient.CallToolAsync(
+                "list_dsc_functions",
+                arguments: null,
+                progress: null,
+                options: null,
+                cancellationToken: cancellationToken);
+
+            var functions = new List<DscFunctionInfo>();
+
+            // Extract text content from the tool result
+            var textContent = result.Content
+                .OfType<TextContentBlock>()
+                .FirstOrDefault();
+
+            if (textContent is null)
+            {
+                _logger.LogWarning("No text content in list_dsc_functions response");
+                return functions;
+            }
+
+            try
+            {
+                // Parse the JSON response containing the functions array
+                var functionsDoc = JsonNode.Parse(textContent.Text);
+                if (functionsDoc is JsonArray functionsArray)
+                {
+                    _logger.LogInformation("Found {Count} functions in list_dsc_functions response", functionsArray.Count);
+
+                    foreach (var functionItem in functionsArray)
+                    {
+                        var function = ParseFunctionInfo(functionItem);
+                        if (function is not null)
+                        {
+                            functions.Add(function);
+                        }
+                    }
+                }
+                else if (functionsDoc?["functions"] is JsonArray actualFunctionsArray)
+                {
+                    _logger.LogInformation("Found {Count} functions in list_dsc_functions response", actualFunctionsArray.Count);
+
+                    foreach (var functionItem in actualFunctionsArray)
+                    {
+                        var function = ParseFunctionInfo(functionItem);
+                        if (function is not null)
+                        {
+                            functions.Add(function);
+                        }
+                    }
+                }
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogWarning(ex, "Failed to parse list_dsc_functions response as JSON");
+            }
+
+            _logger.LogInformation("Listed {Count} DSC functions from MCP server", functions.Count);
+            return functions;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to list DSC functions from MCP server");
+            throw new InvalidOperationException("Failed to list DSC functions from MCP server", ex);
+        }
+    }
+
+    private static DscFunctionInfo? ParseFunctionInfo(JsonNode? element)
+    {
+        try
+        {
+            if (element is JsonObject obj &&
+                obj.TryGetPropertyValue("name", out var nameElement) &&
+                nameElement?.GetValue<string>() is { } name)
+            {
+                var description = obj.TryGetPropertyValue("description", out var descElement)
+                    ? descElement?.GetValue<string>()
+                    : null;
+
+                var minArgs = obj.TryGetPropertyValue("minArgs", out var minElement)
+                    ? GetNullableInt(minElement)
+                    : null;
+
+                var maxArgs = obj.TryGetPropertyValue("maxArgs", out var maxElement)
+                    ? GetNullableInt(maxElement)
+                    : null;
+
+                var parameterTypes = new List<string>();
+                if (obj.TryGetPropertyValue("parameterTypes", out var paramTypesElement) &&
+                    paramTypesElement is JsonArray paramTypesArray)
+                {
+                    foreach (var paramType in paramTypesArray)
+                    {
+                        if (paramType?.GetValue<string>() is { } typeStr)
+                        {
+                            parameterTypes.Add(typeStr);
+                        }
+                    }
+                }
+
+                var returnType = obj.TryGetPropertyValue("returnType", out var returnElement)
+                    ? returnElement?.GetValue<string>()
+                    : null;
+
+                return new DscFunctionInfo
+                {
+                    Name = name,
+                    Description = description,
+                    MinArgs = minArgs,
+                    MaxArgs = maxArgs,
+                    ParameterTypes = parameterTypes,
+                    ReturnType = returnType
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Failed to parse function info: {ex.Message}");
+        }
+
+        return null;
+    }
+
+    private static int? GetNullableInt(JsonNode? element)
+    {
+        if (element is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            // Handle JsonValue with numeric type
+            if (element is JsonValue jsonValue)
+            {
+                if (jsonValue.TryGetValue<int>(out var intValue))
+                {
+                    return intValue;
+                }
+                // Try parsing as long and then converting
+                if (jsonValue.TryGetValue<long>(out var longValue))
+                {
+                    return (int)longValue;
+                }
+                // Try parsing as double and then converting
+                if (jsonValue.TryGetValue<double>(out var doubleValue))
+                {
+                    return (int)doubleValue;
+                }
+            }
+
+            return null;
+        }
+        catch
+        {
             return null;
         }
     }

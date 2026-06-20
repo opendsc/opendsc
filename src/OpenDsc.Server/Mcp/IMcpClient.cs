@@ -2,6 +2,7 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
+using OpenDsc.Contracts.DscFunctions;
 using OpenDsc.Schema;
 
 namespace OpenDsc.Server.Mcp;
@@ -45,4 +46,11 @@ public interface IMcpClient
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A task representing the asynchronous operation. The task result contains the resource manifest.</returns>
     Task<DscResourceInfo?> GetResourceDetailsAsync(string typeName, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lists all available DSC configuration document functions.
+    /// </summary>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A task representing the asynchronous operation. The task result contains the list of functions.</returns>
+    Task<List<DscFunctionInfo>> ListFunctionsAsync(CancellationToken cancellationToken = default);
 }

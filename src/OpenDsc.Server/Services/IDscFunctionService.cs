@@ -15,6 +15,12 @@ public interface IDscFunctionService
     IReadOnlyList<DscFunctionInfo> GetFunctions();
 
     /// <summary>
+    /// Asynchronously returns the catalog of available DSC configuration document functions.
+    /// Fetches the list from the DSC MCP server.
+    /// </summary>
+    Task<IReadOnlyList<DscFunctionInfo>> GetFunctionsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Evaluates a DSC function expression with the provided arguments and
     /// optional mock values for parameters, variables, and environment variables.
     /// </summary>

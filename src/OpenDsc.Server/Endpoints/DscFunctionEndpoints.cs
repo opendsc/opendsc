@@ -26,9 +26,10 @@ public static class DscFunctionEndpoints
             .WithDescription("Mock-evaluates a DSC function expression with the provided arguments and optional mock values.");
     }
 
-    private static Ok<IReadOnlyList<DscFunctionInfo>> GetFunctions(IDscFunctionService service)
+    private static async Task<Ok<IReadOnlyList<DscFunctionInfo>>> GetFunctions(IDscFunctionService service, CancellationToken cancellationToken)
     {
-        return TypedResults.Ok(service.GetFunctions());
+        var functions = await service.GetFunctionsAsync(cancellationToken);
+        return TypedResults.Ok(functions);
     }
 
     private static Ok<EvaluateDscFunctionResult> Evaluate(
