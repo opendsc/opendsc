@@ -65,7 +65,35 @@ public sealed class DscFunctionService : IDscFunctionService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to evaluate DSC expression '{Expression}'", expression);
+            _logger.LogWarning("Failed to evaluate DSC expression '{Expression}': {Error}", expression, ex.Message);
+            return new EvaluateDscFunctionResult
+            {
+                FunctionExpression = expression,
+                Error = ex.Message
+            };
+        }
+    }
+
+    public async Task<EvaluateDscFunctionResult> EvaluateExpressionAsync(string expression, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (!_mcpClient.IsConnected)
+            {
+                await _mcpClient.InitializeAsync(cancellationToken);
+            }
+
+            var result = await _mcpClient.InvokeExpressionAsync(expression, cancellationToken);
+
+            return new EvaluateDscFunctionResult
+            {
+                FunctionExpression = expression,
+                ResultJson = result?.ToJsonString()
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning("Failed to evaluate DSC expression '{Expression}': {Error}", expression, ex.Message);
             return new EvaluateDscFunctionResult
             {
                 FunctionExpression = expression,

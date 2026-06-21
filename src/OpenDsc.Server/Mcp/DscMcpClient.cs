@@ -5,6 +5,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
+using ModelContextProtocol;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 
@@ -323,6 +324,11 @@ public sealed class DscMcpClient : IMcpClient, IAsyncDisposable
                 return null;
             }
         }
+        catch (McpProtocolException ex)
+        {
+            _logger.LogWarning("DSC function invocation failed for '{FunctionName}': {Message}", functionName, ex.Message);
+            throw new InvalidOperationException(ExtractDscError(ex.Message), ex);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to invoke DSC function '{FunctionName}'", functionName);
@@ -363,11 +369,22 @@ public sealed class DscMcpClient : IMcpClient, IAsyncDisposable
                 return null;
             }
         }
+        catch (McpProtocolException ex)
+        {
+            _logger.LogWarning("DSC expression evaluation failed for '{Expression}': {Message}", expression, ex.Message);
+            throw new InvalidOperationException(ExtractDscError(ex.Message), ex);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to invoke DSC expression '{Expression}'", expression);
             throw new InvalidOperationException($"Failed to invoke DSC expression '{expression}'", ex);
         }
+    }
+
+    private static string ExtractDscError(string message)
+    {
+        const string prefix = "Request failed (remote): ";
+        return message.StartsWith(prefix, StringComparison.Ordinal) ? message[prefix.Length..] : message;
     }
 
     private static DscFunctionInfo? ParseFunctionInfo(JsonNode? element)

@@ -215,4 +215,46 @@ public class DscFunctionServiceTests
     }
 
     #endregion
+
+    #region EvaluateExpressionAsync
+
+    [Fact]
+    public async Task EvaluateExpressionAsync_DelegatesExpressionToMcpServer()
+    {
+        _mcpClientMock.Setup(c => c.InvokeExpressionAsync("[parseCidr('192.168.0.0/24')]", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(JsonNode.Parse("{\"host\":\"192.168.0.0\",\"prefix\":24}"));
+
+        var result = await _service.EvaluateExpressionAsync("[parseCidr('192.168.0.0/24')]", TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeTrue();
+        result.FunctionExpression.Should().Be("[parseCidr('192.168.0.0/24')]");
+        result.ResultJson.Should().NotBeNullOrEmpty();
+        _mcpClientMock.Verify(c => c.InvokeExpressionAsync("[parseCidr('192.168.0.0/24')]", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task EvaluateExpressionAsync_WhenMcpThrows_ReturnsError()
+    {
+        _mcpClientMock.Setup(c => c.InvokeExpressionAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Unknown function 'parseCidr'"));
+
+        var result = await _service.EvaluateExpressionAsync("[parseCidr('test')]", TestContext.Current.CancellationToken);
+
+        result.Success.Should().BeFalse();
+        result.Error.Should().Contain("Unknown function 'parseCidr'");
+    }
+
+    [Fact]
+    public async Task EvaluateExpressionAsync_WhenNotConnected_InitializesMcpFirst()
+    {
+        _mcpClientMock.Setup(c => c.IsConnected).Returns(false);
+        _mcpClientMock.Setup(c => c.InvokeExpressionAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(JsonNode.Parse("\"ok\""));
+
+        await _service.EvaluateExpressionAsync("[concat('a', 'b')]", TestContext.Current.CancellationToken);
+
+        _mcpClientMock.Verify(c => c.InitializeAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    #endregion
 }

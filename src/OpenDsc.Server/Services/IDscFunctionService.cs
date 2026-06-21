@@ -24,4 +24,9 @@ public interface IDscFunctionService
     /// Evaluates a DSC function expression by delegating to the DSC MCP server.
     /// </summary>
     Task<EvaluateDscFunctionResult> EvaluateAsync(EvaluateDscFunctionRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Evaluates a pre-built DSC expression string by delegating to the DSC MCP server via <c>invoke_dsc_expression</c>.
+    /// </summary>
+    Task<EvaluateDscFunctionResult> EvaluateExpressionAsync(string expression, CancellationToken cancellationToken = default);
 }
