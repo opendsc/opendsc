@@ -32,10 +32,11 @@ public static class DscFunctionEndpoints
         return TypedResults.Ok(functions);
     }
 
-    private static Ok<EvaluateDscFunctionResult> Evaluate(
+    private static async Task<Ok<EvaluateDscFunctionResult>> Evaluate(
         EvaluateDscFunctionRequest request,
-        IDscFunctionService service)
+        IDscFunctionService service,
+        CancellationToken cancellationToken)
     {
-        return TypedResults.Ok(service.Evaluate(request));
+        return TypedResults.Ok(await service.EvaluateAsync(request, cancellationToken));
     }
 }

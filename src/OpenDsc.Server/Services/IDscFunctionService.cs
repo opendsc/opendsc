@@ -21,8 +21,7 @@ public interface IDscFunctionService
     Task<IReadOnlyList<DscFunctionInfo>> GetFunctionsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Evaluates a DSC function expression with the provided arguments and
-    /// optional mock values for parameters, variables, and environment variables.
+    /// Evaluates a DSC function expression by delegating to the DSC MCP server.
     /// </summary>
-    EvaluateDscFunctionResult Evaluate(EvaluateDscFunctionRequest request);
+    Task<EvaluateDscFunctionResult> EvaluateAsync(EvaluateDscFunctionRequest request, CancellationToken cancellationToken = default);
 }

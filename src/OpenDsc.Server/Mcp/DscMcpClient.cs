@@ -284,6 +284,92 @@ public sealed class DscMcpClient : IMcpClient, IAsyncDisposable
         }
     }
 
+    public async Task<JsonNode?> InvokeFunctionAsync(string functionName, IReadOnlyList<object?> parameters, CancellationToken cancellationToken = default)
+    {
+        if (!IsConnected || _mcpClient is null)
+        {
+            throw new InvalidOperationException("MCP client is not connected. Call InitializeAsync first.");
+        }
+
+        try
+        {
+            var paramsArray = new JsonArray();
+            foreach (var p in parameters)
+            {
+                paramsArray.Add(JsonValue.Create(p));
+            }
+
+            var result = await _mcpClient.CallToolAsync(
+                "invoke_dsc_function",
+                arguments: new Dictionary<string, object?> { ["function"] = functionName, ["parameters"] = paramsArray },
+                progress: null,
+                options: null,
+                cancellationToken: cancellationToken);
+
+            var textContent = result.Content.OfType<TextContentBlock>().FirstOrDefault();
+            if (textContent is null)
+            {
+                _logger.LogWarning("No text content in invoke_dsc_function response");
+                return null;
+            }
+
+            try
+            {
+                return JsonNode.Parse(textContent.Text)?["result"];
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogWarning(ex, "Failed to parse invoke_dsc_function response as JSON");
+                return null;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to invoke DSC function '{FunctionName}'", functionName);
+            throw new InvalidOperationException($"Failed to invoke DSC function '{functionName}'", ex);
+        }
+    }
+
+    public async Task<JsonNode?> InvokeExpressionAsync(string expression, CancellationToken cancellationToken = default)
+    {
+        if (!IsConnected || _mcpClient is null)
+        {
+            throw new InvalidOperationException("MCP client is not connected. Call InitializeAsync first.");
+        }
+
+        try
+        {
+            var result = await _mcpClient.CallToolAsync(
+                "invoke_dsc_expression",
+                arguments: new Dictionary<string, object?> { ["expression"] = expression },
+                progress: null,
+                options: null,
+                cancellationToken: cancellationToken);
+
+            var textContent = result.Content.OfType<TextContentBlock>().FirstOrDefault();
+            if (textContent is null)
+            {
+                _logger.LogWarning("No text content in invoke_dsc_expression response");
+                return null;
+            }
+
+            try
+            {
+                return JsonNode.Parse(textContent.Text)?["result"];
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogWarning(ex, "Failed to parse invoke_dsc_expression response as JSON");
+                return null;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to invoke DSC expression '{Expression}'", expression);
+            throw new InvalidOperationException($"Failed to invoke DSC expression '{expression}'", ex);
+        }
+    }
+
     private static DscFunctionInfo? ParseFunctionInfo(JsonNode? element)
     {
         try
