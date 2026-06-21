@@ -15,6 +15,7 @@ public sealed class DscFunctionInfo
     public int? MaxArgs { get; init; }
     public required IReadOnlyList<string> ParameterTypes { get; init; }
     public string? ReturnType { get; init; }
+    public IReadOnlyList<string> Categories { get; init; } = [];
 }
 
 /// <summary>

@@ -407,6 +407,21 @@ public sealed class DscMcpClient : IMcpClient, IAsyncDisposable
                     ? returnElement?.GetValue<string>()
                     : null;
 
+                var categories = new List<string>();
+                if (obj.TryGetPropertyValue("category", out var categoryElement))
+                {
+                    if (categoryElement is JsonArray categoryArray)
+                    {
+                        foreach (var cat in categoryArray)
+                        {
+                            if (cat?.GetValue<string>() is { } catStr)
+                            {
+                                categories.Add(catStr);
+                            }
+                        }
+                    }
+                }
+
                 return new DscFunctionInfo
                 {
                     Name = name,
@@ -414,7 +429,8 @@ public sealed class DscMcpClient : IMcpClient, IAsyncDisposable
                     MinArgs = minArgs,
                     MaxArgs = maxArgs,
                     ParameterTypes = parameterTypes,
-                    ReturnType = returnType
+                    ReturnType = returnType,
+                    Categories = categories
                 };
             }
         }

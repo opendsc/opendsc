@@ -28,6 +28,13 @@
                     <MudTextField T="string" @bind-Value="_search" Placeholder="Search..."
                                   Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
                                   Variant="Variant.Outlined" Immediate="true" Class="mb-2" />
+                    <MudSelect T="string" @bind-Value="_selectedCategory" Label="Category"
+                              Variant="Variant.Outlined" Margin="Margin.Dense" Class="mb-2" Clearable="true">
+                        @foreach (var category in GetAvailableCategories())
+                        {
+                            <MudSelectItem T="string" Value="@category">@category</MudSelectItem>
+                        }
+                    </MudSelect>
                     <MudList T="string" Dense="true" Class="pa-0" Style="max-height: calc(10 * 2.25rem + 0.5rem); overflow-y: auto;">
                         @foreach (var fn in FilteredFunctions)
                         {
@@ -320,6 +327,7 @@
     private bool _isLoaded;
     private IReadOnlyList<DscFunctionInfo> _allFunctions = [];
     private string _search = string.Empty;
+    private string _selectedCategory = string.Empty;
     private DscFunctionInfo? _selectedFunction;
     private List<ArgEditorState> _args = [];
     private readonly Dictionary<string, string> _mockEnvVars = new(StringComparer.Ordinal);
@@ -338,12 +346,30 @@
             _usage.Variables.Count > 0 ||
             _referenceTargets.Count > 0);
 
-    private IEnumerable<DscFunctionInfo> FilteredFunctions =>
-        string.IsNullOrWhiteSpace(_search)
-            ? _allFunctions
-            : _allFunctions.Where(f =>
-                f.Name.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
-                (f.Description?.Contains(_search, StringComparison.OrdinalIgnoreCase) == true));
+    private IEnumerable<DscFunctionInfo> FilteredFunctions
+    {
+        get
+        {
+            var filtered = _allFunctions.AsEnumerable();
+
+            // Filter by category
+            if (!string.IsNullOrWhiteSpace(_selectedCategory))
+            {
+                filtered = filtered.Where(f => f.Categories.Contains(_selectedCategory, StringComparer.OrdinalIgnoreCase));
+            }
+
+            // Filter by search text
+            if (!string.IsNullOrWhiteSpace(_search))
+            {
+                filtered = filtered.Where(f =>
+                    f.Name.Contains(_search, StringComparison.OrdinalIgnoreCase) ||
+                    (f.Description?.Contains(_search, StringComparison.OrdinalIgnoreCase) == true));
+            }
+
+            // Sort by name
+            return filtered.OrderBy(f => f.Name, StringComparer.OrdinalIgnoreCase);
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -1238,6 +1264,15 @@
             JsonObject jsonObject => jsonObject.Count == 0,
             _ => resolved[0] is null
         };
+    }
+
+    private IEnumerable<string> GetAvailableCategories()
+    {
+        return _allFunctions
+            .SelectMany(f => f.Categories)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(c => c, StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     private static object? EvaluateConcat(IReadOnlyList<object?> resolved)
