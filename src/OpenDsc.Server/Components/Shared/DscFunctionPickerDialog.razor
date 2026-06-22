@@ -576,14 +576,14 @@
         var functionName = _selectedFunction.Name;
         if (string.Equals(functionName, "parameters", StringComparison.OrdinalIgnoreCase) && idx == 0)
         {
-            options = _usage?.Parameters.OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList() ?? [];
+            options = ParameterNames.OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
             placeholder = "Select a parameter";
             return true;
         }
 
         if (string.Equals(functionName, "variables", StringComparison.OrdinalIgnoreCase) && idx == 0)
         {
-            options = _usage?.Variables.OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList() ?? [];
+            options = VariableNames.OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
             placeholder = "Select a variable";
             return true;
         }

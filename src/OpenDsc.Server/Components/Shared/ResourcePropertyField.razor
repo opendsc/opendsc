@@ -64,7 +64,9 @@
                     case "object":
                     case "array":
                         <ComplexValueEditor Label="@Label" Value="@Value.RawValue" RootKind="@EffectiveType" ReadOnly="@ReadOnly"
-                                            ValueChanged="OnValueChanged" />
+                                            ValueChanged="OnValueChanged"
+                                            ParameterNames="@ParameterNames" VariableNames="@VariableNames"
+                                            AvailableTypes="@AvailableTypes" ResourceReferences="@ResourceReferences" />
                         break;
 
                     default:
