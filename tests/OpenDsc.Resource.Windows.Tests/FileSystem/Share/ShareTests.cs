@@ -2,10 +2,10 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
-using System.Reflection;
 using System.Text.Json;
 
 using Json.Schema;
+
 using Xunit;
 
 using ShareResource = OpenDsc.Resource.Windows.FileSystem.Share.Resource;
