@@ -400,8 +400,11 @@ internal static partial class ShareHelper
         {
             var shareInfo = Marshal.PtrToStructure<SHARE_INFO_502>(bufPtr);
 
-            // Build SDDL from permissions
-            var sddlString = BuildSddlFromPermissions(permissions);
+            // Build the final permission list
+            var finalPermissions = BuildPermissionsList(permissions, shareName, purge);
+
+            // Build SDDL from final permissions
+            var sddlString = BuildSddlFromPermissions(finalPermissions);
 
             // Convert SDDL to security descriptor
             if (!ConvertStringSecurityDescriptorToSecurityDescriptor(
@@ -437,6 +440,27 @@ internal static partial class ShareHelper
         }
     }
 
+    private static List<SharePermission> BuildPermissionsList(IEnumerable<SharePermission> inputPermissions, string shareName, bool purge)
+    {
+        if (purge)
+        {
+            // When purging, use only the input permissions
+            return new List<SharePermission>(inputPermissions);
+        }
+
+        // When not purging, merge input permissions with existing ones
+        var currentPermissions = GetSharePermissions(shareName);
+        var inputPrincipals = new HashSet<string>(inputPermissions.Select(p => p.Principal), StringComparer.OrdinalIgnoreCase);
+
+        // Keep existing permissions for principals not in the input
+        var retainedPermissions = currentPermissions.Where(p => !inputPrincipals.Contains(p.Principal)).ToList();
+
+        // Add the input permissions
+        retainedPermissions.AddRange(inputPermissions);
+
+        return retainedPermissions;
+    }
+
     private static string BuildSddlFromPermissions(IEnumerable<SharePermission> permissions)
     {
         var aceStrings = new List<string>();
@@ -449,11 +473,11 @@ internal static partial class ShareHelper
             aceStrings.Add(aceString);
         }
 
-        // Build SDDL string: D: prefix for DACL, followed by ACEs
-        var daclString = "D:" + string.Concat(aceStrings);
+        // Build SDDL string: D: prefix for DACL with container inherit flag, followed by ACEs
+        var daclString = "D:AI" + string.Concat(aceStrings);
 
         // Return full security descriptor (owner + group + DACL)
-        return "O:BAG:BAD:AI" + daclString; // BA = BUILTIN\Administrators, AI = CONTAINER_INHERIT
+        return "O:BAG:BA" + daclString;
     }
 
     private static string LookupAccountNameToSid(string accountName)
@@ -496,13 +520,13 @@ internal static partial class ShareHelper
         }
     }
 
-    private static string GetAccessMaskForLevel(AccessLevel level) =>
+    private static uint GetAccessMaskForLevel(AccessLevel level) =>
         level switch
         {
-            AccessLevel.Full => "1F01FF",      // FILE_ALL_ACCESS
-            AccessLevel.Change => "1201BF",    // READ | WRITE | DELETE
-            AccessLevel.Read => "1200A9",      // READ | EXECUTE
-            _ => "0"
+            AccessLevel.Full => 0x1F01FF,      // FILE_ALL_ACCESS
+            AccessLevel.Change => 0x1201BF,    // READ | WRITE | DELETE
+            AccessLevel.Read => 0x1200A9,      // READ | EXECUTE
+            _ => 0
         };
 
     private static List<SharePermission> ParseSddlForPermissions(string sddlString)
@@ -595,13 +619,11 @@ internal static partial class ShareHelper
 
     private static void ThrowNetApiException(string functionName, uint errorCode)
     {
-        var errorMessage = errorCode switch
+        throw errorCode switch
         {
-            ERROR_ACCESS_DENIED => "Access denied. Administrator privileges required.",
-            _ => $"Error code {errorCode}"
+            ERROR_ACCESS_DENIED => new UnauthorizedAccessException($"NetAPI32 call to {functionName} failed: Access denied. Administrator privileges required. (Error {errorCode})"),
+            _ => new InvalidOperationException($"NetAPI32 call to {functionName} failed: Error code {errorCode}")
         };
-
-        throw new InvalidOperationException($"NetAPI32 call to {functionName} failed: {errorMessage} ({errorCode})");
     }
 }
 

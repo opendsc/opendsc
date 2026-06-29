@@ -2,6 +2,10 @@
 // You may use, distribute and modify this code under the
 // terms of the MIT license.
 
+using System.Reflection;
+using System.Text.Json;
+
+using Json.Schema;
 using Xunit;
 
 using ShareResource = OpenDsc.Resource.Windows.FileSystem.Share.Resource;
@@ -13,11 +17,42 @@ namespace OpenDsc.Resource.Windows.Tests.FileSystem.Share;
 [Trait("Category", "Integration")]
 public sealed class ShareTests
 {
+    [Fact]
+    public void GetSchema_ReturnsValidJsonSchema()
+    {
+        // Arrange
+        var resource = new ShareResource(SourceGenerationContext.Default);
+
+        // Act
+        var schema = resource.GetSchema();
+
+        // Assert
+        Assert.NotNull(schema);
+        Assert.NotEmpty(schema);
+        var bundle = JsonSerializer.Deserialize<JsonSchema>(schema);
+        Assert.NotNull(bundle);
+    }
+
+    [Fact]
+    public void Resource_HasCorrectDscAttributes()
+    {
+        // Arrange
+        var resourceType = typeof(ShareResource);
+
+        // Act
+        var dscResourceAttr = resourceType.GetCustomAttributes(typeof(DscResourceAttribute), false).FirstOrDefault() as DscResourceAttribute;
+
+        // Assert
+        Assert.NotNull(dscResourceAttr);
+        Assert.Equal("OpenDsc.Windows.FileSystem/Share", dscResourceAttr.Type);
+        Assert.NotNull(dscResourceAttr.Version);
+    }
+
     [RequiresAdminFact]
     public void Get_ExistingShare_ReturnsShare()
     {
         // Arrange
-        var share = new ShareSchema { Name = "IPC$", Path = "", Exist = true };
+        var share = new ShareSchema { Name = "IPC$", Path = "" };
 
         // Act
         var result = new ShareResource(SourceGenerationContext.Default).Get(share);
@@ -25,7 +60,7 @@ public sealed class ShareTests
         // Assert
         Assert.NotNull(result);
         Assert.Equal("IPC$", result.Name);
-        Assert.True(result.Exist);
+        Assert.NotEqual(false, result.Exist);
     }
 
     [RequiresAdminFact]
@@ -38,7 +73,7 @@ public sealed class ShareTests
         var result = new ShareResource(SourceGenerationContext.Default).Get(share);
 
         // Assert
-        Assert.False(result.Exist);
+        Assert.Equal(false, result.Exist);
     }
 
     [RequiresAdminFact]
@@ -61,7 +96,7 @@ public sealed class ShareTests
 
             // Assert - share should be created
             var getResult = new ShareResource(SourceGenerationContext.Default).Get(share);
-            Assert.True(getResult.Exist);
+            Assert.NotEqual(false, getResult.Exist);
         }
         finally
         {
@@ -181,7 +216,7 @@ public sealed class ShareTests
             var result = new ShareResource(SourceGenerationContext.Default).Get(share);
 
             // Assert - should return permissions array (may be empty or have defaults)
-            Assert.True(result.Exist);
+            Assert.NotEqual(false, result.Exist);
             Assert.NotNull(result.Permissions);
         }
         finally

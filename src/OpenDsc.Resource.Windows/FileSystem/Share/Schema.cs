@@ -25,10 +25,10 @@ public sealed class Schema
     [Pattern(@"^[^\\/\t\n\r\x00-\x1f]*$")]
     public string Name { get; set; } = string.Empty;
 
-    [Required]
-    [Description("The local path to share.")]
+    [Description("The local path to share. Required when creating a share.")]
     [MinLength(1)]
-    public string Path { get; set; } = string.Empty;
+    [Nullable(false)]
+    public string? Path { get; set; }
 
     [Description("The description of the share.")]
     [Nullable(false)]
@@ -41,6 +41,8 @@ public sealed class Schema
     [JsonPropertyName("_purge")]
     [Description("When true, permissions not in the array are removed. When false, only manage listed permissions.")]
     [Default(false)]
+    [WriteOnly]
+    [Nullable(false)]
     public bool? Purge { get; set; }
 
     [JsonPropertyName("_exist")]

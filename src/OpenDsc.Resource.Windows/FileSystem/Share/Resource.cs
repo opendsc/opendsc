@@ -57,19 +57,22 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
     {
         ArgumentNullException.ThrowIfNull(instance);
         ArgumentException.ThrowIfNullOrEmpty(instance.Name);
-        ArgumentException.ThrowIfNullOrEmpty(instance.Path);
 
         var current = Get(instance);
 
         if (instance.Exist == false)
         {
-            if (current.Exist == true)
+            // Delete - no Path validation needed for delete operations
+            if (current.Exist != false)
             {
                 ShareHelper.DeleteShare(instance.Name);
             }
 
             return null;
         }
+
+        // Create or update - Path required for these operations
+        ArgumentException.ThrowIfNullOrEmpty(instance.Path);
 
         if (current.Exist == false)
         {
@@ -112,8 +115,7 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
                 Name = share.Name,
                 Path = share.Path,
                 Description = share.Description,
-                Permissions = permissions.ToArray(),
-                Purge = false
+                Permissions = permissions.ToArray()
             };
         }
     }

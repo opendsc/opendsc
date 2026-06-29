@@ -85,8 +85,9 @@ Access: Write-Only
 Default value: false
 ```
 
-!!! warning The `_purge` property is write-only and only applied during Set
-operations. Use with caution as it will remove all unlisted permissions.
+!!! warning
+    The `_purge` property is write-only and only applied during Set
+    operations. Use with caution as it will remove all unlisted permissions.
 
 ### _exist
 
@@ -99,8 +100,9 @@ Access: Read/Write
 Default value: true
 ```
 
-!!! note Administrator privileges are required to create, modify, or delete SMB
-shares on this system.
+!!! note
+    Administrator privileges are required to create, modify, or delete SMB
+    shares on this system.
 
 ## Examples
 

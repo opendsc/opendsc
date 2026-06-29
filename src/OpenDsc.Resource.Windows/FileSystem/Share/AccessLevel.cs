@@ -15,12 +15,12 @@ public enum AccessLevel
     None = 0,
 
     /// <summary>
-    /// Read-only access (0x1201BF).
+    /// Read-only access (0x1200A9).
     /// </summary>
     Read = 1,
 
     /// <summary>
-    /// Read and write access (0x1201BF | 0x00100000).
+    /// Read and write access (0x1201BF).
     /// </summary>
     Change = 2,
 
