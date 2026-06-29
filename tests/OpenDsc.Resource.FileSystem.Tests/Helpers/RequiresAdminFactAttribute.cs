@@ -18,6 +18,7 @@ internal sealed class RequiresAdminFactAttribute : FactAttribute
     {
         if (!OperatingSystem.IsWindows())
         {
+            Skip = "Requires Windows";
             return;
         }
 
