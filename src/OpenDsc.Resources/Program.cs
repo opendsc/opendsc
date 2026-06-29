@@ -12,6 +12,7 @@ using EnvironmentNs = OpenDsc.Resource.Windows.Environment;
 using ShortcutNs = OpenDsc.Resource.Windows.Shortcut;
 using OptionalFeatureNs = OpenDsc.Resource.Windows.OptionalFeature;
 using FileSystemAclNs = OpenDsc.Resource.Windows.FileSystem.Acl;
+using FileSystemShareNs = OpenDsc.Resource.Windows.FileSystem.Share;
 using ScheduledTaskNs = OpenDsc.Resource.Windows.ScheduledTask;
 using UserRightNs = OpenDsc.Resource.Windows.UserRight;
 using AuditPolicyNs = OpenDsc.Resource.Windows.AuditPolicy;
@@ -52,6 +53,7 @@ var environmentResource = new EnvironmentNs.Resource(OpenDsc.Resource.Windows.So
 var shortcutResource = new ShortcutNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
 var optionalFeatureResource = new OptionalFeatureNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
 var fileSystemAclResource = new FileSystemAclNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
+var fileSystemShareResource = new FileSystemShareNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
 var scheduledTaskResource = new ScheduledTaskNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
 var userRightResource = new UserRightNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
 var auditPolicyResource = new AuditPolicyNs.Resource(OpenDsc.Resource.Windows.SourceGenerationContext.Default);
@@ -102,6 +104,7 @@ command
     .AddResource<ShortcutNs.Resource, ShortcutNs.Schema>(shortcutResource)
     .AddResource<OptionalFeatureNs.Resource, OptionalFeatureNs.Schema>(optionalFeatureResource)
     .AddResource<FileSystemAclNs.Resource, FileSystemAclNs.Schema>(fileSystemAclResource)
+    .AddResource<FileSystemShareNs.Resource, FileSystemShareNs.Schema>(fileSystemShareResource)
     .AddResource<ScheduledTaskNs.Resource, ScheduledTaskNs.Schema>(scheduledTaskResource)
     .AddResource<UserRightNs.Resource, UserRightNs.Schema>(userRightResource)
     .AddResource<AuditPolicyNs.Resource, AuditPolicyNs.Schema>(auditPolicyResource)

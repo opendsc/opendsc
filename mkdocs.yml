@@ -177,6 +177,7 @@ nav:
               - Environment: reference/resources/windows/environment.md
               - File System:
                   - Access Control List: reference/resources/windows/filesystem/acl.md
+                  - Share: reference/resources/windows/filesystem/share.md
               - Group: reference/resources/windows/group.md
               - Optional Feature: reference/resources/windows/optional-feature.md
               - Scheduled Task: reference/resources/windows/scheduled-task.md
