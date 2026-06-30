@@ -29,6 +29,11 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
     {
         ArgumentNullException.ThrowIfNull(instance);
 
+        if (string.IsNullOrEmpty(instance.Name))
+        {
+            throw new ArgumentException("Share name cannot be null or empty.", nameof(instance));
+        }
+
         var share = ShareHelper.GetShare(instance.Name);
 
         if (share is null)
@@ -56,6 +61,11 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
     {
         ArgumentNullException.ThrowIfNull(instance);
 
+        if (string.IsNullOrEmpty(instance.Name))
+        {
+            throw new ArgumentException("Share name cannot be null or empty.", nameof(instance));
+        }
+
         if (instance.Exist != false && string.IsNullOrEmpty(instance.Path))
         {
             throw new ArgumentException("Share path cannot be null or empty for create/update operations.", nameof(instance));
@@ -78,6 +88,11 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
     public void Delete(Schema? instance)
     {
         ArgumentNullException.ThrowIfNull(instance);
+
+        if (string.IsNullOrEmpty(instance.Name))
+        {
+            throw new ArgumentException("Share name cannot be null or empty.", nameof(instance));
+        }
 
         ShareHelper.DeleteShare(instance.Name);
     }
