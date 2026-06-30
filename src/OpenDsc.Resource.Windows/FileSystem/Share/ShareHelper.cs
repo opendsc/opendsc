@@ -473,11 +473,9 @@ internal static partial class ShareHelper
             aceStrings.Add(aceString);
         }
 
-        // Build SDDL string: D: prefix for DACL with container inherit flag, followed by ACEs
-        var daclString = "D:AI" + string.Concat(aceStrings);
-
-        // Return full security descriptor (owner + group + DACL)
-        return "O:BAG:BA" + daclString;
+        // Build SDDL string with DACL only (no hardcoded owner/group)
+        // D:AI = DACL with CONTAINER_INHERIT_ACE flag
+        return "D:AI" + string.Concat(aceStrings);
     }
 
     private static string LookupAccountNameToSid(string accountName)
