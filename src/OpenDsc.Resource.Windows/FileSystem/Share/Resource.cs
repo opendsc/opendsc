@@ -56,43 +56,21 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
     {
         ArgumentNullException.ThrowIfNull(instance);
 
-        // For create/update operations, validate Path before calling Get() which loads Windows APIs
         if (instance.Exist != false && string.IsNullOrEmpty(instance.Path))
         {
-            throw new ArgumentException("Share path cannot be null or empty for create/update operations.", nameof(instance.Path));
+            throw new ArgumentException("Share path cannot be null or empty for create/update operations.", nameof(instance));
         }
 
         var current = Get(instance);
 
         if (instance.Exist == false)
         {
-            // Delete - no Path validation needed for delete operations
-            if (current.Exist != false)
-            {
-                ShareHelper.DeleteShare(instance.Name);
-            }
-
+            HandleDelete(current, instance);
             return null;
         }
 
-        if (current.Exist == false)
-        {
-            ShareHelper.CreateShare(instance.Name, instance.Path, instance.Description);
-        }
-        else
-        {
-            if (instance.Description is not null &&
-                !string.Equals(current.Description, instance.Description, StringComparison.Ordinal))
-            {
-                ShareHelper.UpdateShareDescription(instance.Name, instance.Description);
-            }
-        }
-
-        if (instance.Permissions is not null && instance.Permissions.Length > 0)
-        {
-            var purge = instance.Purge ?? false;
-            ShareHelper.SetSharePermissions(instance.Name, instance.Permissions, purge);
-        }
+        HandleCreateOrUpdate(current, instance);
+        HandlePermissions(instance);
 
         return null;
     }
@@ -119,4 +97,48 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
             };
         }
     }
+
+    private static void HandleDelete(Schema current, Schema desired)
+    {
+        if (current.Exist != false)
+        {
+            ShareHelper.DeleteShare(desired.Name);
+        }
+    }
+
+    private static void HandleCreateOrUpdate(Schema current, Schema desired)
+    {
+        if (current.Exist == false)
+        {
+            if (string.IsNullOrEmpty(desired.Path))
+            {
+                throw new ArgumentException("Share path cannot be null or empty for create operations.", nameof(desired));
+            }
+
+            ShareHelper.CreateShare(desired.Name, desired.Path, desired.Description);
+        }
+        else
+        {
+            HandleDescriptionUpdate(current, desired);
+        }
+    }
+
+    private static void HandleDescriptionUpdate(Schema current, Schema desired)
+    {
+        if (desired.Description is not null &&
+            !string.Equals(current.Description, desired.Description, StringComparison.Ordinal))
+        {
+            ShareHelper.UpdateShareDescription(desired.Name, desired.Description);
+        }
+    }
+
+    private static void HandlePermissions(Schema desired)
+    {
+        if (desired.Permissions is not null && desired.Permissions.Length > 0)
+        {
+            var purge = desired.Purge ?? false;
+            ShareHelper.SetSharePermissions(desired.Name, desired.Permissions, purge);
+        }
+    }
+
 }
