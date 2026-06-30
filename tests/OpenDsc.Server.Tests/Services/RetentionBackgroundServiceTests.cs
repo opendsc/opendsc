@@ -508,7 +508,7 @@ public class RetentionBackgroundServiceTests
         var settings = new ServerSettings
         {
             RetentionEnabled = false,
-            RetentionScheduleInterval = TimeSpan.FromMilliseconds(50)
+            RetentionScheduleInterval = TimeSpan.FromMilliseconds(100)
         };
         db.ServerSettings.Add(settings);
         await db.SaveChangesAsync();
@@ -516,11 +516,11 @@ public class RetentionBackgroundServiceTests
         var mockRetentionService = new Mock<IVersionRetentionService>();
         SetupServiceScope(db, mockRetentionService.Object);
 
-        var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(150));
+        var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(300));
         var service = new RetentionBackgroundService(_mockScopeFactory.Object, _mockLogger.Object);
 
         await service.StartAsync(cts.Token);
-        await Task.Delay(200);
+        await Task.Delay(400);
         cts.Cancel();
 
         await service.StopAsync(CancellationToken.None);

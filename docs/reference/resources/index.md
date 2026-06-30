@@ -20,12 +20,12 @@ Windows build of the resource executable.
 | [`OpenDsc.Windows/OptionalFeature`](windows/optional-feature.md)            | Manage Windows optional features       |
 | [`OpenDsc.Windows/UserRight`](windows/user-right.md)                        | Manage Windows user rights assignments |
 | [`OpenDsc.Windows.FileSystem/AccessControlList`](windows/filesystem/acl.md) | Manage file and directory permissions  |
+| [`OpenDsc.Windows.FileSystem/Share`](windows/filesystem/share.md)           | Manage Windows SMB shares              |
 
 ## SQL Server resources
 
 SQL Server resources connect to SQL Server instances. They require SMO (SQL
-Server Management
-Objects) and work on all platforms.
+Server Management Objects) and work on all platforms.
 
 | Resource                                                                   | Description                     |
 | :------------------------------------------------------------------------- | :------------------------------ |
