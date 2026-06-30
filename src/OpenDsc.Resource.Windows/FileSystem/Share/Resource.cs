@@ -28,7 +28,6 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
     public Schema Get(Schema? instance)
     {
         ArgumentNullException.ThrowIfNull(instance);
-        ArgumentException.ThrowIfNullOrEmpty(instance.Name);
 
         var share = ShareHelper.GetShare(instance.Name);
 
@@ -56,7 +55,12 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
     public SetResult<Schema>? Set(Schema? instance)
     {
         ArgumentNullException.ThrowIfNull(instance);
-        ArgumentException.ThrowIfNullOrEmpty(instance.Name);
+
+        // For create/update operations, validate Path before calling Get() which loads Windows APIs
+        if (instance.Exist != false && string.IsNullOrEmpty(instance.Path))
+        {
+            throw new ArgumentException("Share path cannot be null or empty for create/update operations.", nameof(instance.Path));
+        }
 
         var current = Get(instance);
 
@@ -70,9 +74,6 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
 
             return null;
         }
-
-        // Create or update - Path required for these operations
-        ArgumentException.ThrowIfNullOrEmpty(instance.Path);
 
         if (current.Exist == false)
         {
@@ -99,7 +100,6 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
     public void Delete(Schema? instance)
     {
         ArgumentNullException.ThrowIfNull(instance);
-        ArgumentException.ThrowIfNullOrEmpty(instance.Name);
 
         ShareHelper.DeleteShare(instance.Name);
     }
