@@ -4,7 +4,7 @@
 
 using System.Text.Json;
 
-using Json.Schema;
+using AwesomeAssertions;
 
 using Xunit;
 
@@ -27,10 +27,9 @@ public sealed class ShareTests
         var schema = resource.GetSchema();
 
         // Assert
-        Assert.NotNull(schema);
-        Assert.NotEmpty(schema);
-        var bundle = JsonSerializer.Deserialize<JsonSchema>(schema);
-        Assert.NotNull(bundle);
+        schema.Should().NotBeNullOrEmpty();
+        var doc = JsonDocument.Parse(schema);
+        doc.RootElement.ValueKind.Should().Be(JsonValueKind.Object);
     }
 
     [Fact]
