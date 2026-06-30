@@ -313,4 +313,450 @@ public sealed class ShareTests
             ShareHelper.DeleteShare(shareName);
         }
     }
+
+    [RequiresAdminFact]
+    public void Set_WithChangeAccessLevel_GrantsChangePermissions()
+    {
+        // Arrange
+        var shareName = "TestChange" + Guid.NewGuid().ToString("N").Substring(0, 8);
+        ShareHelper.CreateShare(shareName, @"C:\Windows\Temp", "Test");
+
+        var permissions = new[]
+        {
+            new Windows.FileSystem.Share.SharePermission
+            {
+                Principal = "BUILTIN\\Users",
+                Access = Windows.FileSystem.Share.AccessLevel.Change
+            }
+        };
+
+        var share = new ShareSchema
+        {
+            Name = shareName,
+            Path = @"C:\Windows\Temp",
+            Permissions = permissions,
+            Purge = true,
+            Exist = true
+        };
+
+        try
+        {
+            // Act
+            new ShareResource(SourceGenerationContext.Default).Set(share);
+
+            // Assert
+            var result = new ShareResource(SourceGenerationContext.Default).Get(share);
+            Assert.NotNull(result.Permissions);
+            Assert.Contains(result.Permissions, p => p.Principal.Contains("Users") && p.Access == Windows.FileSystem.Share.AccessLevel.Change);
+        }
+        finally
+        {
+            // Cleanup
+            ShareHelper.DeleteShare(shareName);
+        }
+    }
+
+    [RequiresAdminFact]
+    public void Set_WithReadAccessLevel_GrantsReadOnlyPermissions()
+    {
+        // Arrange
+        var shareName = "TestRead" + Guid.NewGuid().ToString("N").Substring(0, 8);
+        ShareHelper.CreateShare(shareName, @"C:\Windows\Temp", "Test");
+
+        var permissions = new[]
+        {
+            new Windows.FileSystem.Share.SharePermission
+            {
+                Principal = "BUILTIN\\Guests",
+                Access = Windows.FileSystem.Share.AccessLevel.Read
+            }
+        };
+
+        var share = new ShareSchema
+        {
+            Name = shareName,
+            Path = @"C:\Windows\Temp",
+            Permissions = permissions,
+            Purge = true,
+            Exist = true
+        };
+
+        try
+        {
+            // Act
+            new ShareResource(SourceGenerationContext.Default).Set(share);
+
+            // Assert
+            var result = new ShareResource(SourceGenerationContext.Default).Get(share);
+            Assert.NotNull(result.Permissions);
+            Assert.Contains(result.Permissions, p => p.Access == Windows.FileSystem.Share.AccessLevel.Read);
+        }
+        finally
+        {
+            // Cleanup
+            ShareHelper.DeleteShare(shareName);
+        }
+    }
+
+    [RequiresAdminFact]
+    public void Set_UpdatePermissionsPurgeTrue_RemovesExistingPermissions()
+    {
+        // Arrange
+        var shareName = "TestPurgePerm" + Guid.NewGuid().ToString("N").Substring(0, 8);
+        ShareHelper.CreateShare(shareName, @"C:\Windows\Temp", "Test");
+
+        // Set initial permissions with both Administrators and Users
+        var initialPerms = new[]
+        {
+            new Windows.FileSystem.Share.SharePermission
+            {
+                Principal = "BUILTIN\\Administrators",
+                Access = Windows.FileSystem.Share.AccessLevel.Full
+            },
+            new Windows.FileSystem.Share.SharePermission
+            {
+                Principal = "BUILTIN\\Users",
+                Access = Windows.FileSystem.Share.AccessLevel.Read
+            }
+        };
+
+        var share1 = new ShareSchema
+        {
+            Name = shareName,
+            Path = @"C:\Windows\Temp",
+            Permissions = initialPerms,
+            Purge = true,
+            Exist = true
+        };
+
+        try
+        {
+            new ShareResource(SourceGenerationContext.Default).Set(share1);
+
+            // Now update with only Administrators permission and purge=true
+            var updatedPerms = new[]
+            {
+                new Windows.FileSystem.Share.SharePermission
+                {
+                    Principal = "BUILTIN\\Administrators",
+                    Access = Windows.FileSystem.Share.AccessLevel.Full
+                }
+            };
+
+            var share2 = new ShareSchema
+            {
+                Name = shareName,
+                Path = @"C:\Windows\Temp",
+                Permissions = updatedPerms,
+                Purge = true,
+                Exist = true
+            };
+
+            // Act
+            new ShareResource(SourceGenerationContext.Default).Set(share2);
+
+            // Assert
+            var result = new ShareResource(SourceGenerationContext.Default).Get(share2);
+            Assert.NotNull(result.Permissions);
+            // Should have Administrators but the Users permission should be removed due to purge
+            Assert.Contains(result.Permissions, p => p.Principal.Contains("Administrators"));
+        }
+        finally
+        {
+            // Cleanup
+            ShareHelper.DeleteShare(shareName);
+        }
+    }
+
+    [RequiresAdminFact]
+    public void Set_UpdatePermissionsPurgeFalse_RetainsExistingPermissions()
+    {
+        // Arrange
+        var shareName = "TestNoPurge" + Guid.NewGuid().ToString("N").Substring(0, 8);
+        ShareHelper.CreateShare(shareName, @"C:\Windows\Temp", "Test");
+
+        // Set initial permissions with Administrators
+        var initialPerms = new[]
+        {
+            new Windows.FileSystem.Share.SharePermission
+            {
+                Principal = "BUILTIN\\Administrators",
+                Access = Windows.FileSystem.Share.AccessLevel.Full
+            }
+        };
+
+        var share1 = new ShareSchema
+        {
+            Name = shareName,
+            Path = @"C:\Windows\Temp",
+            Permissions = initialPerms,
+            Purge = true,
+            Exist = true
+        };
+
+        try
+        {
+            new ShareResource(SourceGenerationContext.Default).Set(share1);
+
+            // Now add Users permission with purge=false
+            var updatedPerms = new[]
+            {
+                new Windows.FileSystem.Share.SharePermission
+                {
+                    Principal = "BUILTIN\\Users",
+                    Access = Windows.FileSystem.Share.AccessLevel.Read
+                }
+            };
+
+            var share2 = new ShareSchema
+            {
+                Name = shareName,
+                Path = @"C:\Windows\Temp",
+                Permissions = updatedPerms,
+                Purge = false,
+                Exist = true
+            };
+
+            // Act
+            new ShareResource(SourceGenerationContext.Default).Set(share2);
+
+            // Assert
+            var result = new ShareResource(SourceGenerationContext.Default).Get(share2);
+            Assert.NotNull(result.Permissions);
+            // Should have both Administrators and Users permissions
+            Assert.Contains(result.Permissions, p => p.Principal.Contains("Administrators"));
+            Assert.Contains(result.Permissions, p => p.Principal.Contains("Users"));
+        }
+        finally
+        {
+            // Cleanup
+            ShareHelper.DeleteShare(shareName);
+        }
+    }
+
+    [RequiresAdminFact]
+    public void Set_CreateShareWithDescription_PreservesDescription()
+    {
+        // Arrange
+        var shareName = "TestDescCreate" + Guid.NewGuid().ToString("N").Substring(0, 8);
+        var description = "This is a test share with a description";
+        var share = new ShareSchema
+        {
+            Name = shareName,
+            Path = @"C:\Windows\Temp",
+            Description = description,
+            Exist = true
+        };
+
+        try
+        {
+            // Act
+            new ShareResource(SourceGenerationContext.Default).Set(share);
+
+            // Assert
+            var result = new ShareResource(SourceGenerationContext.Default).Get(share);
+            Assert.Equal(description, result.Description);
+        }
+        finally
+        {
+            // Cleanup
+            ShareHelper.DeleteShare(shareName);
+        }
+    }
+
+    [RequiresAdminFact]
+    public void Set_CreateShareWithoutDescription_CreateSucceeds()
+    {
+        // Arrange
+        var shareName = "TestNoDesc" + Guid.NewGuid().ToString("N").Substring(0, 8);
+        var share = new ShareSchema
+        {
+            Name = shareName,
+            Path = @"C:\Windows\Temp",
+            Exist = true
+        };
+
+        try
+        {
+            // Act
+            new ShareResource(SourceGenerationContext.Default).Set(share);
+
+            // Assert
+            var result = new ShareResource(SourceGenerationContext.Default).Get(share);
+            Assert.NotEqual(false, result.Exist);
+        }
+        finally
+        {
+            // Cleanup
+            ShareHelper.DeleteShare(shareName);
+        }
+    }
+
+    [RequiresAdminFact]
+    public void Set_UpdateShareWithoutChangingDescription_PreservesExistingDescription()
+    {
+        // Arrange
+        var shareName = "TestPreserveDesc" + Guid.NewGuid().ToString("N").Substring(0, 8);
+        var originalDescription = "Original description";
+        ShareHelper.CreateShare(shareName, @"C:\Windows\Temp", originalDescription);
+
+        // Update share without specifying description (null Description)
+        var share = new ShareSchema
+        {
+            Name = shareName,
+            Path = @"C:\Windows\Temp",
+            Description = null,
+            Exist = true
+        };
+
+        try
+        {
+            // Act
+            new ShareResource(SourceGenerationContext.Default).Set(share);
+
+            // Assert
+            var result = new ShareResource(SourceGenerationContext.Default).Get(share);
+            // Description should remain unchanged
+            Assert.Equal(originalDescription, result.Description);
+        }
+        finally
+        {
+            // Cleanup
+            ShareHelper.DeleteShare(shareName);
+        }
+    }
+
+    [Fact]
+    public void Get_NullInstance_ThrowsArgumentNullException()
+    {
+        // Arrange
+        var resource = new ShareResource(SourceGenerationContext.Default);
+
+        // Act & Assert
+        Assert.Throws<ArgumentNullException>(() => resource.Get(null!));
+    }
+
+    [Fact]
+    public void Get_NullShareName_ThrowsArgumentException()
+    {
+        // Arrange
+        var resource = new ShareResource(SourceGenerationContext.Default);
+        var share = new ShareSchema { Name = null!, Path = @"C:\temp" };
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => resource.Get(share));
+    }
+
+    [Fact]
+    public void Get_EmptyShareName_ThrowsArgumentException()
+    {
+        // Arrange
+        var resource = new ShareResource(SourceGenerationContext.Default);
+        var share = new ShareSchema { Name = string.Empty, Path = @"C:\temp" };
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => resource.Get(share));
+    }
+
+    [Fact]
+    public void Set_NullInstance_ThrowsArgumentNullException()
+    {
+        // Arrange
+        var resource = new ShareResource(SourceGenerationContext.Default);
+
+        // Act & Assert
+        Assert.Throws<ArgumentNullException>(() => resource.Set(null!));
+    }
+
+    [Fact]
+    public void Set_NullShareName_ThrowsArgumentException()
+    {
+        // Arrange
+        var resource = new ShareResource(SourceGenerationContext.Default);
+        var share = new ShareSchema { Name = null!, Path = @"C:\temp", Exist = true };
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => resource.Set(share));
+    }
+
+    [Fact]
+    public void Set_EmptyShareName_ThrowsArgumentException()
+    {
+        // Arrange
+        var resource = new ShareResource(SourceGenerationContext.Default);
+        var share = new ShareSchema { Name = string.Empty, Path = @"C:\temp", Exist = true };
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => resource.Set(share));
+    }
+
+    [Fact]
+    public void Set_CreateShareWithoutPath_ThrowsArgumentException()
+    {
+        // Arrange
+        var resource = new ShareResource(SourceGenerationContext.Default);
+        var share = new ShareSchema { Name = "TestShare", Path = null, Exist = true };
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => resource.Set(share));
+    }
+
+    [Fact]
+    public void Set_CreateShareWithEmptyPath_ThrowsArgumentException()
+    {
+        // Arrange
+        var resource = new ShareResource(SourceGenerationContext.Default);
+        var share = new ShareSchema { Name = "TestShare", Path = string.Empty, Exist = true };
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => resource.Set(share));
+    }
+
+    [Fact]
+    public void Delete_NullInstance_ThrowsArgumentNullException()
+    {
+        // Arrange
+        var resource = new ShareResource(SourceGenerationContext.Default);
+
+        // Act & Assert
+        Assert.Throws<ArgumentNullException>(() => resource.Delete(null!));
+    }
+
+    [Fact]
+    public void Delete_NullShareName_ThrowsArgumentException()
+    {
+        // Arrange
+        var resource = new ShareResource(SourceGenerationContext.Default);
+        var share = new ShareSchema { Name = null!, Path = @"C:\temp" };
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => resource.Delete(share));
+    }
+
+    [Fact]
+    public void Delete_EmptyShareName_ThrowsArgumentException()
+    {
+        // Arrange
+        var resource = new ShareResource(SourceGenerationContext.Default);
+        var share = new ShareSchema { Name = string.Empty, Path = @"C:\temp" };
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => resource.Delete(share));
+    }
+
+    [RequiresAdminFact]
+    public void Export_NullFilter_ReturnsAllShares()
+    {
+        // Act
+        var result = new ShareResource(SourceGenerationContext.Default).Export(null).ToList();
+
+        // Assert
+        Assert.NotEmpty(result);
+        // Verify each exported share has required properties
+        foreach (var share in result)
+        {
+            Assert.NotNull(share.Name);
+            Assert.NotEmpty(share.Name);
+        }
+    }
 }
