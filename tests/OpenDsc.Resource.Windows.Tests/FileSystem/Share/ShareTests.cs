@@ -636,7 +636,7 @@ public sealed class ShareTests
         Assert.Throws<ArgumentNullException>(() => resource.Get(null!));
     }
 
-    [Fact]
+    [RequiresAdminFact]
     public void Get_NullShareName_ThrowsArgumentException()
     {
         // Arrange
@@ -647,7 +647,7 @@ public sealed class ShareTests
         Assert.Throws<ArgumentException>(() => resource.Get(share));
     }
 
-    [Fact]
+    [RequiresAdminFact]
     public void Get_EmptyShareName_ThrowsArgumentException()
     {
         // Arrange
@@ -668,7 +668,7 @@ public sealed class ShareTests
         Assert.Throws<ArgumentNullException>(() => resource.Set(null!));
     }
 
-    [Fact]
+    [RequiresAdminFact]
     public void Set_NullShareName_ThrowsArgumentException()
     {
         // Arrange
@@ -679,7 +679,7 @@ public sealed class ShareTests
         Assert.Throws<ArgumentException>(() => resource.Set(share));
     }
 
-    [Fact]
+    [RequiresAdminFact]
     public void Set_EmptyShareName_ThrowsArgumentException()
     {
         // Arrange
@@ -722,7 +722,7 @@ public sealed class ShareTests
         Assert.Throws<ArgumentNullException>(() => resource.Delete(null!));
     }
 
-    [Fact]
+    [RequiresAdminFact]
     public void Delete_NullShareName_ThrowsArgumentException()
     {
         // Arrange
@@ -733,7 +733,7 @@ public sealed class ShareTests
         Assert.Throws<ArgumentException>(() => resource.Delete(share));
     }
 
-    [Fact]
+    [RequiresAdminFact]
     public void Delete_EmptyShareName_ThrowsArgumentException()
     {
         // Arrange
