@@ -140,5 +140,4 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
             ShareHelper.SetSharePermissions(desired.Name, desired.Permissions, purge);
         }
     }
-
 }
