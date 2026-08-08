@@ -55,13 +55,15 @@ Some resources have a sub-area for further organization:
 
 Each resource implements one or more capability interfaces:
 
-| Capability | Operation | Description                                           |
-| :--------- | :-------- | :---------------------------------------------------- |
-| Get        | `get`     | Retrieve the current state of a resource instance     |
-| Set        | `set`     | Apply the desired state to a resource instance        |
-| Test       | `test`    | Check whether an instance matches the desired state   |
-| Delete     | `delete`  | Remove a resource instance                            |
-| Export     | `export`  | Enumerate all instances of the resource on the system |
+| Capability      | Operation           | Description                                           |
+| :-------------- | :------------------ | :---------------------------------------------------- |
+| Get             | `get`               | Retrieve the current state of a resource instance     |
+| Set             | `set`               | Apply the desired state to a resource instance        |
+| Set (what-if)   | `set --what-if`     | Preview the changes Set would make without applying   |
+| Test            | `test`              | Check whether an instance matches the desired state   |
+| Delete          | `delete`            | Remove a resource instance                            |
+| Delete (what-if)| `delete --what-if`  | Preview the changes Delete would make without applying|
+| Export          | `export`            | Enumerate all instances of the resource on the system |
 
 Not every resource implements all capabilities. Use `dsc resource list` to see
 which capabilities

@@ -70,6 +70,14 @@ public sealed partial class DscResourceAttribute : Attribute
     /// </summary>
     public TestReturn TestReturn { get; set; } = TestReturn.State;
 
+    /// <summary>
+    /// Gets or sets what the Set operation returns in what-if mode (None, State, or StateAndDiff).
+    /// Only used when the resource implements <see cref="ISettableWhatIf{T}"/>. When set to
+    /// <see cref="SetReturn.None"/>, the manifest omits "whatIfReturns" and what-if execution
+    /// falls back to <see cref="SetReturn"/>.
+    /// </summary>
+    public SetReturn WhatIfReturn { get; set; } = SetReturn.State;
+
     private SemanticVersion? _semanticVersion;
 
     /// <summary>

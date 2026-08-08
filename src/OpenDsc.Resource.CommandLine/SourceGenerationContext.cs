@@ -17,6 +17,8 @@ namespace OpenDsc.Resource.CommandLine;
 [JsonSerializable(typeof(ManifestTestMethod))]
 [JsonSerializable(typeof(ManifestExportMethod))]
 [JsonSerializable(typeof(JsonInputArg))]
+[JsonSerializable(typeof(WhatIfArg))]
+[JsonSerializable(typeof(DeleteResult))]
 [JsonSerializable(typeof(HashSet<string>))]
 [JsonSerializable(typeof(MultiResourceManifest))]
 internal partial class SourceGenerationContext : JsonSerializerContext

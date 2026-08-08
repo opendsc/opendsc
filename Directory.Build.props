@@ -11,6 +11,7 @@
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1903</WarningsNotAsErrors>
     <JsonSchemaDefaultPropertyNaming>CamelCase</JsonSchemaDefaultPropertyNaming>
   </PropertyGroup>
 </Project>

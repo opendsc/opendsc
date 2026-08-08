@@ -18,9 +18,13 @@ internal sealed class ResourceRegistration
 
     internal Action<string?>? SetAction { get; }
 
+    internal Action<string?>? SetWhatIfAction { get; }
+
     internal Action<string?>? TestAction { get; }
 
     internal Action<string?>? DeleteAction { get; }
+
+    internal Action<string?>? DeleteWhatIfAction { get; }
 
     internal Action<string?>? ExportAction { get; }
 
@@ -35,8 +39,10 @@ internal sealed class ResourceRegistration
         DscResourceAttribute metadata,
         Action<string?>? getAction,
         Action<string?>? setAction,
+        Action<string?>? setWhatIfAction,
         Action<string?>? testAction,
         Action<string?>? deleteAction,
+        Action<string?>? deleteWhatIfAction,
         Action<string?>? exportAction,
         Func<string>? schemaFunc,
         Func<Type, int> exitCodeResolver)
@@ -47,8 +53,10 @@ internal sealed class ResourceRegistration
         Metadata = metadata;
         GetAction = getAction;
         SetAction = setAction;
+        SetWhatIfAction = setWhatIfAction;
         TestAction = testAction;
         DeleteAction = deleteAction;
+        DeleteWhatIfAction = deleteWhatIfAction;
         ExportAction = exportAction;
         SchemaFunc = schemaFunc;
         ExitCodeResolver = exitCodeResolver;

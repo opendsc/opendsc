@@ -19,8 +19,19 @@ internal static class CommandExecutor
         registration.GetAction(input);
     }
 
-    internal static void ExecuteSet(ResourceRegistration registration, string? input)
+    internal static void ExecuteSet(ResourceRegistration registration, string? input, bool whatIf = false)
     {
+        if (whatIf)
+        {
+            if (registration.SetWhatIfAction == null)
+            {
+                throw new NotImplementedException($"Resource '{registration.Type}' does not support set what-if capability.");
+            }
+
+            registration.SetWhatIfAction(input);
+            return;
+        }
+
         if (registration.SetAction == null)
         {
             throw new NotImplementedException($"Resource '{registration.Type}' does not support Set capability.");
@@ -39,8 +50,19 @@ internal static class CommandExecutor
         registration.TestAction(input);
     }
 
-    internal static void ExecuteDelete(ResourceRegistration registration, string? input)
+    internal static void ExecuteDelete(ResourceRegistration registration, string? input, bool whatIf = false)
     {
+        if (whatIf)
+        {
+            if (registration.DeleteWhatIfAction == null)
+            {
+                throw new NotImplementedException($"Resource '{registration.Type}' does not support delete what-if capability.");
+            }
+
+            registration.DeleteWhatIfAction(input);
+            return;
+        }
+
         if (registration.DeleteAction == null)
         {
             throw new NotImplementedException($"Resource '{registration.Type}' does not support Delete capability.");
@@ -217,12 +239,23 @@ internal static class CommandExecutor
             setReturn = char.ToLowerInvariant(setReturnStr[0]) + setReturnStr.Substring(1);
         }
 
+        string? whatIfReturn = null;
+
+        if (registration.SetWhatIfAction is not null && metadata.WhatIfReturn != SetReturn.None)
+        {
+            var whatIfReturnStr = metadata.WhatIfReturn.ToString();
+            whatIfReturn = char.ToLowerInvariant(whatIfReturnStr[0]) + whatIfReturnStr.Substring(1);
+        }
+
         var method = BuildMethod(exeName, "set", registration, isMultiResourceExe);
         return new ManifestSetMethod
         {
             Executable = method.Executable,
-            Args = method.Args,
-            Return = setReturn
+            Args = registration.SetWhatIfAction is not null
+                ? [.. method.Args!, new WhatIfArg { Arg = "--what-if" }]
+                : method.Args,
+            Return = setReturn,
+            WhatIfReturn = whatIfReturn
         };
     }
 
@@ -243,7 +276,14 @@ internal static class CommandExecutor
 
     private static ManifestMethod BuildDeleteMethod(string exeName, ResourceRegistration registration, bool isMultiResourceExe)
     {
-        return BuildMethod(exeName, "delete", registration, isMultiResourceExe);
+        var method = BuildMethod(exeName, "delete", registration, isMultiResourceExe);
+
+        if (registration.DeleteWhatIfAction is not null)
+        {
+            method.Args = [.. method.Args!, new WhatIfArg { Arg = "--what-if" }];
+        }
+
+        return method;
     }
 
     private static ManifestExportMethod BuildExportMethod(string exeName, ResourceRegistration registration, bool isMultiResourceExe)

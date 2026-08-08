@@ -197,6 +197,32 @@ public class ManifestSetMethodTests
     }
 
     [Fact]
+    public void WhatIfReturn_DefaultsToNull()
+    {
+        var method = new ManifestSetMethod();
+
+        method.WhatIfReturn.Should().BeNull();
+    }
+
+    [Fact]
+    public void WhatIfReturn_CanBeSetToState()
+    {
+        var method = new ManifestSetMethod { WhatIfReturn = "state" };
+
+        method.WhatIfReturn.Should().Be("state");
+    }
+
+    [Fact]
+    public void WhatIfReturn_SerializesAsWhatIfReturns()
+    {
+        var method = new ManifestSetMethod { Executable = "test.exe", WhatIfReturn = "state" };
+
+        var json = JsonSerializer.Serialize(method);
+
+        json.Should().Contain("\"whatIfReturns\":\"state\"");
+    }
+
+    [Fact]
     public void Return_CanBeSetToState()
     {
         var method = new ManifestSetMethod { Return = "state" };
@@ -253,6 +279,71 @@ public class ManifestTestMethodTests
         var method = new ManifestTestMethod { Executable = "test.exe" };
 
         method.Executable.Should().Be("test.exe");
+    }
+}
+
+public class WhatIfArgTests
+{
+    [Fact]
+    public void Arg_DefaultsToEmpty()
+    {
+        var arg = new WhatIfArg();
+
+        arg.Arg.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Arg_CanBeSet()
+    {
+        var arg = new WhatIfArg { Arg = "--what-if" };
+
+        arg.Arg.Should().Be("--what-if");
+    }
+
+    [Fact]
+    public void Arg_SerializesAsWhatIfArg()
+    {
+        var arg = new WhatIfArg { Arg = "--what-if" };
+
+        var json = JsonSerializer.Serialize(arg);
+
+        json.Should().Be("""{"whatIfArg":"--what-if"}""");
+    }
+}
+
+public class DeleteResultTests
+{
+    [Fact]
+    public void Metadata_DefaultsToNull()
+    {
+        var result = new DeleteResult();
+
+        result.Metadata.Should().BeNull();
+    }
+
+    [Fact]
+    public void Metadata_SerializesWithUnderscorePrefix()
+    {
+        var result = new DeleteResult
+        {
+            Metadata = new DeleteWhatIfMetadata { WhatIf = ["Would delete item"] }
+        };
+
+        var json = JsonSerializer.Serialize(result);
+
+        json.Should().Be("""{"_metadata":{"whatIf":["Would delete item"]}}""");
+    }
+
+    [Fact]
+    public void RoundTrips_ThroughJson()
+    {
+        var json = """{"_metadata":{"whatIf":["message"]}}""";
+
+        var result = JsonSerializer.Deserialize<DeleteResult>(json);
+
+        result.Should().NotBeNull();
+        result!.Metadata.Should().NotBeNull();
+        result.Metadata!.WhatIf.Should().Equal("message");
     }
 }
 

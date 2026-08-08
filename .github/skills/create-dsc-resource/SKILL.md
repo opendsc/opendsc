@@ -56,7 +56,7 @@ Create `src/OpenDsc.Resource.{Area}/{Name}/`:
 - [ ] `[DscResource("OpenDsc.{Area}/{Name}", "0.1.0", Description = "...", Tags = [...])]`
 - [ ] `[ExitCode]` attributes for expected exception types
 - [ ] `GetSchema()` using `SchemaRegistry.CreateBundle()` source generation pattern
-- [ ] Applicable interfaces implemented (`IGettable`, `ISettable`, `IDeletable`, `IExportable`)
+- [ ] Applicable interfaces implemented (`IGettable`, `ISettable`, `ISettableWhatIf`, `IDeletable`, `IDeletableWhatIf`, `IExportable`)
 - [ ] MIT license header
 
 **Schema.cs checklist:**

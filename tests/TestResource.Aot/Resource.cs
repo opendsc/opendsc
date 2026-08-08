@@ -9,14 +9,14 @@ using OpenDsc.Resource;
 
 namespace TestResource.Aot;
 
-[DscResource("OpenDsc.Test/AotFile", Description = "AOT test resource for file existence.", Tags = ["test", "file", "aot"], SetReturn = SetReturn.StateAndDiff, TestReturn = TestReturn.StateAndDiff)]
+[DscResource("OpenDsc.Test/AotFile", Description = "AOT test resource for file existence.", Tags = ["test", "file", "aot"], SetReturn = SetReturn.StateAndDiff, TestReturn = TestReturn.StateAndDiff, WhatIfReturn = SetReturn.StateAndDiff)]
 [ExitCode(0, Description = "Success")]
 [ExitCode(1, Exception = typeof(Exception), Description = "Error")]
 [ExitCode(2, Exception = typeof(JsonException), Description = "Invalid JSON")]
 [ExitCode(3, Exception = typeof(IOException), Description = "I/O error")]
 [ExitCode(4, Exception = typeof(DirectoryNotFoundException), Description = "Directory not found")]
 [ExitCode(5, Exception = typeof(UnauthorizedAccessException), Description = "Access denied")]
-public sealed class Resource(JsonSerializerContext context) : DscResource<Schema>(context), IGettable<Schema>, ISettable<Schema>, IDeletable<Schema>, ITestable<Schema>, IExportable<Schema>
+public sealed class Resource(JsonSerializerContext context) : DscResource<Schema>(context), IGettable<Schema>, ISettableWhatIf<Schema>, IDeletableWhatIf<Schema>, ITestable<Schema>, IExportable<Schema>
 {
     public override string GetSchema()
     {
@@ -101,6 +101,31 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         return result;
     }
 
+    public SetResult<Schema> SetWhatIf(Schema? instance)
+    {
+        ArgumentNullException.ThrowIfNull(instance);
+
+        var desiredExist = instance.Exist ?? true;
+        var currentState = Get(instance);
+        var currentExist = currentState.Exist ?? true;
+
+        if (desiredExist == currentExist)
+        {
+            return new SetResult<Schema>(currentState) { ChangedProperties = [] };
+        }
+
+        var projectedState = new Schema
+        {
+            Path = instance.Path,
+            Exist = desiredExist ? null : false
+        };
+
+        return new SetResult<Schema>(projectedState)
+        {
+            ChangedProperties = ["_exist"]
+        };
+    }
+
     public void Delete(Schema? instance)
     {
         ArgumentNullException.ThrowIfNull(instance);
@@ -109,6 +134,20 @@ public sealed class Resource(JsonSerializerContext context) : DscResource<Schema
         {
             File.Delete(instance.Path);
         }
+    }
+
+    public DeleteResult DeleteWhatIf(Schema? instance)
+    {
+        ArgumentNullException.ThrowIfNull(instance);
+
+        var messages = File.Exists(instance.Path)
+            ? new[] { $"Would delete file '{instance.Path}'" }
+            : [];
+
+        return new DeleteResult
+        {
+            Metadata = new DeleteWhatIfMetadata { WhatIf = messages }
+        };
     }
 
     public TestResult<Schema> Test(Schema? instance)

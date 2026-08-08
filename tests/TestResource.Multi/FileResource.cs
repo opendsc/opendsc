@@ -16,14 +16,14 @@ public sealed class FileSchema
     public bool? Exist { get; set; }
 }
 
-[DscResource("TestResource.Multi/File", "1.0.0", Description = "Manages file content", Tags = ["file", "content"], SetReturn = SetReturn.State, TestReturn = TestReturn.State)]
+[DscResource("TestResource.Multi/File", "1.0.0", Description = "Manages file content", Tags = ["file", "content"], SetReturn = SetReturn.State, TestReturn = TestReturn.State, WhatIfReturn = SetReturn.State)]
 [ExitCode(0, Description = "Success")]
 [ExitCode(1, Exception = typeof(Exception), Description = "Error")]
 [ExitCode(2, Exception = typeof(IOException), Description = "I/O error")]
 [ExitCode(3, Exception = typeof(DirectoryNotFoundException), Description = "Directory not found")]
 [ExitCode(4, Exception = typeof(UnauthorizedAccessException), Description = "Access denied")]
 public sealed class FileResource(JsonSerializerContext context) : DscResource<FileSchema>(context),
-    IGettable<FileSchema>, ISettable<FileSchema>, ITestable<FileSchema>, IDeletable<FileSchema>
+    IGettable<FileSchema>, ISettableWhatIf<FileSchema>, ITestable<FileSchema>, IDeletable<FileSchema>
 {
     public FileSchema Get(FileSchema? instance)
     {
@@ -88,6 +88,42 @@ public sealed class FileResource(JsonSerializerContext context) : DscResource<Fi
 
         var actualState = Get(instance);
         return new SetResult<FileSchema>(actualState)
+        {
+            ChangedProperties = changedProperties.Count > 0 ? [.. changedProperties] : null
+        };
+    }
+
+    public SetResult<FileSchema> SetWhatIf(FileSchema? instance)
+    {
+        ArgumentNullException.ThrowIfNull(instance);
+
+        var current = Get(instance);
+        var changedProperties = new List<string>();
+
+        if (instance.Exist == false)
+        {
+            if (File.Exists(instance.Path))
+            {
+                changedProperties.Add(nameof(FileSchema.Exist));
+            }
+        }
+        else if (!File.Exists(instance.Path) || current.Content != instance.Content)
+        {
+            changedProperties.Add(nameof(FileSchema.Content));
+            if (current.Exist != true)
+            {
+                changedProperties.Add(nameof(FileSchema.Exist));
+            }
+        }
+
+        var projectedState = new FileSchema
+        {
+            Path = instance.Path,
+            Content = instance.Exist == false ? null : instance.Content,
+            Exist = instance.Exist == false ? false : null
+        };
+
+        return new SetResult<FileSchema>(projectedState)
         {
             ChangedProperties = changedProperties.Count > 0 ? [.. changedProperties] : null
         };

@@ -67,10 +67,11 @@ public interface ISettableWhatIf<T> : ISettable<T>
 {
     /// <summary>
     /// Simulates applying the desired state to the resource without making actual changes.
+    /// The implementation must not mutate the system.
     /// </summary>
     /// <param name="instance">The desired state to simulate.</param>
-    /// <returns>A <see cref="SetResult{T}"/> containing what the state would be and what properties would change.</returns>
-    SetResult<T> SetWhatIf(T instance);
+    /// <returns>A <see cref="SetResult{T}"/> containing the projected state and the properties that would change.</returns>
+    SetResult<T> SetWhatIf(T? instance);
 }
 
 /// <summary>
@@ -84,6 +85,21 @@ public interface IDeletable<T> : IDscResource<T>
     /// </summary>
     /// <param name="instance">The instance containing identifying properties of the resource to delete.</param>
     void Delete(T? instance);
+}
+
+/// <summary>
+/// Defines a resource that supports simulating deletion without applying it.
+/// </summary>
+/// <typeparam name="T">The schema type that defines the resource's properties.</typeparam>
+public interface IDeletableWhatIf<T> : IDeletable<T>
+{
+    /// <summary>
+    /// Simulates deleting the resource without making actual changes.
+    /// The implementation must not mutate the system.
+    /// </summary>
+    /// <param name="instance">The instance containing identifying properties of the resource to delete.</param>
+    /// <returns>A <see cref="DeleteResult"/> describing the changes that deletion would apply.</returns>
+    DeleteResult DeleteWhatIf(T? instance);
 }
 
 /// <summary>

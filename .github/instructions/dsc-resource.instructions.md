@@ -50,7 +50,9 @@ All interfaces are optional — implement those that make sense. Strive to imple
 **Interface contracts:**
 - `IGettable.Get(Schema)` — return current state; set `Exist = false` if not found (never explicitly set `Exist = true`)
 - `ISettable.Set(Schema)` — apply changes; do NOT check `_exist` (DSC engine routes: `_exist=true` → `Set()`, `_exist=false` → `Delete()`)
+- `ISettableWhatIf.SetWhatIf(Schema?)` — compute and return the projected state (and `ChangedProperties`) without mutating the system; declares the `whatIfArg` entry in the manifest's `set` args
 - `IDeletable.Delete(Schema)` — remove resource
+- `IDeletableWhatIf.DeleteWhatIf(Schema?)` — return a `DeleteResult` describing what deletion would change (via `_metadata.whatIf` messages) without mutating the system
 - `IExportable.Export(Schema? filter)` — yield all instances, optionally filtered
 
 ## GetSchema() Method

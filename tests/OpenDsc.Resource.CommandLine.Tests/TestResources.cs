@@ -127,6 +127,126 @@ public class TestResourceGetSet : DscResource<TestSchema>,
 }
 
 /// <summary>
+/// Test resource that implements set and delete what-if capabilities
+/// </summary>
+[DscResource("TestResource/WhatIf", "1.0.0", SetReturn = SetReturn.StateAndDiff, WhatIfReturn = SetReturn.StateAndDiff)]
+public class TestResourceWithWhatIf : DscResource<TestSchema>,
+    IGettable<TestSchema>,
+    ISettableWhatIf<TestSchema>,
+    ITestable<TestSchema>,
+    IDeletableWhatIf<TestSchema>
+{
+    public TestResourceWithWhatIf() : base(new TestSourceGenerationContext())
+    {
+    }
+
+    public override string GetSchema()
+    {
+        return """
+        {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "https://example.com/test-resource-whatif.json",
+            "title": "TestResourceWithWhatIf",
+            "type": "object",
+            "properties": {
+                "name": { "type": "string" },
+                "value": { "type": "string" },
+                "enabled": { "type": "boolean" }
+            }
+        }
+        """;
+    }
+
+    public TestSchema Get(TestSchema? filter)
+    {
+        return new TestSchema { Name = "test", Value = "value", Enabled = true };
+    }
+
+    public SetResult<TestSchema>? Set(TestSchema? desiredState)
+    {
+        return new SetResult<TestSchema>(desiredState ?? new TestSchema())
+        {
+            ChangedProperties = new HashSet<string> { "name" }
+        };
+    }
+
+    public SetResult<TestSchema> SetWhatIf(TestSchema? desiredState)
+    {
+        return new SetResult<TestSchema>(desiredState ?? new TestSchema())
+        {
+            ChangedProperties = new HashSet<string> { "name" }
+        };
+    }
+
+    public TestResult<TestSchema> Test(TestSchema? desiredState)
+    {
+        return new TestResult<TestSchema>(desiredState ?? new TestSchema())
+        {
+            DifferingProperties = new HashSet<string>()
+        };
+    }
+
+    public void Delete(TestSchema? instance)
+    {
+        // Intentionally left empty for testing
+    }
+
+    public DeleteResult DeleteWhatIf(TestSchema? instance)
+    {
+        return new DeleteResult
+        {
+            Metadata = new DeleteWhatIfMetadata
+            {
+                WhatIf = [$"Would delete '{instance?.Name ?? "unknown"}'"]
+            }
+        };
+    }
+}
+
+/// <summary>
+/// Test resource with what-if support where WhatIfReturn is None (falls back to SetReturn)
+/// </summary>
+[DscResource("TestResource/WhatIfNoReturn", "1.0.0", SetReturn = SetReturn.State, WhatIfReturn = SetReturn.None)]
+public class TestResourceWhatIfNoReturn : DscResource<TestSchema>,
+    IGettable<TestSchema>,
+    ISettableWhatIf<TestSchema>
+{
+    public TestResourceWhatIfNoReturn() : base(new TestSourceGenerationContext())
+    {
+    }
+
+    public override string GetSchema()
+    {
+        return """
+        {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "https://example.com/test-resource-whatif-noreturn.json",
+            "title": "TestResourceWhatIfNoReturn",
+            "type": "object",
+            "properties": {
+                "name": { "type": "string" }
+            }
+        }
+        """;
+    }
+
+    public TestSchema Get(TestSchema? filter)
+    {
+        return new TestSchema { Name = "test" };
+    }
+
+    public SetResult<TestSchema>? Set(TestSchema? desiredState)
+    {
+        return new SetResult<TestSchema>(desiredState ?? new TestSchema());
+    }
+
+    public SetResult<TestSchema> SetWhatIf(TestSchema? desiredState)
+    {
+        return new SetResult<TestSchema>(desiredState ?? new TestSchema());
+    }
+}
+
+/// <summary>
 /// Test resource with no capabilities (for error testing)
 /// </summary>
 [DscResource("TestResource/NoOps", "1.0.0")]

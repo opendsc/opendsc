@@ -127,6 +127,81 @@ public class TestResourceGetSet : DscResource<TestSchema>,
 }
 
 /// <summary>
+/// Test resource that implements set and delete what-if capabilities.
+/// Tracks whether the non-what-if operations were invoked so tests can
+/// assert that what-if execution does not mutate anything.
+/// </summary>
+[DscResource("TestResource/WhatIf", "1.0.0", SetReturn = SetReturn.StateAndDiff, WhatIfReturn = SetReturn.StateAndDiff)]
+public class TestResourceWithWhatIf : DscResource<TestSchema>,
+    IGettable<TestSchema>,
+    ISettableWhatIf<TestSchema>,
+    IDeletableWhatIf<TestSchema>
+{
+    public bool SetInvoked { get; private set; }
+
+    public bool DeleteInvoked { get; private set; }
+
+    public TestResourceWithWhatIf() : base(new TestSourceGenerationContext())
+    {
+    }
+
+    public override string GetSchema()
+    {
+        return """
+        {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "https://example.com/test-resource-whatif.json",
+            "title": "TestResourceWithWhatIf",
+            "type": "object",
+            "properties": {
+                "name": { "type": "string" },
+                "value": { "type": "string" },
+                "enabled": { "type": "boolean" }
+            }
+        }
+        """;
+    }
+
+    public TestSchema Get(TestSchema? filter)
+    {
+        return new TestSchema { Name = "test", Value = "value", Enabled = true };
+    }
+
+    public SetResult<TestSchema>? Set(TestSchema? desiredState)
+    {
+        SetInvoked = true;
+        return new SetResult<TestSchema>(desiredState ?? new TestSchema())
+        {
+            ChangedProperties = new HashSet<string> { "name" }
+        };
+    }
+
+    public SetResult<TestSchema> SetWhatIf(TestSchema? desiredState)
+    {
+        return new SetResult<TestSchema>(desiredState ?? new TestSchema())
+        {
+            ChangedProperties = new HashSet<string> { "name" }
+        };
+    }
+
+    public void Delete(TestSchema? instance)
+    {
+        DeleteInvoked = true;
+    }
+
+    public DeleteResult DeleteWhatIf(TestSchema? instance)
+    {
+        return new DeleteResult
+        {
+            Metadata = new DeleteWhatIfMetadata
+            {
+                WhatIf = [$"Would delete '{instance?.Name ?? "unknown"}'"]
+            }
+        };
+    }
+}
+
+/// <summary>
 /// Test resource with no capabilities (for error testing)
 /// </summary>
 [DscResource("TestResource/NoOps", "1.0.0")]

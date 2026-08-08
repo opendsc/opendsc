@@ -47,8 +47,12 @@ Implement the following interfaces to add DSC operations:
 
 - `IGettable<T>`: Retrieve current configuration
 - `ISettable<T>`: Set desired configuration
+- `ISettableWhatIf<T>`: Preview the changes Set would make without applying
+  them
 - `ITestable<T>`: Test if configuration matches desired state
 - `IDeletable<T>`: Delete configuration
+- `IDeletableWhatIf<T>`: Preview the changes Delete would make without
+  applying them
 - `IExportable<T>`: Export all instances
 
 ### Attributes
@@ -78,6 +82,9 @@ The attribute supports:
 - **Tags**: Array of tags for categorization
 - **SetReturn**: Controls `Set` operation output (None, State, StateAndDiff)
 - **TestReturn**: Controls `Test` operation output (State, StateAndDiff)
+- **WhatIfReturn**: Controls `Set` output in what-if mode (defaults to State;
+  only used when the resource implements `ISettableWhatIf<T>`; None omits
+  `whatIfReturns` from the manifest so what-if falls back to `SetReturn`)
 
 ## Requirements
 

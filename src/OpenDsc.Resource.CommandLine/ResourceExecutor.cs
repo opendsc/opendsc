@@ -59,6 +59,32 @@ internal static class ResourceExecutor<TResource, TSchema> where TResource : IDs
         }
     }
 
+    internal static void ExecuteSetWhatIf(IDscResource<TSchema> resource, string? inputOption)
+    {
+        TSchema? instance = inputOption is not null ? resource.Parse(inputOption) : default;
+
+        if (resource is not ISettableWhatIf<TSchema> iSettableWhatIf)
+        {
+            throw new NotImplementedException("Resource does not support set what-if capability.");
+        }
+
+        var result = iSettableWhatIf.SetWhatIf(instance);
+        var dscAttr = GetDscAttribute(resource);
+        var effectiveReturn = dscAttr.WhatIfReturn != SetReturn.None ? dscAttr.WhatIfReturn : dscAttr.SetReturn;
+
+        if (effectiveReturn != SetReturn.None)
+        {
+            var json = resource.ToJson(result.ActualState);
+            Console.WriteLine(json);
+        }
+
+        if (result.ChangedProperties is not null && effectiveReturn == SetReturn.StateAndDiff)
+        {
+            var json = JsonSerializer.Serialize(result.ChangedProperties, typeof(HashSet<string>), SourceGenerationContext.Default);
+            Console.WriteLine(json);
+        }
+    }
+
     internal static void ExecuteTest(IDscResource<TSchema> resource, string? inputOption)
     {
         TSchema? instance = inputOption is not null ? resource.Parse(inputOption) : default;
@@ -91,6 +117,20 @@ internal static class ResourceExecutor<TResource, TSchema> where TResource : IDs
         }
 
         iTDeletable.Delete(instance);
+    }
+
+    internal static void ExecuteDeleteWhatIf(IDscResource<TSchema> resource, string? inputOption)
+    {
+        TSchema? instance = inputOption is not null ? resource.Parse(inputOption) : default;
+
+        if (resource is not IDeletableWhatIf<TSchema> iDeletableWhatIf)
+        {
+            throw new NotImplementedException("Resource does not support delete what-if capability.");
+        }
+
+        var result = iDeletableWhatIf.DeleteWhatIf(instance);
+        var json = JsonSerializer.Serialize(result, typeof(DeleteResult), SourceGenerationContext.Default);
+        Console.WriteLine(json);
     }
 
     internal static void ExecuteExport(IDscResource<TSchema> resource, string? inputOption)

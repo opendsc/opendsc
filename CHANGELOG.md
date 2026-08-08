@@ -10,6 +10,13 @@ and this project adheres to [Semantic Versioning][semver].
 
 ## [Unreleased]
 
+### Added
+
+- Add what-if support to the resource development kit: `ISettableWhatIf<T>` and
+  `IDeletableWhatIf<T>` interfaces, `--what-if`/`-w` options on the `set` and
+  `delete` commands, and manifest emission of the DSC v3.2.0+ `whatIfArg` and
+  `whatIfReturns` properties
+
 ## [0.5.1] - 2026-03-25
 
 ### Fixed

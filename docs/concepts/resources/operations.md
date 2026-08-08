@@ -38,6 +38,22 @@ dsc resource set -r OpenDsc.Windows/Environment --input '{
 }'
 ```
 
+### What-if
+
+Resources that support the set what-if capability can preview the changes a Set
+operation would make without applying them. The resource manifest declares this
+by including a `whatIfArg` entry in the `set` operation's arguments; DSC then
+invokes the same set executable with that argument appended when running
+`dsc config set --what-if`. The optional `whatIfReturns` property overrides
+`return` during what-if execution.
+
+When a resource doesn't support native what-if, DSC falls back to a synthetic
+what-if based on the Test operation.
+
+```powershell
+dsc config set --file ./config.dsc.yaml --what-if
+```
+
 ## Test
 
 The **Test** operation checks whether a resource instance matches its desired
@@ -64,6 +80,11 @@ capability.
 ```powershell
 dsc resource delete -r OpenDsc.Windows/Environment --input '{"name":"DSC_EXAMPLE","scope":"User"}'
 ```
+
+Resources may also support the delete what-if capability, declared with a
+`whatIfArg` entry in the `delete` operation's arguments. In what-if mode the
+resource reports the changes deletion would apply as a `_metadata.whatIf`
+message array instead of removing the instance.
 
 ## Export
 

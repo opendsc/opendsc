@@ -44,6 +44,25 @@ public class DscResourceAttributeTests
     }
 
     [Fact]
+    public void DefaultValues_WhatIfReturnIsState()
+    {
+        var attr = new DscResourceAttribute("OpenDsc.Test/Resource");
+
+        attr.WhatIfReturn.Should().Be(SetReturn.State);
+    }
+
+    [Fact]
+    public void WhatIfReturn_CanBeSetToStateAndDiff()
+    {
+        var attr = new DscResourceAttribute("OpenDsc.Test/Resource")
+        {
+            WhatIfReturn = SetReturn.StateAndDiff
+        };
+
+        attr.WhatIfReturn.Should().Be(SetReturn.StateAndDiff);
+    }
+
+    [Fact]
     public void DefaultValues_DescriptionIsEmpty()
     {
         var attr = new DscResourceAttribute("OpenDsc.Test/Resource");

@@ -36,12 +36,20 @@ internal sealed class ResourceRegistry
             ? (string? input) => ResourceExecutor<TResource, TSchema>.ExecuteSet(resource, input)
             : null;
 
+        Action<string?>? setWhatIfAction = resource is ISettableWhatIf<TSchema>
+            ? (string? input) => ResourceExecutor<TResource, TSchema>.ExecuteSetWhatIf(resource, input)
+            : null;
+
         Action<string?>? testAction = resource is ITestable<TSchema>
             ? (string? input) => ResourceExecutor<TResource, TSchema>.ExecuteTest(resource, input)
             : null;
 
         Action<string?>? deleteAction = resource is IDeletable<TSchema>
             ? (string? input) => ResourceExecutor<TResource, TSchema>.ExecuteDelete(resource, input)
+            : null;
+
+        Action<string?>? deleteWhatIfAction = resource is IDeletableWhatIf<TSchema>
+            ? (string? input) => ResourceExecutor<TResource, TSchema>.ExecuteDeleteWhatIf(resource, input)
             : null;
 
         Action<string?>? exportAction = resource is IExportable<TSchema>
@@ -69,8 +77,10 @@ internal sealed class ResourceRegistry
             attribute,
             getAction,
             setAction,
+            setWhatIfAction,
             testAction,
             deleteAction,
+            deleteWhatIfAction,
             exportAction,
             schemaFunc,
             exitCodeResolver);

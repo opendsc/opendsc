@@ -57,11 +57,22 @@ public static class ManifestBuilder
                 setReturn = char.ToLowerInvariant(setReturnStr[0]) + setReturnStr.Substring(1);
             }
 
+            var isSettableWhatIf = resource is ISettableWhatIf<TSchema>;
+            string? whatIfReturn = null;
+            if (isSettableWhatIf && dscAttr.WhatIfReturn != SetReturn.None)
+            {
+                var whatIfReturnStr = dscAttr.WhatIfReturn.ToString();
+                whatIfReturn = char.ToLowerInvariant(whatIfReturnStr[0]) + whatIfReturnStr.Substring(1);
+            }
+
             manifest.Set = new ManifestSetMethod
             {
                 Executable = fileName,
-                Args = ["config", "set", new JsonInputArg { Arg = "--input", Mandatory = false }],
-                Return = setReturn
+                Args = isSettableWhatIf
+                    ? ["config", "set", new JsonInputArg { Arg = "--input", Mandatory = false }, new WhatIfArg { Arg = "--what-if" }]
+                    : ["config", "set", new JsonInputArg { Arg = "--input", Mandatory = false }],
+                Return = setReturn,
+                WhatIfReturn = whatIfReturn
             };
         }
 
@@ -83,7 +94,9 @@ public static class ManifestBuilder
             manifest.Delete = new ManifestMethod
             {
                 Executable = fileName,
-                Args = ["config", "delete", new JsonInputArg { Arg = "--input", Mandatory = false }]
+                Args = resource is IDeletableWhatIf<TSchema>
+                    ? ["config", "delete", new JsonInputArg { Arg = "--input", Mandatory = false }, new WhatIfArg { Arg = "--what-if" }]
+                    : ["config", "delete", new JsonInputArg { Arg = "--input", Mandatory = false }]
             };
         }
 

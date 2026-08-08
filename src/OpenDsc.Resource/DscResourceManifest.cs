@@ -111,6 +111,13 @@ public class ManifestSetMethod : ManifestMethod
     /// Gets or sets what information the Set operation returns ("state" or "stateAndDiff").
     /// </summary>
     public string? Return { get; set; }
+
+    /// <summary>
+    /// Gets or sets what information the Set operation returns in what-if mode ("state" or "stateAndDiff").
+    /// When specified, this overrides <see cref="Return"/> during what-if execution.
+    /// </summary>
+    [JsonPropertyName("whatIfReturns")]
+    public string? WhatIfReturn { get; set; }
 }
 
 /// <summary>
@@ -155,4 +162,17 @@ public class JsonInputArg
     /// Gets or sets whether this argument is mandatory.
     /// </summary>
     public bool? Mandatory { get; set; }
+}
+
+/// <summary>
+/// Represents a what-if argument specification in a manifest method.
+/// The argument is passed to the executable when the operation is invoked in what-if mode.
+/// </summary>
+public class WhatIfArg
+{
+    /// <summary>
+    /// Gets or sets the command-line argument passed when in what-if mode.
+    /// </summary>
+    [JsonPropertyName("whatIfArg")]
+    public string Arg { get; set; } = string.Empty;
 }
