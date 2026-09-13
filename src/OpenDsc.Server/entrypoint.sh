@@ -3,7 +3,9 @@ set -e
 
 if [ "$(id -u)" = "0" ]; then
     mkdir -p /app/data
-    chown -R app:app /app/data
+    # Network volumes such as Azure Files do not allow ownership changes;
+    # on those, ownership comes from the mount's uid/gid options instead
+    chown -R app:app /app/data 2>/dev/null || true
     exec setpriv --reuid app --regid app --init-groups "$0" "$@"
 fi
 

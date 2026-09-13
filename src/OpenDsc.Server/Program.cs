@@ -81,6 +81,7 @@ builder.Services.AddScoped<ThemeService>();
 
 builder.Services.AddServerDatabase(builder.Configuration);
 builder.Services.AddServerAuthentication(builder.Environment, builder.Configuration);
+builder.Services.AddForwardedClientCertificate(builder.Configuration);
 
 builder.Services.AddMemoryCache();
 
@@ -153,6 +154,10 @@ if (app.Environment.IsDevelopment())
 // assets like _framework/blazor.web.js, which are no longer published as
 // physical files in wwwroot
 app.MapStaticAssets();
+
+// Behind a TLS-terminating proxy the node certificate arrives in a header;
+// restore it on the connection before authentication runs
+app.UseForwardedClientCertificate(builder.Configuration);
 
 app.UseAuthentication();
 app.UseAuthorization();
