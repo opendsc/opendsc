@@ -42,6 +42,36 @@ docker-compose --profile postgres up -d
 docker-compose --profile sqlserver up -d
 ```
 
+The container listens on `https://localhost:8443` (web UI and API) and
+`http://localhost:8080` (health checks only). HTTPS is required for sign-in
+(auth cookies are marked `Secure`) and for node mTLS authentication. If no
+server certificate is configured, the container generates a self-signed
+certificate on first start and stores it in the `/app/data/certs` volume. To
+use your own certificate, mount it into the container and set:
+
+```sh
+ASPNETCORE_Kestrel__Certificates__Default__Path=/app/certs/server.pfx
+ASPNETCORE_Kestrel__Certificates__Default__Password=<password>
+```
+
+### Running behind a TLS-terminating proxy
+
+When a reverse proxy or platform ingress (Azure Container Apps, a Kubernetes
+ingress, nginx) terminates TLS, Kestrel never sees the node's client
+certificate. Configure the proxy to forward the certificate in a request
+header and tell the server which header to read:
+
+```sh
+ASPNETCORE_FORWARDEDHEADERS_ENABLED=true
+Server__ClientCertificateHeader=X-Forwarded-Client-Cert
+```
+
+The server accepts the Envoy `X-Forwarded-Client-Cert` format
+(`Hash=...;Cert="<URL-encoded PEM>";Chain=...`), a bare PEM certificate, or a
+base64-encoded DER certificate. Only enable this when the header is set by a
+trusted proxy that overwrites any client-supplied value. Leave the setting
+empty when Kestrel terminates TLS itself.
+
 ### Running Locally
 
 ```sh

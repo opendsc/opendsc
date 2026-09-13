@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Caching.Memory;
 
 using OpenDsc.Contracts.Users;
 using OpenDsc.Server.Authorization;
@@ -142,8 +141,7 @@ public static class AuthenticationEndpoints
     private static async Task<Results<NoContent, BadRequest<string>, UnauthorizedHttpResult>> ChangePassword(
         [FromBody] ChangePasswordRequest request,
         IUserService userService,
-        IUserContextService userContext,
-        IMemoryCache cache)
+        IUserContextService userContext)
     {
         var userId = userContext.GetCurrentUserId();
         if (userId == null)
@@ -163,8 +161,6 @@ public static class AuthenticationEndpoints
         {
             return TypedResults.BadRequest(ex.Message);
         }
-
-        cache.Remove($"pwd-change-{userId.Value}");
 
         return TypedResults.NoContent();
     }

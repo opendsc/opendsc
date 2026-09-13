@@ -13,6 +13,7 @@ services:
     container_name: opendsc-server
     ports:
       - "8080:8080"
+      - "8443:8443"
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - Database__Provider=SQLite
@@ -37,6 +38,9 @@ services:
       - postgres
     ports:
       - "8080:8080"
+      - "8443:8443"
+    volumes:
+      - opendsc-data:/app/data
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - Database__Provider=PostgreSQL
@@ -74,6 +78,9 @@ services:
       - sqlserver
     ports:
       - "8080:8080"
+      - "8443:8443"
+    volumes:
+      - opendsc-data:/app/data
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - Database__Provider=SqlServer

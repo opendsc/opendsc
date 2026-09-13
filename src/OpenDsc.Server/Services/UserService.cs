@@ -3,6 +3,7 @@
 // terms of the MIT license.
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 using OpenDsc.Contracts.Users;
 using OpenDsc.Server.Data;
@@ -12,8 +13,18 @@ namespace OpenDsc.Server.Services;
 
 public sealed class UserService(
     ServerDbContext db,
-    IPasswordHasher passwordHasher) : IUserService
+    IPasswordHasher passwordHasher,
+    IMemoryCache cache) : IUserService
 {
+    /// <summary>
+    /// Invalidates the PasswordChangeEnforcementMiddleware cache so a changed
+    /// RequirePasswordChange flag takes effect immediately.
+    /// </summary>
+    private void InvalidatePasswordChangeCache(Guid userId)
+    {
+        cache.Remove($"pwd-change-{userId}");
+    }
+
     public async Task<IReadOnlyList<UserSummary>> GetUsersAsync(CancellationToken cancellationToken = default)
     {
         var users = await db.Users
@@ -147,6 +158,7 @@ public sealed class UserService(
         user.ModifiedAt = DateTimeOffset.UtcNow;
 
         await db.SaveChangesAsync(cancellationToken);
+        InvalidatePasswordChangeCache(userId);
 
         return ToUserSummary(user);
     }
@@ -181,6 +193,7 @@ public sealed class UserService(
         user.ModifiedAt = DateTimeOffset.UtcNow;
 
         await db.SaveChangesAsync(cancellationToken);
+        InvalidatePasswordChangeCache(userId);
     }
 
     public async Task UnlockUserAsync(Guid userId, CancellationToken cancellationToken = default)
@@ -410,6 +423,7 @@ public sealed class UserService(
         user.ModifiedAt = DateTimeOffset.UtcNow;
 
         await db.SaveChangesAsync(cancellationToken);
+        InvalidatePasswordChangeCache(userId);
     }
 
     public async Task<string?> GetExternalLoginAsync(Guid userId, CancellationToken cancellationToken = default)

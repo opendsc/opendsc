@@ -9,6 +9,10 @@
     <PublishAot>false</PublishAot>
     <InvariantGlobalization>false</InvariantGlobalization>
     <EnableConfigurationBindingGenerator>true</EnableConfigurationBindingGenerator>
+    <!-- The SDK infers this from .razor files being present, but Docker builds
+         restore before source is copied, which would silently drop the
+         framework static assets (_framework/blazor.web.js) from the publish -->
+    <RequiresAspNetWebAssets>true</RequiresAspNetWebAssets>
   </PropertyGroup>
 
   <ItemGroup>

@@ -1,0 +1,9 @@
+# Build output must not leak from the host into the image build,
+# or it overwrites the restore state produced inside the container
+**/bin/
+**/obj/
+
+**/.git
+**/.vs
+**/.vscode
+**/*.user
